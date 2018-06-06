@@ -13,13 +13,9 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate clap;
-extern crate crypto;
-#[macro_use]
-extern crate log;
+extern crate cfg_if;
 extern crate protobuf;
-extern crate sawtooth_sdk;
-extern crate simple_logger;
+extern crate crypto;
 extern crate addresser;
 
 cfg_if! {
@@ -39,13 +35,13 @@ cfg_if! {
     }
 }
 
-mod handler;
+pub mod handler;
 mod protos;
 
-use log::LogLevel;
-use sawtooth_sdk::processor::TransactionProcessor;
-use handler::PikeTransactionHandler;
+//use sawtooth_sdk::processor::TransactionProcessor;
+//use handler::PikeTransactionHandler;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let matches = clap_app!(wasm_store_tp =>
         (version: crate_version!())
@@ -73,4 +69,8 @@ fn main() {
 
     processor.add_handler(&handler);
     processor.start();
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
 }
