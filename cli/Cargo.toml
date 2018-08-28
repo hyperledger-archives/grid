@@ -1,0 +1,6 @@
+[package]
+name = "splinter-cli"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+
+[dependencies]
