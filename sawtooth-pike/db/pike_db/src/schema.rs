@@ -29,12 +29,3 @@ table! {
         address -> Varchar,
     }
 }
-
-table! {
-    smartpermissions (name) {
-        // On-chain address of smart permission. Used for processing delete events.
-        address -> Varchar,
-        name -> Varchar,
-        org_id -> Varchar,
-    }
-}

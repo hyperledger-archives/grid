@@ -14,7 +14,6 @@
 
 use schema::agents;
 use schema::organizations;
-use schema::smartpermissions;
 use serde_json;
 
 #[derive(Queryable)]
@@ -65,13 +64,4 @@ pub struct SmartPermission {
     pub org_id: String,
     pub name: String,
     pub address: String
-}
-
-#[derive(Insertable)]
-#[table_name = "smartpermissions"]
-#[derive(Debug)]
-pub struct NewSmartPermission<'a> {
-    pub org_id: &'a str,
-    pub name: &'a str,
-    pub address: &'a str
 }

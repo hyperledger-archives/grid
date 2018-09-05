@@ -25,9 +25,3 @@ CREATE TABLE organizations (
     name VARCHAR(256) NOT NULL,
     address VARCHAR(256) NOT NULL
 );
-
-CREATE TABLE smartpermissions (
-    name VARCHAR(256) PRIMARY KEY NOT NULL,
-    org_id VARCHAR(256) NOT NULL,
-    address VARCHAR(70) NOT NULL
-)

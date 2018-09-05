@@ -26,14 +26,12 @@ use diesel::result::Error;
 mod schema;
 mod agents_helper;
 mod orgs_helper;
-mod sp_helper;
 
 pub mod pools;
 pub mod models;
 
 pub use orgs_helper::*;
 pub use agents_helper::*;
-pub use sp_helper::*;
 
 pub use Error::NotFound;
 pub use diesel::pg::PgConnection;
