@@ -95,27 +95,6 @@ fn compute_org_address(id: &str) -> String {
         + &bytes_to_hex_str(hash)[..62]
 }
 
-/// Returns a state address for a given organization id
-///
-/// # Arguments
-///
-/// * `id` - the organization's id
-fn compute_smart_permission_address(org_id: &str, name: &str) -> String {
-    let hash_org: &mut [u8] = &mut [0; 64];
-    let hash_name: &mut [u8] = &mut [0; 64];
-
-    let mut sha_org = Sha512::new();
-    sha_org.input(org_id.as_bytes());
-    sha_org.result(hash_org);
-
-    let mut sha_name = Sha512::new();
-    sha_name.input(name.as_bytes());
-    sha_name.result(hash_name);
-
-    String::from(PIKE_NAMESPACE) + &resource_to_byte(Resource::SPF)
-        + &bytes_to_hex_str(hash_org)[..6] + &bytes_to_hex_str(hash_name)[..56]
-}
-
 /// Returns a Transaction for the given Payload and Signer
 ///
 /// # Arguments
@@ -175,33 +154,6 @@ pub fn create_transaction(
             let id = payload.get_update_organization().get_id();
             protobuf::RepeatedField::from_vec(vec![
                 compute_org_address(id),
-                compute_agent_address(public_key),
-            ])
-        }
-        Action::CREATE_SMART_PERMISSION => {
-            let org_id = payload.get_create_smart_permission().get_org_id();
-            let name = payload.get_create_smart_permission().get_name();
-            protobuf::RepeatedField::from_vec(vec![
-                compute_smart_permission_address(org_id, name),
-                compute_org_address(org_id),
-                compute_agent_address(public_key),
-            ])
-        }
-        Action::UPDATE_SMART_PERMISSION => {
-            let org_id = payload.get_update_smart_permission().get_org_id();
-            let name = payload.get_update_smart_permission().get_name();
-            protobuf::RepeatedField::from_vec(vec![
-                compute_smart_permission_address(org_id, name),
-                compute_org_address(org_id),
-                compute_agent_address(public_key),
-            ])
-        }
-        Action::DELETE_SMART_PERMISSION => {
-            let org_id = payload.get_delete_smart_permission().get_org_id();
-            let name = payload.get_delete_smart_permission().get_name();
-            protobuf::RepeatedField::from_vec(vec![
-                compute_smart_permission_address(org_id, name),
-                compute_org_address(org_id),
                 compute_agent_address(public_key),
             ])
         }

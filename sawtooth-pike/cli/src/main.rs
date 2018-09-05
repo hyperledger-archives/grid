@@ -41,9 +41,12 @@ use sawtooth_sdk::signing::PrivateKey;
 
 use error::CliError;
 use key::load_signing_key;
-use payload::{create_agent_payload, create_org_payload, create_smart_permission_payload,
-              delete_smart_permission_payload, update_agent_payload, update_org_payload,
-              update_smart_permission_payload};
+use payload::{
+    create_agent_payload,
+    create_org_payload,
+    update_agent_payload,
+    update_org_payload
+};
 use submit::submit_batch_list;
 
 use protos::payload::PikePayload;
@@ -129,30 +132,6 @@ fn run() -> Result<(), CliError> {
                 (@arg name: +required "Name of the organization")
                 (@arg address: "Physical address for organization")
                 (@arg key: -k +takes_value "Agent's key name")
-                (@arg output: --output -o +takes_value "File name to write payload to.")
-            )
-        )
-        (@subcommand smart_permission =>
-            (@setting SubcommandRequiredElseHelp)
-            (about: "smart-permissions commands")
-            (@subcommand create =>
-                (@arg org_id: +required "Organization ID ")
-                (@arg name: +required "Name of the Smart Permission")
-                (@arg filename: -f --filename +required +takes_value "Path to smart_permission")
-                (@arg key: -k --key +takes_value "Agent's key name")
-                (@arg output: --output -o +takes_value "File name to write payload to.")
-            )
-            (@subcommand update =>
-                (@arg org_id: +required "Organization IDs")
-                (@arg name: +required "Name of the Smart Permission")
-                (@arg filename: -f --filename +required +takes_value "Path to smart_permission")
-                (@arg key: -k --key +takes_value "Agent's key name")
-                (@arg output: --output -o +takes_value "File name to write payload to.")
-            )
-            (@subcommand delete =>
-                (@arg org_id: +required "Organization IDs")
-                (@arg name: +required "Name of the Smart Permission")
-                (@arg key: -k --key +takes_value "Agent's key name")
                 (@arg output: --output -o +takes_value "File name to write payload to.")
             )
         )
@@ -293,45 +272,6 @@ fn run() -> Result<(), CliError> {
             let private_key = load_signing_key(key_name)?;
 
             let payload = update_org_payload(id, name, address);
-
-            do_create(&url, &private_key, &payload, &output)?;
-        }
-    }
-
-    if let Some(matches) = matches.subcommand_matches("smart_permission") {
-        if let Some(matches) = matches.subcommand_matches("create") {
-            let name = matches.value_of("name").unwrap();
-            let org_id = matches.value_of("org_id").unwrap();
-            let filename = matches.value_of("filename").unwrap();
-            let key_name = matches.value_of("key");
-            let output = matches.value_of("output").unwrap_or("");
-
-            let private_key = load_signing_key(key_name)?;
-
-            let payload = create_smart_permission_payload(org_id, name, filename)?;
-
-            do_create(&url, &private_key, &payload, &output)?;
-        } else if let Some(matches) = matches.subcommand_matches("update") {
-            let name = matches.value_of("name").unwrap();
-            let org_id = matches.value_of("org_id").unwrap();
-            let filename = matches.value_of("filename").unwrap();
-            let key_name = matches.value_of("key");
-            let output = matches.value_of("output").unwrap_or("");
-
-            let private_key = load_signing_key(key_name)?;
-
-            let payload = update_smart_permission_payload(org_id, name, filename)?;
-
-            do_create(&url, &private_key, &payload, &output)?;
-        } else if let Some(matches) = matches.subcommand_matches("delete") {
-            let name = matches.value_of("name").unwrap();
-            let org_id = matches.value_of("org_id").unwrap();
-            let key_name = matches.value_of("key");
-            let output = matches.value_of("output").unwrap_or("");
-
-            let private_key = load_signing_key(key_name)?;
-
-            let payload = delete_smart_permission_payload(org_id, name)?;
 
             do_create(&url, &private_key, &payload, &output)?;
         }
