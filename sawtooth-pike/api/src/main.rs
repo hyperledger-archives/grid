@@ -36,7 +36,7 @@ use std::env;
 use rocket::http::Method;
 use rocket_cors::{AllowedOrigins, AllowedHeaders};
 use rocket_contrib::Json;
-use routes::{agents, organizations, smart_permissions};
+use routes::{agents, organizations};
 use pike_db::pools;
 use routes::transactions;
 
@@ -94,8 +94,6 @@ fn main() {
                agents::get_agents,
                organizations::get_org,
                organizations::get_orgs,
-               smart_permissions::get_smart_permission,
-               smart_permissions::get_smart_permissions,
                transactions::submit_txns,
                transactions::submit_txns_wait,
                transactions::get_batch_status])

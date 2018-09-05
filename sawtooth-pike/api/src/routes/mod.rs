@@ -15,4 +15,3 @@
 pub mod agents;
 pub mod organizations;
 pub mod transactions;
-pub mod smart_permissions;
