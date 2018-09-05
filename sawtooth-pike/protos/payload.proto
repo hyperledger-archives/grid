@@ -38,10 +38,6 @@ message PikePayload {
 
   CreateOrganizationAction create_organization = 4;
   UpdateOrganizationAction update_organization = 5;
-
-  CreateSmartPermissionAction create_smart_permission = 6;
-  UpdateSmartPermissionAction update_smart_permission = 7;
-  DeleteSmartPermissionAction delete_smart_permission = 8;
 }
 
 message CreateAgentAction {
@@ -70,21 +66,4 @@ message UpdateOrganizationAction {
   string id = 1;
   string name = 2;
   string address = 3;
-}
-
-message CreateSmartPermissionAction {
-  string name = 1;
-  string org_id = 2;
-  bytes function = 3;
-}
-
-message UpdateSmartPermissionAction {
-  string name = 1;
-  string org_id = 2;
-  bytes function = 3;
-}
-
-message DeleteSmartPermissionAction {
-  string name = 1;
-  string org_id = 2;
 }

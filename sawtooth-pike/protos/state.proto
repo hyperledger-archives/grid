@@ -41,13 +41,3 @@ message Organization {
 message OrganizationList {
   repeated Organization organizations = 1;
 }
-
-message SmartPermission {
-  string name = 1;
-  string org_id = 2;
-  bytes function = 3;
-}
-
-message SmartPermissionList {
-  repeated SmartPermission smart_permissions = 1;
-}
