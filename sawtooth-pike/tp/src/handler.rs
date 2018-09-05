@@ -32,12 +32,11 @@ cfg_if! {
     }
 }
 
-use protos::payload::{CreateAgentAction, CreateOrganizationAction, CreateSmartPermissionAction,
-                      DeleteSmartPermissionAction, PikePayload,
+use protos::payload::{CreateAgentAction, CreateOrganizationAction,
+                      PikePayload,
                       PikePayload_Action as Action, UpdateAgentAction,
-                      UpdateOrganizationAction, UpdateSmartPermissionAction};
-use protos::state::{Agent, AgentList, Organization, OrganizationList, SmartPermission,
-                    SmartPermissionList};
+                      UpdateOrganizationAction};
+use protos::state::{Agent, AgentList, Organization, OrganizationList};
 use addresser::{resource_to_byte, Resource};
 
 pub struct PikeTransactionHandler {
@@ -53,17 +52,6 @@ fn compute_address(name: &str, resource: Resource) -> String {
     sha.input(name.as_bytes());
 
     String::from(NAMESPACE) + &resource_to_byte(resource) + &sha.result_str()[..62].to_string()
-}
-
-fn compute_smart_permission_address(org_id: &str, name: &str) -> String {
-    let mut sha_org_id = Sha512::new();
-    sha_org_id.input(org_id.as_bytes());
-
-    let mut sha_name = Sha512::new();
-    sha_name.input(name.as_bytes());
-
-    String::from(NAMESPACE) + &resource_to_byte(Resource::SPF)
-        + &sha_org_id.result_str()[..6].to_string() + &sha_name.result_str()[..56].to_string()
 }
 
 pub struct PikeState<'a> {
@@ -235,116 +223,6 @@ impl<'a> PikeState<'a> {
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
-
-    pub fn get_smart_permission(
-        &mut self,
-        org_id: &str,
-        name: &str,
-    ) -> Result<Option<SmartPermission>, ApplyError> {
-        let address = compute_smart_permission_address(org_id, name);
-        let d = self.context.get_state(vec![address])?;
-        match d {
-            Some(packed) => {
-                let smart_permissions: SmartPermissionList =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(smart_permissions) => smart_permissions,
-                        Err(err) => {
-                            return Err(ApplyError::InternalError(format!(
-                                "Cannot deserialize smart permission list: {:?}",
-                                err,
-                            )))
-                        }
-                    };
-
-                for smart_permission in smart_permissions.get_smart_permissions() {
-                    if smart_permission.name == name {
-                        return Ok(Some(smart_permission.clone()));
-                    }
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
-    }
-
-    pub fn set_smart_permission(
-        &mut self,
-        org_id: &str,
-        name: &str,
-        new_smart_permission: SmartPermission,
-    ) -> Result<(), ApplyError> {
-        let address = compute_smart_permission_address(org_id, name);
-        let d = self.context.get_state(vec![address.clone()])?;
-        let mut smart_permission_list = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(smart_permissions) => smart_permissions,
-                Err(err) => {
-                    return Err(ApplyError::InternalError(format!(
-                        "Cannot deserialize smart permission list: {}",
-                        err,
-                    )))
-                }
-            },
-            None => SmartPermissionList::new(),
-        };
-        // remove old smart_permission if it exists and sort the smart_permission by name
-        let smart_permissions = smart_permission_list.get_smart_permissions().to_vec();
-        let mut index = None;
-        let mut count = 0;
-        for smart_permission in smart_permissions.clone() {
-            if smart_permission.name == name {
-                index = Some(count);
-                break;
-            }
-            count = count + 1;
-        }
-
-        match index {
-            Some(x) => {
-                smart_permission_list.smart_permissions.remove(x);
-            }
-            None => (),
-        };
-        smart_permission_list
-            .smart_permissions
-            .push(new_smart_permission);
-        smart_permission_list
-            .smart_permissions
-            .sort_by_key(|sp| sp.clone().name);
-        let serialized = match protobuf::Message::write_to_bytes(&smart_permission_list) {
-            Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize smart permission list",
-                )))
-            }
-        };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
-        self.context
-            .set_state(sets)
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-    }
-
-    pub fn delete_smart_permission(&mut self, org_id: &str, name: &str) -> Result<(), ApplyError> {
-        let address = compute_smart_permission_address(org_id, name);
-        let d = self.context.delete_state(vec![address.clone()])?;
-        let deleted: Vec<String> = match d {
-            Some(deleted) => deleted.to_vec(),
-            None => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot delete smart_permission",
-                )))
-            }
-        };
-        if !deleted.contains(&address) {
-            return Err(ApplyError::InternalError(String::from(
-                "Cannot delete smart_permission",
-            )));
-        };
-        Ok(())
-    }
 }
 
 impl PikeTransactionHandler {
@@ -397,15 +275,6 @@ impl TransactionHandler for PikeTransactionHandler {
             }
             Action::UPDATE_ORGANIZATION => {
                 update_org(payload.get_update_organization(), signer, &mut state)
-            }
-            Action::CREATE_SMART_PERMISSION => {
-                create_smart_perm(payload.get_create_smart_permission(), signer, &mut state)
-            }
-            Action::UPDATE_SMART_PERMISSION => {
-                update_smart_perm(payload.get_update_smart_permission(), signer, &mut state)
-            }
-            Action::DELETE_SMART_PERMISSION => {
-                delete_smart_perm(payload.get_delete_smart_permission(), signer, &mut state)
             }
             _ => Err(ApplyError::InvalidTransaction("Invalid action".into())),
         }
@@ -633,161 +502,6 @@ fn update_org(
         organization.set_address(payload.get_address().to_string());
     }
     state.set_organization(payload.get_id(), organization)
-}
-
-fn create_smart_perm(
-    payload: &CreateSmartPermissionAction,
-    signer: &str,
-    state: &mut PikeState,
-) -> Result<(), ApplyError> {
-    if payload.get_name().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have a name".into(),
-        ));
-    }
-
-    if payload.get_org_id().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have an org id".into(),
-        ));
-    }
-
-    if payload.get_function().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have a function".into(),
-        ));
-    }
-
-    // Check if the smart permissions already exists
-    match state.get_smart_permission(payload.get_org_id(), payload.get_name()) {
-        Ok(None) => (),
-        Ok(Some(_)) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Smart Permission already exists: {} ",
-                payload.get_name(),
-            )))
-        }
-        Err(err) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrieve state: {}",
-                err,
-            )))
-        }
-    };
-
-    // verify the signer of the transaction is authorized to create smart permissions
-    is_admin(signer, payload.get_org_id(), state)?;
-
-    // Check that organizations exists
-    match state.get_organization(payload.get_org_id()) {
-        Ok(None) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Organization does not exist exists: {}",
-                payload.get_org_id(),
-            )))
-        }
-        Ok(Some(_)) => (),
-        Err(err) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrieve state: {}",
-                err,
-            )))
-        }
-    };
-
-    let mut smart_permission = SmartPermission::new();
-    smart_permission.set_org_id(payload.get_org_id().to_string());
-    smart_permission.set_name(payload.get_name().to_string());
-    smart_permission.set_function(payload.get_function().to_vec());
-    state.set_smart_permission(payload.get_org_id(), payload.get_name(), smart_permission)
-}
-
-fn update_smart_perm(
-    payload: &UpdateSmartPermissionAction,
-    signer: &str,
-    state: &mut PikeState,
-) -> Result<(), ApplyError> {
-    if payload.get_name().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have a name".into(),
-        ));
-    }
-
-    if payload.get_org_id().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have an org id".into(),
-        ));
-    }
-
-    if payload.get_function().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have a function".into(),
-        ));
-    }
-
-    // verify the signer of the transaction is authorized to update smart permissions
-    is_admin(signer, payload.get_org_id(), state)?;
-
-    // verify that the smart permission exists
-    let mut smart_permission =
-        match state.get_smart_permission(payload.get_org_id(), payload.get_name()) {
-            Ok(None) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Smart Permission does not exists: {} ",
-                    payload.get_name(),
-                )))
-            }
-            Ok(Some(smart_permission)) => smart_permission,
-            Err(err) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Failed to retrieve state: {}",
-                    err,
-                )))
-            }
-        };
-
-    smart_permission.set_function(payload.get_function().to_vec());
-    state.set_smart_permission(payload.get_org_id(), payload.get_name(), smart_permission)
-}
-
-fn delete_smart_perm(
-    payload: &DeleteSmartPermissionAction,
-    signer: &str,
-    state: &mut PikeState,
-) -> Result<(), ApplyError> {
-    if payload.get_name().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have a name".into(),
-        ));
-    }
-
-    if payload.get_org_id().is_empty() {
-        return Err(ApplyError::InvalidTransaction(
-            "Smart Permission must have an org id".into(),
-        ));
-    }
-
-    // verify the signer of the transaction is authorized to delete smart permissions
-    is_admin(signer, payload.get_org_id(), state)?;
-
-    // verify that the smart permission exists
-    match state.get_smart_permission(payload.get_org_id(), payload.get_name()) {
-        Ok(None) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Smart Permission does not exists: {} ",
-                payload.get_name(),
-            )))
-        }
-        Ok(Some(_)) => (),
-        Err(err) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Failed to retrieve state: {}",
-                err,
-            )))
-        }
-    };
-
-    state.delete_smart_permission(payload.get_org_id(), payload.get_name())
 }
 
 pub fn is_admin(signer: &str, org_id: &str, state: &mut PikeState) -> Result<(), ApplyError> {

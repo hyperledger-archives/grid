@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y protobuf-compiler
 
 COPY . /project
 
-WORKDIR /project/tp
+WORKDIR /project/contracts/sawtooth-pike/tp
 
 RUN cargo build
 
