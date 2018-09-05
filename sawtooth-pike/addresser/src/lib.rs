@@ -17,16 +17,14 @@
 #[derive(Debug)]
 pub enum Resource {
     AGENT,
-    ORG,
-    SPF
+    ORG
 }
 
 /// Convert resource part to byte value in hex
 pub fn resource_to_byte(part: Resource) -> String {
     match part {
         Resource::AGENT => String::from("00"),
-        Resource::ORG => String::from("01"),
-        Resource::SPF => String::from("0f")
+        Resource::ORG => String::from("01")
     }
 }
 
@@ -35,7 +33,6 @@ pub fn byte_to_resource(bytes: &str) -> Result<Resource, ResourceError>  {
     match bytes {
         "00" => Ok(Resource::AGENT),
         "01" => Ok(Resource::ORG),
-        "0f" => Ok(Resource::SPF),
         _ => Err(ResourceError::UnknownResource(
                 format!("No resource found matching byte pattern {}", bytes)))
     }

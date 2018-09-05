@@ -47,7 +47,7 @@ impl Subscriber {
         info!("Establishing connection with validator {}", validator);
 
         let connection = ZmqMessageConnection::new(&validator);
-        let (mut sender, receiver) = connection.create();
+        let (sender, receiver) = connection.create();
 
         // Build event subscription payload
 

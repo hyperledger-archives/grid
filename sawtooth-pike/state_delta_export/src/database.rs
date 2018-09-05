@@ -19,23 +19,20 @@ use sawtooth_sdk::messages::transaction_receipt::StateChange_Type;
 
 use pike_db as db;
 use pike_db::{PgConnection, NotFound, QueryError};
-use pike_db::models::{NewAgent, NewOrganization, NewSmartPermission};
+use pike_db::models::{NewAgent, NewOrganization};
 
 use addresser::{Resource, ResourceError, byte_to_resource};
 
 use protos::state::{
     Agent,
     Organization,
-    SmartPermission,
     AgentList,
-    OrganizationList,
-    SmartPermissionList,
+    OrganizationList
 };
 
 pub fn apply_state_change(conn: &PgConnection, state_change: &StateChange) -> Result<(), StateChangeError> {
     match state_change.field_type{
         StateChange_Type::SET => set(conn, &state_change.address, &state_change.value),
-        StateChange_Type::DELETE => delete(conn,  &state_change.address),
         _ => Err(
             StateChangeError::UnsupportedTypeError(
                 format!("unsuppoted type {:?}", state_change.field_type)))
@@ -55,11 +52,6 @@ fn set(conn: &PgConnection, address: &str, value: &[u8]) -> Result<(), StateChan
             .get_organizations()
             .into_iter()
             .filter_map(|org| set_org(conn, org).err())
-            .collect(),
-        Resource::SPF => protobuf::parse_from_bytes::<SmartPermissionList>(value)?
-            .get_smart_permissions()
-            .into_iter()
-            .filter_map(|spf| set_spf(conn, spf, address).err())
             .collect()
     };
 
@@ -67,19 +59,6 @@ fn set(conn: &PgConnection, address: &str, value: &[u8]) -> Result<(), StateChan
         Ok(())
     } else {
         Err(StateChangeError::SetErrors(results))
-    }
-}
-
-fn delete(conn: &PgConnection, address: &str) -> Result<(), StateChangeError> {
-    let resource_byte = &address[6..8];
-
-    match byte_to_resource(resource_byte)? {
-        Resource::SPF => delete_spf(conn, address),
-        _ => {
-            return Err(
-                StateChangeError::UnsupportedResourceError(
-                    "Resource does not support DELETE".into()));
-        }
     }
 }
 
@@ -126,24 +105,6 @@ fn set_org(conn: &PgConnection, org: &Organization) -> Result<(), StateChangeErr
             .map_err(StateChangeError::from),
         Err(e) => Err(StateChangeError::from(e))
     }
-}
-
-fn set_spf(conn: &PgConnection, spf: &SmartPermission, address: &str) -> Result<(), StateChangeError> {
-    let new_spf = NewSmartPermission {
-        org_id: &spf.org_id,
-        name: &spf.name,
-        address: address
-    };
-
-    db::create_smart_permission(conn, new_spf)
-        .and_then(|_| Ok(()))
-        .map_err(StateChangeError::from)
-}
-
-fn delete_spf(conn: &PgConnection, address: &str) -> Result<(), StateChangeError> {
-    db::delete_smart_permission(conn, address)
-        .and_then(|_| Ok(()))
-        .map_err(StateChangeError::from)
 }
 
 #[derive(Debug)]
