@@ -97,48 +97,8 @@ organization list contains one field:
         repeated Organization organizations = 1;
     }
 
-Smart Permission
-----------------
-
-A smart permission is defined with three fields:
-
-- name: the name of the function
-- function: a byte array that stores the executable code of the smart permission
-- org_id: The identifier of the organization to which the smart permission
-  function belongs.
-
-.. code-block:: protobuf
-
-    message SmartPermission {
-      string name = 1;
-      string org_id = 2;
-      bytes function = 3;
-    }
-
-Smart Permission List
----------------------
-
-Smart Permissions whose addresses collide are stored in a smart permission
-list. A smart permission list contains one field:
-
-- smart_permissions: a list of smart permissions
-
-.. code-block:: protobuf
-
-    message SmartPermissionList {
-        repeated SmartPermission smart_permissions = 1;
-    }
-
 Addressing
 ----------
-
-SPF State
-^^^^^^^^^
-
-The specific namespace prefix within Pike for SPF State is cad11d0f, which
-is the general Pike namespace cad11d concatenated with 0f. The remaining 62
-characters are made up of the first 6 characters of the hash of the organization
-id and the first 56 characters of the hash of the name of the function.
 
 Agent State
 ^^^^^^^^^^^
@@ -173,10 +133,6 @@ buffers code:
 
             CREATE_ORGANIZATION = 4;
             UPDATE_ORGANIZATION = 5;
-
-            CREATE_SMART_PERMISSION = 7;
-            UPDATE_SMART_PERMISSION = 8;
-            DELETE_SMART_PERMISSION = 9;
         }
 
         Action action = 1;
@@ -186,10 +142,6 @@ buffers code:
 
         CreateOrganizationAction create_org = 4;
         UpdateOrganizationAction update_org = 5;
-
-        CreateSmartPermissionAction create_smart_permission = 6;
-        UpdateSmartPermissionAction update_smart_permission = 7;
-        DeleteSmartPermissionAction delete_smart_permission = 8;
     }
 
 Transaction Header
@@ -200,12 +152,12 @@ Inputs and Outputs
 
 The inputs for Pike family transactions must include:
 
-- The address of the agent, organization, or smart permission being modified
+- The address of the agent or organization being modified
 - The address of the admin agent (agent correlating to the signing key)
 
 The outputs for Pike family transactions must include:
 
-- The address of the agent, organization, or smart permission being modified
+- The address of the agent or organization being modified
 - If creating an organization, the address of the agent that will be created as
   admin
 
@@ -258,8 +210,7 @@ UPDATE_AGENT
 CREATE_ORGANIZATION
     This operation adds a new organization to the Global State. The id for each
     organization must be unique and cannot be changed once the organization is
-    created. No smart permissions will be associated with a newly created
-    organization. The public key used to sign the transaction will
+    created. The public key used to sign the transaction will
     automatically be added as an new agent with the admin role.
 
     .. code-block:: protobuf
@@ -281,46 +232,4 @@ UPDATE_ORGANIZATION
         string id = 1;
         string name = 2;
         string address = 3;
-      }
-
-CreateSmartPermissionAction
-    This operation loads a Smart Permission into Global State.  The
-    bytes provided are compiled SP code.  org_id is the Organization
-    identifier (SPs are organization-specific).  name is the name of the
-    function known to application transaction processors using this SP during
-    that transaction processor's permission function evaluation. Only an agent
-    that holds an admin role for the included organization can create smart
-    permissions for the organization.
-
-    .. code-block:: protobuf
-
-      message CreateSmartPermissionAction {
-        string name = 1;
-        string org_id = 2;
-        bytes function = 3;
-      }
-
-UpdateSmartPermissionAction
-    This operation updates the bytes of smart permission function stored in
-    Global State. Only an agent that holds an admin role for the included
-    organization can update smart permissions for the organization.
-
-    .. code-block:: protobuf
-
-      message UpdateSmartPermissionAction {
-        string name = 1;
-        string org_id = 2;
-        bytes function = 3;
-      }
-
-DeleteSmartPermissionAction
-    This operation deletes an existing smart permission function stored in
-    Global State. Only an agent that holds an admin role for the included
-    organization can delete smart permissions for the organization.
-
-    .. code-block:: protobuf
-
-        message DeleteSmartPermissionAction {
-          string name = 1;
-          string org_id = 2;
       }

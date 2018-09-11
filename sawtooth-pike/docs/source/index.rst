@@ -8,5 +8,4 @@ Welcome to Pike's documentation!
 
 .. toctree::
 
-   smart_permissions.rst
    pike_transaction_family.rst
