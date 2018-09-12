@@ -1,0 +1,132 @@
+// Copyright 2018 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// Message sent node to service  
+//
+message Message {
+  MessageType message_type = 1;
+
+  CreateChannelRequest create_channel_request = 2;
+  CreateChannelResponse create_channel_response = 3;
+
+  GossipMessageRequest gossip_message_request = 4;
+  GossipMessageResponse gossip_message_response = 5;
+
+  DestroyChannelRequest destroy_channel_request = 6;
+  DestroyChannelResponse destroy_channel_response = 7;
+
+  Error error = 8;
+}
+
+enum MessageType {
+
+  UNSET = 0;
+
+  // Create Channel
+  CREATE_CHANNEL_REQUEST = 1;
+  CREATE_CHANNEL_RESPONSE = 2;
+
+  // Destroy Channel
+  DESTROY_CHANNEL_REQUEST = 3;
+  DESTROY_CHANNEL_RESPONSE = 4;
+
+  // Gossip Message
+  GOSSIP_MESSAGE_REQUEST = 5;
+  GOSSIP_MESSAGE_RESPONSE= 6;
+
+
+  // Node Errors
+
+  CREATE_CHANNEL_ERROR = 100;
+  CHANNEL_ALREADY_EXISTS = 101;
+  DESTROY_CHANNEL_ERROR = 102;
+  CHANNEL_DOES_NOT_EXIST = 103;
+  GOSSIP_MESSAGE_ERROR = 104;
+  INTERNAL_ERROR = 105;
+
+  // Network
+
+  HEARTBEAT_REQUEST = 200;
+  HEARTBEAT_RESPONSE = 201;
+
+  DISCONNECT_REQUEST = 202;
+  DISCONNECT_RESPONSE = 203;
+
+}
+
+// The payload for a CREATE_CHANNEL request
+//
+message CreateChannelRequest {
+  // Unique identifier for channel. If a channel with
+  // 'name' already exists, a CHANNEL_ALREADY_EXISTS 
+  // error will be returned.
+  string name = 1;
+
+  // A list of hostnames for nodes that will be 
+  // a part of the splintered network
+  repeated string participants = 2;
+}
+
+// The payload for a GOSSIP_MESSAGE_REQUEST
+//
+message GossipMessageRequest {
+  // name - Name of the channel the message will be sent to
+  string name = 1;
+
+  // payload - The bytes describing the message being sent
+  bytes payload = 2;
+}
+
+// The payload for a DESTROY_CHANNEL request
+//
+message DestroyChannelRequest {
+  // name - Name of the channel to be destroyed
+  string name = 1;
+}
+
+// Response to a CREATE_CHANNEL request
+//
+message CreateChannelResponse {
+  // name - name of channel
+  string name = 1;
+
+  // participants - Nodes to be included in the channel system
+  repeated string participants = 2;
+}
+
+// Response to a GOSSIP_MESSAGE request
+//
+// payloads - repsonse payload from participants
+message GossipMessageResponse {
+
+  message ResponsePayload {
+    string participant = 1;
+    bytes payload = 2;
+  }
+
+  repeated ResponsePayload payloads = 1;
+}
+
+// Response to a DESTROY_CHANNEL request
+//
+message DestroyChannelResponse {
+  // name - the name of the destroyed channel
+  string name = 1;
+}
+
+message Error {
+  string error_message = 1;
+}
