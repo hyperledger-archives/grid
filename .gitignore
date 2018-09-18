@@ -3,3 +3,7 @@
 
 /splinterd/target
 /splinterd/Cargo.lock
+
+/messaging/src/protos
+/messaging/target
+/messaging/Cargo.lock
