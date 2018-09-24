@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Cargill Incorporated"]
 
 [dependencies]
+rustls = "0.13.1"
+webpki = "0.18.1"
+protobuf = "2"
+bytes = "0.4"
