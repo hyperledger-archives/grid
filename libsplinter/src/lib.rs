@@ -42,7 +42,7 @@ pub type Rx = mpsc::Receiver<Bytes>;
 pub struct Shared {
     pub peers: HashMap<SocketAddr, Tx>,
     pub services: HashMap<SocketAddr, Tx>,
-    pub channels: HashMap<String,  Channel>,
+    pub channels: HashMap<String, Channel>,
 }
 
 impl Shared {
@@ -383,6 +383,7 @@ pub fn create_client_config(
         config.root_store.add(&cert);
     }
     config.set_single_client_cert(client_certs, key);
+    //TODO figure out ciphersutes
     config.ciphersuites = rustls::ALL_CIPHERSUITES.to_vec();
     config
 }
@@ -394,7 +395,7 @@ pub fn create_client_session(config: ClientConfig, dns_name: String) -> ClientSe
     ClientSession::new(&Arc::new(config), dns_name)
 }
 
-// Creates a Sever config for tls communication
+// Creates a Server config for tls communicating
 pub fn create_server_config(
     ca_certs: Vec<Certificate>,
     server_certs: Vec<Certificate>,
