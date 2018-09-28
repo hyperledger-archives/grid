@@ -244,7 +244,6 @@ impl Connection {
         };
 
         let msg = Bytes::from(b.to_vec()[..size].to_vec());
-        // // TODO remove and actually handle protos
         for (addr, tx) in &self.state.lock().unwrap().peers {
             //Don't send the message to ourselves
             if *addr != self.addr {
@@ -370,21 +369,19 @@ pub fn load_cert(file_path: &str) -> Vec<Certificate> {
     rustls::internal::pemfile::certs(&mut reader).unwrap()
 }
 
-// TODO allow multiple ca certs
-// Creates a Client config for tls communication
+// Creates a Client config for tls communicating
 pub fn create_client_config(
     ca_certs: Vec<Certificate>,
     client_certs: Vec<Certificate>,
     key: PrivateKey,
-    cipher_suite: &'static SupportedCipherSuite,
+    cipher_suite: Vec<&'static SupportedCipherSuite>,
 ) -> ClientConfig {
     let mut config = rustls::ClientConfig::new();
     for cert in ca_certs {
         config.root_store.add(&cert);
     }
     config.set_single_client_cert(client_certs, key);
-    //TODO figure out ciphersutes
-    config.ciphersuites = rustls::ALL_CIPHERSUITES.to_vec();
+    config.ciphersuites = cipher_suite;
     config
 }
 

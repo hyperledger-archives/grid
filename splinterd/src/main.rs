@@ -40,7 +40,6 @@ struct SplinterDaemon {
     initial_peers: Vec<String>,
 }
 
-// TODO handle cipher suites
 impl SplinterDaemon {
     fn new(
         ca_files: Vec<&str>,
@@ -63,12 +62,11 @@ impl SplinterDaemon {
 
         let client_certs = load_cert(client_cert);
 
-        // TODO get cipher suite from string
-        // just picked first one, need to pick the correct ones
-        let cipher_suite = rustls::ALL_CIPHERSUITES.to_vec()[0];
+        // This should be updated to not just be all the suites
+        let cipher_suites = rustls::ALL_CIPHERSUITES.to_vec();
 
         let client_config =
-            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suite);
+            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites);
         // create server config
         let server_certs = load_cert(server_cert);
         let server_config = create_server_config(ca_certs, server_certs, server_key);
@@ -86,7 +84,7 @@ impl SplinterDaemon {
     }
 
     fn stop() -> () {
-        //TODO also add control-c handling
+        //also add control-c handling
         unimplemented!();
     }
 
@@ -180,7 +178,7 @@ fn main() {
         .value_of("client_key")
         .expect("Must provide a valid key path");
 
-    // TODO update to provide dns_name
+    // need to also provide dns_name
     let initial_peers = matches
         .values_of("peers")
         .map(|values| values.map(|v| v.into()).collect())
