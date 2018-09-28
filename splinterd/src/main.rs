@@ -91,6 +91,7 @@ impl SplinterDaemon {
         for peer in self.initial_peers.iter() {
             let addr: std::net::SocketAddr = peer.parse().unwrap();
             let mut socket = TcpStream::connect(addr.clone()).expect("Cannot connect stream");
+            socket.set_nonblocking(true);
             // update to use correct dns_name
             let mut connection = Connection::new(
                 socket,
@@ -98,9 +99,7 @@ impl SplinterDaemon {
                 self.state.clone(),
                 Some("server".to_string()),
             );
-            let handle = thread::spawn(move || loop {
-                connection.handle_msg()
-            });
+            let handle = thread::spawn(move || connection.handle_msg());
         }
 
         // start up a listener and accept incoming connections
@@ -108,6 +107,7 @@ impl SplinterDaemon {
         for socket in listener.incoming() {
             match socket {
                 Ok(mut socket) => {
+                    socket.set_nonblocking(true);
                     let addr = socket.peer_addr().unwrap();
                     // update to use correct dns_name
                     let mut connection = Connection::new(
@@ -116,11 +116,9 @@ impl SplinterDaemon {
                         self.state.clone(),
                         None,
                     );
-                    let handle = thread::spawn(move || loop {
-                        connection.handle_msg()
-                    });
+                    let handle = thread::spawn(move || connection.handle_msg());
                 }
-                Err(e) => println!("IT WORKS ERR"),
+                Err(e) => panic!("Error {}", e),
             }
         }
     }

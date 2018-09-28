@@ -144,49 +144,141 @@ impl Connection {
         }
     }
 
-    fn read(&mut self) {
-        let mut b = [0; 10240];
+    fn handshake(&mut self) -> bool {
         match &mut self.session {
             SessionType::server(session) => {
-                session.complete_io(&mut self.socket).unwrap();
-                let n = match session.read(&mut b) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => 0,
-                    Err(err) => panic!("Whoops {}", err),
-                };
-                println!(
-                    "{:?} {}",
-                    String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
-                    n
-                );
+                if session.is_handshaking() {
+                    match session.complete_io(&mut self.socket) {
+                        Ok(_) => return true,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+                } else {
+                    return true;
+                }
             }
             SessionType::client(session) => {
-                session.complete_io(&mut self.socket).unwrap();
-                let n = match session.read(&mut b) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => 0,
-                    Err(err) => panic!("Whoops {}", err),
-                };
-
-                println!(
-                    "{:?} {}",
-                    String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
-                    n
-                );
+                if session.is_handshaking() {
+                    match session.complete_io(&mut self.socket) {
+                        Ok(_) => return true,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+                    return false;
+                } else {
+                    return true;
+                }
             }
+        };
+    }
+
+    fn read(&mut self) -> bool{
+        let mut b = [0; 10240];
+        let mut size = 0;
+        let n = match &mut self.session {
+            SessionType::server(session) => {
+                if session.wants_read() {
+                    match session.read_tls(&mut self.socket) {
+                        Ok(n) => n,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+                    match session.process_new_packets() {
+                        Ok(n) => n,
+                        Err(err) => panic!("Error {}", err),
+                    };
+
+                    let n = match session.read(&mut b) {
+                        Ok(n) => n,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+                    println!(
+                        "{:?} {}",
+                        String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
+                        n
+                    );
+                    size = n;
+                };
+            }
+            SessionType::client(session) => {
+                if session.wants_read() {
+                    match session.read_tls(&mut self.socket) {
+                        Ok(n) => n,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+                    match session.process_new_packets() {
+                        Ok(n) => n,
+                        Err(err) => panic!("Error {}", err),
+                    };
+                    let n = match session.read(&mut b) {
+                        Ok(n) => n,
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            return false;
+                        }
+                        Err(err) => panic!("Error {}", err),
+                    };
+
+                    println!(
+                        "{:?} {}",
+                        String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
+                        n
+                    );
+                    size = n;
+                }
+            }
+        };
+
+        if size == 0 {
+            return false
         };
     }
 
     fn write(&mut self, buf: &[u8]) {
         match &mut self.session {
             SessionType::server(session) => {
-                session.complete_io(&mut self.socket).unwrap();
-                let n = session.write(buf).unwrap();
+                match session.write_tls(&mut self.socket) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                        return;
+                    }
+                    Err(err) => panic!("Error {}", err),
+                };
+                let n = match session.write(buf) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                        return;
+                    }
+                    Err(err) => panic!("Error {}", err),
+                };
                 println!("Wrote {}", n)
             }
             SessionType::client(session) => {
-                session.complete_io(&mut self.socket).unwrap();
-                let n = session.write(buf).unwrap();
+                match session.write_tls(&mut self.socket) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                        return;
+                    }
+                    Err(err) => panic!("Error {}", err),
+                };
+                let n = match session.write(buf) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                        return;
+                    }
+                    Err(err) => panic!("Error {}", err),
+                };
                 println!("Wrote {}", n)
             }
         };
@@ -194,8 +286,23 @@ impl Connection {
 
     pub fn handle_msg(&mut self) {
         loop {
-            self.read();
-            self.write(b"test");
+            let done = self.handshake();
+            if done {
+                break;
+            }
+        }
+        let mut count = 0;
+        loop {
+            if self.read() {
+                count = 0;
+            }
+
+            if count == 10 {
+                info!("Sending Heartbeat to {:?}", self.addr);
+                self.write(b"Heartbeat");
+                count = 0
+            }
+            count = count + 1;
         }
     }
 
