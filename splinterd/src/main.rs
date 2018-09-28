@@ -184,8 +184,8 @@ fn main() {
 
     let logger = match matches.occurrences_of("verbose") {
         1 => simple_logger::init_with_level(LogLevel::Info),
-        2 => simple_logger::init_with_level(LogLevel::Debug),
-        0 | _ => simple_logger::init_with_level(LogLevel::Warn),
+        2 | _ => simple_logger::init_with_level(LogLevel::Debug),
+        0 => simple_logger::init_with_level(LogLevel::Warn),
     };
 
     logger.expect("Failed to create logger");
