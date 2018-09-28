@@ -43,7 +43,7 @@ struct SplinterDaemon {
 // TODO handle cipher suites
 impl SplinterDaemon {
     fn new(
-        ca_files: &str,
+        ca_files: Vec<&str>,
         client_cert: &str,
         server_cert: &str,
         server_key_file: &str,
@@ -52,8 +52,12 @@ impl SplinterDaemon {
         service_endpoint: &str,
         initial_peers: Vec<String>,
     ) -> SplinterDaemon {
-        // TODO make multiple ca certs
-        let ca_cert = load_cert(ca_files);
+        let mut ca_certs = Vec::new();
+        for ca_file in ca_files {
+            let ca_cert = load_cert(ca_file);
+            ca_certs.extend(ca_cert);
+
+        }
         let server_key = load_key(server_key_file);
         let client_key = load_key(client_key_file);
 
@@ -64,10 +68,10 @@ impl SplinterDaemon {
         let cipher_suite = rustls::ALL_CIPHERSUITES.to_vec()[0];
 
         let client_config =
-            create_client_config(ca_cert.clone(), client_certs, client_key, cipher_suite);
+            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suite);
         // create server config
         let server_certs = load_cert(server_cert);
-        let server_config = create_server_config(ca_cert, server_certs, server_key);
+        let server_config = create_server_config(ca_certs, server_certs, server_key);
 
         // create splinterD node
         let state = Arc::new(Mutex::new(Shared::new()));
@@ -128,7 +132,7 @@ fn main() {
     let matches = clap_app!(splinter =>
         (version: crate_version!())
         (about: "Splinter Node")
-        (@arg ca_file: --("ca-file") +takes_value
+        (@arg ca_file: --("ca-file") +takes_value +multiple
           "file path to the trusted ca cert")
         (@arg client_cert: --("client-cert") +takes_value
           "file path the cert for the node when connecting to a node")
@@ -155,10 +159,10 @@ fn main() {
         .value_of("network_endpoint")
         .unwrap_or("127.0.0.1:8044");
 
-    // TODO make multiple
     let ca_files = matches
-        .value_of("ca_file")
-        .expect("Must provide a valid ca certifcate");
+        .values_of("ca_file")
+        .map(|values| values.map(|v| v.into()).collect())
+        .expect("At least one ca file must be provided");
 
     let client_cert = matches
         .value_of("client_cert")
