@@ -16,6 +16,7 @@ extern crate libsplinter;
 extern crate rustls;
 #[macro_use]
 extern crate clap;
+#[macro_use]
 extern crate log;
 extern crate simple_logger;
 

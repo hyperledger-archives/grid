@@ -17,6 +17,8 @@ extern crate webpki;
 #[macro_use]
 extern crate protobuf;
 extern crate bytes;
+#[macro_use]
+extern crate log;
 
 use rustls::{
     AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, NoClientAuth,

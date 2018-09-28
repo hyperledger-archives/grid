@@ -19,8 +19,11 @@ authors = ["Cargill Incorporated"]
 
 [dependencies]
 libsplinter = { path = "../libsplinter" }
-rustls = "0.13.1"
 clap = "2.32"
 simple_logger = "0.4.0"
 log = "0.3.0"
 bytes = "0.4"
+
+[dependencies.rustls]
+version = "0.13.1"
+features = ["logging"]
