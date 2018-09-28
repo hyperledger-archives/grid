@@ -20,6 +20,7 @@ extern crate bytes;
 #[macro_use]
 extern crate log;
 
+use bytes::{Bytes};
 use rustls::{
     AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, NoClientAuth,
     PrivateKey, ServerConfig, ServerSession, Session, Stream, SupportedCipherSuite,
@@ -28,9 +29,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{stdout, BufReader, ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
-use std::sync::{Arc, Mutex, mpsc};
-use std::{time, thread};
-use bytes::{BytesMut, Bytes, BufMut};
+use std::sync::{mpsc, Arc, Mutex};
+use std::time;
+use std::sync::mpsc::RecvTimeoutError;
 
 /// Shorthand for the transmit half of the message channel.
 pub type Tx = mpsc::Sender<Bytes>;
@@ -102,6 +103,7 @@ pub struct Connection {
     socket: TcpStream,
     session: SessionType,
     connection_type: Option<ConnectionType>,
+    rx: Rx,
 }
 
 impl Connection {
@@ -125,14 +127,10 @@ impl Connection {
         };
 
         // Create a channel for this peer
-        // change to bounded channel
-        // TODO change to bounded channel
         let (tx, rx) = mpsc::channel();
-
         let addr = socket.peer_addr().unwrap();
         // Add an entry for this `Peer` in the shared state map.
-        state.lock().unwrap()
-            .peers.insert(addr, tx);
+        state.lock().unwrap().peers.insert(addr, tx);
 
         Connection {
             connection_state: ConnectionState::Running,
@@ -141,6 +139,7 @@ impl Connection {
             socket,
             session,
             connection_type: None,
+            rx,
         }
     }
 
@@ -243,6 +242,22 @@ impl Connection {
         if size == 0 {
             return false
         };
+
+        let msg = Bytes::from(b.to_vec()[..size].to_vec());
+        // // TODO remove and actually handle protos
+        for (addr, tx) in &self.state.lock().unwrap().peers {
+            //Don't send the message to ourselves
+            if *addr != self.addr {
+                println!("Peer {} {:?}", addr, msg);
+                // The send only fails if the rx half has been
+                // dropped, however this is impossible as the
+                // `tx` half will be removed from the map
+                // before the `rx` is dropped.
+                tx.send(msg.clone()).unwrap();
+            }
+        }
+
+        return true
     }
 
     fn write(&mut self, buf: &[u8]) {
@@ -303,6 +318,16 @@ impl Connection {
                 count = 0
             }
             count = count + 1;
+
+            match self.rx.recv_timeout(time::Duration::from_millis(100)) {
+                Ok(bytes) => {
+                    self.write(&bytes);
+                },
+                Err(RecvTimeoutError) => continue,
+                Err(err) => {
+                    println!("Need to handle Error: {:?}", err);
+                }
+            }
         }
     }
 
@@ -321,13 +346,11 @@ impl Connection {
     fn remove_channel() -> () {
         unimplemented!();
     }
-
 }
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        self.state.lock().unwrap().peers
-            .remove(&self.addr);
+        self.state.lock().unwrap().peers.remove(&self.addr);
     }
 }
 
