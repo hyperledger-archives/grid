@@ -82,7 +82,7 @@ pub enum ConfigType {
 
 pub enum ConnectionType {
     Network,
-    Server,
+    Service,
 }
 
 pub enum ConnectionState {
@@ -102,7 +102,7 @@ pub struct Connection {
     addr: SocketAddr,
     socket: TcpStream,
     session: SessionType,
-    connection_type: Option<ConnectionType>,
+    connection_type: ConnectionType,
     rx: Rx,
 }
 
@@ -112,6 +112,7 @@ impl Connection {
         session: ConfigType,
         state: Arc<Mutex<Shared>>,
         dns_name: Option<String>,
+        connection_type: ConnectionType,
     ) -> Connection {
         let session = match session {
             ConfigType::client(client_config) => {
@@ -130,7 +131,14 @@ impl Connection {
         let (tx, rx) = mpsc::channel();
         let addr = socket.peer_addr().unwrap();
         // Add an entry for this `Peer` in the shared state map.
-        state.lock().unwrap().peers.insert(addr, tx);
+        match connection_type {
+            ConnectionType::Network => {
+                state.lock().unwrap().peers.insert(addr, tx);
+            },
+            ConnectionType::Service => {
+                state.lock().unwrap().services.insert(addr, tx);
+            }
+        }
 
         Connection {
             connection_state: ConnectionState::Running,
@@ -138,7 +146,7 @@ impl Connection {
             addr,
             socket,
             session,
-            connection_type: None,
+            connection_type,
             rx,
         }
     }
@@ -244,15 +252,36 @@ impl Connection {
         };
 
         let msg = Bytes::from(b.to_vec()[..size].to_vec());
-        for (addr, tx) in &self.state.lock().unwrap().peers {
-            //Don't send the message to ourselves
-            if *addr != self.addr {
-                println!("Peer {} {:?}", addr, msg);
-                // The send only fails if the rx half has been
-                // dropped, however this is impossible as the
-                // `tx` half will be removed from the map
-                // before the `rx` is dropped.
-                tx.send(msg.clone()).unwrap();
+
+        // If message received from service forward to nodes, if from nodes forward to services
+        // This needs to eventually handle the message types
+        match self.connection_type {
+            ConnectionType::Network => {
+                for (addr, tx) in &self.state.lock().unwrap().services {
+                    //Don't send the message to ourselves
+                    if *addr == self.addr {
+                        println!("Service {} {:?}", addr, msg);
+                        // The send only fails if the rx half has been
+                        // dropped, however this is impossible as the
+                        // `tx` half will be removed from the map
+                        // before the `rx` is dropped.
+                        tx.send(msg.clone()).unwrap();
+                    }
+                }
+
+            }
+            ConnectionType::Service => {
+                for (addr, tx) in &self.state.lock().unwrap().peers {
+                    //Don't send the message to ourselves
+                    if *addr != self.addr {
+                        println!("Peer {} {:?}", addr, msg);
+                        // The send only fails if the rx half has been
+                        // dropped, however this is impossible as the
+                        // `tx` half will be removed from the map
+                        // before the `rx` is dropped.
+                        tx.send(msg.clone()).unwrap();
+                    }
+                }
             }
         }
 
@@ -320,6 +349,7 @@ impl Connection {
 
             match self.rx.recv_timeout(time::Duration::from_millis(100)) {
                 Ok(bytes) => {
+                    // need to check if this is succesful and retry if not
                     self.write(&bytes);
                 },
                 Err(RecvTimeoutError) => continue,
@@ -349,7 +379,14 @@ impl Connection {
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        self.state.lock().unwrap().peers.remove(&self.addr);
+        match self.connection_type {
+            ConnectionType::Network => {
+                self.state.lock().unwrap().peers.remove(&self.addr);
+            },
+            ConnectionType::Service => {
+                self.state.lock().unwrap().services.remove(&self.addr);
+            }
+        }
     }
 }
 

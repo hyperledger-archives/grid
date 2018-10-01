@@ -22,7 +22,7 @@ extern crate simple_logger;
 
 use libsplinter::{
     create_client_config, create_server_config, create_server_session, load_cert, load_key,
-    ConfigType, Connection, SessionType, Shared,
+    ConfigType, Connection, ConnectionType, SessionType, Shared,
 };
 use log::LogLevel;
 use std::collections::HashMap;
@@ -55,7 +55,6 @@ impl SplinterDaemon {
         for ca_file in ca_files {
             let ca_cert = load_cert(ca_file);
             ca_certs.extend(ca_cert);
-
         }
         let server_key = load_key(server_key_file);
         let client_key = load_key(client_key_file);
@@ -100,9 +99,36 @@ impl SplinterDaemon {
                 ConfigType::client(self.client_config.clone()),
                 self.state.clone(),
                 Some("server".to_string()),
+                ConnectionType::Network,
             );
             let handle = thread::spawn(move || connection.handle_msg());
         }
+
+        let network_endpoint = self.network_endpoint;
+        let network_server_config = self.server_config.clone();
+        let network_state = self.state.clone();
+        thread::spawn(move || {
+            // start up a listener and accept incoming connections
+            let listener = TcpListener::bind(network_endpoint).expect("Cannot listen on port");
+            for socket in listener.incoming() {
+                match socket {
+                    Ok(mut socket) => {
+                        socket.set_nonblocking(true);
+                        let addr = socket.peer_addr().unwrap();
+                        // update to use correct dns_name
+                        let mut connection = Connection::new(
+                            socket,
+                            ConfigType::server(network_server_config.clone()),
+                            network_state.clone(),
+                            None,
+                            ConnectionType::Network,
+                        );
+                        let handle = thread::spawn(move || connection.handle_msg());
+                    }
+                    Err(e) => panic!("Error {}", e),
+                }
+            }
+        });
 
         // start up a listener and accept incoming connections
         let listener = TcpListener::bind(self.service_endpoint).expect("Cannot listen on port");
@@ -117,6 +143,7 @@ impl SplinterDaemon {
                         ConfigType::server(self.server_config.clone()),
                         self.state.clone(),
                         None,
+                        ConnectionType::Service,
                     );
                     let handle = thread::spawn(move || connection.handle_msg());
                 }
