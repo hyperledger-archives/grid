@@ -22,6 +22,8 @@ webpki = "0.18.1"
 protobuf = "2"
 bytes = "0.4"
 log = "0.3.0"
+byteorder = "1"
+messaging = { path = "../messaging" }
 
 [dependencies.rustls]
 version = "0.13.1"

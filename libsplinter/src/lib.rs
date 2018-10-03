@@ -19,8 +19,11 @@ extern crate protobuf;
 extern crate bytes;
 #[macro_use]
 extern crate log;
+extern crate byteorder;
+extern crate messaging;
 
-use bytes::{Bytes};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use bytes::Bytes;
 use rustls::{
     AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, NoClientAuth,
     PrivateKey, ServerConfig, ServerSession, Session, Stream, SupportedCipherSuite,
@@ -28,10 +31,12 @@ use rustls::{
 use std::collections::HashMap;
 use std::fs;
 use std::io::{stdout, BufReader, ErrorKind, Read, Write};
+use std::mem;
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::sync::{mpsc, Arc, Mutex};
-use std::time;
-use std::sync::mpsc::RecvTimeoutError;
+use std::{thread, time};
+
+use messaging::protocol::{Message, MessageType};
 
 /// Shorthand for the transmit half of the message channel.
 pub type Tx = mpsc::Sender<Bytes>;
@@ -88,7 +93,7 @@ pub enum ConnectionType {
 pub enum ConnectionState {
     Running,
     Closing,
-    Closed
+    Closed,
 }
 
 /// This is a connection which has been accepted by the server,
@@ -134,7 +139,7 @@ impl Connection {
         match connection_type {
             ConnectionType::Network => {
                 state.lock().unwrap().peers.insert(addr, tx);
-            },
+            }
             ConnectionType::Service => {
                 state.lock().unwrap().services.insert(addr, tx);
             }
@@ -183,10 +188,9 @@ impl Connection {
         };
     }
 
-    fn read(&mut self) -> bool{
-        let mut b = [0; 10240];
-        let mut size = 0;
-        let n = match &mut self.session {
+    fn read(&mut self) -> bool {
+        let mut msg = Message::new();
+        match &mut self.session {
             SessionType::server(session) => {
                 if session.wants_read() {
                     match session.read_tls(&mut self.socket) {
@@ -201,19 +205,18 @@ impl Connection {
                         Err(err) => panic!("Error {}", err),
                     };
 
-                    let n = match session.read(&mut b) {
-                        Ok(n) => n,
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
-                        }
-                        Err(err) => panic!("Error {}", err),
-                    };
-                    println!(
-                        "{:?} {}",
-                        String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
-                        n
-                    );
-                    size = n;
+                    let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
+                    session.read_exact(&mut msg_len_buff).unwrap();
+                    let msg_size =
+                        msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
+
+                    // Read Message
+                    let mut msg_buff = vec![0; msg_size];
+                    session.read_exact(&mut msg_buff).unwrap();
+
+                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff).unwrap();
+
+                    println!("{:?}", msg,);
                 };
             }
             SessionType::client(session) => {
@@ -229,63 +232,35 @@ impl Connection {
                         Ok(n) => n,
                         Err(err) => panic!("Error {}", err),
                     };
-                    let n = match session.read(&mut b) {
-                        Ok(n) => n,
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
-                        }
-                        Err(err) => panic!("Error {}", err),
-                    };
 
-                    println!(
-                        "{:?} {}",
-                        String::from_utf8(b.to_vec()[..n].to_vec()).unwrap(),
-                        n
-                    );
-                    size = n;
-                }
+                    let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
+                    session.read_exact(&mut msg_len_buff).unwrap();
+                    let msg_size =
+                        msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
+
+                    // Read Message
+                    let mut msg_buff = vec![0; msg_size];
+                    session.read_exact(&mut msg_buff).unwrap();
+
+                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff).unwrap();
+
+                    println!("{:?}", msg,);
+                };
             }
         };
 
-        if size == 0 {
-            return false
+        match msg.get_message_type() {
+            MessageType::UNSET => return false,
+            MessageType::HEARTBEAT_REQUEST => {
+                let mut response = Message::new();
+                response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
+                self.respond(response);
+            }
+            MessageType::HEARTBEAT_RESPONSE => (),
+            _ => self.gossip_message(msg)
+
         };
-
-        let msg = Bytes::from(b.to_vec()[..size].to_vec());
-
-        // If message received from service forward to nodes, if from nodes forward to services
-        // This needs to eventually handle the message types
-        match self.connection_type {
-            ConnectionType::Network => {
-                for (addr, tx) in &self.state.lock().unwrap().services {
-                    //Don't send the message to ourselves
-                    if *addr == self.addr {
-                        println!("Service {} {:?}", addr, msg);
-                        // The send only fails if the rx half has been
-                        // dropped, however this is impossible as the
-                        // `tx` half will be removed from the map
-                        // before the `rx` is dropped.
-                        tx.send(msg.clone()).unwrap();
-                    }
-                }
-
-            }
-            ConnectionType::Service => {
-                for (addr, tx) in &self.state.lock().unwrap().peers {
-                    //Don't send the message to ourselves
-                    if *addr != self.addr {
-                        println!("Peer {} {:?}", addr, msg);
-                        // The send only fails if the rx half has been
-                        // dropped, however this is impossible as the
-                        // `tx` half will be removed from the map
-                        // before the `rx` is dropped.
-                        tx.send(msg.clone()).unwrap();
-                    }
-                }
-            }
-        }
-
-        return true
+        return true;
     }
 
     fn write(&mut self, buf: &[u8]) {
@@ -342,7 +317,10 @@ impl Connection {
 
             if count == 10 {
                 info!("Sending Heartbeat to {:?}", self.addr);
-                self.write(b"Heartbeat");
+                let mut msg = Message::new();
+                msg.set_message_type(MessageType::HEARTBEAT_REQUEST);
+                let msg_bytes = pack_response(&msg);
+                self.write(&msg_bytes);
                 count = 0
             }
             count = count + 1;
@@ -351,13 +329,52 @@ impl Connection {
                 Ok(bytes) => {
                     // need to check if this is succesful and retry if not
                     self.write(&bytes);
-                },
+                }
                 Err(RecvTimeoutError) => continue,
                 Err(err) => {
                     println!("Need to handle Error: {:?}", err);
                 }
             }
         }
+    }
+
+    fn gossip_message(&mut self, msg: Message) {
+        let msg_bytes = Bytes::from(pack_response(&msg));
+        // If message received from service forward to nodes, if from nodes forward to services
+        // This needs to eventually handle the message types
+        match self.connection_type {
+            ConnectionType::Network => {
+                for (addr, tx) in &self.state.lock().unwrap().services {
+                    //Don't send the message to ourselves
+                    if *addr == self.addr {
+                        println!("Service {} {:?}", addr, msg);
+                        // The send only fails if the rx half has been
+                        // dropped, however this is impossible as the
+                        // `tx` half will be removed from the map
+                        // before the `rx` is dropped.
+                        tx.send(msg_bytes.clone()).unwrap();
+                    }
+                }
+            }
+            ConnectionType::Service => {
+                for (addr, tx) in &self.state.lock().unwrap().peers {
+                    //Don't send the message to ourselves
+                    if *addr != self.addr {
+                        println!("Peer {} {:?}", addr, msg);
+                        // The send only fails if the rx half has been
+                        // dropped, however this is impossible as the
+                        // `tx` half will be removed from the map
+                        // before the `rx` is dropped.
+                        tx.send(msg_bytes.clone()).unwrap();
+                    }
+                }
+            }
+        }
+    }
+
+    fn respond(&mut self, msg: Message) {
+        let msg_bytes = Bytes::from(pack_response(&msg));
+        self.write(&msg_bytes);
     }
 
     fn add_connection() -> () {
@@ -382,7 +399,7 @@ impl Drop for Connection {
         match self.connection_type {
             ConnectionType::Network => {
                 self.state.lock().unwrap().peers.remove(&self.addr);
-            },
+            }
             ConnectionType::Service => {
                 self.state.lock().unwrap().services.remove(&self.addr);
             }
@@ -451,4 +468,14 @@ pub fn create_server_config(
 // Creates a Server Session from the ServerConfig
 pub fn create_server_session(config: ServerConfig) -> ServerSession {
     ServerSession::new(&Arc::new(config))
+}
+
+pub fn pack_response(msg: &Message) -> Vec<u8> {
+    let raw_msg = protobuf::Message::write_to_bytes(msg).unwrap();
+    let mut buff = Vec::new();
+
+    buff.write_u32::<BigEndian>(raw_msg.len() as u32).unwrap();
+    buff.write(&raw_msg).unwrap();
+
+    buff
 }
