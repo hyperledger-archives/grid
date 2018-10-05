@@ -7,3 +7,6 @@
 /messaging/src/protos
 /messaging/target
 /messaging/Cargo.lock
+
+/client/target
+/client/Cargo.lock
