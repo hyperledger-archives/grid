@@ -138,10 +138,16 @@ impl Connection {
         // Add an entry for this `Peer` in the shared state map.
         match connection_type {
             ConnectionType::Network => {
-                state.lock().unwrap().peers.insert(addr, tx);
+                state.lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .peers
+                    .insert(addr, tx);
             }
             ConnectionType::Service => {
-                state.lock().unwrap().services.insert(addr, tx);
+                state.lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .services
+                    .insert(addr, tx);
             }
         }
 
@@ -344,7 +350,11 @@ impl Connection {
         // This needs to eventually handle the message types
         match self.connection_type {
             ConnectionType::Network => {
-                for (addr, tx) in &self.state.lock().unwrap().services {
+                let services = &self.state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .services;
+                for (addr, tx) in services {
                     //Don't send the message to ourselves
                     if *addr == self.addr {
                         println!("Service {} {:?}", addr, msg);
@@ -357,7 +367,11 @@ impl Connection {
                 }
             }
             ConnectionType::Service => {
-                for (addr, tx) in &self.state.lock().unwrap().peers {
+                let peers = &self.state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .peers;
+                for (addr, tx) in peers {
                     //Don't send the message to ourselves
                     if *addr != self.addr {
                         println!("Peer {} {:?}", addr, msg);
@@ -398,10 +412,18 @@ impl Drop for Connection {
     fn drop(&mut self) {
         match self.connection_type {
             ConnectionType::Network => {
-                self.state.lock().unwrap().peers.remove(&self.addr);
+                self.state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .peers
+                    .remove(&self.addr);
             }
             ConnectionType::Service => {
-                self.state.lock().unwrap().services.remove(&self.addr);
+                self.state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .services
+                    .remove(&self.addr);
             }
         }
     }
