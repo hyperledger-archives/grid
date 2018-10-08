@@ -1,0 +1,15 @@
+[package]
+name = "splinter-client"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+
+[dependencies]
+log = "0.3.8"
+byteorder = "1"
+messaging = { path = "../messaging" }
+rustls = "0.13.1"
+protobuf = "2"
+webpki-roots = "0.15.0"
+webpki = "0.18.1"
+url = "1.7.1"
+
