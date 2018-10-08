@@ -21,6 +21,9 @@ extern crate bytes;
 extern crate log;
 extern crate byteorder;
 extern crate messaging;
+extern crate url;
+
+mod errors;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
@@ -37,6 +40,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::{thread, time};
 
 use messaging::protocol::{Message, MessageType};
+
+pub use errors::SplinterError;
 
 /// Shorthand for the transmit half of the message channel.
 pub type Tx = mpsc::Sender<Bytes>;
