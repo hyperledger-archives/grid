@@ -22,7 +22,7 @@ extern crate simple_logger;
 
 use libsplinter::{
     create_client_config, create_server_config, create_server_session, load_cert, load_key,
-    ConfigType, Connection, ConnectionType, SessionType, Shared,
+    ConfigType, Connection, ConnectionType, SessionType, Shared, SplinterError,
 };
 use log::LogLevel;
 use std::collections::HashMap;
@@ -50,16 +50,16 @@ impl SplinterDaemon {
         network_endpoint: &str,
         service_endpoint: &str,
         initial_peers: Vec<String>,
-    ) -> SplinterDaemon {
+    ) -> Result<SplinterDaemon, SplinterError> {
         let mut ca_certs = Vec::new();
         for ca_file in ca_files {
-            let ca_cert = load_cert(ca_file);
+            let ca_cert = load_cert(ca_file)?;
             ca_certs.extend(ca_cert);
         }
-        let server_key = load_key(server_key_file);
-        let client_key = load_key(client_key_file);
+        let server_key = load_key(server_key_file)?;
+        let client_key = load_key(client_key_file)?;
 
-        let client_certs = load_cert(client_cert);
+        let client_certs = load_cert(client_cert)?;
 
         // This should be updated to not just be all the suites
         let cipher_suites = rustls::ALL_CIPHERSUITES.to_vec();
@@ -67,19 +67,32 @@ impl SplinterDaemon {
         let client_config =
             create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites);
         // create server config
-        let server_certs = load_cert(server_cert);
-        let server_config = create_server_config(ca_certs, server_certs, server_key);
+        let server_certs = load_cert(server_cert)?;
+        let server_config = create_server_config(ca_certs, server_certs, server_key)?;
 
         // create splinterD node
         let state = Arc::new(Mutex::new(Shared::new()));
-        SplinterDaemon {
+
+        let service_endpoint = if let Ok(addr) = service_endpoint.parse() {
+            addr
+        } else {
+            return Err(SplinterError::CouldNotResolveHostName);
+        };
+
+        let network_endpoint = if let Ok(addr) = network_endpoint.parse() {
+            addr
+        } else {
+            return Err(SplinterError::CouldNotResolveHostName);
+        };
+
+        Ok(SplinterDaemon {
             client_config,
             server_config,
             state,
-            service_endpoint: service_endpoint.parse().unwrap(),
-            network_endpoint: network_endpoint.parse().unwrap(),
+            service_endpoint,
+            network_endpoint,
             initial_peers,
-        }
+        })
     }
 
     fn stop() -> () {
@@ -87,12 +100,19 @@ impl SplinterDaemon {
         unimplemented!();
     }
 
-    fn start(&mut self) -> () {
+    fn start(&mut self) -> Result<(), SplinterError> {
+
         // create peers and pass to threads
         for peer in self.initial_peers.iter() {
-            let addr: std::net::SocketAddr = peer.parse().unwrap();
-            let mut socket = TcpStream::connect(addr.clone()).expect("Cannot connect stream");
-            socket.set_nonblocking(true);
+            let addr: std::net::SocketAddr = if let Ok(addr) = peer.parse() {
+               addr 
+            } else {
+                return Err(SplinterError::CouldNotResolveHostName);
+            };
+
+            let mut socket = TcpStream::connect(addr.clone())?;
+            socket.set_nonblocking(true)?;
+
             // update to use correct dns_name
             let mut connection = Connection::new(
                 socket,
@@ -100,7 +120,7 @@ impl SplinterDaemon {
                 self.state.clone(),
                 Some("server".to_string()),
                 ConnectionType::Network,
-            );
+            )?;
             let handle = thread::spawn(move || connection.handle_msg());
         }
 
@@ -109,12 +129,17 @@ impl SplinterDaemon {
         let network_state = self.state.clone();
         thread::spawn(move || {
             // start up a listener and accept incoming connections
-            let listener = TcpListener::bind(network_endpoint).expect("Cannot listen on port");
+            let listener = TcpListener::bind(network_endpoint)?;
             for socket in listener.incoming() {
                 match socket {
                     Ok(mut socket) => {
-                        socket.set_nonblocking(true);
-                        let addr = socket.peer_addr().unwrap();
+                        socket.set_nonblocking(true)?;
+                        let addr = if let Ok(addr) = socket.peer_addr() {
+                            addr
+                        } else {
+                            return Err(SplinterError::CouldNotResolveHostName);
+                        };
+
                         // update to use correct dns_name
                         let mut connection = Connection::new(
                             socket,
@@ -122,21 +147,29 @@ impl SplinterDaemon {
                             network_state.clone(),
                             None,
                             ConnectionType::Network,
-                        );
+                        )?;
                         let handle = thread::spawn(move || connection.handle_msg());
                     }
-                    Err(e) => panic!("Error {}", e),
+                    Err(e) => return Err(SplinterError::from(e)),
                 }
             }
+
+            Ok(())
         });
 
         // start up a listener and accept incoming connections
-        let listener = TcpListener::bind(self.service_endpoint).expect("Cannot listen on port");
+        let listener = TcpListener::bind(self.service_endpoint)?;
+
         for socket in listener.incoming() {
             match socket {
                 Ok(mut socket) => {
-                    socket.set_nonblocking(true);
-                    let addr = socket.peer_addr().unwrap();
+                    socket.set_nonblocking(true)?;
+
+                    let addr = if let Ok(addr) = socket.peer_addr() {
+                        addr
+                    } else {
+                        return Err(SplinterError::CouldNotResolveHostName);
+                    };
                     // update to use correct dns_name
                     let mut connection = Connection::new(
                         socket,
@@ -144,12 +177,14 @@ impl SplinterDaemon {
                         self.state.clone(),
                         None,
                         ConnectionType::Service,
-                    );
+                    )?;
                     let handle = thread::spawn(move || connection.handle_msg());
                 }
-                Err(e) => panic!("Error {}", e),
+                Err(e) => return Err(SplinterError::from(e)) 
             }
         }
+
+        Ok(())
     }
 }
 
@@ -212,14 +247,14 @@ fn main() {
         .unwrap_or(Vec::new());
 
     let logger = match matches.occurrences_of("verbose") {
-        1 => simple_logger::init_with_level(LogLevel::Info),
-        2 | _ => simple_logger::init_with_level(LogLevel::Debug),
         0 => simple_logger::init_with_level(LogLevel::Warn),
+        1 => simple_logger::init_with_level(LogLevel::Info),
+        _  => simple_logger::init_with_level(LogLevel::Debug),
     };
 
     logger.expect("Failed to create logger");
 
-    let mut node = SplinterDaemon::new(
+    let mut node = match SplinterDaemon::new(
         ca_files,
         client_cert,
         server_cert,
@@ -228,7 +263,16 @@ fn main() {
         network_endpoint,
         service_endpoint,
         initial_peers,
-    );
+    ) {
+        Ok(node) => node,
+        Err(err) => {
+            error!("An error occurred while creating daemon {:?}", err);
+            std::process::exit(1);
+        }
+    };
 
-    node.start();
+    if let Err(err) = node.start() {
+        error!("Failed to start daemon {:?}", err);
+        std::process::exit(1);
+    }
 }

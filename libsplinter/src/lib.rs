@@ -123,13 +123,13 @@ impl Connection {
         state: Arc<Mutex<Shared>>,
         dns_name: Option<String>,
         connection_type: ConnectionType,
-    ) -> Connection {
+    ) -> Result<Connection, SplinterError> {
         let session = match session {
             ConfigType::client(client_config) => {
                 if let Some(name) = dns_name {
-                    SessionType::client(create_client_session(client_config, name))
+                    SessionType::client(create_client_session(client_config, name)?)
                 } else {
-                    panic!("No dns_name provided for client session")
+                    return Err(SplinterError::HostNameNotFound);
                 }
             }
             ConfigType::server(server_config) => {
@@ -139,7 +139,7 @@ impl Connection {
 
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
-        let addr = socket.peer_addr().unwrap();
+        let addr = socket.peer_addr()?;
         // Add an entry for this `Peer` in the shared state map.
         match connection_type {
             ConnectionType::Network => {
@@ -156,7 +156,7 @@ impl Connection {
             }
         }
 
-        Connection {
+        Ok(Connection {
             connection_state: ConnectionState::Running,
             state,
             addr,
@@ -164,42 +164,43 @@ impl Connection {
             session,
             connection_type,
             rx,
-        }
+        })
     }
 
-    fn handshake(&mut self) -> bool {
+    fn handshake(&mut self) -> Result<bool, SplinterError> {
         match &mut self.session {
             SessionType::server(session) => {
                 if session.is_handshaking() {
                     match session.complete_io(&mut self.socket) {
-                        Ok(_) => return true,
+                        Ok(_) => return Ok(true),
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
+                            return Ok(false);
                         }
-                        Err(err) => panic!("Error {}", err),
+                        Err(err) => return Err(SplinterError::from(err)),
                     };
                 } else {
-                    return true;
+                    return Ok(true);
                 }
             }
             SessionType::client(session) => {
                 if session.is_handshaking() {
                     match session.complete_io(&mut self.socket) {
-                        Ok(_) => return true,
+                        Ok(_) => return Ok(true),
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
+                            return Ok(false);
                         }
-                        Err(err) => panic!("Error {}", err),
+                        Err(err) => return Err(SplinterError::from(err))
                     };
-                    return false;
+                    return Ok(false);
                 } else {
-                    return true;
+                    return Ok(true);
                 }
             }
         };
     }
+    
 
-    fn read(&mut self) -> bool {
+    fn read(&mut self) -> Result<bool, SplinterError> {
         let mut msg = Message::new();
         match &mut self.session {
             SessionType::server(session) => {
@@ -207,25 +208,23 @@ impl Connection {
                     match session.read_tls(&mut self.socket) {
                         Ok(n) => n,
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
+                            return Ok(false);
                         }
-                        Err(err) => panic!("Error {}", err),
-                    };
-                    match session.process_new_packets() {
-                        Ok(n) => n,
-                        Err(err) => panic!("Error {}", err),
+                        Err(err) => return Err(SplinterError::from(err)),
                     };
 
+                    session.process_new_packets()?;
+
                     let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-                    session.read_exact(&mut msg_len_buff).unwrap();
+                    session.read_exact(&mut msg_len_buff)?;
                     let msg_size =
-                        msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
+                        msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
 
                     // Read Message
                     let mut msg_buff = vec![0; msg_size];
-                    session.read_exact(&mut msg_buff).unwrap();
+                    session.read_exact(&mut msg_buff)?;
 
-                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff).unwrap();
+                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
 
                     println!("{:?}", msg,);
                 };
@@ -235,25 +234,23 @@ impl Connection {
                     match session.read_tls(&mut self.socket) {
                         Ok(n) => n,
                         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return false;
+                            return Ok(false);
                         }
-                        Err(err) => panic!("Error {}", err),
+                        Err(err) => return Err(SplinterError::from(err))
                     };
-                    match session.process_new_packets() {
-                        Ok(n) => n,
-                        Err(err) => panic!("Error {}", err),
-                    };
+                    
+                    session.process_new_packets()?;
 
                     let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-                    session.read_exact(&mut msg_len_buff).unwrap();
+                    session.read_exact(&mut msg_len_buff)?;
                     let msg_size =
-                        msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
+                        msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
 
                     // Read Message
                     let mut msg_buff = vec![0; msg_size];
-                    session.read_exact(&mut msg_buff).unwrap();
+                    session.read_exact(&mut msg_buff)?;
 
-                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff).unwrap();
+                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
 
                     println!("{:?}", msg,);
                 };
@@ -261,35 +258,35 @@ impl Connection {
         };
 
         match msg.get_message_type() {
-            MessageType::UNSET => return false,
+            MessageType::UNSET => return Ok(false),
             MessageType::HEARTBEAT_REQUEST => {
                 let mut response = Message::new();
                 response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
                 self.respond(response);
             }
             MessageType::HEARTBEAT_RESPONSE => (),
-            _ => self.gossip_message(msg)
+            _ => self.gossip_message(msg)?
 
         };
-        return true;
+        return Ok(true);
     }
 
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> Result<(), SplinterError> {
         match &mut self.session {
             SessionType::server(session) => {
                 match session.write_tls(&mut self.socket) {
                     Ok(n) => n,
                     Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return;
+                        return Ok(());
                     }
-                    Err(err) => panic!("Error {}", err),
+                    Err(err) => return Err(SplinterError::from(err)),
                 };
                 let n = match session.write(buf) {
                     Ok(n) => n,
                     Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return;
+                        return Ok(());
                     }
-                    Err(err) => panic!("Error {}", err),
+                    Err(err) => return Err(SplinterError::from(err)),
                 };
                 println!("Wrote {}", n)
             }
@@ -297,32 +294,35 @@ impl Connection {
                 match session.write_tls(&mut self.socket) {
                     Ok(n) => n,
                     Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return;
+                        return Ok(());
                     }
-                    Err(err) => panic!("Error {}", err),
+                    Err(err) => return Err(SplinterError::from(err)),
                 };
                 let n = match session.write(buf) {
                     Ok(n) => n,
                     Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return;
+                        return Ok(());
                     }
-                    Err(err) => panic!("Error {}", err),
+                    Err(err) => return Err(SplinterError::from(err)),
                 };
                 println!("Wrote {}", n)
             }
         };
+
+        Ok(())
     }
 
-    pub fn handle_msg(&mut self) {
+    pub fn handle_msg(&mut self) -> Result<(), SplinterError>{
         loop {
-            let done = self.handshake();
+            let done = self.handshake()?;
             if done {
                 break;
             }
         }
+
         let mut count = 0;
         loop {
-            if self.read() {
+            if self.read()? {
                 count = 0;
             }
 
@@ -330,8 +330,8 @@ impl Connection {
                 info!("Sending Heartbeat to {:?}", self.addr);
                 let mut msg = Message::new();
                 msg.set_message_type(MessageType::HEARTBEAT_REQUEST);
-                let msg_bytes = pack_response(&msg);
-                self.write(&msg_bytes);
+                let msg_bytes = pack_response(&msg)?;
+                self.write(&msg_bytes)?;
                 count = 0
             }
             count = count + 1;
@@ -339,7 +339,7 @@ impl Connection {
             match self.rx.recv_timeout(time::Duration::from_millis(100)) {
                 Ok(bytes) => {
                     // need to check if this is succesful and retry if not
-                    self.write(&bytes);
+                    self.write(&bytes)?;
                 }
                 Err(RecvTimeoutError) => continue,
                 Err(err) => {
@@ -349,8 +349,8 @@ impl Connection {
         }
     }
 
-    fn gossip_message(&mut self, msg: Message) {
-        let msg_bytes = Bytes::from(pack_response(&msg));
+    fn gossip_message(&mut self, msg: Message) -> Result<(), SplinterError> {
+        let msg_bytes = Bytes::from(pack_response(&msg)?);
         // If message received from service forward to nodes, if from nodes forward to services
         // This needs to eventually handle the message types
         match self.connection_type {
@@ -367,7 +367,7 @@ impl Connection {
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
                         // before the `rx` is dropped.
-                        tx.send(msg_bytes.clone()).unwrap();
+                        tx.send(msg_bytes.clone())?;
                     }
                 }
             }
@@ -384,16 +384,18 @@ impl Connection {
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
                         // before the `rx` is dropped.
-                        tx.send(msg_bytes.clone()).unwrap();
+                        tx.send(msg_bytes.clone())?;
                     }
                 }
             }
         }
+        Ok(())
     }
 
-    fn respond(&mut self, msg: Message) {
-        let msg_bytes = Bytes::from(pack_response(&msg));
-        self.write(&msg_bytes);
+    fn respond(&mut self, msg: Message) -> Result<(), SplinterError> {
+        let msg_bytes = Bytes::from(pack_response(&msg)?);
+        self.write(&msg_bytes)?;
+        Ok(())
     }
 
     fn add_connection() -> () {
@@ -435,19 +437,26 @@ impl Drop for Connection {
 }
 
 // Loads the private key associated with a cert for creating the tls config
-pub fn load_key(file_path: &str) -> PrivateKey {
-    let keyfile = fs::File::open(file_path).expect("cannot open private key file");
+pub fn load_key(file_path: &str) -> Result<PrivateKey, SplinterError> {
+    let keyfile = fs::File::open(file_path)?;
     let mut reader = BufReader::new(keyfile);
-    let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader).unwrap();
-    assert!(keys.len() == 1);
-    keys[0].clone()
+    let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
+        .map_err(|_| SplinterError::CertificateCreationError)?;
+
+    if keys.len() < 1 {
+        Err(SplinterError::PrivateKeyNotFound)
+    } else {
+        Ok(keys[0].clone())
+    }
 }
 
 // Loads the certifcate that should be connected to a tls config
-pub fn load_cert(file_path: &str) -> Vec<Certificate> {
-    let certfile = fs::File::open(file_path).expect("cannot open certificate file");
+pub fn load_cert(file_path: &str) -> Result<Vec<Certificate>, SplinterError> {
+    let certfile = fs::File::open(file_path)?;
     let mut reader = BufReader::new(certfile);
-    rustls::internal::pemfile::certs(&mut reader).unwrap()
+
+    rustls::internal::pemfile::certs(&mut reader)
+        .map_err(|_| SplinterError::CertificateCreationError)
 }
 
 // Creates a Client config for tls communicating
@@ -468,9 +477,11 @@ pub fn create_client_config(
 
 // Creates a Client Session from the ClientConfig and dns_name associated with the server to
 // connect to
-pub fn create_client_session(config: ClientConfig, dns_name: String) -> ClientSession {
-    let dns_name = webpki::DNSNameRef::try_from_ascii_str(&dns_name).unwrap();
-    ClientSession::new(&Arc::new(config), dns_name)
+pub fn create_client_session(config: ClientConfig, dns_name: String) -> Result<ClientSession, SplinterError> {
+    let dns_name = webpki::DNSNameRef::try_from_ascii_str(&dns_name)
+        .map_err(|_| SplinterError::HostNameNotFound)?;
+
+    Ok(ClientSession::new(&Arc::new(config), dns_name))
 }
 
 // Creates a Server config for tls communicating
@@ -478,10 +489,10 @@ pub fn create_server_config(
     ca_certs: Vec<Certificate>,
     server_certs: Vec<Certificate>,
     key: PrivateKey,
-) -> ServerConfig {
+) -> Result<ServerConfig, SplinterError> {
     let mut client_auth_roots = rustls::RootCertStore::empty();
     for cert in ca_certs {
-        client_auth_roots.add(&cert).unwrap();
+        client_auth_roots.add(&cert)?;
     }
 
     let auth = AllowAnyAuthenticatedClient::new(client_auth_roots);
@@ -489,7 +500,8 @@ pub fn create_server_config(
     let mut config = ServerConfig::new(auth);
     config.key_log = Arc::new(rustls::KeyLogFile::new());
     config.set_single_cert(server_certs, key);
-    config
+
+    Ok(config)
 }
 
 // Creates a Server Session from the ServerConfig
@@ -497,12 +509,12 @@ pub fn create_server_session(config: ServerConfig) -> ServerSession {
     ServerSession::new(&Arc::new(config))
 }
 
-pub fn pack_response(msg: &Message) -> Vec<u8> {
-    let raw_msg = protobuf::Message::write_to_bytes(msg).unwrap();
+pub fn pack_response(msg: &Message) -> Result<Vec<u8>, SplinterError> {
+    let raw_msg = protobuf::Message::write_to_bytes(msg)?;
     let mut buff = Vec::new();
 
-    buff.write_u32::<BigEndian>(raw_msg.len() as u32).unwrap();
-    buff.write(&raw_msg).unwrap();
+    buff.write_u32::<BigEndian>(raw_msg.len() as u32)?;
+    buff.write(&raw_msg)?;
 
-    buff
+    Ok(buff)
 }
