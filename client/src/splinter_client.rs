@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::sync::Arc;
 use std::mem;
-use std::io;
 use std::io::{Read, Write, BufReader, ErrorKind};
 use webpki;
 use std::path::PathBuf;
@@ -9,10 +8,10 @@ use rustls;
 use rustls::{
     Session,    
     ClientSession,
-    ClientConfig,
-    TLSError
+    ClientConfig
 };
 use std::net::{SocketAddr, ToSocketAddrs, TcpStream};
+use libsplinter::SplinterError;
 use messaging::protocol::{
     Message,
     MessageType
@@ -113,7 +112,8 @@ impl SplinterClient {
         socket.set_nonblocking(true)?;
 
         let config = get_config(certs)?;
-        let dns_name = webpki::DNSNameRef::try_from_ascii_str(&hostname)?;
+        let dns_name = webpki::DNSNameRef::try_from_ascii_str(&hostname)
+            .map_err(|_| SplinterError::CouldNotResolveHostName)?;
         let session = rustls::ClientSession::new(&Arc::new(config), dns_name);
 
         Ok(SplinterClient { session, socket })
@@ -194,16 +194,19 @@ fn get_config(certs: Certs) -> Result<ClientConfig, SplinterError> {
 
         for file in certs.get_ca_certs()? {
             let mut reader = BufReader::new(file);
-            config.root_store.add_pem_file(&mut reader)?;
+            config.root_store.add_pem_file(&mut reader)
+                .map_err(|_| SplinterError::CertificateCreationError)?;
         }
 
         let client_cert_file = certs.get_client_cert()?;
         let mut reader = BufReader::new(client_cert_file);
-        let client_certs = rustls::internal::pemfile::certs(&mut reader)?;
+        let client_certs = rustls::internal::pemfile::certs(&mut reader)
+                .map_err(|_| SplinterError::CertificateCreationError)?;
 
         let client_priv_file = certs.get_client_priv()?;
         let mut reader = BufReader::new(client_priv_file);
-        let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)?;
+        let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
+                .map_err(|_| SplinterError::CertificateCreationError)?;
 
         let privkey = if keys.len() < 1 {
             return Err(SplinterError::PrivateKeyNotFound);
@@ -233,49 +236,6 @@ fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
         .filter(|addr| addr.is_ipv4())
         .next()
         .ok_or(SplinterError::CouldNotResolveHostName)
-}
-
-#[derive(Debug)]
-pub enum SplinterError {
-    DnsError(String),
-    IoError(io::Error),
-    ProtobufError(protobuf::ProtobufError),
-    CertUtf8Error(String),
-    UrlParseError(url::ParseError),
-    TlsError(TLSError),
-    CouldNotResolveHostName,
-    PrivateKeyNotFound,
-    HostNameNotFound
-}
-
-impl From<io::Error> for SplinterError {
-    fn from(e: io::Error) -> Self {
-        SplinterError::IoError(e)
-    }
-}
-
-impl From<protobuf::ProtobufError> for SplinterError {
-    fn from(e: protobuf::ProtobufError) -> Self {
-        SplinterError::ProtobufError(e)
-    }
-}
-
-impl From<url::ParseError> for SplinterError {
-    fn from(e: url::ParseError) -> Self {
-        SplinterError::UrlParseError(e)
-    }
-}
-
-impl From<TLSError> for SplinterError {
-    fn from(e: TLSError) -> Self {
-        SplinterError::TlsError(e)
-    }
-}
-
-impl From<()> for SplinterError {
-    fn from(_: ()) -> Self {
-        SplinterError::DnsError("DNS Error: Invalid name".into())
-    }
 }
 
 #[cfg(test)]

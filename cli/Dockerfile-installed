@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y protobuf-compiler
 COPY protos/ /project/protos/
 COPY messaging/ /project/messaging/
 COPY client/ /project/client/
+COPY libsplinter/ /project/libsplinter/
 
 # Build with dummy source in order to cache dependencies in Docker image
 WORKDIR /project
