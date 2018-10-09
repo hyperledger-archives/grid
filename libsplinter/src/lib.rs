@@ -340,7 +340,7 @@ impl Connection {
                     // need to check if this is succesful and retry if not
                     self.write(&bytes)?;
                 }
-                Err(RecvTimeoutError) => continue,
+                Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
                 Err(err) => {
                     println!("Need to handle Error: {:?}", err);
                 }
