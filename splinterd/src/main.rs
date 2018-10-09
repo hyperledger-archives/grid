@@ -26,8 +26,10 @@ use libsplinter::{
 };
 use log::LogLevel;
 use std::net::{TcpListener, TcpStream};
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::{thread};
+use clap::ArgMatches;
 
 struct SplinterDaemon {
     client_config: rustls::ClientConfig,
@@ -40,7 +42,7 @@ struct SplinterDaemon {
 
 impl SplinterDaemon {
     fn new(
-        ca_files: Vec<&str>,
+        ca_files: Vec<String>,
         client_cert: &str,
         server_cert: &str,
         server_key_file: &str,
@@ -51,7 +53,7 @@ impl SplinterDaemon {
     ) -> Result<SplinterDaemon, SplinterError> {
         let mut ca_certs = Vec::new();
         for ca_file in ca_files {
-            let ca_cert = load_cert(ca_file)?;
+            let ca_cert = load_cert(&ca_file)?;
             ca_certs.extend(ca_cert);
         }
         let server_key = load_key(server_key_file)?;
@@ -171,6 +173,20 @@ impl SplinterDaemon {
 
         Ok(())
     }
+
+fn get_arg_check_for_env(
+    matches: &ArgMatches,
+    arg: &str,
+    env_var: &str
+) -> Option<String> {
+    matches
+        .value_of(arg)
+        .map(|v| v.to_string())
+        .or_else(|| if let Ok(v) = env::var(env_var) {
+            Some(v)
+        } else {
+            None
+        })
 }
 
 fn main() {
@@ -206,29 +222,44 @@ fn main() {
 
     let ca_files = matches
         .values_of("ca_file")
-        .map(|values| values.map(|v| v.into()).collect())
+        .map(|values| values.map(String::from).collect::<Vec<String>>())
+        .or_else(|| if let Ok(v) = env::var("SPLINTER_CAS") {
+            Some(v.split(",")
+                 .map(String::from)
+                 .collect())
+        } else {
+            None
+        })
         .expect("At least one ca file must be provided");
 
-    let client_cert = matches
-        .value_of("client_cert")
-        .expect("Must provide a valid client certifcate");
+    let client_cert = get_arg_check_for_env(
+        &matches,
+        "client_cert",
+        "SPLINTER_CLIENT_CERT"
+    ).expect("Must provide a valid client certifcate");
 
-    let server_cert = matches
-        .value_of("server_cert")
-        .expect("Must provide a valid server certifcate");
+    let server_cert = get_arg_check_for_env(
+        &matches,
+        "server_cert",
+        "SPLINTER_SERVER_CERT"
+    ).expect("Must provide a valid server certifcate");
 
-    let server_key_file = matches
-        .value_of("server_key")
-        .expect("Must provide a valid key path");
+    let server_key_file = get_arg_check_for_env(
+        &matches,
+        "server_key",
+        "SPLINTER_SERVER_KEY"
+    ).expect("Must provide a valid key path");
 
-    let client_key_file = matches
-        .value_of("client_key")
-        .expect("Must provide a valid key path");
+    let client_key_file = get_arg_check_for_env(
+        &matches,
+        "client_key",
+        "SPLINTER_CLIENT_KEY"
+    ).expect("Must provide a valid key path");
 
     // need to also provide dns_name
     let initial_peers = matches
         .values_of("peers")
-        .map(|values| values.map(|v| v.into()).collect())
+        .map(|values| values.map(String::from).collect())
         .unwrap_or(Vec::new());
 
     let logger = match matches.occurrences_of("verbose") {
@@ -241,10 +272,10 @@ fn main() {
 
     let mut node = match SplinterDaemon::new(
         ca_files,
-        client_cert,
-        server_cert,
-        server_key_file,
-        client_key_file,
+        &client_cert,
+        &server_cert,
+        &server_key_file,
+        &client_key_file,
         network_endpoint,
         service_endpoint,
         initial_peers,
