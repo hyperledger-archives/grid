@@ -20,6 +20,7 @@ extern crate simple_logger;
 extern crate splinter_client;
 extern crate messaging;
 extern crate protobuf;
+extern crate libsplinter;
 
 mod actions;
 mod errors;

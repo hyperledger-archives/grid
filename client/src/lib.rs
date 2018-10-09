@@ -7,11 +7,11 @@ extern crate url;
 extern crate byteorder;
 #[macro_use]
 extern crate log;
+extern crate libsplinter;
 
 mod splinter_client;
 
 pub use splinter_client::{
-    SplinterError,
     Certs,
     SplinterClient
 };

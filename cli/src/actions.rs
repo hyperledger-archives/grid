@@ -24,8 +24,8 @@ use messaging::protocol::{
     DestroyChannelRequest,
     GossipMessageRequest
 };
+use libsplinter::SplinterError;
 use splinter_client::{
-    SplinterError,
     SplinterClient,
     Certs
 };
