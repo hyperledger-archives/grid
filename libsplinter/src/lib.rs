@@ -14,7 +14,6 @@
 
 extern crate rustls;
 extern crate webpki;
-#[macro_use]
 extern crate protobuf;
 extern crate bytes;
 #[macro_use]
@@ -28,16 +27,16 @@ mod errors;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use rustls::{
-    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, NoClientAuth,
-    PrivateKey, ServerConfig, ServerSession, Session, Stream, SupportedCipherSuite,
+    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession,
+    PrivateKey, ServerConfig, ServerSession, Session, SupportedCipherSuite,
 };
 use std::collections::HashMap;
 use std::fs;
-use std::io::{stdout, BufReader, ErrorKind, Read, Write};
+use std::io::{BufReader, ErrorKind, Write};
 use std::mem;
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpStream};
 use std::sync::{mpsc, Arc, Mutex};
-use std::{thread, time};
+use std::{time};
 
 use messaging::protocol::{Message, MessageType};
 

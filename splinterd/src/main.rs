@@ -25,8 +25,6 @@ use libsplinter::{
     ConfigType, Connection, ConnectionType, SessionType, Shared, SplinterError,
 };
 use log::LogLevel;
-use std::collections::HashMap;
-use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::{thread, time};
@@ -134,11 +132,6 @@ impl SplinterDaemon {
                 match socket {
                     Ok(mut socket) => {
                         socket.set_nonblocking(true)?;
-                        let addr = if let Ok(addr) = socket.peer_addr() {
-                            addr
-                        } else {
-                            return Err(SplinterError::CouldNotResolveHostName);
-                        };
 
                         // update to use correct dns_name
                         let mut connection = Connection::new(
@@ -165,11 +158,6 @@ impl SplinterDaemon {
                 Ok(mut socket) => {
                     socket.set_nonblocking(true)?;
 
-                    let addr = if let Ok(addr) = socket.peer_addr() {
-                        addr
-                    } else {
-                        return Err(SplinterError::CouldNotResolveHostName);
-                    };
                     // update to use correct dns_name
                     let mut connection = Connection::new(
                         socket,
