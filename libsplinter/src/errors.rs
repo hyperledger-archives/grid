@@ -18,8 +18,6 @@ use url;
 use webpki;
 use rustls::TLSError;
 use std::sync::{
-    PoisonError,
-    MutexGuard,
     mpsc::RecvError,
     mpsc::SendError
 };

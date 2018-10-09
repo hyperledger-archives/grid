@@ -14,7 +14,6 @@
 
 extern crate rustls;
 extern crate webpki;
-#[macro_use]
 extern crate protobuf;
 extern crate bytes;
 #[macro_use]
@@ -28,16 +27,16 @@ mod errors;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use rustls::{
-    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, NoClientAuth,
-    PrivateKey, ServerConfig, ServerSession, Session, Stream, SupportedCipherSuite,
+    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession,
+    PrivateKey, ServerConfig, ServerSession, Session, SupportedCipherSuite,
 };
 use std::collections::HashMap;
 use std::fs;
-use std::io::{stdout, BufReader, ErrorKind, Read, Write};
+use std::io::{BufReader, ErrorKind, Write};
 use std::mem;
-use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpStream};
 use std::sync::{mpsc, Arc, Mutex};
-use std::{thread, time};
+use std::{time};
 
 use messaging::protocol::{Message, MessageType};
 
@@ -68,26 +67,13 @@ impl Shared {
 
 pub struct Channel {
     channel_id: String,
-    peers: HashMap<String, Connection>,
+    peers: HashMap<String, Connection<ClientSession>>,
 }
 
 impl Channel {
-    fn new(channel_id: String, peers: HashMap<String, Connection>) -> Channel {
+    fn new(channel_id: String, peers: HashMap<String, Connection<ClientSession>>) -> Channel {
         Channel { channel_id, peers }
     }
-}
-
-// ClientConfig and ServerConfig should be made once and reused for each connection that is
-// created.
-#[derive(Debug)]
-pub enum SessionType {
-    client(rustls::ClientSession),
-    server(rustls::ServerSession),
-}
-
-pub enum ConfigType {
-    client(rustls::ClientConfig),
-    server(rustls::ServerConfig),
 }
 
 pub enum ConnectionType {
@@ -106,36 +92,23 @@ pub enum ConnectionState {
 ///
 /// It has a TCP-level stream, and some
 /// other state/metadata.
-pub struct Connection {
+pub struct Connection<T: Session> {
     connection_state: ConnectionState,
     state: Arc<Mutex<Shared>>,
     addr: SocketAddr,
     socket: TcpStream,
-    session: SessionType,
+    session: T,
     connection_type: ConnectionType,
     rx: Rx,
 }
 
-impl Connection {
+impl <T: Session>Connection<T> {
     pub fn new(
         socket: TcpStream,
-        session: ConfigType,
+        session: T,
         state: Arc<Mutex<Shared>>,
-        dns_name: Option<String>,
         connection_type: ConnectionType,
-    ) -> Result<Connection, SplinterError> {
-        let session = match session {
-            ConfigType::client(client_config) => {
-                if let Some(name) = dns_name {
-                    SessionType::client(create_client_session(client_config, name)?)
-                } else {
-                    return Err(SplinterError::HostNameNotFound);
-                }
-            }
-            ConfigType::server(server_config) => {
-                SessionType::server(create_server_session(server_config))
-            }
-        };
+    ) -> Result<Connection<T>, SplinterError> {
 
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
@@ -168,101 +141,53 @@ impl Connection {
     }
 
     fn handshake(&mut self) -> Result<bool, SplinterError> {
-        match &mut self.session {
-            SessionType::server(session) => {
-                if session.is_handshaking() {
-                    match session.complete_io(&mut self.socket) {
-                        Ok(_) => return Ok(true),
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return Ok(false);
-                        }
-                        Err(err) => return Err(SplinterError::from(err)),
-                    };
-                } else {
-                    return Ok(true);
-                }
-            }
-            SessionType::client(session) => {
-                if session.is_handshaking() {
-                    match session.complete_io(&mut self.socket) {
-                        Ok(_) => return Ok(true),
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return Ok(false);
-                        }
-                        Err(err) => return Err(SplinterError::from(err))
-                    };
+        if self.session.is_handshaking() {
+            match self.session.complete_io(&mut self.socket) {
+                Ok(_) => return Ok(true),
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                     return Ok(false);
-                } else {
-                    return Ok(true);
                 }
-            }
-        };
+                Err(err) => return Err(SplinterError::from(err)),
+            };
+        } else {
+            return Ok(true);
+        }
     }
-    
 
     fn read(&mut self) -> Result<bool, SplinterError> {
         let mut msg = Message::new();
-        match &mut self.session {
-            SessionType::server(session) => {
-                if session.wants_read() {
-                    match session.read_tls(&mut self.socket) {
-                        Ok(n) => n,
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return Ok(false);
-                        }
-                        Err(err) => return Err(SplinterError::from(err)),
-                    };
 
-                    session.process_new_packets()?;
+        if self.session.wants_read() {
+            match self.session.read_tls(&mut self.socket) {
+                Ok(n) => n,
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    return Ok(false);
+                }
+                Err(err) => return Err(SplinterError::from(err)),
+            };
 
-                    let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-                    session.read_exact(&mut msg_len_buff)?;
-                    let msg_size =
-                        msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
+            self.session.process_new_packets()?;
 
-                    // Read Message
-                    let mut msg_buff = vec![0; msg_size];
-                    session.read_exact(&mut msg_buff)?;
+            let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
+            self.session.read_exact(&mut msg_len_buff)?;
+            let msg_size =
+                msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
 
-                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
+            // Read Message
+            let mut msg_buff = vec![0; msg_size];
+            self.session.read_exact(&mut msg_buff)?;
 
-                    println!("{:?}", msg,);
-                };
-            }
-            SessionType::client(session) => {
-                if session.wants_read() {
-                    match session.read_tls(&mut self.socket) {
-                        Ok(n) => n,
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            return Ok(false);
-                        }
-                        Err(err) => return Err(SplinterError::from(err))
-                    };
-                    
-                    session.process_new_packets()?;
+            msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
 
-                    let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-                    session.read_exact(&mut msg_len_buff)?;
-                    let msg_size =
-                        msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
-
-                    // Read Message
-                    let mut msg_buff = vec![0; msg_size];
-                    session.read_exact(&mut msg_buff)?;
-
-                    msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
-
-                    println!("{:?}", msg,);
-                };
-            }
+            println!("Received message {:?}", msg,);
         };
-
+            
         match msg.get_message_type() {
             MessageType::UNSET => return Ok(false),
             MessageType::HEARTBEAT_REQUEST => {
                 let mut response = Message::new();
                 response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
-                self.respond(response);
+                self.respond(response)?;
             }
             MessageType::HEARTBEAT_RESPONSE => (),
             _ => self.gossip_message(msg)?
@@ -272,42 +197,21 @@ impl Connection {
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), SplinterError> {
-        match &mut self.session {
-            SessionType::server(session) => {
-                match session.write_tls(&mut self.socket) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return Ok(());
-                    }
-                    Err(err) => return Err(SplinterError::from(err)),
-                };
-                let n = match session.write(buf) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return Ok(());
-                    }
-                    Err(err) => return Err(SplinterError::from(err)),
-                };
-                println!("Wrote {}", n)
+        match self.session.write_tls(&mut self.socket) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(());
             }
-            SessionType::client(session) => {
-                match session.write_tls(&mut self.socket) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return Ok(());
-                    }
-                    Err(err) => return Err(SplinterError::from(err)),
-                };
-                let n = match session.write(buf) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        return Ok(());
-                    }
-                    Err(err) => return Err(SplinterError::from(err)),
-                };
-                println!("Wrote {}", n)
-            }
+            Err(err) => return Err(SplinterError::from(err)),
         };
+        let n = match self.session.write(buf) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(());
+            }
+            Err(err) => return Err(SplinterError::from(err)),
+        };
+        println!("Wrote {}", n);
 
         Ok(())
     }
@@ -341,7 +245,7 @@ impl Connection {
                     // need to check if this is succesful and retry if not
                     self.write(&bytes)?;
                 }
-                Err(RecvTimeoutError) => continue,
+                Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
                 Err(err) => {
                     println!("Need to handle Error: {:?}", err);
                 }
@@ -415,7 +319,7 @@ impl Connection {
     }
 }
 
-impl Drop for Connection {
+impl <T: Session> Drop for Connection<T> {
     fn drop(&mut self) {
         match self.connection_type {
             ConnectionType::Network => {
@@ -465,14 +369,15 @@ pub fn create_client_config(
     client_certs: Vec<Certificate>,
     key: PrivateKey,
     cipher_suite: Vec<&'static SupportedCipherSuite>,
-) -> ClientConfig {
+) -> Result<ClientConfig, SplinterError> {
     let mut config = rustls::ClientConfig::new();
     for cert in ca_certs {
-        config.root_store.add(&cert);
+        config.root_store.add(&cert)?;
     }
     config.set_single_client_cert(client_certs, key);
     config.ciphersuites = cipher_suite;
-    config
+
+    Ok(config)
 }
 
 // Creates a Client Session from the ClientConfig and dns_name associated with the server to
@@ -499,7 +404,7 @@ pub fn create_server_config(
 
     let mut config = ServerConfig::new(auth);
     config.key_log = Arc::new(rustls::KeyLogFile::new());
-    config.set_single_cert(server_certs, key);
+    config.set_single_cert(server_certs, key)?;
 
     Ok(config)
 }
