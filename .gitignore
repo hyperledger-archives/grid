@@ -10,3 +10,6 @@
 
 /client/target
 /client/Cargo.lock
+
+/cli/target
+/cli/Cargo.lock
