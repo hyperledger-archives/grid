@@ -21,13 +21,13 @@ extern crate log;
 extern crate simple_logger;
 
 use libsplinter::{
-    create_client_config, create_server_config, create_server_session, load_cert, load_key,
-    ConfigType, Connection, ConnectionType, SessionType, Shared, SplinterError,
+    create_client_config, create_server_config, create_client_session, create_server_session, load_cert, load_key,
+    Connection, ConnectionType, Shared, SplinterError
 };
 use log::LogLevel;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
-use std::{thread, time};
+use std::{thread};
 
 struct SplinterDaemon {
     client_config: rustls::ClientConfig,
@@ -63,7 +63,7 @@ impl SplinterDaemon {
         let cipher_suites = rustls::ALL_CIPHERSUITES.to_vec();
 
         let client_config =
-            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites);
+            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites)?;
         // create server config
         let server_certs = load_cert(server_cert)?;
         let server_config = create_server_config(ca_certs, server_certs, server_key)?;
@@ -114,9 +114,8 @@ impl SplinterDaemon {
             // update to use correct dns_name
             let mut connection = Connection::new(
                 socket,
-                ConfigType::client(self.client_config.clone()),
+                create_client_session(self.client_config.clone(), "server".into())?,
                 self.state.clone(),
-                Some("server".to_string()),
                 ConnectionType::Network,
             )?;
             let handle = thread::spawn(move || connection.handle_msg());
@@ -136,9 +135,8 @@ impl SplinterDaemon {
                         // update to use correct dns_name
                         let mut connection = Connection::new(
                             socket,
-                            ConfigType::server(network_server_config.clone()),
+                            create_server_session(network_server_config.clone()),
                             network_state.clone(),
-                            None,
                             ConnectionType::Network,
                         )?;
                         let handle = thread::spawn(move || connection.handle_msg());
@@ -161,9 +159,8 @@ impl SplinterDaemon {
                     // update to use correct dns_name
                     let mut connection = Connection::new(
                         socket,
-                        ConfigType::server(self.server_config.clone()),
+                        create_server_session(self.server_config.clone()),
                         self.state.clone(),
-                        None,
                         ConnectionType::Service,
                     )?;
                     let handle = thread::spawn(move || connection.handle_msg());
