@@ -1,0 +1,143 @@
+# Copyright 2018 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "2.1"
+
+services:
+  pike-api:
+    image: pike-api
+    build:
+      context: .
+      dockerfile: api/Dockerfile-installed
+    container_name: pike-api
+    expose:
+      - 9001
+    ports:
+      - 9001:9001
+    command: cargo run
+    build:
+      context: .
+    environment:
+      RUST_BACKTRACE: 1
+      ROCKET_ADDRESS: "0.0.0.0"
+      ROCKET_PORT: 9001
+      VALIDATOR_URL: tcp://validator:9004
+      DATABASE_URL: postgres://pike:pike@pike-db:5432/pike_identity
+
+  pike-swagger-ui:
+    image: pike-swagger-ui
+    build:
+      context: .
+      dockerfile: api/Dockerfile-swagger-ui
+    container_name: pike-swagger-ui
+    expose:
+      - 80
+    ports:
+      - 9002:80
+
+  pike-db:
+    image: pike-db
+    build:
+      context: db/
+      dockerfile: Dockerfile
+    container_name: pike-db
+    environment:
+      POSTGRES_DB: pike_identity
+      POSTGRES_USER: pike
+      POSTGRES_PASSWORD: pike
+    ports:
+      - 5432:5432
+
+  pike-adminer:
+    image: adminer
+    container_name: pike-adminer
+    links:
+      - pike-db:db
+    ports:
+      - 9003:8080
+
+  pike-client:
+    image: pike-client
+    build:
+      context: .
+      dockerfile: cli/Dockerfile-installed
+    container_name: pike-client
+    entrypoint: "bash -c \"\
+      sawtooth keygen && \
+      tail -f /dev/null \
+      \""
+
+  validator:
+    image: hyperledger/sawtooth-validator:1.0
+    container_name: pike-validator
+    expose:
+      - 9004
+    ports:
+      - "9004:9004"
+    entrypoint: "bash -c \"\
+        sawadm keygen && \
+        sawtooth keygen my_key && \
+        sawset genesis -k /root/.sawtooth/keys/my_key.priv && \
+        sawadm genesis config-genesis.batch && \
+        sawtooth-validator -vv \
+          --endpoint tcp://validator:9005 \
+          --bind component:tcp://eth0:9004 \
+          --bind network:tcp://eth0:9005 \
+        \""
+
+  rest-api:
+    image: hyperledger/sawtooth-rest-api:1.0
+    container_name: pike-sawtooth-rest-api
+    expose:
+      - 9008
+    ports:
+      - "9008:9008"
+    entrypoint: sawtooth-rest-api --connect tcp://validator:9004 --bind rest-api:9008 -vv
+
+  shell:
+    image: hyperledger/sawtooth-all:1.0
+    container_name: pike-shell
+    entrypoint: "bash -c \"\
+        sawtooth keygen && \
+        tail -f /dev/null \
+        \""
+
+  settings-tp:
+    image: hyperledger/sawtooth-settings-tp:1.0
+    container_name: pike-settings-tp
+    entrypoint: settings-tp -vv --connect tcp://validator:9004
+
+  pike-tp:
+    image: pike-tp
+    build:
+      context: .
+      dockerfile: tp/Dockerfile-installed
+    container_name: pike-tp
+    entrypoint: "bash -c \"\
+        pike-tp -vv -C tcp://validator:9004 \
+        \""
+
+  pike-sde-service:
+    image: pike-sde-service
+    build:
+      context: .
+      dockerfile: state_delta_export/Dockerfile-installed
+    container_name: pike-sde-service
+    environment:
+      DATABASE_URL: postgres://pike:pike@pike-db:5432/pike
+    entrypoint: "bash -c \"pike-sde -vv -c tcp://validator:9004\""
+    depends_on:
+      - validator
+      - rest-api
+      - pike-db
