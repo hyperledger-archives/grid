@@ -25,9 +25,7 @@ fn main() {
         out_dir: "src/protos",
         input: &["../protos/payload.proto", "../protos/state.proto"],
         includes: &["../protos"],
-        customize: Customize {
-            ..Default::default()
-        }
+        customize: Customize::default(),
     }).expect("protoc");
 
     let mut file = File::create("src/protos/mod.rs").unwrap();
