@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-// Message sent node to service  
+// Message sent node to service
 //
 message Message {
   MessageType message_type = 1;
@@ -28,7 +28,7 @@ message Message {
   DestroyCircuitRequest destroy_circuit_request = 6;
   DestroyCircuitResponse destroy_circuit_response = 7;
 
-  Error error = 8;
+  Error error = 100;
 }
 
 enum MessageType {
@@ -45,7 +45,7 @@ enum MessageType {
 
   // Gossip Message
   GOSSIP_MESSAGE_REQUEST = 5;
-  GOSSIP_MESSAGE_RESPONSE= 6;
+  GOSSIP_MESSAGE_RESPONSE = 6;
 
 
   // Node Errors
@@ -67,18 +67,47 @@ enum MessageType {
 
 }
 
-// The payload for a CREATE_CIRCUIT request
+message Error {
+  string error_message = 1;
+}
+
+// The payload for a CREATE_CIRCUIT_REQUEST
 //
 message CreateCircuitRequest {
   // Unique identifier for circuit. If a circuit with
-  // 'name' already exists, a CIRCUIT_ALREADY_EXISTS 
+  // 'name' already exists, a CIRCUIT_ALREADY_EXISTS
   // error will be returned.
   string name = 1;
 
-  // A list of hostnames for nodes that will be 
+  // A list of hostnames for nodes that will be
   // a part of the splintered network
   repeated string participants = 2;
 }
+
+// Response to a CREATE_CIRCUIT_REQUEST
+//
+message CreateCircuitResponse {
+  // name - name of circuit
+  string name = 1;
+
+  // participants - Nodes to be included in the circuit system
+  repeated string participants = 2;
+}
+
+// The payload for a DESTROY_CIRCUIT_REQUEST request
+//
+message DestroyCircuitRequest {
+  // name - Name of the circuit to be destroyed
+  string name = 1;
+}
+
+// Response to a DESTROY_CIRCUIT_REQUEST request
+//
+message DestroyCircuitResponse {
+  // name - the name of the destroyed circuit
+  string name = 1;
+}
+
 
 // The payload for a GOSSIP_MESSAGE_REQUEST
 //
@@ -90,26 +119,9 @@ message GossipMessageRequest {
   bytes payload = 2;
 }
 
-// The payload for a DESTROY_CIRCUIT request
+// Response to a GOSSIP_MESSAGE_REQUEST
 //
-message DestroyCircuitRequest {
-  // name - Name of the circuit to be destroyed
-  string name = 1;
-}
-
-// Response to a CREATE_CIRCUIT request
-//
-message CreateCircuitResponse {
-  // name - name of circuit
-  string name = 1;
-
-  // participants - Nodes to be included in the circuit system
-  repeated string participants = 2;
-}
-
-// Response to a GOSSIP_MESSAGE request
-//
-// payloads - repsonse payload from participants
+// payloads - response payload from participants
 message GossipMessageResponse {
 
   message ResponsePayload {
@@ -118,15 +130,4 @@ message GossipMessageResponse {
   }
 
   repeated ResponsePayload payloads = 1;
-}
-
-// Response to a DESTROY_CIRCUIT request
-//
-message DestroyCircuitResponse {
-  // name - the name of the destroyed circuit
-  string name = 1;
-}
-
-message Error {
-  string error_message = 1;
 }
