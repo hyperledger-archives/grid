@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate wasm_sdk;
+extern crate sabre_sdk;
 extern crate protobuf;
 
 mod protos;
 
-use wasm_sdk::{WasmPtr, WasmPtrList, execute_entrypoint, WasmSdkError, Request};
+use sabre_sdk::{WasmPtr, WasmPtrList, execute_smart_permission_entrypoint, WasmSdkError, Request};
 use protos::payload::CreateProposalAction;
 use protos::agent::AgentContainer;
 
@@ -49,5 +49,5 @@ fn has_permission(request: Request) -> Result<bool, WasmSdkError> {
 
 #[no_mangle]
 pub unsafe fn entrypoint(roles: WasmPtrList, org_id: WasmPtr, public_key: WasmPtr, payload: WasmPtr) -> i32 {
-    execute_entrypoint(roles, org_id, public_key, payload, has_permission)
+    execute_smart_permission_entrypoint(roles, org_id, public_key, payload, has_permission)
 }

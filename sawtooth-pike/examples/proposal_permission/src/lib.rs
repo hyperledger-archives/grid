@@ -11,12 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-extern crate wasm_sdk;
+
+extern crate sabre_sdk;
 extern crate protobuf;
 
 mod protos;
 
-use wasm_sdk::{WasmPtr, WasmPtrList, execute_entrypoint, WasmSdkError, Request};
+use sabre_sdk::{WasmPtr, WasmPtrList, execute_smart_permission_entrypoint, WasmSdkError, Request};
 
 /// Uses agent role to decide in a proposal can be created.
 fn has_permission(request: Request) -> Result<bool, WasmSdkError> {
@@ -27,6 +28,6 @@ fn has_permission(request: Request) -> Result<bool, WasmSdkError> {
 }
 
 #[no_mangle]
-pub unsafe fn entrypoint(roles: WasmPtrList, org_id: WasmPtr, public_key: WasmPtr, payload: WasmPtr) -> i32 {
-    execute_entrypoint(roles, org_id, public_key, payload, has_permission)
+pub unsafe fn entrypoint(roles: WasmPtrList, org_id: WasmPtr, payload: WasmPtr, public_key: WasmPtr) -> i32 {
+    execute_smart_permission_entrypoint(roles, org_id, public_key, payload, has_permission)
 }

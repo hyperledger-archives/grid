@@ -18,7 +18,7 @@ version = "0.1.0"
 authors = ["Cargill, Incorporated"]
 
 [dependencies]
-wasm-sdk = { path = "../../../../sawtooth-pike/sp_sdk" }
+sabre-sdk = { path = "../../../../sdk" }
 protobuf = "1.4"
 
 [build-dependencies]
