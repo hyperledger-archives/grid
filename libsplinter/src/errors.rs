@@ -37,7 +37,8 @@ pub enum SplinterError {
     CertificateCreationError,
     CouldNotResolveHostName,
     PrivateKeyNotFound,
-    HostNameNotFound
+    HostNameNotFound,
+    PortNotIdentified
 }
 
 impl From<io::Error> for SplinterError {
