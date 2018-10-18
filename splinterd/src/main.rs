@@ -13,6 +13,7 @@
 // limitations under the License.
 
 extern crate libsplinter;
+extern crate url;
 extern crate rustls;
 #[macro_use]
 extern crate clap;
@@ -20,159 +21,14 @@ extern crate clap;
 extern crate log;
 extern crate simple_logger;
 
-use libsplinter::{
-    create_client_config, create_server_config, create_client_session, create_server_session, load_cert, load_key,
-    Connection, ConnectionType, Shared, SplinterError
-};
+mod daemon;
+
 use log::LogLevel;
-use std::net::{TcpListener, TcpStream};
 use std::env;
-use std::sync::{Arc, Mutex};
-use std::{thread};
+use url::Url;
 use clap::ArgMatches;
 
-struct SplinterDaemon {
-    client_config: rustls::ClientConfig,
-    server_config: rustls::ServerConfig,
-    state: Arc<Mutex<Shared>>,
-    service_endpoint: std::net::SocketAddr,
-    network_endpoint: std::net::SocketAddr,
-    initial_peers: Vec<String>,
-}
-
-impl SplinterDaemon {
-    fn new(
-        ca_files: Vec<String>,
-        client_cert: &str,
-        server_cert: &str,
-        server_key_file: &str,
-        client_key_file: &str,
-        network_endpoint: &str,
-        service_endpoint: &str,
-        initial_peers: Vec<String>,
-    ) -> Result<SplinterDaemon, SplinterError> {
-        let mut ca_certs = Vec::new();
-        for ca_file in ca_files {
-            let ca_cert = load_cert(&ca_file)?;
-            ca_certs.extend(ca_cert);
-        }
-        let server_key = load_key(server_key_file)?;
-        let client_key = load_key(client_key_file)?;
-
-        let client_certs = load_cert(client_cert)?;
-
-        // This should be updated to not just be all the suites
-        let cipher_suites = rustls::ALL_CIPHERSUITES.to_vec();
-
-        let client_config =
-            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites)?;
-        // create server config
-        let server_certs = load_cert(server_cert)?;
-        let server_config = create_server_config(ca_certs, server_certs, server_key)?;
-
-        // create splinterD node
-        let state = Arc::new(Mutex::new(Shared::new()));
-
-        let service_endpoint = if let Ok(addr) = service_endpoint.parse() {
-            addr
-        } else {
-            return Err(SplinterError::CouldNotResolveHostName);
-        };
-
-        let network_endpoint = if let Ok(addr) = network_endpoint.parse() {
-            addr
-        } else {
-            return Err(SplinterError::CouldNotResolveHostName);
-        };
-
-        Ok(SplinterDaemon {
-            client_config,
-            server_config,
-            state,
-            service_endpoint,
-            network_endpoint,
-            initial_peers,
-        })
-    }
-
-    fn stop() -> () {
-        //also add control-c handling
-        unimplemented!();
-    }
-
-    fn start(&mut self) -> Result<(), SplinterError> {
-
-        // create peers and pass to threads
-        for peer in self.initial_peers.iter() {
-            let addr: std::net::SocketAddr = if let Ok(addr) = peer.parse() {
-               addr 
-            } else {
-                return Err(SplinterError::CouldNotResolveHostName);
-            };
-
-            let mut socket = TcpStream::connect(addr.clone())?;
-            socket.set_nonblocking(true)?;
-
-            // update to use correct dns_name
-            let mut connection = Connection::new(
-                socket,
-                create_client_session(self.client_config.clone(), "server".into())?,
-                self.state.clone(),
-                ConnectionType::Network,
-            )?;
-            let handle = thread::spawn(move || connection.handle_msg());
-        }
-
-        let network_endpoint = self.network_endpoint;
-        let network_server_config = self.server_config.clone();
-        let network_state = self.state.clone();
-        thread::spawn(move || {
-            // start up a listener and accept incoming connections
-            let listener = TcpListener::bind(network_endpoint)?;
-            for socket in listener.incoming() {
-                match socket {
-                    Ok(mut socket) => {
-                        socket.set_nonblocking(true)?;
-
-                        // update to use correct dns_name
-                        let mut connection = Connection::new(
-                            socket,
-                            create_server_session(network_server_config.clone()),
-                            network_state.clone(),
-                            ConnectionType::Network,
-                        )?;
-                        let handle = thread::spawn(move || connection.handle_msg());
-                    }
-                    Err(e) => return Err(SplinterError::from(e)),
-                }
-            }
-
-            Ok(())
-        });
-
-        // start up a listener and accept incoming connections
-        let listener = TcpListener::bind(self.service_endpoint)?;
-
-        for socket in listener.incoming() {
-            match socket {
-                Ok(mut socket) => {
-                    socket.set_nonblocking(true)?;
-
-                    // update to use correct dns_name
-                    let mut connection = Connection::new(
-                        socket,
-                        create_server_session(self.server_config.clone()),
-                        self.state.clone(),
-                        ConnectionType::Service,
-                    )?;
-                    let handle = thread::spawn(move || connection.handle_msg());
-                }
-                Err(e) => return Err(SplinterError::from(e)) 
-            }
-        }
-
-        Ok(())
-    }
+use daemon::SplinterDaemon;
 
 fn get_arg_check_for_env(
     matches: &ArgMatches,
@@ -214,11 +70,19 @@ fn main() {
 
     let service_endpoint = matches
         .value_of("service_endpoint")
-        .unwrap_or("127.0.0.1:8043");
+        .map_or_else(
+            || Url::parse("tcp://127.0.0.1:8043"),
+            |ep| Url::parse(ep)
+        )
+        .expect("Must provide a valid service endpoint");
 
     let network_endpoint = matches
         .value_of("network_endpoint")
-        .unwrap_or("127.0.0.1:8044");
+        .map_or_else(
+            || Url::parse("tcp://127.0.0.1:8044"),
+            |ep| Url::parse(ep)
+         )
+        .expect("Must provide a valid network endpoint");
 
     let ca_files = matches
         .values_of("ca_file")
@@ -256,11 +120,26 @@ fn main() {
         "SPLINTER_CLIENT_KEY"
     ).expect("Must provide a valid key path");
 
-    // need to also provide dns_name
-    let initial_peers = matches
-        .values_of("peers")
-        .map(|values| values.map(String::from).collect())
+    let initial_peers = {
+
+        let urls = matches
+            .values_of("peers")
+            .map(|values| values
+                 .map(Url::parse)
+                 .collect())
         .unwrap_or(Vec::new());
+
+        let mut peers = Vec::new();
+        for url in urls {
+            if url.is_err() {
+                error!("Invalid peer url {:?}", url.unwrap_err());
+                std::process::exit(1);
+            }
+            peers.push(url.unwrap());
+        }
+
+        peers
+    };
 
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
