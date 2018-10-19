@@ -54,10 +54,10 @@ fn main() {
           "file path key for the node when connecting to a node as sever")
         (@arg client_key:  --("client-key") +takes_value
           "file path key for the node when connecting to a node as client")
-        (@arg network_endpoint: -n --("network-port") +takes_value
-          "endpoint to connect to the network, ip:port")
-        (@arg service_endpoint: --("service-port") +takes_value
-          "endpoint that service will connect to, ip:port")
+        (@arg network_endpoint: -n --("network-endpoint") +takes_value
+          "endpoint to connect to the network, tcp://ip:port")
+        (@arg service_endpoint: --("service-endpoint") +takes_value
+          "endpoint that service will connect to, tcp://ip:port")
         (@arg peers: --peer +takes_value +multiple
           "endpoint that service will connect to, ip:port")
         (@arg verbose: -v --verbose +multiple

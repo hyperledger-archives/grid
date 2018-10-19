@@ -38,12 +38,29 @@ use std::net::{SocketAddr, TcpStream};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
 
-use messaging::protocol::{Message, MessageType};
+use messaging::protocol::{
+    CircuitCreateRequest, CircuitCreateResponse, CircuitCreateResponse_Status,
+    CircuitDestroyResponse, CircuitDestroyResponse_Status, Message, MessageType,
+};
 
-pub use errors::SplinterError;
+pub use errors::{AddCircuitError, SplinterError};
 
 /// Shorthand for the transmit half of the message channel.
 pub type Tx = mpsc::Sender<Bytes>;
+
+pub enum DaemonRequest {
+    CreateConnection { address: String },
+}
+
+/// Used to request that a new connection should be created.
+///
+///  Consumes tuple (circuit_id, address)
+///
+/// Connections may receive requests that can result in a
+/// new connection needing to be created. This task should
+/// be preformed by a damon that owns a Connection, not the
+/// connection itself.
+pub type DaemonChannel = mpsc::Sender<(DaemonRequest)>;
 
 /// Shorthand for the receive half of the message channel.
 pub type Rx = mpsc::Receiver<Bytes>;
@@ -65,9 +82,21 @@ impl Shared {
     }
 }
 
-pub struct Circuit {}
+pub struct Circuit {
+    pub name: String,
+    // service id, node_url
+    pub peers: HashMap<String, SocketAddr>,
+}
 
-impl Circuit {}
+impl Circuit {
+    pub fn new(name: String, peers: HashMap<String, SocketAddr>) -> Circuit {
+        Circuit { name, peers }
+    }
+
+    pub fn add_peer(&mut self, service_id: String, node_url: SocketAddr) {
+        self.peers.insert(service_id, node_url);
+    }
+}
 
 pub enum ConnectionType {
     Network,
@@ -92,6 +121,7 @@ pub struct Connection<T: Session> {
     session: T,
     connection_type: ConnectionType,
     rx: Rx,
+    daemon_chan: DaemonChannel,
 }
 
 impl<T: Session> Connection<T> {
@@ -100,6 +130,7 @@ impl<T: Session> Connection<T> {
         session: T,
         state: Arc<Mutex<Shared>>,
         connection_type: ConnectionType,
+        daemon_chan: DaemonChannel,
     ) -> Result<Connection<T>, SplinterError> {
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
@@ -129,6 +160,7 @@ impl<T: Session> Connection<T> {
             session,
             connection_type,
             rx,
+            daemon_chan,
         })
     }
 
@@ -181,6 +213,10 @@ impl<T: Session> Connection<T> {
                 self.respond(response)?;
             }
             MessageType::HEARTBEAT_RESPONSE => (),
+            MessageType::CIRCUIT_CREATE_REQUEST => {
+                let circuit_create = msg.take_circuit_create_request();
+                self.add_circuit(circuit_create)?;
+            }
             _ => self.gossip_message(msg)?,
         };
         return Ok(true);
@@ -292,6 +328,97 @@ impl<T: Session> Connection<T> {
         let msg_bytes = Bytes::from(pack_response(&msg)?);
         self.write(&msg_bytes)?;
         Ok(())
+    }
+
+    fn add_circuit(&mut self, msg: CircuitCreateRequest) -> Result<(), AddCircuitError> {
+        info!("Create Circuit request received: {:?}", msg);
+        let circuit_name = msg.get_circuit_name();
+        let mut circuit = Circuit::new(circuit_name.to_string(), HashMap::new());
+
+        // connecting might fail if the node is not ready to make the connection and will need to
+        // be retried later
+        let mut circuit_create_response = CircuitCreateResponse::new();
+        circuit_create_response.set_circuit_name(circuit_name.to_string());
+        circuit_create_response.set_participants(protobuf::RepeatedField::from_vec(
+            msg.get_participants().to_vec(),
+        ));
+        let mut response_message = Message::new();
+        response_message.set_message_type(MessageType::CIRCUIT_CREATE_RESPONSE);
+
+        if self
+            .state
+            .lock()
+            .unwrap_or_else(|err| err.into_inner())
+            .circuits
+            .contains_key(circuit_name)
+        {
+            debug!(
+                "Cannot create Circuit that already exists: {}",
+                &circuit_name
+            );
+            circuit_create_response
+                .set_status(CircuitCreateResponse_Status::CIRCUIT_ALREADY_EXISTS);
+
+            circuit_create_response.set_error_message(format!(
+                "Cannot CreateCircuit that already exists: {}",
+                &circuit_name
+            ));
+            response_message.set_circuit_create_response(circuit_create_response);
+            self.respond(response_message).map_err(|_| {
+                AddCircuitError::SendError(format!(
+                    "Unable to respond to CircuitCreateRequest from {}",
+                    &self.addr
+                ))
+            })?;
+        } else {
+            for participant in msg.get_participants().iter() {
+                let node_url: SocketAddr = participant.get_node_url().parse()?;
+                circuit.add_peer(participant.get_service_id().to_string(), node_url);
+
+                if !(self
+                    .state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .peers
+                    .contains_key(&node_url))
+                {
+                    info!("sending request to daemon to create connection");
+
+                    let address = {
+                        let mut url = String::from("tcp://");
+                        url.push_str(participant.get_node_url());
+                        url
+                    };
+                    self.daemon_chan
+                        .send(DaemonRequest::CreateConnection { address })?;
+                }
+
+                circuit_create_response.set_status(CircuitCreateResponse_Status::OK);
+            }
+
+            self.state
+                .lock()
+                .unwrap_or_else(|err| err.into_inner())
+                .circuits
+                .insert(circuit.name.clone(), circuit);
+
+            response_message.set_circuit_create_response(circuit_create_response);
+            self.respond(response_message).map_err(|_| {
+                AddCircuitError::SendError(format!(
+                    "Unable to respond to CircuitCreateRequest from {}",
+                    &self.addr
+                ))
+            })?;
+        }
+        Ok(())
+    }
+
+    fn remove_circuit(&mut self, circuit_name: &str) -> () {
+        self.state
+            .lock()
+            .unwrap_or_else(|err| err.into_inner())
+            .circuits
+            .remove(circuit_name);
     }
 }
 
