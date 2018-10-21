@@ -66,14 +66,9 @@ impl Shared {
 }
 
 pub struct Channel {
-    channel_id: String,
-    peers: HashMap<String, Connection<ClientSession>>,
 }
 
 impl Channel {
-    fn new(channel_id: String, peers: HashMap<String, Connection<ClientSession>>) -> Channel {
-        Channel { channel_id, peers }
-    }
 }
 
 pub enum ConnectionType {
@@ -93,7 +88,6 @@ pub enum ConnectionState {
 /// It has a TCP-level stream, and some
 /// other state/metadata.
 pub struct Connection<T: Session> {
-    connection_state: ConnectionState,
     state: Arc<Mutex<Shared>>,
     addr: SocketAddr,
     socket: TcpStream,
@@ -130,7 +124,6 @@ impl <T: Session>Connection<T> {
         }
 
         Ok(Connection {
-            connection_state: ConnectionState::Running,
             state,
             addr,
             socket,
@@ -300,22 +293,6 @@ impl <T: Session>Connection<T> {
         let msg_bytes = Bytes::from(pack_response(&msg)?);
         self.write(&msg_bytes)?;
         Ok(())
-    }
-
-    fn add_connection() -> () {
-        unimplemented!();
-    }
-
-    fn remove_connection() -> () {
-        unimplemented!();
-    }
-
-    fn add_channel() -> () {
-        unimplemented!();
-    }
-
-    fn remove_channel() -> () {
-        unimplemented!();
     }
 }
 
