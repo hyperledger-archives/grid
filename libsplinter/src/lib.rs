@@ -51,7 +51,7 @@ pub type Rx = mpsc::Receiver<Bytes>;
 pub struct Shared {
     pub peers: HashMap<SocketAddr, Tx>,
     pub services: HashMap<SocketAddr, Tx>,
-    pub channels: HashMap<String, Channel>,
+    pub circuits: HashMap<String, Circuit>,
 }
 
 impl Shared {
@@ -60,15 +60,15 @@ impl Shared {
         Shared {
             peers: HashMap::new(),
             services: HashMap::new(),
-            channels: HashMap::new(),
+            circuits: HashMap::new(),
         }
     }
 }
 
-pub struct Channel {
+pub struct Circuit {
 }
 
-impl Channel {
+impl Circuit {
 }
 
 pub enum ConnectionType {

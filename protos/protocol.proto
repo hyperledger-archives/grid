@@ -19,14 +19,14 @@ syntax = "proto3";
 message Message {
   MessageType message_type = 1;
 
-  CreateChannelRequest create_channel_request = 2;
-  CreateChannelResponse create_channel_response = 3;
+  CreateCircuitRequest create_circuit_request = 2;
+  CreateCircuitResponse create_circuit_response = 3;
 
   GossipMessageRequest gossip_message_request = 4;
   GossipMessageResponse gossip_message_response = 5;
 
-  DestroyChannelRequest destroy_channel_request = 6;
-  DestroyChannelResponse destroy_channel_response = 7;
+  DestroyCircuitRequest destroy_circuit_request = 6;
+  DestroyCircuitResponse destroy_circuit_response = 7;
 
   Error error = 8;
 }
@@ -35,13 +35,13 @@ enum MessageType {
 
   UNSET = 0;
 
-  // Create Channel
-  CREATE_CHANNEL_REQUEST = 1;
-  CREATE_CHANNEL_RESPONSE = 2;
+  // Create Circuit
+  CREATE_CIRCUIT_REQUEST = 1;
+  CREATE_CIRCUIT_RESPONSE = 2;
 
-  // Destroy Channel
-  DESTROY_CHANNEL_REQUEST = 3;
-  DESTROY_CHANNEL_RESPONSE = 4;
+  // Destroy Circuit
+  DESTROY_CIRCUIT_REQUEST = 3;
+  DESTROY_CIRCUIT_RESPONSE = 4;
 
   // Gossip Message
   GOSSIP_MESSAGE_REQUEST = 5;
@@ -50,10 +50,10 @@ enum MessageType {
 
   // Node Errors
 
-  CREATE_CHANNEL_ERROR = 100;
-  CHANNEL_ALREADY_EXISTS = 101;
-  DESTROY_CHANNEL_ERROR = 102;
-  CHANNEL_DOES_NOT_EXIST = 103;
+  CREATE_CIRCUIT_ERROR = 100;
+  CIRCUIT_ALREADY_EXISTS = 101;
+  DESTROY_CIRCUIT_ERROR = 102;
+  CIRCUIT_DOES_NOT_EXIST = 103;
   GOSSIP_MESSAGE_ERROR = 104;
   INTERNAL_ERROR = 105;
 
@@ -67,11 +67,11 @@ enum MessageType {
 
 }
 
-// The payload for a CREATE_CHANNEL request
+// The payload for a CREATE_CIRCUIT request
 //
-message CreateChannelRequest {
-  // Unique identifier for channel. If a channel with
-  // 'name' already exists, a CHANNEL_ALREADY_EXISTS 
+message CreateCircuitRequest {
+  // Unique identifier for circuit. If a circuit with
+  // 'name' already exists, a CIRCUIT_ALREADY_EXISTS 
   // error will be returned.
   string name = 1;
 
@@ -83,27 +83,27 @@ message CreateChannelRequest {
 // The payload for a GOSSIP_MESSAGE_REQUEST
 //
 message GossipMessageRequest {
-  // name - Name of the channel the message will be sent to
+  // name - Name of the circuit the message will be sent to
   string name = 1;
 
   // payload - The bytes describing the message being sent
   bytes payload = 2;
 }
 
-// The payload for a DESTROY_CHANNEL request
+// The payload for a DESTROY_CIRCUIT request
 //
-message DestroyChannelRequest {
-  // name - Name of the channel to be destroyed
+message DestroyCircuitRequest {
+  // name - Name of the circuit to be destroyed
   string name = 1;
 }
 
-// Response to a CREATE_CHANNEL request
+// Response to a CREATE_CIRCUIT request
 //
-message CreateChannelResponse {
-  // name - name of channel
+message CreateCircuitResponse {
+  // name - name of circuit
   string name = 1;
 
-  // participants - Nodes to be included in the channel system
+  // participants - Nodes to be included in the circuit system
   repeated string participants = 2;
 }
 
@@ -120,10 +120,10 @@ message GossipMessageResponse {
   repeated ResponsePayload payloads = 1;
 }
 
-// Response to a DESTROY_CHANNEL request
+// Response to a DESTROY_CIRCUIT request
 //
-message DestroyChannelResponse {
-  // name - the name of the destroyed channel
+message DestroyCircuitResponse {
+  // name - the name of the destroyed circuit
   string name = 1;
 }
 

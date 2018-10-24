@@ -28,8 +28,8 @@ mod errors;
 use log::LogLevel;
 use errors::CliError;
 use actions::{
-    do_create_channel,
-    do_destroy_channel,
+    do_create_circuit,
+    do_destroy_circuit,
     do_gossip
 };
 
@@ -45,21 +45,21 @@ fn run() -> Result<(), CliError> {
         (@arg url: --url  +takes_value "Splinter node url")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
-        (@subcommand channel =>
-            (about: "Channel commands")
+        (@subcommand circuit =>
+            (about: "Circuit commands")
             (@setting SubcommandRequiredElseHelp)
             (@subcommand create => 
-                (about: "Create a new channel")
-                (@arg name: -n +required +takes_value "Name of channel")
-                (@arg participants: -p +takes_value +multiple "Splinter nodes participating in the channel")
+                (about: "Create a new circuit")
+                (@arg name: -n +required +takes_value "Name of circuit")
+                (@arg participants: -p +takes_value +multiple "Splinter nodes participating in the circuit")
             )
             (@subcommand destroy =>
-                (about: "Destroy a channel")
-                (@arg name: -n +takes_value +required "Name of channel")
+                (about: "Destroy a circuit")
+                (@arg name: -n +takes_value +required "Name of circuit")
             )
             (@subcommand gossip => 
-                (about: "Gossip a message to all nodes participating in a channel")
-                (@arg name: -n +required +takes_value "Name of channel")
+                (about: "Gossip a message to all nodes participating in a circuit")
+                (@arg name: -n +required +takes_value "Name of circuit")
                 (@arg payload: -d +required +takes_value "File path containing payload")
             )
          )
@@ -78,8 +78,8 @@ fn run() -> Result<(), CliError> {
         .unwrap_or("tcp://localhost:8045");
 
     match matches.subcommand() {
-        ("channel", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => do_create_channel(
+        ("circuit", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => do_create_circuit(
                 url,
                 m.value_of("name").unwrap(),
                 m.values_of("participants")
@@ -87,7 +87,7 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .collect()
             ).map_err(CliError::from),
-            ("destroy", Some(m)) => do_destroy_channel(
+            ("destroy", Some(m)) => do_destroy_circuit(
                 url,
                 m.value_of("name").unwrap()
             ).map_err(CliError::from),
