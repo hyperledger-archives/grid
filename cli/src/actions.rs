@@ -20,8 +20,8 @@ use protobuf;
 use messaging::protocol::{
     Message,
     MessageType,
-    CreateChannelRequest,
-    DestroyChannelRequest,
+    CreateCircuitRequest,
+    DestroyCircuitRequest,
     GossipMessageRequest
 };
 use libsplinter::SplinterError;
@@ -30,19 +30,19 @@ use splinter_client::{
     Certs
 };
 
-pub fn do_create_channel(
+pub fn do_create_circuit(
     url: &str,
     name: &str,
     participants: Vec<String>
 ) -> Result<(), SplinterError> {
     let msg = {
-        let mut req = CreateChannelRequest::new(); 
+        let mut req = CreateCircuitRequest::new(); 
         req.set_name(name.to_string());
         req.set_participants(protobuf::RepeatedField::from_vec(participants));
 
         let mut m = Message::new();
-        m.set_message_type(MessageType::CREATE_CHANNEL_REQUEST);
-        m.set_create_channel_request(req);
+        m.set_message_type(MessageType::CREATE_CIRCUIT_REQUEST);
+        m.set_create_circuit_request(req);
 
         m
     };
@@ -52,17 +52,17 @@ pub fn do_create_channel(
     conn.send(&msg).map(|_| ())
 }
 
-pub fn do_destroy_channel(
+pub fn do_destroy_circuit(
     url: &str,
     name: &str
 ) -> Result<(), SplinterError> {
     let msg = {
-        let mut req = DestroyChannelRequest::new(); 
+        let mut req = DestroyCircuitRequest::new(); 
         req.set_name(name.to_string());
 
         let mut m = Message::new();
-        m.set_message_type(MessageType::DESTROY_CHANNEL_REQUEST);
-        m.set_destroy_channel_request(req);
+        m.set_message_type(MessageType::DESTROY_CIRCUIT_REQUEST);
+        m.set_destroy_circuit_request(req);
 
         m
     };
