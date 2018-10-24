@@ -202,7 +202,7 @@ impl<T: Session> Connection<T> {
 
             msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
 
-            println!("Received message {:?}", msg,);
+            info!("Received message {:?}", msg,);
         };
 
         match msg.get_message_type() {
@@ -237,7 +237,7 @@ impl<T: Session> Connection<T> {
             }
             Err(err) => return Err(SplinterError::from(err)),
         };
-        println!("Wrote {}", n);
+        debug!("Wrote {}", n);
 
         Ok(())
     }
@@ -273,7 +273,7 @@ impl<T: Session> Connection<T> {
                 }
                 Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
                 Err(err) => {
-                    println!("Need to handle Error: {:?}", err);
+                    debug!("Need to handle Error: {:?}", err);
                 }
             }
         }
@@ -293,7 +293,7 @@ impl<T: Session> Connection<T> {
                 for (addr, tx) in services {
                     //Don't send the message to ourselves
                     if *addr == self.addr {
-                        println!("Service {} {:?}", addr, msg);
+                        debug!("Service {} {:?}", addr, msg);
                         // The send only fails if the rx half has been
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
@@ -311,7 +311,7 @@ impl<T: Session> Connection<T> {
                 for (addr, tx) in peers {
                     //Don't send the message to ourselves
                     if *addr != self.addr {
-                        println!("Peer {} {:?}", addr, msg);
+                        debug!("Peer {} {:?}", addr, msg);
                         // The send only fails if the rx half has been
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
