@@ -63,11 +63,6 @@ impl SplinterDaemon {
         })
     }
 
-    pub fn stop() -> () {
-        //also add control-c handling
-        unimplemented!();
-    }
-
     pub fn start(&mut self) -> Result<(), SplinterError> {
 
         // create peers and pass to threads
@@ -94,7 +89,7 @@ impl SplinterDaemon {
                 self.state.clone(),
                 ConnectionType::Network,
             )?;
-            let handle = thread::spawn(move || connection.handle_msg());
+            let _ = thread::spawn(move || connection.handle_msg());
         }
 
         let network_endpoint = self.network_endpoint.clone();
@@ -115,7 +110,7 @@ impl SplinterDaemon {
                             network_state.clone(),
                             ConnectionType::Network,
                         )?;
-                        let handle = thread::spawn(move || connection.handle_msg());
+                        let _ = thread::spawn(move || connection.handle_msg());
                     }
                     Err(e) => return Err(SplinterError::from(e)),
                 }
@@ -139,7 +134,7 @@ impl SplinterDaemon {
                         self.state.clone(),
                         ConnectionType::Service,
                     )?;
-                    let handle = thread::spawn(move || connection.handle_msg());
+                    let _ = thread::spawn(move || connection.handle_msg());
                 }
                 Err(e) => return Err(SplinterError::from(e)) 
             }
