@@ -28,7 +28,21 @@ message Message {
   CircuitDestroyRequest circuit_destroy_request = 6;
   CircuitDestroyResponse circuit_destroy_response = 7;
 
+  CircuitSendDirectMessageRequest circuit_send_direct_message_request = 8;
+  CircuitSendDirectMessageResponse circuit_send_direct_message_response = 9;
+
   Error error = 100;
+
+  ServiceRegisterRequest service_register_request = 200;
+  ServiceRegisterResponse service_register_response = 201;
+
+  ServiceUnregisterRequest service_unregister_request = 202;
+
+  CircuitDirectoryNotifyRequest circuit_directory_notify_request = 204;
+  CircuitDirectoryNotifyResponse circuit_directory_notify_response = 205;
+
+  CircuitGossipAddedService gossip_added_service = 206;
+  CircuitGossipRemovedService gossip_removed_service = 207;
 }
 
 enum MessageType {
@@ -47,6 +61,9 @@ enum MessageType {
   CIRCUIT_GOSSIP_MESSAGE_REQUEST = 5;
   CIRCUIT_GOSSIP_MESSAGE_RESPONSE = 6;
 
+  // Direct Message
+  CIRCUIT_SEND_DIRECT_MESSAGE_REQUEST = 7;
+  CIRCUIT_SEND_DIRECT_MESSAGE_RESPONSE = 8;
 
   // Node Errors
 
@@ -56,6 +73,7 @@ enum MessageType {
   CIRCUIT_DOES_NOT_EXIST = 103;
   GOSSIP_MESSAGE_ERROR = 104;
   INTERNAL_ERROR = 105;
+  SERVICE_DOES_NOT_EXIST = 106;
 
   // Network
 
@@ -65,10 +83,27 @@ enum MessageType {
   DISCONNECT_REQUEST = 202;
   DISCONNECT_RESPONSE = 203;
 
+  SERVICE_REGISTER_REQUEST = 204;
+  SERVICE_REGISTER_RESPONSE = 205;
+
+  SERVICE_UNREGISTER_REQUEST = 206;
+
+  CIRCUIT_DIRECTORY_NOTIFY_REQUEST = 207;
+  CIRCUIT_DIRECTORY_NOTIFY_RESPONSE = 208;
+
+  CIRCUIT_GOSSIP_ADDED_SERVICE = 209;
+  CIRCUIT_GOSSIP_REMOVED_SERVICE = 210;
+
 }
 
 message Error {
   string error_message = 1;
+}
+
+// Represents a service and the node it is connected to.
+message Service {
+  string id = 1;
+  string node_url = 2;
 }
 
 // The payload for a CREATE_CIRCUIT_REQUEST
@@ -79,9 +114,9 @@ message CircuitCreateRequest {
   // error will be returned.
   string circuit_name = 1;
 
-  // A list of hostnames for nodes that will be
+  // A list of service id and the hostnames for nodes that will be
   // a part of the splintered network
-  repeated string participants = 2;
+  repeated Service participants = 2;
 }
 
 // Response to a CIRCUIT_CREATE_REQUEST
@@ -90,8 +125,9 @@ message CircuitCreateResponse {
   // name - name of circuit
   string circuit_name = 1;
 
-  // participants - Nodes to be included in the circuit system
-  repeated string participants = 2;
+  // A list of service id and the hostnames for nodes that will be
+  // a part of the splintered network
+  repeated Service participants = 2;
 }
 
 // The payload for a CIRCUIT_DESTROY_REQUEST request
@@ -125,9 +161,90 @@ message CircuitGossipMessageRequest {
 message CircuitGossipMessageResponse {
 
   message ResponsePayload {
-    string participant = 1;
+    Service participant = 1;
     bytes payload = 2;
   }
 
   repeated ResponsePayload payloads = 1;
+}
+
+// The payload for a CIRCUIT_SEND_DIRECT_MESSAGE_REQUEST
+//
+message CircuitSendDirectMessageRequest {
+  // name - Name of the circuit the message will be sent to
+  string circuit_name = 1;
+
+  // id - The ID of the service the message is for
+  string recipient_service_id = 2;
+
+  // payload - The bytes describing the message being sent
+  bytes payload = 3;
+}
+
+// Response to a CIRCUIT_SEND_DIRECT_MESSAGE_REQUEST
+//
+message CircuitSendDirectMessageResponse {
+  // name - Name of the circuit the message will be sent to
+  string circuit_name = 1;
+
+  // id - The ID of the service the message is for
+  string recipient_service_id = 2;
+
+  // payload - The bytes describing the message being sent
+  bytes payload = 3;
+}
+
+// The payload for SERVICE_REGISTER_REQUEST
+// Sent from a service to a node to register the service
+//
+message ServiceRegisterRequest {
+  // id - The Unique ID of the service
+  string service_id = 1;
+}
+
+// The response for SERVICE_REGISTER_REQUEST
+//
+message ServiceRegisterResponse {
+  // id - The Unique ID of the service that was registered
+  string service_id = 1;
+}
+
+// The payload to SERVICE_UNREGISTER_REQUEST
+// This message does not have a response as the service may already be gone by
+// the time the response would be sent.
+//
+message ServiceUnregisterRequest {
+  // id - The Unique ID of the service
+  string service_id = 1;
+}
+
+// Request transfer the current directory
+// This should be sent to by new node that has just connected to the network
+// To its peers
+message CircuitDirectoryNotifyRequest {
+  // The url for the node requesting the directory
+  string node_url = 1;
+}
+
+// Transfer the current directory
+// This should be sent to a new node that has just connected to the network
+message CircuitDirectoryNotifyResponse {
+  // registered service
+  repeated Service services = 1;
+}
+
+// Gossip any new registered services to peers
+//
+// This messages is gossiped around the network to other nodes when a
+// service connects.
+message CircuitGossipAddedService {
+  Service service = 1;
+}
+
+// Gossip any unregistered services to peers
+//
+// This messages is gossiped around the network to other nodes when a
+// service connects.
+message CircuitGossipRemovedService {
+  Service removed_service = 1;
 }
