@@ -335,6 +335,45 @@ impl<T: Session> Connection<T> {
         Ok(())
     }
 
+    fn direct_message(
+        &mut self,
+        msg: Message,
+        addr: SocketAddr,
+        connection_type: ConnectionType,
+    ) -> Result<(), SplinterError> {
+        let msg_bytes = Bytes::from(pack_response(&msg)?);
+        match connection_type {
+            ConnectionType::Service => {
+                let services = &self
+                    .state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .services;
+                if let Some(tx) = services.get(&addr) {
+                    debug!("Service {} {:?}", addr, msg);
+                    tx.send(msg_bytes.clone())?;
+                } else {
+                    warn!("Cant find Service addr: {}", addr)
+                }
+
+            }
+            ConnectionType::Network => {
+                let peers = &self
+                    .state
+                    .lock()
+                    .unwrap_or_else(|err| err.into_inner())
+                    .peers;
+                if let Some(tx) = peers.get(&addr) {
+                    debug!("Peer {} {:?}", addr, msg);
+                    tx.send(msg_bytes.clone())?;
+                } else {
+                    warn!("Cant find Peer addr: {}", addr)
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn add_circuit(&mut self, msg: CircuitCreateRequest) -> Result<(), AddCircuitError> {
         info!("Create Circuit request received: {:?}", msg);
         let circuit_name = msg.get_circuit_name();
