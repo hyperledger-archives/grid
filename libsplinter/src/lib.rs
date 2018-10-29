@@ -40,10 +40,11 @@ use std::time;
 
 use messaging::protocol::{
     CircuitCreateRequest, CircuitCreateResponse, CircuitCreateResponse_Status,
-    CircuitDestroyResponse, CircuitDestroyResponse_Status, Message, MessageType,
+    CircuitDestroyRequest, CircuitDestroyResponse, CircuitDestroyResponse_Status, Message,
+    MessageType,
 };
 
-pub use errors::{AddCircuitError, SplinterError};
+pub use errors::{AddCircuitError, RemoveCircuitError, SplinterError};
 
 /// Shorthand for the transmit half of the message channel.
 pub type Tx = mpsc::Sender<Bytes>;
@@ -216,6 +217,10 @@ impl<T: Session> Connection<T> {
             MessageType::CIRCUIT_CREATE_REQUEST => {
                 let circuit_create = msg.take_circuit_create_request();
                 self.add_circuit(circuit_create)?;
+            }
+            MessageType::CIRCUIT_DESTROY_REQUEST => {
+                let circuit_destroy = msg.take_circuit_destroy_request();
+                self.remove_circuit(circuit_destroy)?;
             }
             _ => self.gossip_message(msg)?,
         };
@@ -413,12 +418,60 @@ impl<T: Session> Connection<T> {
         Ok(())
     }
 
-    fn remove_circuit(&mut self, circuit_name: &str) -> () {
-        self.state
+    fn remove_circuit(&mut self, msg: CircuitDestroyRequest) -> Result<(), RemoveCircuitError> {
+        info!("Destory Circuit request received: {:?}", msg);
+        let circuit_name = msg.get_circuit_name();
+        let mut circuit_destroy_response = CircuitDestroyResponse::new();
+        circuit_destroy_response.set_circuit_name(circuit_name.into());
+
+        let mut response_message = Message::new();
+        response_message.set_message_type(MessageType::CIRCUIT_DESTROY_RESPONSE);
+
+        if !(self
+            .state
             .lock()
             .unwrap_or_else(|err| err.into_inner())
             .circuits
-            .remove(circuit_name);
+            .contains_key(circuit_name))
+        {
+            debug!(
+                "Cannot destroy Circuit that does not exist: {}",
+                &circuit_name
+            );
+            circuit_destroy_response
+                .set_status(CircuitDestroyResponse_Status::CIRCUIT_DOES_NOT_EXIST);
+
+            circuit_destroy_response.set_error_message(format!(
+                "Cannot destroy Circuit that does not exist: {}",
+                &circuit_name
+            ));
+            response_message.set_circuit_destroy_response(circuit_destroy_response);
+            self.respond(response_message).map_err(|_| {
+                RemoveCircuitError::SendError(format!(
+                    "Unable to respond to CircuitDestroyRequest from {}",
+                    &self.addr
+                ))
+            })?;
+
+        } else {
+            circuit_destroy_response.set_status(CircuitDestroyResponse_Status::OK);
+
+            self.state
+                .lock()
+                .unwrap_or_else(|err| err.into_inner())
+                .circuits
+                .remove(circuit_name);
+
+            response_message.set_circuit_destroy_response(circuit_destroy_response);
+            self.respond(response_message).map_err(|_| {
+                RemoveCircuitError::SendError(format!(
+                    "Unable to respond to CircuitDestroyRequest from {}",
+                    &self.addr
+                ))
+            })?;
+        }
+
+        Ok(())
     }
 }
 

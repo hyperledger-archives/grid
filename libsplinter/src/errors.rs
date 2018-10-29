@@ -36,6 +36,7 @@ pub enum SplinterError {
     WebpkiError(webpki::Error),
     AddrParseError(net::AddrParseError),
     AddCircuitError(AddCircuitError),
+    RemoveCircuitError(RemoveCircuitError),
     CertificateCreationError,
     CouldNotResolveHostName,
     PrivateKeyNotFound,
@@ -103,6 +104,12 @@ impl From<AddCircuitError> for SplinterError {
     }
 }
 
+impl From<RemoveCircuitError> for SplinterError {
+    fn from(e: RemoveCircuitError) -> Self {
+        SplinterError::RemoveCircuitError(e)
+    }
+}
+
 #[derive(Debug)]
 pub enum AddCircuitError {
     ChannelSendError(SendError<DaemonRequest>),
@@ -120,4 +127,9 @@ impl From<SendError<DaemonRequest>> for AddCircuitError {
     fn from(e: SendError<DaemonRequest>) -> Self {
         AddCircuitError::ChannelSendError(e)
     }
+}
+
+#[derive(Debug)]
+pub enum RemoveCircuitError {
+    SendError(String),
 }
