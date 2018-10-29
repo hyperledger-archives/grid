@@ -16,22 +16,18 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
-extern crate simple_logger;
-extern crate splinter_client;
+extern crate libsplinter;
 extern crate messaging;
 extern crate protobuf;
-extern crate libsplinter;
+extern crate simple_logger;
+extern crate splinter_client;
 
 mod actions;
 mod errors;
 
-use log::LogLevel;
+use actions::{do_create_circuit, do_destroy_circuit, do_gossip};
 use errors::CliError;
-use actions::{
-    do_create_circuit,
-    do_destroy_circuit,
-    do_gossip
-};
+use log::LogLevel;
 
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -48,16 +44,17 @@ fn run() -> Result<(), CliError> {
         (@subcommand circuit =>
             (about: "Circuit commands")
             (@setting SubcommandRequiredElseHelp)
-            (@subcommand create => 
+            (@subcommand create =>
                 (about: "Create a new circuit")
                 (@arg name: -n +required +takes_value "Name of circuit")
-                (@arg participants: -p +takes_value +multiple "Splinter nodes participating in the circuit")
+                (@arg participants: -p +takes_value +multiple
+                    "The service and the node the service will connect to. service_id,node_url ")
             )
             (@subcommand destroy =>
                 (about: "Destroy a circuit")
                 (@arg name: -n +takes_value +required "Name of circuit")
             )
-            (@subcommand gossip => 
+            (@subcommand gossip =>
                 (about: "Gossip a message to all nodes participating in a circuit")
                 (@arg name: -n +required +takes_value "Name of circuit")
                 (@arg payload: -d +required +takes_value "File path containing payload")
@@ -68,14 +65,12 @@ fn run() -> Result<(), CliError> {
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
         1 => simple_logger::init_with_level(LogLevel::Info),
-        _  => simple_logger::init_with_level(LogLevel::Debug),
+        _ => simple_logger::init_with_level(LogLevel::Debug),
     };
 
     logger.expect("Failed to create logger");
 
-    let url = matches
-        .value_of("url")
-        .unwrap_or("tcp://localhost:8045");
+    let url = matches.value_of("url").unwrap_or("tcp://localhost:8045");
 
     match matches.subcommand() {
         ("circuit", Some(m)) => match m.subcommand() {
@@ -85,20 +80,19 @@ fn run() -> Result<(), CliError> {
                 m.values_of("participants")
                     .unwrap_or(clap::Values::default())
                     .map(String::from)
-                    .collect()
+                    .collect(),
             ).map_err(CliError::from),
-            ("destroy", Some(m)) => do_destroy_circuit(
-                url,
-                m.value_of("name").unwrap()
-            ).map_err(CliError::from),
+            ("destroy", Some(m)) => {
+                do_destroy_circuit(url, m.value_of("name").unwrap()).map_err(CliError::from)
+            }
             ("gossip", Some(m)) => do_gossip(
                 url,
                 m.value_of("name").unwrap(),
-                m.value_of("payload").unwrap()
+                m.value_of("payload").unwrap(),
             ).map_err(CliError::from),
-            _ => Err(CliError::InvalidSubcommand)
-        }
-        _ => Err(CliError::InvalidSubcommand)
+            _ => Err(CliError::InvalidSubcommand),
+        },
+        _ => Err(CliError::InvalidSubcommand),
     }
 }
 

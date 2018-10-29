@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use libsplinter::{
-    SplinterError
-};
+use libsplinter::SplinterError;
 
 #[derive(Debug)]
 pub enum CliError {
     ClientError(SplinterError),
-    InvalidSubcommand
+    InvalidSubcommand,
 }
 
 impl From<SplinterError> for CliError {
