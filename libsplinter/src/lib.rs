@@ -97,6 +97,10 @@ impl Circuit {
     pub fn add_peer(&mut self, service_id: String, node_url: SocketAddr) {
         self.peers.insert(service_id, node_url);
     }
+
+    pub fn get_peers(&mut self) -> HashMap<String, SocketAddr> {
+        self.peers.clone()
+    }
 }
 
 pub enum ConnectionType {
@@ -287,8 +291,8 @@ impl<T: Session> Connection<T> {
                                 debug!("Retrying {:?}", bytes);
                                 tx.send(bytes)?;
                             }
-                        },
-                        Err(err) => return Err(err)
+                        }
+                        Err(err) => return Err(err),
                     }
                 }
                 Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
@@ -352,8 +356,8 @@ impl<T: Session> Connection<T> {
 
     fn direct_message(
         &mut self,
-        msg: Message,
-        addr: SocketAddr,
+        msg: &Message,
+        addr: &SocketAddr,
         connection_type: ConnectionType,
     ) -> Result<(), SplinterError> {
         let msg_bytes = Bytes::from(pack_response(&msg)?);
@@ -364,13 +368,12 @@ impl<T: Session> Connection<T> {
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .services;
-                if let Some(tx) = services.get(&addr) {
+                if let Some(tx) = services.get(addr) {
                     debug!("Service {} {:?}", addr, msg);
                     tx.send(msg_bytes.clone())?;
                 } else {
                     warn!("Cant find Service addr: {}", addr)
                 }
-
             }
             ConnectionType::Network => {
                 let peers = &self
@@ -378,7 +381,7 @@ impl<T: Session> Connection<T> {
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .peers;
-                if let Some(tx) = peers.get(&addr) {
+                if let Some(tx) = peers.get(addr) {
                     debug!("Peer {} {:?}", addr, msg);
                     tx.send(msg_bytes.clone())?;
                 } else {
@@ -434,6 +437,15 @@ impl<T: Session> Connection<T> {
                 let node_url: SocketAddr = participant.get_node_url().parse()?;
                 circuit.add_peer(participant.get_service_id().to_string(), node_url);
 
+                // need to rebuild the message to forward
+                let mut forward_msg = Message::new();
+                forward_msg.set_message_type(MessageType::CIRCUIT_CREATE_REQUEST);
+                forward_msg.set_circuit_create_request(msg.clone());
+
+                // if participant is this splinter node, skip forward
+                if node_url == self.addr {
+                    continue;
+                }
                 if !(self
                     .state
                     .lock()
@@ -450,6 +462,14 @@ impl<T: Session> Connection<T> {
                     };
                     self.daemon_chan
                         .send(DaemonRequest::CreateConnection { address })?;
+                } else {
+                    self.direct_message(&forward_msg, &node_url, ConnectionType::Network)
+                        .map_err(|_| {
+                            AddCircuitError::SendError(format!(
+                                "Unable to forward CircuitCreateRequest to {}",
+                                node_url
+                            ))
+                        })?;
                 }
 
                 circuit_create_response.set_status(CircuitCreateResponse_Status::OK);
@@ -499,6 +519,7 @@ impl<T: Session> Connection<T> {
                 "Cannot destroy Circuit that does not exist: {}",
                 &circuit_name
             ));
+
             response_message.set_circuit_destroy_response(circuit_destroy_response);
             self.respond(response_message).map_err(|_| {
                 RemoveCircuitError::SendError(format!(
@@ -509,7 +530,38 @@ impl<T: Session> Connection<T> {
 
         } else {
             circuit_destroy_response.set_status(CircuitDestroyResponse_Status::OK);
+            // need to rebuild the message to forward
+            let mut forward_msg = Message::new();
+            forward_msg.set_message_type(MessageType::CIRCUIT_DESTROY_REQUEST);
+            forward_msg.set_circuit_destroy_request(msg.clone());
 
+            // Forward the destroy message to other nodes in the circuit
+            let peers = if let Some(circuit) = self
+                .state
+                .lock()
+                .unwrap_or_else(|err| err.into_inner())
+                .circuits
+                .get_mut(circuit_name)
+            {
+                circuit.get_peers()
+            } else {
+                HashMap::new()
+            };
+
+            for (_, addr) in peers {
+                if addr == self.addr {
+                    continue
+                }
+
+                self.direct_message(&forward_msg, &addr, ConnectionType::Network)
+                    .map_err(|_| {
+                        RemoveCircuitError::SendError(format!(
+                            "Unable to forward CircuitDestroyRequest to {}",
+                            addr
+                        ))
+                    })?;
+            }
+            
             self.state
                 .lock()
                 .unwrap_or_else(|err| err.into_inner())
