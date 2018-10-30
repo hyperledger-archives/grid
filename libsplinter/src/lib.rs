@@ -227,24 +227,24 @@ impl<T: Session> Connection<T> {
         return Ok(true);
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), SplinterError> {
+    fn write(&mut self, buf: &[u8]) -> Result<bool, SplinterError> {
         match self.session.write_tls(&mut self.socket) {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(());
+                return Ok(false);
             }
             Err(err) => return Err(SplinterError::from(err)),
         };
         let n = match self.session.write(buf) {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(());
+                return Ok(false);
             }
             Err(err) => return Err(SplinterError::from(err)),
         };
         debug!("Wrote {}", n);
 
-        Ok(())
+        Ok(true)
     }
 
     pub fn handle_msg(&mut self) -> Result<(), SplinterError> {
@@ -273,8 +273,23 @@ impl<T: Session> Connection<T> {
 
             match self.rx.recv_timeout(time::Duration::from_millis(100)) {
                 Ok(bytes) => {
-                    // need to check if this is succesful and retry if not
-                    self.write(&bytes)?;
+                    // need to check if this is succesful and retry if it WouldBlock
+                    match self.write(&bytes) {
+                        Ok(true) => (),
+                        Ok(false) => {
+                            // write failed, resubmit the message to the reciever
+                            let services = &self
+                                .state
+                                .lock()
+                                .unwrap_or_else(|err| err.into_inner())
+                                .services;
+                            if let Some(tx) = services.get(&self.addr) {
+                                debug!("Retrying {:?}", bytes);
+                                tx.send(bytes)?;
+                            }
+                        },
+                        Err(err) => return Err(err)
+                    }
                 }
                 Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
                 Err(err) => {
