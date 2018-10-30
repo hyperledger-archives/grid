@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use bytes::Bytes;
 use protobuf;
+use rustls::TLSError;
 use std::io;
+use std::sync::{mpsc::RecvError, mpsc::SendError};
 use url;
 use webpki;
-use rustls::TLSError;
-use std::sync::{
-    mpsc::RecvError,
-    mpsc::SendError
-};
-use bytes::Bytes;
 
 #[derive(Debug)]
 pub enum SplinterError {
@@ -38,7 +35,7 @@ pub enum SplinterError {
     CouldNotResolveHostName,
     PrivateKeyNotFound,
     HostNameNotFound,
-    PortNotIdentified
+    PortNotIdentified,
 }
 
 impl From<io::Error> for SplinterError {

@@ -1,15 +1,15 @@
-use url::Url;
-use std::net::{TcpListener, TcpStream};
 use rustls;
+use std::net::{TcpListener, TcpStream};
+use url::Url;
 
 use libsplinter::{
-    create_client_config, create_server_config, create_client_session, create_server_session, load_cert, load_key,
-    Connection, ConnectionType, Shared, SplinterError
+    create_client_config, create_client_session, create_server_config, create_server_session,
+    load_cert, load_key, Connection, ConnectionType, Shared, SplinterError,
 };
 
-use std::sync::{Arc, Mutex};
-use std::{thread};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 pub struct SplinterDaemon {
     client_config: rustls::ClientConfig,
@@ -64,31 +64,24 @@ impl SplinterDaemon {
     }
 
     pub fn start(&mut self) -> Result<(), SplinterError> {
-
         // create peers and pass to threads
         for peer in self.initial_peers.iter() {
-
             let mut socket = connect(peer)?;
             socket.set_nonblocking(true)?;
 
-
             let session = match peer.domain() {
-                Some(d) if d.parse::<Ipv4Addr>().is_ok() => 
-                    create_client_session(self.client_config.clone(), "localhost".into())?,
-                Some(d) if d.parse::<Ipv6Addr>().is_ok() =>
-                    create_client_session(self.client_config.clone(), "localhost".into())?,
-                Some(d) =>
-                    create_client_session(self.client_config.clone(), d.to_string())?,
-                None =>
+                Some(d) if d.parse::<Ipv4Addr>().is_ok() => {
                     create_client_session(self.client_config.clone(), "localhost".into())?
+                }
+                Some(d) if d.parse::<Ipv6Addr>().is_ok() => {
+                    create_client_session(self.client_config.clone(), "localhost".into())?
+                }
+                Some(d) => create_client_session(self.client_config.clone(), d.to_string())?,
+                None => create_client_session(self.client_config.clone(), "localhost".into())?,
             };
 
-            let mut connection = Connection::new(
-                socket,
-                session,
-                self.state.clone(),
-                ConnectionType::Network,
-            )?;
+            let mut connection =
+                Connection::new(socket, session, self.state.clone(), ConnectionType::Network)?;
             let _ = thread::spawn(move || connection.handle_msg());
         }
 
@@ -136,7 +129,7 @@ impl SplinterDaemon {
                     )?;
                     let _ = thread::spawn(move || connection.handle_msg());
                 }
-                Err(e) => return Err(SplinterError::from(e)) 
+                Err(e) => return Err(SplinterError::from(e)),
             }
         }
 
@@ -156,9 +149,8 @@ fn create_listener(url: &Url) -> Result<TcpListener, SplinterError> {
     } else {
         return Err(SplinterError::PortNotIdentified);
     };
-    
-    TcpListener::bind(&format!("{}:{}", host, port))
-        .map_err(SplinterError::from)
+
+    TcpListener::bind(&format!("{}:{}", host, port)).map_err(SplinterError::from)
 }
 
 fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
@@ -175,7 +167,6 @@ fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
     };
 
     println!("{}:{}", host, port);
-    
-    TcpStream::connect(&format!("{}:{}", host, port))
-        .map_err(SplinterError::from)
+
+    TcpStream::connect(&format!("{}:{}", host, port)).map_err(SplinterError::from)
 }

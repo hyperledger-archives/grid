@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate bytes;
+extern crate protobuf;
 extern crate rustls;
 extern crate webpki;
-extern crate protobuf;
-extern crate bytes;
 #[macro_use]
 extern crate log;
 extern crate byteorder;
@@ -27,8 +27,8 @@ mod errors;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use rustls::{
-    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession,
-    PrivateKey, ServerConfig, ServerSession, Session, SupportedCipherSuite,
+    AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, PrivateKey,
+    ServerConfig, ServerSession, Session, SupportedCipherSuite,
 };
 use std::collections::HashMap;
 use std::fs;
@@ -36,7 +36,7 @@ use std::io::{BufReader, ErrorKind, Write};
 use std::mem;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{mpsc, Arc, Mutex};
-use std::{time};
+use std::time;
 
 use messaging::protocol::{Message, MessageType};
 
@@ -65,11 +65,9 @@ impl Shared {
     }
 }
 
-pub struct Circuit {
-}
+pub struct Circuit {}
 
-impl Circuit {
-}
+impl Circuit {}
 
 pub enum ConnectionType {
     Network,
@@ -96,27 +94,28 @@ pub struct Connection<T: Session> {
     rx: Rx,
 }
 
-impl <T: Session>Connection<T> {
+impl<T: Session> Connection<T> {
     pub fn new(
         socket: TcpStream,
         session: T,
         state: Arc<Mutex<Shared>>,
         connection_type: ConnectionType,
     ) -> Result<Connection<T>, SplinterError> {
-
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
         let addr = socket.peer_addr()?;
         // Add an entry for this `Peer` in the shared state map.
         match connection_type {
             ConnectionType::Network => {
-                state.lock()
+                state
+                    .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .peers
                     .insert(addr, tx);
             }
             ConnectionType::Service => {
-                state.lock()
+                state
+                    .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .services
                     .insert(addr, tx);
@@ -163,8 +162,7 @@ impl <T: Session>Connection<T> {
 
             let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
             self.session.read_exact(&mut msg_len_buff)?;
-            let msg_size =
-                msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
+            let msg_size = msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
 
             // Read Message
             let mut msg_buff = vec![0; msg_size];
@@ -174,7 +172,7 @@ impl <T: Session>Connection<T> {
 
             println!("Received message {:?}", msg,);
         };
-            
+
         match msg.get_message_type() {
             MessageType::UNSET => return Ok(false),
             MessageType::HEARTBEAT_REQUEST => {
@@ -183,8 +181,7 @@ impl <T: Session>Connection<T> {
                 self.respond(response)?;
             }
             MessageType::HEARTBEAT_RESPONSE => (),
-            _ => self.gossip_message(msg)?
-
+            _ => self.gossip_message(msg)?,
         };
         return Ok(true);
     }
@@ -209,7 +206,7 @@ impl <T: Session>Connection<T> {
         Ok(())
     }
 
-    pub fn handle_msg(&mut self) -> Result<(), SplinterError>{
+    pub fn handle_msg(&mut self) -> Result<(), SplinterError> {
         loop {
             let done = self.handshake()?;
             if done {
@@ -252,7 +249,8 @@ impl <T: Session>Connection<T> {
         // This needs to eventually handle the message types
         match self.connection_type {
             ConnectionType::Network => {
-                let services = &self.state
+                let services = &self
+                    .state
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .services;
@@ -269,7 +267,8 @@ impl <T: Session>Connection<T> {
                 }
             }
             ConnectionType::Service => {
-                let peers = &self.state
+                let peers = &self
+                    .state
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .peers;
@@ -296,7 +295,7 @@ impl <T: Session>Connection<T> {
     }
 }
 
-impl <T: Session> Drop for Connection<T> {
+impl<T: Session> Drop for Connection<T> {
     fn drop(&mut self) {
         match self.connection_type {
             ConnectionType::Network => {
@@ -359,7 +358,10 @@ pub fn create_client_config(
 
 // Creates a Client Session from the ClientConfig and dns_name associated with the server to
 // connect to
-pub fn create_client_session(config: ClientConfig, dns_name: String) -> Result<ClientSession, SplinterError> {
+pub fn create_client_session(
+    config: ClientConfig,
+    dns_name: String,
+) -> Result<ClientSession, SplinterError> {
     let dns_name = webpki::DNSNameRef::try_from_ascii_str(&dns_name)
         .map_err(|_| SplinterError::HostNameNotFound)?;
 

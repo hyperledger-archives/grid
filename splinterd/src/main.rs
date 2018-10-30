@@ -13,8 +13,8 @@
 // limitations under the License.
 
 extern crate libsplinter;
-extern crate url;
 extern crate rustls;
+extern crate url;
 #[macro_use]
 extern crate clap;
 #[macro_use]
@@ -23,26 +23,21 @@ extern crate simple_logger;
 
 mod daemon;
 
+use clap::ArgMatches;
 use log::LogLevel;
 use std::env;
 use url::Url;
-use clap::ArgMatches;
 
 use daemon::SplinterDaemon;
 
-fn get_arg_check_for_env(
-    matches: &ArgMatches,
-    arg: &str,
-    env_var: &str
-) -> Option<String> {
-    matches
-        .value_of(arg)
-        .map(|v| v.to_string())
-        .or_else(|| if let Ok(v) = env::var(env_var) {
+fn get_arg_check_for_env(matches: &ArgMatches, arg: &str, env_var: &str) -> Option<String> {
+    matches.value_of(arg).map(|v| v.to_string()).or_else(|| {
+        if let Ok(v) = env::var(env_var) {
             Some(v)
         } else {
             None
-        })
+        }
+    })
 }
 
 fn main() {
@@ -70,64 +65,42 @@ fn main() {
 
     let service_endpoint = matches
         .value_of("service_endpoint")
-        .map_or_else(
-            || Url::parse("tcp://127.0.0.1:8043"),
-            |ep| Url::parse(ep)
-        )
+        .map_or_else(|| Url::parse("tcp://127.0.0.1:8043"), |ep| Url::parse(ep))
         .expect("Must provide a valid service endpoint");
 
     let network_endpoint = matches
         .value_of("network_endpoint")
-        .map_or_else(
-            || Url::parse("tcp://127.0.0.1:8044"),
-            |ep| Url::parse(ep)
-         )
+        .map_or_else(|| Url::parse("tcp://127.0.0.1:8044"), |ep| Url::parse(ep))
         .expect("Must provide a valid network endpoint");
 
     let ca_files = matches
         .values_of("ca_file")
         .map(|values| values.map(String::from).collect::<Vec<String>>())
-        .or_else(|| if let Ok(v) = env::var("SPLINTER_CAS") {
-            Some(v.split(",")
-                 .map(String::from)
-                 .collect())
-        } else {
-            None
-        })
-        .expect("At least one ca file must be provided");
+        .or_else(|| {
+            if let Ok(v) = env::var("SPLINTER_CAS") {
+                Some(v.split(",").map(String::from).collect())
+            } else {
+                None
+            }
+        }).expect("At least one ca file must be provided");
 
-    let client_cert = get_arg_check_for_env(
-        &matches,
-        "client_cert",
-        "SPLINTER_CLIENT_CERT"
-    ).expect("Must provide a valid client certifcate");
+    let client_cert = get_arg_check_for_env(&matches, "client_cert", "SPLINTER_CLIENT_CERT")
+        .expect("Must provide a valid client certifcate");
 
-    let server_cert = get_arg_check_for_env(
-        &matches,
-        "server_cert",
-        "SPLINTER_SERVER_CERT"
-    ).expect("Must provide a valid server certifcate");
+    let server_cert = get_arg_check_for_env(&matches, "server_cert", "SPLINTER_SERVER_CERT")
+        .expect("Must provide a valid server certifcate");
 
-    let server_key_file = get_arg_check_for_env(
-        &matches,
-        "server_key",
-        "SPLINTER_SERVER_KEY"
-    ).expect("Must provide a valid key path");
+    let server_key_file = get_arg_check_for_env(&matches, "server_key", "SPLINTER_SERVER_KEY")
+        .expect("Must provide a valid key path");
 
-    let client_key_file = get_arg_check_for_env(
-        &matches,
-        "client_key",
-        "SPLINTER_CLIENT_KEY"
-    ).expect("Must provide a valid key path");
+    let client_key_file = get_arg_check_for_env(&matches, "client_key", "SPLINTER_CLIENT_KEY")
+        .expect("Must provide a valid key path");
 
     let initial_peers = {
-
         let urls = matches
             .values_of("peers")
-            .map(|values| values
-                 .map(Url::parse)
-                 .collect())
-        .unwrap_or(Vec::new());
+            .map(|values| values.map(Url::parse).collect())
+            .unwrap_or(Vec::new());
 
         let mut peers = Vec::new();
         for url in urls {
@@ -144,7 +117,7 @@ fn main() {
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
         1 => simple_logger::init_with_level(LogLevel::Info),
-        _  => simple_logger::init_with_level(LogLevel::Debug),
+        _ => simple_logger::init_with_level(LogLevel::Debug),
     };
 
     logger.expect("Failed to create logger");
