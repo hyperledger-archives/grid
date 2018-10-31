@@ -33,7 +33,7 @@ pub fn do_create_circuit(url: &str, name: &str, participants: Vec<String>) -> Re
                 let id = parts[0].to_string();
                 let node_url = parts[1].to_string();
                 let mut service = Service::new();
-                service.set_id(id);
+                service.set_service_id(id);
                 service.set_node_url(node_url);
 
                 services.push(service);
