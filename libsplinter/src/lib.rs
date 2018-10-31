@@ -121,7 +121,8 @@ pub enum ConnectionState {
 /// other state/metadata.
 pub struct Connection<T: Session> {
     state: Arc<Mutex<Shared>>,
-    addr: SocketAddr,
+    peer_addr: SocketAddr,
+    network_addr: SocketAddr,
     socket: TcpStream,
     session: T,
     connection_type: ConnectionType,
@@ -132,6 +133,7 @@ pub struct Connection<T: Session> {
 impl<T: Session> Connection<T> {
     pub fn new(
         socket: TcpStream,
+        network_addr: SocketAddr,
         session: T,
         state: Arc<Mutex<Shared>>,
         connection_type: ConnectionType,
@@ -139,7 +141,7 @@ impl<T: Session> Connection<T> {
     ) -> Result<Connection<T>, SplinterError> {
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
-        let addr = socket.peer_addr()?;
+        let peer_addr = socket.peer_addr()?;
         // Add an entry for this `Peer` in the shared state map.
         match connection_type {
             ConnectionType::Network => {
@@ -147,20 +149,21 @@ impl<T: Session> Connection<T> {
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .peers
-                    .insert(addr, tx);
+                    .insert(peer_addr, tx);
             }
             ConnectionType::Service => {
                 state
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .services
-                    .insert(addr, tx);
+                    .insert(peer_addr, tx);
             }
         }
 
         Ok(Connection {
             state,
-            addr,
+            peer_addr,
+            network_addr,
             socket,
             session,
             connection_type,
@@ -266,7 +269,7 @@ impl<T: Session> Connection<T> {
             }
 
             if count == 10 {
-                info!("Sending Heartbeat to {:?}", self.addr);
+                info!("Sending Heartbeat to {:?}", self.peer_addr);
                 let mut msg = Message::new();
                 msg.set_message_type(MessageType::HEARTBEAT_REQUEST);
                 let msg_bytes = pack_response(&msg)?;
@@ -287,7 +290,7 @@ impl<T: Session> Connection<T> {
                                 .lock()
                                 .unwrap_or_else(|err| err.into_inner())
                                 .services;
-                            if let Some(tx) = services.get(&self.addr) {
+                            if let Some(tx) = services.get(&self.peer_addr) {
                                 debug!("Retrying {:?}", bytes);
                                 tx.send(bytes)?;
                             }
@@ -316,7 +319,7 @@ impl<T: Session> Connection<T> {
                     .services;
                 for (addr, tx) in services {
                     //Don't send the message to ourselves
-                    if *addr == self.addr {
+                    if *addr == self.peer_addr {
                         debug!("Service {} {:?}", addr, msg);
                         // The send only fails if the rx half has been
                         // dropped, however this is impossible as the
@@ -334,7 +337,7 @@ impl<T: Session> Connection<T> {
                     .peers;
                 for (addr, tx) in peers {
                     //Don't send the message to ourselves
-                    if *addr != self.addr {
+                    if *addr != self.peer_addr {
                         debug!("Peer {} {:?}", addr, msg);
                         // The send only fails if the rx half has been
                         // dropped, however this is impossible as the
@@ -429,7 +432,7 @@ impl<T: Session> Connection<T> {
             self.respond(response_message).map_err(|_| {
                 AddCircuitError::SendError(format!(
                     "Unable to respond to CircuitCreateRequest from {}",
-                    &self.addr
+                    &self.peer_addr
                 ))
             })?;
         } else {
@@ -443,9 +446,10 @@ impl<T: Session> Connection<T> {
                 forward_msg.set_circuit_create_request(msg.clone());
 
                 // if participant is this splinter node, skip forward
-                if node_url == self.addr {
+                if node_url == self.network_addr {
                     continue;
                 }
+
                 if !(self
                     .state
                     .lock()
@@ -485,7 +489,7 @@ impl<T: Session> Connection<T> {
             self.respond(response_message).map_err(|_| {
                 AddCircuitError::SendError(format!(
                     "Unable to respond to CircuitCreateRequest from {}",
-                    &self.addr
+                    &self.peer_addr
                 ))
             })?;
         }
@@ -524,7 +528,7 @@ impl<T: Session> Connection<T> {
             self.respond(response_message).map_err(|_| {
                 RemoveCircuitError::SendError(format!(
                     "Unable to respond to CircuitDestroyRequest from {}",
-                    &self.addr
+                    &self.peer_addr
                 ))
             })?;
 
@@ -549,8 +553,9 @@ impl<T: Session> Connection<T> {
             };
 
             for (_, addr) in peers {
-                if addr == self.addr {
-                    continue
+                // if participant is this splinter node, skip forward
+                if addr == self.network_addr {
+                    continue;
                 }
 
                 self.direct_message(&forward_msg, &addr, ConnectionType::Network)
@@ -572,7 +577,7 @@ impl<T: Session> Connection<T> {
             self.respond(response_message).map_err(|_| {
                 RemoveCircuitError::SendError(format!(
                     "Unable to respond to CircuitDestroyRequest from {}",
-                    &self.addr
+                    &self.peer_addr
                 ))
             })?;
         }
@@ -589,14 +594,14 @@ impl<T: Session> Drop for Connection<T> {
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .peers
-                    .remove(&self.addr);
+                    .remove(&self.peer_addr);
             }
             ConnectionType::Service => {
                 self.state
                     .lock()
                     .unwrap_or_else(|err| err.into_inner())
                     .services
-                    .remove(&self.addr);
+                    .remove(&self.peer_addr);
             }
         }
     }

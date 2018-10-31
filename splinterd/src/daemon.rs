@@ -1,5 +1,5 @@
 use rustls;
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use url::Url;
 
 use libsplinter::{
@@ -70,6 +70,7 @@ impl SplinterDaemon {
         for peer in self.initial_peers.iter() {
             let mut connection = create_peer_connection(
                 peer.clone(),
+                to_socket_addr(&self.network_endpoint)?,
                 tx.clone(),
                 self.client_config.clone(),
                 self.state.clone(),
@@ -78,6 +79,7 @@ impl SplinterDaemon {
         }
 
         let network_endpoint = self.network_endpoint.clone();
+        let network_addr = to_socket_addr(&self.network_endpoint)?;
         let network_server_config = self.server_config.clone();
         let network_state = self.state.clone();
         let network_sender = tx.clone();
@@ -92,6 +94,7 @@ impl SplinterDaemon {
 
                         let mut connection = Connection::new(
                             socket,
+                            network_addr,
                             create_server_session(network_server_config.clone()),
                             network_state.clone(),
                             ConnectionType::Network,
@@ -120,6 +123,7 @@ impl SplinterDaemon {
                         socket.set_nonblocking(true)?;
                         let mut connection = Connection::new(
                             socket,
+                            network_addr,
                             create_server_session(service_server_config.clone()),
                             service_state.clone(),
                             ConnectionType::Service,
@@ -135,6 +139,7 @@ impl SplinterDaemon {
 
         // Wait for thread requests to create
         //
+        let new_connection_network_addr = to_socket_addr(&self.network_endpoint)?;
         loop {
             let request = rx.recv().unwrap();
 
@@ -183,6 +188,7 @@ fn create_peer_connection(
     };
     Connection::new(
         socket,
+        network_addr,
         session,
         state.clone(),
         ConnectionType::Network,
@@ -222,4 +228,19 @@ fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
     debug!("{}:{}", host, port);
 
     TcpStream::connect(&format!("{}:{}", host, port)).map_err(SplinterError::from)
+}
+
+fn to_socket_addr(url: &Url) -> Result<SocketAddr, SplinterError> {
+    let host = if let Some(h) = url.host_str() {
+        h
+    } else {
+        return Err(SplinterError::HostNameNotFound);
+    };
+
+    let port = if let Some(p) = url.port() {
+        p
+    } else {
+        return Err(SplinterError::PortNotIdentified);
+    };
+    Ok(format!("{}:{}", host, port).parse()?)
 }
