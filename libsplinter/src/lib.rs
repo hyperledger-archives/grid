@@ -434,7 +434,7 @@ impl<T: Session> Connection<T> {
             })?;
         } else {
             for participant in msg.get_participants().iter() {
-                let node_url: SocketAddr = participant.get_node_url().parse()?;
+                let node_url: SocketAddr = participant.get_network_node_url().parse()?;
                 circuit.add_peer(participant.get_service_id().to_string(), node_url);
 
                 // need to rebuild the message to forward
@@ -457,7 +457,7 @@ impl<T: Session> Connection<T> {
 
                     let address = {
                         let mut url = String::from("tcp://");
-                        url.push_str(participant.get_node_url());
+                        url.push_str(participant.get_network_node_url());
                         url
                     };
                     self.daemon_chan

@@ -89,8 +89,11 @@ message Service {
     // unique id for the service
     string service_id = 1;
 
-    // the node url that this service is required to connect to
-    string node_url = 2;
+    // the network url for the node that this service is required to connect to
+    //
+    // the service will connect to the service url which is different than
+    // network url provided here
+    string network_node_url = 2;
 }
 
 // The payload for a CREATE_CIRCUIT_REQUEST
@@ -292,7 +295,7 @@ message ServiceUnregisterRequest {
 // This should be sent to by new node that has just connected to the network
 // To its peers
 message CircuitDirectoryNotifyRequest {
-    // The url for the node requesting the directory
+    // The network url for the node requesting the directory
     string node_url = 1;
 }
 

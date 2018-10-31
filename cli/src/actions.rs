@@ -38,7 +38,7 @@ pub fn do_create_circuit(
                 let node_url = parts[1].to_string();
                 let mut service = Service::new();
                 service.set_service_id(id);
-                service.set_node_url(node_url);
+                service.set_network_node_url(node_url);
 
                 services.push(service);
             }
