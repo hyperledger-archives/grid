@@ -114,6 +114,11 @@ pub enum ConnectionState {
     Closed,
 }
 
+pub enum Poll<T> {
+    Ready(T),
+    NotReady,
+}
+
 /// This is a connection which has been accepted by the server,
 /// and is currently being served.
 ///
@@ -172,28 +177,28 @@ impl<T: Session> Connection<T> {
         })
     }
 
-    fn handshake(&mut self) -> Result<bool, SplinterError> {
+    fn handshake(&mut self) -> Result<Poll<()>, SplinterError> {
         if self.session.is_handshaking() {
             match self.session.complete_io(&mut self.socket) {
-                Ok(_) => return Ok(true),
+                Ok(_) => return Ok(Poll::Ready(())),
                 Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    return Ok(false);
+                    return Ok(Poll::NotReady);
                 }
                 Err(err) => return Err(SplinterError::from(err)),
             };
         } else {
-            return Ok(true);
+            return Ok(Poll::Ready(()));
         }
     }
 
-    fn read(&mut self) -> Result<bool, SplinterError> {
+    fn read(&mut self) -> Result<Poll<()>, SplinterError> {
         let mut msg = Message::new();
 
         if self.session.wants_read() {
             match self.session.read_tls(&mut self.socket) {
                 Ok(n) => n,
                 Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    return Ok(false);
+                    return Ok(Poll::NotReady);
                 }
                 Err(err) => return Err(SplinterError::from(err)),
             };
@@ -214,7 +219,10 @@ impl<T: Session> Connection<T> {
         };
 
         match msg.get_message_type() {
-            MessageType::UNSET => return Ok(false),
+            MessageType::UNSET => {
+                debug!("Received message with an unset message type: {:?}", msg);
+                return Ok(Poll::NotReady);
+            }
             MessageType::HEARTBEAT_REQUEST => {
                 let mut response = Message::new();
                 response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
@@ -231,41 +239,44 @@ impl<T: Session> Connection<T> {
             }
             _ => self.gossip_message(msg)?,
         };
-        return Ok(true);
+        return Ok(Poll::Ready(()));
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<bool, SplinterError> {
+    fn write(&mut self, buf: &[u8]) -> Result<Poll<()>, SplinterError> {
         match self.session.write_tls(&mut self.socket) {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(false);
+                return Ok(Poll::NotReady);
             }
             Err(err) => return Err(SplinterError::from(err)),
         };
         let n = match self.session.write(buf) {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(false);
+                return Ok(Poll::NotReady);
             }
             Err(err) => return Err(SplinterError::from(err)),
         };
         debug!("Wrote {}", n);
 
-        Ok(true)
+        Ok(Poll::Ready(()))
     }
 
     pub fn handle_msg(&mut self) -> Result<(), SplinterError> {
         loop {
-            let done = self.handshake()?;
-            if done {
-                break;
+            match self.handshake() {
+                Ok(Poll::Ready(())) => break,
+                Ok(Poll::NotReady) => (),
+                Err(err) => return Err(err),
             }
         }
 
         let mut count = 0;
         loop {
-            if self.read()? {
-                count = 0;
+            match self.read() {
+                Ok(Poll::Ready(())) => count = 0,
+                Ok(Poll::NotReady) => (),
+                Err(err) => return Err(err),
             }
 
             if count == 10 {
@@ -282,8 +293,8 @@ impl<T: Session> Connection<T> {
                 Ok(bytes) => {
                     // need to check if this is succesful and retry if it WouldBlock
                     match self.write(&bytes) {
-                        Ok(true) => (),
-                        Ok(false) => {
+                        Ok(Poll::Ready(())) => (),
+                        Ok(Poll::NotReady) => {
                             // write failed, resubmit the message to the reciever
                             let services = &self
                                 .state
