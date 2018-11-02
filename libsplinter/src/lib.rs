@@ -147,14 +147,14 @@ impl<T: Session> Connection<T> {
             ConnectionType::Network => {
                 state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .peers
                     .insert(peer_addr, tx);
             }
             ConnectionType::Service => {
                 state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .services
                     .insert(peer_addr, tx);
             }
@@ -288,7 +288,7 @@ impl<T: Session> Connection<T> {
                             let services = &self
                                 .state
                                 .lock()
-                                .unwrap_or_else(|err| err.into_inner())
+                                .expect("Connection's Shared state lock was poisoned")
                                 .services;
                             if let Some(tx) = services.get(&self.peer_addr) {
                                 debug!("Retrying {:?}", bytes);
@@ -315,7 +315,7 @@ impl<T: Session> Connection<T> {
                 let services = &self
                     .state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .services;
                 for (addr, tx) in services {
                     //Don't send the message to ourselves
@@ -333,7 +333,7 @@ impl<T: Session> Connection<T> {
                 let peers = &self
                     .state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .peers;
                 for (addr, tx) in peers {
                     //Don't send the message to ourselves
@@ -369,7 +369,7 @@ impl<T: Session> Connection<T> {
                 let services = &self
                     .state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .services;
                 if let Some(tx) = services.get(addr) {
                     debug!("Service {} {:?}", addr, msg);
@@ -382,7 +382,7 @@ impl<T: Session> Connection<T> {
                 let peers = &self
                     .state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .peers;
                 if let Some(tx) = peers.get(addr) {
                     debug!("Peer {} {:?}", addr, msg);
@@ -413,7 +413,7 @@ impl<T: Session> Connection<T> {
         if self
             .state
             .lock()
-            .unwrap_or_else(|err| err.into_inner())
+            .expect("Connection's Shared state lock was poisoned")
             .circuits
             .contains_key(circuit_name)
         {
@@ -453,7 +453,7 @@ impl<T: Session> Connection<T> {
                 if !(self
                     .state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .peers
                     .contains_key(&node_url))
                 {
@@ -481,7 +481,7 @@ impl<T: Session> Connection<T> {
 
             self.state
                 .lock()
-                .unwrap_or_else(|err| err.into_inner())
+                .expect("Connection's Shared state lock was poisoned")
                 .circuits
                 .insert(circuit.name.clone(), circuit);
 
@@ -508,7 +508,7 @@ impl<T: Session> Connection<T> {
         if !(self
             .state
             .lock()
-            .unwrap_or_else(|err| err.into_inner())
+            .expect("Connection's Shared state lock was poisoned")
             .circuits
             .contains_key(circuit_name))
         {
@@ -543,7 +543,7 @@ impl<T: Session> Connection<T> {
             let peers = if let Some(circuit) = self
                 .state
                 .lock()
-                .unwrap_or_else(|err| err.into_inner())
+                .expect("Connection's Shared state lock was poisoned")
                 .circuits
                 .get_mut(circuit_name)
             {
@@ -566,10 +566,10 @@ impl<T: Session> Connection<T> {
                         ))
                     })?;
             }
-            
+
             self.state
                 .lock()
-                .unwrap_or_else(|err| err.into_inner())
+                .expect("Connection's Shared state lock was poisoned")
                 .circuits
                 .remove(circuit_name);
 
@@ -592,14 +592,14 @@ impl<T: Session> Drop for Connection<T> {
             ConnectionType::Network => {
                 self.state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .peers
                     .remove(&self.peer_addr);
             }
             ConnectionType::Service => {
                 self.state
                     .lock()
-                    .unwrap_or_else(|err| err.into_inner())
+                    .expect("Connection's Shared state lock was poisoned")
                     .services
                     .remove(&self.peer_addr);
             }
