@@ -26,17 +26,15 @@ mod async;
 pub mod connection;
 mod errors;
 
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use bytes::Bytes;
+use byteorder::{BigEndian, WriteBytesExt};
 use rustls::{
     AllowAnyAuthenticatedClient, Certificate, ClientConfig, ClientSession, PrivateKey,
-    ServerConfig, ServerSession, Session, SupportedCipherSuite,
+    ServerConfig, ServerSession, SupportedCipherSuite,
 };
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufReader, ErrorKind, Write};
-use std::mem;
-use std::net::{SocketAddr, TcpStream};
+use std::io::{BufReader, Write};
+use std::net::{SocketAddr};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
 
@@ -46,10 +44,12 @@ use messaging::protocol::{
     MessageType,
 };
 
+use async::NoBlock;
+use connection::*;
 pub use errors::{AddCircuitError, RemoveCircuitError, SplinterError};
 
 /// Shorthand for the transmit half of the message channel.
-pub type Tx = mpsc::Sender<Bytes>;
+pub type Tx = mpsc::Sender<Message>;
 
 pub enum DaemonRequest {
     CreateConnection { address: String },
@@ -66,7 +66,7 @@ pub enum DaemonRequest {
 pub type DaemonChannel = mpsc::Sender<(DaemonRequest)>;
 
 /// Shorthand for the receive half of the message channel.
-pub type Rx = mpsc::Receiver<Bytes>;
+pub type Rx = mpsc::Receiver<Message>;
 
 pub struct Shared {
     pub peers: HashMap<SocketAddr, Tx>,
@@ -116,39 +116,32 @@ pub enum ConnectionState {
     Closed,
 }
 
-pub enum Poll<T> {
-    Ready(T),
-    NotReady,
-}
-
 /// This is a connection which has been accepted by the server,
 /// and is currently being served.
 ///
 /// It has a TCP-level stream, and some
 /// other state/metadata.
-pub struct Connection<T: Session> {
+pub struct ConnectionDriver<T: Connection> {
     state: Arc<Mutex<Shared>>,
     peer_addr: SocketAddr,
     network_addr: SocketAddr,
-    socket: TcpStream,
-    session: T,
+    connection: T,
     connection_type: ConnectionType,
     rx: Rx,
     daemon_chan: DaemonChannel,
 }
 
-impl<T: Session> Connection<T> {
+impl<T: Connection> ConnectionDriver<T> {
     pub fn new(
-        socket: TcpStream,
+        connection: T,
         network_addr: SocketAddr,
-        session: T,
+        peer_addr: SocketAddr,
         state: Arc<Mutex<Shared>>,
         connection_type: ConnectionType,
         daemon_chan: DaemonChannel,
-    ) -> Result<Connection<T>, SplinterError> {
+    ) -> Result<ConnectionDriver<T>, SplinterError> {
         // Create a channel for this peer
         let (tx, rx) = mpsc::channel();
-        let peer_addr = socket.peer_addr()?;
         // Add an entry for this `Peer` in the shared state map.
         match connection_type {
             ConnectionType::Network => {
@@ -167,148 +160,90 @@ impl<T: Session> Connection<T> {
             }
         }
 
-        Ok(Connection {
+        Ok(ConnectionDriver {
             state,
             peer_addr,
             network_addr,
-            socket,
-            session,
+            connection,
             connection_type,
             rx,
             daemon_chan,
         })
     }
 
-    fn handshake(&mut self) -> Result<Poll<()>, SplinterError> {
-        if self.session.is_handshaking() {
-            match self.session.complete_io(&mut self.socket) {
-                Ok(_) => return Ok(Poll::Ready(())),
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    return Ok(Poll::NotReady);
+    fn read_and_handle_msg(&mut self) -> Result<NoBlock<()>, SplinterError> {
+        if let NoBlock::Ready(mut msg) = self.connection.read()? {
+            match msg.get_message_type() {
+                MessageType::UNSET => {
+                    debug!("Received message with an unset message type: {:?}", msg);
+                    return Ok(NoBlock::WouldBlock);
                 }
-                Err(err) => return Err(SplinterError::from(err)),
+                MessageType::HEARTBEAT_REQUEST => {
+                    let mut response = Message::new();
+                    response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
+                    self.respond(response)?;
+                }
+                MessageType::HEARTBEAT_RESPONSE => (),
+                MessageType::CIRCUIT_CREATE_REQUEST => {
+                    let circuit_create = msg.take_circuit_create_request();
+                    self.add_circuit(circuit_create)?;
+                }
+                MessageType::CIRCUIT_DESTROY_REQUEST => {
+                    let circuit_destroy = msg.take_circuit_destroy_request();
+                    self.remove_circuit(circuit_destroy)?;
+                }
+                _ => self.gossip_message(msg)?,
             };
+            Ok(NoBlock::Ready(()))
         } else {
-            return Ok(Poll::Ready(()));
+            Ok(NoBlock::WouldBlock)
         }
     }
 
-    fn read(&mut self) -> Result<Poll<()>, SplinterError> {
+    fn write_msg(&mut self, msg: &Message) -> Result<NoBlock<()>, SplinterError> {
+        Ok(self.connection.write(msg)?)
+    }
+
+    fn send_heartbeat(&mut self) -> Result<NoBlock<()>, SplinterError> {
+        info!("Sending Heartbeat to {:?}", self.peer_addr);
         let mut msg = Message::new();
-
-        if self.session.wants_read() {
-            match self.session.read_tls(&mut self.socket) {
-                Ok(n) => n,
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    return Ok(Poll::NotReady);
-                }
-                Err(err) => return Err(SplinterError::from(err)),
-            };
-
-            self.session.process_new_packets()?;
-
-            let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-            self.session.read_exact(&mut msg_len_buff)?;
-            let msg_size = msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
-
-            // Read Message
-            let mut msg_buff = vec![0; msg_size];
-            self.session.read_exact(&mut msg_buff)?;
-
-            msg = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
-
-            info!("Received message {:?}", msg,);
-        };
-
-        match msg.get_message_type() {
-            MessageType::UNSET => {
-                debug!("Received message with an unset message type: {:?}", msg);
-                return Ok(Poll::NotReady);
-            }
-            MessageType::HEARTBEAT_REQUEST => {
-                let mut response = Message::new();
-                response.set_message_type(MessageType::HEARTBEAT_RESPONSE);
-                self.respond(response)?;
-            }
-            MessageType::HEARTBEAT_RESPONSE => (),
-            MessageType::CIRCUIT_CREATE_REQUEST => {
-                let circuit_create = msg.take_circuit_create_request();
-                self.add_circuit(circuit_create)?;
-            }
-            MessageType::CIRCUIT_DESTROY_REQUEST => {
-                let circuit_destroy = msg.take_circuit_destroy_request();
-                self.remove_circuit(circuit_destroy)?;
-            }
-            _ => self.gossip_message(msg)?,
-        };
-        return Ok(Poll::Ready(()));
+        msg.set_message_type(MessageType::HEARTBEAT_REQUEST);
+        Ok(self.write_msg(&msg)?)
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<Poll<()>, SplinterError> {
-        match self.session.write_tls(&mut self.socket) {
-            Ok(n) => n,
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(Poll::NotReady);
-            }
-            Err(err) => return Err(SplinterError::from(err)),
-        };
-        let n = match self.session.write(buf) {
-            Ok(n) => n,
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                return Ok(Poll::NotReady);
-            }
-            Err(err) => return Err(SplinterError::from(err)),
-        };
-        debug!("Wrote {}", n);
-
-        Ok(Poll::Ready(()))
-    }
-
-    pub fn handle_msg(&mut self) -> Result<(), SplinterError> {
+    pub fn run(&mut self) -> Result<(), SplinterError> {
         loop {
-            match self.handshake() {
-                Ok(Poll::Ready(())) => break,
-                Ok(Poll::NotReady) => (),
-                Err(err) => return Err(err),
+            if let NoBlock::Ready(_) = self.connection.handshake()? {
+                break;
             }
         }
 
         let mut count = 0;
         loop {
-            match self.read() {
-                Ok(Poll::Ready(())) => count = 0,
-                Ok(Poll::NotReady) => (),
-                Err(err) => return Err(err),
+            if let NoBlock::Ready(()) = self.read_and_handle_msg()? {
+                count = 0;
             }
 
             if count == 10 {
-                info!("Sending Heartbeat to {:?}", self.peer_addr);
-                let mut msg = Message::new();
-                msg.set_message_type(MessageType::HEARTBEAT_REQUEST);
-                let msg_bytes = pack_response(&msg)?;
-                self.write(&msg_bytes)?;
+                self.send_heartbeat()?;
                 count = 0
             }
             count = count + 1;
 
             match self.rx.recv_timeout(time::Duration::from_millis(100)) {
-                Ok(bytes) => {
+                Ok(msg) => {
                     // need to check if this is succesful and retry if it WouldBlock
-                    match self.write(&bytes) {
-                        Ok(Poll::Ready(())) => (),
-                        Ok(Poll::NotReady) => {
-                            // write failed, resubmit the message to the reciever
-                            let services = &self
-                                .state
-                                .lock()
-                                .expect("Connection's Shared state lock was poisoned")
-                                .services;
-                            if let Some(tx) = services.get(&self.peer_addr) {
-                                debug!("Retrying {:?}", bytes);
-                                tx.send(bytes)?;
-                            }
+                    if let NoBlock::WouldBlock = self.write_msg(&msg)? {
+                        // write failed, resubmit the message to the reciever
+                        let services = &self
+                            .state
+                            .lock()
+                            .expect("Connection's Shared state lock was poisoned")
+                            .services;
+                        if let Some(tx) = services.get(&self.peer_addr) {
+                            debug!("Retrying {:?}", msg);
+                            tx.send(msg)?;
                         }
-                        Err(err) => return Err(err),
                     }
                 }
                 Err(e) if e == mpsc::RecvTimeoutError::Timeout => continue,
@@ -320,7 +255,6 @@ impl<T: Session> Connection<T> {
     }
 
     fn gossip_message(&mut self, msg: Message) -> Result<(), SplinterError> {
-        let msg_bytes = Bytes::from(pack_response(&msg)?);
         // If message received from service forward to nodes, if from nodes forward to services
         // This needs to eventually handle the message types
         match self.connection_type {
@@ -338,7 +272,7 @@ impl<T: Session> Connection<T> {
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
                         // before the `rx` is dropped.
-                        tx.send(msg_bytes.clone())?;
+                        tx.send(msg.clone())?;
                     }
                 }
             }
@@ -356,7 +290,7 @@ impl<T: Session> Connection<T> {
                         // dropped, however this is impossible as the
                         // `tx` half will be removed from the map
                         // before the `rx` is dropped.
-                        tx.send(msg_bytes.clone())?;
+                        tx.send(msg.clone())?;
                     }
                 }
             }
@@ -365,18 +299,16 @@ impl<T: Session> Connection<T> {
     }
 
     fn respond(&mut self, msg: Message) -> Result<(), SplinterError> {
-        let msg_bytes = Bytes::from(pack_response(&msg)?);
-        self.write(&msg_bytes)?;
+        self.write_msg(&msg)?;
         Ok(())
     }
 
     fn direct_message(
         &mut self,
-        msg: &Message,
+        msg: Message,
         addr: &SocketAddr,
         connection_type: ConnectionType,
     ) -> Result<(), SplinterError> {
-        let msg_bytes = Bytes::from(pack_response(&msg)?);
         match connection_type {
             ConnectionType::Service => {
                 let services = &self
@@ -386,7 +318,7 @@ impl<T: Session> Connection<T> {
                     .services;
                 if let Some(tx) = services.get(addr) {
                     debug!("Service {} {:?}", addr, msg);
-                    tx.send(msg_bytes.clone())?;
+                    tx.send(msg)?;
                 } else {
                     warn!("Cant find Service addr: {}", addr)
                 }
@@ -399,7 +331,7 @@ impl<T: Session> Connection<T> {
                     .peers;
                 if let Some(tx) = peers.get(addr) {
                     debug!("Peer {} {:?}", addr, msg);
-                    tx.send(msg_bytes.clone())?;
+                    tx.send(msg)?;
                 } else {
                     warn!("Cant find Peer addr: {}", addr)
                 }
@@ -480,7 +412,7 @@ impl<T: Session> Connection<T> {
                     self.daemon_chan
                         .send(DaemonRequest::CreateConnection { address })?;
                 } else {
-                    self.direct_message(&forward_msg, &node_url, ConnectionType::Network)
+                    self.direct_message(forward_msg.clone(), &node_url, ConnectionType::Network)
                         .map_err(|_| {
                             AddCircuitError::SendError(format!(
                                 "Unable to forward CircuitCreateRequest to {}",
@@ -571,7 +503,7 @@ impl<T: Session> Connection<T> {
                     continue;
                 }
 
-                self.direct_message(&forward_msg, &addr, ConnectionType::Network)
+                self.direct_message(forward_msg.clone(), &addr, ConnectionType::Network)
                     .map_err(|_| {
                         RemoveCircuitError::SendError(format!(
                             "Unable to forward CircuitDestroyRequest to {}",
@@ -599,7 +531,7 @@ impl<T: Session> Connection<T> {
     }
 }
 
-impl<T: Session> Drop for Connection<T> {
+impl<T: Connection> Drop for ConnectionDriver<T> {
     fn drop(&mut self) {
         match self.connection_type {
             ConnectionType::Network => {

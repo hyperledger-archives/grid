@@ -4,8 +4,10 @@ use url::Url;
 
 use libsplinter::{
     create_client_config, create_client_session, create_server_config, create_server_session,
-    load_cert, load_key, Connection, ConnectionType, DaemonRequest, Shared, SplinterError,
+    load_cert, load_key, ConnectionDriver, ConnectionType, DaemonRequest, Shared, SplinterError,
 };
+
+use libsplinter::connection::tls_connection::TlsConnection;
 
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::{mpsc, Arc, Mutex};
@@ -75,7 +77,7 @@ impl SplinterDaemon {
                 self.client_config.clone(),
                 self.state.clone(),
             )?;
-            let _ = thread::spawn(move || connection.handle_msg());
+            let _ = thread::spawn(move || connection.run());
         }
 
         let network_endpoint = self.network_endpoint.clone();
@@ -92,15 +94,19 @@ impl SplinterDaemon {
                     Ok(mut socket) => {
                         socket.set_nonblocking(true)?;
 
-                        let mut connection = Connection::new(
-                            socket,
+                        let session = create_server_session(network_server_config.clone());
+                        let peer_addr = socket.peer_addr()?.clone();
+                        let connection = TlsConnection::new(socket, session);
+
+                        let mut connection_driver = ConnectionDriver::new(
+                            connection,
                             network_addr,
-                            create_server_session(network_server_config.clone()),
+                            peer_addr,
                             network_state.clone(),
                             ConnectionType::Network,
                             network_sender.clone(),
                         )?;
-                        let _ = thread::spawn(move || connection.handle_msg());
+                        let _ = thread::spawn(move || connection_driver.run());
                     }
                     Err(e) => return Err(SplinterError::from(e)),
                 }
@@ -121,15 +127,20 @@ impl SplinterDaemon {
                 match socket {
                     Ok(mut socket) => {
                         socket.set_nonblocking(true)?;
-                        let mut connection = Connection::new(
-                            socket,
+
+                        let session = create_server_session(service_server_config.clone());
+                        let peer_addr = socket.peer_addr()?.clone();
+                        let connection = TlsConnection::new(socket, session);
+
+                        let mut connection_driver = ConnectionDriver::new(
+                            connection,
                             network_addr,
-                            create_server_session(service_server_config.clone()),
+                            peer_addr,
                             service_state.clone(),
                             ConnectionType::Service,
                             service_sender.clone(),
                         )?;
-                        let _ = thread::spawn(move || connection.handle_msg());
+                        let _ = thread::spawn(move || connection_driver.run());
                     }
                     Err(e) => return Err(SplinterError::from(e)),
                 }
@@ -159,7 +170,7 @@ impl SplinterDaemon {
                         }
                     };
 
-                    thread::spawn(move || connection.handle_msg());
+                    thread::spawn(move || connection.run());
                 }
             }
         }
@@ -172,7 +183,7 @@ fn create_peer_connection(
     sender: mpsc::Sender<DaemonRequest>,
     client_config: rustls::ClientConfig,
     state: Arc<Mutex<Shared>>,
-) -> Result<Connection<rustls::ClientSession>, SplinterError> {
+) -> Result<ConnectionDriver<TlsConnection<rustls::ClientSession>>, SplinterError> {
     let socket = connect(&peer)?;
     socket.set_nonblocking(true)?;
 
@@ -186,10 +197,14 @@ fn create_peer_connection(
         Some(d) => create_client_session(client_config.clone(), d.to_string())?,
         None => create_client_session(client_config.clone(), "localhost".into())?,
     };
-    Connection::new(
-        socket,
+
+    let peer_addr = socket.peer_addr()?.clone();
+    let connection = TlsConnection::new(socket, session);
+
+    ConnectionDriver::new(
+        connection,
         network_addr,
-        session,
+        peer_addr,
         state.clone(),
         ConnectionType::Network,
         sender,
