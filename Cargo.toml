@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "cli",
+    "client",
+    "libsplinter",
+    "messaging",
+    "splinterd",
+]

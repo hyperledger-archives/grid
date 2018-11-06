@@ -13,3 +13,6 @@
 
 /cli/target
 /cli/Cargo.lock
+
+/target
+/Cargo.lock
