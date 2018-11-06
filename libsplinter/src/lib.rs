@@ -22,6 +22,8 @@ extern crate byteorder;
 extern crate messaging;
 extern crate url;
 
+mod async;
+pub mod connection;
 mod errors;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};

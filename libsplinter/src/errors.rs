@@ -22,6 +22,8 @@ use std::sync::{mpsc::RecvError, mpsc::SendError};
 use url;
 use webpki;
 
+use connection::ConnectionError;
+
 #[derive(Debug)]
 pub enum SplinterError {
     DnsError(String),
@@ -42,6 +44,8 @@ pub enum SplinterError {
     PrivateKeyNotFound,
     HostNameNotFound,
     PortNotIdentified,
+    //
+    ConnectionError(ConnectionError),
 }
 
 impl From<io::Error> for SplinterError {
