@@ -1,15 +1,15 @@
-use url::Url;
-use std::net::{TcpListener, TcpStream};
 use rustls;
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use url::Url;
 
 use libsplinter::{
-    create_client_config, create_server_config, create_client_session, create_server_session, load_cert, load_key,
-    Connection, ConnectionType, Shared, SplinterError
+    create_client_config, create_client_session, create_server_config, create_server_session,
+    load_cert, load_key, Connection, ConnectionType, DaemonRequest, Shared, SplinterError,
 };
 
-use std::sync::{Arc, Mutex};
-use std::{thread};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 
 pub struct SplinterDaemon {
     client_config: rustls::ClientConfig,
@@ -64,37 +64,26 @@ impl SplinterDaemon {
     }
 
     pub fn start(&mut self) -> Result<(), SplinterError> {
+        let (tx, rx) = mpsc::channel();
 
         // create peers and pass to threads
         for peer in self.initial_peers.iter() {
-
-            let mut socket = connect(peer)?;
-            socket.set_nonblocking(true)?;
-
-
-            let session = match peer.domain() {
-                Some(d) if d.parse::<Ipv4Addr>().is_ok() => 
-                    create_client_session(self.client_config.clone(), "localhost".into())?,
-                Some(d) if d.parse::<Ipv6Addr>().is_ok() =>
-                    create_client_session(self.client_config.clone(), "localhost".into())?,
-                Some(d) =>
-                    create_client_session(self.client_config.clone(), d.to_string())?,
-                None =>
-                    create_client_session(self.client_config.clone(), "localhost".into())?
-            };
-
-            let mut connection = Connection::new(
-                socket,
-                session,
+            let mut connection = create_peer_connection(
+                peer.clone(),
+                to_socket_addr(&self.network_endpoint)?,
+                tx.clone(),
+                self.client_config.clone(),
                 self.state.clone(),
-                ConnectionType::Network,
             )?;
             let _ = thread::spawn(move || connection.handle_msg());
         }
 
         let network_endpoint = self.network_endpoint.clone();
+        let network_addr = to_socket_addr(&self.network_endpoint)?;
         let network_server_config = self.server_config.clone();
         let network_state = self.state.clone();
+        let network_sender = tx.clone();
+
         thread::spawn(move || {
             // start up a listener and accept incoming connections
             let listener = create_listener(&network_endpoint)?;
@@ -103,12 +92,13 @@ impl SplinterDaemon {
                     Ok(mut socket) => {
                         socket.set_nonblocking(true)?;
 
-                        // update to use correct dns_name
                         let mut connection = Connection::new(
                             socket,
+                            network_addr,
                             create_server_session(network_server_config.clone()),
                             network_state.clone(),
                             ConnectionType::Network,
+                            network_sender.clone(),
                         )?;
                         let _ = thread::spawn(move || connection.handle_msg());
                     }
@@ -119,29 +109,91 @@ impl SplinterDaemon {
             Ok(())
         });
 
-        // start up a listener and accept incoming connections
-        let listener = create_listener(&self.service_endpoint)?;
+        let service_endpoint = self.service_endpoint.clone();
+        let service_server_config = self.server_config.clone();
+        let service_state = self.state.clone();
+        let service_sender = tx.clone();
+        thread::spawn(move || {
+            // start up a listener and accept incoming connections
+            let listener = create_listener(&service_endpoint)?;
 
-        for socket in listener.incoming() {
-            match socket {
-                Ok(mut socket) => {
-                    socket.set_nonblocking(true)?;
-
-                    // update to use correct dns_name
-                    let mut connection = Connection::new(
-                        socket,
-                        create_server_session(self.server_config.clone()),
-                        self.state.clone(),
-                        ConnectionType::Service,
-                    )?;
-                    let _ = thread::spawn(move || connection.handle_msg());
+            for socket in listener.incoming() {
+                match socket {
+                    Ok(mut socket) => {
+                        socket.set_nonblocking(true)?;
+                        let mut connection = Connection::new(
+                            socket,
+                            network_addr,
+                            create_server_session(service_server_config.clone()),
+                            service_state.clone(),
+                            ConnectionType::Service,
+                            service_sender.clone(),
+                        )?;
+                        let _ = thread::spawn(move || connection.handle_msg());
+                    }
+                    Err(e) => return Err(SplinterError::from(e)),
                 }
-                Err(e) => return Err(SplinterError::from(e)) 
+            }
+            Ok(())
+        });
+
+        // Wait for thread requests to create
+        //
+        let new_connection_network_addr = to_socket_addr(&self.network_endpoint)?;
+        loop {
+            let request = rx.recv().unwrap();
+
+            match request {
+                DaemonRequest::CreateConnection { address } => {
+                    let mut connection = match create_peer_connection(
+                        Url::parse(&address)?,
+                        new_connection_network_addr,
+                        tx.clone(),
+                        self.client_config.clone(),
+                        self.state.clone(),
+                    ) {
+                        Ok(connection) => connection,
+                        Err(err) => {
+                            warn!("Unable to connect to {}: {:?}", address, err);
+                            continue;
+                        }
+                    };
+
+                    thread::spawn(move || connection.handle_msg());
+                }
             }
         }
-
-        Ok(())
     }
+}
+
+fn create_peer_connection(
+    peer: Url,
+    network_addr: SocketAddr,
+    sender: mpsc::Sender<DaemonRequest>,
+    client_config: rustls::ClientConfig,
+    state: Arc<Mutex<Shared>>,
+) -> Result<Connection<rustls::ClientSession>, SplinterError> {
+    let socket = connect(&peer)?;
+    socket.set_nonblocking(true)?;
+
+    let session = match peer.domain() {
+        Some(d) if d.parse::<Ipv4Addr>().is_ok() => {
+            create_client_session(client_config.clone(), "localhost".into())?
+        }
+        Some(d) if d.parse::<Ipv6Addr>().is_ok() => {
+            create_client_session(client_config.clone(), "localhost".into())?
+        }
+        Some(d) => create_client_session(client_config.clone(), d.to_string())?,
+        None => create_client_session(client_config.clone(), "localhost".into())?,
+    };
+    Connection::new(
+        socket,
+        network_addr,
+        session,
+        state.clone(),
+        ConnectionType::Network,
+        sender,
+    )
 }
 
 fn create_listener(url: &Url) -> Result<TcpListener, SplinterError> {
@@ -156,9 +208,8 @@ fn create_listener(url: &Url) -> Result<TcpListener, SplinterError> {
     } else {
         return Err(SplinterError::PortNotIdentified);
     };
-    
-    TcpListener::bind(&format!("{}:{}", host, port))
-        .map_err(SplinterError::from)
+
+    TcpListener::bind(&format!("{}:{}", host, port)).map_err(SplinterError::from)
 }
 
 fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
@@ -174,8 +225,22 @@ fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
         return Err(SplinterError::PortNotIdentified);
     };
 
-    println!("{}:{}", host, port);
-    
-    TcpStream::connect(&format!("{}:{}", host, port))
-        .map_err(SplinterError::from)
+    debug!("{}:{}", host, port);
+
+    TcpStream::connect(&format!("{}:{}", host, port)).map_err(SplinterError::from)
+}
+
+fn to_socket_addr(url: &Url) -> Result<SocketAddr, SplinterError> {
+    let host = if let Some(h) = url.host_str() {
+        h
+    } else {
+        return Err(SplinterError::HostNameNotFound);
+    };
+
+    let port = if let Some(p) = url.port() {
+        p
+    } else {
+        return Err(SplinterError::PortNotIdentified);
+    };
+    Ok(format!("{}:{}", host, port).parse()?)
 }

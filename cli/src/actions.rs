@@ -24,7 +24,11 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
-pub fn do_create_circuit(url: &str, name: &str, participants: Vec<String>) -> Result<(), SplinterError> {
+pub fn do_create_circuit(
+    url: &str,
+    name: &str,
+    participants: Vec<String>,
+) -> Result<(), SplinterError> {
     let msg = {
         let mut services = Vec::new();
         for participant in participants {
@@ -34,7 +38,7 @@ pub fn do_create_circuit(url: &str, name: &str, participants: Vec<String>) -> Re
                 let node_url = parts[1].to_string();
                 let mut service = Service::new();
                 service.set_service_id(id);
-                service.set_node_url(node_url);
+                service.set_network_node_url(node_url);
 
                 services.push(service);
             }

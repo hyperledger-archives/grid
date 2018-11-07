@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::DaemonRequest;
+use bytes::Bytes;
 use protobuf;
+use rustls::TLSError;
 use std::io;
+use std::net;
+use std::sync::{mpsc::RecvError, mpsc::SendError};
 use url;
 use webpki;
-use rustls::TLSError;
-use std::sync::{
-    mpsc::RecvError,
-    mpsc::SendError
-};
-use bytes::Bytes;
 
 #[derive(Debug)]
 pub enum SplinterError {
@@ -32,13 +31,17 @@ pub enum SplinterError {
     UrlParseError(url::ParseError),
     TlsError(TLSError),
     ChannelRecvError(RecvError),
-    ChannelSendError(SendError<Bytes>),
+    ChannelSendErrorBytes(SendError<Bytes>),
+    ChannelSendErrorDaemonRequest(SendError<DaemonRequest>),
     WebpkiError(webpki::Error),
+    AddrParseError(net::AddrParseError),
+    AddCircuitError(AddCircuitError),
+    RemoveCircuitError(RemoveCircuitError),
     CertificateCreationError,
     CouldNotResolveHostName,
     PrivateKeyNotFound,
     HostNameNotFound,
-    PortNotIdentified
+    PortNotIdentified,
 }
 
 impl From<io::Error> for SplinterError {
@@ -73,7 +76,13 @@ impl From<RecvError> for SplinterError {
 
 impl From<SendError<Bytes>> for SplinterError {
     fn from(e: SendError<Bytes>) -> Self {
-        SplinterError::ChannelSendError(e)
+        SplinterError::ChannelSendErrorBytes(e)
+    }
+}
+
+impl From<SendError<DaemonRequest>> for SplinterError {
+    fn from(e: SendError<DaemonRequest>) -> Self {
+        SplinterError::ChannelSendErrorDaemonRequest(e)
     }
 }
 
@@ -81,4 +90,46 @@ impl From<webpki::Error> for SplinterError {
     fn from(e: webpki::Error) -> Self {
         SplinterError::WebpkiError(e)
     }
+}
+
+impl From<net::AddrParseError> for SplinterError {
+    fn from(e: net::AddrParseError) -> Self {
+        SplinterError::AddrParseError(e)
+    }
+}
+
+impl From<AddCircuitError> for SplinterError {
+    fn from(e: AddCircuitError) -> Self {
+        SplinterError::AddCircuitError(e)
+    }
+}
+
+impl From<RemoveCircuitError> for SplinterError {
+    fn from(e: RemoveCircuitError) -> Self {
+        SplinterError::RemoveCircuitError(e)
+    }
+}
+
+#[derive(Debug)]
+pub enum AddCircuitError {
+    ChannelSendError(SendError<DaemonRequest>),
+    SendError(String),
+    AddrParseError(net::AddrParseError),
+}
+
+impl From<net::AddrParseError> for AddCircuitError {
+    fn from(e: net::AddrParseError) -> Self {
+        AddCircuitError::AddrParseError(e)
+    }
+}
+
+impl From<SendError<DaemonRequest>> for AddCircuitError {
+    fn from(e: SendError<DaemonRequest>) -> Self {
+        AddCircuitError::ChannelSendError(e)
+    }
+}
+
+#[derive(Debug)]
+pub enum RemoveCircuitError {
+    SendError(String),
 }
