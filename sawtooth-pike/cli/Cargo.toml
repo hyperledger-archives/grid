@@ -19,7 +19,7 @@ authors = ["Cargill"]
 build = "build.rs"
 
 [dependencies]
-sawtooth_sdk = { git = "https://github.com/hyperledger/sawtooth-core.git" }
+sawtooth-sdk = "^0.1"
 addresser = {path = "../addresser"}
 protobuf = "2"
 clap = "2"
