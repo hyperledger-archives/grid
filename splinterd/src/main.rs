@@ -27,27 +27,18 @@ extern crate serde;
 mod daemon;
 mod config;
 
-use clap::ArgMatches;
 use log::LogLevel;
-use std::env;
 use url::Url;
+use config::{Config, ConfigError};
+use std::fs::File;
 
 use daemon::SplinterDaemon;
-
-fn get_arg_check_for_env(matches: &ArgMatches, arg: &str, env_var: &str) -> Option<String> {
-    matches.value_of(arg).map(|v| v.to_string()).or_else(|| {
-        if let Ok(v) = env::var(env_var) {
-            Some(v)
-        } else {
-            None
-        }
-    })
-}
 
 fn main() {
     let matches = clap_app!(splinter =>
         (version: crate_version!())
         (about: "Splinter Node")
+        (@arg config: -c --config +takes_value)
         (@arg ca_file: --("ca-file") +takes_value +multiple
           "file path to the trusted ca cert")
         (@arg client_cert: --("client-cert") +takes_value
@@ -67,57 +58,6 @@ fn main() {
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity")).get_matches();
 
-    let service_endpoint = matches
-        .value_of("service_endpoint")
-        .map_or_else(|| Url::parse("tcp://127.0.0.1:8043"), |ep| Url::parse(ep))
-        .expect("Must provide a valid service endpoint");
-
-    let network_endpoint = matches
-        .value_of("network_endpoint")
-        .map_or_else(|| Url::parse("tcp://127.0.0.1:8044"), |ep| Url::parse(ep))
-        .expect("Must provide a valid network endpoint");
-
-    let ca_files = matches
-        .values_of("ca_file")
-        .map(|values| values.map(String::from).collect::<Vec<String>>())
-        .or_else(|| {
-            if let Ok(v) = env::var("SPLINTER_CAS") {
-                Some(v.split(",").map(String::from).collect())
-            } else {
-                None
-            }
-        }).expect("At least one ca file must be provided");
-
-    let client_cert = get_arg_check_for_env(&matches, "client_cert", "SPLINTER_CLIENT_CERT")
-        .expect("Must provide a valid client certifcate");
-
-    let server_cert = get_arg_check_for_env(&matches, "server_cert", "SPLINTER_SERVER_CERT")
-        .expect("Must provide a valid server certifcate");
-
-    let server_key_file = get_arg_check_for_env(&matches, "server_key", "SPLINTER_SERVER_KEY")
-        .expect("Must provide a valid key path");
-
-    let client_key_file = get_arg_check_for_env(&matches, "client_key", "SPLINTER_CLIENT_KEY")
-        .expect("Must provide a valid key path");
-
-    let initial_peers = {
-        let urls = matches
-            .values_of("peers")
-            .map(|values| values.map(Url::parse).collect())
-            .unwrap_or(Vec::new());
-
-        let mut peers = Vec::new();
-        for url in urls {
-            if url.is_err() {
-                error!("Invalid peer url {:?}", url.unwrap_err());
-                std::process::exit(1);
-            }
-            peers.push(url.unwrap());
-        }
-
-        peers
-    };
-
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
         1 => simple_logger::init_with_level(LogLevel::Info),
@@ -125,6 +65,89 @@ fn main() {
     };
 
     logger.expect("Failed to create logger");
+
+    debug!("Loading configuration file");
+
+    let config = {
+        let config_file_path = matches
+            .value_of("config")
+            .unwrap_or("config.toml");
+
+        File::open(config_file_path)
+            .map_err(ConfigError::from)
+            .and_then(Config::from_file)
+            .unwrap_or_else(|err| {
+                warn!("No config file loaded {:?}", err);
+                Config::default()
+            })
+    };
+
+    debug!("Configuration: {:?}", config);
+
+    let service_endpoint = matches
+        .value_of("service_endpoint")
+        .map(String::from)
+        .or_else(|| config.service_endpoint())
+        .map_or_else(|| Url::parse("tcp://127.0.0.1:8043"), |ep| Url::parse(&ep))
+        .expect("Must provide a valid service endpoint");
+
+    let network_endpoint = matches
+        .value_of("network_endpoint")
+        .map(String::from)
+        .or_else(|| config.network_endpoint())
+        .map_or_else(|| Url::parse("tcp://127.0.0.1:8044"), |ep| Url::parse(&ep))
+        .expect("Must provide a valid network endpoint");
+
+    let ca_files = matches
+        .values_of("ca_file")
+        .map(|values| values.map(String::from).collect::<Vec<String>>())
+        .or_else(|| config.ca_certs())
+        .expect("At least one ca file must be provided");
+
+    let client_cert =  matches
+        .value_of("client_cert")
+        .map(String::from)
+        .or_else(|| config.client_cert())
+        .expect("Must provide a valid client certifcate");
+
+    let server_cert = matches
+        .value_of("server_cert")
+        .map(String::from)
+        .or_else(|| config.server_cert())
+        .expect("Must provide a valid server certifcate");
+
+    let server_key_file = matches
+        .value_of("server_key")
+        .map(String::from)
+        .or_else(|| config.server_key())
+        .expect("Must provide a valid key path");
+
+    let client_key_file = matches 
+        .value_of("client_key")
+        .map(String::from)
+        .or_else(|| config.client_key())
+        .expect("Must provide a valid key path");
+
+    let initial_peers = {
+        let urls = matches
+            .values_of("peers")
+            .map(|values| values.map(String::from).collect::<Vec<String>>())
+            .or_else(|| config.peers())
+            .unwrap_or(Vec::new());
+
+        let mut peers = Vec::new();
+        for url in urls {
+            match Url::parse(&url) {
+                Ok(u) => peers.push(u),
+                Err(err) =>  {
+                    error!("Invalid peer url {:?}", err);
+                    std::process::exit(1);
+                }
+            };
+        }
+
+        peers
+    };
 
     let mut node = match SplinterDaemon::new(
         ca_files,
