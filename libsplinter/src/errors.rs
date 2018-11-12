@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::DaemonRequest;
-use bytes::Bytes;
 use protobuf;
 use rustls::TLSError;
 use std::io;
@@ -21,6 +20,10 @@ use std::net;
 use std::sync::{mpsc::RecvError, mpsc::SendError};
 use url;
 use webpki;
+
+use messaging::protocol::Message;
+
+use connection::ConnectionError;
 
 #[derive(Debug)]
 pub enum SplinterError {
@@ -31,7 +34,7 @@ pub enum SplinterError {
     UrlParseError(url::ParseError),
     TlsError(TLSError),
     ChannelRecvError(RecvError),
-    ChannelSendErrorBytes(SendError<Bytes>),
+    ChannelSendErrorMessage(SendError<Message>),
     ChannelSendErrorDaemonRequest(SendError<DaemonRequest>),
     WebpkiError(webpki::Error),
     AddrParseError(net::AddrParseError),
@@ -42,6 +45,7 @@ pub enum SplinterError {
     PrivateKeyNotFound,
     HostNameNotFound,
     PortNotIdentified,
+    ConnectionError(ConnectionError),
 }
 
 impl From<io::Error> for SplinterError {
@@ -74,9 +78,9 @@ impl From<RecvError> for SplinterError {
     }
 }
 
-impl From<SendError<Bytes>> for SplinterError {
-    fn from(e: SendError<Bytes>) -> Self {
-        SplinterError::ChannelSendErrorBytes(e)
+impl From<SendError<Message>> for SplinterError {
+    fn from(e: SendError<Message>) -> Self {
+        SplinterError::ChannelSendErrorMessage(e)
     }
 }
 
