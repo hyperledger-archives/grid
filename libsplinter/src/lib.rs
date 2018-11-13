@@ -25,6 +25,7 @@ extern crate url;
 mod async;
 pub mod connection;
 mod errors;
+pub mod transport;
 
 use byteorder::{BigEndian, WriteBytesExt};
 use rustls::{
