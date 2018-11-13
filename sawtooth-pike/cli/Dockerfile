@@ -14,7 +14,7 @@
 FROM rustlang/rust:nightly
 
 # Need sawtooth-sdk to create keys
-RUN echo "deb http://repo.sawtooth.me/ubuntu/1.0/stable xenial universe" >> /etc/apt/sources.list \
+RUN echo "deb http://repo.sawtooth.me/ubuntu/bumper/stable xenial universe" >> /etc/apt/sources.list \
  && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 8AA7AF1F1091A5FD \
  && apt-get update \
  && apt-get install -y -q \
