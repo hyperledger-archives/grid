@@ -160,6 +160,8 @@ pub mod tests {
     use super::*;
     use std::fmt::Debug;
 
+    use std::thread;
+
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {
             Ok(ok) => ok,
@@ -167,21 +169,27 @@ pub mod tests {
         }
     }
 
-    pub fn test_transport<T: Transport>(mut transport: T, bind: &str) {
+    pub fn test_transport<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
 
         // Create listener, let OS assign port
         let mut listener = assert_ok(transport.listen(bind));
         let endpoint = listener.endpoint();
 
-        let mut client = assert_ok(transport.connect(&endpoint));
-        assert_eq!(client.remote_endpoint(), endpoint);
+        // let transport_cloned = transport.clone();
+        let handle = thread::spawn(move || {
+            let mut client = assert_ok(transport.connect(&endpoint));
+            assert_eq!(client.remote_endpoint(), endpoint);
+
+            assert_ok(client.send(&[0, 1, 2]));
+            assert_eq!(vec![3, 4, 5], assert_ok(client.recv(None)));
+        });
 
         let mut server = assert_ok(listener.incoming().next().unwrap());
 
-        assert_ok(client.send(&[0, 1, 2]));
         assert_eq!(vec![0, 1, 2], assert_ok(server.recv(None)));
 
         assert_ok(server.send(&[3, 4, 5]));
-        assert_eq!(vec![3, 4, 5], assert_ok(client.recv(None)));
+
+        handle.join().unwrap();
     }
 }
