@@ -112,6 +112,7 @@ pub enum StatusError {
 #[derive(Debug)]
 pub enum DisconnectError {
     IoError(IoError),
+    ProtocolError(String),
 }
 
 impl_from_io_error!(DisconnectError);
@@ -119,6 +120,7 @@ impl_from_io_error!(DisconnectError);
 #[derive(Debug)]
 pub enum AcceptError {
     IoError(IoError),
+    ProtocolError(String),
 }
 
 impl_from_io_error!(AcceptError);
@@ -126,6 +128,8 @@ impl_from_io_error!(AcceptError);
 #[derive(Debug)]
 pub enum ConnectError {
     IoError(IoError),
+    ParseError(String),
+    ProtocolError(String),
 }
 
 impl_from_io_error!(ConnectError);
