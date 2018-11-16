@@ -14,7 +14,6 @@
 
 pub mod raw;
 
-use protobuf::ProtobufError;
 
 use std::io::Error as IoError;
 use std::time::Duration;
@@ -93,31 +92,18 @@ macro_rules! impl_from_io_error {
 pub enum SendError {
     IoError(IoError),
     ProtocolError(String),
-    ParseError(String),
 }
 
 impl_from_io_error!(SendError);
 
-impl From<ProtobufError> for SendError {
-    fn from(pb_error: ProtobufError) -> Self {
-        SendError::ParseError(format!("Protobuf pack error: {:?}", pb_error))
-    }
-}
 
 #[derive(Debug)]
 pub enum RecvError {
     IoError(IoError),
     ProtocolError(String),
-    ParseError(String),
 }
 
 impl_from_io_error!(RecvError);
-
-impl From<ProtobufError> for RecvError {
-    fn from(pb_error: ProtobufError) -> Self {
-        RecvError::ParseError(format!("Protobuf unpack error: {:?}", pb_error))
-    }
-}
 
 #[derive(Debug)]
 pub enum StatusError {
