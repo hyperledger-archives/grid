@@ -25,6 +25,7 @@ log = "0.3.0"
 byteorder = "1"
 url = "1.7.1"
 messaging = { path = "../messaging" }
+openssl = "0.10"
 
 [dependencies.rustls]
 version = "0.13.1"

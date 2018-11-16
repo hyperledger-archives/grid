@@ -20,6 +20,7 @@ extern crate webpki;
 extern crate log;
 extern crate byteorder;
 extern crate messaging;
+extern crate openssl;
 extern crate url;
 
 mod async;

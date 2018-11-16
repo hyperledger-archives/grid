@@ -13,7 +13,7 @@
 // limitations under the License.
 
 pub mod raw;
-
+pub mod tls;
 
 use std::io::Error as IoError;
 use std::time::Duration;
