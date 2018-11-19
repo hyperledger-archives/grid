@@ -13,11 +13,16 @@
 // limitations under the License.
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use openssl::ssl::{Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslStream};
+use openssl::error::ErrorStack;
+use openssl::ssl::{
+    Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslFiletype, SslMethod,
+    SslStream,
+};
 use url::{ParseError, Url};
 
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
+use std::path::Path;
 use std::time::Duration;
 
 use transport::*;
@@ -28,11 +33,39 @@ pub struct TlsTransport {
 }
 
 impl TlsTransport {
-    pub fn new(connector: SslConnector, acceptor: SslAcceptor) -> Self {
-        TlsTransport {
+    pub fn new(
+        ca_cert: String,
+        client_key: String,
+        client_cert: String,
+        server_key: String,
+        server_cert: String,
+    ) -> Result<Self, TlsInitError> {
+        let ca_cert_path = Path::new(&ca_cert);
+        let client_cert_path = Path::new(&client_cert);
+        let client_key_path = Path::new(&client_key);
+        let server_cert_path = Path::new(&server_cert);
+        let server_key_path = Path::new(&server_key);
+
+        // Build TLS Connector
+        let mut connector = SslConnector::builder(SslMethod::tls())?;
+        connector.set_private_key_file(&client_key_path, SslFiletype::PEM)?;
+        connector.set_certificate_chain_file(client_cert_path)?;
+        connector.check_private_key()?;
+        connector.set_ca_file(ca_cert_path)?;
+        let connector = connector.build();
+
+        // Build TLS Acceptor
+        let mut acceptor = SslAcceptor::mozilla_modern(SslMethod::tls())?;
+        acceptor.set_private_key_file(server_key_path, SslFiletype::PEM)?;
+        acceptor.set_certificate_chain_file(&server_cert_path)?;
+        acceptor.check_private_key()?;
+        acceptor.set_ca_file(ca_cert_path)?;
+        let acceptor = acceptor.build();
+
+        Ok(TlsTransport {
             connector,
             acceptor,
-        }
+        })
     }
 }
 
@@ -123,6 +156,17 @@ fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
     Ok(())
 }
 
+#[derive(Debug)]
+pub enum TlsInitError {
+    ProtocolError(String),
+}
+
+impl From<ErrorStack> for TlsInitError {
+    fn from(error: ErrorStack) -> Self {
+        TlsInitError::ProtocolError(format!("Openssl Error: {}", error))
+    }
+}
+
 impl From<HandshakeError<TcpStream>> for AcceptError {
     fn from(handshake_error: HandshakeError<TcpStream>) -> Self {
         AcceptError::ProtocolError(format!("TLS Handshake Err: {}", handshake_error))
@@ -155,12 +199,11 @@ mod tests {
     use openssl::hash::MessageDigest;
     use openssl::pkey::{PKey, PKeyRef, Private};
     use openssl::rsa::Rsa;
-    use openssl::ssl::{SslAcceptor, SslConnector, SslMethod};
     use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
     use openssl::x509::{X509NameBuilder, X509Ref, X509};
     use std::env;
     use std::fs::File;
-    use std::path::Path;
+    use std::path::PathBuf;
     use transport::tests;
 
     // Make a certificate and private key for the Certifcate Authority
@@ -245,43 +288,60 @@ mod tests {
         (privkey, cert)
     }
 
+    fn write_file(mut temp_dir: PathBuf, file_name: &str, bytes: &[u8]) -> String {
+        temp_dir.push(file_name);
+        let path = temp_dir.to_str().unwrap().to_string();
+        let mut file = File::create(path.to_string()).unwrap();
+        file.write_all(bytes).unwrap();
+
+        path
+    }
+
     #[test]
     fn test_transport() {
         // Genearte Certificat Authority keys and certificate
         let (ca_key, ca_cert) = make_ca_cert();
 
         // create temp directory to store ca.cert
-        let mut temp_dir = env::temp_dir();
-        temp_dir.push("ca.cert");
-        let ca_path = temp_dir.to_str().unwrap().to_string();
+        let temp_dir = env::temp_dir();
+        let ca_path_file = write_file(temp_dir.clone(), "ca.cert", &ca_cert.to_pem().unwrap());
 
-        let mut file = File::create(ca_path.to_string()).unwrap();
-        let ca_pem = String::from_utf8(ca_cert.to_pem().unwrap()).unwrap();
-        file.write_all(ca_pem.as_bytes()).unwrap();
-
-        // Generate client and server keys and  certificates
+        // Generate client and server keys and certificates
         let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
         let (server_key, server_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
 
-        // Build TLS Connector
-        let ca_cert_path = Path::new(&ca_path);
-        let mut connector = SslConnector::builder(SslMethod::tls()).unwrap();
-        connector.set_private_key(&client_key).unwrap();
-        connector.set_certificate(&client_cert).unwrap();
-        connector.check_private_key().unwrap();
-        connector.set_ca_file(ca_cert_path).unwrap();
-        let connector = connector.build();
+        let client_cert_file = write_file(
+            temp_dir.clone(),
+            "client.cert",
+            &client_cert.to_pem().unwrap(),
+        );
 
-        // Build TLS Acceptor
-        let mut acceptor = SslAcceptor::mozilla_modern(SslMethod::tls()).unwrap();
-        acceptor.set_private_key(&server_key).unwrap();
-        acceptor.set_certificate(&server_cert).unwrap();
-        acceptor.check_private_key().unwrap();
-        acceptor.set_ca_file(ca_cert_path).unwrap();
-        let acceptor = acceptor.build();
+        let client_key_file = write_file(
+            temp_dir.clone(),
+            "client.key",
+            &client_key.private_key_to_pem_pkcs8().unwrap(),
+        );
+
+        let server_cert_file = write_file(
+            temp_dir.clone(),
+            "server.cert",
+            &server_cert.to_pem().unwrap(),
+        );
+
+        let server_key_file = write_file(
+            temp_dir.clone(),
+            "server.key",
+            &server_key.private_key_to_pem_pkcs8().unwrap(),
+        );
 
         // Create TLsTransport
-        let transport = TlsTransport::new(connector, acceptor);
+        let transport = TlsTransport::new(
+            ca_path_file,
+            client_key_file,
+            client_cert_file,
+            server_key_file,
+            server_cert_file,
+        ).unwrap();
 
         // Run transport test
         tests::test_transport(transport, "127.0.0.1:0");
