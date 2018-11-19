@@ -34,18 +34,21 @@ pub trait Connection {
     fn disconnect(&mut self) -> Result<(), DisconnectError>;
 }
 
-
 pub trait Listener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError>;
     fn endpoint(&self) -> String;
 }
 
 pub trait Incoming {
-    fn incoming<'a>(&'a mut self) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a>;
+    fn incoming<'a>(
+        &'a mut self,
+    ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a>;
 }
 
 impl Incoming for Box<dyn Listener> {
-    fn incoming<'a>(&'a mut self) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a> {
+    fn incoming<'a>(
+        &'a mut self,
+    ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a> {
         Box::new(IncomingIter::new(self))
     }
 }
@@ -85,7 +88,7 @@ macro_rules! impl_from_io_error {
                 $err::IoError(io_error)
             }
         }
-    }
+    };
 }
 
 #[derive(Debug)]
@@ -96,7 +99,6 @@ pub enum SendError {
 
 impl_from_io_error!(SendError);
 
-
 #[derive(Debug)]
 pub enum RecvError {
     IoError(IoError),
@@ -106,8 +108,7 @@ pub enum RecvError {
 impl_from_io_error!(RecvError);
 
 #[derive(Debug)]
-pub enum StatusError {
-}
+pub enum StatusError {}
 
 #[derive(Debug)]
 pub enum DisconnectError {
@@ -142,8 +143,7 @@ pub enum ListenError {
 impl_from_io_error!(ListenError);
 
 #[derive(Debug)]
-pub enum PollError {
-}
+pub enum PollError {}
 
 #[cfg(test)]
 pub mod tests {
@@ -160,7 +160,6 @@ pub mod tests {
     }
 
     pub fn test_transport<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
-
         // Create listener, let OS assign port
         let mut listener = assert_ok(transport.listen(bind));
         let endpoint = listener.endpoint();

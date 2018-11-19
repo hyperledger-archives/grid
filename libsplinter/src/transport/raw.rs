@@ -19,15 +19,8 @@ use std::net::{Shutdown, TcpListener, TcpStream};
 use std::time::Duration;
 
 use transport::{
-    AcceptError,
-    ConnectError,
-    Connection,
-    DisconnectError,
-    Listener,
-    ListenError,
-    RecvError,
-    SendError,
-    Transport
+    AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
+    SendError, Transport,
 };
 
 #[derive(Default)]
@@ -36,12 +29,14 @@ pub struct RawTransport {}
 impl Transport for RawTransport {
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
         Ok(Box::new(RawConnection {
-            stream: TcpStream::connect(endpoint)?
+            stream: TcpStream::connect(endpoint)?,
         }))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
-        Ok(Box::new(RawListener{ listener: TcpListener::bind(bind)? }))
+        Ok(Box::new(RawListener {
+            listener: TcpListener::bind(bind)?,
+        }))
     }
 }
 
@@ -86,7 +81,6 @@ impl Connection for RawConnection {
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
         Ok(self.stream.shutdown(Shutdown::Both)?)
     }
-
 }
 
 fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {

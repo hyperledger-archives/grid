@@ -13,29 +13,28 @@
 // limitations under the License.
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use openssl::ssl::{SslConnector, SslAcceptor, SslStream, HandshakeError, Error as OpensslError};
+use openssl::ssl::{Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslStream};
 use url::{ParseError, Url};
 
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream, Ipv4Addr, Ipv6Addr};
+use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::time::Duration;
 
 use transport::*;
 
 pub struct TlsTransport {
     connector: SslConnector,
-    acceptor: SslAcceptor
+    acceptor: SslAcceptor,
 }
 
 impl TlsTransport {
-  pub fn new(connector: SslConnector, acceptor: SslAcceptor) -> Self {
-      TlsTransport {
-          connector,
-          acceptor
-      }
-  }
+    pub fn new(connector: SslConnector, acceptor: SslAcceptor) -> Self {
+        TlsTransport {
+            connector,
+            acceptor,
+        }
+    }
 }
-
 
 impl Transport for TlsTransport {
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
@@ -44,21 +43,22 @@ impl Transport for TlsTransport {
         let url = Url::parse(&address)?;
         let dns_name = match url.domain() {
             Some(d) if d.parse::<Ipv4Addr>().is_ok() => "localhost",
-            Some(d) if d.parse::<Ipv6Addr>().is_ok() =>  "localhost",
+            Some(d) if d.parse::<Ipv6Addr>().is_ok() => "localhost",
             Some(d) => d,
             None => "localhost",
         };
 
-        let stream = self.connector.connect(dns_name, TcpStream::connect(endpoint)?)?;
-        let connection = TlsConnection {
-            stream,
-        };
+        let stream = self
+            .connector
+            .connect(dns_name, TcpStream::connect(endpoint)?)?;
+        let connection = TlsConnection { stream };
         Ok(Box::new(connection))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
-        Ok(Box::new(TlsListener{ listener: TcpListener::bind(bind)?,
-            acceptor: self.acceptor.clone()
+        Ok(Box::new(TlsListener {
+            listener: TcpListener::bind(bind)?,
+            acceptor: self.acceptor.clone(),
         }))
     }
 }
@@ -93,7 +93,6 @@ impl Connection for TlsConnection {
     fn recv(&mut self, timeout: Option<Duration>) -> Result<Vec<u8>, RecvError> {
         self.stream.get_mut().set_read_timeout(timeout)?;
         read(&mut self.stream)
-
     }
 
     fn remote_endpoint(&self) -> String {
@@ -109,7 +108,6 @@ impl Connection for TlsConnection {
         self.stream.shutdown()?;
         Ok(())
     }
-
 }
 
 fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
@@ -149,22 +147,21 @@ impl From<OpensslError> for DisconnectError {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use openssl::ssl::{SslMethod, SslConnector, SslAcceptor};
     use openssl::asn1::Asn1Time;
     use openssl::bn::{BigNum, MsbOption};
     use openssl::hash::MessageDigest;
     use openssl::pkey::{PKey, PKeyRef, Private};
     use openssl::rsa::Rsa;
-    use openssl::x509::{X509, X509NameBuilder, X509Ref};
-    use openssl::x509::extension::{BasicConstraints, KeyUsage, ExtendedKeyUsage};
-    use transport::tests;
-    use std::path::Path;
+    use openssl::ssl::{SslAcceptor, SslConnector, SslMethod};
+    use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
+    use openssl::x509::{X509NameBuilder, X509Ref, X509};
     use std::env;
     use std::fs::File;
+    use std::path::Path;
+    use transport::tests;
 
     // Make a certificate and private key for the Certifcate Authority
     fn make_ca_cert() -> (PKey<Private>, X509) {
@@ -186,14 +183,16 @@ mod tests {
         let not_after = Asn1Time::days_from_now(365).unwrap();
         cert_builder.set_not_after(&not_after).unwrap();
 
-        cert_builder.append_extension(
-            BasicConstraints::new().critical().ca().build().unwrap()
-        ).unwrap();
-        cert_builder.append_extension(KeyUsage::new()
-            .key_cert_sign()
-            .build().unwrap()).unwrap();
+        cert_builder
+            .append_extension(BasicConstraints::new().critical().ca().build().unwrap())
+            .unwrap();
+        cert_builder
+            .append_extension(KeyUsage::new().key_cert_sign().build().unwrap())
+            .unwrap();
 
-        cert_builder.sign(&privkey, MessageDigest::sha256()).unwrap();
+        cert_builder
+            .sign(&privkey, MessageDigest::sha256())
+            .unwrap();
         let cert = cert_builder.build();
 
         (privkey, cert)
@@ -220,24 +219,31 @@ mod tests {
         };
         cert_builder.set_serial_number(&serial_number).unwrap();
         cert_builder.set_subject_name(&x509_name).unwrap();
-        cert_builder.set_issuer_name(ca_cert.subject_name()).unwrap();
+        cert_builder
+            .set_issuer_name(ca_cert.subject_name())
+            .unwrap();
         cert_builder.set_pubkey(&privkey).unwrap();
         let not_before = Asn1Time::days_from_now(0).unwrap();
         cert_builder.set_not_before(&not_before).unwrap();
         let not_after = Asn1Time::days_from_now(365).unwrap();
         cert_builder.set_not_after(&not_after).unwrap();
 
-        cert_builder.append_extension(ExtendedKeyUsage::new()
-            .server_auth()
-            .client_auth()
-            .build().unwrap()).unwrap();
+        cert_builder
+            .append_extension(
+                ExtendedKeyUsage::new()
+                    .server_auth()
+                    .client_auth()
+                    .build()
+                    .unwrap(),
+            ).unwrap();
 
-        cert_builder.sign(&ca_privkey, MessageDigest::sha256()).unwrap();
+        cert_builder
+            .sign(&ca_privkey, MessageDigest::sha256())
+            .unwrap();
         let cert = cert_builder.build();
 
         (privkey, cert)
     }
-
 
     #[test]
     fn test_transport() {
@@ -275,10 +281,7 @@ mod tests {
         let acceptor = acceptor.build();
 
         // Create TLsTransport
-        let transport = TlsTransport::new(
-            connector,
-            acceptor,
-        );
+        let transport = TlsTransport::new(connector, acceptor);
 
         // Run transport test
         tests::test_transport(transport, "127.0.0.1:0");
