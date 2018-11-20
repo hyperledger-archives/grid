@@ -20,11 +20,13 @@ extern crate webpki;
 extern crate log;
 extern crate byteorder;
 extern crate messaging;
+extern crate openssl;
 extern crate url;
 
 mod async;
 pub mod connection;
 mod errors;
+pub mod transport;
 
 use byteorder::{BigEndian, WriteBytesExt};
 use rustls::{
@@ -34,7 +36,7 @@ use rustls::{
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufReader, Write};
-use std::net::{SocketAddr};
+use std::net::SocketAddr;
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
 
@@ -476,7 +478,6 @@ impl<T: Connection> ConnectionDriver<T> {
                     &self.peer_addr
                 ))
             })?;
-
         } else {
             circuit_destroy_response.set_status(CircuitDestroyResponse_Status::OK);
             // need to rebuild the message to forward

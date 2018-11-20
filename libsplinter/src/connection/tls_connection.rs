@@ -23,7 +23,6 @@ use std::net::TcpStream;
 use async::NoBlock;
 use connection::*;
 
-
 pub struct TlsConnection<T: Session> {
     socket: TcpStream,
     session: T,
@@ -64,7 +63,6 @@ impl<T: Session> Connection for TlsConnection<T> {
             self.session.process_new_packets()?;
 
             Ok(NoBlock::Ready(read_msg(&mut self.session)?))
-
         } else {
             Ok(NoBlock::WouldBlock)
         }
@@ -86,10 +84,8 @@ impl<T: Session> Connection for TlsConnection<T> {
                 debug!("Wrote {} bytes", n);
                 Ok(NoBlock::Ready(()))
             }
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                Ok(NoBlock::WouldBlock)
-            }
-            Err(err) => Err(WriteError::from(err))
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => Ok(NoBlock::WouldBlock),
+            Err(err) => Err(WriteError::from(err)),
         }
     }
 }
