@@ -342,8 +342,7 @@ mod tests {
         path
     }
 
-    #[test]
-    fn test_transport() {
+    fn create_test_tls_transport() -> TlsTransport {
         // Genearte Certificat Authority keys and certificate
         let (ca_key, ca_cert) = make_ca_cert();
 
@@ -380,15 +379,18 @@ mod tests {
         );
 
         // Create TLsTransport
-        let transport = TlsTransport::new(
+        TlsTransport::new(
             ca_path_file,
             client_key_file,
             client_cert_file,
             server_key_file,
             server_cert_file,
-        ).unwrap();
+        ).unwrap()
+    }
 
-        // Run transport test
+    #[test]
+    fn test_transport() {
+        let transport = create_test_tls_transport();
         tests::test_transport(transport, "127.0.0.1:0");
     }
 }
