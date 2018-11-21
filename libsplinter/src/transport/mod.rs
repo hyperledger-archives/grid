@@ -160,11 +160,9 @@ pub mod tests {
     }
 
     pub fn test_transport<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
-        // Create listener, let OS assign port
         let mut listener = assert_ok(transport.listen(bind));
         let endpoint = listener.endpoint();
 
-        // let transport_cloned = transport.clone();
         let handle = thread::spawn(move || {
             let mut client = assert_ok(transport.connect(&endpoint));
             assert_eq!(client.remote_endpoint(), endpoint);
