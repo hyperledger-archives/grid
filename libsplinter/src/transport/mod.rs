@@ -15,8 +15,9 @@
 pub mod raw;
 pub mod tls;
 
+use mio::Evented;
+
 use std::io::Error as IoError;
-use std::time::Duration;
 
 pub enum Status {
     Connected,
@@ -26,12 +27,14 @@ pub enum Status {
 /// A single, bi-directional connection between two nodes
 pub trait Connection {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError>;
-    fn recv(&mut self, timeout: Option<Duration>) -> Result<Vec<u8>, RecvError>;
+    fn recv(&mut self) -> Result<Vec<u8>, RecvError>;
 
     fn remote_endpoint(&self) -> String;
     fn local_endpoint(&self) -> String;
 
     fn disconnect(&mut self) -> Result<(), DisconnectError>;
+
+    fn evented(&self) -> &dyn Evented;
 }
 
 pub trait Listener {
@@ -150,12 +153,31 @@ pub mod tests {
     use super::*;
     use std::fmt::Debug;
 
+    use std::io::ErrorKind;
+    use std::time::Duration;
     use std::thread;
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {
             Ok(ok) => ok,
             Err(err) => panic!("Expected Ok(...), got Err({:?})", err),
+        }
+    }
+
+    macro_rules! block {
+        ($op:expr, $err:ident) => {
+            loop {
+                match $op {
+                    Err($err::IoError(err)) => {
+                        if err.kind() == ErrorKind::WouldBlock {
+                            thread::sleep(Duration::from_millis(100));
+                            continue;
+                        }
+                    },
+                    Err(err) => break Err(err),
+                    Ok(ok) => break Ok(ok),
+                }
+            }
         }
     }
 
@@ -167,15 +189,15 @@ pub mod tests {
             let mut client = assert_ok(transport.connect(&endpoint));
             assert_eq!(client.remote_endpoint(), endpoint);
 
-            assert_ok(client.send(&[0, 1, 2]));
-            assert_eq!(vec![3, 4, 5], assert_ok(client.recv(None)));
+            assert_ok(block!(client.send(&[0, 1, 2]), SendError));
+            assert_eq!(vec![3, 4, 5], assert_ok(block!(client.recv(), RecvError)));
         });
 
         let mut server = assert_ok(listener.incoming().next().unwrap());
 
-        assert_eq!(vec![0, 1, 2], assert_ok(server.recv(None)));
+        assert_eq!(vec![0, 1, 2], assert_ok(block!(server.recv(), RecvError)));
 
-        assert_ok(server.send(&[3, 4, 5]));
+        assert_ok(block!(server.send(&[3, 4, 5]), SendError));
 
         handle.join().unwrap();
     }

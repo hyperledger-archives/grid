@@ -13,10 +13,10 @@
 // limitations under the License.
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use mio::{net::TcpStream as MioTcpStream, Evented};
 
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
-use std::time::Duration;
 
 use transport::{
     AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
@@ -28,8 +28,11 @@ pub struct RawTransport {}
 
 impl Transport for RawTransport {
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
+        // Connect a std::net::TcpStream to make sure connect() block
+        let stream = TcpStream::connect(endpoint)?;
+        let mio_stream = MioTcpStream::from_stream(stream)?;
         Ok(Box::new(RawConnection {
-            stream: TcpStream::connect(endpoint)?,
+            stream: mio_stream,
         }))
     }
 
@@ -47,7 +50,7 @@ pub struct RawListener {
 impl Listener for RawListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (stream, _) = self.listener.accept()?;
-        let connection = RawConnection { stream };
+        let connection = RawConnection { stream: MioTcpStream::from_stream(stream)? };
         Ok(Box::new(connection))
     }
 
@@ -57,7 +60,7 @@ impl Listener for RawListener {
 }
 
 pub struct RawConnection {
-    stream: TcpStream,
+    stream: MioTcpStream,
 }
 
 impl Connection for RawConnection {
@@ -65,8 +68,7 @@ impl Connection for RawConnection {
         write(&mut self.stream, message)
     }
 
-    fn recv(&mut self, timeout: Option<Duration>) -> Result<Vec<u8>, RecvError> {
-        self.stream.set_read_timeout(timeout)?;
+    fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
         read(&mut self.stream)
     }
 
@@ -81,6 +83,10 @@ impl Connection for RawConnection {
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
         Ok(self.stream.shutdown(Shutdown::Both)?)
     }
+
+    fn evented(&self) -> &dyn Evented {
+        &self.stream
+    }
 }
 
 fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
@@ -93,6 +99,7 @@ fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
 fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
     writer.write_u32::<BigEndian>(buffer.len() as u32)?;
     writer.write(&buffer)?;
+    writer.flush()?;
     Ok(())
 }
 
