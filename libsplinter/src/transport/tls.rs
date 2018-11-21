@@ -246,7 +246,7 @@ mod tests {
     use openssl::rsa::Rsa;
     use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
     use openssl::x509::{X509NameBuilder, X509Ref, X509};
-    use std::env;
+    use tempdir::TempDir;
     use std::fs::File;
     use std::path::PathBuf;
     use transport::tests;
@@ -347,33 +347,34 @@ mod tests {
         let (ca_key, ca_cert) = make_ca_cert();
 
         // create temp directory to store ca.cert
-        let temp_dir = env::temp_dir();
-        let ca_path_file = write_file(temp_dir.clone(), "ca.cert", &ca_cert.to_pem().unwrap());
+        let temp_dir = TempDir::new("tls-transport-test").unwrap();
+        let temp_dir_path = temp_dir.path();
+        let ca_path_file = write_file(temp_dir_path.to_path_buf(), "ca.cert", &ca_cert.to_pem().unwrap());
 
         // Generate client and server keys and certificates
         let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
         let (server_key, server_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
 
         let client_cert_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "client.cert",
             &client_cert.to_pem().unwrap(),
         );
 
         let client_key_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "client.key",
             &client_key.private_key_to_pem_pkcs8().unwrap(),
         );
 
         let server_cert_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "server.cert",
             &server_cert.to_pem().unwrap(),
         );
 
         let server_key_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "server.key",
             &server_key.private_key_to_pem_pkcs8().unwrap(),
         );

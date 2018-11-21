@@ -31,3 +31,6 @@ mio = "0.6"
 [dependencies.rustls]
 version = "0.13.1"
 features = ["logging"]
+
+[dev-dependencies]
+tempdir = "0.3"
