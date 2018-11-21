@@ -394,4 +394,10 @@ mod tests {
         let transport = create_test_tls_transport();
         tests::test_transport(transport, "127.0.0.1:0");
     }
+
+    #[test]
+    fn test_poll() {
+        let transport = create_test_tls_transport();
+        tests::test_poll(transport, "127.0.0.1:0");
+    }
 }

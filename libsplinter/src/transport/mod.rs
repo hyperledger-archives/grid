@@ -154,8 +154,11 @@ pub mod tests {
     use std::fmt::Debug;
 
     use std::io::ErrorKind;
+    use std::sync::mpsc::channel;
     use std::time::Duration;
     use std::thread;
+
+    use mio::{Events, Poll, PollOpt, Ready, Token};
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {
@@ -198,6 +201,75 @@ pub mod tests {
         assert_eq!(vec![0, 1, 2], assert_ok(block!(server.recv(), RecvError)));
 
         assert_ok(block!(server.send(&[3, 4, 5]), SendError));
+
+        handle.join().unwrap();
+    }
+
+    fn assert_ready(events: &Events, token: Token, readiness: Ready) {
+        assert_eq!(
+            Some(readiness),
+            events
+                .iter()
+                .filter(|event| event.token() == token)
+                .map(|event| event.readiness())
+                .next(),
+        );
+    }
+
+    pub fn test_poll<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
+        // Create aconnections and register them with the poller
+        const CONNECTIONS: usize = 16;
+
+        let mut listener = assert_ok(transport.listen(bind));
+        let endpoint = listener.endpoint();
+
+        let (ready_tx, ready_rx) = channel();
+
+        let handle = thread::spawn(move || {
+            let mut connections = Vec::with_capacity(CONNECTIONS);
+            for i in 0..CONNECTIONS {
+                connections.push((
+                    assert_ok(transport.connect(&endpoint)),
+                    Token(i),
+                ));
+            }
+
+            // Register all connections with Poller
+            let poll = Poll::new().unwrap();
+            for (conn, token) in &connections {
+                assert_ok(poll.register(
+                    conn.evented(),
+                    *token,
+                    Ready::readable() | Ready::writable(),
+                    PollOpt::level()
+                ));
+            }
+
+            // Block waiting for other thread to send everything
+            ready_rx.recv().unwrap();
+
+            let mut events = Events::with_capacity(CONNECTIONS * 2);
+            assert_ok(poll.poll(&mut events, None));
+            for (mut conn, token) in connections {
+                assert_ready(&events, token, Ready::readable() | Ready::writable());
+                assert_eq!(b"hello".to_vec(), assert_ok(conn.recv()));
+                assert_ok(conn.send(b"world"));
+            }
+        });
+
+        let mut connections = Vec::with_capacity(CONNECTIONS);
+        for _ in 0..CONNECTIONS {
+            let mut conn = assert_ok(listener.accept());
+            assert_ok(block!(conn.send(b"hello"), SendError));
+            connections.push(conn);
+        }
+
+        // Signal done sending to background thread
+        ready_tx.send(()).unwrap();
+
+        for mut conn in connections {
+            assert_eq!(b"world".to_vec(), assert_ok(block!(conn.recv(), RecvError)));
+        }
 
         handle.join().unwrap();
     }
