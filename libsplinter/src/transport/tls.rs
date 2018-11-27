@@ -13,6 +13,14 @@
 // limitations under the License.
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use mio::{
+    unix::EventedFd,
+    Evented,
+    Poll,
+    PollOpt,
+    Ready,
+    Token,
+};
 use openssl::error::ErrorStack;
 use openssl::ssl::{
     Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslFiletype, SslMethod,
@@ -20,10 +28,10 @@ use openssl::ssl::{
 };
 use url::{ParseError, Url};
 
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
+use std::os::unix::io::{RawFd, AsRawFd};
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::path::Path;
-use std::time::Duration;
 
 use transport::*;
 
@@ -69,22 +77,30 @@ impl TlsTransport {
     }
 }
 
+fn endpoint_to_dns_name(endpoint: &str) -> Result<String, ParseError> {
+    let mut address = String::from("tcp://");
+    address.push_str(endpoint);
+    let url = Url::parse(&address)?;
+    let dns_name = match url.domain() {
+        Some(d) if d.parse::<Ipv4Addr>().is_ok() => "localhost",
+        Some(d) if d.parse::<Ipv6Addr>().is_ok() => "localhost",
+        Some(d) => d,
+        None => "localhost",
+    };
+    Ok(String::from(dns_name))
+}
+
 impl Transport for TlsTransport {
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
-        let mut address = String::from("tcp://");
-        address.push_str(endpoint);
-        let url = Url::parse(&address)?;
-        let dns_name = match url.domain() {
-            Some(d) if d.parse::<Ipv4Addr>().is_ok() => "localhost",
-            Some(d) if d.parse::<Ipv6Addr>().is_ok() => "localhost",
-            Some(d) => d,
-            None => "localhost",
-        };
+        let dns_name = endpoint_to_dns_name(endpoint)?;
 
-        let stream = self
+        let stream = TcpStream::connect(endpoint)?;
+        let tls_stream = self
             .connector
-            .connect(dns_name, TcpStream::connect(endpoint)?)?;
-        let connection = TlsConnection { stream };
+            .connect(&dns_name, stream)?;
+
+        tls_stream.get_ref().set_nonblocking(true)?;
+        let connection = TlsConnection { stream: tls_stream };
         Ok(Box::new(connection))
     }
 
@@ -103,9 +119,10 @@ pub struct TlsListener {
 
 impl Listener for TlsListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
-        let (tcp_stream, _) = self.listener.accept()?;
-        let stream = self.acceptor.accept(tcp_stream)?;
-        let connection = TlsConnection { stream };
+        let (stream, _) = self.listener.accept()?;
+        let tls_stream = self.acceptor.accept(stream)?;
+        tls_stream.get_ref().set_nonblocking(true)?;
+        let connection = TlsConnection { stream: tls_stream };
         Ok(Box::new(connection))
     }
 
@@ -123,8 +140,7 @@ impl Connection for TlsConnection {
         write(&mut self.stream, message)
     }
 
-    fn recv(&mut self, timeout: Option<Duration>) -> Result<Vec<u8>, RecvError> {
-        self.stream.get_mut().set_read_timeout(timeout)?;
+    fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
         read(&mut self.stream)
     }
 
@@ -141,6 +157,34 @@ impl Connection for TlsConnection {
         self.stream.shutdown()?;
         Ok(())
     }
+
+    fn evented(&self) -> &dyn Evented {
+        self
+    }
+}
+
+impl AsRawFd for TlsConnection {
+    fn as_raw_fd(&self) -> RawFd {
+        self.stream.get_ref().as_raw_fd()
+    }
+}
+
+impl Evented for TlsConnection {
+    fn register(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
+        -> io::Result<()>
+    {
+        EventedFd(&self.as_raw_fd()).register(poll, token, interest, opts)
+    }
+
+    fn reregister(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
+        -> io::Result<()>
+    {
+        EventedFd(&self.as_raw_fd()).reregister(poll, token, interest, opts)
+    }
+
+    fn deregister(&self, poll: &Poll) -> io::Result<()> {
+        EventedFd(&self.as_raw_fd()).deregister(poll)
+    }
 }
 
 fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
@@ -153,6 +197,7 @@ fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
 fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
     writer.write_u32::<BigEndian>(buffer.len() as u32)?;
     writer.write(&buffer)?;
+    writer.flush()?;
     Ok(())
 }
 
@@ -201,7 +246,7 @@ mod tests {
     use openssl::rsa::Rsa;
     use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
     use openssl::x509::{X509NameBuilder, X509Ref, X509};
-    use std::env;
+    use tempdir::TempDir;
     use std::fs::File;
     use std::path::PathBuf;
     use transport::tests;
@@ -297,53 +342,62 @@ mod tests {
         path
     }
 
-    #[test]
-    fn test_transport() {
+    fn create_test_tls_transport() -> TlsTransport {
         // Genearte Certificat Authority keys and certificate
         let (ca_key, ca_cert) = make_ca_cert();
 
         // create temp directory to store ca.cert
-        let temp_dir = env::temp_dir();
-        let ca_path_file = write_file(temp_dir.clone(), "ca.cert", &ca_cert.to_pem().unwrap());
+        let temp_dir = TempDir::new("tls-transport-test").unwrap();
+        let temp_dir_path = temp_dir.path();
+        let ca_path_file = write_file(temp_dir_path.to_path_buf(), "ca.cert", &ca_cert.to_pem().unwrap());
 
         // Generate client and server keys and certificates
         let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
         let (server_key, server_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
 
         let client_cert_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "client.cert",
             &client_cert.to_pem().unwrap(),
         );
 
         let client_key_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "client.key",
             &client_key.private_key_to_pem_pkcs8().unwrap(),
         );
 
         let server_cert_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "server.cert",
             &server_cert.to_pem().unwrap(),
         );
 
         let server_key_file = write_file(
-            temp_dir.clone(),
+            temp_dir_path.to_path_buf(),
             "server.key",
             &server_key.private_key_to_pem_pkcs8().unwrap(),
         );
 
         // Create TLsTransport
-        let transport = TlsTransport::new(
+        TlsTransport::new(
             ca_path_file,
             client_key_file,
             client_cert_file,
             server_key_file,
             server_cert_file,
-        ).unwrap();
+        ).unwrap()
+    }
 
-        // Run transport test
+    #[test]
+    fn test_transport() {
+        let transport = create_test_tls_transport();
         tests::test_transport(transport, "127.0.0.1:0");
+    }
+
+    #[test]
+    fn test_poll() {
+        let transport = create_test_tls_transport();
+        tests::test_poll(transport, "127.0.0.1:0");
     }
 }

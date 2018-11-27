@@ -22,6 +22,10 @@ extern crate byteorder;
 extern crate messaging;
 extern crate openssl;
 extern crate url;
+extern crate mio;
+
+#[cfg(test)]
+extern crate tempdir;
 
 mod async;
 pub mod connection;
