@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate atomicwrites;
 extern crate bytes;
 extern crate protobuf;
 extern crate rustls;
@@ -20,16 +21,20 @@ extern crate webpki;
 extern crate log;
 extern crate byteorder;
 extern crate messaging;
-extern crate openssl;
-extern crate url;
 extern crate mio;
-
+extern crate openssl;
+extern crate serde;
+extern crate serde_yaml;
+extern crate url;
+#[macro_use]
+extern crate serde_derive;
 #[cfg(test)]
 extern crate tempdir;
 
 mod async;
 pub mod connection;
 mod errors;
+pub mod storage;
 pub mod transport;
 
 use byteorder::{BigEndian, WriteBytesExt};
