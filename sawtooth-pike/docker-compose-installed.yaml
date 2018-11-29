@@ -19,7 +19,7 @@ services:
     image: pike-api
     build:
       context: .
-      dockerfile: api/Dockerfile-installed
+      dockerfile: api/Dockerfile-installed-${DISTRO}
     container_name: pike-api
     expose:
       - 9001
@@ -71,7 +71,7 @@ services:
     image: pike-client
     build:
       context: .
-      dockerfile: cli/Dockerfile-installed
+      dockerfile: cli/Dockerfile-installed-${DISTRO}
     container_name: pike-client
     entrypoint: "bash -c \"\
       sawtooth keygen && \
@@ -122,7 +122,7 @@ services:
     image: pike-tp
     build:
       context: .
-      dockerfile: tp/Dockerfile-installed
+      dockerfile: tp/Dockerfile-installed-${DISTRO}
     container_name: pike-tp
     entrypoint: "bash -c \"\
         pike-tp -vv -C tcp://validator:9004 \
@@ -132,7 +132,7 @@ services:
     image: pike-sde-service
     build:
       context: .
-      dockerfile: state_delta_export/Dockerfile-installed
+      dockerfile: state_delta_export/Dockerfile-installed-${DISTRO}
     container_name: pike-sde-service
     environment:
       DATABASE_URL: postgres://pike:pike@pike-db:5432/pike

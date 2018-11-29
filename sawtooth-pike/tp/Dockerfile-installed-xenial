@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build -f contracts/sawtooth-pike/cli/Dockerfile-installed -t sawtooth-pike-cli .
+# docker build -f contracts/sawtooth-pike/tp/Dockerfile-installed-xenial -t sawtooth-pike-tp .
 
-# -------------=== pike cli build ===-------------
+# -------------=== pike tp build ===-------------
 
-FROM ubuntu:xenial as pike-cli-builder
+FROM ubuntu:xenial as pike-tp-builder
 
 ENV VERSION=AUTO_STRICT
 
@@ -42,24 +42,19 @@ RUN /root/.cargo/bin/cargo install cargo-deb
 
 COPY . /project
 
-WORKDIR /project/contracts/sawtooth-pike/cli
+WORKDIR /project/contracts/sawtooth-pike/tp
 
 RUN sed -i -e s/version.*$/version\ =\ \"$(../../../bin/get_version)\"/ Cargo.toml
 RUN /root/.cargo/bin/cargo deb
 
-# -------------=== pike cli docker build ===-------------
+# -------------=== pike tp docker build ===-------------
 
 FROM ubuntu:xenial
 
-COPY --from=pike-cli-builder /project/contracts/sawtooth-pike/cli/target/debian/pike-cli*.deb /tmp
+COPY --from=pike-tp-builder /project/contracts/sawtooth-pike/tp/target/debian/pike*.deb /tmp
 
-RUN echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/nightly xenial universe" >> /etc/apt/sources.list \
- && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
- || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
- && apt-get update \
- && apt-get -f -y install \
-    python3-sawtooth-cli \
-    python3-sawtooth-sdk \
- && dpkg -i /tmp/pike-cli*.deb || true
+RUN apt-get update \
+ && dpkg -i /tmp/pike*.deb || true \
+ && apt-get -f -y install
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]

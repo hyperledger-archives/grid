@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build -f contracts/sawtooth-pike/state_delta_export/Dockerfile-installed -t sawtooth-pike-tp .
+# docker build -f contracts/sawtooth-pike/cli/Dockerfile-installed-xenial -t sawtooth-pike-cli .
 
-# -------------=== state delta export build ===-------------
+# -------------=== pike cli build ===-------------
 
-FROM ubuntu:xenial as pike-sde-builder
+FROM ubuntu:xenial as pike-cli-builder
 
 ENV VERSION=AUTO_STRICT
 
@@ -25,7 +25,6 @@ RUN apt-get update \
  curl \
  gcc \
  git \
- libpq-dev \
  libssl-dev \
  libzmq3-dev \
  pkg-config \
@@ -43,19 +42,24 @@ RUN /root/.cargo/bin/cargo install cargo-deb
 
 COPY . /project
 
-WORKDIR /project/contracts/sawtooth-pike/state_delta_export
+WORKDIR /project/contracts/sawtooth-pike/cli
 
-RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"$(../../../bin/get_version)\"/" Cargo.toml
+RUN sed -i -e s/version.*$/version\ =\ \"$(../../../bin/get_version)\"/ Cargo.toml
 RUN /root/.cargo/bin/cargo deb
 
-# -------------=== state delta export docker build ===-------------
+# -------------=== pike cli docker build ===-------------
 
 FROM ubuntu:xenial
 
-COPY --from=pike-sde-builder /project/contracts/sawtooth-pike/state_delta_export/target/debian/pike-sde*.deb /tmp
+COPY --from=pike-cli-builder /project/contracts/sawtooth-pike/cli/target/debian/pike-cli*.deb /tmp
 
-RUN apt-get update \
- && dpkg -i /tmp/pike-sde*.deb || true \
- && apt-get -f -y install
+RUN echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/nightly xenial universe" >> /etc/apt/sources.list \
+ && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
+ || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
+ && apt-get update \
+ && apt-get -f -y install \
+    python3-sawtooth-cli \
+    python3-sawtooth-sdk \
+ && dpkg -i /tmp/pike-cli*.deb || true
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
