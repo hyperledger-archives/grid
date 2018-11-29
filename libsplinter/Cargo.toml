@@ -38,4 +38,3 @@ features = ["logging"]
 
 [dev-dependencies]
 tempdir = "0.3"
-rand = "0.5"

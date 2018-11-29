@@ -67,3 +67,118 @@ pub fn get_storage<'a, T: Sized + Serialize + DeserializeOwned + 'a, F: Fn() -> 
         Err(format!("Unknown state location type: {}", location))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::YamlStorage;
+    use super::*;
+    use tempdir::TempDir;
+
+    #[test]
+    fn test_read_guard() {
+        let temp_dir = TempDir::new("test_read_guard").unwrap();
+        let mut temp_dir_path = temp_dir.path().to_path_buf();
+        temp_dir_path.push("circuits.yaml");
+        let filename = temp_dir_path.to_str().unwrap().to_string();
+
+        println!("{}", filename);
+        let storage = YamlStorage::new(filename.clone(), || 1).unwrap();
+        let val = storage.read();
+        let other = storage.read();
+        assert_eq!(**val, 1);
+        assert_eq!(**other, 1);
+    }
+
+    #[test]
+    // Ensures that data is persisted between object lifetimes
+    fn test_disk_persistence() {
+        let temp_dir = TempDir::new("test_disk_persistence").unwrap();
+        let mut temp_dir_path = temp_dir.path().to_path_buf();
+        temp_dir_path.push("circuits.yaml");
+        let filename = temp_dir_path.to_str().unwrap().to_string();
+
+        {
+            let mut storage = YamlStorage::new(&filename[..], || 0).unwrap();
+            let mut val = storage.write();
+            **val = 5;
+            assert_eq!(**val, 5);
+        }
+        let storage = YamlStorage::new(&filename[..], || 0).unwrap();
+        let val = storage.read();
+        assert_eq!(**val, 5);
+    }
+
+    #[test]
+    // Ensure we don't overwrite longer data with shorter data, and get a mixture of the two
+    fn test_truncation() {
+        let temp_dir = TempDir::new("test_truncation").unwrap();
+        let mut temp_dir_path = temp_dir.path().to_path_buf();
+        temp_dir_path.push("circuits.yaml");
+        let filename = temp_dir_path.to_str().unwrap().to_string();
+
+        {
+            let storage = YamlStorage::new(&filename[..], || 500).unwrap();
+            let val = storage.read();
+            assert_eq!(**val, 500);
+        }
+
+        {
+            let mut storage = YamlStorage::new(&filename[..], || 0).unwrap();
+            let mut val = storage.write();
+            assert_eq!(**val, 500);
+            **val = 2;
+            assert_eq!(**val, 2);
+        }
+
+        let storage = YamlStorage::new(&filename[..], || 0).unwrap();
+        let val = storage.read();
+        assert_eq!(**val, 2);
+    }
+
+    #[test]
+    fn test_write_guard() {
+        let temp_dir = TempDir::new("test_write_guard").unwrap();
+        let mut temp_dir_path = temp_dir.path().to_path_buf();
+        temp_dir_path.push("circuits.yaml");
+        let filename = temp_dir_path.to_str().unwrap().to_string();
+
+        {
+            let mut storage = YamlStorage::new(&filename[..], || 1).unwrap();
+            let mut val = storage.write();
+            assert_eq!(**val, 1);
+            **val = 5;
+            assert_eq!(**val, 5);
+        }
+
+        {
+            let mut storage = YamlStorage::new(&filename[..], || 1).unwrap();
+            let mut val = storage.write();
+            assert_eq!(**val, 5);
+            **val = 64;
+            assert_eq!(**val, 64);
+        }
+    }
+
+    #[test]
+    fn test_get_storage() {
+        let temp_dir = TempDir::new("test_get_storage").unwrap();
+        let mut temp_dir_path = temp_dir.path().to_path_buf();
+        temp_dir_path.push("circuits.yaml");
+        let filename = temp_dir_path.to_str().unwrap().to_string();
+
+        let mut yaml = get_storage(&format!("{}.yaml", filename), || 1).unwrap();
+
+        assert_eq!(**yaml.read(), 1);
+
+        {
+            let mut val = yaml.write();
+            **val = 128;
+        }
+
+        assert_eq!(**yaml.read(), 128);
+
+        if let Ok(_) = get_storage("not_yaml.file", || 1) {
+            panic!("get_storage did not fail when given a bad file type");
+        }
+    }
+}
