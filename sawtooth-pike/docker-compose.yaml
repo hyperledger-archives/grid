@@ -93,7 +93,7 @@ services:
     entrypoint: "bash -c \"\
         cd /project/contracts/sawtooth-pike/tp/ && \
         cargo build && \
-        pike-tp -vv -C tcp://validator:9004
+        pike -vv -C tcp://validator:9004
         \""
     volumes:
       - .:/project
