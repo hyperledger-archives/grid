@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM rust:latest
+FROM ubuntu:bionic
 
-RUN apt-get update && apt-get install -y unzip libzmq3-dev
+RUN apt-get update \
+ && apt-get install -y -q \
+ curl \
+ gcc \
+ libssl-dev \
+ libzmq3-dev \
+ pkg-config \
+ unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # For Building Protobufs
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
+ && curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
  && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
  && rm protoc-3.5.1-linux-x86_64.zip
-RUN apt-get update && apt-get install -y protobuf-compiler
 
 WORKDIR /project/contracts/sawtooth-pike/tp/
 
-ENV PATH=$PATH:/project/contracts/sawtooth-pike/tp/target/debug/
+ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin:/project/contracts/sawtooth-pike/tp/target/debug/
