@@ -15,9 +15,10 @@
 pub mod raw;
 pub mod tls;
 
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
-use std::io::Error as IoError;
+use std::io::{Error as IoError, Read, Write};
 
 pub enum Status {
     Connected,
@@ -147,6 +148,20 @@ impl_from_io_error!(ListenError);
 
 #[derive(Debug)]
 pub enum PollError {}
+
+pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
+    let len = reader.read_u32::<BigEndian>()?;
+    let mut buffer = vec![0; len as usize];
+    reader.read_exact(&mut buffer[..])?;
+    Ok(buffer)
+}
+
+pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
+    writer.write_u32::<BigEndian>(buffer.len() as u32)?;
+    writer.write(&buffer)?;
+    writer.flush()?;
+    Ok(())
+}
 
 #[cfg(test)]
 pub mod tests {

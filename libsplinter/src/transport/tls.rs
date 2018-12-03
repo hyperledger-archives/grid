@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::{unix::EventedFd, Evented, Poll, PollOpt, Ready, Token};
 use openssl::error::ErrorStack;
 use openssl::ssl::{
@@ -21,12 +20,15 @@ use openssl::ssl::{
 };
 use url::{ParseError, Url};
 
-use std::io::{self, Read, Write};
+use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
-use transport::*;
+use transport::{
+    read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
+    RecvError, SendError, Transport,
+};
 
 pub struct TlsTransport {
     connector: SslConnector,
@@ -186,20 +188,6 @@ impl Evented for TlsConnection {
     }
 }
 
-fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
-    let len = reader.read_u32::<BigEndian>()?;
-    let mut buffer = vec![0; len as usize];
-    reader.read_exact(&mut buffer[..])?;
-    Ok(buffer)
-}
-
-fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
-    writer.write_u32::<BigEndian>(buffer.len() as u32)?;
-    writer.write(&buffer)?;
-    writer.flush()?;
-    Ok(())
-}
-
 #[derive(Debug)]
 pub enum TlsInitError {
     ProtocolError(String),
@@ -246,6 +234,7 @@ mod tests {
     use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
     use openssl::x509::{X509NameBuilder, X509Ref, X509};
     use std::fs::File;
+    use std::io::Write;
     use std::path::PathBuf;
     use tempdir::TempDir;
     use transport::tests;
