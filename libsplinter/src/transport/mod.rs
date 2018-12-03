@@ -19,6 +19,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
 use std::io::{self, Read, Write};
+use std::mem;
 
 pub enum Status {
     Connected,
@@ -157,10 +158,20 @@ pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
 }
 
 pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
-    writer.write_u32::<BigEndian>(buffer.len() as u32)?;
-    writer.write(&buffer)?;
+    let packed = pack(buffer)?;
+    writer.write(&packed)?;
     writer.flush()?;
     Ok(())
+}
+
+fn pack(buffer: &[u8]) -> Result<Vec<u8>, io::Error> {
+    let capacity: usize = buffer.len() + mem::size_of::<u32>();
+    let mut packed = Vec::with_capacity(capacity);
+
+    packed.write_u32::<BigEndian>(buffer.len() as u32)?;
+    packed.write(&buffer)?;
+
+    Ok(packed)
 }
 
 #[cfg(test)]
