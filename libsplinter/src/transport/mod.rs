@@ -18,7 +18,7 @@ pub mod tls;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
-use std::io::{Error as IoError, Read, Write};
+use std::io::{self, Read, Write};
 
 pub enum Status {
     Connected,
@@ -87,8 +87,8 @@ impl<'a> Iterator for IncomingIter<'a> {
 
 macro_rules! impl_from_io_error {
     ($err:ident) => {
-        impl From<IoError> for $err {
-            fn from(io_error: IoError) -> Self {
+        impl From<io::Error> for $err {
+            fn from(io_error: io::Error) -> Self {
                 $err::IoError(io_error)
             }
         }
@@ -97,7 +97,7 @@ macro_rules! impl_from_io_error {
 
 #[derive(Debug)]
 pub enum SendError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -105,7 +105,7 @@ impl_from_io_error!(SendError);
 
 #[derive(Debug)]
 pub enum RecvError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -116,7 +116,7 @@ pub enum StatusError {}
 
 #[derive(Debug)]
 pub enum DisconnectError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -124,7 +124,7 @@ impl_from_io_error!(DisconnectError);
 
 #[derive(Debug)]
 pub enum AcceptError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -132,7 +132,7 @@ impl_from_io_error!(AcceptError);
 
 #[derive(Debug)]
 pub enum ConnectError {
-    IoError(IoError),
+    IoError(io::Error),
     ParseError(String),
     ProtocolError(String),
 }
@@ -141,7 +141,7 @@ impl_from_io_error!(ConnectError);
 
 #[derive(Debug)]
 pub enum ListenError {
-    IoError(IoError),
+    IoError(io::Error),
 }
 
 impl_from_io_error!(ListenError);
