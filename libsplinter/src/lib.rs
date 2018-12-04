@@ -28,12 +28,15 @@ extern crate serde_yaml;
 extern crate url;
 #[macro_use]
 extern crate serde_derive;
+extern crate crossbeam_channel;
+extern crate mio_extras;
 #[cfg(test)]
 extern crate tempdir;
 
 mod async;
 pub mod connection;
 mod errors;
+pub mod mesh;
 pub mod storage;
 pub mod transport;
 
