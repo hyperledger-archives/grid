@@ -96,21 +96,39 @@ macro_rules! impl_from_io_error {
     };
 }
 
+macro_rules! impl_from_io_error_ext {
+    ($err:ident) => {
+        impl From<io::Error> for $err {
+            fn from(io_error: io::Error) -> Self {
+                match io_error.kind() {
+                    io::ErrorKind::UnexpectedEof => $err::Disconnected,
+                    io::ErrorKind::WouldBlock => $err::WouldBlock,
+                    _ => $err::IoError(io_error),
+                }
+            }
+        }
+    };
+}
+
 #[derive(Debug)]
 pub enum SendError {
     IoError(io::Error),
     ProtocolError(String),
+    WouldBlock,
+    Disconnected,
 }
 
-impl_from_io_error!(SendError);
+impl_from_io_error_ext!(SendError);
 
 #[derive(Debug)]
 pub enum RecvError {
     IoError(io::Error),
     ProtocolError(String),
+    WouldBlock,
+    Disconnected,
 }
 
-impl_from_io_error!(RecvError);
+impl_from_io_error_ext!(RecvError);
 
 #[derive(Debug)]
 pub enum StatusError {}
@@ -179,7 +197,6 @@ pub mod tests {
     use super::*;
     use std::fmt::Debug;
 
-    use std::io::ErrorKind;
     use std::sync::mpsc::channel;
     use std::thread;
     use std::time::Duration;
@@ -197,11 +214,9 @@ pub mod tests {
         ($op:expr, $err:ident) => {
             loop {
                 match $op {
-                    Err($err::IoError(err)) => {
-                        if err.kind() == ErrorKind::WouldBlock {
-                            thread::sleep(Duration::from_millis(100));
-                            continue;
-                        }
+                    Err($err::WouldBlock) => {
+                        thread::sleep(Duration::from_millis(100));
+                        continue;
                     }
                     Err(err) => break Err(err),
                     Ok(ok) => break Ok(ok),
