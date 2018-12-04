@@ -155,8 +155,8 @@ pub mod tests {
 
     use std::io::ErrorKind;
     use std::sync::mpsc::channel;
-    use std::time::Duration;
     use std::thread;
+    use std::time::Duration;
 
     use mio::{Events, Poll, PollOpt, Ready, Token};
 
@@ -176,12 +176,12 @@ pub mod tests {
                             thread::sleep(Duration::from_millis(100));
                             continue;
                         }
-                    },
+                    }
                     Err(err) => break Err(err),
                     Ok(ok) => break Ok(ok),
                 }
             }
-        }
+        };
     }
 
     pub fn test_transport<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
@@ -228,10 +228,7 @@ pub mod tests {
         let handle = thread::spawn(move || {
             let mut connections = Vec::with_capacity(CONNECTIONS);
             for i in 0..CONNECTIONS {
-                connections.push((
-                    assert_ok(transport.connect(&endpoint)),
-                    Token(i),
-                ));
+                connections.push((assert_ok(transport.connect(&endpoint)), Token(i)));
             }
 
             // Register all connections with Poller
@@ -241,7 +238,7 @@ pub mod tests {
                     conn.evented(),
                     *token,
                     Ready::readable() | Ready::writable(),
-                    PollOpt::level()
+                    PollOpt::level(),
                 ));
             }
 

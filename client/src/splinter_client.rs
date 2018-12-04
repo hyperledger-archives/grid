@@ -1,22 +1,15 @@
-use std::fs::File;
-use std::sync::Arc;
-use std::mem;
-use std::io::{Read, Write, BufReader, ErrorKind};
-use webpki;
-use std::path::PathBuf;
-use rustls;
-use rustls::{
-    Session,    
-    ClientSession,
-    ClientConfig
-};
-use std::net::{SocketAddr, ToSocketAddrs, TcpStream};
-use libsplinter::SplinterError;
-use messaging::protocol::{
-    Message,
-    MessageType
-};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use libsplinter::SplinterError;
+use messaging::protocol::{Message, MessageType};
+use rustls;
+use rustls::{ClientConfig, ClientSession, Session};
+use std::fs::File;
+use std::io::{BufReader, ErrorKind, Read, Write};
+use std::mem;
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+use std::path::PathBuf;
+use std::sync::Arc;
+use webpki;
 
 use protobuf;
 use url;
@@ -24,31 +17,28 @@ use url;
 pub struct Certs {
     ca_certs: Vec<PathBuf>,
     client_cert: PathBuf,
-    client_priv: PathBuf 
+    client_priv: PathBuf,
 }
 
 impl Certs {
-    pub fn new(
-        ca_certs: Vec<PathBuf>,
-        client_cert: PathBuf,
-        client_priv: PathBuf
-    ) -> Certs {
+    pub fn new(ca_certs: Vec<PathBuf>, client_cert: PathBuf, client_priv: PathBuf) -> Certs {
         Certs {
             ca_certs,
             client_cert,
-            client_priv
+            client_priv,
         }
     }
 
     pub fn get_ca_certs(&self) -> Result<Vec<File>, SplinterError> {
-
         let mut files = Vec::new();
 
         for cert in self.ca_certs.clone() {
             files.push(File::open(if let Some(s) = cert.to_str() {
                 s
             } else {
-                return Err(SplinterError::CertUtf8Error("ca cert path name is malformed".into()))
+                return Err(SplinterError::CertUtf8Error(
+                    "ca cert path name is malformed".into(),
+                ));
             })?);
         }
 
@@ -59,7 +49,9 @@ impl Certs {
         let cert = if let Some(s) = self.client_cert.to_str() {
             s
         } else {
-            return Err(SplinterError::CertUtf8Error("client cert path name is malformed".into()));
+            return Err(SplinterError::CertUtf8Error(
+                "client cert path name is malformed".into(),
+            ));
         };
 
         Ok(File::open(cert)?)
@@ -70,7 +62,8 @@ impl Certs {
             s
         } else {
             return Err(SplinterError::CertUtf8Error(
-                    "client private key path name is malformed".into()));
+                "client private key path name is malformed".into(),
+            ));
         };
 
         Ok(File::open(cert)?)
@@ -79,16 +72,11 @@ impl Certs {
 
 pub struct SplinterClient {
     session: ClientSession,
-    socket: TcpStream
+    socket: TcpStream,
 }
 
 impl SplinterClient {
-
-    pub fn connect(
-        url: &str,
-        certs: Certs
-    ) -> Result<SplinterClient, SplinterError> {
-
+    pub fn connect(url: &str, certs: Certs) -> Result<SplinterClient, SplinterError> {
         let (hostname, port) = {
             let url = url::Url::parse(url)?;
             let hs = if let Some(hs) = url.host_str() {
@@ -120,7 +108,6 @@ impl SplinterClient {
     }
 
     pub fn send(&mut self, req: &Message) -> Result<Message, SplinterError> {
-
         debug!("Performing Handshake");
         loop {
             match self.session.complete_io(&mut self.socket) {
@@ -151,7 +138,7 @@ impl SplinterClient {
                 self.session.write(&packed_req)?;
                 send_heartbeat = true;
             }
-            
+
             debug!("Reading tls");
             match self.session.read_tls(&mut self.socket) {
                 Ok(n) => {
@@ -161,7 +148,7 @@ impl SplinterClient {
                     debug!("No data to read");
                     continue;
                 }
-                Err(err) => return Err(SplinterError::from(err))
+                Err(err) => return Err(SplinterError::from(err)),
             };
 
             debug!("Processing new packets");
@@ -171,9 +158,7 @@ impl SplinterClient {
             // Read first 4 bytes to get length
             let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
             self.session.read_exact(&mut msg_len_buff)?;
-            let msg_size = msg_len_buff
-                .as_slice()
-                .read_u32::<BigEndian>()? as usize;
+            let msg_size = msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
 
             // Read Message
             let mut msg_buff = vec![0; msg_size];
@@ -190,36 +175,40 @@ impl SplinterClient {
 }
 
 fn get_config(certs: Certs) -> Result<ClientConfig, SplinterError> {
-        let mut config = ClientConfig::new();
+    let mut config = ClientConfig::new();
 
-        for file in certs.get_ca_certs()? {
-            let mut reader = BufReader::new(file);
-            config.root_store.add_pem_file(&mut reader)
-                .map_err(|_| SplinterError::CertificateCreationError)?;
-        }
-
-        let client_cert_file = certs.get_client_cert()?;
-        let mut reader = BufReader::new(client_cert_file);
-        let client_certs = rustls::internal::pemfile::certs(&mut reader)
-                .map_err(|_| SplinterError::CertificateCreationError)?;
-
-        let client_priv_file = certs.get_client_priv()?;
-        let mut reader = BufReader::new(client_priv_file);
-        let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
-                .map_err(|_| SplinterError::CertificateCreationError)?;
-
-        let privkey = if keys.len() < 1 {
-            return Err(SplinterError::PrivateKeyNotFound);
-        } else {
-            keys[0].clone()
-        };
-
-        config.set_single_client_cert(client_certs, privkey);
-
-        config.ciphersuites.push(rustls::ALL_CIPHERSUITES.to_vec()[0]);
-
-        Ok(config)
+    for file in certs.get_ca_certs()? {
+        let mut reader = BufReader::new(file);
+        config
+            .root_store
+            .add_pem_file(&mut reader)
+            .map_err(|_| SplinterError::CertificateCreationError)?;
     }
+
+    let client_cert_file = certs.get_client_cert()?;
+    let mut reader = BufReader::new(client_cert_file);
+    let client_certs = rustls::internal::pemfile::certs(&mut reader)
+        .map_err(|_| SplinterError::CertificateCreationError)?;
+
+    let client_priv_file = certs.get_client_priv()?;
+    let mut reader = BufReader::new(client_priv_file);
+    let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
+        .map_err(|_| SplinterError::CertificateCreationError)?;
+
+    let privkey = if keys.len() < 1 {
+        return Err(SplinterError::PrivateKeyNotFound);
+    } else {
+        keys[0].clone()
+    };
+
+    config.set_single_client_cert(client_certs, privkey);
+
+    config
+        .ciphersuites
+        .push(rustls::ALL_CIPHERSUITES.to_vec()[0]);
+
+    Ok(config)
+}
 
 fn pack_request(req: &Message) -> Result<Vec<u8>, SplinterError> {
     let raw_msg = protobuf::Message::write_to_bytes(req)?;
@@ -232,7 +221,8 @@ fn pack_request(req: &Message) -> Result<Vec<u8>, SplinterError> {
 }
 
 fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
-    hostname.to_socket_addrs()?
+    hostname
+        .to_socket_addrs()?
         .filter(|addr| addr.is_ipv4())
         .next()
         .ok_or(SplinterError::CouldNotResolveHostName)
@@ -240,21 +230,19 @@ fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
 
 #[cfg(test)]
 mod tests {
-    use messaging::protocol::{Message, MessageType}; 
+    use byteorder::{BigEndian, ReadBytesExt};
+    use messaging::protocol::{Message, MessageType};
     use protobuf;
-    use std::mem;
     use splinter_client::pack_request;
     use std::io::Read;
-    use byteorder::{BigEndian, ReadBytesExt};
+    use std::mem;
 
     #[test]
     fn test_pack_request() {
         let mut request = Message::new();
         request.set_message_type(MessageType::HEARTBEAT_REQUEST);
 
-        let expected_size = protobuf::Message::write_to_bytes(&request)
-            .unwrap()
-            .len();
+        let expected_size = protobuf::Message::write_to_bytes(&request).unwrap().len();
 
         let packed_request = pack_request(&request).unwrap();
 
@@ -266,15 +254,13 @@ mod tests {
             .read_exact(&mut msg_len_buff)
             .unwrap();
 
-        let actual_size = msg_len_buff
-            .as_slice()
-            .read_u32::<BigEndian>()
-            .unwrap() as usize;
+        let actual_size = msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
 
         assert_eq!(expected_size, actual_size);
 
-        let actual_request = protobuf::parse_from_bytes::<Message>(&packed_request[mem::size_of::<u32>()..])
-            .unwrap();
+        let actual_request =
+            protobuf::parse_from_bytes::<Message>(&packed_request[mem::size_of::<u32>()..])
+                .unwrap();
 
         assert!(request.get_message_type() == actual_request.get_message_type());
     }

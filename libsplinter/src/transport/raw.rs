@@ -31,9 +31,7 @@ impl Transport for RawTransport {
         // Connect a std::net::TcpStream to make sure connect() block
         let stream = TcpStream::connect(endpoint)?;
         let mio_stream = MioTcpStream::from_stream(stream)?;
-        Ok(Box::new(RawConnection {
-            stream: mio_stream,
-        }))
+        Ok(Box::new(RawConnection { stream: mio_stream }))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
@@ -50,7 +48,9 @@ pub struct RawListener {
 impl Listener for RawListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (stream, _) = self.listener.accept()?;
-        let connection = RawConnection { stream: MioTcpStream::from_stream(stream)? };
+        let connection = RawConnection {
+            stream: MioTcpStream::from_stream(stream)?,
+        };
         Ok(Box::new(connection))
     }
 

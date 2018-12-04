@@ -13,14 +13,7 @@
 // limitations under the License.
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use mio::{
-    unix::EventedFd,
-    Evented,
-    Poll,
-    PollOpt,
-    Ready,
-    Token,
-};
+use mio::{unix::EventedFd, Evented, Poll, PollOpt, Ready, Token};
 use openssl::error::ErrorStack;
 use openssl::ssl::{
     Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslFiletype, SslMethod,
@@ -29,8 +22,8 @@ use openssl::ssl::{
 use url::{ParseError, Url};
 
 use std::io::{self, Read, Write};
-use std::os::unix::io::{RawFd, AsRawFd};
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
 use transport::*;
@@ -95,9 +88,7 @@ impl Transport for TlsTransport {
         let dns_name = endpoint_to_dns_name(endpoint)?;
 
         let stream = TcpStream::connect(endpoint)?;
-        let tls_stream = self
-            .connector
-            .connect(&dns_name, stream)?;
+        let tls_stream = self.connector.connect(&dns_name, stream)?;
 
         tls_stream.get_ref().set_nonblocking(true)?;
         let connection = TlsConnection { stream: tls_stream };
@@ -170,15 +161,23 @@ impl AsRawFd for TlsConnection {
 }
 
 impl Evented for TlsConnection {
-    fn register(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
-        -> io::Result<()>
-    {
+    fn register(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
         EventedFd(&self.as_raw_fd()).register(poll, token, interest, opts)
     }
 
-    fn reregister(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
-        -> io::Result<()>
-    {
+    fn reregister(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
         EventedFd(&self.as_raw_fd()).reregister(poll, token, interest, opts)
     }
 
@@ -246,9 +245,9 @@ mod tests {
     use openssl::rsa::Rsa;
     use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
     use openssl::x509::{X509NameBuilder, X509Ref, X509};
-    use tempdir::TempDir;
     use std::fs::File;
     use std::path::PathBuf;
+    use tempdir::TempDir;
     use transport::tests;
 
     // Make a certificate and private key for the Certifcate Authority
@@ -349,7 +348,11 @@ mod tests {
         // create temp directory to store ca.cert
         let temp_dir = TempDir::new("tls-transport-test").unwrap();
         let temp_dir_path = temp_dir.path();
-        let ca_path_file = write_file(temp_dir_path.to_path_buf(), "ca.cert", &ca_cert.to_pem().unwrap());
+        let ca_path_file = write_file(
+            temp_dir_path.to_path_buf(),
+            "ca.cert",
+            &ca_cert.to_pem().unwrap(),
+        );
 
         // Generate client and server keys and certificates
         let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key);

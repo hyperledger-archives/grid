@@ -19,18 +19,19 @@ extern crate url;
 extern crate clap;
 #[macro_use]
 extern crate log;
+extern crate serde;
 extern crate simple_logger;
 extern crate toml;
-extern crate serde;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 
-mod daemon;
 mod config;
+mod daemon;
 
-use log::LogLevel;
-use url::Url;
 use config::{Config, ConfigError};
+use log::LogLevel;
 use std::fs::File;
+use url::Url;
 
 use daemon::SplinterDaemon;
 
@@ -69,9 +70,7 @@ fn main() {
     debug!("Loading configuration file");
 
     let config = {
-        let config_file_path = matches
-            .value_of("config")
-            .unwrap_or("config.toml");
+        let config_file_path = matches.value_of("config").unwrap_or("config.toml");
 
         File::open(config_file_path)
             .map_err(ConfigError::from)
@@ -104,7 +103,7 @@ fn main() {
         .or_else(|| config.ca_certs())
         .expect("At least one ca file must be provided");
 
-    let client_cert =  matches
+    let client_cert = matches
         .value_of("client_cert")
         .map(String::from)
         .or_else(|| config.client_cert())
@@ -122,7 +121,7 @@ fn main() {
         .or_else(|| config.server_key())
         .expect("Must provide a valid key path");
 
-    let client_key_file = matches 
+    let client_key_file = matches
         .value_of("client_key")
         .map(String::from)
         .or_else(|| config.client_key())
@@ -139,7 +138,7 @@ fn main() {
         for url in urls {
             match Url::parse(&url) {
                 Ok(u) => peers.push(u),
-                Err(err) =>  {
+                Err(err) => {
                     error!("Invalid peer url {:?}", err);
                     std::process::exit(1);
                 }
