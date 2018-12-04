@@ -37,7 +37,7 @@ pub trait Connection {
     fn evented(&self) -> &dyn Evented;
 }
 
-pub trait Listener {
+pub trait Listener: Send {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError>;
     fn endpoint(&self) -> String;
 }
