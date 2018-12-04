@@ -1,261 +1,123 @@
-use rustls;
-use std::net::{SocketAddr, TcpListener, TcpStream};
-use url::Url;
+use libsplinter::storage::state::State;
+use libsplinter::storage::Storage;
+use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
-use libsplinter::{
-    create_client_config, create_client_session, create_server_config, create_server_session,
-    load_cert, load_key, ConnectionDriver, ConnectionType, DaemonRequest, Shared, SplinterError,
-};
-
-use libsplinter::connection::tls_connection::TlsConnection;
-
-use std::net::{Ipv4Addr, Ipv6Addr};
-use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 pub struct SplinterDaemon {
-    client_config: rustls::ClientConfig,
-    server_config: rustls::ServerConfig,
-    state: Arc<Mutex<Shared>>,
-    service_endpoint: Url,
-    network_endpoint: Url,
-    initial_peers: Vec<Url>,
+    storage: Box<dyn Storage<S = State>>,
+    transport: Box<dyn Transport + Send>,
+    service_endpoint: String,
+    network_endpoint: String,
+    initial_peers: Vec<String>,
 }
 
 impl SplinterDaemon {
     pub fn new(
-        ca_files: Vec<String>,
-        client_cert: &str,
-        server_cert: &str,
-        server_key_file: &str,
-        client_key_file: &str,
-        network_endpoint: Url,
-        service_endpoint: Url,
-        initial_peers: Vec<Url>,
-    ) -> Result<SplinterDaemon, SplinterError> {
-        let mut ca_certs = Vec::new();
-        for ca_file in ca_files {
-            let ca_cert = load_cert(&ca_file)?;
-            ca_certs.extend(ca_cert);
-        }
-        let server_key = load_key(server_key_file)?;
-        let client_key = load_key(client_key_file)?;
-
-        let client_certs = load_cert(client_cert)?;
-
-        // This should be updated to not just be all the suites
-        let cipher_suites = rustls::ALL_CIPHERSUITES.to_vec();
-
-        let client_config =
-            create_client_config(ca_certs.clone(), client_certs, client_key, cipher_suites)?;
-        // create server config
-        let server_certs = load_cert(server_cert)?;
-        let server_config = create_server_config(ca_certs, server_certs, server_key)?;
-
-        // create splinterD node
-        let state = Arc::new(Mutex::new(Shared::new()));
-
+        storage: Box<dyn Storage<S = State>>,
+        transport: Box<dyn Transport + Send>,
+        network_endpoint: String,
+        service_endpoint: String,
+        initial_peers: Vec<String>,
+    ) -> Result<SplinterDaemon, CreateError> {
+        // create SplinterD node
         Ok(SplinterDaemon {
-            client_config,
-            server_config,
-            state,
+            storage,
+            transport,
             service_endpoint,
             network_endpoint,
             initial_peers,
         })
     }
 
-    pub fn start(&mut self) -> Result<(), SplinterError> {
-        let (tx, rx) = mpsc::channel();
+    pub fn start(&mut self) -> Result<(), StartError> {
+        let mut network_listener = self.transport.listen(&self.network_endpoint)?;
+        let network_thread = thread::spawn(move || {
+            for connection_result in network_listener.incoming() {
+                let connection = match connection_result {
+                    Ok(connection) => connection,
+                    Err(err) => return Err(err),
+                };
+                println!("Recieved connection from {}", connection.remote_endpoint());
+            }
+            Ok(())
+        });
 
-        // create peers and pass to threads
+        let mut service_listener = self.transport.listen(&self.service_endpoint)?;
+        let service_thread = thread::spawn(move || {
+            for connection_result in service_listener.incoming() {
+                let connection = match connection_result {
+                    Ok(connection) => connection,
+                    Err(err) => return Err(err),
+                };
+                println!("Recieved connection from {}", connection.remote_endpoint());
+            }
+            Ok(())
+        });
+
         for peer in self.initial_peers.iter() {
-            let mut connection = create_peer_connection(
-                peer.clone(),
-                to_socket_addr(&self.network_endpoint)?,
-                tx.clone(),
-                self.client_config.clone(),
-                self.state.clone(),
-            )?;
-            let _ = thread::spawn(move || connection.run());
+            let connection_result = self.transport.connect(&peer);
+            let connection = match connection_result {
+                Ok(connection) => connection,
+                Err(err) => {
+                    return Err(StartError::TransportError(format!(
+                        "Connect Error: {:?}",
+                        err
+                    )))
+                }
+            };
+            println!("Successfully connected to {}", connection.remote_endpoint());
         }
 
-        let network_endpoint = self.network_endpoint.clone();
-        let network_addr = to_socket_addr(&self.network_endpoint)?;
-        let network_server_config = self.server_config.clone();
-        let network_state = self.state.clone();
-        let network_sender = tx.clone();
-
-        thread::spawn(move || {
-            // start up a listener and accept incoming connections
-            let listener = create_listener(&network_endpoint)?;
-            for socket in listener.incoming() {
-                match socket {
-                    Ok(mut socket) => {
-                        socket.set_nonblocking(true)?;
-
-                        let session = create_server_session(network_server_config.clone());
-                        let peer_addr = socket.peer_addr()?.clone();
-                        let connection = TlsConnection::new(socket, session);
-
-                        let mut connection_driver = ConnectionDriver::new(
-                            connection,
-                            network_addr,
-                            peer_addr,
-                            network_state.clone(),
-                            ConnectionType::Network,
-                            network_sender.clone(),
-                        )?;
-                        let _ = thread::spawn(move || connection_driver.run());
+        for (node_id, node) in self.storage.read().nodes().iter() {
+            if let Some(endpoint) = node.endpoints().get(1) {
+                let connection_result = self.transport.connect(&endpoint);
+                let connection = match connection_result {
+                    Ok(connection) => connection,
+                    Err(err) => {
+                        return Err(StartError::TransportError(format!(
+                            "Connect Error: {:?}",
+                            err
+                        )))
                     }
-                    Err(e) => return Err(SplinterError::from(e)),
-                }
-            }
-
-            Ok(())
-        });
-
-        let service_endpoint = self.service_endpoint.clone();
-        let service_server_config = self.server_config.clone();
-        let service_state = self.state.clone();
-        let service_sender = tx.clone();
-        thread::spawn(move || {
-            // start up a listener and accept incoming connections
-            let listener = create_listener(&service_endpoint)?;
-
-            for socket in listener.incoming() {
-                match socket {
-                    Ok(mut socket) => {
-                        socket.set_nonblocking(true)?;
-
-                        let session = create_server_session(service_server_config.clone());
-                        let peer_addr = socket.peer_addr()?.clone();
-                        let connection = TlsConnection::new(socket, session);
-
-                        let mut connection_driver = ConnectionDriver::new(
-                            connection,
-                            network_addr,
-                            peer_addr,
-                            service_state.clone(),
-                            ConnectionType::Service,
-                            service_sender.clone(),
-                        )?;
-                        let _ = thread::spawn(move || connection_driver.run());
-                    }
-                    Err(e) => return Err(SplinterError::from(e)),
-                }
-            }
-            Ok(())
-        });
-
-        // Wait for thread requests to create
-        //
-        let new_connection_network_addr = to_socket_addr(&self.network_endpoint)?;
-        loop {
-            let request = rx.recv().unwrap();
-
-            match request {
-                DaemonRequest::CreateConnection { address } => {
-                    let mut connection = match create_peer_connection(
-                        Url::parse(&address)?,
-                        new_connection_network_addr,
-                        tx.clone(),
-                        self.client_config.clone(),
-                        self.state.clone(),
-                    ) {
-                        Ok(connection) => connection,
-                        Err(err) => {
-                            warn!("Unable to connect to {}: {:?}", address, err);
-                            continue;
-                        }
-                    };
-
-                    thread::spawn(move || connection.run());
-                }
+                };
+                println!(
+                    "Successfully connected to node {}: {}",
+                    node_id,
+                    connection.remote_endpoint()
+                );
+            } else {
+                println!("Unable to connect to node: {}", node_id);
             }
         }
+        let _ = network_thread.join();
+        let _ = service_thread.join();
+        Ok(())
     }
 }
 
-fn create_peer_connection(
-    peer: Url,
-    network_addr: SocketAddr,
-    sender: mpsc::Sender<DaemonRequest>,
-    client_config: rustls::ClientConfig,
-    state: Arc<Mutex<Shared>>,
-) -> Result<ConnectionDriver<TlsConnection<rustls::ClientSession>>, SplinterError> {
-    let socket = connect(&peer)?;
-    socket.set_nonblocking(true)?;
+#[derive(Debug)]
+pub enum CreateError {}
 
-    let session = match peer.domain() {
-        Some(d) if d.parse::<Ipv4Addr>().is_ok() => {
-            create_client_session(client_config.clone(), "localhost".into())?
-        }
-        Some(d) if d.parse::<Ipv6Addr>().is_ok() => {
-            create_client_session(client_config.clone(), "localhost".into())?
-        }
-        Some(d) => create_client_session(client_config.clone(), d.to_string())?,
-        None => create_client_session(client_config.clone(), "localhost".into())?,
-    };
-
-    let peer_addr = socket.peer_addr()?.clone();
-    let connection = TlsConnection::new(socket, session);
-
-    ConnectionDriver::new(
-        connection,
-        network_addr,
-        peer_addr,
-        state.clone(),
-        ConnectionType::Network,
-        sender,
-    )
+#[derive(Debug)]
+pub enum StartError {
+    TransportError(String),
 }
 
-fn create_listener(url: &Url) -> Result<TcpListener, SplinterError> {
-    let host = if let Some(h) = url.host_str() {
-        h
-    } else {
-        return Err(SplinterError::HostNameNotFound);
-    };
-
-    let port = if let Some(p) = url.port() {
-        p
-    } else {
-        return Err(SplinterError::PortNotIdentified);
-    };
-
-    TcpListener::bind(&format!("{}:{}", host, port)).map_err(SplinterError::from)
+impl From<ListenError> for StartError {
+    fn from(listen_error: ListenError) -> Self {
+        StartError::TransportError(format!("Listen Error: {:?}", listen_error))
+    }
 }
 
-fn connect(url: &Url) -> Result<TcpStream, SplinterError> {
-    let host = if let Some(h) = url.host_str() {
-        h
-    } else {
-        return Err(SplinterError::HostNameNotFound);
-    };
-
-    let port = if let Some(p) = url.port() {
-        p
-    } else {
-        return Err(SplinterError::PortNotIdentified);
-    };
-
-    debug!("{}:{}", host, port);
-
-    TcpStream::connect(&format!("{}:{}", host, port)).map_err(SplinterError::from)
+impl From<AcceptError> for StartError {
+    fn from(accept_error: AcceptError) -> Self {
+        StartError::TransportError(format!("Accept Error: {:?}", accept_error))
+    }
 }
 
-fn to_socket_addr(url: &Url) -> Result<SocketAddr, SplinterError> {
-    let host = if let Some(h) = url.host_str() {
-        h
-    } else {
-        return Err(SplinterError::HostNameNotFound);
-    };
-
-    let port = if let Some(p) = url.port() {
-        p
-    } else {
-        return Err(SplinterError::PortNotIdentified);
-    };
-    Ok(format!("{}:{}", host, port).parse()?)
+impl From<ConnectError> for StartError {
+    fn from(connect_error: ConnectError) -> Self {
+        StartError::TransportError(format!("Connect Error: {:?}", connect_error))
+    }
 }
