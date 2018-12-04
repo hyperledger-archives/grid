@@ -20,7 +20,9 @@ use toml::de;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct Config {
-    ca_certs: Option<Vec<String>>,
+    storage: Option<String>,
+    transport: Option<String>,
+    ca_certs: Option<String>,
     client_cert: Option<String>,
     client_key: Option<String>,
     server_cert: Option<String>,
@@ -38,7 +40,15 @@ impl Config {
         toml::from_str::<Config>(&toml).map_err(ConfigError::from)
     }
 
-    pub fn ca_certs(&self) -> Option<Vec<String>> {
+    pub fn storage(&self) -> Option<String> {
+        self.storage.clone()
+    }
+
+    pub fn transport(&self) -> Option<String> {
+        self.storage.clone()
+    }
+
+    pub fn ca_certs(&self) -> Option<String> {
         self.ca_certs.clone()
     }
 
