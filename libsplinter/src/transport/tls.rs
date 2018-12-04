@@ -224,7 +224,7 @@ impl From<OpensslError> for DisconnectError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use openssl::asn1::Asn1Time;
     use openssl::bn::{BigNum, MsbOption};
@@ -330,7 +330,7 @@ mod tests {
         path
     }
 
-    fn create_test_tls_transport() -> TlsTransport {
+    pub fn create_test_tls_transport() -> TlsTransport {
         // Genearte Certificat Authority keys and certificate
         let (ca_key, ca_cert) = make_ca_cert();
 
