@@ -27,7 +27,7 @@ pub enum Status {
 }
 
 /// A single, bi-directional connection between two nodes
-pub trait Connection {
+pub trait Connection: Send {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError>;
     fn recv(&mut self) -> Result<Vec<u8>, RecvError>;
 
