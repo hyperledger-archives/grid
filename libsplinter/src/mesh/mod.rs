@@ -12,6 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Mesh is an asynchronous Connection handler that sends and receives across many Connections in a
+//! background thread.
+//!
+//!     use libsplinter::{mesh::{Envelope, Mesh}, transport::{Transport, raw::RawTransport}};
+//!
+//!     let mut transport = RawTransport::default();
+//!     let mesh = Mesh::new(1, 1);
+//!     let mut listener = transport.listen("127.0.0.1:0").unwrap();
+//!
+//!     let client = mesh.add(transport.connect(&listener.endpoint()).unwrap()).unwrap();
+//!     let server = mesh.add(listener.accept().unwrap()).unwrap();
+//!
+//!     mesh.send(Envelope::new(client, b"hello".to_vec())).unwrap();
+//!     mesh.recv().unwrap();
+//!
+//!     let client = mesh.remove(client).unwrap();
+//!     // If we were to drop client above, the reactor could detect that client disconnected from
+//!     // the server and automatically cleanup and remove server, causing this to fail with
+//!     // RemoveError::NotFound.
+//!     let server = mesh.remove(server).unwrap();
+//!
+//! Mesh can be cloned relatively cheaply and passed between threads. If receiving is performed
+//! from many clones, envelopes will be distributed among them.
+//!
+//! The following goals influenced this implementation:
+//!
+//! 1. The main reactor in the background thread should hold no locks. Adding a single RwLock read
+//!    acquisition to an otherwise simple event loop was observed to decrease performance by a
+//!    factor of 5x.
+//! 2. Sends to connections should be queued and handled independently. This means if one
+//!    Connection has a bunch of sends queued but its underlying socket is not writable, other
+//!    Connections must still be able to send. This implementation uses a separate outgoing queue
+//!    for each Connection that can be polled in the event loop to accomplish this, but there may
+//!    be a more efficient implementation.
+//! 3. Backpressure should be built in. This means all queues should be bounded so that a
+//!    backpressure error can be returned when the queue is full.
+
 mod control;
 mod incoming;
 mod outgoing;
