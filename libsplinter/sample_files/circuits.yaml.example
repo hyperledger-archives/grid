@@ -11,30 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-[package]
-name = "libsplinter"
-version = "0.1.0"
-authors = ["Cargill Incorporated"]
-
-[dependencies]
-atomicwrites = "0.2"
-webpki = "0.18.1"
-protobuf = "2"
-bytes = "0.4"
-log = "0.3.0"
-byteorder = "1"
-url = "1.7.1"
-messaging = { path = "../messaging" }
-openssl = "0.10"
-mio = "0.6"
-serde = "1.0"
-serde_yaml = "0.8"
-serde_derive = "1.0"
-
-[dependencies.rustls]
-version = "0.13.1"
-features = ["logging"]
-
-[dev-dependencies]
-tempdir = "0.3"
+---
+nodes:
+  12:
+    endpoints:
+      - "tcp://1.2.3.4:1234"
+      - "inproc://127.0.0.1:100001"
+  345:
+    endpoint:
+    - "tcp://5.6.7.8:5678"
+circuits:
+  alpha:
+    auth: trust
+    members:
+      - "012"
+      - "345"
+    services:
+      - abc
+      - def
+      - ghi
+    persistence: any
+    durability: none
+    routes: require_direct
