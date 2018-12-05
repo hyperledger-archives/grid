@@ -33,6 +33,24 @@ extern crate mio_extras;
 #[cfg(test)]
 extern crate tempdir;
 
+macro_rules! rwlock_read_unwrap {
+    ($lock:expr) => {
+        match $lock.read() {
+            Ok(d) => d,
+            Err(e) => panic!("RwLock error: {:?}", e),
+        }
+    }
+}
+
+macro_rules! rwlock_write_unwrap {
+    ($lock:expr) => {
+        match $lock.write() {
+            Ok(d) => d,
+            Err(e) => panic!("RwLock error: {:?}", e),
+        }
+    }
+}
+
 mod async;
 pub mod connection;
 mod errors;

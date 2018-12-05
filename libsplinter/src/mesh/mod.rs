@@ -78,7 +78,7 @@ impl Mesh {
     pub fn add(&self, connection: Box<dyn Connection>) -> Result<usize, AddError> {
         let outgoing = self.ctrl.add(connection)?;
         let id = outgoing.id();
-        self.outgoings.write().unwrap().insert(id, outgoing);
+        rwlock_write_unwrap!(self.outgoings).insert(id, outgoing);
 
         Ok(id)
     }
@@ -89,7 +89,7 @@ impl Mesh {
         // The outgoing channel needs to be removed after the control request completes, or else
         // the reactor will detect that the outgoing sender has dropped and clean it up
         // automatically, causing the control request to fail with NotFound.
-        self.outgoings.write().unwrap().remove(&id);
+        rwlock_write_unwrap!(self.outgoings).remove(&id);
         Ok(connection)
     }
 
@@ -98,7 +98,7 @@ impl Mesh {
     /// This is a convenience function and is equivalent to
     /// `mesh.outgoing(envelope.id()).send(envelope.take_payload())`.
     pub fn send(&self, envelope: Envelope) -> Result<(), SendError> {
-        let outgoings = self.outgoings.read().unwrap();
+        let outgoings = rwlock_read_unwrap!(self.outgoings);
         let id = envelope.id();
         match outgoings.get(&envelope.id()) {
             Some(ref outgoing) => match outgoing.send(envelope.take_payload()) {
@@ -122,7 +122,7 @@ impl Mesh {
     /// This may be faster if many sends on the same Connection are going to be performed because
     // the internal lock around the pool of senders does not need to be reacquired.
     pub fn outgoing(&self, id: usize) -> Option<Outgoing> {
-        self.outgoings.read().unwrap().get(&id).cloned()
+        rwlock_read_unwrap!(self.outgoings).get(&id).cloned()
     }
 
     /// Create a new handle for receiving envelopes from the mesh.
