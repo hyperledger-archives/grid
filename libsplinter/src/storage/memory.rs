@@ -58,7 +58,8 @@ impl<'a, T: 'a + Serialize + DeserializeOwned + fmt::Display> fmt::Display
 
 impl<'a, T: 'a + Serialize + DeserializeOwned> StorageReadGuard<'a, T>
     for MemStorageReadGuard<'a, T>
-{}
+{
+}
 
 /// Memory-backed write guard
 #[derive(Debug)]
@@ -96,7 +97,8 @@ impl<'a, T: 'a + Serialize + DeserializeOwned + fmt::Display> fmt::Display
 
 impl<'a, T: 'a + Serialize + DeserializeOwned> StorageWriteGuard<'a, T>
     for MemStorageWriteGuard<'a, T>
-{}
+{
+}
 
 /// Memory-backed RAII-guarded Storage implementation
 ///

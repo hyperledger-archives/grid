@@ -67,7 +67,8 @@ fn main() {
         (@arg client_key:  --("client-key") +takes_value
           "file path key for the node when connecting to a node as client")
         (@arg verbose: -v --verbose +multiple
-         "increase output verbosity")).get_matches();
+         "increase output verbosity"))
+    .get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),

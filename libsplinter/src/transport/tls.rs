@@ -311,7 +311,8 @@ pub(crate) mod tests {
                     .client_auth()
                     .build()
                     .unwrap(),
-            ).unwrap();
+            )
+            .unwrap();
 
         cert_builder
             .sign(&ca_privkey, MessageDigest::sha256())
@@ -378,7 +379,8 @@ pub(crate) mod tests {
             client_cert_file,
             server_key_file,
             server_cert_file,
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]

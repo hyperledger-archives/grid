@@ -77,7 +77,8 @@ impl Reactor {
             .spawn(move || {
                 let mut reactor = Reactor::new(ctrl_rx, incoming_tx, outgoing_capacity);
                 reactor.run();
-            }).expect("Failed to spawn mesh::Reactor thread");
+            })
+            .expect("Failed to spawn mesh::Reactor thread");
 
         (Control::new(ctrl_tx), Incoming::new(incoming_rx))
     }
