@@ -144,9 +144,9 @@ fn main() {
 
     let storage = match &storage_type as &str {
         "yaml" => get_storage(&(location + "/circuits.yaml"), || State::new()).unwrap(),
+        "memory" => get_storage("memory", || State::new()).unwrap(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
-
 
     let mut node = match SplinterDaemon::new(
         storage,
