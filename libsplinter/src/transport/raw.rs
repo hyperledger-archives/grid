@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::{net::TcpStream as MioTcpStream, Evented};
 
-use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 
 use transport::{
-    AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
-    SendError, Transport,
+    read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
+    RecvError, SendError, Transport,
 };
 
 #[derive(Default)]
@@ -31,9 +29,7 @@ impl Transport for RawTransport {
         // Connect a std::net::TcpStream to make sure connect() block
         let stream = TcpStream::connect(endpoint)?;
         let mio_stream = MioTcpStream::from_stream(stream)?;
-        Ok(Box::new(RawConnection {
-            stream: mio_stream,
-        }))
+        Ok(Box::new(RawConnection { stream: mio_stream }))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
@@ -50,7 +46,9 @@ pub struct RawListener {
 impl Listener for RawListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (stream, _) = self.listener.accept()?;
-        let connection = RawConnection { stream: MioTcpStream::from_stream(stream)? };
+        let connection = RawConnection {
+            stream: MioTcpStream::from_stream(stream)?,
+        };
         Ok(Box::new(connection))
     }
 
@@ -87,20 +85,6 @@ impl Connection for RawConnection {
     fn evented(&self) -> &dyn Evented {
         &self.stream
     }
-}
-
-fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
-    let len = reader.read_u32::<BigEndian>()?;
-    let mut buffer = vec![0; len as usize];
-    reader.read_exact(&mut buffer[..])?;
-    Ok(buffer)
-}
-
-fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
-    writer.write_u32::<BigEndian>(buffer.len() as u32)?;
-    writer.write(&buffer)?;
-    writer.flush()?;
-    Ok(())
 }
 
 #[cfg(test)]

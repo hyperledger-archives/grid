@@ -31,6 +31,8 @@ mio = "0.6"
 serde = "1.0"
 serde_yaml = "0.8"
 serde_derive = "1.0"
+mio-extras = "2"
+crossbeam-channel = "0.3"
 
 [dependencies.rustls]
 version = "0.13.1"

@@ -15,9 +15,11 @@
 pub mod raw;
 pub mod tls;
 
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
-use std::io::Error as IoError;
+use std::io::{self, Read, Write};
+use std::mem;
 
 pub enum Status {
     Connected,
@@ -25,7 +27,7 @@ pub enum Status {
 }
 
 /// A single, bi-directional connection between two nodes
-pub trait Connection {
+pub trait Connection: Send {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError>;
     fn recv(&mut self) -> Result<Vec<u8>, RecvError>;
 
@@ -37,7 +39,7 @@ pub trait Connection {
     fn evented(&self) -> &dyn Evented;
 }
 
-pub trait Listener {
+pub trait Listener: Send {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError>;
     fn endpoint(&self) -> String;
 }
@@ -86,9 +88,23 @@ impl<'a> Iterator for IncomingIter<'a> {
 
 macro_rules! impl_from_io_error {
     ($err:ident) => {
-        impl From<IoError> for $err {
-            fn from(io_error: IoError) -> Self {
+        impl From<io::Error> for $err {
+            fn from(io_error: io::Error) -> Self {
                 $err::IoError(io_error)
+            }
+        }
+    };
+}
+
+macro_rules! impl_from_io_error_ext {
+    ($err:ident) => {
+        impl From<io::Error> for $err {
+            fn from(io_error: io::Error) -> Self {
+                match io_error.kind() {
+                    io::ErrorKind::UnexpectedEof => $err::Disconnected,
+                    io::ErrorKind::WouldBlock => $err::WouldBlock,
+                    _ => $err::IoError(io_error),
+                }
             }
         }
     };
@@ -96,26 +112,30 @@ macro_rules! impl_from_io_error {
 
 #[derive(Debug)]
 pub enum SendError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
+    WouldBlock,
+    Disconnected,
 }
 
-impl_from_io_error!(SendError);
+impl_from_io_error_ext!(SendError);
 
 #[derive(Debug)]
 pub enum RecvError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
+    WouldBlock,
+    Disconnected,
 }
 
-impl_from_io_error!(RecvError);
+impl_from_io_error_ext!(RecvError);
 
 #[derive(Debug)]
 pub enum StatusError {}
 
 #[derive(Debug)]
 pub enum DisconnectError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -123,7 +143,7 @@ impl_from_io_error!(DisconnectError);
 
 #[derive(Debug)]
 pub enum AcceptError {
-    IoError(IoError),
+    IoError(io::Error),
     ProtocolError(String),
 }
 
@@ -131,7 +151,7 @@ impl_from_io_error!(AcceptError);
 
 #[derive(Debug)]
 pub enum ConnectError {
-    IoError(IoError),
+    IoError(io::Error),
     ParseError(String),
     ProtocolError(String),
 }
@@ -140,7 +160,7 @@ impl_from_io_error!(ConnectError);
 
 #[derive(Debug)]
 pub enum ListenError {
-    IoError(IoError),
+    IoError(io::Error),
 }
 
 impl_from_io_error!(ListenError);
@@ -148,15 +168,38 @@ impl_from_io_error!(ListenError);
 #[derive(Debug)]
 pub enum PollError {}
 
+pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
+    let len = reader.read_u32::<BigEndian>()?;
+    let mut buffer = vec![0; len as usize];
+    reader.read_exact(&mut buffer[..])?;
+    Ok(buffer)
+}
+
+pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
+    let packed = pack(buffer)?;
+    writer.write(&packed)?;
+    writer.flush()?;
+    Ok(())
+}
+
+fn pack(buffer: &[u8]) -> Result<Vec<u8>, io::Error> {
+    let capacity: usize = buffer.len() + mem::size_of::<u32>();
+    let mut packed = Vec::with_capacity(capacity);
+
+    packed.write_u32::<BigEndian>(buffer.len() as u32)?;
+    packed.write(&buffer)?;
+
+    Ok(packed)
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
     use std::fmt::Debug;
 
-    use std::io::ErrorKind;
     use std::sync::mpsc::channel;
-    use std::time::Duration;
     use std::thread;
+    use std::time::Duration;
 
     use mio::{Events, Poll, PollOpt, Ready, Token};
 
@@ -171,17 +214,15 @@ pub mod tests {
         ($op:expr, $err:ident) => {
             loop {
                 match $op {
-                    Err($err::IoError(err)) => {
-                        if err.kind() == ErrorKind::WouldBlock {
-                            thread::sleep(Duration::from_millis(100));
-                            continue;
-                        }
-                    },
+                    Err($err::WouldBlock) => {
+                        thread::sleep(Duration::from_millis(100));
+                        continue;
+                    }
                     Err(err) => break Err(err),
                     Ok(ok) => break Ok(ok),
                 }
             }
-        }
+        };
     }
 
     pub fn test_transport<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
@@ -228,10 +269,7 @@ pub mod tests {
         let handle = thread::spawn(move || {
             let mut connections = Vec::with_capacity(CONNECTIONS);
             for i in 0..CONNECTIONS {
-                connections.push((
-                    assert_ok(transport.connect(&endpoint)),
-                    Token(i),
-                ));
+                connections.push((assert_ok(transport.connect(&endpoint)), Token(i)));
             }
 
             // Register all connections with Poller
@@ -241,7 +279,7 @@ pub mod tests {
                     conn.evented(),
                     *token,
                     Ready::readable() | Ready::writable(),
-                    PollOpt::level()
+                    PollOpt::level(),
                 ));
             }
 

@@ -13,33 +13,42 @@
 // limitations under the License.
 
 use std::fs::File;
-use std::io::Read;
 use std::io;
-use toml::de;
+use std::io::Read;
 use toml;
+use toml::de;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct Config {
-    ca_certs: Option<Vec<String>>,
+    storage: Option<String>,
+    transport: Option<String>,
+    ca_certs: Option<String>,
     client_cert: Option<String>,
     client_key: Option<String>,
     server_cert: Option<String>,
     server_key: Option<String>,
     service_endpoint: Option<String>,
     network_endpoint: Option<String>,
-    peers: Option<Vec<String>>
+    peers: Option<Vec<String>>,
 }
 
 impl Config {
     pub fn from_file(mut f: File) -> Result<Config, ConfigError> {
         let mut toml = String::new();
         f.read_to_string(&mut toml)?;
-        
-        toml::from_str::<Config>(&toml)
-            .map_err(ConfigError::from)
+
+        toml::from_str::<Config>(&toml).map_err(ConfigError::from)
     }
 
-    pub fn ca_certs(&self) -> Option<Vec<String>> {
+    pub fn storage(&self) -> Option<String> {
+        self.storage.clone()
+    }
+
+    pub fn transport(&self) -> Option<String> {
+        self.storage.clone()
+    }
+
+    pub fn ca_certs(&self) -> Option<String> {
         self.ca_certs.clone()
     }
 
@@ -75,7 +84,7 @@ impl Config {
 #[derive(Debug)]
 pub enum ConfigError {
     ReadError(io::Error),
-    TomlParseError(de::Error)
+    TomlParseError(de::Error),
 }
 
 impl From<io::Error> for ConfigError {

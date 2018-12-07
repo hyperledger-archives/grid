@@ -13,35 +13,43 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-# List of certificate authority certificates (*.pem files).
+# Endpoint used for service to daemon communication.
+service_endpoint = "127.0.0.1:8045"
+
+# Endpoint used for daemon to daemon communication.
+network_endpoint = "127.0.0.1:8046"
+
+# A list of splinter nodes the daemon will automatically
+# connect to on start up.
+peers = [
+    "127.0.0.1:8044"
+]
+
+# The type of storage that should used to store circuit state. Currently, only
+# yaml is supported
+storage = "yaml"
+
+# Which transport type this splinterd node supports. Options are "raw" or "tls"
+transports = "tls"
+
+# List of certificate authority certificates (*.pem files). Used if transport is
+# tls.
 ca_certs = [
   "../certs/ca.pem"
 ]
 
 # A certificate signed by a certificate authority.
 # Used by the daemon when it is acting as a client
-# (sending messages).
+# (sending messages) and transport is tls.
 client_cert = "../certs/client.crt"
 
-# Private key used by daemon when it is acting as a client.
+# Private key used by daemon when it is acting as a client and transport is tls.
 client_key = "../certs/client.key"
 
-# A certificate signed by a certificate authority. 
+# A certificate signed by a certificate authority.
 # Used by the daemon when it is acting as a server
-# (receiving messages).
+# (receiving messages) and transport is tls.
 server_cert = "../certs/server.crt"
 
-# Private key used by daemon when it is acting as a server.
+# Private key used by daemon when it is acting as a server and transport is tls.
 server_key = "../certs/server.key"
-
-# Endpoint used for service to daemon communication.
-service_endpoint = "tcp://127.0.0.1:8045"
-
-# Endpoint used for daemon to daemon communication.
-network_endpoint = "tcp://127.0.0.1:8046"
-
-# A list of splinter nodes the daemon will automatically
-# connect to on start up.
-peers = [
-    "tcp://127.0.0.1:8044"
-]
