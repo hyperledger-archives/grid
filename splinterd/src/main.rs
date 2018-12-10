@@ -28,6 +28,7 @@ mod daemon;
 
 use config::{Config, ConfigError};
 use log::LogLevel;
+use std::env;
 use std::fs::File;
 
 use daemon::SplinterDaemon;
@@ -37,7 +38,8 @@ use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::TlsTransport;
 use libsplinter::transport::Transport;
 
-const STATE_DIR: &'static str = "/var/lib/splinter/";
+const DEFAULT_STATE_DIR: &'static str = "/var/lib/splinter/";
+const STATE_DIR_ENV: &'static str = "SPLINTER_STATE_DIR";
 
 fn main() {
     let matches = clap_app!(splinter =>
@@ -65,7 +67,8 @@ fn main() {
         (@arg client_key:  --("client-key") +takes_value
           "file path key for the node when connecting to a node as client")
         (@arg verbose: -v --verbose +multiple
-         "increase output verbosity")).get_matches();
+         "increase output verbosity"))
+    .get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
@@ -132,8 +135,17 @@ fn main() {
 
     let transport = get_transport(&transport_type, &matches, &config);
 
+    let location = {
+        if let Ok(s) = env::var(STATE_DIR_ENV) {
+            s.to_string()
+        } else {
+            DEFAULT_STATE_DIR.to_string()
+        }
+    };
+
     let storage = match &storage_type as &str {
-        "yaml" => get_storage(&(STATE_DIR.to_string() + "circuits.yaml"), || State::new()).unwrap(),
+        "yaml" => get_storage(&(location + "/circuits.yaml"), || State::new()).unwrap(),
+        "memory" => get_storage("memory", || State::new()).unwrap(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
 

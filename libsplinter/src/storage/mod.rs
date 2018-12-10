@@ -21,6 +21,7 @@
 //! that when the reference drops, any changes to the object are persisted to
 //! the selected storage.
 
+pub mod memory;
 pub mod state;
 pub mod yaml;
 
@@ -29,6 +30,7 @@ use std::ops::{Deref, DerefMut};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+pub use self::memory::MemStorage;
 pub use self::yaml::YamlStorage;
 
 /// RAII structure used to allow read access to state object
@@ -63,6 +65,8 @@ pub fn get_storage<'a, T: Sized + Serialize + DeserializeOwned + 'a, F: Fn() -> 
 ) -> Result<Box<dyn Storage<S = T> + 'a>, String> {
     if location.ends_with(".yaml") {
         Ok(Box::new(YamlStorage::new(location, default).unwrap()) as Box<Storage<S = T>>)
+    } else if location == "memory" {
+        Ok(Box::new(MemStorage::new(default).unwrap()) as Box<Storage<S = T>>)
     } else {
         Err(format!("Unknown state location type: {}", location))
     }
@@ -166,9 +170,10 @@ mod tests {
         temp_dir_path.push("circuits.yaml");
         let filename = temp_dir_path.to_str().unwrap().to_string();
 
+        let mem = get_storage("memory", || 1).unwrap();
         let mut yaml = get_storage(&format!("{}.yaml", filename), || 1).unwrap();
 
-        assert_eq!(**yaml.read(), 1);
+        assert_eq!(**mem.read(), 1);
 
         {
             let mut val = yaml.write();

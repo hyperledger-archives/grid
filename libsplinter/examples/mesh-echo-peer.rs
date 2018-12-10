@@ -16,19 +16,12 @@ extern crate libsplinter;
 
 use std::env;
 use std::mem;
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use libsplinter::{
-    transport::{
-        Transport,
-        Listener,
-        raw::RawTransport,
-    },
-    mesh::{
-        Mesh,
-        Envelope,
-    }
+    mesh::{Envelope, Mesh},
+    transport::{raw::RawTransport, Listener, Transport},
 };
 
 // An example of creating a Transport and a Mesh, and doing reads and writes in a single thread.
@@ -63,21 +56,19 @@ fn main() {
 
     loop {
         match mesh.recv() {
-            Ok(envelope) => {
-                match envelope.payload() {
-                    b"hello" => {
-                        rx += 1;
-                        send(&mesh, envelope.id(), b"world");
-                        tx += 1;
-                    }
-                    b"world" => {
-                        rx += 1;
-                        send(&mesh, envelope.id(), b"hello");
-                        tx += 1;
-                    }
-                    _ => (),
+            Ok(envelope) => match envelope.payload() {
+                b"hello" => {
+                    rx += 1;
+                    send(&mesh, envelope.id(), b"world");
+                    tx += 1;
                 }
-            }
+                b"world" => {
+                    rx += 1;
+                    send(&mesh, envelope.id(), b"hello");
+                    tx += 1;
+                }
+                _ => (),
+            },
             Err(err) => {
                 eprintln!("Error receiver: {:?}", err);
                 break;
@@ -107,7 +98,10 @@ fn listen(mesh: Mesh, mut listener: Box<dyn Listener>) {
         loop {
             match listener.accept() {
                 Ok(connection) => {
-                    println!("Accepted new connection from {}", connection.remote_endpoint());
+                    println!(
+                        "Accepted new connection from {}",
+                        connection.remote_endpoint()
+                    );
                     if let Err(err) = mesh.add(connection) {
                         eprintln!("Error adding connection to mesh: {:?}", err);
                     }

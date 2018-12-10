@@ -60,7 +60,8 @@ fn run() -> Result<(), CliError> {
                 (@arg payload: -d +required +takes_value "File path containing payload")
             )
          )
-    ).get_matches();
+    )
+    .get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
@@ -81,7 +82,8 @@ fn run() -> Result<(), CliError> {
                     .unwrap_or(clap::Values::default())
                     .map(String::from)
                     .collect(),
-            ).map_err(CliError::from),
+            )
+            .map_err(CliError::from),
             ("destroy", Some(m)) => {
                 do_destroy_circuit(url, m.value_of("name").unwrap()).map_err(CliError::from)
             }
@@ -89,7 +91,8 @@ fn run() -> Result<(), CliError> {
                 url,
                 m.value_of("name").unwrap(),
                 m.value_of("payload").unwrap(),
-            ).map_err(CliError::from),
+            )
+            .map_err(CliError::from),
             _ => Err(CliError::InvalidSubcommand),
         },
         _ => Err(CliError::InvalidSubcommand),

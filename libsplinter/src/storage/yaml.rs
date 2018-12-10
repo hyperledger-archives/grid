@@ -57,7 +57,8 @@ impl<'a, T: 'a + Serialize + DeserializeOwned + fmt::Display> fmt::Display
 
 impl<'a, T: 'a + Serialize + DeserializeOwned> StorageReadGuard<'a, T>
     for YamlStorageReadGuard<'a, T>
-{}
+{
+}
 
 /// A yaml write guard
 pub struct YamlStorageWriteGuard<'a, T: Serialize + DeserializeOwned + 'a> {
@@ -80,7 +81,8 @@ impl<'a, T: Serialize + DeserializeOwned> Drop for YamlStorageWriteGuard<'a, T> 
                         .expect("Couldn't convert value to string!")
                         .as_bytes(),
                 )
-            }).expect("File write failed while dropping YamlStorageWriteGuard!");
+            })
+            .expect("File write failed while dropping YamlStorageWriteGuard!");
     }
 }
 
@@ -108,7 +110,8 @@ impl<'a, T: 'a + Serialize + DeserializeOwned + fmt::Display> fmt::Display
 
 impl<'a, T: 'a + Serialize + DeserializeOwned> StorageWriteGuard<'a, T>
     for YamlStorageWriteGuard<'a, T>
-{}
+{
+}
 
 // A Yaml Storage implementation
 ///

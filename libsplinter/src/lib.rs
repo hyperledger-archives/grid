@@ -39,7 +39,7 @@ macro_rules! rwlock_read_unwrap {
             Ok(d) => d,
             Err(e) => panic!("RwLock error: {:?}", e),
         }
-    }
+    };
 }
 
 macro_rules! rwlock_write_unwrap {
@@ -48,7 +48,7 @@ macro_rules! rwlock_write_unwrap {
             Ok(d) => d,
             Err(e) => panic!("RwLock error: {:?}", e),
         }
-    }
+    };
 }
 
 mod async;
