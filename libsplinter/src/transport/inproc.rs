@@ -163,7 +163,7 @@ impl<T> Pair<T> {
     fn recv(&self) -> Option<T> {
         let mut incoming = self.incoming.lock().unwrap();
         let set = self.set.lock().unwrap();
-        if incoming.len() <= 1 {
+        if incoming.len() < 1 {
             set.set_readiness(set.readiness() - Ready::readable()).unwrap();
         } else {
             set.set_readiness(set.readiness() | Ready::readable()).unwrap();
