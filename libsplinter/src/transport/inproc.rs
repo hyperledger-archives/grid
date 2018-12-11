@@ -177,7 +177,10 @@ impl<T> Evented for Pair<T> {
         -> io::Result<()>
     {
         match self.registration.register(poll, token, interest, opts) {
-            Ok(()) => self.set.lock().unwrap().set_readiness(Ready::writable()),
+            Ok(()) => {
+                let set = self.set.lock().unwrap();
+                set.set_readiness(set.readiness() | Ready::writable())
+            },
             Err(err) => Err(err),
         }
     }
@@ -186,7 +189,10 @@ impl<T> Evented for Pair<T> {
         -> io::Result<()>
     {
         match self.registration.reregister(poll, token, interest, opts) {
-            Ok(()) => self.set.lock().unwrap().set_readiness(Ready::writable()),
+            Ok(()) => {
+                let set = self.set.lock().unwrap();
+                set.set_readiness(set.readiness() | Ready::writable())
+            },
             Err(err) => Err(err),
         }
     }
