@@ -45,7 +45,7 @@ impl Config {
     }
 
     pub fn transport(&self) -> Option<String> {
-        self.storage.clone()
+        self.transport.clone()
     }
 
     pub fn ca_certs(&self) -> Option<String> {
