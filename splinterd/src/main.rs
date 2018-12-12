@@ -103,7 +103,7 @@ fn main() {
         .map(String::from)
         .or_else(|| config.storage())
         .or_else(|| Some(String::from("yaml")))
-        .expect("No Storage Provided");;
+        .expect("No Storage Provided");
 
     let transport_type = matches
         .value_of("transport")
