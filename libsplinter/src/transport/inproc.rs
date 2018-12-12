@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use mio::{Ready, Poll, PollOpt, Token};
 use mio::{Evented, Registration, SetReadiness};
+use mio::{Poll, PollOpt, Ready, Token};
 
 use std::collections::HashMap;
 use std::io::{self, ErrorKind};
-use std::sync::{Arc, Mutex, mpsc::{channel, Sender, Receiver}};
-
+use std::sync::{
+    mpsc::{channel, Receiver, Sender},
+    Arc, Mutex,
+};
 
 use transport::{
     AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
@@ -38,8 +40,10 @@ impl Transport for InprocTransport {
                 sender.send(p0).unwrap();
                 Ok(Box::new(InprocConnection::new(endpoint.into(), p1)))
             }
-            None => Err(ConnectError::IoError(io::Error::new(ErrorKind::ConnectionRefused, "No Listener"))),
-
+            None => Err(ConnectError::IoError(io::Error::new(
+                ErrorKind::ConnectionRefused,
+                "No Listener",
+            ))),
         }
     }
 
@@ -63,7 +67,10 @@ impl InprocListener {
 
 impl Listener for InprocListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
-        Ok(Box::new(InprocConnection::new(self.endpoint.clone(), self.rx.recv().unwrap())))
+        Ok(Box::new(InprocConnection::new(
+            self.endpoint.clone(),
+            self.rx.recv().unwrap(),
+        )))
     }
 
     fn endpoint(&self) -> String {
@@ -77,10 +84,7 @@ pub struct InprocConnection {
 }
 
 impl InprocConnection {
-    fn new(
-        endpoint: String,
-        pair: Pair<Vec<u8>>,
-    ) -> Self {
+    fn new(endpoint: String, pair: Pair<Vec<u8>>) -> Self {
         InprocConnection { endpoint, pair }
     }
 }
@@ -147,7 +151,7 @@ impl<T> Pair<T> {
                 set: set_readiness2,
                 other_set: set_readiness1,
                 registration: registration2,
-            }
+            },
         )
     }
 
@@ -156,43 +160,56 @@ impl<T> Pair<T> {
         let set = self.set.lock().unwrap();
         let other_set = self.other_set.lock().unwrap();
         outgoing.insert(0, t);
-        other_set.set_readiness(other_set.readiness() | Ready::readable()).unwrap();
-        set.set_readiness(set.readiness() | Ready::writable()).unwrap();
+        other_set
+            .set_readiness(other_set.readiness() | Ready::readable())
+            .unwrap();
+        set.set_readiness(set.readiness() | Ready::writable())
+            .unwrap();
     }
 
     fn recv(&self) -> Option<T> {
         let mut incoming = self.incoming.lock().unwrap();
         let set = self.set.lock().unwrap();
         if incoming.len() < 1 {
-            set.set_readiness(set.readiness() - Ready::readable()).unwrap();
+            set.set_readiness(set.readiness() - Ready::readable())
+                .unwrap();
         } else {
-            set.set_readiness(set.readiness() | Ready::readable()).unwrap();
+            set.set_readiness(set.readiness() | Ready::readable())
+                .unwrap();
         }
         incoming.pop()
     }
 }
 
 impl<T> Evented for Pair<T> {
-    fn register(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
-        -> io::Result<()>
-    {
+    fn register(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
         match self.registration.register(poll, token, interest, opts) {
             Ok(()) => {
                 let set = self.set.lock().unwrap();
                 set.set_readiness(set.readiness() | Ready::writable())
-            },
+            }
             Err(err) => Err(err),
         }
     }
 
-    fn reregister(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt)
-        -> io::Result<()>
-    {
+    fn reregister(
+        &self,
+        poll: &Poll,
+        token: Token,
+        interest: Ready,
+        opts: PollOpt,
+    ) -> io::Result<()> {
         match self.registration.reregister(poll, token, interest, opts) {
             Ok(()) => {
                 let set = self.set.lock().unwrap();
                 set.set_readiness(set.readiness() | Ready::writable())
-            },
+            }
             Err(err) => Err(err),
         }
     }
