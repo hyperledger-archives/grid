@@ -13,6 +13,7 @@
 // limitations under the License.
 
 extern crate atomicwrites;
+extern crate bimap;
 extern crate bytes;
 extern crate protobuf;
 extern crate rustls;
@@ -32,6 +33,7 @@ extern crate crossbeam_channel;
 extern crate mio_extras;
 #[cfg(test)]
 extern crate tempdir;
+extern crate uuid;
 
 macro_rules! rwlock_read_unwrap {
     ($lock:expr) => {
@@ -55,6 +57,7 @@ mod async;
 pub mod connection;
 mod errors;
 pub mod mesh;
+pub mod network;
 pub mod storage;
 pub mod transport;
 
