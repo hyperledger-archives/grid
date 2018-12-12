@@ -26,7 +26,9 @@ use serde_yaml::{from_str, to_string};
 use super::{Storage, StorageReadGuard, StorageWriteGuard};
 
 #[cfg(test)]
-use storage::state::{StateCircuit, StateNode};
+use circuits::circuit::Circuit;
+#[cfg(test)]
+use circuits::service::SplinterNode;
 
 /// A yaml read guard
 pub struct YamlStorageReadGuard<'a, T: Serialize + DeserializeOwned + 'a> {
@@ -201,10 +203,11 @@ mod tests {
     fn set_up_mock_state_file(mut temp_dir: PathBuf) -> String {
         // Create mock state
         let mut state = State::new();
-        let node = StateNode::new(vec!["tcp://127.0.0.1:8000".into()]);
+        let node = SplinterNode::new("123".into(), vec!["tcp://127.0.0.1:8000".into()]);
         state.add_node("123".into(), node);
 
-        let circuit = StateCircuit::new(
+        let circuit = Circuit::new(
+            "alpha".into(),
             "trust".into(),
             vec!["123".into()],
             vec!["abc".into(), "def".into()],
@@ -344,7 +347,7 @@ mod tests {
                 .circuits()
                 .get("alpha")
                 .unwrap()
-                .services()
+                .roster()
                 .to_vec(),
             vec!["abc".to_string(), "def".to_string()]
         );
@@ -377,7 +380,7 @@ mod tests {
             let mut storage = YamlStorage::new(path.clone(), || State::new()).unwrap();
 
             // add new node to state
-            let node = StateNode::new(vec!["tcp://127.0.0.1:5000".into()]);
+            let node = SplinterNode::new("123".into(), vec!["tcp://127.0.0.1:5000".into()]);
             storage.write().add_node("777".into(), node);
 
             //drop storage
@@ -447,7 +450,7 @@ mod tests {
                 .circuits()
                 .get("alpha")
                 .unwrap()
-                .services()
+                .roster()
                 .to_vec(),
             vec!["abc".to_string(), "def".to_string()]
         );
@@ -477,7 +480,8 @@ mod tests {
         {
             // load state file into yaml storage
             let mut storage = YamlStorage::new(path.clone(), || State::new()).unwrap();
-            let circuit = StateCircuit::new(
+            let circuit = Circuit::new(
+                "beta".into(),
                 "trust".into(),
                 vec!["456".into(), "789".into()],
                 vec!["qwe".into(), "rty".into(), "uio".into()],
@@ -504,7 +508,7 @@ mod tests {
                 .circuits()
                 .get("alpha")
                 .unwrap()
-                .services()
+                .roster()
                 .to_vec(),
             vec!["abc".to_string(), "def".to_string()]
         );
@@ -526,7 +530,7 @@ mod tests {
                 .circuits()
                 .get("beta")
                 .unwrap()
-                .services()
+                .roster()
                 .to_vec(),
             vec!["qwe".to_string(), "rty".to_string(), "uio".to_string()]
         );

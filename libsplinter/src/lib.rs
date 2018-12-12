@@ -54,6 +54,7 @@ macro_rules! rwlock_write_unwrap {
 }
 
 mod async;
+pub mod circuits;
 pub mod connection;
 mod errors;
 pub mod mesh;

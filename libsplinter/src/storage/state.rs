@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use circuits::circuit::Circuit;
+use circuits::service::SplinterNode;
 use std::collections::BTreeMap;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct State {
-    nodes: BTreeMap<String, StateNode>,
-    circuits: BTreeMap<String, StateCircuit>,
+    nodes: BTreeMap<String, SplinterNode>,
+    circuits: BTreeMap<String, Circuit>,
 }
 
 impl State {
@@ -30,11 +32,11 @@ impl State {
         }
     }
 
-    pub fn add_node(&mut self, id: String, node: StateNode) {
+    pub fn add_node(&mut self, id: String, node: SplinterNode) {
         self.nodes.insert(id, node);
     }
 
-    pub fn add_circuit(&mut self, name: String, circuit: StateCircuit) {
+    pub fn add_circuit(&mut self, name: String, circuit: Circuit) {
         self.circuits.insert(name, circuit);
     }
 
@@ -46,84 +48,11 @@ impl State {
         self.circuits.remove(name);
     }
 
-    pub fn nodes(&self) -> &BTreeMap<String, StateNode> {
+    pub fn nodes(&self) -> &BTreeMap<String, SplinterNode> {
         &self.nodes
     }
 
-    pub fn circuits(&self) -> &BTreeMap<String, StateCircuit> {
+    pub fn circuits(&self) -> &BTreeMap<String, Circuit> {
         &self.circuits
-    }
-}
-
-// StateNode represents the node in persistent state and has the endpoints it is avaliable on
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct StateNode {
-    endpoints: Vec<String>,
-}
-
-impl StateNode {
-    pub fn new(endpoints: Vec<String>) -> Self {
-        StateNode {
-            endpoints: endpoints,
-        }
-    }
-
-    pub fn endpoints(&self) -> &[String] {
-        &self.endpoints
-    }
-}
-
-// StateCircuit represent a circuit including the memebers, services and circuit configuration
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct StateCircuit {
-    auth: String,
-    members: Vec<String>,
-    services: Vec<String>,
-    persistence: String,
-    durability: String,
-    routes: String,
-}
-
-impl StateCircuit {
-    pub fn new(
-        auth: String,
-        members: Vec<String>,
-        services: Vec<String>,
-        persistence: String,
-        durability: String,
-        routes: String,
-    ) -> Self {
-        StateCircuit {
-            auth,
-            members,
-            services,
-            persistence,
-            durability,
-            routes,
-        }
-    }
-
-    pub fn auth(&self) -> &str {
-        &self.auth
-    }
-
-    pub fn members(&self) -> &[String] {
-        &self.members
-    }
-
-    pub fn services(&self) -> &[String] {
-        &self.services
-    }
-
-    pub fn persistence(&self) -> &str {
-        &self.persistence
-    }
-
-    pub fn durability(&self) -> &str {
-        &self.durability
-    }
-
-    pub fn routes(&self) -> &str {
-        &self.routes
     }
 }
