@@ -15,7 +15,6 @@
 extern crate libsplinter;
 
 use std::env;
-use std::mem;
 use std::thread;
 use std::time::{Duration, Instant};
 
