@@ -176,7 +176,7 @@ fn get_transport(
 ) -> Box<dyn Transport + Send> {
     match transport_type {
         "tls" => {
-            let ca_files = matches
+            let ca_file = matches
                 .value_of("ca_file")
                 .map(String::from)
                 .or_else(|| config.ca_certs())
@@ -207,11 +207,11 @@ fn get_transport(
                 .expect("Must provide a valid key path");
 
             let transport = match TlsTransport::new(
-                ca_files,
-                client_cert,
+                ca_file,
                 client_key_file,
-                server_cert,
+                client_cert,
                 server_key_file,
+                server_cert,
             ) {
                 Ok(transport) => transport,
                 Err(err) => {
