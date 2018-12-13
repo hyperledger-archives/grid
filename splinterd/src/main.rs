@@ -46,6 +46,8 @@ fn main() {
         (version: crate_version!())
         (about: "Splinter Node")
         (@arg config: -c --config +takes_value)
+        (@arg node_id: --("node-id") +takes_value
+          "unique id for the node ")
         (@arg storage: --("storage") +takes_value
           "storage type used for node, default yaml")
         (@arg transport: --("transport") +takes_value
@@ -98,6 +100,13 @@ fn main() {
     debug!("Configuration: {:?}", config);
 
     // Currently only YamlStorage is supported
+
+    let node_id = matches
+        .value_of("node_id")
+        .map(String::from)
+        .or_else(|| config.node_id())
+        .expect("Must provide a unique node id");
+
     let storage_type = matches
         .value_of("storage")
         .map(String::from)
@@ -155,6 +164,7 @@ fn main() {
         network_endpoint,
         service_endpoint,
         initial_peers,
+        node_id,
     ) {
         Ok(node) => node,
         Err(err) => {

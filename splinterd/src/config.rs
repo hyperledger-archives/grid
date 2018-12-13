@@ -30,6 +30,7 @@ pub struct Config {
     service_endpoint: Option<String>,
     network_endpoint: Option<String>,
     peers: Option<Vec<String>>,
+    node_id: Option<String>,
 }
 
 impl Config {
@@ -78,6 +79,10 @@ impl Config {
 
     pub fn peers(&self) -> Option<Vec<String>> {
         self.peers.clone()
+    }
+
+    pub fn node_id(&self) -> Option<String> {
+        self.node_id.clone()
     }
 }
 

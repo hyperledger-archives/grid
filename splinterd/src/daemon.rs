@@ -27,6 +27,7 @@ pub struct SplinterDaemon {
     network_endpoint: String,
     initial_peers: Vec<String>,
     network: Network,
+    node_id: String,
 }
 
 impl SplinterDaemon {
@@ -36,8 +37,8 @@ impl SplinterDaemon {
         network_endpoint: String,
         service_endpoint: String,
         initial_peers: Vec<String>,
+        node_id: String,
     ) -> Result<SplinterDaemon, CreateError> {
-        // create SplinterD node
         let mesh = Mesh::new(512, 128);
         let network = Network::new(mesh.clone());
 
@@ -48,10 +49,12 @@ impl SplinterDaemon {
             network_endpoint,
             initial_peers,
             network,
+            node_id,
         })
     }
 
     pub fn start(&mut self) -> Result<(), StartError> {
+        info!("Starting SpinterNode with id {}", self.node_id);
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
         let mut network_clone = self.network.clone();
         let _ = thread::spawn(move || {
