@@ -32,8 +32,6 @@ use std::env;
 use std::fs::File;
 
 use daemon::SplinterDaemon;
-use libsplinter::storage::get_storage;
-use libsplinter::storage::state::State;
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::TlsTransport;
 use libsplinter::transport::Transport;
@@ -152,14 +150,14 @@ fn main() {
         }
     };
 
-    let storage = match &storage_type as &str {
-        "yaml" => get_storage(&(location + "/circuits.yaml"), || State::new()).unwrap(),
-        "memory" => get_storage("memory", || State::new()).unwrap(),
+    let storage_location = match &storage_type as &str {
+        "yaml" => location + "/circuits.yaml",
+        "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
 
     let mut node = match SplinterDaemon::new(
-        storage,
+        storage_location,
         transport,
         network_endpoint,
         service_endpoint,
