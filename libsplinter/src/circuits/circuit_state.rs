@@ -19,14 +19,14 @@ use std::collections::BTreeMap;
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct State {
+pub struct CircuitState {
     nodes: BTreeMap<String, SplinterNode>,
     circuits: BTreeMap<String, Circuit>,
 }
 
-impl State {
+impl CircuitState {
     pub fn new() -> Self {
-        State {
+        CircuitState {
             nodes: BTreeMap::new(),
             circuits: BTreeMap::new(),
         }
@@ -52,7 +52,15 @@ impl State {
         &self.nodes
     }
 
+    pub fn node(&self, node_id: &str) -> Option<&SplinterNode> {
+        self.nodes.get(node_id)
+    }
+
     pub fn circuits(&self) -> &BTreeMap<String, Circuit> {
         &self.circuits
+    }
+
+    pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
+        self.circuits.get(circuit_name)
     }
 }
