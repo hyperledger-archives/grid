@@ -65,12 +65,13 @@ impl Network {
     pub fn add_connection(
         &mut self,
         connection: Box<dyn Connection>,
-    ) -> Result<(), ConnectionError> {
+    ) -> Result<String, ConnectionError> {
+        let mut peers = rwlock_write_unwrap!(self.peers);
         let mesh_id = self.mesh.add(connection)?;
         // Temp peer id until the connection has completed authorization
-        let peer_id = Uuid::new_v4().to_string();
-        rwlock_write_unwrap!(self.peers).insert(peer_id, mesh_id);
-        Ok(())
+        let peer_id = format!("temp-{}", Uuid::new_v4());
+        peers.insert(peer_id.clone(), mesh_id);
+        Ok(peer_id)
     }
 
     pub fn remove_connection(&mut self, peer_id: &String) -> Result<(), ConnectionError> {
@@ -87,8 +88,9 @@ impl Network {
         connection: Box<dyn Connection>,
     ) -> Result<(), ConnectionError> {
         // we already know the peers unique id
+        let mut peers = rwlock_write_unwrap!(self.peers);
         let mesh_id = self.mesh.add(connection)?;
-        rwlock_write_unwrap!(self.peers).insert(peer_id, mesh_id);
+        peers.insert(peer_id, mesh_id);
         Ok(())
     }
 
@@ -112,7 +114,7 @@ impl Network {
             Some(mesh_id) => *mesh_id,
             None => {
                 return Err(SendError::NoPeerError(format!(
-                    "No peer with peer_id {} found",
+                    "Send Error: No peer with peer_id {} found",
                     peer_id
                 )))
             }
@@ -128,7 +130,7 @@ impl Network {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvError::NoPeerError(format!(
-                    "No Peer with mesh id {} found",
+                    "Recv Error: No Peer with mesh id {} found",
                     envelope.id()
                 )))
             }
