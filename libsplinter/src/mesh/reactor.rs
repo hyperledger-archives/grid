@@ -19,7 +19,7 @@ use mio_extras::channel as mio_channel;
 use std::sync::mpsc::TryRecvError;
 use std::thread;
 
-use mesh::{
+use crate::mesh::{
     control::{
         AddError, AddRequest, AddResponse, Control, ControlRequest, RemoveError, RemoveRequest,
         RemoveResponse,
@@ -29,7 +29,7 @@ use mesh::{
     pool::Pool,
     Envelope,
 };
-use transport::Connection;
+use crate::transport::Connection;
 
 // Maximum number of events to receive and handle per turn of the reactor
 const MAX_EVENTS_PER_TURN: usize = 1024;

@@ -17,10 +17,10 @@ use uuid::Uuid;
 
 use std::sync::{Arc, RwLock};
 
-use mesh::{
+use crate::mesh::{
     AddError, Envelope, Mesh, RecvError as MeshRecvError, RemoveError, SendError as MeshSendError,
 };
-use transport::Connection;
+use crate::transport::Connection;
 
 pub struct NetworkMessage {
     peer_id: String,
@@ -190,10 +190,10 @@ pub struct PeerUpdateError {}
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::transport::raw::RawTransport;
+    use crate::transport::Transport;
     use std::fmt::Debug;
     use std::thread;
-    use transport::raw::RawTransport;
-    use transport::Transport;
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {

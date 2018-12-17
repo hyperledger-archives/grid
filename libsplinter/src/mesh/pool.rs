@@ -22,8 +22,8 @@ use std::io;
 use std::mem;
 use std::sync::mpsc::TryRecvError;
 
-use mesh::Envelope;
-use transport::{Connection, RecvError, SendError};
+use crate::mesh::Envelope;
+use crate::transport::{Connection, RecvError, SendError};
 
 /// A structure for holding onto many connections and receivers and assigning new connections
 /// unique ids

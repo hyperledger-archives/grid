@@ -18,8 +18,8 @@ use mio_extras::channel as mio_channel;
 use std::fmt;
 use std::io;
 
-use mesh::Outgoing;
-use transport::Connection;
+use crate::mesh::Outgoing;
+use crate::transport::Connection;
 
 /// Handle for adding and removing connections from backend
 #[derive(Clone)]

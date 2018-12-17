@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use circuit::circuit::Circuit;
-use circuit::service::SplinterNode;
+use crate::circuit::circuit::Circuit;
+use crate::circuit::service::SplinterNode;
 use std::collections::BTreeMap;
 
 // State represents the persistant state of circuits that are connected to a node

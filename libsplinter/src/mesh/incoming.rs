@@ -16,7 +16,7 @@ use crossbeam_channel;
 
 use std::time::Duration;
 
-use mesh::Envelope;
+use crate::mesh::Envelope;
 
 /// Handle for receiving envelopes from the mesh
 #[derive(Clone)]

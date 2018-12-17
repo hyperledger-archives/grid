@@ -22,7 +22,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use transport::{
+use crate::transport::{
     AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
     SendError, Transport,
 };
@@ -222,7 +222,7 @@ impl<T> Evented for Pair<T> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use transport::tests;
+    use crate::transport::tests;
 
     #[test]
     fn test_transport() {
