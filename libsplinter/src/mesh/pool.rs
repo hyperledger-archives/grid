@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::log::{error, log, warn};
 use crossbeam_channel::TrySendError;
 use mio::{Event, Evented, Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel as mio_channel;

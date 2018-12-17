@@ -12,29 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate atomicwrites;
-extern crate bimap;
-extern crate bytes;
-extern crate protobuf;
-extern crate rustls;
-extern crate webpki;
-#[macro_use]
-extern crate log;
-extern crate byteorder;
-extern crate messaging;
-extern crate mio;
-extern crate openssl;
-extern crate serde;
-extern crate serde_yaml;
-extern crate url;
-#[macro_use]
-extern crate serde_derive;
-extern crate crossbeam_channel;
-extern crate mio_extras;
-#[cfg(test)]
-extern crate tempdir;
-extern crate uuid;
-
 #[macro_export]
 macro_rules! rwlock_read_unwrap {
     ($lock:expr) => {

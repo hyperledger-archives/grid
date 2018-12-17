@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::collections::BTreeMap;
+
+use serde_derive::{Deserialize, Serialize};
 
 use crate::circuit::circuit::Circuit;
 use crate::circuit::service::SplinterNode;
-use std::collections::BTreeMap;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
