@@ -13,6 +13,8 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
+node_id = "012"
+
 # Endpoint used for service to daemon communication.
 service_endpoint = "127.0.0.1:8043"
 
@@ -28,23 +30,23 @@ peers = []
 storage = "yaml"
 
 # Which transport type this splinterd node supports. Options are "raw" or "tls"
-transports = "tls"
+transport = "tls"
 
 # List of certificate authority certificates (*.pem files).
-ca_certs = "../certs/ca.pem"
+ca_certs = "certs/ca.pem"
 
 # A certificate signed by a certificate authority.
 # Used by the daemon when it is acting as a client
 # (sending messages).
-client_cert = "../certs/client.crt"
+client_cert = "certs/client.crt"
 
 # Private key used by daemon when it is acting as a client.
-client_key = "../certs/client.key"
+client_key = "certs/client.key"
 
 # A certificate signed by a certificate authority.
 # Used by the daemon when it is acting as a server
 # (receiving messages).
-server_cert = "../certs/server.crt"
+server_cert = "certs/server.crt"
 
 # Private key used by daemon when it is acting as a server.
-server_key = "../certs/server.key"
+server_key = "certs/server.key"
