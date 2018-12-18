@@ -12,29 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate libsplinter;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-extern crate serde;
-extern crate simple_logger;
-extern crate toml;
-#[macro_use]
-extern crate serde_derive;
-
 mod config;
 mod daemon;
 
-use config::{Config, ConfigError};
-use log::LogLevel;
-use std::env;
-use std::fs::File;
-
-use daemon::SplinterDaemon;
+use crate::config::{Config, ConfigError};
+use crate::daemon::SplinterDaemon;
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::TlsTransport;
 use libsplinter::transport::Transport;
+
+use ::log::LogLevel;
+use ::log::{debug, error, log, warn};
+use clap::{clap_app, crate_version};
+
+use std::env;
+use std::fs::File;
 
 const DEFAULT_STATE_DIR: &'static str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &'static str = "SPLINTER_STATE_DIR";

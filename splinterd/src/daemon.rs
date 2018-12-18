@@ -23,6 +23,8 @@ use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, T
 use std::sync::{Arc, RwLock};
 use std::thread;
 
+use ::log::{debug, info, log};
+
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
     storage_location: String,
