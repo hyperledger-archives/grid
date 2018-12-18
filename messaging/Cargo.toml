@@ -16,6 +16,7 @@
 name = "messaging"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
+edition = "2018"
 
 [dependencies]
 protobuf = "2"
