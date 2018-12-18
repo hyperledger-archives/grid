@@ -1,5 +1,4 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use libsplinter::SplinterError;
 use messaging::protocol::{Message, MessageType};
 use rustls;
 use rustls::{ClientConfig, ClientSession, Session};
@@ -13,6 +12,8 @@ use webpki;
 
 use protobuf;
 use url;
+
+use crate::error::SplinterError;
 
 pub struct Certs {
     ca_certs: Vec<PathBuf>,

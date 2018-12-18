@@ -23,10 +23,10 @@ extern crate simple_logger;
 extern crate splinter_client;
 
 mod actions;
-mod errors;
+mod error;
 
 use actions::{do_create_circuit, do_destroy_circuit, do_gossip};
-use errors::CliError;
+use error::CliError;
 use log::LogLevel;
 
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");

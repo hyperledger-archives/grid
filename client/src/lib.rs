@@ -9,6 +9,7 @@ extern crate webpki_roots;
 extern crate log;
 extern crate libsplinter;
 
+pub mod error;
 mod splinter_client;
 
 pub use splinter_client::{Certs, SplinterClient};
