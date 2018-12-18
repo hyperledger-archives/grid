@@ -1,17 +1,18 @@
+use ::log::{debug, info, log};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use messaging::protocol::{Message, MessageType};
+use protobuf;
 use rustls;
 use rustls::{ClientConfig, ClientSession, Session};
+use url;
+use webpki;
+
 use std::fs::File;
 use std::io::{BufReader, ErrorKind, Read, Write};
 use std::mem;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::Arc;
-use webpki;
-
-use protobuf;
-use url;
 
 use crate::error::SplinterError;
 
@@ -231,10 +232,10 @@ fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::splinter_client::pack_request;
     use byteorder::{BigEndian, ReadBytesExt};
     use messaging::protocol::{Message, MessageType};
     use protobuf;
-    use splinter_client::pack_request;
     use std::io::Read;
     use std::mem;
 
