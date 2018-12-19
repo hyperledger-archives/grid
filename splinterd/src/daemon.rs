@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use libsplinter::circuits::circuit_state::CircuitState;
-use libsplinter::circuits::SplinterState;
+use libsplinter::circuit::directory::CircuitDirectory;
+use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
 use libsplinter::rwlock_read_unwrap;
@@ -59,13 +59,13 @@ impl SplinterDaemon {
     pub fn start(&mut self) -> Result<(), StartError> {
         info!("Starting SpinterNode with id {}", self.node_id);
 
-        let storage = get_storage(&self.storage_location, || CircuitState::new())
+        let storage = get_storage(&self.storage_location, || CircuitDirectory::new())
             .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
 
-        let circuit_state = storage.read().clone();
+        let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             self.storage_location.to_string(),
-            circuit_state,
+            circuit_directory,
         )));
 
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;

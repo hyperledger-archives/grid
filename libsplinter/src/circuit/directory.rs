@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use circuits::circuit::Circuit;
-use circuits::service::SplinterNode;
+use circuit::circuit::Circuit;
+use circuit::service::SplinterNode;
 use std::collections::BTreeMap;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct CircuitState {
+pub struct CircuitDirectory {
     nodes: BTreeMap<String, SplinterNode>,
     circuits: BTreeMap<String, Circuit>,
 }
 
-impl CircuitState {
+impl CircuitDirectory {
     pub fn new() -> Self {
-        CircuitState {
+        CircuitDirectory {
             nodes: BTreeMap::new(),
             circuits: BTreeMap::new(),
         }

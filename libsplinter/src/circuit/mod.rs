@@ -11,33 +11,33 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-pub mod circuit;
-pub mod circuit_state;
+mod circuit;
+pub mod directory;
 pub mod service;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use circuits::circuit::Circuit;
-use circuits::circuit_state::CircuitState;
-use circuits::service::{Service, SplinterNode};
+pub use circuit::circuit::Circuit;
+use circuit::directory::CircuitDirectory;
+use circuit::service::{Service, SplinterNode};
 use storage::get_storage;
 
 pub struct SplinterState {
     // location of the persisted state
     storage_location: String,
     // The state that is persisted
-    circuit_state: CircuitState,
+    circuit_directory: CircuitDirectory,
     // Service id to Service that contains the node the service is connected to. Not persisted.
-    directory: HashMap<String, Service>,
+    service_directory: HashMap<String, Service>,
 }
 
 impl SplinterState {
-    pub fn new(storage_location: String, circuit_state: CircuitState) -> Self {
+    pub fn new(storage_location: String, circuit_directory: CircuitDirectory) -> Self {
         SplinterState {
             storage_location,
-            circuit_state,
-            directory: HashMap::new(),
+            circuit_directory,
+            service_directory: HashMap::new(),
         }
     }
 
@@ -45,70 +45,70 @@ impl SplinterState {
         &self.storage_location
     }
 
-    fn write_circuit_state(&self) -> Result<(), WriteError> {
+    fn write_circuit_directory(&self) -> Result<(), WriteError> {
         // Replace stored state with the current splinter state
-        let mut storage = get_storage(self.storage_location(), || self.circuit_state.clone())
+        let mut storage = get_storage(self.storage_location(), || self.circuit_directory.clone())
             .map_err(|err| {
-                WriteError::GetStorageError(format!("Unable to get storage: {}", err))
-            })?;
+            WriteError::GetStorageError(format!("Unable to get storage: {}", err))
+        })?;
 
         // when this is dropped the new state will be written to storage
-        **storage.write() = self.circuit_state.clone();
+        **storage.write() = self.circuit_directory.clone();
         Ok(())
     }
 
     // ---------- methods to access service directory ----------
-    pub fn directory(&self) -> &HashMap<String, Service> {
-        &self.directory
+    pub fn service_directory(&self) -> &HashMap<String, Service> {
+        &self.service_directory
     }
 
     pub fn add_service(&mut self, service_id: String, service: Service) {
-        self.directory.insert(service_id, service);
+        self.service_directory.insert(service_id, service);
     }
 
     pub fn remove_service(&mut self, service_id: &str) {
-        self.directory.remove(service_id);
+        self.service_directory.remove(service_id);
     }
 
-    // ---------- methods to access circuit state ----------
+    // ---------- methods to access circuit directory ----------
     pub fn add_node(&mut self, id: String, node: SplinterNode) -> Result<(), WriteError> {
-        self.circuit_state.add_node(id, node);
-        self.write_circuit_state()?;
+        self.circuit_directory.add_node(id, node);
+        self.write_circuit_directory()?;
         Ok(())
     }
 
     pub fn add_circuit(&mut self, name: String, circuit: Circuit) -> Result<(), WriteError> {
-        self.circuit_state.add_circuit(name, circuit);
-        self.write_circuit_state()?;
+        self.circuit_directory.add_circuit(name, circuit);
+        self.write_circuit_directory()?;
         Ok(())
     }
 
     pub fn remove_node(&mut self, id: &str) -> Result<(), WriteError> {
-        self.circuit_state.remove_node(id);
-        self.write_circuit_state()?;
+        self.circuit_directory.remove_node(id);
+        self.write_circuit_directory()?;
         Ok(())
     }
 
     pub fn remove_circuit(&mut self, name: &str) -> Result<(), WriteError> {
-        self.circuit_state.remove_circuit(name);
-        self.write_circuit_state()?;
+        self.circuit_directory.remove_circuit(name);
+        self.write_circuit_directory()?;
         Ok(())
     }
 
     pub fn nodes(&self) -> &BTreeMap<String, SplinterNode> {
-        &self.circuit_state.nodes()
+        &self.circuit_directory.nodes()
     }
 
     pub fn node(&self, node_id: &str) -> Option<&SplinterNode> {
-        self.circuit_state.node(node_id)
+        self.circuit_directory.node(node_id)
     }
 
     pub fn circuits(&self) -> &BTreeMap<String, Circuit> {
-        &self.circuit_state.circuits()
+        &self.circuit_directory.circuits()
     }
 
     pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
-        self.circuit_state.circuit(circuit_name)
+        self.circuit_directory.circuit(circuit_name)
     }
 }
 
@@ -140,9 +140,9 @@ mod tests {
 
         // setup empty state filename
         let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, || CircuitState::new()).unwrap();
-        let circuit_state = storage.write().clone();
-        let mut state = SplinterState::new(path.to_string(), circuit_state);
+        let mut storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let circuit_directory = storage.write().clone();
+        let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
         // Check that SplinterState does not have any circuits
         assert!(state.circuits().len() == 0);
@@ -160,7 +160,7 @@ mod tests {
         state.add_circuit("alpha".into(), circuit).unwrap();
 
         // reload storage and check that the circuit was written
-        let storage = get_storage(&path, || CircuitState::new()).unwrap();
+        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
         assert_eq!(storage.read().circuits().len(), 1);
         assert!(storage.read().circuits().contains_key("alpha"));
 
@@ -188,7 +188,7 @@ mod tests {
 
         state.remove_circuit("alpha".into()).unwrap();
         // reload storage and check that the circuit was written
-        let storage = get_storage(&path, || CircuitState::new()).unwrap();
+        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
 
         // Check that state does not have any nodes
         assert!(storage.read().circuits().len() == 0);
@@ -202,9 +202,9 @@ mod tests {
 
         // setup empty state filename
         let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, || CircuitState::new()).unwrap();
-        let circuit_state = storage.write().clone();
-        let mut state = SplinterState::new(path.to_string(), circuit_state);
+        let mut storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let circuit_directory = storage.write().clone();
+        let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
         // Check that SplinterState does not have any nodes
         assert!(state.nodes().len() == 0);
@@ -213,8 +213,8 @@ mod tests {
         state.add_node("123".into(), node).unwrap();
 
         // reload storage and check that the node was written
-        let storage = get_storage(&path, || CircuitState::new()).unwrap();
-        // check that the CircuitState data contains the correct node and circuit
+        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        // check that the CircuitDirectory data contains the correct node and circuit
         assert!(storage.read().nodes().len() == 1);
         assert!(storage.read().nodes().contains_key("123"));
 
@@ -232,7 +232,7 @@ mod tests {
         state.remove_node("123".into()).unwrap();
 
         // reload storage and check that the node was removed
-        let storage = get_storage(&path, || CircuitState::new()).unwrap();
+        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
         // Check that state does not have any nodes
         assert!(storage.read().nodes().len() == 0);
     }
