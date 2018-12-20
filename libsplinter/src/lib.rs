@@ -33,6 +33,7 @@ macro_rules! rwlock_write_unwrap {
 }
 
 pub mod circuit;
+pub mod collections;
 pub mod mesh;
 pub mod network;
 pub mod storage;
