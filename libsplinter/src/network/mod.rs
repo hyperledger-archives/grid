@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bimap::BiMap;
 use uuid::Uuid;
 
 use std::sync::{Arc, RwLock};
 
+use crate::collections::BiHashMap;
 use crate::mesh::{
     AddError, Envelope, Mesh, RecvError as MeshRecvError, RemoveError, SendError as MeshSendError,
 };
@@ -43,21 +43,21 @@ impl NetworkMessage {
 #[derive(Clone)]
 pub struct Network {
     // Peer Id to Connection Id
-    peers: Arc<RwLock<BiMap<String, usize>>>,
+    peers: Arc<RwLock<BiHashMap<String, usize>>>,
     mesh: Mesh,
 }
 
 impl Network {
     pub fn new(mesh: Mesh) -> Self {
         Network {
-            peers: Arc::new(RwLock::new(BiMap::new())),
+            peers: Arc::new(RwLock::new(BiHashMap::new())),
             mesh,
         }
     }
 
     pub fn peer_ids(&self) -> Vec<String> {
         rwlock_read_unwrap!(self.peers)
-            .left_values()
+            .keys()
             .map(|left| left.to_string())
             .collect()
     }
@@ -75,7 +75,7 @@ impl Network {
     }
 
     pub fn remove_connection(&mut self, peer_id: &String) -> Result<(), ConnectionError> {
-        if let Some((_, mesh_id)) = rwlock_write_unwrap!(self.peers).remove_by_left(peer_id) {
+        if let Some((_, mesh_id)) = rwlock_write_unwrap!(self.peers).remove_by_key(peer_id) {
             self.mesh.remove(mesh_id)?;
         }
 
@@ -100,7 +100,7 @@ impl Network {
         new_id: String,
     ) -> Result<(), PeerUpdateError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
-        let mesh_id = match peers.get_by_left(&old_id) {
+        let mesh_id = match peers.get_by_key(&old_id) {
             Some(mesh_id) => *mesh_id,
             None => return Err(PeerUpdateError {}),
         };
@@ -110,7 +110,7 @@ impl Network {
     }
 
     pub fn send(&self, peer_id: String, msg: &[u8]) -> Result<(), SendError> {
-        let mesh_id = match rwlock_read_unwrap!(self.peers).get_by_left(&peer_id) {
+        let mesh_id = match rwlock_read_unwrap!(self.peers).get_by_key(&peer_id) {
             Some(mesh_id) => *mesh_id,
             None => {
                 return Err(SendError::NoPeerError(format!(
@@ -126,7 +126,7 @@ impl Network {
 
     pub fn recv(&self) -> Result<NetworkMessage, RecvError> {
         let envelope = self.mesh.recv()?;
-        let peer_id = match rwlock_read_unwrap!(self.peers).get_by_right(&envelope.id()) {
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_by_value(&envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvError::NoPeerError(format!(
