@@ -1,0 +1,17 @@
+version: "2.2"
+
+services:
+
+  private-xo:
+    image: private-xo:latest
+    container_name: private-xo-local
+    build:
+        context: .
+        dockerfile: ./Dockerfile
+    expose:
+        - 8000
+    ports:
+        - "8008:8000"
+    init: true
+    command: /private-xo
+    stop_signal: SIGKILL
