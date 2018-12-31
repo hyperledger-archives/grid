@@ -24,6 +24,8 @@ mod routes;
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
 
+use crate::routes::batches;
+
 #[get("/")]
 fn index() -> &'static str {
     "Private XO Server"
@@ -65,6 +67,8 @@ fn main() -> Result<(), String> {
         "/",
         routes![
             index,
+            batches::batches,
+            batches::batch_statuses,
         ],
     )
     .launch();
