@@ -14,3 +14,47 @@
 
 pub mod batches;
 mod error;
+pub mod state;
+
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct DataEnvelope<T: Serialize> {
+    data: T,
+    head: String,
+    link: String,
+}
+
+impl<T: Serialize> DataEnvelope<T> {
+    pub fn new(data: T, link: String, head: String) -> Self {
+        DataEnvelope { data, link, head }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Paging {
+    start: String,
+    limit: i32,
+    next_position: String,
+    next: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PagedDataEnvelope<T: Serialize> {
+    data: Vec<T>,
+    head: String,
+    link: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    paging: Option<Paging>,
+}
+
+impl<T: Serialize> PagedDataEnvelope<T> {
+    pub fn new(data: Vec<T>, head: String, link: String, paging: Option<Paging>) -> Self {
+        PagedDataEnvelope {
+            data,
+            head,
+            link,
+            paging,
+        }
+    }
+}

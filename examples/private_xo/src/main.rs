@@ -24,7 +24,7 @@ mod routes;
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
 
-use crate::routes::batches;
+use crate::routes::{batches, state};
 
 #[get("/")]
 fn index() -> &'static str {
@@ -69,6 +69,8 @@ fn main() -> Result<(), String> {
             index,
             batches::batches,
             batches::batch_statuses,
+            state::get_state_by_address,
+            state::list_state_with_params
         ],
     )
     .launch();

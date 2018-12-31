@@ -82,3 +82,33 @@ impl fmt::Display for BatchStatusesError {
         }
     }
 }
+
+#[derive(Responder, Clone, Debug)]
+pub enum StateError {
+    #[response(status = 400)]
+    BadRequest(String),
+    #[response(status = 404)]
+    NotFound(String),
+}
+
+impl Error for StateError {
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
+
+    fn description(&self) -> &str {
+        match self {
+            StateError::BadRequest(_) => "Invalid input format",
+            StateError::NotFound(_) => "The requested state could not be found",
+        }
+    }
+}
+
+impl fmt::Display for StateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StateError::BadRequest(msg) => write!(f, "Invalid input: {}", msg),
+            StateError::NotFound(msg) => write!(f, "Not Found: {}", msg),
+        }
+    }
+}
