@@ -7,3 +7,6 @@ members = [
     "messaging",
     "splinterd",
 ]
+exclude = [
+    "examples/private_xo"
+]

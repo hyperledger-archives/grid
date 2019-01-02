@@ -14,5 +14,8 @@
 /cli/target
 /cli/Cargo.lock
 
+/examples/private_xo/target
+/examples/private_xo/Cargo.lock
+
 /target
 /Cargo.lock
