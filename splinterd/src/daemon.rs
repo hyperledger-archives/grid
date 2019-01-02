@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use libsplinter::circuit::directory::CircuitDirectory;
+use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
-use libsplinter::network::{ConnectionError, Network};
-use libsplinter::storage::state::State;
-use libsplinter::storage::Storage;
+use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::rwlock_read_unwrap;
+use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
+use std::sync::{Arc, RwLock};
 use std::thread;
 
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
-    storage: Box<dyn Storage<S = State>>,
+    storage_location: String,
     service_endpoint: String,
     network_endpoint: String,
     initial_peers: Vec<String>,
@@ -32,7 +35,7 @@ pub struct SplinterDaemon {
 
 impl SplinterDaemon {
     pub fn new(
-        storage: Box<dyn Storage<S = State>>,
+        storage_location: String,
         transport: Box<dyn Transport + Send>,
         network_endpoint: String,
         service_endpoint: String,
@@ -44,7 +47,7 @@ impl SplinterDaemon {
 
         Ok(SplinterDaemon {
             transport,
-            storage,
+            storage_location,
             service_endpoint,
             network_endpoint,
             initial_peers,
@@ -55,6 +58,16 @@ impl SplinterDaemon {
 
     pub fn start(&mut self) -> Result<(), StartError> {
         info!("Starting SpinterNode with id {}", self.node_id);
+
+        let storage = get_storage(&self.storage_location, || CircuitDirectory::new())
+            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
+
+        let circuit_directory = storage.read().clone();
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            self.storage_location.to_string(),
+            circuit_directory,
+        )));
+
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
         let mut network_clone = self.network.clone();
         let _ = thread::spawn(move || {
@@ -111,10 +124,11 @@ impl SplinterDaemon {
                 }
             };
             debug!("Successfully connected to {}", connection.remote_endpoint());
-            self.network.add_connection(connection)?;
+            let peer_id = self.network.add_connection(connection)?;
+            self.network.send(peer_id, self.node_id.as_bytes())?;
         }
 
-        for (node_id, node) in self.storage.read().nodes().iter() {
+        for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
             if let Some(endpoint) = node.endpoints().get(0) {
                 // if the node is this node do not try to connect.
                 if endpoint != &self.network_endpoint {
@@ -161,6 +175,7 @@ pub enum CreateError {}
 pub enum StartError {
     TransportError(String),
     NetworkError(String),
+    StorageError(String),
 }
 
 impl From<ListenError> for StartError {
@@ -184,5 +199,17 @@ impl From<ConnectError> for StartError {
 impl From<ConnectionError> for StartError {
     fn from(connection_error: ConnectionError) -> Self {
         StartError::NetworkError(format!("Network Error: {:?}", connection_error))
+    }
+}
+
+impl From<SendError> for StartError {
+    fn from(send_error: SendError) -> Self {
+        StartError::NetworkError(format!("Network Error: {:?}", send_error))
+    }
+}
+
+impl From<PeerUpdateError> for StartError {
+    fn from(update_error: PeerUpdateError) -> Self {
+        StartError::NetworkError(format!("Network Peer Update Error: {:?}", update_error))
     }
 }

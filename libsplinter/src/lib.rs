@@ -35,6 +35,7 @@ extern crate mio_extras;
 extern crate tempdir;
 extern crate uuid;
 
+#[macro_export]
 macro_rules! rwlock_read_unwrap {
     ($lock:expr) => {
         match $lock.read() {
@@ -44,6 +45,7 @@ macro_rules! rwlock_read_unwrap {
     };
 }
 
+#[macro_export]
 macro_rules! rwlock_write_unwrap {
     ($lock:expr) => {
         match $lock.write() {
@@ -54,7 +56,7 @@ macro_rules! rwlock_write_unwrap {
 }
 
 mod async;
-pub mod circuits;
+pub mod circuit;
 pub mod connection;
 mod errors;
 pub mod mesh;
