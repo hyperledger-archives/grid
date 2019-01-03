@@ -84,7 +84,6 @@ mod tests {
         temp_dir_path.push("circuits.yaml");
         let filename = temp_dir_path.to_str().unwrap().to_string();
 
-        println!("{}", filename);
         let storage = YamlStorage::new(filename.clone(), || 1).unwrap();
         let val = storage.read();
         let other = storage.read();
