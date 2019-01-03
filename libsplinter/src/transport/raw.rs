@@ -16,7 +16,7 @@ use mio::{net::TcpStream as MioTcpStream, Evented};
 
 use std::net::{Shutdown, TcpListener, TcpStream};
 
-use transport::{
+use crate::transport::{
     read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
     RecvError, SendError, Transport,
 };
@@ -90,7 +90,7 @@ impl Connection for RawConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use transport::tests;
+    use crate::transport::tests;
 
     #[test]
     fn test_transport() {

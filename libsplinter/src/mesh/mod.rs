@@ -59,12 +59,12 @@ use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, RwLock};
 
-pub use mesh::control::{AddError, Control, RemoveError};
-pub use mesh::incoming::Incoming;
-pub use mesh::outgoing::Outgoing;
+pub use crate::mesh::control::{AddError, Control, RemoveError};
+pub use crate::mesh::incoming::Incoming;
+pub use crate::mesh::outgoing::Outgoing;
 
-use mesh::reactor::Reactor;
-use transport::Connection;
+use crate::mesh::reactor::Reactor;
+use crate::transport::Connection;
 
 /// Wrapper around payload to include connection id
 #[derive(Debug, Default, PartialEq)]
@@ -201,7 +201,7 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::thread;
 
-    use transport::{raw::RawTransport, tls::tests::create_test_tls_transport, Transport};
+    use crate::transport::{raw::RawTransport, tls::tests::create_test_tls_transport, Transport};
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {

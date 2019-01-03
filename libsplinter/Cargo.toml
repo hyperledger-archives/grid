@@ -16,12 +16,10 @@
 name = "libsplinter"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
+edition = "2018"
 
 [dependencies]
 atomicwrites = "0.2"
-webpki = "0.18.1"
-protobuf = "2"
-bytes = "0.4"
 log = "0.3.0"
 byteorder = "1"
 url = "1.7.1"
@@ -36,9 +34,6 @@ crossbeam-channel = "0.3"
 uuid = { version = "0.7", features = ["v4"]}
 bimap = "0.1"
 
-[dependencies.rustls]
-version = "0.13.1"
-features = ["logging"]
 
 [dev-dependencies]
 tempdir = "0.3"

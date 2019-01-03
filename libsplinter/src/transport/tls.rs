@@ -25,7 +25,7 @@ use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
-use transport::{
+use crate::transport::{
     read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
     RecvError, SendError, Transport,
 };
@@ -226,6 +226,7 @@ impl From<OpensslError> for DisconnectError {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::transport::tests;
     use openssl::asn1::Asn1Time;
     use openssl::bn::{BigNum, MsbOption};
     use openssl::hash::MessageDigest;
@@ -237,7 +238,6 @@ pub(crate) mod tests {
     use std::io::Write;
     use std::path::PathBuf;
     use tempdir::TempDir;
-    use transport::tests;
 
     // Make a certificate and private key for the Certifcate Authority
     fn make_ca_cert() -> (PKey<Private>, X509) {

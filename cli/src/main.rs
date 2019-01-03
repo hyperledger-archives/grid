@@ -12,22 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-extern crate libsplinter;
-extern crate messaging;
-extern crate protobuf;
-extern crate simple_logger;
-extern crate splinter_client;
-
 mod actions;
-mod errors;
+mod error;
 
-use actions::{do_create_circuit, do_destroy_circuit, do_gossip};
-use errors::CliError;
-use log::LogLevel;
+use crate::actions::{do_create_circuit, do_destroy_circuit, do_gossip};
+use crate::error::CliError;
+
+use ::log::LogLevel;
+use ::log::{error, log};
+use clap::clap_app;
 
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");

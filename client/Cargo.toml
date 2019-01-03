@@ -2,6 +2,7 @@
 name = "splinter-client"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
+edition = "2018"
 
 [dependencies]
 log = "0.3.8"
@@ -13,4 +14,3 @@ protobuf = "2"
 webpki-roots = "0.15.0"
 webpki = "0.18.1"
 url = "1.7.1"
-

@@ -18,10 +18,10 @@ pub mod service;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-pub use circuit::circuit::Circuit;
-use circuit::directory::CircuitDirectory;
-use circuit::service::{Service, SplinterNode};
-use storage::get_storage;
+pub use crate::circuit::circuit::Circuit;
+use crate::circuit::directory::CircuitDirectory;
+use crate::circuit::service::{Service, SplinterNode};
+use crate::storage::get_storage;
 
 pub struct SplinterState {
     // location of the persisted state

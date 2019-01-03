@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use libsplinter::SplinterError;
 use messaging::protocol::{
     CircuitCreateRequest, CircuitDestroyRequest, CircuitGossipMessageRequest, Message, MessageType,
     Service,
 };
 use protobuf;
-use splinter_client::{Certs, SplinterClient};
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
+
+use splinter_client::{error::SplinterError, Certs, SplinterClient};
 
 pub fn do_create_circuit(
     url: &str,

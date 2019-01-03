@@ -16,7 +16,7 @@ use mio_extras::channel::{SyncSender, TrySendError};
 
 use std::io;
 
-use mesh::Envelope;
+use crate::mesh::Envelope;
 
 /// Handle for sending to a specific connection in the mesh
 #[derive(Clone)]

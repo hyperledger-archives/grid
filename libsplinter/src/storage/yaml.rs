@@ -171,12 +171,14 @@ impl<T: Serialize + DeserializeOwned> Storage for YamlStorage<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use circuit::directory::CircuitDirectory;
-    use circuit::service::SplinterNode;
-    use circuit::Circuit;
     use std::path::PathBuf;
+
     use tempdir::TempDir;
+
+    use super::*;
+    use crate::circuit::directory::CircuitDirectory;
+    use crate::circuit::service::SplinterNode;
+    use crate::circuit::Circuit;
 
     /* Creates a state file that looks like the following:
         ---

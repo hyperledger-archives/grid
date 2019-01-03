@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use ::log::{error, log, warn};
 use crossbeam_channel::TrySendError;
 use mio::{Event, Evented, Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel as mio_channel;
@@ -22,8 +23,8 @@ use std::io;
 use std::mem;
 use std::sync::mpsc::TryRecvError;
 
-use mesh::Envelope;
-use transport::{Connection, RecvError, SendError};
+use crate::mesh::Envelope;
+use crate::transport::{Connection, RecvError, SendError};
 
 /// A structure for holding onto many connections and receivers and assigning new connections
 /// unique ids
