@@ -27,16 +27,33 @@ pub enum Status {
     Disconnected,
 }
 
-/// A single, bi-directional connection between two nodes
+/// A bi-directional connection between two nodes
 pub trait Connection: Send {
+    /// Attempt to send a message consisting of bytes across the connection.
     fn send(&mut self, message: &[u8]) -> Result<(), SendError>;
+
+    /// Attempt to receive a message consisting of bytes from the connection.
     fn recv(&mut self) -> Result<Vec<u8>, RecvError>;
 
+    /// Return the remote endpoint address for this connection.
+    ///
+    /// For TCP-based connection types, this will contain the remote peer
+    /// socket address.
     fn remote_endpoint(&self) -> String;
+
+    /// Return the local endpoint address for this connection.
+    ///
+    /// For TCP-based connection types, this will contain the local
+    /// socket address.
     fn local_endpoint(&self) -> String;
 
+    /// Shut down the connection.
+    ///
+    /// After the connection has been disconnected, messages cannot be sent
+    /// or received.
     fn disconnect(&mut self) -> Result<(), DisconnectError>;
 
+    /// Returns a `mio::event::Evented` for this connection which can be used for polling.
     fn evented(&self) -> &dyn Evented;
 }
 
