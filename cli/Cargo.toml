@@ -24,5 +24,4 @@ log = "0.3.8"
 protobuf = "2"
 simple_logger = "0.4.0"
 splinter-client = { path = "../client" }
-messaging = { path = "../messaging" }
 libsplinter = { path = "../libsplinter" }

@@ -36,5 +36,6 @@ pub mod circuit;
 pub mod collections;
 pub mod mesh;
 pub mod network;
+pub mod protos;
 pub mod storage;
 pub mod transport;
