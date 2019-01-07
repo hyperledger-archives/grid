@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 log = "0.3.8"
 byteorder = "1"
-messaging = { path = "../messaging" }
 libsplinter = { path = "../libsplinter" }
 rustls = "0.13.1"
 protobuf = "2"

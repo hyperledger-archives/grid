@@ -1,6 +1,6 @@
 use ::log::{debug, info, log};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use messaging::protocol::{Message, MessageType};
+use libsplinter::protos::protocol::{Message, MessageType};
 use protobuf;
 use rustls;
 use rustls::{ClientConfig, ClientSession, Session};
@@ -234,7 +234,7 @@ fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
 mod tests {
     use crate::splinter_client::pack_request;
     use byteorder::{BigEndian, ReadBytesExt};
-    use messaging::protocol::{Message, MessageType};
+    use libsplinter::protos::protocol::{Message, MessageType};
     use protobuf;
     use std::io::Read;
     use std::mem;

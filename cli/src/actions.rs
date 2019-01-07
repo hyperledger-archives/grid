@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use messaging::protocol::{
+use libsplinter::protos::protocol::{
     CircuitCreateRequest, CircuitDestroyRequest, CircuitGossipMessageRequest, Message, MessageType,
     Service,
 };
