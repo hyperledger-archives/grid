@@ -20,7 +20,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::channel::{SendError, Sender};
+use ::log::{log, warn};
+
+use crate::channel::{Receiver, SendError, Sender};
 use crate::network::sender::SendRequest;
 
 /// The Message Context
@@ -264,6 +266,79 @@ impl<MT: Hash + Eq + Debug + Clone> HandlerWrapper<MT> {
         network_sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
         (*self.inner)(message_bytes, message_context, network_sender)
+    }
+}
+
+/// A message to be dispatched.
+///
+/// This struct contains information about a message that will be passed to a `Dispatcher` instance
+/// via a `Sender<DispatchMessage>`.
+pub struct DispatchMessage<MT: Any + Hash + Eq + Debug + Clone> {
+    message_type: MT,
+    message_bytes: Vec<u8>,
+    source_peer_id: String,
+}
+
+impl<MT: Any + Hash + Eq + Debug + Clone> DispatchMessage<MT> {
+    /// Constructs a new DispatchMessage
+    pub fn new(message_type: MT, message_bytes: Vec<u8>, source_peer_id: String) -> Self {
+        DispatchMessage {
+            message_type,
+            message_bytes,
+            source_peer_id,
+        }
+    }
+}
+
+/// Errors that may occur during the operation of the Dispatch Loop.
+#[derive(Debug)]
+pub struct DispatchLoopError(String);
+
+/// The Dispatch Loop
+///
+/// The dispatch loop processes messages that are pulled from a `Receiver<DispatchMessage>` and
+/// passes them to a Dispatcher.  The dispatch loop only processes messages from a specific message
+/// type.
+pub struct DispatchLoop<MT: Any + Hash + Eq + Debug + Clone> {
+    receiver: Box<dyn Receiver<DispatchMessage<MT>>>,
+    dispatcher: Dispatcher<MT>,
+}
+
+impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
+    /// Constructs a new DispatchLoop.
+    ///
+    /// This constructs a new dispatch loop with a concrete Receiver implementation and a
+    /// dispatcher instance.
+    pub fn new(
+        receiver: Box<dyn Receiver<DispatchMessage<MT>>>,
+        dispatcher: Dispatcher<MT>,
+    ) -> Self {
+        DispatchLoop {
+            receiver,
+            dispatcher,
+        }
+    }
+
+    /// Runs the loop.
+    ///
+    /// Errors
+    ///
+    /// An error will be returned if the receiver no longer can return messages. This is
+    /// effectively an exit signal for the loop.
+    pub fn run(&self) -> Result<(), DispatchLoopError> {
+        loop {
+            let dispatch_msg = self.receiver.recv().map_err(|err| {
+                DispatchLoopError(format!("Error receiving dispatch messages: {:?}", err))
+            })?;
+            match self.dispatcher.dispatch(
+                &dispatch_msg.source_peer_id,
+                &dispatch_msg.message_type,
+                dispatch_msg.message_bytes,
+            ) {
+                Ok(_) => (),
+                Err(err) => warn!("Unable to dispatch message: {:?}", err),
+            }
+        }
     }
 }
 
