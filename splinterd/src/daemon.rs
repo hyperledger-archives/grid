@@ -118,18 +118,16 @@ impl SplinterDaemon {
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
             let connection_result = self.transport.connect(&peer);
-            let connection = match connection_result {
-                Ok(connection) => connection,
+            match connection_result {
+                Ok(connection) => {
+                    debug!("Successfully connected to {}", connection.remote_endpoint());
+                    let peer_id = self.network.add_connection(connection)?;
+                    self.network.send(peer_id, self.node_id.as_bytes())?;
+                }
                 Err(err) => {
-                    return Err(StartError::TransportError(format!(
-                        "Connect Error: {:?}",
-                        err
-                    )))
+                    error!("Connect Error: {:?}", err);
                 }
             };
-            debug!("Successfully connected to {}", connection.remote_endpoint());
-            let peer_id = self.network.add_connection(connection)?;
-            self.network.send(peer_id, self.node_id.as_bytes())?;
         }
 
         // For each node in the circuit_directory, try to connect and add them to the network
