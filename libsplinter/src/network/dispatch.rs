@@ -23,9 +23,44 @@ use std::hash::Hash;
 use crate::channel::{SendError, Sender};
 use crate::network::sender::SendRequest;
 
+/// The Message Context
+///
+/// The message context provides information about an incoming message beyond its parsed bytes.  It
+/// includes the source peer id, the message type, the original bytes, and potentially other,
+/// future items.
+#[derive(Clone, Debug)]
+pub struct MessageContext<MT: Hash + Eq + Debug + Clone> {
+    source_peer_id: String,
+    message_type: MT,
+    message_bytes: Vec<u8>,
+}
+
+impl<MT: Hash + Eq + Debug + Clone> MessageContext<MT> {
+    /// The Source Peer ID.
+    ///
+    /// This is the peer id of the original sender of the message
+    pub fn source_peer_id(&self) -> &str {
+        &self.source_peer_id
+    }
+
+    /// The Message Type.
+    ///
+    /// This is the message type that determined which handler to execute on receipt of this
+    /// message.
+    pub fn message_type(&self) -> &MT {
+        &self.message_type
+    }
+
+    /// The raw message bytes.
+    pub fn message_bytes(&self) -> &[u8] {
+        &self.message_bytes
+    }
+}
+
 /// A Handler for a network message.
-pub trait Handler<T>
+pub trait Handler<MT, T>
 where
+    MT: Hash + Eq + Debug + Clone,
     T: FromMessageBytes,
 {
     /// Handles a given message
@@ -33,20 +68,27 @@ where
     /// # Errors
     ///
     /// Any issues that occur during processing of the message will result in a DispatchError.
-    fn handle(&self, message: T, network_sender: &dyn Sender<SendRequest>) -> Result<(), DispatchError>;
+    fn handle(
+        &self,
+        message: T,
+        message_context: &MessageContext<MT>,
+        network_sender: &dyn Sender<SendRequest>,
+    ) -> Result<(), DispatchError>;
 }
 
-impl<T, F> Handler<T> for F
+impl<MT, T, F> Handler<MT, T> for F
 where
+    MT: Hash + Eq + Debug + Clone,
     T: FromMessageBytes,
-    F: Fn(T, &dyn Sender<SendRequest>) -> Result<(), DispatchError>,
+    F: Fn(T, &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError>,
 {
     fn handle(
         &self,
         message: T,
+        message_context: &MessageContext<MT>,
         network_sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
-        (*self)(message, network_sender)
+        (*self)(message, message_context, network_sender)
     }
 }
 
@@ -134,12 +176,12 @@ pub enum DispatchError {
 ///
 /// Message Types (MT) merely need to implement Hash, Eq and Debug (for unknown message type
 /// results). Beyond that, there are no other requirements.
-pub struct Dispatcher<MT: Hash + Eq + Debug> {
-    handlers: HashMap<MT, HandlerWrapper>,
+pub struct Dispatcher<MT: Any + Hash + Eq + Debug + Clone> {
+    handlers: HashMap<MT, HandlerWrapper<MT>>,
     network_sender: Box<dyn Sender<SendRequest>>,
 }
 
-impl<MT: Hash + Eq + Debug> Dispatcher<MT> {
+impl<MT: Any + Hash + Eq + Debug + Clone> Dispatcher<MT> {
     /// Creates a Dispatcher
     ///
     /// Creates a dispatcher with a given `Sender` to supply to handlers when they are executed.
@@ -155,16 +197,16 @@ impl<MT: Hash + Eq + Debug> Dispatcher<MT> {
     /// This sets a handler for a given message type.  Only one handler may exist per message type.
     /// If a user wishes to run a series handlers, they must supply a single handler that composes
     /// the series.
-    pub fn set_handler<T>(&mut self, message_type: MT, handler: Box<dyn Handler<T>>)
+    pub fn set_handler<T>(&mut self, message_type: MT, handler: Box<dyn Handler<MT, T>>)
     where
         T: FromMessageBytes,
     {
         self.handlers.insert(
             message_type,
             HandlerWrapper {
-                inner: Box::new(move |message_bytes, network_sender| {
+                inner: Box::new(move |message_bytes, message_context, network_sender| {
                     let message = FromMessageBytes::from_message_bytes(message_bytes)?;
-                    handler.handle(message, network_sender)
+                    handler.handle(message, message_context, network_sender)
                 }),
             },
         );
@@ -181,31 +223,47 @@ impl<MT: Hash + Eq + Debug> Dispatcher<MT> {
     /// error occurs while handling the messages (e.g. the message cannot be deserialized).
     pub fn dispatch(
         &self,
+        source_peer_id: &str,
         message_type: &MT,
-        message_bytes: &[u8],
+        message_bytes: Vec<u8>,
     ) -> Result<(), DispatchError> {
+        let message_context = MessageContext {
+            message_type: message_type.clone(),
+            message_bytes,
+            source_peer_id: source_peer_id.into(),
+        };
         self.handlers
             .get(message_type)
-            .ok_or_else(|| DispatchError::UnknownMessageType(format!("No handler for type {:?}", message_type)))
-            .and_then(|handler| handler.handle(message_bytes, self.network_sender.borrow()))
+            .ok_or_else(|| {
+                DispatchError::UnknownMessageType(format!("No handler for type {:?}", message_type))
+            })
+            .and_then(|handler| {
+                handler.handle(
+                    &message_context.message_bytes,
+                    &message_context,
+                    self.network_sender.borrow(),
+                )
+            })
     }
 }
 
 /// A function that handles inbound message bytes.
-type InnerHandler = Box<dyn Fn(&[u8], &dyn Sender<SendRequest>) -> Result<(), DispatchError>>;
+type InnerHandler<MT> =
+    Box<dyn Fn(&[u8], &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError>>;
 
 /// The HandlerWrapper provides a typeless wrapper for typed Handler instances.
-struct HandlerWrapper {
-    inner: InnerHandler,
+struct HandlerWrapper<MT: Hash + Eq + Debug + Clone> {
+    inner: InnerHandler<MT>,
 }
 
-impl HandlerWrapper {
+impl<MT: Hash + Eq + Debug + Clone> HandlerWrapper<MT> {
     fn handle(
         &self,
         message_bytes: &[u8],
+        message_context: &MessageContext<MT>,
         network_sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
-        (*self.inner)(message_bytes, network_sender)
+        (*self.inner)(message_bytes, message_context, network_sender)
     }
 }
 
@@ -240,7 +298,9 @@ mod tests {
         dispatcher.set_handler(
             MessageType::CIRCUIT_CREATE_REQUEST,
             Box::new(
-                move |_: CircuitCreateRequest, _: &dyn Sender<SendRequest>| {
+                move |_: CircuitCreateRequest,
+                      _: &MessageContext<MessageType>,
+                      _: &dyn Sender<SendRequest>| {
                     handler_flag.store(true, Ordering::SeqCst);
                     Ok(())
                 },
@@ -248,16 +308,21 @@ mod tests {
         );
 
         assert_eq!(
-            Err(DispatchError::UnknownMessageType(
-                    format!("No handler for type {:?}", MessageType::CIRCUIT_DESTROY_REQUEST)
-            )),
-            dispatcher.dispatch(&MessageType::CIRCUIT_DESTROY_REQUEST, &[])
+            Err(DispatchError::UnknownMessageType(format!(
+                "No handler for type {:?}",
+                MessageType::CIRCUIT_DESTROY_REQUEST
+            ))),
+            dispatcher.dispatch(
+                "TestPeer",
+                &MessageType::CIRCUIT_DESTROY_REQUEST,
+                Vec::new()
+            )
         );
         assert_eq!(false, flag.load(Ordering::SeqCst));
 
         assert_eq!(
             Ok(()),
-            dispatcher.dispatch(&MessageType::CIRCUIT_CREATE_REQUEST, &[])
+            dispatcher.dispatch("TestPeer", &MessageType::CIRCUIT_CREATE_REQUEST, Vec::new())
         );
         assert_eq!(true, flag.load(Ordering::SeqCst));
     }
@@ -285,8 +350,9 @@ mod tests {
         assert_eq!(
             Ok(()),
             dispatcher.dispatch(
+                "TestPeer",
                 &MessageType::CIRCUIT_DESTROY_REQUEST,
-                &outgoing_message_bytes
+                outgoing_message_bytes
             )
         );
 
@@ -313,17 +379,14 @@ mod tests {
 
         dispatcher.set_handler(MessageType::HEARTBEAT_REQUEST, Box::new(handle_heartbeat));
 
-        let empty_bytes: Vec<u8> = vec![];
-        // Essentially, we're just making sure this properly dispatches this message, since since
-        // we don't have shared state to mutate in this case.
         assert_eq!(
             Ok(()),
-            dispatcher.dispatch(&MessageType::HEARTBEAT_REQUEST, &empty_bytes)
+            dispatcher.dispatch("TestPeer", &MessageType::HEARTBEAT_REQUEST, Vec::new())
         );
 
         let sent_items = sent_container.lock().unwrap();
         assert_eq!(
-            &vec![SendRequest::new("TestRecipient".into(), vec![])],
+            &vec![SendRequest::new("TestPeer".into(), vec![])],
             sent_items.deref()
         );
     }
@@ -333,10 +396,11 @@ mod tests {
         circuit_names: Arc<Mutex<Vec<String>>>,
     }
 
-    impl Handler<CircuitDestroyRequest> for CircuitDestroyHandler {
+    impl Handler<MessageType, CircuitDestroyRequest> for CircuitDestroyHandler {
         fn handle(
             &self,
             message: CircuitDestroyRequest,
+            _message_context: &MessageContext<MessageType>,
             _: &dyn Sender<SendRequest>,
         ) -> Result<(), DispatchError> {
             self.circuit_names
@@ -350,13 +414,17 @@ mod tests {
     /// This test handler
     fn handle_heartbeat(
         message: RawBytes,
+        message_context: &MessageContext<MessageType>,
         network_sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
         let expected_message: Vec<u8> = vec![];
         assert_eq!(expected_message, message.bytes());
 
         network_sender
-            .send(SendRequest::new("TestRecipient".into(), vec![]))
+            .send(SendRequest::new(
+                message_context.source_peer_id().to_string(),
+                vec![],
+            ))
             .unwrap();
 
         Ok(())
