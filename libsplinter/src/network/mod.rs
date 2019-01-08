@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+pub mod sender;
 
 use uuid::Uuid;
 
@@ -22,6 +23,7 @@ use crate::mesh::{
 };
 use crate::transport::Connection;
 
+#[derive(Debug)]
 pub struct NetworkMessage {
     peer_id: String,
     payload: Vec<u8>,
