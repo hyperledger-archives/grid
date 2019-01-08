@@ -15,6 +15,7 @@
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
+use libsplinter::network::sender::NetworkMessageSender;
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
@@ -24,6 +25,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 
 use ::log::{debug, error, info, log};
+use crossbeam_channel;
 
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
@@ -71,6 +73,14 @@ impl SplinterDaemon {
             self.storage_location.to_string(),
             circuit_directory,
         )));
+
+        let network = self.network.clone();
+        let (_send, recv) = crossbeam_channel::bounded(5);
+
+        let _ = thread::spawn(move || {
+            let network_sender = NetworkMessageSender::new(Box::new(recv), network);
+            network_sender.run()
+        });
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
