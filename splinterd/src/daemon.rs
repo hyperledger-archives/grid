@@ -23,7 +23,7 @@ use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, T
 use std::sync::{Arc, RwLock};
 use std::thread;
 
-use ::log::{debug, info, log};
+use ::log::{debug, error, info, log};
 
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
@@ -61,6 +61,8 @@ impl SplinterDaemon {
     pub fn start(&mut self) -> Result<(), StartError> {
         info!("Starting SpinterNode with id {}", self.node_id);
 
+        // Load initial state from the configured storage location and create the new
+        // SplinterState from the retrieved circuit directory
         let storage = get_storage(&self.storage_location, || CircuitDirectory::new())
             .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
 
@@ -70,6 +72,7 @@ impl SplinterDaemon {
             circuit_directory,
         )));
 
+        // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
         let mut network_clone = self.network.clone();
         let _ = thread::spawn(move || {
@@ -83,15 +86,13 @@ impl SplinterDaemon {
                         )))
                     }
                 };
-                debug!(
-                    "Received network connection from {}",
-                    connection.remote_endpoint()
-                );
+                debug!("Received connection from {}", connection.remote_endpoint());
                 network_clone.add_connection(connection)?;
             }
             Ok(())
         });
 
+        // setup a thread to listen on the service port and add incoming connection to the network
         let mut service_listener = self.transport.listen(&self.service_endpoint)?;
         let mut service_clone = self.network.clone();
         let _ = thread::spawn(move || {
@@ -114,6 +115,7 @@ impl SplinterDaemon {
             Ok(())
         });
 
+        // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
             let connection_result = self.transport.connect(&peer);
             let connection = match connection_result {
@@ -130,6 +132,7 @@ impl SplinterDaemon {
             self.network.send(peer_id, self.node_id.as_bytes())?;
         }
 
+        // For each node in the circuit_directory, try to connect and add them to the network
         for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
             if let Some(endpoint) = node.endpoints().get(0) {
                 // if the node is this node do not try to connect.
@@ -154,6 +157,7 @@ impl SplinterDaemon {
             }
         }
 
+        // start the recv loop
         loop {
             match self.network.recv() {
                 // This is where the message should be dispatched
