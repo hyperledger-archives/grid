@@ -60,7 +60,7 @@ impl<MT: Hash + Eq + Debug + Clone> MessageContext<MT> {
 }
 
 /// A Handler for a network message.
-pub trait Handler<MT, T>
+pub trait Handler<MT, T>: Send
 where
     MT: Hash + Eq + Debug + Clone,
     T: FromMessageBytes,
@@ -82,7 +82,7 @@ impl<MT, T, F> Handler<MT, T> for F
 where
     MT: Hash + Eq + Debug + Clone,
     T: FromMessageBytes,
-    F: Fn(T, &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError>,
+    F: Fn(T, &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError> + Send,
 {
     fn handle(
         &self,
@@ -250,8 +250,10 @@ impl<MT: Any + Hash + Eq + Debug + Clone> Dispatcher<MT> {
 }
 
 /// A function that handles inbound message bytes.
-type InnerHandler<MT> =
-    Box<dyn Fn(&[u8], &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError>>;
+type InnerHandler<MT> = Box<
+    dyn Fn(&[u8], &MessageContext<MT>, &dyn Sender<SendRequest>) -> Result<(), DispatchError>
+        + Send,
+>;
 
 /// The HandlerWrapper provides a typeless wrapper for typed Handler instances.
 struct HandlerWrapper<MT: Hash + Eq + Debug + Clone> {
@@ -463,6 +465,46 @@ mod tests {
         assert_eq!(
             &vec![SendRequest::new("TestPeer".into(), vec![])],
             sent_items.deref()
+        );
+    }
+
+    /// Verify that a dispatcher can be moved to a thread.
+    ///
+    /// This test does the following:
+    ///
+    /// * Create a Dispatcher in the main thread
+    /// * Add a handler implemented as a struct with the Handler trait
+    /// * Spawn a thread and move the dispatcher to this thread
+    /// * Dispatch a message of the expected type in the spawned thread
+    /// * Join the thread and verify the dispatched message was handled
+    #[test]
+    fn move_dispatcher_to_thread() {
+        let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
+
+        let handler = CircuitDestroyHandler::default();
+        let destroyed_names = handler.circuit_names.clone();
+        dispatcher.set_handler(MessageType::CIRCUIT_DESTROY_REQUEST, Box::new(handler));
+
+        std::thread::spawn(move || {
+            let mut outgoing_message = CircuitDestroyRequest::new();
+            outgoing_message.set_circuit_name("thread_circuit".into());
+            let outgoing_message_bytes = outgoing_message.write_to_bytes().unwrap();
+
+            assert_eq!(
+                Ok(()),
+                dispatcher.dispatch(
+                    "TestPeer",
+                    &MessageType::CIRCUIT_DESTROY_REQUEST,
+                    outgoing_message_bytes
+                )
+            );
+        })
+        .join()
+        .unwrap();
+
+        assert_eq!(
+            vec!["thread_circuit".to_string()],
+            destroyed_names.lock().unwrap().clone()
         );
     }
 
