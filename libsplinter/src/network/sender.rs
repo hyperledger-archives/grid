@@ -13,6 +13,7 @@
 // limitations under the License.
 use ::log::{log, warn};
 
+use crate::channel::{Receiver, RecvError};
 use crate::network::Network;
 
 // Message to send to the network message sender with the recipient and payload
@@ -73,45 +74,9 @@ impl From<RecvError> for NetworkMessageSenderError {
     }
 }
 
-// To allow the NetworkMessageSender to not make decissions about the threading model, any channel
-// that is used must have the following Receiver trait implemented, then the receiver end of the
-// channel can be passed to the NetworkMessageSender.
-pub trait Receiver<T>: Send {
-    fn recv(&self) -> Result<T, RecvError>;
-    fn try_recv(&self) -> Result<T, TryRecvError>;
-}
-
-// To allow the NetworkMessageSender to not make decissions about the threading model, any channel
-// that is used must have the following Sender trait implemented, then the send end of the channel
-// can be passed to a Handler.
-pub trait Sender<T>: Send {
-    fn send(&self, t: T) -> Result<(), SendError>;
-    fn box_clone(&self) -> Box<Sender<T>>;
-}
-
-impl<T> Clone for Box<Sender<T>> {
-    fn clone(&self) -> Box<Sender<T>> {
-        self.box_clone()
-    }
-}
-
-#[derive(Debug)]
-pub struct RecvError {
-    error: String,
-}
-
-#[derive(Debug)]
-pub struct TryRecvError {
-    error: String,
-}
-
-#[derive(Debug)]
-pub struct SendError {
-    error: String,
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::channel::{Receiver, Sender};
     use crossbeam_channel;
 
     use std::sync::mpsc;
@@ -122,67 +87,6 @@ mod tests {
     use crate::network::Network;
     use crate::transport::raw::RawTransport;
     use crate::transport::Transport;
-
-    // Implement the Receiver and Sender Traits for crossbeam channels
-    impl Receiver<SendRequest> for crossbeam_channel::Receiver<SendRequest> {
-        fn recv(&self) -> Result<SendRequest, RecvError> {
-            let request = crossbeam_channel::Receiver::recv(self).map_err(|err| RecvError {
-                error: err.to_string(),
-            })?;
-            Ok(request)
-        }
-
-        fn try_recv(&self) -> Result<SendRequest, TryRecvError> {
-            let request =
-                crossbeam_channel::Receiver::try_recv(self).map_err(|err| TryRecvError {
-                    error: err.to_string(),
-                })?;
-            Ok(request)
-        }
-    }
-
-    impl Sender<SendRequest> for crossbeam_channel::Sender<SendRequest> {
-        fn send(&self, request: SendRequest) -> Result<(), SendError> {
-            crossbeam_channel::Sender::send(self, request).map_err(|err| SendError {
-                error: err.to_string(),
-            })?;
-            Ok(())
-        }
-
-        fn box_clone(&self) -> Box<Sender<SendRequest>> {
-            Box::new((*self).clone())
-        }
-    }
-
-    // Implement the Receiver and Sender Traits for mpsc channels
-    impl Receiver<SendRequest> for mpsc::Receiver<SendRequest> {
-        fn recv(&self) -> Result<SendRequest, RecvError> {
-            let request = mpsc::Receiver::recv(self).map_err(|err| RecvError {
-                error: err.to_string(),
-            })?;
-            Ok(request)
-        }
-
-        fn try_recv(&self) -> Result<SendRequest, TryRecvError> {
-            let request = mpsc::Receiver::try_recv(self).map_err(|err| TryRecvError {
-                error: err.to_string(),
-            })?;
-            Ok(request)
-        }
-    }
-
-    impl Sender<SendRequest> for mpsc::Sender<SendRequest> {
-        fn send(&self, request: SendRequest) -> Result<(), SendError> {
-            mpsc::Sender::send(self, request).map_err(|err| SendError {
-                error: err.to_string(),
-            })?;
-            Ok(())
-        }
-
-        fn box_clone(&self) -> Box<Sender<SendRequest>> {
-            Box::new((*self).clone())
-        }
-    }
 
     // Test that a message can successfully be sent by passing it to the sender end of the
     // NetworkMessageSender channel, recv the message, and then send it over the network.
