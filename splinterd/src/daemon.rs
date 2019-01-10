@@ -15,8 +15,11 @@
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
-use libsplinter::network::sender::NetworkMessageSender;
+use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
+use libsplinter::network::handlers::NetworkEchoHandler;
+use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
@@ -75,12 +78,17 @@ impl SplinterDaemon {
         )));
 
         let network = self.network.clone();
-        let (_send, recv) = crossbeam_channel::bounded(5);
+        let (send, recv) = crossbeam_channel::bounded(5);
 
         let _ = thread::spawn(move || {
             let network_sender = NetworkMessageSender::new(Box::new(recv), network);
             network_sender.run()
         });
+
+        let (dispatch_send, dispatch_recv) = crossbeam_channel::bounded(5);
+        let dispatcher = set_up_dispatcher(send, &self.node_id);
+        let dispatch_loop = DispatchLoop::new(Box::new(dispatch_recv), dispatcher);
+        let _ = thread::spawn(move || dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
@@ -170,8 +178,18 @@ impl SplinterDaemon {
             match self.network.recv() {
                 // This is where the message should be dispatched
                 Ok(message) => {
-                    let msg_str = String::from_utf8(message.payload().to_vec()).unwrap();
-                    debug!("Received Message from {}: {:?}", message.peer_id(), msg_str);
+                    let msg: NetworkMessage =
+                        protobuf::parse_from_bytes(message.payload()).unwrap();
+                    let dispatch_msg = DispatchMessage::new(
+                        msg.get_message_type(),
+                        msg.get_payload().to_vec(),
+                        message.peer_id().to_string(),
+                    );
+                    debug!("Received Message from {}: {:?}", message.peer_id(), msg);
+                    match dispatch_send.send(dispatch_msg) {
+                        Ok(()) => (),
+                        Err(err) => error!("Dispatch Error {}", err.to_string()),
+                    }
                 }
                 Err(err) => {
                     debug!("Error: {:?}", err);
@@ -180,6 +198,19 @@ impl SplinterDaemon {
             }
         }
     }
+}
+
+fn set_up_dispatcher(
+    send: crossbeam_channel::Sender<SendRequest>,
+    node_id: &str,
+) -> Dispatcher<NetworkMessageType> {
+    let mut dispatcher = Dispatcher::<NetworkMessageType>::new(Box::new(send));
+    let network_echo_handler = NetworkEchoHandler::new(node_id.to_string());
+    dispatcher.set_handler(
+        NetworkMessageType::NETWORK_ECHO,
+        Box::new(network_echo_handler),
+    );
+    dispatcher
 }
 
 #[derive(Debug)]
