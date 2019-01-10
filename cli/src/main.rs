@@ -15,8 +15,10 @@
 mod actions;
 mod error;
 
-use crate::actions::{do_create_circuit, do_destroy_circuit, do_gossip};
+use crate::actions::do_echo;
 use crate::error::CliError;
+
+use std::str::FromStr;
 
 use ::log::LogLevel;
 use ::log::{error, log};
@@ -34,25 +36,11 @@ fn run() -> Result<(), CliError> {
         (@arg url: --url  +takes_value "Splinter node url")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
-        (@subcommand circuit =>
-            (about: "Circuit commands")
-            (@setting SubcommandRequiredElseHelp)
-            (@subcommand create =>
-                (about: "Create a new circuit")
-                (@arg name: -n +required +takes_value "Name of circuit")
-                (@arg participants: -p +takes_value +multiple
-                    "The service and the node the service will connect to. service_id,node_url ")
-            )
-            (@subcommand destroy =>
-                (about: "Destroy a circuit")
-                (@arg name: -n +takes_value +required "Name of circuit")
-            )
-            (@subcommand gossip =>
-                (about: "Gossip a message to all nodes participating in a circuit")
-                (@arg name: -n +required +takes_value "Name of circuit")
-                (@arg payload: -d +required +takes_value "File path containing payload")
-            )
-         )
+        (@subcommand echo =>
+            (about: "Echo message")
+            (@arg recipient: +takes_value "Splinter node id to send the message to")
+            (@arg ttl: +takes_value "Number of times to echo the message")
+        )
     )
     .get_matches();
 
@@ -67,27 +55,15 @@ fn run() -> Result<(), CliError> {
     let url = matches.value_of("url").unwrap_or("tcp://localhost:8045");
 
     match matches.subcommand() {
-        ("circuit", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => do_create_circuit(
+        ("echo", Some(m)) => {
+            do_echo(
                 url,
-                m.value_of("name").unwrap(),
-                m.values_of("participants")
-                    .unwrap_or(clap::Values::default())
-                    .map(String::from)
-                    .collect(),
+                m.value_of("recipient").unwrap().to_string(),
+                FromStr::from_str(m.value_of("ttl").unwrap()).unwrap(),
             )
-            .map_err(CliError::from),
-            ("destroy", Some(m)) => {
-                do_destroy_circuit(url, m.value_of("name").unwrap()).map_err(CliError::from)
-            }
-            ("gossip", Some(m)) => do_gossip(
-                url,
-                m.value_of("name").unwrap(),
-                m.value_of("payload").unwrap(),
-            )
-            .map_err(CliError::from),
-            _ => Err(CliError::InvalidSubcommand),
-        },
+            .map_err(CliError::from)
+        }
+        .map_err(CliError::from),
         _ => Err(CliError::InvalidSubcommand),
     }
 }
