@@ -11,9 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use libsplinter::transport::SendError;
+use openssl::error::ErrorStack;
+use openssl::ssl::HandshakeError;
 use protobuf::ProtobufError;
-use rustls::TLSError;
 use std::io::Error as IoError;
+use std::net::TcpStream;
 use url::ParseError;
 
 #[derive(Debug)]
@@ -25,7 +28,8 @@ pub enum SplinterError {
     PrivateKeyNotFound,
     ProtobufError(ProtobufError),
     IoError(IoError),
-    TLSError(TLSError),
+    TLSError(String),
+    TransportSendError(SendError),
     ParseError(ParseError),
 }
 
@@ -41,14 +45,26 @@ impl From<ProtobufError> for SplinterError {
     }
 }
 
-impl From<TLSError> for SplinterError {
-    fn from(e: TLSError) -> Self {
-        SplinterError::TLSError(e)
+impl From<HandshakeError<TcpStream>> for SplinterError {
+    fn from(e: HandshakeError<TcpStream>) -> Self {
+        SplinterError::TLSError(format!("TLSError: {}", e.to_string()))
+    }
+}
+
+impl From<ErrorStack> for SplinterError {
+    fn from(e: ErrorStack) -> Self {
+        SplinterError::TLSError(format!("TLSError: {}", e.to_string()))
     }
 }
 
 impl From<ParseError> for SplinterError {
     fn from(e: ParseError) -> Self {
         SplinterError::ParseError(e)
+    }
+}
+
+impl From<SendError> for SplinterError {
+    fn from(e: SendError) -> Self {
+        SplinterError::TransportSendError(e)
     }
 }
