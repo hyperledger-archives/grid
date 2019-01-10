@@ -139,8 +139,7 @@ impl SplinterDaemon {
             match connection_result {
                 Ok(connection) => {
                     debug!("Successfully connected to {}", connection.remote_endpoint());
-                    let peer_id = self.network.add_connection(connection)?;
-                    self.network.send(peer_id, self.node_id.as_bytes())?;
+                    self.network.add_connection(connection)?;
                 }
                 Err(err) => {
                     error!("Connect Error: {:?}", err);
