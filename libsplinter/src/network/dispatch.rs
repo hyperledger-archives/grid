@@ -164,6 +164,12 @@ pub enum DispatchError {
     NetworkSendError(SendError),
 }
 
+impl From<SendError> for DispatchError {
+    fn from(e: SendError) -> Self {
+        DispatchError::NetworkSendError(e)
+    }
+}
+
 /// Dispatches messages to handlers.
 ///
 /// The dispatcher routes messages of a specific message type to one of a set of handlers that have
@@ -537,12 +543,10 @@ mod tests {
         let expected_message: Vec<u8> = vec![];
         assert_eq!(expected_message, message.bytes());
 
-        network_sender
-            .send(SendRequest::new(
-                message_context.source_peer_id().to_string(),
-                vec![],
-            ))
-            .unwrap();
+        network_sender.send(SendRequest::new(
+            message_context.source_peer_id().to_string(),
+            vec![],
+        ))?;
 
         Ok(())
     }
