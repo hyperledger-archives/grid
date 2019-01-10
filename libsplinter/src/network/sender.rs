@@ -17,7 +17,7 @@ use crate::channel::{Receiver, RecvError};
 use crate::network::Network;
 
 // Message to send to the network message sender with the recipient and payload
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SendRequest {
     recipient: String,
     payload: Vec<u8>,

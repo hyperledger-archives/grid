@@ -37,17 +37,17 @@ impl<T> Clone for Box<Sender<T>> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct RecvError {
     pub error: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TryRecvError {
     pub error: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SendError {
     pub error: String,
 }
