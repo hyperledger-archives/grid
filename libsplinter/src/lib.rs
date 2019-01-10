@@ -32,7 +32,7 @@ macro_rules! rwlock_write_unwrap {
     };
 }
 
-mod channel;
+pub mod channel;
 pub mod circuit;
 pub mod collections;
 pub mod mesh;
