@@ -156,6 +156,12 @@ impl Connection for TlsConnection {
     }
 }
 
+impl TlsConnection {
+    pub fn new(stream: SslStream<TcpStream>) -> Self {
+        TlsConnection { stream }
+    }
+}
+
 impl AsRawFd for TlsConnection {
     fn as_raw_fd(&self) -> RawFd {
         self.stream.get_ref().as_raw_fd()

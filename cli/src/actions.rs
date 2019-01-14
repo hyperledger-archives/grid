@@ -11,88 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-use libsplinter::protos::protocol::{
-    CircuitCreateRequest, CircuitDestroyRequest, CircuitGossipMessageRequest, Message, MessageType,
-    Service,
-};
-use protobuf;
+use libsplinter::protos::network::{NetworkEcho, NetworkMessage, NetworkMessageType};
+use protobuf::Message;
 use std::env;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
 
 use splinter_client::{error::SplinterError, Certs, SplinterClient};
 
-pub fn do_create_circuit(
-    url: &str,
-    name: &str,
-    participants: Vec<String>,
-) -> Result<(), SplinterError> {
+pub fn do_echo(url: &str, recipient: String, ttl: i32) -> Result<(), SplinterError> {
     let msg = {
-        let mut services = Vec::new();
-        for participant in participants {
-            let parts: Vec<&str> = participant.split(",").collect();
-            if parts.len() == 2 {
-                let id = parts[0].to_string();
-                let node_url = parts[1].to_string();
-                let mut service = Service::new();
-                service.set_service_id(id);
-                service.set_network_node_url(node_url);
+        let mut echo = NetworkEcho::new();
+        echo.set_payload(b"HelloWorld".to_vec());
+        echo.set_recipient(recipient);
+        echo.set_time_to_live(ttl);
+        let echo_bytes = echo.write_to_bytes()?;
 
-                services.push(service);
-            }
-        }
-        let mut req = CircuitCreateRequest::new();
-        req.set_circuit_name(name.to_string());
-        req.set_participants(protobuf::RepeatedField::from_vec(services));
+        let mut network_msg = NetworkMessage::new();
+        network_msg.set_message_type(NetworkMessageType::NETWORK_ECHO);
+        network_msg.set_payload(echo_bytes);
 
-        let mut m = Message::new();
-        m.set_message_type(MessageType::CIRCUIT_CREATE_REQUEST);
-        m.set_circuit_create_request(req);
-
-        m
-    };
-
-    let mut conn = SplinterClient::connect(url, get_certs())?;
-
-    conn.send(&msg).map(|_| ())
-}
-
-pub fn do_destroy_circuit(url: &str, name: &str) -> Result<(), SplinterError> {
-    let msg = {
-        let mut req = CircuitDestroyRequest::new();
-        req.set_circuit_name(name.to_string());
-
-        let mut m = Message::new();
-        m.set_message_type(MessageType::CIRCUIT_DESTROY_REQUEST);
-        m.set_circuit_destroy_request(req);
-
-        m
-    };
-
-    let mut conn = SplinterClient::connect(url, get_certs())?;
-
-    conn.send(&msg).map(|_| ())
-}
-
-pub fn do_gossip(url: &str, name: &str, payload_file: &str) -> Result<(), SplinterError> {
-    let payload = {
-        let mut b = Vec::new();
-        File::open(payload_file)?.read_to_end(&mut b)?;
-        b
-    };
-
-    let msg = {
-        let mut req = CircuitGossipMessageRequest::new();
-        req.set_circuit_name(name.to_string());
-        req.set_payload(payload);
-
-        let mut m = Message::new();
-        m.set_message_type(MessageType::CIRCUIT_GOSSIP_MESSAGE_REQUEST);
-        m.set_gossip_message_request(req);
-
-        m
+        network_msg
     };
 
     let mut conn = SplinterClient::connect(url, get_certs())?;
@@ -102,21 +39,21 @@ pub fn do_gossip(url: &str, name: &str, payload_file: &str) -> Result<(), Splint
 
 fn get_certs() -> Certs {
     let ca_certs = if let Ok(s) = env::var("SPLINTER_CA_CERTS") {
-        s.split(",").map(PathBuf::from).collect()
+        s.to_string()
     } else {
-        vec![PathBuf::from("ca.crt")]
+        "ca.crt".to_string()
     };
 
     let client_cert = if let Ok(s) = env::var("SPLINTER_CLIENT_CERTS") {
-        PathBuf::from(s)
+        s.to_string()
     } else {
-        PathBuf::from("client.crt")
+        "client.crt".to_string()
     };
 
     let client_priv = if let Ok(s) = env::var("SPLINTER_CLIENT_SECRET") {
-        PathBuf::from(s)
+        s.to_string()
     } else {
-        PathBuf::from("client.key")
+        "client.key".to_string()
     };
 
     Certs::new(ca_certs, client_cert, client_priv)

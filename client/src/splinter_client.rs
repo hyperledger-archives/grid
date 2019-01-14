@@ -1,80 +1,44 @@
-use ::log::{debug, info, log};
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use libsplinter::protos::protocol::{Message, MessageType};
+use libsplinter::protos::network::NetworkMessage;
+use libsplinter::transport::tls::TlsConnection;
+use libsplinter::transport::Connection;
+use openssl::ssl::{SslConnector, SslFiletype, SslMethod};
 use protobuf;
-use rustls;
-use rustls::{ClientConfig, ClientSession, Session};
 use url;
-use webpki;
 
-use std::fs::File;
-use std::io::{BufReader, ErrorKind, Read, Write};
-use std::mem;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::error::SplinterError;
 
 pub struct Certs {
-    ca_certs: Vec<PathBuf>,
-    client_cert: PathBuf,
-    client_priv: PathBuf,
+    ca_cert: String,
+    client_cert: String,
+    client_priv: String,
 }
 
 impl Certs {
-    pub fn new(ca_certs: Vec<PathBuf>, client_cert: PathBuf, client_priv: PathBuf) -> Certs {
+    pub fn new(ca_cert: String, client_cert: String, client_priv: String) -> Certs {
         Certs {
-            ca_certs,
+            ca_cert,
             client_cert,
             client_priv,
         }
     }
 
-    pub fn get_ca_certs(&self) -> Result<Vec<File>, SplinterError> {
-        let mut files = Vec::new();
-
-        for cert in self.ca_certs.clone() {
-            files.push(File::open(if let Some(s) = cert.to_str() {
-                s
-            } else {
-                return Err(SplinterError::CertUtf8Error(
-                    "ca cert path name is malformed".into(),
-                ));
-            })?);
-        }
-
-        Ok(files)
+    pub fn get_ca_cert(&self) -> &str {
+        &self.ca_cert
     }
 
-    pub fn get_client_cert(&self) -> Result<File, SplinterError> {
-        let cert = if let Some(s) = self.client_cert.to_str() {
-            s
-        } else {
-            return Err(SplinterError::CertUtf8Error(
-                "client cert path name is malformed".into(),
-            ));
-        };
-
-        Ok(File::open(cert)?)
+    pub fn get_client_cert(&self) -> &str {
+        &self.client_cert
     }
 
-    pub fn get_client_priv(&self) -> Result<File, SplinterError> {
-        let cert = if let Some(s) = self.client_priv.to_str() {
-            s
-        } else {
-            return Err(SplinterError::CertUtf8Error(
-                "client private key path name is malformed".into(),
-            ));
-        };
-
-        Ok(File::open(cert)?)
+    pub fn get_client_priv(&self) -> &str {
+        &self.client_priv
     }
 }
 
 pub struct SplinterClient {
-    session: ClientSession,
-    socket: TcpStream,
+    socket: TlsConnection,
 }
 
 impl SplinterClient {
@@ -98,128 +62,27 @@ impl SplinterClient {
 
         let addr = resolve_hostname(&format!("{}:{}", hostname, port))?;
 
-        let socket = TcpStream::connect((addr.ip(), addr.port()))?;
-        socket.set_nonblocking(true)?;
+        // Build TLS Connector
+        let mut connector = SslConnector::builder(SslMethod::tls())?;
+        connector.set_private_key_file(certs.get_client_priv(), SslFiletype::PEM)?;
+        connector.set_certificate_chain_file(certs.get_client_cert())?;
+        connector.check_private_key()?;
+        connector.set_ca_file(certs.get_ca_cert())?;
+        let connector = connector.build();
 
-        let config = get_config(certs)?;
-        let dns_name = webpki::DNSNameRef::try_from_ascii_str(&hostname)
-            .map_err(|_| SplinterError::CouldNotResolveHostName)?;
-        let session = rustls::ClientSession::new(&Arc::new(config), dns_name);
+        let endpoint = &format!("{}:{}", addr.ip(), addr.port());
+        let stream = TcpStream::connect(endpoint)?;
+        let tls_stream = connector.connect("localhost", stream)?;
+        let connection = TlsConnection::new(tls_stream);
 
-        Ok(SplinterClient { session, socket })
+        Ok(SplinterClient { socket: connection })
     }
 
-    pub fn send(&mut self, req: &Message) -> Result<Message, SplinterError> {
-        debug!("Performing Handshake");
-        loop {
-            match self.session.complete_io(&mut self.socket) {
-                Ok(_) => break,
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => continue,
-                Err(e) => return Err(SplinterError::from(e)),
-            };
-        }
-        debug!("Handshake complete");
-
-        let packed_req = pack_request(req)?;
-
-        let mut send_heartbeat = false;
-
-        info!("Sending message");
-        loop {
-            self.session.write_tls(&mut self.socket)?;
-
-            if send_heartbeat {
-                debug!("Sending heartbeat");
-
-                let mut heartbeat = Message::new();
-                heartbeat.set_message_type(MessageType::HEARTBEAT_REQUEST);
-
-                self.session.write(&pack_request(&heartbeat)?)?;
-            } else {
-                debug!("Writing message");
-                self.session.write(&packed_req)?;
-                send_heartbeat = true;
-            }
-
-            debug!("Reading tls");
-            match self.session.read_tls(&mut self.socket) {
-                Ok(n) => {
-                    debug!("TLS Read complete: {}", n);
-                }
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    debug!("No data to read");
-                    continue;
-                }
-                Err(err) => return Err(SplinterError::from(err)),
-            };
-
-            debug!("Processing new packets");
-
-            self.session.process_new_packets()?;
-
-            // Read first 4 bytes to get length
-            let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-            self.session.read_exact(&mut msg_len_buff)?;
-            let msg_size = msg_len_buff.as_slice().read_u32::<BigEndian>()? as usize;
-
-            // Read Message
-            let mut msg_buff = vec![0; msg_size];
-            self.session.read_exact(&mut msg_buff)?;
-
-            let response = protobuf::parse_from_bytes::<Message>(&msg_buff)?;
-
-            if response.message_type != MessageType::HEARTBEAT_RESPONSE {
-                info!("Response received {:?}", response);
-                return Ok(response);
-            }
-        }
+    pub fn send(&mut self, req: &NetworkMessage) -> Result<(), SplinterError> {
+        let raw_msg = protobuf::Message::write_to_bytes(req)?;
+        self.socket.send(&raw_msg)?;
+        Ok(())
     }
-}
-
-fn get_config(certs: Certs) -> Result<ClientConfig, SplinterError> {
-    let mut config = ClientConfig::new();
-
-    for file in certs.get_ca_certs()? {
-        let mut reader = BufReader::new(file);
-        config
-            .root_store
-            .add_pem_file(&mut reader)
-            .map_err(|_| SplinterError::CertificateCreationError)?;
-    }
-
-    let client_cert_file = certs.get_client_cert()?;
-    let mut reader = BufReader::new(client_cert_file);
-    let client_certs = rustls::internal::pemfile::certs(&mut reader)
-        .map_err(|_| SplinterError::CertificateCreationError)?;
-
-    let client_priv_file = certs.get_client_priv()?;
-    let mut reader = BufReader::new(client_priv_file);
-    let keys = rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
-        .map_err(|_| SplinterError::CertificateCreationError)?;
-
-    let privkey = if keys.len() < 1 {
-        return Err(SplinterError::PrivateKeyNotFound);
-    } else {
-        keys[0].clone()
-    };
-
-    config.set_single_client_cert(client_certs, privkey);
-
-    config
-        .ciphersuites
-        .push(rustls::ALL_CIPHERSUITES.to_vec()[0]);
-
-    Ok(config)
-}
-
-fn pack_request(req: &Message) -> Result<Vec<u8>, SplinterError> {
-    let raw_msg = protobuf::Message::write_to_bytes(req)?;
-    let mut buff = Vec::new();
-
-    buff.write_u32::<BigEndian>(raw_msg.len() as u32)?;
-    buff.write(&raw_msg)?;
-
-    Ok(buff)
 }
 
 fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
@@ -228,42 +91,4 @@ fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
         .filter(|addr| addr.is_ipv4())
         .next()
         .ok_or(SplinterError::CouldNotResolveHostName)
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::splinter_client::pack_request;
-    use byteorder::{BigEndian, ReadBytesExt};
-    use libsplinter::protos::protocol::{Message, MessageType};
-    use protobuf;
-    use std::io::Read;
-    use std::mem;
-
-    #[test]
-    fn test_pack_request() {
-        let mut request = Message::new();
-        request.set_message_type(MessageType::HEARTBEAT_REQUEST);
-
-        let expected_size = protobuf::Message::write_to_bytes(&request).unwrap().len();
-
-        let packed_request = pack_request(&request).unwrap();
-
-        assert_eq!(expected_size + mem::size_of::<u32>(), packed_request.len());
-
-        let mut msg_len_buff = vec![0; mem::size_of::<u32>()];
-        packed_request
-            .as_slice()
-            .read_exact(&mut msg_len_buff)
-            .unwrap();
-
-        let actual_size = msg_len_buff.as_slice().read_u32::<BigEndian>().unwrap() as usize;
-
-        assert_eq!(expected_size, actual_size);
-
-        let actual_request =
-            protobuf::parse_from_bytes::<Message>(&packed_request[mem::size_of::<u32>()..])
-                .unwrap();
-
-        assert!(request.get_message_type() == actual_request.get_message_type());
-    }
 }

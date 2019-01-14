@@ -29,6 +29,7 @@ enum NetworkMessageType {
     NETWORK_ERROR = 1;
     NETWORK_REQUEST = 2;
     NETWORK_RESPONSE = 3;
+    NETWORK_ECHO = 4;
 
     // Message types that indicate that the payload is another message envelope
     CIRCUIT = 100;
@@ -78,4 +79,11 @@ message NetworkResponse {
 
     // id used to correlate the response with this request
     string correlation_id = 4;
+}
+
+// This message is used for debugging
+message NetworkEcho {
+    bytes payload = 1;
+    string recipient = 2;
+    int32 time_to_live = 3;
 }

@@ -13,8 +13,8 @@
 // limitations under the License.
 pub mod dispatch;
 mod dispatch_proto;
+pub mod handlers;
 pub mod sender;
-
 
 use uuid::Uuid;
 
