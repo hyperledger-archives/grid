@@ -23,62 +23,14 @@ message NetworkMessage {
 }
 
 enum NetworkMessageType {
-    UNSET_MESSAGE_TYPE = 0;
+    UNSET_NETWORK_MESSAGE_TYPE = 0;
 
     // Network Message
-    NETWORK_ERROR = 1;
-    NETWORK_REQUEST = 2;
-    NETWORK_RESPONSE = 3;
-    NETWORK_ECHO = 4;
+    NETWORK_ECHO = 1;
 
     // Message types that indicate that the payload is another message envelope
     CIRCUIT = 100;
     AUTHORIZATION = 101 ;
-}
-
-message NetworkError{
-    enum NetworkError {
-        UNSET_ERROR = 0;
-        ERROR_COULD_NOT_DELIVER = 1;
-        ERROR_QUEUE_FULL = 2;
-    }
-
-    // id that correlates response to a request
-    string correlation_id = 1;
-
-    // enum of the network specific error that was encountered
-    NetworkError error = 2;
-
-    // explanation of the error
-    string error_message = 3;
-}
-
-message NetworkRequest {
-    // id of the sender of the message
-    string sender = 1;
-
-    // id of recipient of the message
-    string recipient = 2;
-
-    // the request
-    bytes payload = 3;
-
-    // id used to correlate the response with this request
-    string correlation_id = 4;
-}
-
-message NetworkResponse {
-    // id of the sender of the message
-    string sender = 1;
-
-    // id of recipient of the message
-    string recipient = 2;
-
-    // the response
-    bytes payload = 3;
-
-    // id used to correlate the response with this request
-    string correlation_id = 4;
 }
 
 // This message is used for debugging

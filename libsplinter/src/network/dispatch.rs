@@ -362,7 +362,7 @@ mod tests {
 
     use crate::channel::{SendError, Sender};
     use crate::network::sender::SendRequest;
-    use crate::protos::protocol::{CircuitCreateRequest, CircuitDestroyRequest, MessageType};
+    use crate::protos::network::{NetworkEcho, NetworkMessageType};
 
     /// Verify that messages can be dispatched to handlers implemented as closures.
     ///
@@ -379,10 +379,10 @@ mod tests {
         let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
         let handler_flag = flag.clone();
         dispatcher.set_handler(
-            MessageType::CIRCUIT_CREATE_REQUEST,
+            NetworkMessageType::NETWORK_ECHO,
             Box::new(
-                move |_: CircuitCreateRequest,
-                      _: &MessageContext<MessageType>,
+                move |_: NetworkEcho,
+                      _: &MessageContext<NetworkMessageType>,
                       _: &dyn Sender<SendRequest>| {
                     handler_flag.store(true, Ordering::SeqCst);
                     Ok(())
@@ -393,19 +393,15 @@ mod tests {
         assert_eq!(
             Err(DispatchError::UnknownMessageType(format!(
                 "No handler for type {:?}",
-                MessageType::CIRCUIT_DESTROY_REQUEST
+                NetworkMessageType::CIRCUIT
             ))),
-            dispatcher.dispatch(
-                "TestPeer",
-                &MessageType::CIRCUIT_DESTROY_REQUEST,
-                Vec::new()
-            )
+            dispatcher.dispatch("TestPeer", &NetworkMessageType::CIRCUIT, Vec::new())
         );
         assert_eq!(false, flag.load(Ordering::SeqCst));
 
         assert_eq!(
             Ok(()),
-            dispatcher.dispatch("TestPeer", &MessageType::CIRCUIT_CREATE_REQUEST, Vec::new())
+            dispatcher.dispatch("TestPeer", &NetworkMessageType::NETWORK_ECHO, Vec::new())
         );
         assert_eq!(true, flag.load(Ordering::SeqCst));
     }
@@ -421,27 +417,27 @@ mod tests {
     fn dispatch_to_handler() {
         let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
 
-        let handler = CircuitDestroyHandler::default();
-        let destroyed_names = handler.circuit_names.clone();
+        let handler = NetworkEchoHandler::default();
+        let echos = handler.echos.clone();
 
-        dispatcher.set_handler(MessageType::CIRCUIT_DESTROY_REQUEST, Box::new(handler));
+        dispatcher.set_handler(NetworkMessageType::NETWORK_ECHO, Box::new(handler));
 
-        let mut outgoing_message = CircuitDestroyRequest::new();
-        outgoing_message.set_circuit_name("test_circuit".into());
+        let mut outgoing_message = NetworkEcho::new();
+        outgoing_message.set_payload(b"test_dispatcher".to_vec());
         let outgoing_message_bytes = outgoing_message.write_to_bytes().unwrap();
 
         assert_eq!(
             Ok(()),
             dispatcher.dispatch(
                 "TestPeer",
-                &MessageType::CIRCUIT_DESTROY_REQUEST,
+                &NetworkMessageType::NETWORK_ECHO,
                 outgoing_message_bytes
             )
         );
 
         assert_eq!(
-            vec!["test_circuit".to_string()],
-            destroyed_names.lock().unwrap().clone()
+            vec!["test_dispatcher".to_string()],
+            echos.lock().unwrap().clone()
         );
     }
 
@@ -460,11 +456,11 @@ mod tests {
         let network_sender = MockNetworkSender::new(sent_container.clone());
         let mut dispatcher = Dispatcher::new(Box::new(network_sender));
 
-        dispatcher.set_handler(MessageType::HEARTBEAT_REQUEST, Box::new(handle_heartbeat));
+        dispatcher.set_handler(NetworkMessageType::NETWORK_ECHO, Box::new(handle_echo));
 
         assert_eq!(
             Ok(()),
-            dispatcher.dispatch("TestPeer", &MessageType::HEARTBEAT_REQUEST, Vec::new())
+            dispatcher.dispatch("TestPeer", &NetworkMessageType::NETWORK_ECHO, Vec::new())
         );
 
         let sent_items = sent_container.lock().unwrap();
@@ -487,20 +483,20 @@ mod tests {
     fn move_dispatcher_to_thread() {
         let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
 
-        let handler = CircuitDestroyHandler::default();
-        let destroyed_names = handler.circuit_names.clone();
-        dispatcher.set_handler(MessageType::CIRCUIT_DESTROY_REQUEST, Box::new(handler));
+        let handler = NetworkEchoHandler::default();
+        let echos = handler.echos.clone();
+        dispatcher.set_handler(NetworkMessageType::NETWORK_ECHO, Box::new(handler));
 
         std::thread::spawn(move || {
-            let mut outgoing_message = CircuitDestroyRequest::new();
-            outgoing_message.set_circuit_name("thread_circuit".into());
+            let mut outgoing_message = NetworkEcho::new();
+            outgoing_message.set_payload(b"thread_echo".to_vec());
             let outgoing_message_bytes = outgoing_message.write_to_bytes().unwrap();
 
             assert_eq!(
                 Ok(()),
                 dispatcher.dispatch(
                     "TestPeer",
-                    &MessageType::CIRCUIT_DESTROY_REQUEST,
+                    &NetworkMessageType::NETWORK_ECHO,
                     outgoing_message_bytes
                 )
             );
@@ -509,35 +505,33 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            vec!["thread_circuit".to_string()],
-            destroyed_names.lock().unwrap().clone()
+            vec!["thread_echo".to_string()],
+            echos.lock().unwrap().clone()
         );
     }
 
     #[derive(Default)]
-    struct CircuitDestroyHandler {
-        circuit_names: Arc<Mutex<Vec<String>>>,
+    struct NetworkEchoHandler {
+        echos: Arc<Mutex<Vec<String>>>,
     }
 
-    impl Handler<MessageType, CircuitDestroyRequest> for CircuitDestroyHandler {
+    impl Handler<NetworkMessageType, NetworkEcho> for NetworkEchoHandler {
         fn handle(
             &self,
-            message: CircuitDestroyRequest,
-            _message_context: &MessageContext<MessageType>,
+            message: NetworkEcho,
+            _message_context: &MessageContext<NetworkMessageType>,
             _: &dyn Sender<SendRequest>,
         ) -> Result<(), DispatchError> {
-            self.circuit_names
-                .lock()
-                .unwrap()
-                .push(message.get_circuit_name().to_string());
+            let echo_string = String::from_utf8(message.get_payload().to_vec()).unwrap();
+            self.echos.lock().unwrap().push(echo_string);
             Ok(())
         }
     }
 
     /// This test handler
-    fn handle_heartbeat(
+    fn handle_echo(
         message: RawBytes,
-        message_context: &MessageContext<MessageType>,
+        message_context: &MessageContext<NetworkMessageType>,
         network_sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
         let expected_message: Vec<u8> = vec![];
