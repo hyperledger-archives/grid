@@ -395,6 +395,7 @@ pub(crate) mod tests {
         tests::test_transport(transport, "127.0.0.1:0");
     }
 
+    #[cfg(not(unix))]
     #[test]
     fn test_poll() {
         let transport = create_test_tls_transport();

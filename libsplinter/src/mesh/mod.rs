@@ -334,12 +334,14 @@ mod tests {
         handle.join().unwrap();
     }
 
+    #[cfg(not(unix))]
     #[test]
     fn test_connection_send_receive_raw() {
         let raw = RawTransport::default();
         test_single_connection_send_receive(raw, "127.0.0.1:0");
     }
 
+    #[cfg(not(unix))]
     #[test]
     fn test_connection_send_receive_tls() {
         let tls = create_test_tls_transport();

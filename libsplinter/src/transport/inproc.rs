@@ -230,6 +230,7 @@ pub mod tests {
         tests::test_transport(transport, "test");
     }
 
+    #[cfg(not(unix))]
     #[test]
     fn test_poll() {
         let transport = InprocTransport::default();
