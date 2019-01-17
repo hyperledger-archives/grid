@@ -70,16 +70,14 @@ impl NetworkEchoHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-
     use super::*;
-    use crate::channel::{SendError, Sender};
+    use crate::channel::mock::MockSender;
     use crate::network::dispatch::Dispatcher;
     use crate::protos::network::{NetworkEcho, NetworkMessageType};
 
     #[test]
     fn dispatch_to_handler() {
-        let sender = Box::new(MockNetworkSender::default());
+        let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         let handler = NetworkEchoHandler::new("TestPeer".to_string());
@@ -105,7 +103,7 @@ mod tests {
             )
         );
 
-        let send_request = sender.sent().lock().unwrap().get(0).unwrap().clone();
+        let send_request = sender.sent().get(0).unwrap().clone();
 
         assert_eq!(send_request.recipient(), "OTHER_PEER");
         let network_msg: NetworkMessage =
@@ -115,29 +113,5 @@ mod tests {
         assert_eq!(echo.get_recipient(), "TestPeer");
         assert_eq!(echo.get_time_to_live(), 2);
         assert_eq!(echo.get_payload().to_vec(), b"HelloWorld".to_vec());
-    }
-
-    #[derive(Default)]
-    struct MockNetworkSender {
-        sent: Arc<Mutex<Vec<SendRequest>>>,
-    }
-
-    impl MockNetworkSender {
-        pub fn sent(&self) -> &Arc<Mutex<Vec<SendRequest>>> {
-            &self.sent
-        }
-    }
-
-    impl Sender<SendRequest> for MockNetworkSender {
-        fn send(&self, message: SendRequest) -> Result<(), SendError> {
-            self.sent.lock().unwrap().push(message);
-            Ok(())
-        }
-
-        fn box_clone(&self) -> Box<Sender<SendRequest>> {
-            Box::new(MockNetworkSender {
-                sent: self.sent.clone(),
-            })
-        }
     }
 }

@@ -16,6 +16,8 @@
 // that is used must have the following Receiver trait implemented, then the receiver end of the
 // channel can be passed to the NetworkMessageSender.
 mod crossbeam;
+#[cfg(test)]
+pub mod mock;
 mod mpsc;
 
 pub trait Receiver<T>: Send {
