@@ -13,12 +13,16 @@
 // limitations under the License.
 
 use libsplinter::circuit::directory::CircuitDirectory;
+use libsplinter::circuit::handlers::{
+    CircuitMessageHandler, ServiceConnectForwardHandler, ServiceConnectRequestHandler,
+};
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use libsplinter::network::handlers::NetworkEchoHandler;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
@@ -85,10 +89,25 @@ impl SplinterDaemon {
             network_sender.run()
         });
 
-        let (dispatch_send, dispatch_recv) = crossbeam_channel::bounded(5);
-        let dispatcher = set_up_dispatcher(send, &self.node_id);
-        let dispatch_loop = DispatchLoop::new(Box::new(dispatch_recv), dispatcher);
-        let _ = thread::spawn(move || dispatch_loop.run());
+        // Set up the Circuit dispatcher
+        let (circuit_dispatch_send, circuit_dispatch_recv) = crossbeam_channel::bounded(5);
+        let circuit_dispatcher = set_up_circuit_dispatcher(
+            send.clone(),
+            &self.node_id,
+            &self.network_endpoint,
+            state.clone(),
+        );
+        let circuit_dispatch_loop =
+            DispatchLoop::new(Box::new(circuit_dispatch_recv), circuit_dispatcher);
+        let _ = thread::spawn(move || circuit_dispatch_loop.run());
+
+        // Set up the Network dispatcher
+        let (network_dispatch_send, network_dispatch_recv) = crossbeam_channel::bounded(5);
+        let network_dispatcher =
+            set_up_network_dispatcher(send, &self.node_id, circuit_dispatch_send);
+        let network_dispatch_loop =
+            DispatchLoop::new(Box::new(network_dispatch_recv), network_dispatcher);
+        let _ = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
@@ -185,7 +204,7 @@ impl SplinterDaemon {
                         message.peer_id().to_string(),
                     );
                     debug!("Received Message from {}: {:?}", message.peer_id(), msg);
-                    match dispatch_send.send(dispatch_msg) {
+                    match network_dispatch_send.send(dispatch_msg) {
                         Ok(()) => (),
                         Err(err) => error!("Dispatch Error {}", err.to_string()),
                     }
@@ -199,16 +218,49 @@ impl SplinterDaemon {
     }
 }
 
-fn set_up_dispatcher(
+fn set_up_network_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
+    circuit_sender: crossbeam_channel::Sender<DispatchMessage<CircuitMessageType>>,
 ) -> Dispatcher<NetworkMessageType> {
     let mut dispatcher = Dispatcher::<NetworkMessageType>::new(Box::new(send));
+
     let network_echo_handler = NetworkEchoHandler::new(node_id.to_string());
     dispatcher.set_handler(
         NetworkMessageType::NETWORK_ECHO,
         Box::new(network_echo_handler),
     );
+
+    let circuit_message_handler = CircuitMessageHandler::new(Box::new(circuit_sender));
+    dispatcher.set_handler(
+        NetworkMessageType::CIRCUIT,
+        Box::new(circuit_message_handler),
+    );
+
+    dispatcher
+}
+
+fn set_up_circuit_dispatcher(
+    send: crossbeam_channel::Sender<SendRequest>,
+    node_id: &str,
+    endpoint: &str,
+    state: Arc<RwLock<SplinterState>>,
+) -> Dispatcher<CircuitMessageType> {
+    let mut dispatcher = Dispatcher::<CircuitMessageType>::new(Box::new(send));
+
+    let service_connect_request_handler =
+        ServiceConnectRequestHandler::new(node_id.to_string(), endpoint.to_string(), state.clone());
+    dispatcher.set_handler(
+        CircuitMessageType::SERVICE_CONNECT_REQUEST,
+        Box::new(service_connect_request_handler),
+    );
+
+    let service_connect_forward_handler = ServiceConnectForwardHandler::new(state);
+    dispatcher.set_handler(
+        CircuitMessageType::SERVICE_CONNECT_FORWARD,
+        Box::new(service_connect_forward_handler),
+    );
+
     dispatcher
 }
 
