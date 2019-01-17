@@ -298,6 +298,18 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchMessage<MT> {
             source_peer_id,
         }
     }
+
+    pub fn message_type(&self) -> &MT {
+        &self.message_type
+    }
+
+    pub fn message_bytes(&self) -> &[u8] {
+        &self.message_bytes
+    }
+
+    pub fn source_peer_id(&self) -> &str {
+        &self.source_peer_id
+    }
 }
 
 /// Errors that may occur during the operation of the Dispatch Loop.
