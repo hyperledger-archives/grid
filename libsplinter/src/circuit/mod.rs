@@ -13,6 +13,7 @@
 // limitations under the License.
 mod circuit;
 pub mod directory;
+pub mod handlers;
 pub mod service;
 
 use std::collections::BTreeMap;
