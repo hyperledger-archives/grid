@@ -158,6 +158,8 @@ impl FromMessageBytes for RawBytes {
 pub enum DispatchError {
     /// An error occurred during message deserialization.
     DeserializationError(String),
+    /// An error occurred during message serialization.
+    SerializationError(String),
     /// An message was dispatched with an unknown type.
     UnknownMessageType(String),
     /// An error occurred while a handler was trying to send a message.
