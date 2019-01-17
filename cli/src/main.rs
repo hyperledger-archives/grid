@@ -15,7 +15,7 @@
 mod actions;
 mod error;
 
-use crate::actions::do_echo;
+use crate::actions::{do_connect, do_echo};
 use crate::error::CliError;
 
 use std::str::FromStr;
@@ -41,6 +41,14 @@ fn run() -> Result<(), CliError> {
             (@arg recipient: +takes_value "Splinter node id to send the message to")
             (@arg ttl: +takes_value "Number of times to echo the message")
         )
+        (@subcommand service =>
+            (about: "Service messages")
+            (@subcommand connect =>
+                (about: "Connect a service to circuit")
+                (@arg circuit: +takes_value "The circuit name to connect to")
+                (@arg service: +takes_value "The id of the service connecting to the node")
+            )
+        )
     )
     .get_matches();
 
@@ -55,12 +63,22 @@ fn run() -> Result<(), CliError> {
     let url = matches.value_of("url").unwrap_or("tcp://localhost:8045");
 
     match matches.subcommand() {
-        ("echo", Some(m)) => {
-            do_echo(
-                url,
-                m.value_of("recipient").unwrap().to_string(),
-                FromStr::from_str(m.value_of("ttl").unwrap()).unwrap(),
-            )
+        ("echo", Some(m)) => do_echo(
+            url,
+            m.value_of("recipient").unwrap().to_string(),
+            FromStr::from_str(m.value_of("ttl").unwrap()).unwrap(),
+        )
+        .map_err(CliError::from),
+        ("service", Some(m)) => {
+            match m.subcommand() {
+                ("connect", Some(m)) => do_connect(
+                    url,
+                    m.value_of("circuit").unwrap().to_string(),
+                    m.value_of("service").unwrap().to_string(),
+                )
+                .map_err(CliError::from),
+                _ => Err(CliError::InvalidSubcommand),
+            }
             .map_err(CliError::from)
         }
         .map_err(CliError::from),
