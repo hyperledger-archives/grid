@@ -45,4 +45,8 @@ impl SplinterNode {
     pub fn endpoints(&self) -> &[String] {
         &self.endpoints
     }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
 }
