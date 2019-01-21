@@ -32,6 +32,16 @@ macro_rules! rwlock_write_unwrap {
     };
 }
 
+#[macro_export]
+macro_rules! mutex_lock_unwrap {
+    ($lock:expr) => {
+        match $lock.lock() {
+            Ok(guard) => guard,
+            Err(e) => panic!("Mutex error: {:?}", e),
+        }
+    };
+}
+
 pub mod channel;
 pub mod circuit;
 pub mod collections;
