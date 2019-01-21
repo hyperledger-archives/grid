@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use crate::channel::Sender;
+use crate::circuit::handlers::create_message;
 use crate::circuit::service::{Service, SplinterNode};
 use crate::circuit::SplinterState;
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::circuit::{
-    CircuitMessage, CircuitMessageType, ServiceConnectForward, ServiceConnectRequest,
-    ServiceConnectResponse, ServiceConnectResponse_Status,
+    CircuitMessageType, ServiceConnectForward, ServiceConnectRequest, ServiceConnectResponse,
+    ServiceConnectResponse_Status,
 };
-use crate::protos::network::{NetworkMessage, NetworkMessageType};
 use crate::rwlock_write_unwrap;
 
 use std::sync::{Arc, RwLock};
@@ -190,21 +190,6 @@ impl ServiceConnectForwardHandler {
     }
 }
 
-fn create_message(
-    payload: Vec<u8>,
-    circuit_message_type: CircuitMessageType,
-) -> Result<Vec<u8>, protobuf::error::ProtobufError> {
-    let mut circuit_msg = CircuitMessage::new();
-    circuit_msg.set_message_type(circuit_message_type);
-    circuit_msg.set_payload(payload);
-    let circuit_bytes = circuit_msg.write_to_bytes()?;
-
-    let mut network_msg = NetworkMessage::new();
-    network_msg.set_message_type(NetworkMessageType::CIRCUIT);
-    network_msg.set_payload(circuit_bytes);
-    network_msg.write_to_bytes()
-}
-
 impl From<protobuf::error::ProtobufError> for DispatchError {
     fn from(e: protobuf::error::ProtobufError) -> Self {
         DispatchError::SerializationError(e.to_string())
@@ -221,6 +206,8 @@ mod tests {
     use crate::circuit::directory::CircuitDirectory;
     use crate::circuit::Circuit;
     use crate::network::dispatch::Dispatcher;
+    use crate::protos::circuit::CircuitMessage;
+    use crate::protos::network::NetworkMessage;
     use crate::storage::get_storage;
 
     #[test]
