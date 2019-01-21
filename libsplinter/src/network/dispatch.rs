@@ -354,13 +354,12 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
 mod tests {
     use super::*;
 
-    use std::ops::Deref;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
 
     use protobuf::Message;
 
-    use crate::channel::{SendError, Sender};
+    use crate::channel::mock::MockSender;
     use crate::network::sender::SendRequest;
     use crate::protos::network::{NetworkEcho, NetworkMessageType};
 
@@ -376,7 +375,7 @@ mod tests {
     fn dispatch_to_closure() {
         let flag = Arc::new(AtomicBool::new(false));
 
-        let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
+        let mut dispatcher = Dispatcher::new(Box::new(MockSender::default()));
         let handler_flag = flag.clone();
         dispatcher.set_handler(
             NetworkMessageType::NETWORK_ECHO,
@@ -415,7 +414,7 @@ mod tests {
     /// * Dispatch a message of the expected type and verify that it was called
     #[test]
     fn dispatch_to_handler() {
-        let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
+        let mut dispatcher = Dispatcher::new(Box::new(MockSender::default()));
 
         let handler = NetworkEchoHandler::default();
         let echos = handler.echos.clone();
@@ -452,9 +451,8 @@ mod tests {
     ///   submitted the reply message
     #[test]
     fn dispatch_to_fn() {
-        let sent_container: Arc<Mutex<Vec<SendRequest>>> = Default::default();
-        let network_sender = MockNetworkSender::new(sent_container.clone());
-        let mut dispatcher = Dispatcher::new(Box::new(network_sender));
+        let network_sender: MockSender<SendRequest> = MockSender::default();
+        let mut dispatcher = Dispatcher::new(Box::new(network_sender.clone()));
 
         dispatcher.set_handler(NetworkMessageType::NETWORK_ECHO, Box::new(handle_echo));
 
@@ -463,10 +461,9 @@ mod tests {
             dispatcher.dispatch("TestPeer", &NetworkMessageType::NETWORK_ECHO, Vec::new())
         );
 
-        let sent_items = sent_container.lock().unwrap();
         assert_eq!(
             &vec![SendRequest::new("TestPeer".into(), vec![])],
-            sent_items.deref()
+            &network_sender.sent()
         );
     }
 
@@ -481,7 +478,7 @@ mod tests {
     /// * Join the thread and verify the dispatched message was handled
     #[test]
     fn move_dispatcher_to_thread() {
-        let mut dispatcher = Dispatcher::new(Box::new(MockNetworkSender::default()));
+        let mut dispatcher = Dispatcher::new(Box::new(MockSender::default()));
 
         let handler = NetworkEchoHandler::default();
         let echos = handler.echos.clone();
@@ -543,29 +540,5 @@ mod tests {
         ))?;
 
         Ok(())
-    }
-
-    #[derive(Default)]
-    struct MockNetworkSender {
-        sent: Arc<Mutex<Vec<SendRequest>>>,
-    }
-
-    impl MockNetworkSender {
-        fn new(sent: Arc<Mutex<Vec<SendRequest>>>) -> Self {
-            MockNetworkSender { sent }
-        }
-    }
-
-    impl Sender<SendRequest> for MockNetworkSender {
-        fn send(&self, message: SendRequest) -> Result<(), SendError> {
-            self.sent.lock().unwrap().push(message);
-            Ok(())
-        }
-
-        fn box_clone(&self) -> Box<Sender<SendRequest>> {
-            Box::new(MockNetworkSender {
-                sent: self.sent.clone(),
-            })
-        }
     }
 }
