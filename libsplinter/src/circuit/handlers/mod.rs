@@ -1,4 +1,5 @@
 mod circuit_message_handler;
+mod direct_message;
 mod service_handlers;
 
 pub use crate::circuit::handlers::circuit_message_handler::CircuitMessageHandler;
