@@ -121,7 +121,7 @@ impl Network {
                 return Err(SendError::NoPeerError(format!(
                     "Send Error: No peer with peer_id {} found",
                     peer_id
-                )))
+                )));
             }
         };
 
@@ -137,7 +137,7 @@ impl Network {
                 return Err(RecvError::NoPeerError(format!(
                     "Recv Error: No Peer with mesh id {} found",
                     envelope.id()
-                )))
+                )));
             }
         };
 
