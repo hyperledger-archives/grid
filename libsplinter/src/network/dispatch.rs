@@ -283,6 +283,7 @@ impl<MT: Hash + Eq + Debug + Clone> HandlerWrapper<MT> {
 ///
 /// This struct contains information about a message that will be passed to a `Dispatcher` instance
 /// via a `Sender<DispatchMessage>`.
+#[derive(Clone)]
 pub struct DispatchMessage<MT: Any + Hash + Eq + Debug + Clone> {
     message_type: MT,
     message_bytes: Vec<u8>,
