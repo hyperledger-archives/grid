@@ -15,7 +15,7 @@
 mod actions;
 mod error;
 
-use crate::actions::{do_connect, do_echo};
+use crate::actions::{do_connect, do_echo, do_send};
 use crate::error::CliError;
 
 use std::str::FromStr;
@@ -48,6 +48,13 @@ fn run() -> Result<(), CliError> {
                 (@arg circuit: +takes_value "The circuit name to connect to")
                 (@arg service: +takes_value "The id of the service connecting to the node")
             )
+            (@subcommand send =>
+                (about: "Connect a service to circuit")
+                (@arg circuit: +takes_value "The circuit name to connect to")
+                (@arg sender: +takes_value "The id of the service sending the message")
+                (@arg recipient: +takes_value "The id of the service sending the message")
+                (@arg payload: +takes_value "Path to a payload file")
+            )
         )
     )
     .get_matches();
@@ -75,6 +82,14 @@ fn run() -> Result<(), CliError> {
                     url,
                     m.value_of("circuit").unwrap().to_string(),
                     m.value_of("service").unwrap().to_string(),
+                )
+                .map_err(CliError::from),
+                ("send", Some(m)) => do_send(
+                    url,
+                    m.value_of("circuit").unwrap().to_string(),
+                    m.value_of("sender").unwrap().to_string(),
+                    m.value_of("recipient").unwrap().to_string(),
+                    m.value_of("payload").unwrap().to_string(),
                 )
                 .map_err(CliError::from),
                 _ => Err(CliError::InvalidSubcommand),
