@@ -164,6 +164,8 @@ pub enum DispatchError {
     UnknownMessageType(String),
     /// An error occurred while a handler was trying to send a message.
     NetworkSendError(SendError),
+    /// An error occurred while a handler was executing.
+    HandleError(String),
 }
 
 impl From<SendError> for DispatchError {
