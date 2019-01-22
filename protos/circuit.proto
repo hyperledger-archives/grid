@@ -50,7 +50,7 @@ message CircuitError {
     // id that correlates response to a request
     string correlation_id = 1;
 
-    // id of the sender of the message
+    // service id of the sender of the message
     string sender = 2;
 
     // enum of the network specific error that was encountered

@@ -1,7 +1,9 @@
+mod circuit_error;
 mod circuit_message;
 mod direct_message;
 mod service_handlers;
 
+pub use crate::circuit::handlers::circuit_error::CircuitErrorHandler;
 pub use crate::circuit::handlers::circuit_message::CircuitMessageHandler;
 pub use crate::circuit::handlers::direct_message::CircuitDirectMessageHandler;
 pub use crate::circuit::handlers::service_handlers::ServiceConnectForwardHandler;
