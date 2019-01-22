@@ -101,7 +101,7 @@ impl SplinterDaemon {
                         return Err(StartError::TransportError(format!(
                             "Accept Error: {:?}",
                             err
-                        )))
+                        )));
                     }
                 };
                 debug!("Received connection from {}", connection.remote_endpoint());
@@ -121,7 +121,7 @@ impl SplinterDaemon {
                         return Err(StartError::TransportError(format!(
                             "Accept Error: {:?}",
                             err
-                        )))
+                        )));
                     }
                 };
                 debug!(
