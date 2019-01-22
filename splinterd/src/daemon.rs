@@ -14,7 +14,8 @@
 
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
-    CircuitMessageHandler, ServiceConnectForwardHandler, ServiceConnectRequestHandler,
+    CircuitDirectMessageHandler, CircuitErrorHandler, CircuitMessageHandler,
+    ServiceConnectForwardHandler, ServiceConnectRequestHandler,
 };
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
@@ -255,10 +256,23 @@ fn set_up_circuit_dispatcher(
         Box::new(service_connect_request_handler),
     );
 
-    let service_connect_forward_handler = ServiceConnectForwardHandler::new(state);
+    let service_connect_forward_handler = ServiceConnectForwardHandler::new(state.clone());
     dispatcher.set_handler(
         CircuitMessageType::SERVICE_CONNECT_FORWARD,
         Box::new(service_connect_forward_handler),
+    );
+
+    let direct_message_handler =
+        CircuitDirectMessageHandler::new(node_id.to_string(), state.clone());
+    dispatcher.set_handler(
+        CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
+        Box::new(direct_message_handler),
+    );
+
+    let circuit_error_handler = CircuitErrorHandler::new(node_id.to_string(), state);
+    dispatcher.set_handler(
+        CircuitMessageType::CIRCUIT_ERROR_MESSAGE,
+        Box::new(circuit_error_handler),
     );
 
     dispatcher
