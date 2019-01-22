@@ -32,7 +32,7 @@ fn run() -> Result<(), CliError> {
         (name: APP_NAME)
         (version: VERSION)
         (author: "Cargill")
-        (about: "Command line for Splinter")
+        (about: "Command line to test Splinter")
         (@arg url: --url  +takes_value "Splinter node url")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
