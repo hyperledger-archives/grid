@@ -158,6 +158,8 @@ impl FromMessageBytes for RawBytes {
 pub enum DispatchError {
     /// An error occurred during message deserialization.
     DeserializationError(String),
+    /// An error occurred during message serialization.
+    SerializationError(String),
     /// An message was dispatched with an unknown type.
     UnknownMessageType(String),
     /// An error occurred while a handler was trying to send a message.
@@ -281,6 +283,7 @@ impl<MT: Hash + Eq + Debug + Clone> HandlerWrapper<MT> {
 ///
 /// This struct contains information about a message that will be passed to a `Dispatcher` instance
 /// via a `Sender<DispatchMessage>`.
+#[derive(Clone)]
 pub struct DispatchMessage<MT: Any + Hash + Eq + Debug + Clone> {
     message_type: MT,
     message_bytes: Vec<u8>,
@@ -295,6 +298,18 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchMessage<MT> {
             message_bytes,
             source_peer_id,
         }
+    }
+
+    pub fn message_type(&self) -> &MT {
+        &self.message_type
+    }
+
+    pub fn message_bytes(&self) -> &[u8] {
+        &self.message_bytes
+    }
+
+    pub fn source_peer_id(&self) -> &str {
+        &self.source_peer_id
     }
 }
 
