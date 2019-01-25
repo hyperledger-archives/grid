@@ -18,10 +18,15 @@ use libsplinter::circuit::handlers::{
 };
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
+use libsplinter::network::auth::handlers::{
+    create_authorization_dispatcher, AuthorizationMessageHandler,
+};
+use libsplinter::network::auth::AuthorizationManager;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use libsplinter::network::handlers::NetworkEchoHandler;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::protos::authorization::AuthorizationMessageType;
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
@@ -101,17 +106,28 @@ impl SplinterDaemon {
             DispatchLoop::new(Box::new(circuit_dispatch_recv), circuit_dispatcher);
         let _ = thread::spawn(move || circuit_dispatch_loop.run());
 
+        // Set up the Auth dispatcher
+        let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
+        let auth_dispatcher =
+            set_up_authorization_dispatcher(send.clone(), self.network.clone(), &self.node_id);
+        let auth_dispatch_loop = DispatchLoop::new(Box::new(auth_dispatch_recv), auth_dispatcher);
+        let _ = thread::spawn(move || auth_dispatch_loop.run());
+
         // Set up the Network dispatcher
         let (network_dispatch_send, network_dispatch_recv) = crossbeam_channel::bounded(5);
-        let network_dispatcher =
-            set_up_network_dispatcher(send, &self.node_id, circuit_dispatch_send);
+        let network_dispatcher = set_up_network_dispatcher(
+            send,
+            &self.node_id,
+            circuit_dispatch_send,
+            auth_dispatch_send,
+        );
         let network_dispatch_loop =
             DispatchLoop::new(Box::new(network_dispatch_recv), network_dispatcher);
         let _ = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
-        let mut network_clone = self.network.clone();
+        let network_clone = self.network.clone();
         let _ = thread::spawn(move || {
             for connection_result in network_listener.incoming() {
                 let connection = match connection_result {
@@ -131,7 +147,7 @@ impl SplinterDaemon {
 
         // setup a thread to listen on the service port and add incoming connection to the network
         let mut service_listener = self.transport.listen(&self.service_endpoint)?;
-        let mut service_clone = self.network.clone();
+        let service_clone = self.network.clone();
         let _ = thread::spawn(move || {
             for connection_result in service_listener.incoming() {
                 let connection = match connection_result {
@@ -222,6 +238,7 @@ fn set_up_network_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
     circuit_sender: crossbeam_channel::Sender<DispatchMessage<CircuitMessageType>>,
+    auth_sender: crossbeam_channel::Sender<DispatchMessage<AuthorizationMessageType>>,
 ) -> Dispatcher<NetworkMessageType> {
     let mut dispatcher = Dispatcher::<NetworkMessageType>::new(Box::new(send));
 
@@ -235,6 +252,12 @@ fn set_up_network_dispatcher(
     dispatcher.set_handler(
         NetworkMessageType::CIRCUIT,
         Box::new(circuit_message_handler),
+    );
+
+    let auth_message_handler = AuthorizationMessageHandler::new(Box::new(auth_sender));
+    dispatcher.set_handler(
+        NetworkMessageType::AUTHORIZATION,
+        Box::new(auth_message_handler),
     );
 
     dispatcher
@@ -262,6 +285,15 @@ fn set_up_circuit_dispatcher(
     );
 
     dispatcher
+}
+
+fn set_up_authorization_dispatcher(
+    send: crossbeam_channel::Sender<SendRequest>,
+    network: Network,
+    node_id: &str,
+) -> Dispatcher<AuthorizationMessageType> {
+    let auth_manager = AuthorizationManager::new(network, node_id.to_string());
+    create_authorization_dispatcher(auth_manager, Box::new(send))
 }
 
 #[derive(Debug)]
