@@ -18,7 +18,7 @@ use protobuf::Message;
 use crate::channel::Sender;
 use crate::network::auth::{AuthorizationAction, AuthorizationManager, AuthorizationState};
 use crate::network::dispatch::{
-    DispatchError, Dispatcher, Handler, MessageContext,
+    DispatchError, DispatchMessage, Dispatcher, Handler, MessageContext,
 };
 use crate::network::sender::SendRequest;
 use crate::protos::authorization::{
@@ -56,6 +56,41 @@ pub fn create_authorization_dispatcher(
     );
 
     auth_dispatcher
+}
+
+/// The Handler for authorization network messages.
+///
+/// This Handler accepts authorization network messages, unwraps the envelope, and forwards the
+/// message contents to an authorization dispatcher.
+pub struct AuthorizationMessageHandler {
+    sender: Box<Sender<DispatchMessage<AuthorizationMessageType>>>,
+}
+
+impl AuthorizationMessageHandler {
+    /// Constructs a new AuthorizationMessageHandler
+    ///
+    /// This constructs an AuthorizationMessageHandler with a sender that will dispatch messages
+    /// to a authorization dispatcher.
+    pub fn new(sender: Box<Sender<DispatchMessage<AuthorizationMessageType>>>) -> Self {
+        AuthorizationMessageHandler { sender }
+    }
+}
+
+impl Handler<NetworkMessageType, AuthorizationMessage> for AuthorizationMessageHandler {
+    fn handle(
+        &self,
+        msg: AuthorizationMessage,
+        context: &MessageContext<NetworkMessageType>,
+        _sender: &dyn Sender<SendRequest>,
+    ) -> Result<(), DispatchError> {
+        self.sender
+            .send(DispatchMessage::new(
+                msg.message_type,
+                msg.payload,
+                context.source_peer_id().to_string(),
+            ))
+            .map_err(DispatchError::from)
+    }
 }
 
 /// Handler for the Connect Request Authorization Message Type
