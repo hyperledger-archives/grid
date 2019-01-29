@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::log::{debug, log};
+use ::log::{debug, info, log, warn};
 use protobuf::Message;
 
 use crate::channel::Sender;
@@ -22,8 +22,8 @@ use crate::network::dispatch::{
 };
 use crate::network::sender::SendRequest;
 use crate::protos::authorization::{
-    AuthorizationMessage, AuthorizationMessageType, AuthorizedMessage, ConnectRequest,
-    ConnectResponse, ConnectResponse_AuthorizationType, TrustRequest,
+    AuthorizationError, AuthorizationMessage, AuthorizationMessageType, AuthorizedMessage,
+    ConnectRequest, ConnectResponse, ConnectResponse_AuthorizationType, TrustRequest,
 };
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
 
@@ -53,6 +53,26 @@ pub fn create_authorization_dispatcher(
     auth_dispatcher.set_handler(
         AuthorizationMessageType::TRUST_REQUEST,
         Box::new(TrustRequestHandler::new(auth_manager.clone())),
+    );
+
+    auth_dispatcher.set_handler(
+        AuthorizationMessageType::AUTHORIZE,
+        Box::new(
+            |_: AuthorizedMessage,
+             context: &MessageContext<AuthorizationMessageType>,
+             _: &dyn Sender<SendRequest>| {
+                info!(
+                    "Connection authorized with peer {}",
+                    context.source_peer_id()
+                );
+                Ok(())
+            },
+        ),
+    );
+
+    auth_dispatcher.set_handler(
+        AuthorizationMessageType::AUTHORIZATION_ERROR,
+        Box::new(AuthorizationErrorHandler::new(auth_manager.clone())),
     );
 
     auth_dispatcher
@@ -237,6 +257,48 @@ impl Handler<AuthorizationMessageType, TrustRequest> for TrustRequestHandler {
     }
 }
 
+/// Handler for the Authorization Error Message Type
+struct AuthorizationErrorHandler {
+    auth_manager: AuthorizationManager,
+}
+
+impl AuthorizationErrorHandler {
+    fn new(auth_manager: AuthorizationManager) -> Self {
+        AuthorizationErrorHandler { auth_manager }
+    }
+}
+
+impl Handler<AuthorizationMessageType, AuthorizationError> for AuthorizationErrorHandler {
+    fn handle(
+        &self,
+        msg: AuthorizationError,
+        context: &MessageContext<AuthorizationMessageType>,
+        _: &dyn Sender<SendRequest>,
+    ) -> Result<(), DispatchError> {
+        match self
+            .auth_manager
+            .next_state(context.source_peer_id(), AuthorizationAction::Unauthorizing)
+        {
+            Ok(AuthorizationState::Unauthorized) => {
+                info!(
+                    "Connection unauthorized by peer {}: {}",
+                    context.source_peer_id(),
+                    msg.get_error_message()
+                );
+            }
+            Err(err) => {
+                warn!(
+                    "Unable to handle unauthorizing by peer {}: {}",
+                    context.source_peer_id(),
+                    err
+                );
+            }
+            Ok(next_state) => panic!("Should not have been able to transition to {}", next_state),
+        }
+        Ok(())
+    }
+}
+
 fn wrap_in_network_auth_envelopes<M: protobuf::Message>(
     msg_type: AuthorizationMessageType,
     auth_msg: M,
@@ -262,8 +324,9 @@ mod tests {
     use crate::mesh::Mesh;
     use crate::network::Network;
     use crate::protos::authorization::{
-        AuthorizationMessage, AuthorizedMessage, ConnectRequest, ConnectResponse,
-        ConnectResponse_AuthorizationType, TrustRequest,
+        AuthorizationError, AuthorizationError_AuthorizationErrorType, AuthorizationMessage,
+        AuthorizedMessage, ConnectRequest, ConnectResponse, ConnectResponse_AuthorizationType,
+        TrustRequest,
     };
     use crate::protos::network::{NetworkMessage, NetworkMessageType};
     use crate::transport::inproc::InprocTransport;
@@ -392,6 +455,63 @@ mod tests {
 
         let _auth_msg: AuthorizedMessage =
             expect_auth_message(AuthorizationMessageType::AUTHORIZE, send_request.payload());
+    }
+
+    // Test that an AuthorizationError message is properly handled
+    // 1. Configure the dispatcher
+    // 2. Dispatch a connect message for a peer id
+    // 3. Dispatch the error message for the same peer id
+    // 4. Verify that the connection is dropped from the network.
+    #[test]
+    fn auth_error_dispatch() {
+        let (network, peer_id) = create_network_with_initial_temp_peer();
+
+        let auth_mgr = AuthorizationManager::new(network.clone(), "mock_pub_key".into());
+        let network_sender = MockSender::default();
+        let dispatcher =
+            create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
+
+        // Begin the connection process, otherwise, the response will fail
+        let mut msg = ConnectRequest::new();
+        msg.set_endpoint("local".into());
+        let msg_bytes = msg.write_to_bytes().expect("Unable to serialize message");
+        assert_eq!(
+            Ok(()),
+            dispatcher.dispatch(
+                &peer_id,
+                &AuthorizationMessageType::CONNECT_REQUEST,
+                msg_bytes
+            )
+        );
+
+        let send_request = network_sender
+            .clear()
+            .pop()
+            .expect("A message should have been sent");
+        let _connect_res_msg: ConnectResponse = expect_auth_message(
+            AuthorizationMessageType::CONNECT_RESPONSE,
+            send_request.payload(),
+        );
+
+        let mut error_message = AuthorizationError::new();
+        error_message
+            .set_error_type(AuthorizationError_AuthorizationErrorType::AUTHORIZATION_REJECTED);
+        error_message.set_error_message("Test Error!".into());
+        let msg_bytes = error_message
+            .write_to_bytes()
+            .expect("Unable to serialize error message");
+
+        assert_eq!(
+            Ok(()),
+            dispatcher.dispatch(
+                &peer_id,
+                &AuthorizationMessageType::AUTHORIZATION_ERROR,
+                msg_bytes
+            )
+        );
+
+        assert_eq!(0, network_sender.sent().len());
+        assert_eq!(0, network.peer_ids().len());
     }
 
     fn expect_auth_message<M: protobuf::Message>(
