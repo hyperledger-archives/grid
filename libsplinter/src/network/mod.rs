@@ -101,13 +101,12 @@ impl Network {
 
     pub fn update_peer_id(&self, old_id: String, new_id: String) -> Result<(), PeerUpdateError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
-        let mesh_id = match peers.get_by_key(&old_id) {
-            Some(mesh_id) => *mesh_id,
-            None => return Err(PeerUpdateError {}),
-        };
-
-        peers.insert(new_id, mesh_id);
-        Ok(())
+        if let Some((_, mesh_id)) = peers.remove_by_key(&old_id) {
+            peers.insert(new_id, mesh_id);
+            Ok(())
+        } else {
+            Err(PeerUpdateError {})
+        }
     }
 
     pub fn send(&self, peer_id: String, msg: &[u8]) -> Result<(), SendError> {
@@ -230,6 +229,8 @@ pub mod tests {
             // update connection to have correct peer_id
             let peer_id = String::from_utf8(message.payload().to_vec()).unwrap();
             assert_ok(network_two.update_peer_id(message.peer_id().into(), peer_id.clone()));
+            // verify that the peer has been updated
+            assert_eq!(vec![peer_id.clone()], network_two.peer_ids());
 
             // send hello world
             assert_ok(network_two.send(peer_id, b"hello_world"));
