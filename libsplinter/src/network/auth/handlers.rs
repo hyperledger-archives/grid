@@ -18,7 +18,7 @@ use protobuf::Message;
 use crate::channel::Sender;
 use crate::network::auth::{AuthorizationAction, AuthorizationManager, AuthorizationState};
 use crate::network::dispatch::{
-    DispatchError, DispatchMessage, Dispatcher, Handler, MessageContext,
+    DispatchError, DispatchMessage, Dispatcher, FromMessageBytes, Handler, MessageContext,
 };
 use crate::network::sender::SendRequest;
 use crate::protos::authorization::{
@@ -110,6 +110,51 @@ impl Handler<NetworkMessageType, AuthorizationMessage> for AuthorizationMessageH
                 context.source_peer_id().to_string(),
             ))
             .map_err(DispatchError::from)
+    }
+}
+
+/// Guards handlers to ensure that they are authorized, before allowing the wrapped handler to be
+/// called.
+///
+/// Specifically, this guards messages at the network level, so the handler is fixed to the
+/// NetworkMessageType.
+pub struct NetworkAuthGuardHandler<M: FromMessageBytes> {
+    auth_manager: AuthorizationManager,
+    handler: Box<Handler<NetworkMessageType, M>>,
+}
+
+impl<M: FromMessageBytes> NetworkAuthGuardHandler<M> {
+    /// Constructs a new handler.
+    ///
+    /// Handlers must be typed to the NetworkMessageType, but may be any message content type.
+    pub fn new(
+        auth_manager: AuthorizationManager,
+        handler: Box<Handler<NetworkMessageType, M>>,
+    ) -> Self {
+        NetworkAuthGuardHandler {
+            auth_manager,
+            handler,
+        }
+    }
+}
+
+impl<M: FromMessageBytes> Handler<NetworkMessageType, M> for NetworkAuthGuardHandler<M> {
+    fn handle(
+        &self,
+        msg: M,
+        context: &MessageContext<NetworkMessageType>,
+        sender: &dyn Sender<SendRequest>,
+    ) -> Result<(), DispatchError> {
+        if self.auth_manager.is_authorized(context.source_peer_id()) {
+            self.handler.handle(msg, context, sender)
+        } else {
+            debug!(
+                "{} attempting to send {:?} message before completing authorization",
+                context.source_peer_id(),
+                context.message_type()
+            );
+            Ok(())
+        }
     }
 }
 

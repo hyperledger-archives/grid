@@ -19,7 +19,7 @@ use libsplinter::circuit::handlers::{
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
 use libsplinter::network::auth::handlers::{
-    create_authorization_dispatcher, AuthorizationMessageHandler,
+    create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
 };
 use libsplinter::network::auth::AuthorizationManager;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
@@ -107,9 +107,10 @@ impl SplinterDaemon {
         let _ = thread::spawn(move || circuit_dispatch_loop.run());
 
         // Set up the Auth dispatcher
+        let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
         let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
         let auth_dispatcher =
-            set_up_authorization_dispatcher(send.clone(), self.network.clone(), &self.node_id);
+            create_authorization_dispatcher(auth_manager.clone(), Box::new(send.clone()));
         let auth_dispatch_loop = DispatchLoop::new(Box::new(auth_dispatch_recv), auth_dispatcher);
         let _ = thread::spawn(move || auth_dispatch_loop.run());
 
@@ -118,6 +119,7 @@ impl SplinterDaemon {
         let network_dispatcher = set_up_network_dispatcher(
             send,
             &self.node_id,
+            auth_manager,
             circuit_dispatch_send,
             auth_dispatch_send,
         );
@@ -237,6 +239,7 @@ impl SplinterDaemon {
 fn set_up_network_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
+    auth_manager: AuthorizationManager,
     circuit_sender: crossbeam_channel::Sender<DispatchMessage<CircuitMessageType>>,
     auth_sender: crossbeam_channel::Sender<DispatchMessage<AuthorizationMessageType>>,
 ) -> Dispatcher<NetworkMessageType> {
@@ -245,13 +248,19 @@ fn set_up_network_dispatcher(
     let network_echo_handler = NetworkEchoHandler::new(node_id.to_string());
     dispatcher.set_handler(
         NetworkMessageType::NETWORK_ECHO,
-        Box::new(network_echo_handler),
+        Box::new(NetworkAuthGuardHandler::new(
+            auth_manager.clone(),
+            Box::new(network_echo_handler),
+        )),
     );
 
     let circuit_message_handler = CircuitMessageHandler::new(Box::new(circuit_sender));
     dispatcher.set_handler(
         NetworkMessageType::CIRCUIT,
-        Box::new(circuit_message_handler),
+        Box::new(NetworkAuthGuardHandler::new(
+            auth_manager,
+            Box::new(circuit_message_handler),
+        )),
     );
 
     let auth_message_handler = AuthorizationMessageHandler::new(Box::new(auth_sender));
@@ -285,15 +294,6 @@ fn set_up_circuit_dispatcher(
     );
 
     dispatcher
-}
-
-fn set_up_authorization_dispatcher(
-    send: crossbeam_channel::Sender<SendRequest>,
-    network: Network,
-    node_id: &str,
-) -> Dispatcher<AuthorizationMessageType> {
-    let auth_manager = AuthorizationManager::new(network, node_id.to_string());
-    create_authorization_dispatcher(auth_manager, Box::new(send))
 }
 
 #[derive(Debug)]
