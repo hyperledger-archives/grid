@@ -194,6 +194,17 @@ impl Handler<AuthorizationMessageType, ConnectRequest> for ConnectRequestHandler
                     context.source_peer_id(),
                     msg.get_endpoint()
                 );
+                // Send a connect request of our own
+                let mut connect_req = ConnectRequest::new();
+                connect_req.set_endpoint(self.auth_manager.endpoint.clone());
+                sender.send(SendRequest::new(
+                    context.source_peer_id().to_string(),
+                    wrap_in_network_auth_envelopes(
+                        AuthorizationMessageType::CONNECT_REQUEST,
+                        connect_req,
+                    )?,
+                ))?;
+
                 let mut response = ConnectResponse::new();
                 response.set_accepted_authorization_types(
                     vec![ConnectResponse_AuthorizationType::TRUST].into(),
@@ -381,7 +392,11 @@ mod tests {
     fn connect_request_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
+        let auth_mgr = AuthorizationManager::new(
+            network,
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
@@ -398,8 +413,8 @@ mod tests {
             )
         );
 
-        let send_request = network_sender
-            .clear()
+        let mut sent = network_sender.clear();
+        let send_request = sent
             .pop()
             .expect("A message should have been sent");
 
@@ -411,6 +426,13 @@ mod tests {
             vec![ConnectResponse_AuthorizationType::TRUST],
             connect_res_msg.get_accepted_authorization_types().to_vec()
         );
+
+        let send_request = sent.pop().expect("An additional message should have been sent");
+        let connect_req_msg: ConnectRequest = expect_auth_message(
+            AuthorizationMessageType::CONNECT_REQUEST,
+            send_request.payload(),
+        );
+        assert_eq!("tcp://mock_endpoint:1234", connect_req_msg.get_endpoint());
     }
 
     // Test that a connect response is properly dispatched
@@ -419,7 +441,11 @@ mod tests {
     fn connect_response_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
+        let auth_mgr = AuthorizationManager::new(
+            network,
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
@@ -453,7 +479,11 @@ mod tests {
     fn trust_request_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
+        let auth_mgr = AuthorizationManager::new(
+            network,
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
@@ -511,7 +541,11 @@ mod tests {
     fn auth_error_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(network.clone(), "mock_pub_key".into());
+        let auth_mgr = AuthorizationManager::new(
+            network.clone(),
+            "mock_pub_key".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));

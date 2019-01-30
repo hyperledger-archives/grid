@@ -90,15 +90,17 @@ pub struct AuthorizationManager {
     states: Arc<RwLock<HashMap<String, AuthorizationState>>>,
     network: Network,
     identity: Identity,
+    endpoint: String,
 }
 
 impl AuthorizationManager {
     /// Constructs an AuthorizationManager
-    pub fn new(network: Network, identity: Identity) -> Self {
+    pub fn new(network: Network, identity: Identity, endpoint: String) -> Self {
         AuthorizationManager {
             states: Default::default(),
             network,
             identity,
+            endpoint,
         }
     }
 
@@ -199,7 +201,11 @@ mod tests {
     fn trust_state_machine_valid() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_manager = AuthorizationManager::new(network.clone(), "mock_identity".into());
+        let auth_manager = AuthorizationManager::new(
+            network.clone(),
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
 
         assert!(!auth_manager.is_authorized(&peer_id));
 
@@ -239,7 +245,11 @@ mod tests {
     fn trust_state_machine_unauthorize_while_connecting() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_manager = AuthorizationManager::new(network.clone(), "mock_identity".into());
+        let auth_manager = AuthorizationManager::new(
+            network.clone(),
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
 
         assert!(!auth_manager.is_authorized(&peer_id));
         assert_eq!(
@@ -263,7 +273,11 @@ mod tests {
     fn trust_state_machine_unauthorize_when_authorized() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_manager = AuthorizationManager::new(network.clone(), "mock_identity".into());
+        let auth_manager = AuthorizationManager::new(
+            network.clone(),
+            "mock_identity".into(),
+            "tcp://mock_endpoint:1234".into(),
+        );
 
         assert!(!auth_manager.is_authorized(&peer_id));
         assert_eq!(
