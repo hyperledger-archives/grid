@@ -1,0 +1,54 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// A request to execute and verify the results of a transaction.  Transaction
+// verification is achieved by producing an equivalent hash that is provided
+// in this request.
+message TransactionVerificationRequest {
+    // id that correlates response to a request
+    string correlation_id = 1;
+
+    // The transaction contents to execute
+    bytes transaction_payload = 2;
+
+    // A hash of the expected output.
+    bytes expected_output_hash = 3;
+}
+
+// A response for a TransactionVerificationRequest.  It has several possible
+// results:
+//     1. The transaction is verified
+//     2. The output produces a mismatched hash (includes the mismatched hash)
+//     3. The transaction failed to execute (includes an error message)
+message TransactionVerificationResponse {
+    enum Result {
+        UNSET_VERIFICATION_RESULT = 0;
+        VERIFIED = 1;
+        MISMATCHED_OUTPUT = 2;
+        TRANSACTION_FAILED = 3;
+    }
+
+    // id that correlates response to a request
+    string correlation_id = 1;
+
+    Result result = 2;
+
+    // Set if there is result disagreement
+    bytes output_hash = 3;
+
+    // Set if there is a failure in the transaction execution
+    string failure_message = 4;
+}
