@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+pub mod auth;
 pub mod dispatch;
 mod dispatch_proto;
 pub mod handlers;
@@ -68,7 +69,7 @@ impl Network {
     }
 
     pub fn add_connection(
-        &mut self,
+        &self,
         connection: Box<dyn Connection>,
     ) -> Result<String, ConnectionError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
@@ -79,7 +80,7 @@ impl Network {
         Ok(peer_id)
     }
 
-    pub fn remove_connection(&mut self, peer_id: &String) -> Result<(), ConnectionError> {
+    pub fn remove_connection(&self, peer_id: &String) -> Result<(), ConnectionError> {
         if let Some((_, mesh_id)) = rwlock_write_unwrap!(self.peers).remove_by_key(peer_id) {
             self.mesh.remove(mesh_id)?;
         }
@@ -88,7 +89,7 @@ impl Network {
     }
 
     pub fn add_peer(
-        &mut self,
+        &self,
         peer_id: String,
         connection: Box<dyn Connection>,
     ) -> Result<(), ConnectionError> {
@@ -99,19 +100,14 @@ impl Network {
         Ok(())
     }
 
-    pub fn update_peer_id(
-        &mut self,
-        old_id: String,
-        new_id: String,
-    ) -> Result<(), PeerUpdateError> {
+    pub fn update_peer_id(&self, old_id: String, new_id: String) -> Result<(), PeerUpdateError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
-        let mesh_id = match peers.get_by_key(&old_id) {
-            Some(mesh_id) => *mesh_id,
-            None => return Err(PeerUpdateError {}),
-        };
-
-        peers.insert(new_id, mesh_id);
-        Ok(())
+        if let Some((_, mesh_id)) = peers.remove_by_key(&old_id) {
+            peers.insert(new_id, mesh_id);
+            Ok(())
+        } else {
+            Err(PeerUpdateError {})
+        }
     }
 
     pub fn send(&self, peer_id: String, msg: &[u8]) -> Result<(), SendError> {
@@ -211,7 +207,7 @@ pub mod tests {
     fn test_network() {
         // Setup the first network
         let mesh_one = Mesh::new(5, 5);
-        let mut network_one = Network::new(mesh_one);
+        let network_one = Network::new(mesh_one);
 
         let mut transport = RawTransport::default();
 
@@ -221,7 +217,7 @@ pub mod tests {
         thread::spawn(move || {
             // Setup second network
             let mesh_two = Mesh::new(5, 5);
-            let mut network_two = Network::new(mesh_two);
+            let network_two = Network::new(mesh_two);
 
             // connect to listener and add connection to network
             let connection = assert_ok(transport.connect(&endpoint));
@@ -234,6 +230,8 @@ pub mod tests {
             // update connection to have correct peer_id
             let peer_id = String::from_utf8(message.payload().to_vec()).unwrap();
             assert_ok(network_two.update_peer_id(message.peer_id().into(), peer_id.clone()));
+            // verify that the peer has been updated
+            assert_eq!(vec![peer_id.clone()], network_two.peer_ids());
 
             // send hello world
             assert_ok(network_two.send(peer_id, b"hello_world"));

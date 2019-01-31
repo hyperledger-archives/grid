@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::sync::{Arc, RwLock};
+use std::thread;
 
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
@@ -19,21 +21,26 @@ use libsplinter::circuit::handlers::{
 };
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
+use libsplinter::network::auth::handlers::{
+    create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
+};
+use libsplinter::network::auth::AuthorizationManager;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use libsplinter::network::handlers::NetworkEchoHandler;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::protos::authorization::{
+    AuthorizationMessage, AuthorizationMessageType, ConnectRequest,
+};
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
-use std::sync::{Arc, RwLock};
-use std::thread;
-
 use ::log::{debug, error, info, log};
 use crossbeam_channel;
+use protobuf::Message;
 
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
@@ -102,17 +109,34 @@ impl SplinterDaemon {
             DispatchLoop::new(Box::new(circuit_dispatch_recv), circuit_dispatcher);
         let _ = thread::spawn(move || circuit_dispatch_loop.run());
 
+        // Set up the Auth dispatcher
+        let auth_manager = AuthorizationManager::new(
+            self.network.clone(),
+            self.node_id.clone(),
+            self.network_endpoint.clone(),
+        );
+        let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
+        let auth_dispatcher =
+            create_authorization_dispatcher(auth_manager.clone(), Box::new(send.clone()));
+        let auth_dispatch_loop = DispatchLoop::new(Box::new(auth_dispatch_recv), auth_dispatcher);
+        let _ = thread::spawn(move || auth_dispatch_loop.run());
+
         // Set up the Network dispatcher
         let (network_dispatch_send, network_dispatch_recv) = crossbeam_channel::bounded(5);
-        let network_dispatcher =
-            set_up_network_dispatcher(send, &self.node_id, circuit_dispatch_send);
+        let network_dispatcher = set_up_network_dispatcher(
+            send,
+            &self.node_id,
+            auth_manager,
+            circuit_dispatch_send,
+            auth_dispatch_send,
+        );
         let network_dispatch_loop =
             DispatchLoop::new(Box::new(network_dispatch_recv), network_dispatcher);
         let _ = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
-        let mut network_clone = self.network.clone();
+        let network_clone = self.network.clone();
         let _ = thread::spawn(move || {
             for connection_result in network_listener.incoming() {
                 let connection = match connection_result {
@@ -132,7 +156,7 @@ impl SplinterDaemon {
 
         // setup a thread to listen on the service port and add incoming connection to the network
         let mut service_listener = self.transport.listen(&self.service_endpoint)?;
-        let mut service_clone = self.network.clone();
+        let service_clone = self.network.clone();
         let _ = thread::spawn(move || {
             for connection_result in service_listener.incoming() {
                 let connection = match connection_result {
@@ -165,6 +189,12 @@ impl SplinterDaemon {
                     error!("Connect Error: {:?}", err);
                 }
             };
+        }
+
+        let connect_request_msg_bytes = create_connect_request(self.network_endpoint.clone())?;
+        for peer_id in self.network.peer_ids() {
+            debug!("Sending connect request to peer {}", peer_id);
+            self.network.send(peer_id, &connect_request_msg_bytes)?;
         }
 
         // For each node in the circuit_directory, try to connect and add them to the network
@@ -222,20 +252,34 @@ impl SplinterDaemon {
 fn set_up_network_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
+    auth_manager: AuthorizationManager,
     circuit_sender: crossbeam_channel::Sender<DispatchMessage<CircuitMessageType>>,
+    auth_sender: crossbeam_channel::Sender<DispatchMessage<AuthorizationMessageType>>,
 ) -> Dispatcher<NetworkMessageType> {
     let mut dispatcher = Dispatcher::<NetworkMessageType>::new(Box::new(send));
 
     let network_echo_handler = NetworkEchoHandler::new(node_id.to_string());
     dispatcher.set_handler(
         NetworkMessageType::NETWORK_ECHO,
-        Box::new(network_echo_handler),
+        Box::new(NetworkAuthGuardHandler::new(
+            auth_manager.clone(),
+            Box::new(network_echo_handler),
+        )),
     );
 
     let circuit_message_handler = CircuitMessageHandler::new(Box::new(circuit_sender));
     dispatcher.set_handler(
         NetworkMessageType::CIRCUIT,
-        Box::new(circuit_message_handler),
+        Box::new(NetworkAuthGuardHandler::new(
+            auth_manager,
+            Box::new(circuit_message_handler),
+        )),
+    );
+
+    let auth_message_handler = AuthorizationMessageHandler::new(Box::new(auth_sender));
+    dispatcher.set_handler(
+        NetworkMessageType::AUTHORIZATION,
+        Box::new(auth_message_handler),
     );
 
     dispatcher
@@ -278,6 +322,21 @@ fn set_up_circuit_dispatcher(
     dispatcher
 }
 
+fn create_connect_request(endpoint: String) -> Result<Vec<u8>, protobuf::ProtobufError> {
+    let mut connect_request = ConnectRequest::new();
+    connect_request.set_endpoint(endpoint);
+
+    let mut auth_msg_env = AuthorizationMessage::new();
+    auth_msg_env.set_message_type(AuthorizationMessageType::CONNECT_REQUEST);
+    auth_msg_env.set_payload(connect_request.write_to_bytes()?);
+
+    let mut network_msg = NetworkMessage::new();
+    network_msg.set_message_type(NetworkMessageType::AUTHORIZATION);
+    network_msg.set_payload(auth_msg_env.write_to_bytes()?);
+
+    network_msg.write_to_bytes()
+}
+
 #[derive(Debug)]
 pub enum CreateError {}
 
@@ -286,6 +345,7 @@ pub enum StartError {
     TransportError(String),
     NetworkError(String),
     StorageError(String),
+    ProtocolError(String),
 }
 
 impl From<ListenError> for StartError {
@@ -321,5 +381,11 @@ impl From<SendError> for StartError {
 impl From<PeerUpdateError> for StartError {
     fn from(update_error: PeerUpdateError) -> Self {
         StartError::NetworkError(format!("Network Peer Update Error: {:?}", update_error))
+    }
+}
+
+impl From<protobuf::ProtobufError> for StartError {
+    fn from(err: protobuf::ProtobufError) -> Self {
+        StartError::ProtocolError(format!("Protocol Format Error: {:?}", err))
     }
 }
