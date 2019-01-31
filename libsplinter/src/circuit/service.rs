@@ -24,6 +24,10 @@ impl Service {
     pub fn new(id: String, node: SplinterNode) -> Self {
         Service { id, node }
     }
+
+    pub fn node(&self) -> &SplinterNode {
+        &self.node
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -40,5 +44,9 @@ impl SplinterNode {
 
     pub fn endpoints(&self) -> &[String] {
         &self.endpoints
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
     }
 }

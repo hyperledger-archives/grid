@@ -38,25 +38,30 @@ enum CircuitMessageType {
 }
 
 message CircuitError {
-    enum CircuitError {
+    enum Error {
         UNSET_ERROR = 0;
         ERROR_CIRCUIT_DOES_NOT_EXIST = 1;
-        ERROR_RECIPIENT_NOT_IN_CIRCUIT_REGISTRY = 2;
-        ERROR_RECIPIENT_NOT_IN_DIRECTORY = 3;
+        ERROR_RECIPIENT_NOT_IN_CIRCUIT_ROSTER = 2;
+        ERROR_SENDER_NOT_IN_CIRCUIT_ROSTER = 3;
+        ERROR_RECIPIENT_NOT_IN_DIRECTORY = 4;
+        ERROR_SENDER_NOT_IN_DIRECTORY = 5;
     }
 
     // id that correlates response to a request
     string correlation_id = 1;
 
+    // service id of the sender of the message
+    string sender = 2;
+
     // enum of the network specific error that was encountered
-    NetworkError error = 2;
+    Error error = 3;
 
     // explanation of the error
-    string error_message = 3;
+    string error_message = 4;
 }
 
 message NetworkError {
-    enum NetworkError {
+    enum Error {
         UNSET_ERROR = 0;
         ERROR_COULD_NOT_DELIVER = 1;
         ERROR_QUEUE_FULL = 2;
@@ -66,7 +71,7 @@ message NetworkError {
     string correlation_id = 1;
 
     // enum of the network specific error that was encountered
-    NetworkError error = 2;
+    Error error = 2;
 
     // explanation of the error
     string error_message = 3;
