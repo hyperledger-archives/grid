@@ -12,32 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_export]
-macro_rules! rwlock_read_unwrap {
-    ($lock:expr) => {
-        match $lock.read() {
-            Ok(d) => d,
-            Err(e) => panic!("RwLock error: {:?}", e),
-        }
-    };
-}
 
-#[macro_export]
-macro_rules! rwlock_write_unwrap {
-    ($lock:expr) => {
-        match $lock.write() {
-            Ok(d) => d,
-            Err(e) => panic!("RwLock error: {:?}", e),
-        }
-    };
-}
-
-pub mod channel;
-pub mod circuit;
-pub mod collections;
-pub mod mesh;
-pub mod n_phase;
-pub mod network;
-pub mod protos;
-pub mod storage;
-pub mod transport;
