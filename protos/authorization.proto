@@ -46,7 +46,13 @@ message AuthorizationMessage {
 //
 // This message provides information from the incoming connection.
 message ConnectRequest {
-    string endpoint = 1;
+    enum HandshakeMode {
+        UNSET_HANDSHAKE_MODE = 0;
+        UNIDIRECTIONAL = 1;
+        BIDIRECTIONAL = 2;
+    }
+
+    HandshakeMode handshake_mode = 1;
 }
 
 // A connection response message.
