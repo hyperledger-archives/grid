@@ -23,7 +23,8 @@ use crate::network::dispatch::{
 use crate::network::sender::SendRequest;
 use crate::protos::authorization::{
     AuthorizationError, AuthorizationMessage, AuthorizationMessageType, AuthorizedMessage,
-    ConnectRequest, ConnectResponse, ConnectResponse_AuthorizationType, TrustRequest,
+    ConnectRequest, ConnectRequest_HandshakeMode, ConnectResponse,
+    ConnectResponse_AuthorizationType, TrustRequest,
 };
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
 
@@ -182,28 +183,30 @@ impl Handler<AuthorizationMessageType, ConnectRequest> for ConnectRequestHandler
         {
             Err(err) => {
                 debug!(
-                    "Ignoring connect message from peer {} ({}): {}",
+                    "Ignoring duplicate connect message from peer {}: {}",
                     context.source_peer_id(),
-                    msg.get_endpoint(),
                     err
                 );
             }
             Ok(AuthorizationState::Connecting) => {
-                debug!(
-                    "Beginning handshake for peer {} ({})",
-                    context.source_peer_id(),
-                    msg.get_endpoint()
-                );
+                debug!("Beginning handshake for peer {}", context.source_peer_id(),);
                 // Send a connect request of our own
-                let mut connect_req = ConnectRequest::new();
-                connect_req.set_endpoint(self.auth_manager.endpoint.clone());
-                sender.send(SendRequest::new(
-                    context.source_peer_id().to_string(),
-                    wrap_in_network_auth_envelopes(
-                        AuthorizationMessageType::CONNECT_REQUEST,
-                        connect_req,
-                    )?,
-                ))?;
+
+                if msg.get_handshake_mode() == ConnectRequest_HandshakeMode::BIDIRECTIONAL {
+                    let mut connect_req = ConnectRequest::new();
+                    connect_req.set_handshake_mode(ConnectRequest_HandshakeMode::UNIDIRECTIONAL);
+                    sender.send(SendRequest::new(
+                        context.source_peer_id().to_string(),
+                        wrap_in_network_auth_envelopes(
+                            AuthorizationMessageType::CONNECT_REQUEST,
+                            connect_req,
+                        )?,
+                    ))?;
+                    debug!(
+                        "Sent bidirectional connect request to peer {}",
+                        context.source_peer_id()
+                    );
+                }
 
                 let mut response = ConnectResponse::new();
                 response.set_accepted_authorization_types(
@@ -392,17 +395,13 @@ mod tests {
     fn connect_request_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(
-            network,
-            "mock_identity".into(),
-            "tcp://mock_endpoint:1234".into(),
-        );
+        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
 
         let mut msg = ConnectRequest::new();
-        msg.set_endpoint("local".into());
+        msg.set_handshake_mode(ConnectRequest_HandshakeMode::BIDIRECTIONAL);
         let msg_bytes = msg.write_to_bytes().expect("Unable to serialize message");
         assert_eq!(
             Ok(()),
@@ -414,9 +413,7 @@ mod tests {
         );
 
         let mut sent = network_sender.clear();
-        let send_request = sent
-            .pop()
-            .expect("A message should have been sent");
+        let send_request = sent.pop().expect("A message should have been sent");
 
         let connect_res_msg: ConnectResponse = expect_auth_message(
             AuthorizationMessageType::CONNECT_RESPONSE,
@@ -427,12 +424,17 @@ mod tests {
             connect_res_msg.get_accepted_authorization_types().to_vec()
         );
 
-        let send_request = sent.pop().expect("An additional message should have been sent");
+        let send_request = sent
+            .pop()
+            .expect("An additional message should have been sent");
         let connect_req_msg: ConnectRequest = expect_auth_message(
             AuthorizationMessageType::CONNECT_REQUEST,
             send_request.payload(),
         );
-        assert_eq!("tcp://mock_endpoint:1234", connect_req_msg.get_endpoint());
+        assert_eq!(
+            ConnectRequest_HandshakeMode::UNIDIRECTIONAL,
+            connect_req_msg.get_handshake_mode()
+        );
     }
 
     // Test that a connect response is properly dispatched
@@ -441,11 +443,7 @@ mod tests {
     fn connect_response_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(
-            network,
-            "mock_identity".into(),
-            "tcp://mock_endpoint:1234".into(),
-        );
+        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
@@ -479,18 +477,14 @@ mod tests {
     fn trust_request_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(
-            network,
-            "mock_identity".into(),
-            "tcp://mock_endpoint:1234".into(),
-        );
+        let auth_mgr = AuthorizationManager::new(network, "mock_identity".into());
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
 
         // Begin the connection process, otherwise, the response will fail
         let mut msg = ConnectRequest::new();
-        msg.set_endpoint("local".into());
+        msg.set_handshake_mode(ConnectRequest_HandshakeMode::UNIDIRECTIONAL);
         let msg_bytes = msg.write_to_bytes().expect("Unable to serialize message");
         assert_eq!(
             Ok(()),
@@ -541,18 +535,14 @@ mod tests {
     fn auth_error_dispatch() {
         let (network, peer_id) = create_network_with_initial_temp_peer();
 
-        let auth_mgr = AuthorizationManager::new(
-            network.clone(),
-            "mock_pub_key".into(),
-            "tcp://mock_endpoint:1234".into(),
-        );
+        let auth_mgr = AuthorizationManager::new(network.clone(), "mock_pub_key".into());
         let network_sender = MockSender::default();
         let dispatcher =
             create_authorization_dispatcher(auth_mgr, Box::new(network_sender.clone()));
 
         // Begin the connection process, otherwise, the response will fail
         let mut msg = ConnectRequest::new();
-        msg.set_endpoint("local".into());
+        msg.set_handshake_mode(ConnectRequest_HandshakeMode::UNIDIRECTIONAL);
         let msg_bytes = msg.write_to_bytes().expect("Unable to serialize message");
         assert_eq!(
             Ok(()),
