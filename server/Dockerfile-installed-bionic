@@ -46,7 +46,6 @@ COPY server/package.json .
 RUN npm install
 
 #Copy client sample data for script use
-COPY asset_client/sample_data/ ../asset_client/sample_data/
 COPY fish_client/sample_data/ ../fish_client/sample_data/
 
 COPY protos/ ../protos/

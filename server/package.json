@@ -11,9 +11,6 @@
     "watch": "nodemon index.js",
     "init": "node ./scripts/bootstrap_database.js",
     "test": "standard",
-    "make-asset": "DATA=\"../../asset_client/sample_data/core_types.json\" node ./scripts/seed_core_types.js",
-    "seed-sample-assets": "DATA=\"../../asset_client/sample_data/sample_data.json\" node ./scripts/seed_sample_data.js",
-    "update-sample-assets": "DATA=\"../../asset_client/sample_data/sample_updates.json\" node ./scripts/run_sample_updates.js",
     "make-fish": "DATA=\"../../fish_client/sample_data/core_types.json\" node ./scripts/seed_core_types.js",
     "seed-sample-fish": "DATA=\"../../fish_client/sample_data/sample_data.json\" node ./scripts/seed_sample_data.js",
     "update-sample-fish": "DATA=\"../../fish_client/sample_data/sample_updates.json\" node ./scripts/run_sample_updates.js"

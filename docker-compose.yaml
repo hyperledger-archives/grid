@@ -91,19 +91,6 @@ services:
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
 
-  asset-client:
-    image: supply-asset-client
-    container_name: supply-asset-client
-    build: ./asset_client
-    volumes:
-      - ./asset_client/public/:/usr/local/apache2/htdocs/
-    expose:
-      - 80
-    ports:
-      - '8021:80'
-    depends_on:
-      - server
-
   fish-client:
     image: supply-fish-client
     container_name: supply-fish-client
