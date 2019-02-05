@@ -18,34 +18,6 @@ version: "2.1"
 
 services:
 
-  shell:
-    image: supply-shell
-    container_name: supply-shell-test
-    build:
-      context: ../../../
-      dockerfile: shell/Dockerfile
-    volumes:
-      - ../../../:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/server/node_modules
-    depends_on:
-      - rethink
-      - rest-api
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - SERVER=http://supply-server:3000
-    command: |
-      bash -c "
-        protogen &&
-        if [ ! -f /root/.sawtooth/keys/root.priv ]; then
-          sawtooth keygen &&
-          cd server/ &&
-          npm run init &&
-          cd -
-        fi;
-        tail -f /dev/null
-      "
-
   supply-chain-tp:
     image: supply-tp:$ISOLATION_ID
     volumes:
