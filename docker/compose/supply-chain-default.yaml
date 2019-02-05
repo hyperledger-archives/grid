@@ -24,16 +24,6 @@ services:
       - validator
     entrypoint: supply-chain-tp -C tcp://validator:4004
 
-  ledger-sync:
-    image: hyperledger/sawtooth-supply-chain-ledger-sync:0.10
-    container_name: sawtooth-supply-chain-ledger-sync
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-
   rethink:
     image: rethinkdb
     container_name: supply-rethink

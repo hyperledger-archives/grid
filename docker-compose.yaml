@@ -40,29 +40,6 @@ services:
         supply-chain-tp -v -C tcp://validator:4004
       "
 
-  ledger-sync:
-    image: supply-ledger-sync
-    container_name: supply-ledger-sync
-    build:
-      context: .
-      dockerfile: ledger_sync/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/ledger_sync/node_modules
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
-
   rethink:
     image: rethinkdb
     container_name: supply-rethink
