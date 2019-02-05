@@ -42,9 +42,6 @@ WORKDIR /sawtooth-supply-chain/server
 COPY server/package.json .
 RUN npm install
 
-#Copy client sample data for script use
-COPY fish_client/sample_data/ ../fish_client/sample_data/
-
 COPY protos/ ../protos/
 COPY server/ .
 

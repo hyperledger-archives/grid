@@ -71,19 +71,6 @@ services:
       - VALIDATOR_URL=tcp://validator:4004
       - DB_HOST=rethink
 
-  fish-client:
-    image: supply-fish-client-installed:${ISOLATION_ID}
-    container_name: supply-fish-client-installed
-    build:
-      context: .
-      dockerfile: fish_client/Dockerfile-installed
-    expose:
-      - 80
-    ports:
-      - '8022:80'
-    depends_on:
-      - server
-
   rethink:
     image: rethinkdb
     container_name: supply-rethink

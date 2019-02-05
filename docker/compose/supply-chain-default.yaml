@@ -54,16 +54,6 @@ services:
       - VALIDATOR_URL=tcp://validator:4004
       - DB_HOST=rethink
 
-  fish-client:
-    image: hyperledger/sawtooth-supply-chain-fish-client:0.10
-    container_name: sawtooth-supply-chain-fish-client
-    expose:
-      - 80
-    ports:
-      - '80:80'
-    depends_on:
-      - server
-
   rethink:
     image: rethinkdb
     container_name: supply-rethink
