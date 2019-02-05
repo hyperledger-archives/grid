@@ -31,33 +31,6 @@ services:
       - validator
     entrypoint: supply-chain-tp -C tcp://validator:4004
 
-  server:
-    image: supply-server-installed:${ISOLATION_ID}
-    container_name: supply-server-installed
-    build:
-      context: .
-      dockerfile: server/Dockerfile-installed-${DISTRO}
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    expose:
-      - 3000
-    ports:
-      - '8020:3000'
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-    command: |
-      bash -c "
-        set -x &&
-        npm run init &&
-        node index.js
-      "
-
   ledger-sync:
     image: supply-ledger-sync-installed:${ISOLATION_ID}
     container_name: supply-ledger-sync-installed

@@ -24,26 +24,6 @@ services:
       - validator
     entrypoint: supply-chain-tp -C tcp://validator:4004
 
-  server:
-    image: hyperledger/sawtooth-supply-chain-server
-    container_name: sawtooth-supply-chain-server
-    expose:
-      - 3000
-    ports:
-      - '8020:3000'
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-    command: |
-      bash -c "
-        set -x &&
-        npm run init &&
-        node index.js
-      "
-
   ledger-sync:
     image: hyperledger/sawtooth-supply-chain-ledger-sync:0.10
     container_name: sawtooth-supply-chain-ledger-sync

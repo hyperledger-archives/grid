@@ -29,7 +29,7 @@ services:
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
+      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
       - .:/sawtooth-supply-chain
       - /sawtooth-supply-chain/processor/target
@@ -39,34 +39,6 @@ services:
         cargo build &&
         supply-chain-tp -v -C tcp://validator:4004
       "
-
-  server:
-    image: supply-server
-    container_name: supply-server
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/server/node_modules
-    expose:
-      - 3000
-    ports:
-      - '8020:3000'
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
-    entrypoint: node index.js
 
   ledger-sync:
     image: supply-ledger-sync
@@ -89,7 +61,7 @@ services:
       - DB_HOST=rethink
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
+      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
 
   rethink:
     image: rethinkdb
@@ -103,7 +75,7 @@ services:
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
+      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
 
   validator:
     image: hyperledger/sawtooth-validator:1.0
