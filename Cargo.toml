@@ -7,5 +7,6 @@ members = [
     "splinterd",
 ]
 exclude = [
-    "examples/private_xo"
+    "examples/private_xo",
+    "examples/private_counter",
 ]
