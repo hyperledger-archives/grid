@@ -30,7 +30,7 @@ use libsplinter::network::handlers::NetworkEchoHandler;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
 use libsplinter::protos::authorization::{
-    AuthorizationMessage, AuthorizationMessageType, ConnectRequest,
+    AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
@@ -110,11 +110,7 @@ impl SplinterDaemon {
         let _ = thread::spawn(move || circuit_dispatch_loop.run());
 
         // Set up the Auth dispatcher
-        let auth_manager = AuthorizationManager::new(
-            self.network.clone(),
-            self.node_id.clone(),
-            self.network_endpoint.clone(),
-        );
+        let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
         let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
         let auth_dispatcher =
             create_authorization_dispatcher(auth_manager.clone(), Box::new(send.clone()));
@@ -191,7 +187,7 @@ impl SplinterDaemon {
             };
         }
 
-        let connect_request_msg_bytes = create_connect_request(self.network_endpoint.clone())?;
+        let connect_request_msg_bytes = create_connect_request()?;
         for peer_id in self.network.peer_ids() {
             debug!("Sending connect request to peer {}", peer_id);
             self.network.send(peer_id, &connect_request_msg_bytes)?;
@@ -322,9 +318,9 @@ fn set_up_circuit_dispatcher(
     dispatcher
 }
 
-fn create_connect_request(endpoint: String) -> Result<Vec<u8>, protobuf::ProtobufError> {
+fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
     let mut connect_request = ConnectRequest::new();
-    connect_request.set_endpoint(endpoint);
+    connect_request.set_handshake_mode(ConnectRequest_HandshakeMode::BIDIRECTIONAL);
 
     let mut auth_msg_env = AuthorizationMessage::new();
     auth_msg_env.set_message_type(AuthorizationMessageType::CONNECT_REQUEST);
