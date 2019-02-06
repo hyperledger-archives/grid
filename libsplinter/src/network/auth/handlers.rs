@@ -414,9 +414,7 @@ mod tests {
         );
 
         let mut sent = network_sender.clear();
-        let send_request = sent
-            .pop()
-            .expect("A message should have been sent");
+        let send_request = sent.pop().expect("A message should have been sent");
 
         let connect_res_msg: ConnectResponse = expect_auth_message(
             AuthorizationMessageType::CONNECT_RESPONSE,
@@ -427,7 +425,9 @@ mod tests {
             connect_res_msg.get_accepted_authorization_types().to_vec()
         );
 
-        let send_request = sent.pop().expect("An additional message should have been sent");
+        let send_request = sent
+            .pop()
+            .expect("An additional message should have been sent");
         let connect_req_msg: ConnectRequest = expect_auth_message(
             AuthorizationMessageType::CONNECT_REQUEST,
             send_request.payload(),
