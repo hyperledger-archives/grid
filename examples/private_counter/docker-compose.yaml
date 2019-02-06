@@ -21,11 +21,11 @@ services:
     container_name: private-counter-local
     build:
         context: .
-        dockerfile: ./Dockerfile
+        dockerfile: ./service/Dockerfile
     expose:
         - 8000
     ports:
         - "8008:8000"
     init: true
-    command: /private-counter -B 0.0.0.0:8000
+    command: /private-counter -B 0.0.0.0:8000 -vvv
     stop_signal: SIGKILL

@@ -26,15 +26,17 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
 # Create an empty project, copy over the Cargo toml, and buld the deps first
-RUN USER=root cargo new --bin private-counter
 WORKDIR /private-counter
 
-COPY ./Cargo.toml ./Cargo.toml
+RUN USER=root cargo new --bin service --name private-counter
+
+WORKDIR /private-counter/service
+COPY ./service/Cargo.toml ./Cargo.toml
 RUN cargo build --release
 
 # Copy over the source and build the app
-RUN rm src/*.rs
-COPY ./src ./src
+RUN rm ./src/*.rs
+COPY ./service/src ./src
 
 RUN rm ./target/release/private-counter* ./target/release/deps/private_counter*
 RUN cargo build --release
@@ -47,7 +49,7 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /private-counter/target/release/private-counter /
+COPY --from=BUILDER /private-counter/service/target/release/private-counter /
 
 EXPOSE 8000
 CMD ["/private-counter"]
