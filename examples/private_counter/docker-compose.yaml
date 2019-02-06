@@ -29,3 +29,16 @@ services:
     init: true
     command: /private-counter -B 0.0.0.0:8000 -vvv
     stop_signal: SIGKILL
+
+  pcounter:
+    image: pcounter:latest
+    container_name: pcounter-local
+    build:
+        context: .
+        dockerfile: ./cli/Dockerfile
+    init: true
+    entrypoint: |
+      bash -c "
+        tail -f /dev/null
+      "
+    stop_signal: SIGKILL
