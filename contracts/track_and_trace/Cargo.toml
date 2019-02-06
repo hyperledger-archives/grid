@@ -13,11 +13,11 @@
 # limitations under the License.
 
 [package]
-name = "supply-chain-tp"
-version = "0.10.1"
+name = "grid-track-and-trace-tp"
+version = "0.11.0"
 authors = ["Cargill Incorporated"]
-description = "Sawtooth Supply Chain Transaction Processor"
-homepage = "https://github.com/hyperledger/sawtooth-supply-chain"
+description = "Grid Track and Trace Transaction Processor"
+homepage = "https://grid.hyperledger.org"
 
 [dependencies]
 sawtooth-sdk = "^0.1"

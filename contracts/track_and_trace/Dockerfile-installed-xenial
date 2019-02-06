@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build -f contracts/track_and_trace/Dockerfile-installed -t supply-chain-tp .
-
-# -------------=== supply-chain tp build ===-------------
-FROM ubuntu:xenial as supply-chain-tp-builder
+# -------------=== grid-track-and-trace-tp-builder ===-------------
+FROM ubuntu:xenial as grid-track-and-trace-tp-builder
 
 ENV VERSION=AUTO_STRICT
 
@@ -43,13 +41,13 @@ WORKDIR /project/contracts/track_and_trace
 
 RUN /root/.cargo/bin/cargo deb
 
-# -------------=== supply-chain-tp docker build ===-------------
+# -------------=== grid-track-and-trace-tp docker build ===-------------
 FROM ubuntu:xenial
 
-COPY --from=supply-chain-tp-builder /project/contracts/track_and_trace/target/debian/supply-chain-tp*.deb /tmp
+COPY --from=grid-track-and-trace-tp-builder /project/contracts/track_and_trace/target/debian/grid-track-and-trace-tp*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/supply-chain-tp*.deb || true \
+ && dpkg -i /tmp/grid-track-and-trace-tp*.deb || true \
  && apt-get -f -y install
 
-CMD ["supply-chain-tp", "-vv"]
+CMD ["grid-track-and-trace-tp", "-vv"]

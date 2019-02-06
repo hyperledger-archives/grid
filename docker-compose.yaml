@@ -31,18 +31,18 @@ services:
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/contracts/track_and_trace/target
-      - /sawtooth-supply-chain/contracts/track_and_trace/src/messages
+      - .:/grid
+      - /grid/contracts/track_and_trace/target
+      - /grid/contracts/track_and_trace/src/messages
     entrypoint: |
       bash -c "
         cargo build &&
-        supply-chain-tp -v -C tcp://validator:4004
+        grid-track-and-trace-tp -v -C tcp://validator:4004
       "
 
   validator:
     image: hyperledger/sawtooth-validator:1.0
-    container_name: supply-validator
+    container_name: grid-sawtooth-validator
     expose:
       - 4004
     ports:
@@ -64,14 +64,14 @@ services:
 
   settings-tp:
     image: hyperledger/sawtooth-settings-tp:1.0
-    container_name: supply-settings-tp
+    container_name: grid-sawtooth-settings-tp
     depends_on:
       - validator
     entrypoint: settings-tp -vv -C tcp://validator:4004
 
   rest-api:
     image: hyperledger/sawtooth-rest-api:1.0
-    container_name: supply-rest-api
+    container_name: grid-sawtooth-rest-api
     expose:
       - 8008
     ports:
