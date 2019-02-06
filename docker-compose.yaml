@@ -40,20 +40,6 @@ services:
         supply-chain-tp -v -C tcp://validator:4004
       "
 
-  rethink:
-    image: rethinkdb
-    container_name: supply-rethink
-    expose:
-      - 8080
-      - 28015
-    ports:
-      - '8023:8080'
-      - '28020:28015'
-    environment:
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
-
   validator:
     image: hyperledger/sawtooth-validator:1.0
     container_name: supply-validator
