@@ -16,11 +16,12 @@ services:
   - docker
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.23.2
+  global:
+    - ISOLATION_ID=$TRAVIS_BUILD_ID
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
 addons:
@@ -28,8 +29,11 @@ addons:
     packages:
       - docker-ce
 
-matrix:
+jobs:
   include:
+    - stage: Lint Splinter
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
     - stage: Run Splinter Unit Tests
       before_script:
         - set -e

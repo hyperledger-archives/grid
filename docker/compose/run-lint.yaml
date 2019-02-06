@@ -1,4 +1,4 @@
-# Copyright 2019 Cargill Corporation
+# Copyright 2018 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ------------------------------------------------------------------------------
 
-version: "3.3"
+version: '3.6'
 
 services:
 
-  unit-test-splinter:
+  lint-splinter:
     build:
       context: ../
-      dockerfile: tests/Dockerfile
-    image: test-splinter:${ISOLATION_ID}
+      dockerfile: ./lint
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: lint-splinter:${ISOLATION_ID}
     volumes:
-      - ../:/project/splinter
-    command: bash -c 'cargo test'
-    stop_signal: SIGKILL
+      - ../../:/project/splinter
+    command: run_lint_rust
