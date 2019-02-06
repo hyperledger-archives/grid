@@ -21,7 +21,7 @@ services:
     build:
       context: ../
       dockerfile: tests/Dockerfile
-    image: test-splinter
+    image: test-splinter:${ISOLATION_ID}
     volumes:
       - ../:/project/splinter
     command: bash -c 'cargo test'
