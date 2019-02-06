@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build -f processor/Dockerfile-installed -t supply-chain-tp .
+# docker build -f contracts/track_and_trace/Dockerfile-installed -t supply-chain-tp .
 
 # -------------=== supply-chain tp build ===-------------
-FROM ubuntu:xenial as supply-chain-tp-builder
+FROM ubuntu:bionic as supply-chain-tp-builder
 
 ENV VERSION=AUTO_STRICT
 
@@ -39,14 +39,14 @@ RUN /root/.cargo/bin/cargo install cargo-deb
 
 COPY . /project
 
-WORKDIR /project/processor
+WORKDIR /project/contracts/track_and_trace
 
 RUN /root/.cargo/bin/cargo deb
 
 # -------------=== supply-chain-tp docker build ===-------------
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 
-COPY --from=supply-chain-tp-builder /project/processor/target/debian/supply-chain-tp*.deb /tmp
+COPY --from=supply-chain-tp-builder /project/contracts/track_and_trace/target/debian/supply-chain-tp*.deb /tmp
 
 RUN apt-get update \
  && dpkg -i /tmp/supply-chain-tp*.deb || true \

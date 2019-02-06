@@ -17,11 +17,11 @@ version: '2.1'
 
 services:
 
-  processor:
-    image: supply-tp
-    container_name: supply-tp
+  track-and-trace-tp:
+    image: grid-track-and-trace-tp
+    container_name: grid-track-and-trace-tp
     build:
-      context: processor/
+      context: contracts/track_and_trace/
       args:
         - http_proxy
         - https_proxy
@@ -32,8 +32,8 @@ services:
       - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
       - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/processor/target
-      - /sawtooth-supply-chain/processor/src/messages
+      - /sawtooth-supply-chain/contracts/track_and_trace/target
+      - /sawtooth-supply-chain/contracts/track_and_trace/src/messages
     entrypoint: |
       bash -c "
         cargo build &&

@@ -17,12 +17,12 @@ version: '2.1'
 
 services:
 
-  processor:
-    image: supply-tp-installed:${ISOLATION_ID}
-    container_name: supply-tp-installed
+  track-and-trace-tp:
+    image: grid-track-and-trace-tp-installed:${ISOLATION_ID}
+    container_name: grid-track-and-trace-tp-installed
     build:
       context: .
-      dockerfile: processor/Dockerfile-installed-${DISTRO}
+      dockerfile: contracts/track_and_trace/Dockerfile-installed-${DISTRO}
       args:
         - http_proxy
         - https_proxy

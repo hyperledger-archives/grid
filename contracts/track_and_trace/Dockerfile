@@ -48,15 +48,15 @@ RUN apt-get update && apt-get install -y protobuf-compiler
 
 # Build TP with dummy source in order to cache dependencies in Docker image.
 # Make sure not to use the `volumes` command to overwrite:
-#   - /sawtooth-supply-chain/processor/target/
-#   - /sawtooth-supply-chain/processor/src/messages/
+#   - /sawtooth-supply-chain/contracts/track_and_trace/target/
+#   - /sawtooth-supply-chain/contracts/track_and_trace/src/messages/
 WORKDIR /sawtooth-supply-chain
-RUN USER=root cargo new --bin processor
+RUN USER=root cargo new --bin contracts/track_and_trace
 
-WORKDIR /sawtooth-supply-chain/processor
+WORKDIR /sawtooth-supply-chain/contracts/track_and_trace
 COPY Cargo.toml Cargo.lock* ./
 RUN cargo build
 
-ENV PATH=$PATH:/sawtooth-supply-chain/processor/target/debug/
+ENV PATH=$PATH:/sawtooth-supply-chain/contracts/track_and_trace/target/debug/
 
-ENTRYPOINT ["/sawtooth-supply-chain/processor/target/debug/supply-chain-tp"]
+ENTRYPOINT ["/sawtooth-supply-chain/contracts/track_and_trace/target/debug/supply-chain-tp"]

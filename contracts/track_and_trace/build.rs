@@ -24,7 +24,7 @@ use protoc_rust::Customize;
 
 fn main() {
     // Generate protobuf files
-    let proto_src_files = glob_simple("../protos/*.proto");
+    let proto_src_files = glob_simple("../../protos/*.proto");
     println!("{:?}", proto_src_files);
 
     fs::create_dir_all("src/messages").unwrap();
@@ -35,7 +35,7 @@ fn main() {
             .iter()
             .map(|a| a.as_ref())
             .collect::<Vec<&str>>(),
-        includes: &["src", "../protos"],
+        includes: &["src", "../../protos"],
         customize: Customize::default(),
     }).expect("unable to run protoc");
 
@@ -46,7 +46,7 @@ fn main() {
 }
 
 fn path_to_mod(filename: &String) -> String {
-    filename.replace("../protos/", "pub mod ").replace(".proto", ";\n")
+    filename.replace("../../protos/", "pub mod ").replace(".proto", ";\n")
 }
 
 fn glob_simple(pattern: &str) -> Vec<String> {
