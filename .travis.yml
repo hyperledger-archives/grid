@@ -28,8 +28,11 @@ addons:
     packages:
       - docker-ce
 
-matrix:
+jobs:
   include:
+    - stage: Lint Splinter
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
     - stage: Run Splinter Unit Tests
       before_script:
         - set -e
