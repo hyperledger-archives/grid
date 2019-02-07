@@ -3,10 +3,10 @@
 *.sublime*
 
 # Rust
-processor/Cargo.lock
-processor/bin/
-processor/target/
-processor/src/messages/
+contracts/track_and_trace/Cargo.lock
+contracts/track_and_trace/bin/
+contracts/track_and_trace/target/
+contracts/track_and_trace/src/messages/
 
 # Node
 **/node_modules

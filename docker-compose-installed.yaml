@@ -17,96 +17,23 @@ version: '2.1'
 
 services:
 
-  processor:
-    image: supply-tp-installed:${ISOLATION_ID}
-    container_name: supply-tp-installed
+  track-and-trace-tp:
+    image: grid-track-and-trace-tp-installed:${ISOLATION_ID}
+    container_name: grid-track-and-trace-tp-installed
     build:
       context: .
-      dockerfile: processor/Dockerfile-installed-${DISTRO}
+      dockerfile: contracts/track_and_trace/Dockerfile-installed-${DISTRO}
       args:
         - http_proxy
         - https_proxy
         - no_proxy
     depends_on:
       - validator
-    entrypoint: supply-chain-tp -C tcp://validator:4004
-
-  server:
-    image: supply-server-installed:${ISOLATION_ID}
-    container_name: supply-server-installed
-    build:
-      context: .
-      dockerfile: server/Dockerfile-installed-${DISTRO}
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    expose:
-      - 3000
-    ports:
-      - '8020:3000'
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-    command: |
-      bash -c "
-        set -x &&
-        npm run init &&
-        node index.js
-      "
-
-  ledger-sync:
-    image: supply-ledger-sync-installed:${ISOLATION_ID}
-    container_name: supply-ledger-sync-installed
-    build:
-      context: .
-      dockerfile: ledger_sync/Dockerfile-installed-${DISTRO}
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-
-  asset-client:
-    image: supply-asset-client-installed:${ISOLATION_ID}
-    container_name: supply-asset-client-installed
-    build:
-      context: .
-      dockerfile: asset_client/Dockerfile-installed
-    expose:
-      - 80
-    ports:
-      - '8021:80'
-    depends_on:
-      - server
-
-  fish-client:
-    image: supply-fish-client-installed:${ISOLATION_ID}
-    container_name: supply-fish-client-installed
-    build:
-      context: .
-      dockerfile: fish_client/Dockerfile-installed
-    expose:
-      - 80
-    ports:
-      - '8022:80'
-    depends_on:
-      - server
-
-  rethink:
-    image: rethinkdb
-    container_name: supply-rethink
-    expose:
-      - 8080
-      - 28015
+    entrypoint: grid-track-and-trace-tp -C tcp://validator:4004
 
   validator:
     image: hyperledger/sawtooth-validator:1.0
-    container_name: supply-validator
+    container_name: grid-sawtooth-validator
     expose:
       - 4004
     # start the validator with an empty genesis batch
@@ -126,7 +53,7 @@ services:
 
   settings-tp:
     image: hyperledger/sawtooth-settings-tp:1.0
-    container_name: supply-settings-tp
+    container_name: grid-sawtooth-settings-tp
     depends_on:
       - validator
     entrypoint: settings-tp -v -C tcp://validator:4004

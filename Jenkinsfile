@@ -83,7 +83,7 @@ node ('master') {
 
         stage("Archive Build artifacts") {
             sh 'mkdir -p build/debs'
-            sh 'docker run -v $(pwd)/build/debs:/build supply-tp-installed:$ISOLATION_ID bash -c "cp /tmp/supply-chain-tp*.deb /build"'
+            sh 'docker run -v $(pwd)/build/debs:/build grid-track-and-trace-tp-installed:$ISOLATION_ID bash -c "cp /tmp/grid-track-and-trace-tp*.deb /build"'
             archiveArtifacts artifacts: '*.tgz, *.zip'
             archiveArtifacts artifacts: 'build/debs/*.deb'
             archiveArtifacts artifacts: 'docs/build/html/**, docs/build/latex/*.pdf'

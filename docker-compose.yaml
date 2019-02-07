@@ -17,53 +17,11 @@ version: '2.1'
 
 services:
 
-  shell:
-    image: supply-shell
-    container_name: supply-shell
+  track-and-trace-tp:
+    image: grid-track-and-trace-tp
+    container_name: grid-track-and-trace-tp
     build:
-      context: .
-      dockerfile: shell/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/asset_client/node_modules
-      - /sawtooth-supply-chain/fish_client/node_modules
-      - /sawtooth-supply-chain/server/node_modules
-    depends_on:
-      - rethink
-      - rest-api
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - SERVER=http://server:3000
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
-    command: |
-      bash -c "
-        cd asset_client/ && npm run build && cd - &&
-        cd fish_client/ && npm run build && cd - &&
-        if [ ! -f /root/.sawtooth/keys/root.priv ]; then
-          sawtooth keygen &&
-          cd server/ &&
-          npm run init &&
-          npm run make-asset &&
-          npm run make-fish &&
-          npm run seed-sample-assets &&
-          npm run seed-sample-fish &&
-          cd -
-        fi;
-        tail -f /dev/null
-      "
-
-  processor:
-    image: supply-tp
-    container_name: supply-tp
-    build:
-      context: processor/
+      context: contracts/track_and_trace/
       args:
         - http_proxy
         - https_proxy
@@ -71,112 +29,20 @@ services:
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
+      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/processor/target
-      - /sawtooth-supply-chain/processor/src/messages
+      - .:/grid
+      - /grid/contracts/track_and_trace/target
+      - /grid/contracts/track_and_trace/src/messages
     entrypoint: |
       bash -c "
         cargo build &&
-        supply-chain-tp -v -C tcp://validator:4004
+        grid-track-and-trace-tp -v -C tcp://validator:4004
       "
-
-  server:
-    image: supply-server
-    container_name: supply-server
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/server/node_modules
-    expose:
-      - 3000
-    ports:
-      - '8020:3000'
-    depends_on:
-      - validator
-      - rethink
-      - shell
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
-    entrypoint: node index.js
-
-  ledger-sync:
-    image: supply-ledger-sync
-    container_name: supply-ledger-sync
-    build:
-      context: .
-      dockerfile: ledger_sync/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - .:/sawtooth-supply-chain
-      - /sawtooth-supply-chain/ledger_sync/node_modules
-    depends_on:
-      - validator
-      - rethink
-    environment:
-      - VALIDATOR_URL=tcp://validator:4004
-      - DB_HOST=rethink
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
-
-  asset-client:
-    image: supply-asset-client
-    container_name: supply-asset-client
-    build: ./asset_client
-    volumes:
-      - ./asset_client/public/:/usr/local/apache2/htdocs/
-    expose:
-      - 80
-    ports:
-      - '8021:80'
-    depends_on:
-      - server
-
-  fish-client:
-    image: supply-fish-client
-    container_name: supply-fish-client
-    build: ./fish_client
-    volumes:
-      - ./fish_client/public/:/usr/local/apache2/htdocs/
-    expose:
-      - 80
-    ports:
-      - '8022:80'
-    depends_on:
-      - server
-
-  rethink:
-    image: rethinkdb
-    container_name: supply-rethink
-    expose:
-      - 8080
-      - 28015
-    ports:
-      - '8023:8080'
-      - '28020:28015'
-    environment:
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,server,eth0,validator,${no_proxy}'
 
   validator:
     image: hyperledger/sawtooth-validator:1.0
-    container_name: supply-validator
+    container_name: grid-sawtooth-validator
     expose:
       - 4004
     ports:
@@ -198,14 +64,14 @@ services:
 
   settings-tp:
     image: hyperledger/sawtooth-settings-tp:1.0
-    container_name: supply-settings-tp
+    container_name: grid-sawtooth-settings-tp
     depends_on:
       - validator
     entrypoint: settings-tp -vv -C tcp://validator:4004
 
   rest-api:
     image: hyperledger/sawtooth-rest-api:1.0
-    container_name: supply-rest-api
+    container_name: grid-sawtooth-rest-api
     expose:
       - 8008
     ports:
