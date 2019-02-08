@@ -223,11 +223,11 @@ impl SplinterDaemon {
             match self.network.recv() {
                 // This is where the message should be dispatched
                 Ok(message) => {
-                    let msg: NetworkMessage =
+                    let mut msg: NetworkMessage =
                         protobuf::parse_from_bytes(message.payload()).unwrap();
                     let dispatch_msg = DispatchMessage::new(
                         msg.get_message_type(),
-                        msg.get_payload().to_vec(),
+                        msg.take_payload(),
                         message.peer_id().to_string(),
                     );
                     debug!("Received Message from {}: {:?}", message.peer_id(), msg);
