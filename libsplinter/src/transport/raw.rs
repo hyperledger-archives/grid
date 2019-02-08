@@ -79,7 +79,9 @@ impl Connection for RawConnection {
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
-        Ok(self.stream.shutdown(Shutdown::Both)?)
+        self.stream
+            .shutdown(Shutdown::Both)
+            .map_err(DisconnectError::from)
     }
 
     fn evented(&self) -> &dyn Evented {
