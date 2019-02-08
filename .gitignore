@@ -17,8 +17,11 @@
 /examples/private_xo/target
 /examples/private_xo/Cargo.lock
 
-/examples/private_counter/target
-/examples/private_counter/Cargo.lock
+/examples/private_counter/service/target
+/examples/private_counter/service/Cargo.lock
+
+/examples/private_counter/cli/target
+/examples/private_counter/cli/Cargo.lock
 
 /target
 /Cargo.lock

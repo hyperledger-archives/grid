@@ -137,7 +137,6 @@ fn handle_connection(mut stream: TcpStream) -> Result<(), HandleError> {
         // cannot handle endpoint, return 404
         response = response + " 404 NOT FOUND\r\n\r\n";
     }
-
     stream.write(response.as_bytes())?;
     stream.flush()?;
 
