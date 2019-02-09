@@ -14,6 +14,19 @@
 
 syntax = "proto3";
 
+message NPhaseTransactionMessage {
+    enum Type {
+        UNSET_NPHASE_TRANSACTION_MESSAGE_TYPE = 0;
+        TRANSACTION_VERIFICATION_REQUEST = 1;
+        TRANSACTION_VERIFICATION_RESPONSE = 2;
+    }
+
+    Type message_type = 1;
+
+    TransactionVerificationRequest transaction_verification_request = 2;
+    TransactionVerificationResponse transaction_verification_response = 3;
+}
+
 // A request to execute and verify the results of a transaction.  Transaction
 // verification is achieved by producing an equivalent hash that is provided
 // in this request.
