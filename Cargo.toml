@@ -5,8 +5,9 @@ members = [
     "client",
     "libsplinter",
     "splinterd",
+    "examples/private_counter/cli",
+    "examples/private_counter/service",
 ]
 exclude = [
     "examples/private_xo",
-    "examples/private_counter",
 ]
