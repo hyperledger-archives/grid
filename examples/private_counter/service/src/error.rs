@@ -19,18 +19,21 @@ use std::io::Error as IoError;
 #[derive(Clone, Debug)]
 pub enum HandleError {
     IoError(String),
+    ServiceError(ServiceError),
 }
 
 impl Error for HandleError {
     fn cause(&self) -> Option<&dyn Error> {
         match self {
             HandleError::IoError(_) => None,
+            HandleError::ServiceError(err) => Some(err),
         }
     }
 
     fn description(&self) -> &str {
         match self {
             HandleError::IoError(_) => "Received IO Error",
+            HandleError::ServiceError(_) => "Encountered Service Error",
         }
     }
 }
@@ -39,6 +42,7 @@ impl fmt::Display for HandleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             HandleError::IoError(msg) => write!(f, "IoError: {}", msg),
+            HandleError::ServiceError(err) => write!(f, "Service Error: {}", err),
         }
     }
 }
@@ -46,5 +50,47 @@ impl fmt::Display for HandleError {
 impl From<IoError> for HandleError {
     fn from(err: IoError) -> Self {
         HandleError::IoError(format!("{}", err))
+    }
+}
+
+impl From<ServiceError> for HandleError {
+    fn from(err: ServiceError) -> Self {
+        HandleError::ServiceError(err)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ServiceError(pub String);
+
+impl Error for ServiceError {
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
+    fn description(&self) -> &str {
+        "A Service Error"
+    }
+}
+
+impl fmt::Display for ServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl From<protobuf::ProtobufError> for ServiceError {
+    fn from(err: protobuf::ProtobufError) -> Self {
+        ServiceError(format!("Protocol Buffer Error: {}", err))
+    }
+}
+
+impl From<String> for ServiceError {
+    fn from(s: String) -> Self {
+        ServiceError(s)
+    }
+}
+
+impl<T> From<crossbeam_channel::SendError<T>> for ServiceError {
+    fn from(err: crossbeam_channel::SendError<T>) -> Self {
+        ServiceError(format!("Unable to send: {}", err))
     }
 }

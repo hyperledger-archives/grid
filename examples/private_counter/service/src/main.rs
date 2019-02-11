@@ -22,7 +22,7 @@ use ::log::{debug, error, log};
 use clap::{App, Arg};
 use threadpool::ThreadPool;
 
-use crate::error::HandleError;
+use crate::error::{HandleError, ServiceError};
 
 fn main() -> Result<(), String> {
     let matches = App::new(clap::crate_name!())
