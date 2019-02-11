@@ -28,6 +28,7 @@ use crossbeam_channel;
 use protobuf::{self, Message};
 use sha2::{Digest, Sha256};
 use threadpool::ThreadPool;
+use uuid::Uuid;
 
 use libsplinter::mesh::Mesh;
 use libsplinter::network::{
@@ -88,9 +89,25 @@ fn main() -> Result<(), ServiceError> {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         debug!("Received connection");
-        pool.execute(move || match handle_connection(stream) {
-            Ok(_) => (),
-            Err(err) => error!("Error encountered in handling connection: {}", err),
+        let stream_state = state.clone();
+        let peer_id = network.peer_ids()[0].clone();
+        let stream_circuit = circuit.clone();
+        let stream_service_id = service_id.clone();
+        let stream_verifiers = verifiers.clone();
+        let stream_sender = send.clone();
+        pool.execute(move || {
+            match handle_connection(
+                stream,
+                stream_state,
+                peer_id,
+                stream_circuit,
+                stream_service_id,
+                stream_verifiers,
+                stream_sender,
+            ) {
+                Ok(_) => (),
+                Err(err) => error!("Error encountered in handling connection: {}", err),
+            }
         });
     }
 
@@ -576,44 +593,98 @@ fn valid_endpoint<S: AsRef<str>>(s: S) -> Result<(), String> {
     Ok(())
 }
 
-fn handle_connection(mut stream: TcpStream) -> Result<(), HandleError> {
+/// Handle HTTP calls on the given stream
+fn handle_connection(
+    mut stream: TcpStream,
+    state: Arc<Mutex<ServiceState>>,
+    peer_id: String,
+    circuit: String,
+    service_id: String,
+    verifiers: Vec<String>,
+    sender: crossbeam_channel::Sender<SendRequest>,
+) -> Result<(), HandleError> {
     let mut buffer = [0; 512];
 
     stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..]);
 
-    let mut response = "HTTP/1.1".to_string();
-
-    if request.starts_with("GET / ") {
-        // Return name of service
-        response = response + "200 OK\r\n\r\nPrivate Counter Server";
+    let response = if request.starts_with("GET / ") {
+        respond(200, "OK", Some("Private Counter Server"))
     } else if request.starts_with("GET /add/") {
         // get number to add to current value
         let addition = &request["GET /add/".len()..];
         if let Some(end) = addition.find(" ") {
             let addition = &addition[..end];
-
             // check that the value can be parsed into a u32
-            if addition.parse::<u32>().is_err() {
-                response = response + " 400 BAD REQUEST\r\n\r\n";
+            if let Ok(i) = addition.parse::<u32>() {
+                let mut state = state.lock().expect("Counter lock was poisoned");
+
+                if state.proposed_increment.is_some() {
+                    respond(
+                        409,
+                        "CONFLICT",
+                        Some("There is already a pending transaction"),
+                    )
+                } else {
+                    debug!("Proposing increment {}", i);
+
+                    state.proposed_increment = Some(i);
+
+                    let correlation_id = Uuid::new_v4().to_string();
+
+                    let mut request = TransactionVerificationRequest::new();
+                    request.set_correlation_id(correlation_id.clone());
+                    request.set_transaction_payload(write_u32(i)?);
+                    request.set_expected_output_hash(hash(&write_u32(state.counter + i)?));
+
+                    let mut nphase_msg = NPhaseTransactionMessage::new();
+                    nphase_msg.set_message_type(
+                        NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_REQUEST,
+                    );
+                    nphase_msg.set_transaction_verification_request(request);
+
+                    for verifier in verifiers {
+                        sender
+                            .send(SendRequest::new(
+                                peer_id.clone(),
+                                create_circuit_direct_msg(
+                                    circuit.clone(),
+                                    service_id.clone(),
+                                    verifier.clone(),
+                                    nphase_msg.write_to_bytes().map_err(ServiceError::from)?,
+                                    correlation_id.clone(),
+                                )?,
+                            ))
+                            .map_err(ServiceError::from)?;
+                    }
+                    respond(204, "NO CONTENT", None)
+                }
             } else {
-                // return 204 NO CONTENT
-                response = response + " 204 NO CONTENT\r\n\r\n";
+                respond(400, "BAD REQUEST", None)
             }
         } else {
-            response = response + " 400 BAD REQUEST\r\n\r\n";
+            respond(400, "BAD REQUEST", None)
         }
     } else if request.starts_with("GET /show") {
         // return current value
-        response = response + " 200 OK\r\n\r\n0";
+        let state = state.lock().expect("Counter lock was poisoned");
+        respond(200, "OK", Some(&state.counter.to_string()))
     } else {
-        // cannot handle endpoint, return 404
-        response = response + " 404 NOT FOUND\r\n\r\n";
-    }
+        respond(404, "NOT FOUND", None)
+    };
     stream.write(response.as_bytes())?;
     stream.flush()?;
 
     Ok(())
+}
+
+fn respond(status_code: u16, status_msg: &str, content: Option<&str>) -> String {
+    format!(
+        "HTTP/1.1 {} {}\r\n\r\n{}",
+        status_code,
+        status_msg,
+        content.unwrap_or("")
+    )
 }
 
 fn configure_args<'a, 'b>() -> App<'a, 'b> {
