@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::error::Error;
-use std::fmt;
+mod error;
+
 use std::io::prelude::*;
-use std::io::Error as IoError;
 use std::net::{TcpListener, TcpStream};
 
 use ::log::LogLevel;
 use ::log::{debug, error, log};
 use clap::{App, Arg};
 use threadpool::ThreadPool;
+
+use crate::error::HandleError;
 
 fn main() -> Result<(), String> {
     let matches = App::new(clap::crate_name!())
@@ -141,35 +142,4 @@ fn handle_connection(mut stream: TcpStream) -> Result<(), HandleError> {
     stream.flush()?;
 
     Ok(())
-}
-
-#[derive(Clone, Debug)]
-pub enum HandleError {
-    IoError(String),
-}
-
-impl Error for HandleError {
-    fn cause(&self) -> Option<&dyn Error> {
-        None
-    }
-
-    fn description(&self) -> &str {
-        match self {
-            HandleError::IoError(_) => "Received IO Error",
-        }
-    }
-}
-
-impl fmt::Display for HandleError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            HandleError::IoError(msg) => write!(f, "IoError: {}", msg),
-        }
-    }
-}
-
-impl From<IoError> for HandleError {
-    fn from(err: IoError) -> Self {
-        HandleError::IoError(format!("{}", err))
-    }
 }
