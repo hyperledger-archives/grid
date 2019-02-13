@@ -232,7 +232,7 @@ impl ServiceDisconnectRequestHandler {
     }
 }
 
-// Implements a handler that handles NetworkEcho Messages
+// Implements a handler that handles ServiceConnectForward Messages
 pub struct ServiceConnectForwardHandler {
     state: Arc<RwLock<SplinterState>>,
 }
