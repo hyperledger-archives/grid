@@ -13,6 +13,7 @@
 // limitations under the License.
 use libsplinter::protos::circuit::{
     CircuitDirectMessage, CircuitMessage, CircuitMessageType, ServiceConnectRequest,
+    ServiceDisconnectRequest,
 };
 use libsplinter::protos::network::{NetworkEcho, NetworkMessage, NetworkMessageType};
 use protobuf::Message;
@@ -53,6 +54,30 @@ pub fn do_connect(url: &str, circuit: String, service: String) -> Result<(), Spl
         let mut circuit_msg = CircuitMessage::new();
         circuit_msg.set_message_type(CircuitMessageType::SERVICE_CONNECT_REQUEST);
         circuit_msg.set_payload(connect_bytes);
+        let circuit_bytes = circuit_msg.write_to_bytes().unwrap();
+
+        let mut network_msg = NetworkMessage::new();
+        network_msg.set_message_type(NetworkMessageType::CIRCUIT);
+        network_msg.set_payload(circuit_bytes);
+
+        network_msg
+    };
+
+    let mut conn = SplinterClient::connect(url, get_certs())?;
+
+    conn.send(&msg).map(|_| ())
+}
+
+pub fn do_disconnect(url: &str, circuit: String, service: String) -> Result<(), SplinterError> {
+    let msg = {
+        let mut disconnect_request = ServiceDisconnectRequest::new();
+        disconnect_request.set_circuit(circuit);
+        disconnect_request.set_service_id(service);
+        let disconnect_bytes = disconnect_request.write_to_bytes().unwrap();
+
+        let mut circuit_msg = CircuitMessage::new();
+        circuit_msg.set_message_type(CircuitMessageType::SERVICE_DISCONNECT_REQUEST);
+        circuit_msg.set_payload(disconnect_bytes);
         let circuit_bytes = circuit_msg.write_to_bytes().unwrap();
 
         let mut network_msg = NetworkMessage::new();
