@@ -365,7 +365,9 @@ mod tests {
     use crate::storage::get_storage;
 
     #[test]
-    fn test_service_request_handler_no_circuit() {
+    // Test that if the circuit does not exist, a ServiceConnectResponse is returned with
+    // a ERROR_CIRCUIT_DOES_NOT_EXIST
+    fn test_service_connect_request_handler_no_circuit() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
@@ -418,7 +420,9 @@ mod tests {
     }
 
     #[test]
-    fn test_service_request_handler_not_in_circuit() {
+    // Test that if the service is not in circuit, a ServiceConnectResponse is returned with
+    // a ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY
+    fn test_service_connect_request_handler_not_in_circuit() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
@@ -482,7 +486,10 @@ mod tests {
     }
 
     #[test]
-    fn test_service_request_handler() {
+    // Test that if the service is in a circuit and not connected, a ServiceConnectResponse is
+    // returned with an OK, also test that ServiceConnectForward are sent to other nodes on the
+    // circuit
+    fn test_service_connect_request_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
@@ -573,7 +580,9 @@ mod tests {
     }
 
     #[test]
-    fn test_service_request_handler_already_connected() {
+    // Test that if the service is in a circuit and already connected, a ServiceConnectResponse is
+    // returned with an ERROR_SERVICE_ALREADY_REGISTERED
+    fn test_service_connect_request_handler_already_connected() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
@@ -644,6 +653,8 @@ mod tests {
     }
 
     #[test]
+    // Test that if the service is in a circuit and it is not yet connect, add the service to
+    // splinter state
     fn test_service_connect_forward_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -695,6 +706,8 @@ mod tests {
     }
 
     #[test]
+    // Test that if the circuit does not exist, a ServiceDisconnectResponse is returned with
+    // a ERROR_CIRCUIT_DOES_NOT_EXIST
     fn test_service_disconnect_request_handler_no_circuit() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -747,6 +760,8 @@ mod tests {
     }
 
     #[test]
+    // Test that if the service is not in circuit, a ServiceDisconnectResponse is returned with
+    // a ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY
     fn test_service_disconnect_request_handler_not_in_circuit() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -810,6 +825,9 @@ mod tests {
     }
 
     #[test]
+    // Test that if the service is in a circuit and already connected, a ServiceDisconnectResponse
+    // is returned with an OK, also test that ServiceDisconnectForward are sent to other nodes on
+    // the circuit
     fn test_service_disconnect_request_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -905,6 +923,8 @@ mod tests {
     }
 
     #[test]
+    // Test that if the service is in a circuit and not connected, a ServiceDisconnectResponse
+    // is returned with an ERROR_SERVICE_NOT_REGISTERED
     fn test_service_disconnect_request_handler_not_connected() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -969,6 +989,8 @@ mod tests {
     }
 
     #[test]
+    // Test that if the service is in a circuit and it is connected, remove the service from
+    // splinter state
     fn test_service_disconnect_forward_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
