@@ -17,7 +17,8 @@ use std::thread;
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
     CircuitDirectMessageHandler, CircuitErrorHandler, CircuitMessageHandler,
-    ServiceConnectForwardHandler, ServiceConnectRequestHandler,
+    ServiceConnectForwardHandler, ServiceConnectRequestHandler, ServiceDisconnectForwardHandler,
+    ServiceDisconnectRequestHandler,
 };
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
@@ -300,6 +301,19 @@ fn set_up_circuit_dispatcher(
     dispatcher.set_handler(
         CircuitMessageType::SERVICE_CONNECT_FORWARD,
         Box::new(service_connect_forward_handler),
+    );
+
+    let service_disconnect_request_handler =
+        ServiceDisconnectRequestHandler::new(node_id.to_string(), state.clone());
+    dispatcher.set_handler(
+        CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
+        Box::new(service_disconnect_request_handler),
+    );
+
+    let service_disconnect_forward_handler = ServiceDisconnectForwardHandler::new(state.clone());
+    dispatcher.set_handler(
+        CircuitMessageType::SERVICE_DISCONNECT_FORWARD,
+        Box::new(service_disconnect_forward_handler),
     );
 
     let direct_message_handler =
