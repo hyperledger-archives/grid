@@ -6,8 +6,8 @@ services:
     image: private-xo:latest
     container_name: private-xo-local
     build:
-        context: .
-        dockerfile: ./Dockerfile
+        context: ../..
+        dockerfile: ./examples/private_xo/Dockerfile
     expose:
         - 8000
     ports:
