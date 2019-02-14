@@ -19,6 +19,7 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+libsplinter = { path = "../../libsplinter" }
 clap = "2.32"
 log = "0.4"
 protobuf = "2.2"
