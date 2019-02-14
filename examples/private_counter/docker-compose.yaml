@@ -20,8 +20,8 @@ services:
     image: private-counter:latest
     container_name: private-counter-local
     build:
-        context: .
-        dockerfile: ./service/Dockerfile
+        context: ../..
+        dockerfile: ./examples/private_counter/service/Dockerfile
     expose:
         - 8000
     ports:
