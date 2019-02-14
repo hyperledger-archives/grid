@@ -19,11 +19,17 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use ::log::{log, warn};
+use ::log::{error, log, warn};
 
-use crate::channel::{Receiver, SendError, Sender};
+use crate::channel::{Receiver, RecvTimeoutError, SendError, Sender};
 use crate::network::sender::SendRequest;
+
+// Recv timeout in secs
+const TIMEOUT_SEC: u64 = 2;
 
 /// The Message Context
 ///
@@ -327,6 +333,7 @@ pub struct DispatchLoopError(String);
 pub struct DispatchLoop<MT: Any + Hash + Eq + Debug + Clone> {
     receiver: Box<dyn Receiver<DispatchMessage<MT>>>,
     dispatcher: Dispatcher<MT>,
+    running: Arc<AtomicBool>,
 }
 
 impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
@@ -337,10 +344,12 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
     pub fn new(
         receiver: Box<dyn Receiver<DispatchMessage<MT>>>,
         dispatcher: Dispatcher<MT>,
+        running: Arc<AtomicBool>,
     ) -> Self {
         DispatchLoop {
             receiver,
             dispatcher,
+            running,
         }
     }
 
@@ -351,10 +360,19 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
     /// An error will be returned if the receiver no longer can return messages. This is
     /// effectively an exit signal for the loop.
     pub fn run(&self) -> Result<(), DispatchLoopError> {
-        loop {
-            let dispatch_msg = self.receiver.recv().map_err(|err| {
-                DispatchLoopError(format!("Error receiving dispatch messages: {:?}", err))
-            })?;
+        let timeout = Duration::from_secs(TIMEOUT_SEC);
+        while self.running.load(Ordering::SeqCst) {
+            let dispatch_msg = match self.receiver.recv_timeout(timeout) {
+                Ok(dispatch_msg) => dispatch_msg,
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => {
+                    error!("Recieved Disconnected Error from receiver");
+                    return Err(DispatchLoopError(String::from(
+                        "Recieved Disconnected Error from receiver",
+                    )));
+                }
+            };
+
             match self.dispatcher.dispatch(
                 &dispatch_msg.source_peer_id,
                 &dispatch_msg.message_type,
@@ -364,6 +382,25 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
                 Err(err) => warn!("Unable to dispatch message: {:?}", err),
             }
         }
+
+        // finish handling any incoming messages
+        loop {
+            let dispatch_msg = match self.receiver.try_recv() {
+                Ok(dispatch_msg) => dispatch_msg,
+                // If an Empty or Disconnected error is returned, end looping
+                Err(_) => break,
+            };
+
+            match self.dispatcher.dispatch(
+                &dispatch_msg.source_peer_id,
+                &dispatch_msg.message_type,
+                dispatch_msg.message_bytes,
+            ) {
+                Ok(_) => (),
+                Err(err) => warn!("Unable to dispatch message: {:?}", err),
+            }
+        }
+        Ok(())
     }
 }
 
