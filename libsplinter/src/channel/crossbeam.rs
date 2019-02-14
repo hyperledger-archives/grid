@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::channel::{Receiver, RecvError, SendError, Sender, TryRecvError};
+use crate::channel::{Receiver, RecvError, RecvTimeoutError, SendError, Sender, TryRecvError};
+
+use std::time::Duration;
 
 // Implement the Receiver and Sender Traits for crossbeam channels
 impl<T> Receiver<T> for crossbeam_channel::Receiver<T>
@@ -29,6 +31,15 @@ where
     fn try_recv(&self) -> Result<T, TryRecvError> {
         let request = crossbeam_channel::Receiver::try_recv(self).map_err(|err| TryRecvError {
             error: err.to_string(),
+        })?;
+        Ok(request)
+    }
+
+    fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
+        let request = crossbeam_channel::Receiver::recv_timeout(self, timeout).map_err(|err| {
+            RecvTimeoutError {
+                error: err.to_string(),
+            }
         })?;
         Ok(request)
     }

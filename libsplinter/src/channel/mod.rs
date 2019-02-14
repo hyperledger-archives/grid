@@ -20,9 +20,12 @@ mod crossbeam;
 pub mod mock;
 mod mpsc;
 
+use std::time::Duration;
+
 pub trait Receiver<T>: Send {
     fn recv(&self) -> Result<T, RecvError>;
     fn try_recv(&self) -> Result<T, TryRecvError>;
+    fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError>;
 }
 
 // To allow the NetworkMessageSender to not make decissions about the threading model, any channel
@@ -46,6 +49,11 @@ pub struct RecvError {
 
 #[derive(Debug, PartialEq)]
 pub struct TryRecvError {
+    pub error: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RecvTimeoutError {
     pub error: String,
 }
 
