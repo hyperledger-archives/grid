@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use std::time::Duration;
 
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
@@ -29,7 +31,9 @@ use libsplinter::network::auth::AuthorizationManager;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use libsplinter::network::handlers::NetworkEchoHandler;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
-use libsplinter::network::{ConnectionError, Network, PeerUpdateError, SendError};
+use libsplinter::network::{
+    ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
+};
 use libsplinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
@@ -39,9 +43,12 @@ use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
-use ::log::{debug, error, info, log};
+use ::log::{debug, error, info, log, warn};
 use crossbeam_channel;
 use protobuf::Message;
+
+// Recv timeout in secs
+const TIMEOUT_SEC: u64 = 2;
 
 pub struct SplinterDaemon {
     transport: Box<dyn Transport + Send>,
@@ -77,6 +84,15 @@ impl SplinterDaemon {
     }
 
     pub fn start(&mut self) -> Result<(), StartError> {
+        // Setup up ctrlc handling
+        let running = Arc::new(AtomicBool::new(true));
+        let r = running.clone();
+        ctrlc::set_handler(move || {
+            info!("Recieved Shutdown");
+            r.store(false, Ordering::SeqCst);
+        })
+        .expect("Error setting Ctrl-C handler");
+
         info!("Starting SpinterNode with id {}", self.node_id);
 
         // Load initial state from the configured storage location and create the new
@@ -92,9 +108,9 @@ impl SplinterDaemon {
 
         let network = self.network.clone();
         let (send, recv) = crossbeam_channel::bounded(5);
-
-        let _ = thread::spawn(move || {
-            let network_sender = NetworkMessageSender::new(Box::new(recv), network);
+        let r = running.clone();
+        let network_message_sender_thread = thread::spawn(move || {
+            let network_sender = NetworkMessageSender::new(Box::new(recv), network, r);
             network_sender.run()
         });
 
@@ -106,17 +122,24 @@ impl SplinterDaemon {
             &self.network_endpoint,
             state.clone(),
         );
-        let circuit_dispatch_loop =
-            DispatchLoop::new(Box::new(circuit_dispatch_recv), circuit_dispatcher);
-        let _ = thread::spawn(move || circuit_dispatch_loop.run());
+        let circuit_dispatch_loop = DispatchLoop::new(
+            Box::new(circuit_dispatch_recv),
+            circuit_dispatcher,
+            running.clone(),
+        );
+        let circuit_dispatcher_thread = thread::spawn(move || circuit_dispatch_loop.run());
 
         // Set up the Auth dispatcher
         let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
         let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
         let auth_dispatcher =
             create_authorization_dispatcher(auth_manager.clone(), Box::new(send.clone()));
-        let auth_dispatch_loop = DispatchLoop::new(Box::new(auth_dispatch_recv), auth_dispatcher);
-        let _ = thread::spawn(move || auth_dispatch_loop.run());
+        let auth_dispatch_loop = DispatchLoop::new(
+            Box::new(auth_dispatch_recv),
+            auth_dispatcher,
+            running.clone(),
+        );
+        let auth_dispatcher_thread = thread::spawn(move || auth_dispatch_loop.run());
 
         // Set up the Network dispatcher
         let (network_dispatch_send, network_dispatch_recv) = crossbeam_channel::bounded(5);
@@ -127,13 +150,18 @@ impl SplinterDaemon {
             circuit_dispatch_send,
             auth_dispatch_send,
         );
-        let network_dispatch_loop =
-            DispatchLoop::new(Box::new(network_dispatch_recv), network_dispatcher);
-        let _ = thread::spawn(move || network_dispatch_loop.run());
+        let network_dispatch_loop = DispatchLoop::new(
+            Box::new(network_dispatch_recv),
+            network_dispatcher,
+            running.clone(),
+        );
+        let network_dispatcher_thread = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
         let mut network_listener = self.transport.listen(&self.network_endpoint)?;
         let network_clone = self.network.clone();
+
+        // this thread will just be dropped on shutdown
         let _ = thread::spawn(move || {
             for connection_result in network_listener.incoming() {
                 let connection = match connection_result {
@@ -154,6 +182,8 @@ impl SplinterDaemon {
         // setup a thread to listen on the service port and add incoming connection to the network
         let mut service_listener = self.transport.listen(&self.service_endpoint)?;
         let service_clone = self.network.clone();
+
+        // this thread will just be dropped on shutdown
         let _ = thread::spawn(move || {
             for connection_result in service_listener.incoming() {
                 let connection = match connection_result {
@@ -219,9 +249,10 @@ impl SplinterDaemon {
             }
         }
 
+        let timeout = Duration::from_secs(TIMEOUT_SEC);
         // start the recv loop
-        loop {
-            match self.network.recv() {
+        while running.load(Ordering::SeqCst) {
+            match self.network.recv_timeout(timeout) {
                 // This is where the message should be dispatched
                 Ok(message) => {
                     let mut msg: NetworkMessage =
@@ -237,12 +268,25 @@ impl SplinterDaemon {
                         Err(err) => error!("Dispatch Error {}", err.to_string()),
                     }
                 }
-                Err(err) => {
-                    debug!("Error: {:?}", err);
+                Err(RecvTimeoutError::Disconnected) => {
+                    // if the reciever has disconnected, shutdown
+                    warn!("Recieved Disconnected Error from Network");
+                    break;
+                }
+                Err(_) => {
+                    // Timeout or NoPeerError are ignored
                     continue;
                 }
             }
         }
+        info!("Shutting down");
+        // Join network sender and dispatcher threads
+        let _ = network_message_sender_thread.join();
+        let _ = circuit_dispatcher_thread.join();
+        let _ = auth_dispatcher_thread.join();
+        let _ = network_dispatcher_thread.join();
+
+        Ok(())
     }
 }
 
