@@ -18,6 +18,7 @@ use std::fmt::Write as FmtWrite;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::string::ToString;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
@@ -59,6 +60,8 @@ struct ServiceState {
 }
 
 fn main() -> Result<(), ServiceError> {
+    let running = Arc::new(AtomicBool::new(true));
+
     let matches = configure_args().get_matches();
     configure_logging(&matches);
 
@@ -75,6 +78,7 @@ fn main() -> Result<(), ServiceError> {
         (send.clone(), recv),
         network.clone(),
         state.clone(),
+        running.clone(),
     )?;
 
     let listener = TcpListener::bind(matches.value_of("bind").unwrap()).unwrap();
@@ -155,6 +159,7 @@ fn start_service_loop(
     ),
     network: Network,
     state: Arc<Mutex<ServiceState>>,
+    running: Arc<AtomicBool>,
 ) -> Result<(), ServiceError> {
     info!("Starting Private Counter Service");
     let sender_network = network.clone();
@@ -163,7 +168,7 @@ fn start_service_loop(
     let _ = Builder::new()
         .name("NetworkMessageSender".into())
         .spawn(move || {
-            let network_sender = NetworkMessageSender::new(Box::new(recv), sender_network);
+            let network_sender = NetworkMessageSender::new(Box::new(recv), sender_network, running);
             network_sender.run()
         });
 
