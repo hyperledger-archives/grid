@@ -32,27 +32,7 @@ fn index() -> &'static str {
 }
 
 fn main() -> Result<(), String> {
-    let matches = App::new(clap::crate_name!())
-        .version(clap::crate_version!())
-        .author(clap::crate_authors!())
-        .about(clap::crate_description!())
-        .arg(
-            Arg::with_name("bind")
-                .short("B")
-                .long("bind")
-                .value_name("bind")
-                .takes_value(true)
-                .default_value("localhost:8000")
-                .validator(valid_bind),
-        )
-        .arg(
-            Arg::with_name("verbose")
-                .short("v")
-                .long("verbose")
-                .multiple(true)
-                .help("enable more verbose logging output"),
-        )
-        .get_matches();
+    let matches = configure_app_args().get_matches();
 
     let (address, port) = split_bind(matches.value_of("bind").unwrap())?;
 
@@ -76,6 +56,29 @@ fn main() -> Result<(), String> {
     .launch();
 
     Ok(())
+}
+
+fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
+    App::new(clap::crate_name!())
+        .version(clap::crate_version!())
+        .author(clap::crate_authors!())
+        .about(clap::crate_description!())
+        .arg(
+            Arg::with_name("bind")
+                .short("B")
+                .long("bind")
+                .value_name("bind")
+                .takes_value(true)
+                .default_value("localhost:8000")
+                .validator(valid_bind),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .long("verbose")
+                .multiple(true)
+                .help("enable more verbose logging output"),
+        )
 }
 
 fn valid_bind(s: String) -> Result<(), String> {
