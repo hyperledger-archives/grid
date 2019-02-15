@@ -39,7 +39,7 @@ fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
 
     configure_logging(&matches);
-    let (address, port) = split_bind(
+    let (address, port) = split_endpoint(
         matches
             .value_of("bind")
             .expect("Bind was not marked as a required attribute"),
@@ -79,7 +79,8 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .value_name("bind")
                 .takes_value(true)
                 .default_value("localhost:8000")
-                .validator(valid_bind),
+                .validator(valid_endpoint)
+                .help("endpoint to receive HTTP requests, ip:port"),
         )
         .arg(
             Arg::with_name("verbose")
@@ -99,11 +100,11 @@ fn configure_logging(matches: &clap::ArgMatches) {
     logger.expect("Failed to create logger");
 }
 
-fn valid_bind(s: String) -> Result<(), String> {
-    split_bind(s).map(|_| ()).map_err(|err| err.to_string())
+fn valid_endpoint(s: String) -> Result<(), String> {
+    split_endpoint(s).map(|_| ()).map_err(|err| err.to_string())
 }
 
-fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
+fn split_endpoint<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
     let s = s.as_ref();
     if s.is_empty() {
         return Err(CliError("Bind string must not be empty".into()));
