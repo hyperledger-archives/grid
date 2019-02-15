@@ -15,6 +15,8 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate serde_derive;
@@ -36,6 +38,7 @@ fn index() -> &'static str {
 fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
 
+    configure_logging(&matches);
     let (address, port) = split_bind(
         matches
             .value_of("bind")
@@ -85,6 +88,15 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .multiple(true)
                 .help("enable more verbose logging output"),
         )
+}
+
+fn configure_logging(matches: &clap::ArgMatches) {
+    let logger = match matches.occurrences_of("verbose") {
+        0 => simple_logger::init_with_level(log::Level::Warn),
+        1 => simple_logger::init_with_level(log::Level::Info),
+        _ => simple_logger::init_with_level(log::Level::Debug),
+    };
+    logger.expect("Failed to create logger");
 }
 
 fn valid_bind(s: String) -> Result<(), String> {
