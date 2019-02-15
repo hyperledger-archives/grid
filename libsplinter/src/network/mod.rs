@@ -24,7 +24,8 @@ use std::time::Duration;
 
 use crate::collections::BiHashMap;
 use crate::mesh::{
-    AddError, Envelope, Mesh, RecvError as MeshRecvError, RemoveError, SendError as MeshSendError,
+    AddError, Envelope, Mesh, RecvError as MeshRecvError, RecvTimeoutError as MeshRecvTimeoutError,
+    RemoveError, SendError as MeshSendError,
 };
 use crate::transport::Connection;
 
@@ -142,10 +143,7 @@ impl Network {
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<NetworkMessage, RecvTimeoutError> {
-        let envelope = self
-            .mesh
-            .recv_timeout(timeout)
-            .map_err(|err| RecvTimeoutError::from_mesh_error(err))?;
+        let envelope = self.mesh.recv_timeout(timeout)?;
         let peer_id = match rwlock_read_unwrap!(self.peers).get_by_value(&envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
@@ -171,6 +169,22 @@ pub enum RecvError {
 impl From<MeshRecvError> for RecvError {
     fn from(recv_error: MeshRecvError) -> Self {
         RecvError::MeshError(format!("Recv Error: {:?}", recv_error))
+    }
+}
+
+#[derive(Debug)]
+pub enum RecvTimeoutError {
+    NoPeerError(String),
+    Timeout,
+    Disconnected,
+}
+
+impl From<MeshRecvTimeoutError> for RecvTimeoutError {
+    fn from(recv_error: MeshRecvTimeoutError) -> Self {
+        match recv_error {
+            MeshRecvTimeoutError::Timeout => RecvTimeoutError::Timeout,
+            MeshRecvTimeoutError::Disconnected => RecvTimeoutError::Disconnected,
+        }
     }
 }
 

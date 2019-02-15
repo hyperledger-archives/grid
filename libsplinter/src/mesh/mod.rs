@@ -154,8 +154,10 @@ impl Mesh {
 
     /// Receive a new envelope from the mesh.
 
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvError> {
-        self.incoming.recv_timeout(timeout).map_err(|_| RecvError)
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
+        self.incoming
+            .recv_timeout(timeout)
+            .map_err(|err| RecvTimeoutError::from(err))
     }
 
     /// Create a new handle for sending to the existing connection with the given id.
@@ -196,6 +198,21 @@ impl SendError {
 
 #[derive(Debug)]
 pub struct RecvError;
+
+#[derive(Debug)]
+pub enum RecvTimeoutError {
+    Timeout,
+    Disconnected,
+}
+
+impl From<incoming::RecvTimeoutError> for RecvTimeoutError {
+    fn from(err: incoming::RecvTimeoutError) -> Self {
+        match err {
+            incoming::RecvTimeoutError::Timeout => RecvTimeoutError::Timeout,
+            incoming::RecvTimeoutError::Disconnected => RecvTimeoutError::Disconnected,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
