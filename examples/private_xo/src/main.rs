@@ -27,6 +27,10 @@ mod routes;
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
 
+use libsplinter::mesh::Mesh;
+use libsplinter::network::Network;
+use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
+
 use crate::error::CliError;
 use crate::routes::{batches, state};
 
@@ -39,6 +43,15 @@ fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
 
     configure_logging(&matches);
+
+    let mut transport = get_transport(&matches)?;
+    let network = create_network_and_connect(
+        &mut transport,
+        matches
+            .value_of("connect")
+            .expect("Connect was not marked as a required attribute"),
+    )?;
+
     let (address, port) = split_endpoint(
         matches
             .value_of("bind")
@@ -67,6 +80,83 @@ fn main() -> Result<(), CliError> {
     Ok(())
 }
 
+fn get_service_config(matches: &clap::ArgMatches) -> ServiceConfig {
+    let circuit = matches.value_of("circuit").unwrap().to_string();
+    let service_id = matches.value_of("service_id").unwrap().to_string();
+    let verifiers: Vec<String> = matches
+        .values_of("verifier")
+        .unwrap()
+        .map(ToString::to_string)
+        .collect();
+
+    ServiceConfig::new(circuit, service_id, verifiers)
+}
+
+/// Return the appropriate transport for the current arguments
+fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>, CliError> {
+    match matches.value_of("transport") {
+        Some("tls") => {
+            let ca_file = matches
+                .value_of("ca_file")
+                .map(String::from)
+                .ok_or_else(|| CliError("Must provide a valid file containing ca certs".into()))?;
+
+            let client_cert = matches
+                .value_of("client_cert")
+                .map(String::from)
+                .ok_or_else(|| CliError("Must provide a valid client certificate".into()))?;
+
+            let client_key_file = matches
+                .value_of("client_key")
+                .map(String::from)
+                .ok_or_else(|| CliError("Must provide a valid key path".into()))?;
+
+            // Reuse the cert and key as a server cert and key, as there currently isn't a client-
+            // only TlsTransport implementation.
+            match TlsTransport::new(
+                ca_file,
+                client_key_file.clone(),
+                client_cert.clone(),
+                client_key_file,
+                client_cert,
+            ) {
+                Ok(transport) => Ok(Box::new(transport)),
+                Err(err) => Err(CliError(format!(
+                    "An error occurred while creating {} transport: {:?}",
+                    matches.value_of("transport").unwrap(),
+                    err
+                ))),
+            }
+        }
+        Some("raw") => Ok(Box::new(RawTransport::default())),
+        // this should have been caught by clap, so panic
+        _ => panic!(
+            "Transport type is not supported: {:?}",
+            matches.value_of("transport")
+        ),
+    }
+}
+
+fn create_network_and_connect(
+    transport: &mut Box<dyn Transport + Send>,
+    connect_endpoint: &str,
+) -> Result<Network, CliError> {
+    let mesh = Mesh::new(512, 128);
+    let network = Network::new(mesh);
+    let connection = transport.connect(connect_endpoint).map_err(|err| {
+        CliError(format!(
+            "Unable to connect to {}: {:?}",
+            connect_endpoint, err
+        ))
+    })?;
+
+    network
+        .add_connection(connection)
+        .map_err(|err| CliError(format!("Unable to add connection to network: {:?}", err)))?;
+
+    Ok(network)
+}
+
 fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
     App::new(clap::crate_name!())
         .version(clap::crate_version!())
@@ -81,6 +171,47 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .default_value("localhost:8000")
                 .validator(valid_endpoint)
                 .help("endpoint to receive HTTP requests, ip:port"),
+        )
+        .arg(
+            Arg::with_name("connect")
+                .short("C")
+                .long("connect")
+                .value_name("CONNECT")
+                .default_value("localhost:8043")
+                .validator(valid_endpoint)
+                .help("the service endpoint of a splinterd node, ip:port"),
+        )
+        .arg(
+            Arg::with_name("transport")
+                .long("transport")
+                .default_value("raw")
+                .value_name("TRANSPORT")
+                .possible_values(&["raw", "tls"])
+                .help("transport type for sockets, either raw or tls"),
+        )
+        .arg(
+            Arg::with_name("ca_file")
+                .long("ca-file")
+                .takes_value(true)
+                .value_name("FILE")
+                .requires_if("transport", "tls")
+                .help("file path to the trusted ca cert"),
+        )
+        .arg(
+            Arg::with_name("client_key")
+                .long("client-key")
+                .takes_value(true)
+                .value_name("FILE")
+                .requires_if("transport", "tls")
+                .help("file path for the TLS key used to connect to a splinterd node"),
+        )
+        .arg(
+            Arg::with_name("client_cert")
+                .long("client-cert")
+                .takes_value(true)
+                .value_name("FILE")
+                .requires_if("transport", "tls")
+                .help("file path the cert used to connect to a splinterd node"),
         )
         .arg(
             Arg::with_name("verbose")
