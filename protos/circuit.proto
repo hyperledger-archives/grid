@@ -110,7 +110,7 @@ message ServiceConnectResponse {
     string service_id = 2;
 
     enum Status {
-        UNSET_STATUs = 0;
+        UNSET_STATUS = 0;
         OK = 1;
         ERROR_CIRCUIT_DOES_NOT_EXIST = 2;
         ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY = 3;

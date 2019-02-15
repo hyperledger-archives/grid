@@ -19,10 +19,15 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+libsplinter = { path = "../../../libsplinter" }
 clap = "2.32"
+crossbeam-channel = "0.3"
 log = "0.3.0"
+protobuf = "2"
+sha2 = "0.8"
 simple_logger = "0.4.0"
 serde_derive = "1.0.80"
 serde = "1.0.80"
 threadpool = "1.0"
 toml = "0.4.8"
+uuid = { version = "0.7", features = ["v4"] }

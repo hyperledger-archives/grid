@@ -110,8 +110,8 @@ impl Network {
         }
     }
 
-    pub fn send(&self, peer_id: String, msg: &[u8]) -> Result<(), SendError> {
-        let mesh_id = match rwlock_read_unwrap!(self.peers).get_by_key(&peer_id) {
+    pub fn send(&self, peer_id: &str, msg: &[u8]) -> Result<(), SendError> {
+        let mesh_id = match rwlock_read_unwrap!(self.peers).get_by_key(&peer_id.to_string()) {
             Some(mesh_id) => *mesh_id,
             None => {
                 return Err(SendError::NoPeerError(format!(
@@ -234,7 +234,7 @@ pub mod tests {
             assert_eq!(vec![peer_id.clone()], network_two.peer_ids());
 
             // send hello world
-            assert_ok(network_two.send(peer_id, b"hello_world"));
+            assert_ok(network_two.send(&peer_id, b"hello_world"));
         });
 
         // accept connection

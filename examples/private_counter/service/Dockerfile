@@ -23,21 +23,30 @@ RUN apt-get update \
  unzip
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
+    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /protoc3 \
+    && rm protoc-3.5.1-linux-x86_64.zip
+
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
+# Copy over libsplinter, protos and create the example folder, for the
+# relative dependencies
+COPY ./protos /protos
+COPY ./libsplinter /libsplinter
+RUN mkdir -p /examples/private_counter
+
 # Create an empty project, copy over the Cargo toml, and buld the deps first
-WORKDIR /private-counter
+WORKDIR /examples/private_counter
 
 RUN USER=root cargo new --bin service --name private-counter
 
-WORKDIR /private-counter/service
-COPY ./service/Cargo.toml ./Cargo.toml
+WORKDIR /examples/private_counter/service
+COPY ./examples/private_counter/service/Cargo.toml ./Cargo.toml
 RUN cargo build --release
 
 # Copy over the source and build the app
 RUN rm ./src/*.rs
-COPY ./service/src ./src
-
+COPY ./examples/private_counter/service/src ./src
 RUN rm ./target/release/private-counter* ./target/release/deps/private_counter*
 RUN cargo build --release
 
@@ -49,7 +58,7 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /private-counter/service/target/release/private-counter /
+COPY --from=BUILDER /examples/private_counter/service/target/release/private-counter /
 
 EXPOSE 8000
 CMD ["/private-counter"]
