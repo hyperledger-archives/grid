@@ -19,11 +19,13 @@ extern crate rocket;
 #[macro_use]
 extern crate serde_derive;
 
+mod error;
 mod routes;
 
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
 
+use crate::error::CliError;
 use crate::routes::{batches, state};
 
 #[get("/")]
@@ -31,17 +33,21 @@ fn index() -> &'static str {
     "Private XO Server"
 }
 
-fn main() -> Result<(), String> {
+fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
 
-    let (address, port) = split_bind(matches.value_of("bind").unwrap())?;
+    let (address, port) = split_bind(
+        matches
+            .value_of("bind")
+            .expect("Bind was not marked as a required attribute"),
+    )?;
 
     rocket::custom(
         Config::build(Environment::Production)
             .address(address)
             .port(port)
             .finalize()
-            .map_err(|err| format!("Invalid configuration: {:?}", err))?,
+            .map_err(|err| CliError(format!("Invalid configuration: {:?}", err)))?,
     )
     .mount(
         "/",
@@ -82,12 +88,12 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
 }
 
 fn valid_bind(s: String) -> Result<(), String> {
-    split_bind(s).map(|_| ())
+    split_bind(s).map(|_| ()).map_err(|err| err.to_string())
 }
 
-fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), String> {
+fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
     if s.as_ref().is_empty() {
-        return Err("Bind string must not be empty".into());
+        return Err(CliError("Bind string must not be empty".into()));
     }
     let mut parts = s.as_ref().split(":");
 
@@ -96,13 +102,13 @@ fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), String> {
     let port = if let Some(port_str) = parts.next() {
         match port_str.parse::<u16>() {
             Ok(port) if port > 0 => port,
-            _ => return Err(
+            _ => return Err(CliError(
                 format!(
                     "{} does not specify a valid port: must be an integer in the range 0 < port < 65535",
-                    s.as_ref()))
+                    s.as_ref())))
         }
     } else {
-        return Err(format!("{} must specify a port", s.as_ref()));
+        return Err(CliError(format!("{} must specify a port", s.as_ref())));
     };
 
     Ok((address.to_string(), port))
