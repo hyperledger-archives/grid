@@ -23,6 +23,7 @@ extern crate serde_derive;
 
 mod error;
 mod routes;
+mod service;
 
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
@@ -33,6 +34,7 @@ use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::CliError;
 use crate::routes::{batches, state};
+use crate::service::{start_service_loop, ServiceConfig, ServiceError, XoState};
 
 #[get("/")]
 fn index() -> &'static str {
@@ -41,8 +43,11 @@ fn index() -> &'static str {
 
 fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
-
     configure_logging(&matches);
+
+    let xo_state = XoState::default();
+
+    let service_config = get_service_config(&matches);
 
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(
@@ -50,6 +55,14 @@ fn main() -> Result<(), CliError> {
         matches
             .value_of("connect")
             .expect("Connect was not marked as a required attribute"),
+    )?;
+
+    let (send, recv) = crossbeam_channel::bounded(5);
+    start_service_loop(
+        service_config.clone(),
+        (send.clone(), recv),
+        network.clone(),
+        xo_state.clone(),
     )?;
 
     let (address, port) = split_endpoint(
@@ -81,8 +94,14 @@ fn main() -> Result<(), CliError> {
 }
 
 fn get_service_config(matches: &clap::ArgMatches) -> ServiceConfig {
-    let circuit = matches.value_of("circuit").unwrap().to_string();
-    let service_id = matches.value_of("service_id").unwrap().to_string();
+    let circuit = matches
+        .value_of("circuit")
+        .expect("Circuit was not marked as a required attribute")
+        .to_string();
+    let service_id = matches
+        .value_of("service_id")
+        .expect("Service id was not marked as a required attribute")
+        .to_string();
     let verifiers: Vec<String> = matches
         .values_of("verifier")
         .unwrap()
@@ -162,6 +181,34 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
+        .arg(
+            Arg::with_name("service_id")
+                .short("N")
+                .long("service-id")
+                .takes_value(true)
+                .value_name("ID")
+                .required(true)
+                .help("the name of this service, as presented to the network"),
+        )
+        .arg(
+            Arg::with_name("circuit")
+                .short("c")
+                .long("circuit")
+                .takes_value(true)
+                .value_name("CIRCUIT NAME")
+                .required(true)
+                .help("the name of the circuit to connect to"),
+        )
+        .arg(
+            Arg::with_name("verifier")
+                .short("V")
+                .long("verifier")
+                .takes_value(true)
+                .value_name("SERVICE_ID")
+                .required(true)
+                .multiple(true)
+                .help("the name of a service that will validate a counter increment"),
+        )
         .arg(
             Arg::with_name("bind")
                 .short("B")
@@ -257,4 +304,10 @@ fn split_endpoint<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
     };
 
     Ok((address.to_string(), port))
+}
+
+impl From<ServiceError> for CliError {
+    fn from(err: ServiceError) -> Self {
+        CliError(format!("Service Error: {}", err))
+    }
 }

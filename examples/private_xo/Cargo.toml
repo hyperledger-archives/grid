@@ -21,6 +21,7 @@ edition = "2018"
 [dependencies]
 libsplinter = { path = "../../libsplinter" }
 clap = "2.32"
+crossbeam-channel = "0.3"
 log = "0.4"
 protobuf = "2.2"
 rocket = "0.4"
