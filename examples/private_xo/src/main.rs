@@ -92,10 +92,11 @@ fn valid_bind(s: String) -> Result<(), String> {
 }
 
 fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
-    if s.as_ref().is_empty() {
+    let s = s.as_ref();
+    if s.is_empty() {
         return Err(CliError("Bind string must not be empty".into()));
     }
-    let mut parts = s.as_ref().split(":");
+    let mut parts = s.split(":");
 
     let address = parts.next().unwrap();
 
@@ -105,10 +106,10 @@ fn split_bind<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
             _ => return Err(CliError(
                 format!(
                     "{} does not specify a valid port: must be an integer in the range 0 < port < 65535",
-                    s.as_ref())))
+                    s)))
         }
     } else {
-        return Err(CliError(format!("{} must specify a port", s.as_ref())));
+        return Err(CliError(format!("{} must specify a port", s)));
     };
 
     Ok((address.to_string(), port))
