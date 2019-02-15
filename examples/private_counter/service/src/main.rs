@@ -18,9 +18,10 @@ use std::fmt::Write as FmtWrite;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::string::ToString;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread::Builder;
+use std::thread::{Builder, JoinHandle};
+use std::time::Duration;
 
 use ::log::LogLevel;
 use ::log::{debug, error, info, log, warn};
@@ -33,8 +34,8 @@ use uuid::Uuid;
 
 use libsplinter::mesh::Mesh;
 use libsplinter::network::{
-    sender::{NetworkMessageSender, SendRequest},
-    Network,
+    sender::{NetworkMessageSender, NetworkMessageSenderError, SendRequest},
+    Network, RecvTimeoutError,
 };
 use libsplinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
@@ -53,6 +54,9 @@ use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::{HandleError, ServiceError};
 
+// Recv timeout in secs
+const TIMEOUT_SEC: u64 = 2;
+
 #[derive(Default, Debug)]
 struct ServiceState {
     counter: u32,
@@ -60,9 +64,20 @@ struct ServiceState {
 }
 
 fn main() -> Result<(), ServiceError> {
-    let running = Arc::new(AtomicBool::new(true));
-
     let matches = configure_args().get_matches();
+
+    let matches2 = matches.clone();
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    ctrlc::set_handler(move || {
+        info!("Recieved Shutdown");
+        r.store(false, Ordering::SeqCst);
+
+        // wake the listener so it can shutdown
+        TcpStream::connect(matches2.value_of("bind").unwrap()).unwrap();
+    })
+    .expect("Error setting Ctrl-C handler");
+
     configure_logging(&matches);
 
     let state: Arc<Mutex<ServiceState>> = Default::default();
@@ -72,7 +87,7 @@ fn main() -> Result<(), ServiceError> {
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(&mut transport, matches.value_of("connect").unwrap())?;
     let (send, recv) = crossbeam_channel::bounded(5);
-    start_service_loop(
+    let (sender_thread, receiver_thread) = start_service_loop(
         circuit.clone(),
         service_id.clone(),
         (send.clone(), recv),
@@ -82,6 +97,7 @@ fn main() -> Result<(), ServiceError> {
     )?;
 
     let listener = TcpListener::bind(matches.value_of("bind").unwrap()).unwrap();
+
     let workers: usize = matches.value_of("workers").unwrap().parse().unwrap();
     let pool = ThreadPool::new(workers);
     let verifiers: Vec<String> = matches
@@ -93,6 +109,12 @@ fn main() -> Result<(), ServiceError> {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         debug!("Received connection");
+
+        if !running.load(Ordering::SeqCst) {
+            info!("Shutting Down");
+            break;
+        }
+
         let stream_state = state.clone();
         let peer_id = network.peer_ids()[0].clone();
         let stream_circuit = circuit.clone();
@@ -114,6 +136,9 @@ fn main() -> Result<(), ServiceError> {
             }
         });
     }
+
+    let _ = sender_thread.join();
+    let _ = receiver_thread.join();
 
     Ok(())
 }
@@ -160,23 +185,47 @@ fn start_service_loop(
     network: Network,
     state: Arc<Mutex<ServiceState>>,
     running: Arc<AtomicBool>,
-) -> Result<(), ServiceError> {
+) -> Result<
+    (
+        JoinHandle<Result<(), NetworkMessageSenderError>>,
+        JoinHandle<()>,
+    ),
+    ServiceError,
+> {
     info!("Starting Private Counter Service");
     let sender_network = network.clone();
     let (send, recv) = channel;
 
-    let _ = Builder::new()
+    let running_clone = running.clone();
+    let sender_thread = Builder::new()
         .name("NetworkMessageSender".into())
         .spawn(move || {
-            let network_sender = NetworkMessageSender::new(Box::new(recv), sender_network, running);
+            let network_sender =
+                NetworkMessageSender::new(Box::new(recv), sender_network, running_clone);
             network_sender.run()
-        });
+        })
+        .map_err(|err| {
+            ServiceError(format!(
+                "Unable to start network message sender thread: {}",
+                err
+            ))
+        })?;
 
     let recv_network = network.clone();
     let reply_sender = send.clone();
-    let _ = Builder::new()
+    let receiver_thread = Builder::new()
         .name("NetworkReceiver".into())
-        .spawn(move || run_service_loop(recv_network, &reply_sender, circuit, service_id, state));
+        .spawn(move || {
+            run_service_loop(
+                recv_network,
+                &reply_sender,
+                circuit,
+                service_id,
+                state,
+                running,
+            )
+        })
+        .map_err(|err| ServiceError(format!("Unable to start network receiver thread: {}", err)))?;
 
     let connect_request_msg_bytes = create_connect_request()
         .map_err(|err| ServiceError(format!("Unable to create connect request: {}", err)))?;
@@ -187,7 +236,7 @@ fn start_service_loop(
             .map_err(|err| ServiceError(format!("Unable to send connect request: {:?}", err)))?;
     }
 
-    Ok(())
+    Ok((sender_thread, receiver_thread))
 }
 
 fn run_service_loop(
@@ -196,9 +245,11 @@ fn run_service_loop(
     circuit: String,
     service_id: String,
     state: Arc<Mutex<ServiceState>>,
+    running: Arc<AtomicBool>,
 ) {
-    loop {
-        match network.recv() {
+    let timeout = Duration::from_secs(TIMEOUT_SEC);
+    while running.load(Ordering::SeqCst) {
+        match network.recv_timeout(timeout) {
             Ok(message) => {
                 let msg: NetworkMessage =
                     unwrap_or_break!(protobuf::parse_from_bytes(message.payload()));
@@ -239,10 +290,17 @@ fn run_service_loop(
                     }
                 };
             }
-            Err(err) => debug!("Error: {:?}", err),
+            Err(RecvTimeoutError::Disconnected) => {
+                error!("Network has disconnected");
+                break;
+            }
+            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::NoPeerError(err)) => {
+                warn!("Received NoPeerError: {}", err);
+            }
         }
     }
-
+    info!("Sending disconnect request");
     let disconnect_msg = create_circuit_service_disconnect_request(&circuit, &service_id)
         .expect("Unable to create disconnect message");
     for peer_id in network.peer_ids() {
