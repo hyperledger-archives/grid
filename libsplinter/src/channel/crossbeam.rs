@@ -40,11 +40,15 @@ where
     }
 
     fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
-        let request = crossbeam_channel::Receiver::recv_timeout(self, timeout).map_err(|err| {
-            RecvTimeoutError {
-                error: err.to_string(),
+        let request = match crossbeam_channel::Receiver::recv_timeout(self, timeout) {
+            Ok(request) => request,
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                return Err(RecvTimeoutError::Timeout);
             }
-        })?;
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+                return Err(RecvTimeoutError::Disconnected);
+            }
+        };
         Ok(request)
     }
 }

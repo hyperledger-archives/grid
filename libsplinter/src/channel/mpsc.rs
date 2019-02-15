@@ -39,10 +39,13 @@ where
     }
 
     fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
-        let request =
-            mpsc::Receiver::recv_timeout(self, timeout).map_err(|err| RecvTimeoutError {
-                error: err.to_string(),
-            })?;
+        let request = match mpsc::Receiver::recv_timeout(self, timeout) {
+            Ok(request) => request,
+            Err(mpsc::RecvTimeoutError::Timeout) => return Err(RecvTimeoutError::Timeout),
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err(RecvTimeoutError::Disconnected);
+            }
+        };
         Ok(request)
     }
 }

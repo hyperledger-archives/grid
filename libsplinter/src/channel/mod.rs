@@ -54,8 +54,9 @@ pub enum TryRecvError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct RecvTimeoutError {
-    pub error: String,
+pub enum RecvTimeoutError {
+    Timeout,
+    Disconnected,
 }
 
 #[derive(Debug, PartialEq)]
