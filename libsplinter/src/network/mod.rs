@@ -20,6 +20,7 @@ pub mod sender;
 use uuid::Uuid;
 
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use crate::collections::BiHashMap;
 use crate::mesh::{
@@ -131,6 +132,24 @@ impl Network {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvError::NoPeerError(format!(
+                    "Recv Error: No Peer with mesh id {} found",
+                    envelope.id()
+                )));
+            }
+        };
+
+        Ok(NetworkMessage::new(peer_id, envelope.take_payload()))
+    }
+
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<NetworkMessage, RecvTimeoutError> {
+        let envelope = self
+            .mesh
+            .recv_timeout(timeout)
+            .map_err(|err| RecvTimeoutError::from_mesh_error(err))?;
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_by_value(&envelope.id()) {
+            Some(peer_id) => peer_id.to_string(),
+            None => {
+                return Err(RecvTimeoutError::NoPeerError(format!(
                     "Recv Error: No Peer with mesh id {} found",
                     envelope.id()
                 )));
