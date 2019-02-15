@@ -15,7 +15,7 @@
 mod actions;
 mod error;
 
-use crate::actions::{do_connect, do_echo, do_send};
+use crate::actions::{do_connect, do_disconnect, do_echo, do_send};
 use crate::error::CliError;
 
 use std::str::FromStr;
@@ -48,6 +48,11 @@ fn run() -> Result<(), CliError> {
                 (@arg circuit: +takes_value "The circuit name to connect to")
                 (@arg service: +takes_value "The id of the service connecting to the node")
             )
+            (@subcommand disconnect =>
+                (about: "Disconnect a service from circuit")
+                (@arg circuit: +takes_value "The circuit name to disconnect from")
+                (@arg service: +takes_value "The id of the service disconnecting from the node")
+            )
             (@subcommand send =>
                 (about: "Connect a service to circuit")
                 (@arg circuit: +takes_value "The circuit name to connect to")
@@ -79,6 +84,12 @@ fn run() -> Result<(), CliError> {
         ("service", Some(m)) => {
             match m.subcommand() {
                 ("connect", Some(m)) => do_connect(
+                    url,
+                    m.value_of("circuit").unwrap().to_string(),
+                    m.value_of("service").unwrap().to_string(),
+                )
+                .map_err(CliError::from),
+                ("disconnect", Some(m)) => do_disconnect(
                     url,
                     m.value_of("circuit").unwrap().to_string(),
                     m.value_of("service").unwrap().to_string(),
