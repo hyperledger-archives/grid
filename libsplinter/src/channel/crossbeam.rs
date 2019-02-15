@@ -29,9 +29,13 @@ where
     }
 
     fn try_recv(&self) -> Result<T, TryRecvError> {
-        let request = crossbeam_channel::Receiver::try_recv(self).map_err(|err| TryRecvError {
-            error: err.to_string(),
-        })?;
+        let request = match crossbeam_channel::Receiver::try_recv(self) {
+            Ok(request) => request,
+            Err(crossbeam_channel::TryRecvError::Empty) => return Err(TryRecvError::Empty),
+            Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                return Err(TryRecvError::Disconnected);
+            }
+        };
         Ok(request)
     }
 

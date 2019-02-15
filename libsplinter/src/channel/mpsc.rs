@@ -30,9 +30,11 @@ where
     }
 
     fn try_recv(&self) -> Result<T, TryRecvError> {
-        let request = mpsc::Receiver::try_recv(self).map_err(|err| TryRecvError {
-            error: err.to_string(),
-        })?;
+        let request = match mpsc::Receiver::try_recv(self) {
+            Ok(request) => request,
+            Err(mpsc::TryRecvError::Empty) => return Err(TryRecvError::Empty),
+            Err(mpsc::TryRecvError::Disconnected) => return Err(TryRecvError::Disconnected),
+        };
         Ok(request)
     }
 

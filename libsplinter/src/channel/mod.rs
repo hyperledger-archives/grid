@@ -48,8 +48,9 @@ pub struct RecvError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TryRecvError {
-    pub error: String,
+pub enum TryRecvError {
+    Empty,
+    Disconnected,
 }
 
 #[derive(Debug, PartialEq)]
