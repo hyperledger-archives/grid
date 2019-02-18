@@ -228,8 +228,15 @@ impl SplinterDaemon {
         for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
             if let Some(endpoint) = node.endpoints().get(0) {
                 // if the node is this node do not try to connect.
-                if endpoint != &self.network_endpoint {
-                    let connection_result = self.transport.connect(&endpoint);
+                let node_endpoint = {
+                    if endpoint.starts_with("tcp://") {
+                        &endpoint[6..]
+                    } else {
+                        endpoint
+                    }
+                };
+                if &node_endpoint != &self.network_endpoint {
+                    let connection_result = self.transport.connect(&node_endpoint);
                     let connection = match connection_result {
                         Ok(connection) => connection,
                         Err(err) => {
