@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::channel::{Receiver, RecvError, SendError, Sender, TryRecvError};
+use crate::channel::{Receiver, RecvError, RecvTimeoutError, SendError, Sender, TryRecvError};
 
 use std::sync::mpsc;
+use std::time::Duration;
 
 // Implement the Receiver and Sender Traits for mpsc channels
 impl<T> Receiver<T> for mpsc::Receiver<T>
@@ -29,9 +30,22 @@ where
     }
 
     fn try_recv(&self) -> Result<T, TryRecvError> {
-        let request = mpsc::Receiver::try_recv(self).map_err(|err| TryRecvError {
-            error: err.to_string(),
-        })?;
+        let request = match mpsc::Receiver::try_recv(self) {
+            Ok(request) => request,
+            Err(mpsc::TryRecvError::Empty) => return Err(TryRecvError::Empty),
+            Err(mpsc::TryRecvError::Disconnected) => return Err(TryRecvError::Disconnected),
+        };
+        Ok(request)
+    }
+
+    fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
+        let request = match mpsc::Receiver::recv_timeout(self, timeout) {
+            Ok(request) => request,
+            Err(mpsc::RecvTimeoutError::Timeout) => return Err(RecvTimeoutError::Timeout),
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err(RecvTimeoutError::Disconnected);
+            }
+        };
         Ok(request)
     }
 }

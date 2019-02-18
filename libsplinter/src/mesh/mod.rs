@@ -58,6 +58,7 @@ mod reactor;
 use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 pub use crate::mesh::control::{AddError, Control, RemoveError};
 pub use crate::mesh::incoming::Incoming;
@@ -147,11 +148,16 @@ impl Mesh {
     }
 
     /// Receive a new envelope from the mesh.
-    ///
-    /// This is a convenience function that avoids an extra clone, and is equivalent to
-    /// `mesh.incoming().recv()`.
     pub fn recv(&self) -> Result<Envelope, RecvError> {
         self.incoming.recv().map_err(|_| RecvError)
+    }
+
+    /// Receive a new envelope from the mesh.
+
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
+        self.incoming
+            .recv_timeout(timeout)
+            .map_err(|err| RecvTimeoutError::from(err))
     }
 
     /// Create a new handle for sending to the existing connection with the given id.
@@ -192,6 +198,21 @@ impl SendError {
 
 #[derive(Debug)]
 pub struct RecvError;
+
+#[derive(Debug)]
+pub enum RecvTimeoutError {
+    Timeout,
+    Disconnected,
+}
+
+impl From<incoming::RecvTimeoutError> for RecvTimeoutError {
+    fn from(err: incoming::RecvTimeoutError) -> Self {
+        match err {
+            incoming::RecvTimeoutError::Timeout => RecvTimeoutError::Timeout,
+            incoming::RecvTimeoutError::Disconnected => RecvTimeoutError::Disconnected,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

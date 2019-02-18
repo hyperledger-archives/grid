@@ -11,10 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use ::log::{log, warn};
+use ::log::{error, log, warn};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::channel::{Receiver, RecvError};
+use crate::channel::{Receiver, RecvTimeoutError};
 use crate::network::Network;
+
+// Recv timeout in secs
+const TIMEOUT_SEC: u64 = 2;
 
 // Message to send to the network message sender with the recipient and payload
 #[derive(Clone, Debug, PartialEq)]
@@ -42,16 +48,32 @@ impl SendRequest {
 pub struct NetworkMessageSender {
     rc: Box<Receiver<SendRequest>>,
     network: Network,
+    running: Arc<AtomicBool>,
 }
 
 impl NetworkMessageSender {
-    pub fn new(rc: Box<Receiver<SendRequest>>, network: Network) -> Self {
-        NetworkMessageSender { rc, network }
+    pub fn new(rc: Box<Receiver<SendRequest>>, network: Network, running: Arc<AtomicBool>) -> Self {
+        NetworkMessageSender {
+            rc,
+            network,
+            running,
+        }
     }
 
     pub fn run(&self) -> Result<(), NetworkMessageSenderError> {
-        loop {
-            let send_request = self.rc.recv()?;
+        let timeout = Duration::from_secs(TIMEOUT_SEC);
+        while self.running.load(Ordering::SeqCst) {
+            let send_request = match self.rc.recv_timeout(timeout) {
+                Ok(send_request) => send_request,
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => {
+                    error!("Recieved Disconnected Error from receiver");
+                    return Err(NetworkMessageSenderError::RecvTimeoutError(String::from(
+                        "Recieved Disconnected Error from receiver",
+                    )));
+                }
+            };
+
             match self
                 .network
                 .send(send_request.recipient().into(), send_request.payload())
@@ -60,18 +82,31 @@ impl NetworkMessageSender {
                 Err(err) => warn!("Unable to send message: {:?}", err),
             };
         }
+
+        // Finish sending any messages that may be queued
+        loop {
+            let send_request = match self.rc.try_recv() {
+                Ok(send_request) => send_request,
+                // If an Empty or Disconnected  error is returned, end looping
+                Err(_) => break,
+            };
+
+            match self
+                .network
+                .send(send_request.recipient().into(), send_request.payload())
+            {
+                Ok(_) => (),
+                Err(err) => warn!("Unable to send message: {:?}", err),
+            };
+        }
+
+        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub enum NetworkMessageSenderError {
-    RecvError(String),
-}
-
-impl From<RecvError> for NetworkMessageSenderError {
-    fn from(recv_error: RecvError) -> Self {
-        NetworkMessageSenderError::RecvError(format!("Recv Error: {:?}", recv_error))
-    }
+    RecvTimeoutError(String),
 }
 
 #[cfg(test)]
@@ -101,7 +136,8 @@ mod tests {
         let mesh1 = Mesh::new(1, 1);
         let network1 = Network::new(mesh1.clone());
 
-        let network_message_sender = NetworkMessageSender::new(receiver, network1.clone());
+        let running = Arc::new(AtomicBool::new(true));
+        let network_message_sender = NetworkMessageSender::new(receiver, network1.clone(), running);
 
         thread::spawn(move || {
             let mesh2 = Mesh::new(1, 1);
@@ -139,7 +175,8 @@ mod tests {
         let mesh1 = Mesh::new(5, 5);
         let network1 = Network::new(mesh1.clone());
 
-        let network_message_sender = NetworkMessageSender::new(receiver, network1.clone());
+        let running = Arc::new(AtomicBool::new(true));
+        let network_message_sender = NetworkMessageSender::new(receiver, network1.clone(), running);
 
         thread::spawn(move || {
             let mesh2 = Mesh::new(5, 5);
