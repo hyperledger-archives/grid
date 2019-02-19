@@ -14,17 +14,17 @@
 # ------------------------------------------------------------------------------
 
 # Description:
-#   Builds the environment needed to build the Sawtooth Supply Chain docs
-#   Running the image will put the docs in
-#   sawtooth-supply-chain/docs/build on your local machine.
+#   Builds the environment needed to build the Grid Track and Trade docs
+#   Running the image will put the docs in grid/docs/build on your local
+#   machine.
 #
 # Build:
-#   $ cd sawtooth-supply-chain
+#   $ cd grid
 #   $ docker build . -f docs/supply-chain-build-docs -t supply-chain-build-docs
 #
 # Run:
-#   $ cd sawtooth-supply-chain
-#   $ docker run -v $(pwd):/project/sawtooth-supply-chain supply-chain-build-docs
+#   $ cd grid
+#   $ docker run -v $(pwd):/project/grid supply-chain-build-docs
 
 FROM ubuntu:bionic
 
@@ -81,5 +81,5 @@ RUN apt-get update && apt-get install -y -q \
     sphinxcontrib-openapi \
     sphinx_rtd_theme
 
-WORKDIR /project/sawtooth-supply-chain/docs
+WORKDIR /project/grid/docs
 CMD make html latexpdf
