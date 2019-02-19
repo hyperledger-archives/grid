@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Sawtooth Supply Chain documentation build configuration file.
+# Hyperledger Grid documentation build configuration file.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -60,7 +60,7 @@ source_suffix = '.rst'
 master_doc = 'contents'
 
 # General information about the project.
-project = u'Sawtooth Supply Chain'
+project = u'Hyperledger Grid'
 copyright = u'2015-2017, Intel Corporation'
 author = u'Intel Corporation'
 
@@ -223,7 +223,7 @@ html_show_sphinx = False
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'SawtoothSupplyChain'
+htmlhelp_basename = 'HyperledgerGrid'
 
 PREAMBLE = ''
 
@@ -247,7 +247,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'sawtooth.tex', u'Sawtooth Supply Chain Documentation',
+  (master_doc, 'hyperledgergrid.tex', u'Hyperledger Grid Documentation',
    u'Intel Corporation', 'manual')
 ]
 
@@ -278,8 +278,8 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     (master_doc,
-     'sawtooth_supply_chain',
-     u'Sawtooth Supply Chain Documentation',
+     'hyperledger_grid',
+     u'Hyperledger Grid Documentation',
      [author], 1)
 ]
 
@@ -293,8 +293,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'SawtoothSupplyChain', u'Sawtooth Supply Chain Documentation',
-   author, 'SawtoothSupplyChain', 'One line description of project.',
+  (master_doc, 'HyperledgerGrid', u'Hyperledger Grid Documentation',
+   author, 'HyperledgerGrid',
+   'Framework for building supply chain solutions.',
    'Miscellaneous'),
 ]
 
