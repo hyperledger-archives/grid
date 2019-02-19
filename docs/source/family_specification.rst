@@ -1,11 +1,11 @@
-******************************************************
-Sawtooth Supply Chain Transaction Family Specification
-******************************************************
+*****************************************************
+Grid Track and Trace Transaction Family Specification
+*****************************************************
 
 Overview
 ========
 
-The Sawtooth Supply Chain transaction family allows users to track
+The Grid Track and Trace transaction family allows users to track
 goods as they move through a supply chain. Records for goods include a
 history of ownership and custodianship, as well as histories for a
 variety of properties such as temperature and location. These
@@ -16,19 +16,19 @@ types.
 State
 =====
 
-All Supply Chain objects are serialized using Protocol Buffers before being
-stored in state. These objects include: Agents, Properties
+All Grid Track and Trace objects are serialized using Protocol Buffers before
+being stored in state. These objects include: Agents, Properties
 (accompanied by their auxiliary PropertyPage objects), Proposals,
 Records, and RecordTypes. As described in the Addressing_ section
 below, these objects are stored in separate sub-namespaces under the
-Supply Chain namespace. To handle hash collisions, all objects are stored in
-lists within protobuf "Container" objects.
+Grid Track and Trace namespace. To handle hash collisions, all objects are
+stored in lists within protobuf "Container" objects.
 
 
 Records
 -------
 
-Records represent the goods being tracked by Supply Chain. Almost
+Records represent the goods being tracked by Grid Track and Trace. Almost
 every transaction references some Record.
 
 A Record contains a unique identifier, the name of a RecordType, and
@@ -392,8 +392,8 @@ then by ``timestamp`` (earliest to latest).
 Addressing
 ----------
 
-Supply Chain objects are stored under the namespace obtained by taking the
-first six characters of the SHA-512 hash of the string
+Grid Track and Trace objects are stored under the namespace obtained by taking
+the first six characters of the SHA-512 hash of the string
 ``supply_chain``:
 
 .. code-block:: pycon
@@ -404,8 +404,8 @@ first six characters of the SHA-512 hash of the string
    >>> get_hash('supply_chain')[:6]
    '3400de'
 
-After its namespace prefix, the next two characters of a Supply Chain object's
-address are a string based on the object's type:
+After its namespace prefix, the next two characters of a Grid Track and Trace
+object's address are a string based on the object's type:
 
 - Agent: ``ae``
 - Property / PropertyPage: ``ea``
@@ -460,8 +460,8 @@ Transactions
 Transaction Payload
 -------------------
 
-All Supply Chain transactions are wrapped in a tagged payload object to allow
-for the transaction to be dispatched to appropriate handling logic.
+All Grid Track and Trace transactions are wrapped in a tagged payload object to
+allow for the transaction to be dispatched to appropriate handling logic.
 
 .. code-block:: protobuf
 
