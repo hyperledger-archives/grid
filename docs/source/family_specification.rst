@@ -394,15 +394,15 @@ Addressing
 
 Grid Track and Trace objects are stored under the namespace obtained by taking
 the first six characters of the SHA-512 hash of the string
-``supply_chain``:
+``grid_track_and_trace``:
 
 .. code-block:: pycon
 
    >>> def get_hash(string):
    ...     return hashlib.sha512(string.encode('utf-8')).hexdigest()
    ...
-   >>> get_hash('supply_chain')[:6]
-   '3400de'
+   >>> get_hash('grid_track_and_trace')[:6]
+   'a43b46'
 
 After its namespace prefix, the next two characters of a Grid Track and Trace
 object's address are a string based on the object's type:
@@ -450,8 +450,8 @@ PropertyPage is:
 
 .. code-block:: pycon
 
-    >>> get_hash('supply_chain')[:6] + 'ea'  + get_hash('fish-456')[:36] + get_hash('temperature')[:22] + hex(28)[2:].zfill(4)
-    '3400deea840d00edc7507ed05cfb86938e3624ada6c7f08bfeb8fd09b963f81f9d001c'
+    >>> get_hash('grid_track_and_trace')[:6] + 'ea'  + get_hash('fish-456')[:36] + get_hash('temperature')[:22] + hex(28)[2:].zfill(4)
+    'a43b46ea840d00edc7507ed05cfb86938e3624ada6c7f08bfeb8fd09b963f81f9d001c'
 
 
 Transactions
