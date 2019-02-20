@@ -25,7 +25,7 @@ serde = "1.0"
 serde_yaml = "0.7"
 serde_json = "1.0"
 serde_derive = "1.0"
-sawtooth-sdk = "^0.1"
+sawtooth-sdk = "^0.2"
 pike_db = { path = "../db/pike_db/" }
 protobuf = "2"
 uuid = { version = "0.5", features = ["v4"] }

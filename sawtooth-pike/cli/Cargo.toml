@@ -19,7 +19,7 @@ authors = ["Cargill"]
 build = "build.rs"
 
 [dependencies]
-sawtooth-sdk = "^0.1"
+sawtooth-sdk = "^0.2"
 addresser = {path = "../addresser"}
 protobuf = "2"
 clap = "2"

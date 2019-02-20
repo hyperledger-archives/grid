@@ -20,4 +20,4 @@ authors = ["Cargill, Incorporated"]
 [dependencies]
 log = "0.3.8"
 wasmi = { git = "https://github.com/pepyakin/wasmi.git" }
-sawtooth-sdk = "^0.1"
+sawtooth-sdk = "^0.2"
