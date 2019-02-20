@@ -30,3 +30,4 @@ sawtooth-sdk = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
 simple_logger = "1.0"
+transact = { git = "https://github.com/bitwiseio/transact" }
