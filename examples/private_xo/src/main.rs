@@ -25,6 +25,9 @@ mod error;
 mod routes;
 mod service;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
 
@@ -44,6 +47,12 @@ fn index() -> &'static str {
 fn main() -> Result<(), CliError> {
     let matches = configure_app_args().get_matches();
     configure_logging(&matches);
+    let bind_value = matches
+        .value_of("bind")
+        .expect("Bind was not marked as a required attribute");
+
+    let running = Arc::new(AtomicBool::new(true));
+    configure_shutdown_handler(Arc::clone(&running))?;
 
     let xo_state = XoState::default();
 
@@ -63,13 +72,10 @@ fn main() -> Result<(), CliError> {
         (send.clone(), recv),
         network.clone(),
         xo_state.clone(),
+        running,
     )?;
 
-    let (address, port) = split_endpoint(
-        matches
-            .value_of("bind")
-            .expect("Bind was not marked as a required attribute"),
-    )?;
+    let (address, port) = split_endpoint(bind_value)?;
 
     rocket::custom(
         Config::build(Environment::Production)
@@ -276,6 +282,14 @@ fn configure_logging(matches: &clap::ArgMatches) {
         _ => simple_logger::init_with_level(log::Level::Debug),
     };
     logger.expect("Failed to create logger");
+}
+
+fn configure_shutdown_handler(running: Arc<AtomicBool>) -> Result<(), CliError> {
+    ctrlc::set_handler(move || {
+        info!("Recieved Shutdown");
+        running.store(false, Ordering::SeqCst);
+    })
+    .map_err(|err| CliError(format!("Unable to create control c handler: {}", err)))
 }
 
 fn valid_endpoint(s: String) -> Result<(), String> {

@@ -15,7 +15,10 @@
 mod error;
 
 use std::fmt::Write as FmtWrite;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread::Builder;
+use std::time::Duration;
 
 use crossbeam_channel;
 use protobuf::Message;
@@ -39,6 +42,9 @@ use libsplinter::protos::n_phase::{
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 
 pub use crate::service::error::ServiceError;
+
+// Recv timeout in secs
+const TIMEOUT_SEC: u64 = 2;
 
 macro_rules! unwrap_or_break {
     ($result:expr) => {
@@ -92,15 +98,18 @@ pub fn start_service_loop(
     ),
     network: Network,
     state: XoState,
+    running: Arc<AtomicBool>,
 ) -> Result<(), ServiceError> {
     info!("Starting Private Counter Service");
     let sender_network = network.clone();
     let (send, recv) = channel;
 
+    let network_sender_run_flag = running.clone();
     let _ = Builder::new()
         .name("NetworkMessageSender".into())
         .spawn(move || {
-            let network_sender = NetworkMessageSender::new(Box::new(recv), sender_network);
+            let network_sender =
+                NetworkMessageSender::new(Box::new(recv), sender_network, network_sender_run_flag);
             network_sender.run()
         });
 
@@ -108,7 +117,9 @@ pub fn start_service_loop(
     let reply_sender = send.clone();
     let _ = Builder::new()
         .name("NetworkReceiver".into())
-        .spawn(move || run_service_loop(recv_network, &reply_sender, service_config, state));
+        .spawn(move || {
+            run_service_loop(recv_network, &reply_sender, service_config, state, running)
+        });
 
     let connect_request_msg_bytes = create_connect_request()
         .map_err(|err| ServiceError(format!("Unable to create connect request: {}", err)))?;
@@ -127,9 +138,11 @@ fn run_service_loop(
     reply_sender: &crossbeam_channel::Sender<SendRequest>,
     service_config: ServiceConfig,
     state: XoState,
+    running: Arc<AtomicBool>,
 ) {
-    loop {
-        match network.recv() {
+    let timeout = Duration::from_secs(TIMEOUT_SEC);
+    while running.load(Ordering::SeqCst) {
+        match network.recv_timeout(timeout) {
             Ok(message) => {
                 let msg: NetworkMessage =
                     unwrap_or_break!(protobuf::parse_from_bytes(message.payload()));
