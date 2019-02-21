@@ -218,12 +218,6 @@ impl SplinterDaemon {
             };
         }
 
-        let connect_request_msg_bytes = create_connect_request()?;
-        for peer_id in self.network.peer_ids() {
-            debug!("Sending connect request to peer {}", peer_id);
-            self.network.send(&peer_id, &connect_request_msg_bytes)?;
-        }
-
         // For each node in the circuit_directory, try to connect and add them to the network
         for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
             if let Some(endpoint) = node.endpoints().get(0) {
@@ -247,6 +241,12 @@ impl SplinterDaemon {
             } else {
                 debug!("Unable to connect to node: {}", node_id);
             }
+        }
+
+        let connect_request_msg_bytes = create_connect_request()?;
+        for peer_id in self.network.peer_ids() {
+            debug!("Sending connect request to peer {}", peer_id);
+            self.network.send(&peer_id, &connect_request_msg_bytes)?;
         }
 
         let timeout = Duration::from_secs(TIMEOUT_SEC);

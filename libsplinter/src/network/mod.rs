@@ -19,6 +19,7 @@ pub mod sender;
 
 use uuid::Uuid;
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -48,26 +49,96 @@ impl NetworkMessage {
     }
 }
 
+struct PeerMap {
+    peers: BiHashMap<String, usize>,
+    redirects: HashMap<String, String>,
+}
+
+/// A map of Peer IDs to mesh IDs, which also maintains a redirect table for updated peer ids.
+impl PeerMap {
+    fn new() -> Self {
+        PeerMap {
+            peers: BiHashMap::new(),
+            redirects: HashMap::new(),
+        }
+    }
+
+    /// Returns the current list of peer ids.
+    ///
+    /// This list does not include any of the redirected peer ids.
+    fn peer_ids(&self) -> Vec<String> {
+        self.peers.keys().map(|left| left.to_string()).collect()
+    }
+
+    /// Insert a new peer id for a given mesh id
+    fn insert(&mut self, peer_id: String, mesh_id: usize) {
+        self.peers.insert(peer_id, mesh_id);
+    }
+
+    /// Remove a peer id and all of its redirects
+    fn remove(&mut self, peer_id: &str) -> Option<usize> {
+        self.redirects
+            .retain(|_, target_peer_id| target_peer_id != peer_id);
+        self.peers
+            .remove_by_key(&peer_id.to_string())
+            .map(|(_, mesh_id)| mesh_id)
+    }
+
+    /// Updates a peer id, and creates a redirect for the old id to the given new one.
+    ///
+    /// Additionally, it updates all of the old redirects to point to the given new one.
+    fn update(&mut self, old_peer_id: String, new_peer_id: String) -> Result<(), PeerUpdateError> {
+        if let Some((_, mesh_id)) = self.peers.remove_by_key(&old_peer_id) {
+            self.peers.insert(new_peer_id.clone(), mesh_id);
+
+            // update the old forwards
+            for (_, v) in self
+                .redirects
+                .iter_mut()
+                .filter(|(_, v)| **v == old_peer_id)
+            {
+                *v = new_peer_id.clone()
+            }
+
+            self.redirects.insert(old_peer_id, new_peer_id);
+
+            Ok(())
+        } else {
+            Err(PeerUpdateError {})
+        }
+    }
+
+    /// Returns the mesh id for the given peer id, following redirects if necessary.
+    fn get_mesh_id(&self, peer_id: &str) -> Option<&usize> {
+        self.redirects
+            .get(peer_id)
+            .and_then(|target_peer_id| self.peers.get_by_key(target_peer_id))
+            .or_else(|| self.peers.get_by_key(&peer_id.to_string()))
+    }
+
+    /// Returns the direct peer id for the given mesh_id
+    fn get_peer_id(&self, mesh_id: &usize) -> Option<&String> {
+        self.peers.get_by_value(mesh_id)
+    }
+}
+
 #[derive(Clone)]
 pub struct Network {
     // Peer Id to Connection Id
-    peers: Arc<RwLock<BiHashMap<String, usize>>>,
+    peers: Arc<RwLock<PeerMap>>,
     mesh: Mesh,
 }
 
 impl Network {
     pub fn new(mesh: Mesh) -> Self {
         Network {
-            peers: Arc::new(RwLock::new(BiHashMap::new())),
+            peers: Arc::new(RwLock::new(PeerMap::new())),
             mesh,
         }
     }
 
     pub fn peer_ids(&self) -> Vec<String> {
-        rwlock_read_unwrap!(self.peers)
-            .keys()
-            .map(|left| left.to_string())
-            .collect()
+        rwlock_read_unwrap!(self.peers).peer_ids()
     }
 
     pub fn add_connection(
@@ -83,7 +154,7 @@ impl Network {
     }
 
     pub fn remove_connection(&self, peer_id: &String) -> Result<(), ConnectionError> {
-        if let Some((_, mesh_id)) = rwlock_write_unwrap!(self.peers).remove_by_key(peer_id) {
+        if let Some(mesh_id) = rwlock_write_unwrap!(self.peers).remove(peer_id) {
             self.mesh.remove(mesh_id)?;
         }
 
@@ -103,17 +174,11 @@ impl Network {
     }
 
     pub fn update_peer_id(&self, old_id: String, new_id: String) -> Result<(), PeerUpdateError> {
-        let mut peers = rwlock_write_unwrap!(self.peers);
-        if let Some((_, mesh_id)) = peers.remove_by_key(&old_id) {
-            peers.insert(new_id, mesh_id);
-            Ok(())
-        } else {
-            Err(PeerUpdateError {})
-        }
+        rwlock_write_unwrap!(self.peers).update(old_id, new_id)
     }
 
     pub fn send(&self, peer_id: &str, msg: &[u8]) -> Result<(), SendError> {
-        let mesh_id = match rwlock_read_unwrap!(self.peers).get_by_key(&peer_id.to_string()) {
+        let mesh_id = match rwlock_read_unwrap!(self.peers).get_mesh_id(peer_id) {
             Some(mesh_id) => *mesh_id,
             None => {
                 return Err(SendError::NoPeerError(format!(
@@ -129,7 +194,7 @@ impl Network {
 
     pub fn recv(&self) -> Result<NetworkMessage, RecvError> {
         let envelope = self.mesh.recv()?;
-        let peer_id = match rwlock_read_unwrap!(self.peers).get_by_value(&envelope.id()) {
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(&envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvError::NoPeerError(format!(
@@ -144,7 +209,7 @@ impl Network {
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<NetworkMessage, RecvTimeoutError> {
         let envelope = self.mesh.recv_timeout(timeout)?;
-        let peer_id = match rwlock_read_unwrap!(self.peers).get_by_value(&envelope.id()) {
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(&envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvTimeoutError::NoPeerError(format!(
