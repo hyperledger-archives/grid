@@ -20,7 +20,7 @@ description = "Grid Track and Trace Transaction Processor"
 homepage = "https://grid.hyperledger.org"
 
 [dependencies]
-sawtooth-sdk = "^0.1"
+sawtooth-sdk = "^0.2"
 rust-crypto = "0.2.36"
 rustc-serialize = "0.3.22"
 sawtooth-zmq = "0.8.2-dev5"
