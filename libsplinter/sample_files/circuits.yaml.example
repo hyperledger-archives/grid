@@ -13,23 +13,21 @@
 # limitations under the License.
 ---
 nodes:
-  12:
+  012:
     endpoints:
-      - "tcp://1.2.3.4:1234"
-      - "inproc://127.0.0.1:100001"
+      - tcp://127.0.0.1:8044
   345:
-    endpoint:
-    - "tcp://5.6.7.8:5678"
+    endpoints:
+      - tcp://127.0.0.1:8046
 circuits:
   alpha:
     auth: trust
     members:
-      - "012"
-      - "345"
-    services:
-      - abc
-      - def
-      - ghi
+      - 012 # <- public key, matches key in node definition
+      - 345
+    roster:
+      - service_a
+      - service_b
     persistence: any
     durability: none
     routes: require_direct
