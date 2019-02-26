@@ -44,6 +44,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
         let circuit_name = msg.get_circuit();
         let msg_sender = msg.get_sender();
         let recipient = msg.get_recipient();
+        let recipient_id = format!("{}-{}", circuit_name, recipient);
+        let sender_id = format!("{}-{}", circuit_name, msg_sender);
 
         // Get read lock on state
         let state = rwlock_read_unwrap!(self.state);
@@ -69,7 +71,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     let network_msg_bytes =
                         create_message(msg_bytes, CircuitMessageType::CIRCUIT_ERROR_MESSAGE)?;
                     (network_msg_bytes, context.source_peer_id())
-                } else if state.service_directory().get(msg_sender).is_none() {
+                } else if state.service_directory().get(&sender_id).is_none() {
                     // Check if the message sender is registered on the circuit
                     // if the sender is not connected, send circuit error
                     let mut error_message = CircuitError::new();
@@ -87,7 +89,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     (network_msg_bytes, context.source_peer_id())
                 } else if circuit.roster().contains(&recipient.to_string()) {
                     // check if the recipient service is allowed on the circuit and registered
-                    if let Some(service) = state.service_directory().get(recipient) {
+                    if let Some(service) = state.service_directory().get(&recipient_id) {
                         let node_id = service.node().id();
                         // If the service is on this node send message to the service, otherwise
                         // send the message to the node the service is connected to
@@ -216,11 +218,11 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("abc".to_string(), service_abc);
+            .add_service("alpha-abc".to_string(), service_abc);
         state
             .write()
             .unwrap()
-            .add_service("def".to_string(), service_def);
+            .add_service("alpha-def".to_string(), service_def);
 
         // Add direct message handler to the the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -306,11 +308,11 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("abc".to_string(), service_abc);
+            .add_service("alpha-abc".to_string(), service_abc);
         state
             .write()
             .unwrap()
-            .add_service("def".to_string(), service_def);
+            .add_service("alpha-def".to_string(), service_def);
 
         // Add direct message handler to dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
@@ -393,7 +395,7 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("abc".to_string(), service_abc);
+            .add_service("alpha-abc".to_string(), service_abc);
 
         // add direct message handler to the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -478,7 +480,7 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("abc".to_string(), service_abc);
+            .add_service("alpha-abc".to_string(), service_abc);
 
         // add direct message handler to the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -562,7 +564,7 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("def".to_string(), service_def);
+            .add_service("alpha-def".to_string(), service_def);
 
         // add handler to dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
@@ -644,7 +646,7 @@ mod tests {
         state
             .write()
             .unwrap()
-            .add_service("def".to_string(), service_def);
+            .add_service("alpha-def".to_string(), service_def);
 
         // add direct message handler
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
