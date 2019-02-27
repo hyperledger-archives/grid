@@ -133,8 +133,10 @@ mod tests {
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:1".to_string()]);
 
-        let service_abc = Service::new("abc".to_string(), node_123);
-        let service_def = Service::new("def".to_string(), node_345);
+        let service_abc =
+            Service::new("abc".to_string(), Some("abc_network".to_string()), node_123);
+        let service_def =
+            Service::new("def".to_string(), Some("def_network".to_string()), node_345);
 
         state
             .write()
@@ -222,8 +224,10 @@ mod tests {
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:1".to_string()]);
 
-        let service_abc = Service::new("abc".to_string(), node_123);
-        let service_def = Service::new("def".to_string(), node_345);
+        let service_abc =
+            Service::new("abc".to_string(), Some("abc_network".to_string()), node_123);
+        let service_def =
+            Service::new("def".to_string(), Some("def_network".to_string()), node_345);
 
         state
             .write()

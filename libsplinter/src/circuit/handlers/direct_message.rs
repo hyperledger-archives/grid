@@ -24,7 +24,7 @@ use crate::rwlock_read_unwrap;
 
 use std::sync::{Arc, RwLock};
 
-use ::log::{debug, log};
+use ::log::{debug, log, warn};
 use protobuf::Message;
 
 // Implements a handler that handles CircuitDirectMessage
@@ -93,20 +93,29 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                         let node_id = service.node().id();
                         // If the service is on this node send message to the service, otherwise
                         // send the message to the node the service is connected to
-                        if node_id == self.node_id {
-                            let msg_bytes = context.message_bytes().to_vec();
-                            let network_msg_bytes = create_message(
-                                msg_bytes,
-                                CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
-                            )?;
-                            (network_msg_bytes, recipient)
-                        } else {
+                        if node_id != self.node_id {
                             let msg_bytes = context.message_bytes().to_vec();
                             let network_msg_bytes = create_message(
                                 msg_bytes,
                                 CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                             )?;
                             (network_msg_bytes, node_id)
+                        } else {
+                            let msg_bytes = context.message_bytes().to_vec();
+                            let network_msg_bytes = create_message(
+                                msg_bytes,
+                                CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
+                            )?;
+                            let peer_id = match service.peer_id() {
+                                Some(peer_id) => peer_id,
+                                None => {
+                                    // This should never happen, as a peer id will always
+                                    // be set on a service that is connected to the local node.
+                                    warn!("No peer id for service:{} ", service.service_id());
+                                    return Ok(());
+                                }
+                            };
+                            (network_msg_bytes, &peer_id[..])
                         }
                     } else {
                         // if the recipient is not connected, send circuit error
@@ -212,8 +221,12 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service_abc = Service::new("abc".to_string(), node.clone());
-        let service_def = Service::new("def".to_string(), node);
+        let service_abc = Service::new(
+            "abc".to_string(),
+            Some("abc_network".to_string()),
+            node.clone(),
+        );
+        let service_def = Service::new("def".to_string(), Some("def_network".to_string()), node);
 
         state
             .write()
@@ -252,7 +265,7 @@ mod tests {
         // verify that the direct message was sent to the abc service
         let send_request = sender.sent().lock().unwrap().get(0).unwrap().clone();
 
-        assert_eq!(send_request.recipient(), "abc");
+        assert_eq!(send_request.recipient(), "abc_network");
 
         let network_msg: NetworkMessage =
             protobuf::parse_from_bytes(send_request.payload()).unwrap();
@@ -302,8 +315,10 @@ mod tests {
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
 
-        let service_abc = Service::new("abc".to_string(), node_123);
-        let service_def = Service::new("def".to_string(), node_345);
+        let service_abc =
+            Service::new("abc".to_string(), Some("abc_network".to_string()), node_123);
+        let service_def =
+            Service::new("def".to_string(), Some("def_network".to_string()), node_345);
 
         state
             .write()
@@ -390,7 +405,11 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service_abc = Service::new("abc".to_string(), node.clone());
+        let service_abc = Service::new(
+            "abc".to_string(),
+            Some("abc_network".to_string()),
+            node.clone(),
+        );
 
         state
             .write()
@@ -475,7 +494,11 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service_abc = Service::new("abc".to_string(), node.clone());
+        let service_abc = Service::new(
+            "abc".to_string(),
+            Some("abc_network".to_string()),
+            node.clone(),
+        );
 
         state
             .write()
@@ -560,7 +583,8 @@ mod tests {
         )));
 
         let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service_def = Service::new("def".to_string(), node_345);
+        let service_def =
+            Service::new("def".to_string(), Some("def_network".to_string()), node_345);
         state
             .write()
             .unwrap()
@@ -642,7 +666,8 @@ mod tests {
         )));
 
         let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service_def = Service::new("def".to_string(), node_345);
+        let service_def =
+            Service::new("def".to_string(), Some("def_network".to_string()), node_345);
         state
             .write()
             .unwrap()

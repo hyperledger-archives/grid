@@ -80,7 +80,11 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
                 }
                 let node =
                     SplinterNode::new(self.node_id.to_string(), vec![self.endpoint.to_string()]);
-                let service = Service::new(service_id.to_string(), node);
+                let service = Service::new(
+                    service_id.to_string(),
+                    Some(context.source_peer_id().to_string()),
+                    node,
+                );
                 state.add_service(unique_id, service);
                 response.set_status(ServiceConnectResponse_Status::OK);
             // If the circuit exists and has the service in the roster but the service is already
@@ -256,7 +260,7 @@ impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwar
                 && !state.service_directory.contains_key(&unique_id)
             {
                 let node = SplinterNode::new(node_id.to_string(), vec![node_endpoint.to_string()]);
-                let service = Service::new(service_id.to_string(), node);
+                let service = Service::new(service_id.to_string(), None, node);
                 state.add_service(unique_id, service);
             } else if circuit.roster().contains(&service_id.to_string())
                 && state.service_directory.contains_key(&unique_id)
@@ -594,7 +598,7 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service = Service::new("abc".to_string(), node);
+        let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
         state
             .write()
             .unwrap()
@@ -840,7 +844,7 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service = Service::new("abc".to_string(), node);
+        let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
         state
             .write()
             .unwrap()
@@ -1003,7 +1007,7 @@ mod tests {
         )));
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service = Service::new("abc".to_string(), node);
+        let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
         state
             .write()
             .unwrap()
