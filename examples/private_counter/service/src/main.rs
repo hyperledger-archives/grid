@@ -757,7 +757,7 @@ fn configure_args<'a, 'b>() -> App<'a, 'b> {
         .arg(
             Arg::with_name("service_id")
                 .short("N")
-                .long("service_id")
+                .long("service-id")
                 .takes_value(true)
                 .value_name("ID")
                 .required(true)
