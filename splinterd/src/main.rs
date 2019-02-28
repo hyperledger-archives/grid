@@ -28,8 +28,8 @@ use clap::{clap_app, crate_version};
 use std::env;
 use std::fs::File;
 
-const DEFAULT_STATE_DIR: &'static str = "/var/lib/splinter/";
-const STATE_DIR_ENV: &'static str = "SPLINTER_STATE_DIR";
+const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
+const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
 fn main() {
     let matches = clap_app!(splinter =>
