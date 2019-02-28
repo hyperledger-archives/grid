@@ -24,6 +24,7 @@ extern crate serde_derive;
 mod error;
 mod routes;
 mod service;
+mod transaction;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -37,7 +38,8 @@ use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::CliError;
 use crate::routes::{batches, state};
-use crate::service::{start_service_loop, ServiceConfig, ServiceError, XoState};
+use crate::service::{start_service_loop, ServiceConfig, ServiceError};
+use crate::transaction::{XoState, XoStateError};
 
 #[get("/")]
 fn index() -> &'static str {
@@ -54,7 +56,11 @@ fn main() -> Result<(), CliError> {
     let running = Arc::new(AtomicBool::new(true));
     configure_shutdown_handler(Arc::clone(&running))?;
 
-    let xo_state = XoState::default();
+    let xo_state = XoState::new(
+        matches
+            .value_of("state_db_file")
+            .expect("State DB File was not marked as a required attribute"),
+    )?;
 
     let service_config = get_service_config(&matches);
 
@@ -216,6 +222,14 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .help("the name of a service that will validate a counter increment"),
         )
         .arg(
+            Arg::with_name("state_db_file")
+                .long("state-db-file")
+                .takes_value(true)
+                .value_name("DB_PATH")
+                .default_value("xo_state.lmdb")
+                .help("path to an lmdb database file used to store the service state"),
+        )
+        .arg(
             Arg::with_name("bind")
                 .short("B")
                 .long("bind")
@@ -323,5 +337,11 @@ fn split_endpoint<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
 impl From<ServiceError> for CliError {
     fn from(err: ServiceError) -> Self {
         CliError(format!("Service Error: {}", err))
+    }
+}
+
+impl From<XoStateError> for CliError {
+    fn from(err: XoStateError) -> Self {
+        CliError(err.to_string())
     }
 }
