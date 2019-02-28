@@ -20,12 +20,12 @@ use std::net::TcpStream;
 pub fn do_show(url: &str) -> Result<(), CliError> {
     let mut connection = TcpStream::connect(url)?;
     let request = b"GET /show HTTP/1.1";
-    connection.write(request)?;
+    let _ = connection.write(request)?;
     connection.flush()?;
 
     let mut buffer = [0; 512];
 
-    connection.read(&mut buffer)?;
+    let _ = connection.read(&mut buffer)?;
     let response = String::from_utf8_lossy(&buffer[..]);
 
     if response.starts_with("HTTP/1.1 200 OK\r\n\r\n") {
@@ -46,12 +46,12 @@ pub fn do_add(url: &str, value: &str) -> Result<(), CliError> {
         )));
     }
     let request = format!("GET /add/{} HTTP/1.1", value);
-    connection.write(request.as_bytes())?;
+    let _ = connection.write(request.as_bytes())?;
     connection.flush()?;
 
     let mut buffer = [0; 512];
 
-    connection.read(&mut buffer)?;
+    let _ = connection.read(&mut buffer)?;
     let response = String::from_utf8_lossy(&buffer[..]);
 
     if !response.starts_with("HTTP/1.1 204 NO CONTENT") {

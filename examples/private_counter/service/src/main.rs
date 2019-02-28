@@ -667,7 +667,7 @@ fn handle_connection(
 ) -> Result<(), HandleError> {
     let mut buffer = [0; 512];
 
-    stream.read(&mut buffer)?;
+    let _ = stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..]);
 
     let response = if request.starts_with("GET / ") {
@@ -734,7 +734,7 @@ fn handle_connection(
     } else {
         respond(404, "NOT FOUND", None)
     };
-    stream.write(response.as_bytes())?;
+    stream.write_all(response.as_bytes())?;
     stream.flush()?;
 
     Ok(())
