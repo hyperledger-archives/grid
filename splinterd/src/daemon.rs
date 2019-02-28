@@ -229,7 +229,7 @@ impl SplinterDaemon {
                         endpoint
                     }
                 };
-                if &node_endpoint != &self.network_endpoint {
+                if node_endpoint != self.network_endpoint {
                     let connection_result = self.transport.connect(&node_endpoint);
                     let connection = match connection_result {
                         Ok(connection) => connection,
