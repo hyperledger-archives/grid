@@ -130,8 +130,7 @@ fn main() {
         .values_of("peers")
         .map(|values| values.map(String::from).collect::<Vec<String>>())
         .or_else(|| config.peers())
-        .unwrap_or(Vec::new());
-    ;
+        .unwrap_or_default();
 
     let transport = get_transport(&transport_type, &matches, &config);
 
