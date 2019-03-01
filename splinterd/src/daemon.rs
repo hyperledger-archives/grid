@@ -97,7 +97,7 @@ impl SplinterDaemon {
 
         // Load initial state from the configured storage location and create the new
         // SplinterState from the retrieved circuit directory
-        let storage = get_storage(&self.storage_location, || CircuitDirectory::new())
+        let storage = get_storage(&self.storage_location, CircuitDirectory::new)
             .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
 
         let circuit_directory = storage.read().clone();

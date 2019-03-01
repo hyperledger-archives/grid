@@ -371,7 +371,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let storage = get_storage("memory", || CircuitDirectory::new()).unwrap();
+        let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
@@ -712,7 +712,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let storage = get_storage("memory", || CircuitDirectory::new()).unwrap();
+        let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
