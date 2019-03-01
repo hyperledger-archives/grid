@@ -88,7 +88,6 @@ impl SplinterClient {
 fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
     hostname
         .to_socket_addrs()?
-        .filter(|addr| addr.is_ipv4())
-        .next()
+        .find(|addr| addr.is_ipv4())
         .ok_or(SplinterError::CouldNotResolveHostName)
 }
