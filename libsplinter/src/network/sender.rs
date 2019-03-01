@@ -84,13 +84,7 @@ impl NetworkMessageSender {
         }
 
         // Finish sending any messages that may be queued
-        loop {
-            let send_request = match self.rc.try_recv() {
-                Ok(send_request) => send_request,
-                // If an Empty or Disconnected  error is returned, end looping
-                Err(_) => break,
-            };
-
+        while let Ok(send_request) = self.rc.try_recv() {
             match self
                 .network
                 .send(send_request.recipient(), send_request.payload())
