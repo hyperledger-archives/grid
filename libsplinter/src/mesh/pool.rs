@@ -74,7 +74,7 @@ impl Pool {
         self.poll.register(
             connection.evented(),
             connection_token,
-            Ready::readable() | Ready::writable(),
+            Ready::readable(),
             PollOpt::level(),
         )?;
 
