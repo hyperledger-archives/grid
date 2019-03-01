@@ -91,7 +91,8 @@ impl InprocConnection {
 
 impl Connection for InprocConnection {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError> {
-        Ok(self.pair.send(message.to_vec()))
+        self.pair.send(message.to_vec());
+        Ok(())
     }
 
     fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
