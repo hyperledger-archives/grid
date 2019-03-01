@@ -76,7 +76,7 @@ impl NetworkMessageSender {
 
             match self
                 .network
-                .send(send_request.recipient().into(), send_request.payload())
+                .send(send_request.recipient(), send_request.payload())
             {
                 Ok(_) => (),
                 Err(err) => warn!("Unable to send message: {:?}", err),
@@ -93,7 +93,7 @@ impl NetworkMessageSender {
 
             match self
                 .network
-                .send(send_request.recipient().into(), send_request.payload())
+                .send(send_request.recipient(), send_request.payload())
             {
                 Ok(_) => (),
                 Err(err) => warn!("Unable to send message: {:?}", err),
