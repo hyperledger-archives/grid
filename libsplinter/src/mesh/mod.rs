@@ -157,7 +157,7 @@ impl Mesh {
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
         self.incoming
             .recv_timeout(timeout)
-            .map_err(|err| RecvTimeoutError::from(err))
+            .map_err(RecvTimeoutError::from)
     }
 
     /// Create a new handle for sending to the existing connection with the given id.
