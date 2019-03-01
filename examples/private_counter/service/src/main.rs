@@ -634,7 +634,7 @@ fn valid_endpoint<S: AsRef<str>>(s: S) -> Result<(), String> {
     if s.is_empty() {
         return Err("Bind string must not be empty".into());
     }
-    let mut parts = s.split(":");
+    let mut parts = s.split(':');
 
     parts.next().unwrap();
 
@@ -675,7 +675,7 @@ fn handle_connection(
     } else if request.starts_with("GET /add/") {
         // get number to add to current value
         let addition = &request["GET /add/".len()..];
-        if let Some(end) = addition.find(" ") {
+        if let Some(end) = addition.find(' ') {
             let addition = &addition[..end];
             // check that the value can be parsed into a u32
             if let Ok(i) = addition.parse::<u32>() {
