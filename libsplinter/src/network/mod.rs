@@ -117,8 +117,8 @@ impl PeerMap {
     }
 
     /// Returns the direct peer id for the given mesh_id
-    fn get_peer_id(&self, mesh_id: &usize) -> Option<&String> {
-        self.peers.get_by_value(mesh_id)
+    fn get_peer_id(&self, mesh_id: usize) -> Option<&String> {
+        self.peers.get_by_value(&mesh_id)
     }
 }
 
@@ -153,7 +153,7 @@ impl Network {
         Ok(peer_id)
     }
 
-    pub fn remove_connection(&self, peer_id: &String) -> Result<(), ConnectionError> {
+    pub fn remove_connection(&self, peer_id: &str) -> Result<(), ConnectionError> {
         if let Some(mesh_id) = rwlock_write_unwrap!(self.peers).remove(peer_id) {
             self.mesh.remove(mesh_id)?;
         }
@@ -194,7 +194,7 @@ impl Network {
 
     pub fn recv(&self) -> Result<NetworkMessage, RecvError> {
         let envelope = self.mesh.recv()?;
-        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(&envelope.id()) {
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvError::NoPeerError(format!(
@@ -209,7 +209,7 @@ impl Network {
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<NetworkMessage, RecvTimeoutError> {
         let envelope = self.mesh.recv_timeout(timeout)?;
-        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(&envelope.id()) {
+        let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
             None => {
                 return Err(RecvTimeoutError::NoPeerError(format!(
