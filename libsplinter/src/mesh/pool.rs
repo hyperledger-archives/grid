@@ -290,7 +290,7 @@ impl Entry {
                 self.cached = Some(payload);
                 Ok(())
             }
-            Err(SendError::Disconnected) => return Err(TryEventError::ConnectionDisconnected),
+            Err(SendError::Disconnected) => Err(TryEventError::ConnectionDisconnected),
             Err(SendError::ProtocolError(err)) => Err(TryEventError::ProtocolError(err)),
             Err(SendError::IoError(err)) => Err(TryEventError::IoError(err)),
         }
