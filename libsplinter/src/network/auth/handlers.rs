@@ -209,9 +209,9 @@ impl Handler<AuthorizationMessageType, ConnectRequest> for ConnectRequestHandler
                 }
 
                 let mut response = ConnectResponse::new();
-                response.set_accepted_authorization_types(
-                    vec![ConnectResponse_AuthorizationType::TRUST].into(),
-                );
+                response.set_accepted_authorization_types(vec![
+                    ConnectResponse_AuthorizationType::TRUST,
+                ]);
                 sender.send(SendRequest::new(
                     context.source_peer_id().to_string(),
                     wrap_in_network_auth_envelopes(
