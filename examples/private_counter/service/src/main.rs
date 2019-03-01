@@ -69,8 +69,9 @@ fn main() -> Result<(), ServiceError> {
     let matches2 = matches.clone();
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
+    let listener = TcpListener::bind(matches.value_of("bind").unwrap()).unwrap();
     ctrlc::set_handler(move || {
-        info!("Recieved Shutdown");
+        info!("Received Shutdown");
         r.store(false, Ordering::SeqCst);
 
         // wake the listener so it can shutdown
@@ -95,8 +96,6 @@ fn main() -> Result<(), ServiceError> {
         state.clone(),
         running.clone(),
     )?;
-
-    let listener = TcpListener::bind(matches.value_of("bind").unwrap()).unwrap();
 
     let workers: usize = matches.value_of("workers").unwrap().parse().unwrap();
     let pool = ThreadPool::new(workers);
@@ -758,7 +757,7 @@ fn configure_args<'a, 'b>() -> App<'a, 'b> {
         .arg(
             Arg::with_name("service_id")
                 .short("N")
-                .long("service_id")
+                .long("service-id")
                 .takes_value(true)
                 .value_name("ID")
                 .required(true)
