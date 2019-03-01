@@ -299,6 +299,11 @@ fn run_service_loop(
             }
         }
     }
+
+    stop_service_loop(network, circuit, service_id);
+}
+
+fn stop_service_loop(network: Network, circuit: String, service_id: String) {
     info!("Sending disconnect request");
     let disconnect_msg = create_circuit_service_disconnect_request(&circuit, &service_id)
         .expect("Unable to create disconnect message");
