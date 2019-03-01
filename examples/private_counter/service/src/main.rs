@@ -174,6 +174,11 @@ fn create_network_and_connect(
     Ok(network)
 }
 
+type StartServiceJoinHandle = (
+    JoinHandle<Result<(), NetworkMessageSenderError>>,
+    JoinHandle<()>,
+);
+
 fn start_service_loop(
     circuit: String,
     service_id: String,
@@ -184,13 +189,7 @@ fn start_service_loop(
     network: Network,
     state: Arc<Mutex<ServiceState>>,
     running: Arc<AtomicBool>,
-) -> Result<
-    (
-        JoinHandle<Result<(), NetworkMessageSenderError>>,
-        JoinHandle<()>,
-    ),
-    ServiceError,
-> {
+) -> Result<StartServiceJoinHandle, ServiceError> {
     info!("Starting Private Counter Service");
     let sender_network = network.clone();
     let (send, recv) = channel;
