@@ -86,7 +86,8 @@ fn main() -> Result<(), ServiceError> {
     let service_id = matches.value_of("service_id").unwrap().to_string();
 
     let mut transport = get_transport(&matches)?;
-    let network = create_network_and_connect(&mut transport, matches.value_of("connect").unwrap())?;
+    let network =
+        create_network_and_connect(&mut *transport, matches.value_of("connect").unwrap())?;
     let (send, recv) = crossbeam_channel::bounded(5);
     let (sender_thread, receiver_thread) = start_service_loop(
         circuit.clone(),
@@ -155,7 +156,7 @@ macro_rules! unwrap_or_break {
 }
 
 fn create_network_and_connect(
-    transport: &mut Box<dyn Transport + Send>,
+    transport: &mut (dyn Transport + Send),
     connect_endpoint: &str,
 ) -> Result<Network, ServiceError> {
     let mesh = Mesh::new(512, 128);
