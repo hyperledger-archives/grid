@@ -384,13 +384,7 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
         }
 
         // finish handling any incoming messages
-        loop {
-            let dispatch_msg = match self.receiver.try_recv() {
-                Ok(dispatch_msg) => dispatch_msg,
-                // If an Empty or Disconnected error is returned, end looping
-                Err(_) => break,
-            };
-
+        while let Ok(dispatch_msg) = self.receiver.try_recv() {
             match self.dispatcher.dispatch(
                 &dispatch_msg.source_peer_id,
                 &dispatch_msg.message_type,

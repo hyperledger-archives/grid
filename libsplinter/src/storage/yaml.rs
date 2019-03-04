@@ -266,7 +266,7 @@ mod tests {
         let path = setup_empty_state_file(temp_dir_path);
 
         // load empty state file into the yaml storage
-        let storage = YamlStorage::new(path, || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path, CircuitDirectory::new).unwrap();
 
         // check that state does not have any nodes or circuits
         assert!(storage.data.nodes().is_empty());
@@ -283,7 +283,7 @@ mod tests {
         let path = temp_dir_path.to_str().unwrap().to_string();
 
         // create state file empty state when file does not exist
-        let storage = YamlStorage::new(path, || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path, CircuitDirectory::new).unwrap();
 
         // check that state does not have any nodes or circuits
         assert!(storage.data.nodes().is_empty());
@@ -321,7 +321,7 @@ mod tests {
         let path = set_up_mock_state_file(temp_dir_path);
 
         // load state file into yaml storage
-        let storage = YamlStorage::new(path, || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path, CircuitDirectory::new).unwrap();
 
         // check that the CircuitDirectory data contains the correct node and circuit
         assert_eq!(storage.data.nodes().len(), 1);
@@ -376,7 +376,7 @@ mod tests {
         let path = set_up_mock_state_file(temp_dir_path);
         {
             // load state file into yaml storage
-            let mut storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+            let mut storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
 
             // add new node to state
             let node = SplinterNode::new("123".into(), vec!["tcp://127.0.0.1:5000".into()]);
@@ -386,7 +386,7 @@ mod tests {
         }
 
         // load state file into yaml storage
-        let storage = YamlStorage::new(path, || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path, CircuitDirectory::new).unwrap();
         // check that the CircuitDirectory data contains the new node
         assert_eq!(storage.data.nodes().len(), 2);
         assert_eq!(storage.data.circuits().len(), 1);
@@ -428,14 +428,14 @@ mod tests {
         let path = set_up_mock_state_file(temp_dir_path);
         {
             // load state file into yaml storage
-            let mut storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+            let mut storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
 
             storage.write().remove_node("123".into());
 
             // drop storage
         }
         // load state file into yaml storage
-        let storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
 
         // check that the CircuitDirectory data does not contain node 123
         assert_eq!(storage.data.nodes().len(), 0);
@@ -478,7 +478,7 @@ mod tests {
         let path = set_up_mock_state_file(temp_dir_path);
         {
             // load state file into yaml storage
-            let mut storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+            let mut storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
             let circuit = Circuit::new(
                 "beta".into(),
                 "trust".into(),
@@ -494,7 +494,7 @@ mod tests {
         }
 
         // load state file into yaml storage
-        let storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
 
         // check that the CircuitDirectory data contains the new circuit
         assert_eq!(storage.data.circuits().len(), 2);
@@ -558,14 +558,14 @@ mod tests {
         let path = set_up_mock_state_file(temp_dir_path);
         {
             // load state file into yaml storage
-            let mut storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+            let mut storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
             storage.write().remove_circuit("alpha".into());
 
             // drop storage
         }
 
         // load state file into yaml storage
-        let storage = YamlStorage::new(path.clone(), || CircuitDirectory::new()).unwrap();
+        let storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
 
         // check that the CircuitDirectory data does not contain cirucit alpha
         assert_eq!(storage.data.nodes().len(), 1);

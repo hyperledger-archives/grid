@@ -148,7 +148,7 @@ impl Pool {
         event: &Event,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
     ) -> Result<(), (usize, TryEventError)> {
-        if let Some(entry) = self.entry_by_token(&event.token()) {
+        if let Some(entry) = self.entry_by_token(event.token()) {
             entry
                 .try_event(event, incoming_tx)
                 .map_err(|err| (entry.id(), err))
@@ -158,8 +158,8 @@ impl Pool {
     }
 
     // Lookup an entry by either its connection's token or its outgoing queue's token
-    fn entry_by_token(&mut self, token: &Token) -> Option<&mut Entry> {
-        match self.tokens.get(token) {
+    fn entry_by_token(&mut self, token: Token) -> Option<&mut Entry> {
+        match self.tokens.get(&token) {
             Some(id) => self.entries.get_mut(id),
             None => None,
         }
@@ -290,7 +290,7 @@ impl Entry {
                 self.cached = Some(payload);
                 Ok(())
             }
-            Err(SendError::Disconnected) => return Err(TryEventError::ConnectionDisconnected),
+            Err(SendError::Disconnected) => Err(TryEventError::ConnectionDisconnected),
             Err(SendError::ProtocolError(err)) => Err(TryEventError::ProtocolError(err)),
             Err(SendError::IoError(err)) => Err(TryEventError::IoError(err)),
         }

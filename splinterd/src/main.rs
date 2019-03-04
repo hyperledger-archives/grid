@@ -28,8 +28,8 @@ use clap::{clap_app, crate_version};
 use std::env;
 use std::fs::File;
 
-const DEFAULT_STATE_DIR: &'static str = "/var/lib/splinter/";
-const STATE_DIR_ENV: &'static str = "SPLINTER_STATE_DIR";
+const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
+const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
 fn main() {
     let matches = clap_app!(splinter =>
@@ -130,8 +130,7 @@ fn main() {
         .values_of("peers")
         .map(|values| values.map(String::from).collect::<Vec<String>>())
         .or_else(|| config.peers())
-        .unwrap_or(Vec::new());
-    ;
+        .unwrap_or_default();
 
     let transport = get_transport(&transport_type, &matches, &config);
 

@@ -125,8 +125,8 @@ impl AuthorizationManager {
         let mut states = rwlock_write_unwrap!(self.states);
 
         let cur_state = states.get(peer_id).unwrap_or(&AuthorizationState::Unknown);
-        match cur_state {
-            &AuthorizationState::Unknown => match action {
+        match *cur_state {
+            AuthorizationState::Unknown => match action {
                 AuthorizationAction::Connecting => {
                     // Here the decision for Challenges will be made.
                     states.insert(peer_id.to_string(), AuthorizationState::Connecting);
@@ -143,7 +143,7 @@ impl AuthorizationManager {
                     action,
                 )),
             },
-            &AuthorizationState::Connecting => match action {
+            AuthorizationState::Connecting => match action {
                 AuthorizationAction::Connecting => Err(AuthorizationActionError::AlreadyConnecting),
                 AuthorizationAction::TrustIdentifying(new_peer_id) => {
                     // Verify pub key allowed
@@ -162,7 +162,7 @@ impl AuthorizationManager {
                     Ok(AuthorizationState::Unauthorized)
                 }
             },
-            &AuthorizationState::Authorized => match action {
+            AuthorizationState::Authorized => match action {
                 AuthorizationAction::Unauthorizing => {
                     states.remove(peer_id);
                     self.network

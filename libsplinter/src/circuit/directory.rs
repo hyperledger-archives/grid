@@ -20,7 +20,7 @@ use crate::circuit::service::SplinterNode;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
 pub struct CircuitDirectory {
     nodes: BTreeMap<String, SplinterNode>,
     circuits: BTreeMap<String, Circuit>,

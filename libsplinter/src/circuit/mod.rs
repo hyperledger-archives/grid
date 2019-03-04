@@ -141,7 +141,7 @@ mod tests {
 
         // setup empty state filename
         let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
         let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
@@ -161,7 +161,7 @@ mod tests {
         state.add_circuit("alpha".into(), circuit).unwrap();
 
         // reload storage and check that the circuit was written
-        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let storage = get_storage(&path, CircuitDirectory::new).unwrap();
         assert_eq!(storage.read().circuits().len(), 1);
         assert!(storage.read().circuits().contains_key("alpha"));
 
@@ -189,7 +189,7 @@ mod tests {
 
         state.remove_circuit("alpha".into()).unwrap();
         // reload storage and check that the circuit was written
-        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let storage = get_storage(&path, CircuitDirectory::new).unwrap();
 
         // Check that state does not have any nodes
         assert!(storage.read().circuits().len() == 0);
@@ -203,7 +203,7 @@ mod tests {
 
         // setup empty state filename
         let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
         let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
@@ -214,7 +214,7 @@ mod tests {
         state.add_node("123".into(), node).unwrap();
 
         // reload storage and check that the node was written
-        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let storage = get_storage(&path, CircuitDirectory::new).unwrap();
         // check that the CircuitDirectory data contains the correct node and circuit
         assert!(storage.read().nodes().len() == 1);
         assert!(storage.read().nodes().contains_key("123"));
@@ -233,7 +233,7 @@ mod tests {
         state.remove_node("123".into()).unwrap();
 
         // reload storage and check that the node was removed
-        let storage = get_storage(&path, || CircuitDirectory::new()).unwrap();
+        let storage = get_storage(&path, CircuitDirectory::new).unwrap();
         // Check that state does not have any nodes
         assert!(storage.read().nodes().len() == 0);
     }

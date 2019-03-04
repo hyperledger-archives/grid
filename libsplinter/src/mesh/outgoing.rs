@@ -31,7 +31,8 @@ impl Outgoing {
     }
 
     pub fn send(&self, payload: Vec<u8>) -> Result<(), SendError> {
-        Ok(self.tx.try_send(Envelope::new(self.id, payload))?)
+        self.tx.try_send(Envelope::new(self.id, payload))?;
+        Ok(())
     }
 
     pub fn id(&self) -> usize {

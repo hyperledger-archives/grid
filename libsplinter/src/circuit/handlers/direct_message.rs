@@ -69,7 +69,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     let network_msg_bytes =
                         create_message(msg_bytes, CircuitMessageType::CIRCUIT_ERROR_MESSAGE)?;
                     (network_msg_bytes, context.source_peer_id())
-                } else if let None = state.service_directory().get(msg_sender) {
+                } else if state.service_directory().get(msg_sender).is_none() {
                     // Check if the message sender is registered on the circuit
                     // if the sender is not connected, send circuit error
                     let mut error_message = CircuitError::new();
@@ -91,7 +91,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                         let node_id = service.node().id();
                         // If the service is on this node send message to the service, otherwise
                         // send the message to the node the service is connected to
-                        if node_id == &self.node_id {
+                        if node_id == self.node_id {
                             let msg_bytes = context.message_bytes().to_vec();
                             let network_msg_bytes = create_message(
                                 msg_bytes,

@@ -16,7 +16,7 @@ use std::collections::hash_map::{Iter, Keys, Values};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct BiHashMap<K: Hash + Eq, V: Hash + Eq> {
     kv_hash_map: HashMap<K, V>,
     vk_hash_map: HashMap<V, K>,

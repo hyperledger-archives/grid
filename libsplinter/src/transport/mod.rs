@@ -68,7 +68,7 @@ pub trait Incoming {
     ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a>;
 }
 
-impl Incoming for Box<dyn Listener> {
+impl Incoming for dyn Listener {
     fn incoming<'a>(
         &'a mut self,
     ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a> {
@@ -85,11 +85,11 @@ pub trait Transport {
 // Helper struct for extending Listener to Incoming
 
 struct IncomingIter<'a> {
-    listener: &'a mut Box<dyn Listener>,
+    listener: &'a mut dyn Listener,
 }
 
 impl<'a> IncomingIter<'a> {
-    pub fn new(listener: &'a mut Box<dyn Listener>) -> Self {
+    pub fn new(listener: &'a mut dyn Listener) -> Self {
         IncomingIter { listener }
     }
 }
@@ -195,7 +195,7 @@ pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
 
 pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
     let packed = pack(buffer)?;
-    writer.write(&packed)?;
+    writer.write_all(&packed)?;
     writer.flush()?;
     Ok(())
 }
@@ -205,7 +205,7 @@ fn pack(buffer: &[u8]) -> Result<Vec<u8>, io::Error> {
     let mut packed = Vec::with_capacity(capacity);
 
     packed.write_u32::<BigEndian>(buffer.len() as u32)?;
-    packed.write(&buffer)?;
+    packed.write_all(&buffer)?;
 
     Ok(packed)
 }

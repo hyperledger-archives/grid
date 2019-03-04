@@ -86,7 +86,8 @@ fn main() -> Result<(), ServiceError> {
     let service_id = matches.value_of("service_id").unwrap().to_string();
 
     let mut transport = get_transport(&matches)?;
-    let network = create_network_and_connect(&mut transport, matches.value_of("connect").unwrap())?;
+    let network =
+        create_network_and_connect(&mut *transport, matches.value_of("connect").unwrap())?;
     let (send, recv) = crossbeam_channel::bounded(5);
     let (sender_thread, receiver_thread) = start_service_loop(
         circuit.clone(),
@@ -155,7 +156,7 @@ macro_rules! unwrap_or_break {
 }
 
 fn create_network_and_connect(
-    transport: &mut Box<dyn Transport + Send>,
+    transport: &mut (dyn Transport + Send),
     connect_endpoint: &str,
 ) -> Result<Network, ServiceError> {
     let mesh = Mesh::new(512, 128);
@@ -174,6 +175,11 @@ fn create_network_and_connect(
     Ok(network)
 }
 
+type StartServiceJoinHandle = (
+    JoinHandle<Result<(), NetworkMessageSenderError>>,
+    JoinHandle<()>,
+);
+
 fn start_service_loop(
     circuit: String,
     service_id: String,
@@ -184,13 +190,7 @@ fn start_service_loop(
     network: Network,
     state: Arc<Mutex<ServiceState>>,
     running: Arc<AtomicBool>,
-) -> Result<
-    (
-        JoinHandle<Result<(), NetworkMessageSenderError>>,
-        JoinHandle<()>,
-    ),
-    ServiceError,
-> {
+) -> Result<StartServiceJoinHandle, ServiceError> {
     info!("Starting Private Counter Service");
     let sender_network = network.clone();
     let (send, recv) = channel;
@@ -299,6 +299,11 @@ fn run_service_loop(
             }
         }
     }
+
+    stop_service_loop(network, circuit, service_id);
+}
+
+fn stop_service_loop(network: Network, circuit: String, service_id: String) {
     info!("Sending disconnect request");
     let disconnect_msg = create_circuit_service_disconnect_request(&circuit, &service_id)
         .expect("Unable to create disconnect message");
@@ -634,7 +639,7 @@ fn valid_endpoint<S: AsRef<str>>(s: S) -> Result<(), String> {
     if s.is_empty() {
         return Err("Bind string must not be empty".into());
     }
-    let mut parts = s.split(":");
+    let mut parts = s.split(':');
 
     parts.next().unwrap();
 
@@ -667,7 +672,7 @@ fn handle_connection(
 ) -> Result<(), HandleError> {
     let mut buffer = [0; 512];
 
-    stream.read(&mut buffer)?;
+    let _ = stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..]);
 
     let response = if request.starts_with("GET / ") {
@@ -675,7 +680,7 @@ fn handle_connection(
     } else if request.starts_with("GET /add/") {
         // get number to add to current value
         let addition = &request["GET /add/".len()..];
-        if let Some(end) = addition.find(" ") {
+        if let Some(end) = addition.find(' ') {
             let addition = &addition[..end];
             // check that the value can be parsed into a u32
             if let Ok(i) = addition.parse::<u32>() {
@@ -734,7 +739,7 @@ fn handle_connection(
     } else {
         respond(404, "NOT FOUND", None)
     };
-    stream.write(response.as_bytes())?;
+    stream.write_all(response.as_bytes())?;
     stream.flush()?;
 
     Ok(())

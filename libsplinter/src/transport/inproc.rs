@@ -27,9 +27,11 @@ use crate::transport::{
     SendError, Transport,
 };
 
+type Incoming = Arc<Mutex<HashMap<String, Sender<Pair<Vec<u8>>>>>>;
+
 #[derive(Clone, Default)]
 pub struct InprocTransport {
-    incoming: Arc<Mutex<HashMap<String, Sender<Pair<Vec<u8>>>>>>,
+    incoming: Incoming,
 }
 
 impl Transport for InprocTransport {
@@ -91,7 +93,8 @@ impl InprocConnection {
 
 impl Connection for InprocConnection {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError> {
-        Ok(self.pair.send(message.to_vec()))
+        self.pair.send(message.to_vec());
+        Ok(())
     }
 
     fn recv(&mut self) -> Result<Vec<u8>, RecvError> {

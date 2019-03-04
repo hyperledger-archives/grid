@@ -53,7 +53,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name).clone();
+        let circuit_result = state.circuit(circuit_name);
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is not yet connected
             // forward the connection to the rest of the nodes on the circuit and add the service
@@ -156,7 +156,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name).clone();
+        let circuit_result = state.circuit(circuit_name);
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is connected
             // forward the disconnection to the rest of the nodes on the circuit and remove the
@@ -252,7 +252,7 @@ impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwar
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name).clone();
+        let circuit_result = state.circuit(circuit_name);
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is not yet connected
             // add the service to splinter state. Otherwise return
@@ -308,7 +308,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectForward> for ServiceDisconnect
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name).clone();
+        let circuit_result = state.circuit(circuit_name);
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is connected
             // remove the service from splinter state. Otherwise return
@@ -371,7 +371,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let storage = get_storage("memory", || CircuitDirectory::new()).unwrap();
+        let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
@@ -712,7 +712,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let storage = get_storage("memory", || CircuitDirectory::new()).unwrap();
+        let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
