@@ -176,7 +176,7 @@ impl Pool {
     }
 }
 
-pub struct Entry {
+struct Entry {
     id: usize,
     connection: Box<dyn Connection>,
     connection_token: Token,
@@ -196,7 +196,7 @@ impl fmt::Debug for Entry {
 }
 
 impl Entry {
-    pub fn new(
+    fn new(
         id: usize,
         connection: Box<dyn Connection>,
         connection_token: Token,
@@ -213,24 +213,24 @@ impl Entry {
         }
     }
 
-    pub fn id(&self) -> usize {
+    fn id(&self) -> usize {
         self.id
     }
 
-    pub fn connection_token(&self) -> Token {
+    fn connection_token(&self) -> Token {
         self.connection_token
     }
 
-    pub fn outgoing_token(&self) -> Token {
+    fn outgoing_token(&self) -> Token {
         self.outgoing_token
     }
 
-    pub fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<Envelope>) {
+    fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<Envelope>) {
         (self.connection, self.outgoing)
     }
 
-    pub fn try_event(
-        &mut self,
+    fn try_event(
+        &self,
         event: &Event,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
     ) -> Result<(), TryEventError> {
