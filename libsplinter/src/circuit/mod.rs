@@ -11,18 +11,80 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-mod circuit;
 pub mod directory;
 pub mod handlers;
 pub mod service;
 
+use serde_derive::{Deserialize, Serialize};
+
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-pub use crate::circuit::circuit::Circuit;
 use crate::circuit::directory::CircuitDirectory;
 use crate::circuit::service::{Service, SplinterNode};
 use crate::storage::get_storage;
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub struct Circuit {
+    #[serde(skip)]
+    id: String,
+    auth: String,
+    members: Vec<String>,
+    roster: Vec<String>,
+    persistence: String,
+    durability: String,
+    routes: String,
+}
+
+impl Circuit {
+    pub fn new(
+        id: String,
+        auth: String,
+        members: Vec<String>,
+        roster: Vec<String>,
+        persistence: String,
+        durability: String,
+        routes: String,
+    ) -> Self {
+        Circuit {
+            id,
+            auth,
+            members,
+            roster,
+            persistence,
+            durability,
+            routes,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn auth(&self) -> &str {
+        &self.auth
+    }
+
+    pub fn members(&self) -> &[String] {
+        &self.members
+    }
+
+    pub fn roster(&self) -> &[String] {
+        &self.roster
+    }
+
+    pub fn persistence(&self) -> &str {
+        &self.persistence
+    }
+
+    pub fn durability(&self) -> &str {
+        &self.durability
+    }
+
+    pub fn routes(&self) -> &str {
+        &self.routes
+    }
+}
 
 pub struct SplinterState {
     // location of the persisted state

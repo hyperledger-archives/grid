@@ -15,8 +15,8 @@ use std::collections::BTreeMap;
 
 use serde_derive::{Deserialize, Serialize};
 
-use crate::circuit::circuit::Circuit;
 use crate::circuit::service::SplinterNode;
+use crate::circuit::Circuit;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
