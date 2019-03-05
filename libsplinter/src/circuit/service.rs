@@ -14,6 +14,31 @@
 
 use serde_derive::{Deserialize, Serialize};
 
+use std::fmt;
+
+#[derive(Clone, Debug, Hash, PartialEq)]
+pub struct ServiceId {
+    circuit_name: String,
+    service_id: String,
+}
+
+impl ServiceId {
+    pub fn new(circuit_name: String, service_id: String) -> Self {
+        ServiceId {
+            circuit_name,
+            service_id,
+        }
+    }
+}
+
+impl fmt::Display for ServiceId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}::{}", self.circuit_name, self.service_id)
+    }
+}
+
+impl Eq for ServiceId {}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Service {
     service_id: String,
