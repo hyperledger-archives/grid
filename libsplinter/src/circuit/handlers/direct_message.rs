@@ -60,7 +60,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                 if !circuit.roster().contains(&msg_sender.to_string()) {
                     let mut error_message = CircuitError::new();
                     error_message.set_correlation_id(msg.get_correlation_id().to_string());
-                    error_message.set_sender(msg_sender.into());
+                    error_message.set_service_id(msg_sender.into());
+                    error_message.set_circuit_name(circuit_name.into());
                     error_message.set_error(CircuitError_Error::ERROR_SENDER_NOT_IN_CIRCUIT_ROSTER);
                     error_message.set_error_message(format!(
                         "Sender is not allowed in the Circuit: {}",
@@ -76,7 +77,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     // if the sender is not connected, send circuit error
                     let mut error_message = CircuitError::new();
                     error_message.set_correlation_id(msg.get_correlation_id().to_string());
-                    error_message.set_sender(msg_sender.into());
+                    error_message.set_service_id(msg_sender.into());
+                    error_message.set_circuit_name(circuit_name.into());
                     error_message.set_error(CircuitError_Error::ERROR_SENDER_NOT_IN_DIRECTORY);
                     error_message.set_error_message(format!(
                         "Sender is not in the service directory: {}",
@@ -121,7 +123,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                         // if the recipient is not connected, send circuit error
                         let mut error_message = CircuitError::new();
                         error_message.set_correlation_id(msg.get_correlation_id().to_string());
-                        error_message.set_sender(msg_sender.into());
+                        error_message.set_service_id(msg_sender.into());
+                        error_message.set_circuit_name(circuit_name.into());
                         error_message
                             .set_error(CircuitError_Error::ERROR_RECIPIENT_NOT_IN_DIRECTORY);
                         error_message.set_error_message(format!(
@@ -138,7 +141,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     // if the recipient is not allowed on the circuit, send circuit error
                     let mut error_message = CircuitError::new();
                     error_message.set_correlation_id(msg.get_correlation_id().to_string());
-                    error_message.set_sender(msg_sender.into());
+                    error_message.set_service_id(msg_sender.into());
+                    error_message.set_circuit_name(circuit_name.into());
                     error_message
                         .set_error(CircuitError_Error::ERROR_RECIPIENT_NOT_IN_CIRCUIT_ROSTER);
                     error_message.set_error_message(format!(
@@ -155,7 +159,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                 // if the circuit does not exist, send circuit error
                 let mut error_message = CircuitError::new();
                 error_message.set_correlation_id(msg.get_correlation_id().into());
-                error_message.set_sender(msg_sender.into());
+                error_message.set_service_id(msg_sender.into());
+                error_message.set_circuit_name(circuit_name.into());
                 error_message.set_error(CircuitError_Error::ERROR_CIRCUIT_DOES_NOT_EXIST);
                 error_message
                     .set_error_message(format!("Circuit does not exist: {}", circuit_name));
@@ -446,7 +451,7 @@ mod tests {
             CircuitMessageType::CIRCUIT_ERROR_MESSAGE
         );
 
-        assert_eq!(error_message.get_sender(), "def");
+        assert_eq!(error_message.get_service_id(), "def");
         assert_eq!(
             error_message.get_error(),
             CircuitError_Error::ERROR_SENDER_NOT_IN_DIRECTORY
@@ -532,7 +537,7 @@ mod tests {
             CircuitMessageType::CIRCUIT_ERROR_MESSAGE
         );
 
-        assert_eq!(error_message.get_sender(), "def");
+        assert_eq!(error_message.get_service_id(), "def");
         assert_eq!(
             error_message.get_error(),
             CircuitError_Error::ERROR_SENDER_NOT_IN_CIRCUIT_ROSTER
@@ -613,7 +618,7 @@ mod tests {
             circuit_msg.get_message_type(),
             CircuitMessageType::CIRCUIT_ERROR_MESSAGE
         );
-        assert_eq!(error_message.get_sender(), "def");
+        assert_eq!(error_message.get_service_id(), "def");
         assert_eq!(
             error_message.get_error(),
             CircuitError_Error::ERROR_RECIPIENT_NOT_IN_DIRECTORY
@@ -694,7 +699,7 @@ mod tests {
             circuit_msg.get_message_type(),
             CircuitMessageType::CIRCUIT_ERROR_MESSAGE
         );
-        assert_eq!(error_message.get_sender(), "def");
+        assert_eq!(error_message.get_service_id(), "def");
         assert_eq!(
             error_message.get_error(),
             CircuitError_Error::ERROR_RECIPIENT_NOT_IN_CIRCUIT_ROSTER
@@ -758,7 +763,7 @@ mod tests {
             circuit_msg.get_message_type(),
             CircuitMessageType::CIRCUIT_ERROR_MESSAGE
         );
-        assert_eq!(error_message.get_sender(), "def");
+        assert_eq!(error_message.get_service_id(), "def");
         assert_eq!(
             error_message.get_error(),
             CircuitError_Error::ERROR_CIRCUIT_DOES_NOT_EXIST
