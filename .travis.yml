@@ -34,6 +34,9 @@ jobs:
     - stage: Lint Splinter
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
+    - stage: Run Clippy on Splinter
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit clippy-splinter
     - stage: Run Splinter Unit Tests
       before_script:
         - set -e

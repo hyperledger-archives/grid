@@ -25,6 +25,6 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
 ENV PATH=$PATH:/protoc3/bin:/project/splinter/bin:/root/.cargo/bin \
     CARGO_INCREMENTAL=0
 
-RUN rustup component add rustfmt
+RUN rustup component add rustfmt clippy
 
 WORKDIR /project/splinter

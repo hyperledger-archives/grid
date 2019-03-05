@@ -28,3 +28,16 @@ services:
     volumes:
       - ../../:/project/splinter
     command: run_lint_rust
+
+  clippy-splinter:
+    build:
+      context: ../
+      dockerfile: ./lint
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: clippy-splinter:${ISOLATION_ID}
+    volumes:
+      - ../../:/project/splinter
+    command:  cargo clippy -- -D clippy::all
