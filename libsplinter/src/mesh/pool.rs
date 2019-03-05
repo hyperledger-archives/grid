@@ -150,7 +150,7 @@ impl Pool {
     ) -> Result<(), (usize, TryEventError)> {
         if let Some(entry) = self.entry_by_token(event.token()) {
             entry
-                .try_event(event, incoming_tx)
+                .try_event(event, incoming_tx, &self.poll)
                 .map_err(|err| (entry.id(), err))
         } else {
             Ok(())
@@ -183,6 +183,7 @@ struct Entry {
     outgoing: mio_channel::Receiver<Envelope>,
     outgoing_token: Token,
     cached: RefCell<Option<Vec<u8>>>,
+    write_evented_guard: RefCell<bool>,
 }
 
 impl fmt::Debug for Entry {
@@ -210,6 +211,7 @@ impl Entry {
             outgoing,
             outgoing_token,
             cached: RefCell::new(None),
+            write_evented_guard: RefCell::new(false),
         }
     }
 
@@ -233,11 +235,12 @@ impl Entry {
         &self,
         event: &Event,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        poll: &Poll,
     ) -> Result<(), TryEventError> {
         if self.outgoing_wants_read(event) {
-            self.try_read_outgoing()
+            self.try_read_outgoing(poll)
         } else if self.connection_wants_write(event) {
-            self.try_send_connection_from_cached()
+            self.try_send_connection_from_cached(poll)
         } else if self.connection_wants_read(event) {
             self.try_read_connection(incoming_tx)
         } else {
@@ -253,14 +256,14 @@ impl Entry {
             && self.cached.borrow().is_none()
     }
 
-    fn try_read_outgoing(&self) -> Result<(), TryEventError> {
+    fn try_read_outgoing(&self, poll: &Poll) -> Result<(), TryEventError> {
         let envelope = match self.outgoing.try_recv() {
             Ok(envelope) => envelope,
             Err(TryRecvError::Empty) => return Ok(()),
             Err(TryRecvError::Disconnected) => return Err(TryEventError::OutgoingDisconnected),
         };
 
-        self.try_send_connection_or_cache(envelope.take_payload())
+        self.try_send_connection_or_cache(envelope.take_payload(), poll)
     }
 
     // -- Connection --
@@ -275,19 +278,46 @@ impl Entry {
         self.connection_token == event.token() && event.readiness().is_readable()
     }
 
-    fn try_send_connection_from_cached(&self) -> Result<(), TryEventError> {
+    fn try_send_connection_from_cached(&self, poll: &Poll) -> Result<(), TryEventError> {
         if let Some(cached) = self.cached.replace(None) {
-            self.try_send_connection_or_cache(cached)
+            self.try_send_connection_or_cache(cached, poll)
         } else {
             Ok(())
         }
     }
 
-    fn try_send_connection_or_cache(&self, payload: Vec<u8>) -> Result<(), TryEventError> {
+    fn try_send_connection_or_cache(
+        &self,
+        payload: Vec<u8>,
+        poll: &Poll,
+    ) -> Result<(), TryEventError> {
         match self.connection.borrow_mut().send(&payload) {
-            Ok(()) => Ok(()),
+            Ok(()) => {
+                // Return to readable only.
+                if self.write_evented_guard.replace(false) {
+                    poll.reregister(
+                        self.connection.borrow().evented(),
+                        self.connection_token,
+                        Ready::readable(),
+                        PollOpt::level(),
+                    )
+                    .map_err(TryEventError::IoError)?;
+                }
+                Ok(())
+            }
             Err(SendError::WouldBlock) => {
                 self.cached.replace(Some(payload));
+                if !*self.write_evented_guard.borrow() {
+                    poll.reregister(
+                        self.connection.borrow().evented(),
+                        self.connection_token,
+                        Ready::readable() | Ready::writable(),
+                        PollOpt::level(),
+                    )
+                    .map_err(TryEventError::IoError)?;
+
+                    self.write_evented_guard.replace(true);
+                }
 
                 Ok(())
             }
