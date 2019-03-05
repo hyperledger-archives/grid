@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use crate::circuit::directory::CircuitDirectory;
-use crate::circuit::service::{Service, SplinterNode};
+use crate::circuit::service::{Service, ServiceId, SplinterNode};
 use crate::storage::get_storage;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -92,7 +92,7 @@ pub struct SplinterState {
     // The state that is persisted
     circuit_directory: CircuitDirectory,
     // Service id to Service that contains the node the service is connected to. Not persisted.
-    service_directory: HashMap<String, Service>,
+    service_directory: HashMap<ServiceId, Service>,
 }
 
 impl SplinterState {
@@ -121,15 +121,15 @@ impl SplinterState {
     }
 
     // ---------- methods to access service directory ----------
-    pub fn service_directory(&self) -> &HashMap<String, Service> {
+    pub fn service_directory(&self) -> &HashMap<ServiceId, Service> {
         &self.service_directory
     }
 
-    pub fn add_service(&mut self, service_id: String, service: Service) {
+    pub fn add_service(&mut self, service_id: ServiceId, service: Service) {
         self.service_directory.insert(service_id, service);
     }
 
-    pub fn remove_service(&mut self, service_id: &str) {
+    pub fn remove_service(&mut self, service_id: &ServiceId) {
         self.service_directory.remove(service_id);
     }
 

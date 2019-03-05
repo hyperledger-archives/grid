@@ -14,7 +14,7 @@
 
 use crate::channel::Sender;
 use crate::circuit::handlers::create_message;
-use crate::circuit::SplinterState;
+use crate::circuit::{ServiceId, SplinterState};
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::circuit::{
@@ -44,8 +44,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
         let circuit_name = msg.get_circuit();
         let msg_sender = msg.get_sender();
         let recipient = msg.get_recipient();
-        let recipient_id = format!("{}-{}", circuit_name, recipient);
-        let sender_id = format!("{}-{}", circuit_name, msg_sender);
+        let recipient_id = ServiceId::new(circuit_name.to_string(), recipient.to_string());
+        let sender_id = ServiceId::new(circuit_name.to_string(), msg_sender.to_string());
 
         // Get read lock on state
         let state = rwlock_read_unwrap!(self.state);
@@ -227,15 +227,10 @@ mod tests {
             node.clone(),
         );
         let service_def = Service::new("def".to_string(), Some("def_network".to_string()), node);
-
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service_abc);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-def".to_string(), service_def);
+        let abc_id = ServiceId::new("alpha".into(), "abc".into());
+        let def_id = ServiceId::new("alpha".into(), "def".into());
+        state.write().unwrap().add_service(abc_id, service_abc);
+        state.write().unwrap().add_service(def_id, service_def);
 
         // Add direct message handler to the the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -319,15 +314,10 @@ mod tests {
             Service::new("abc".to_string(), Some("abc_network".to_string()), node_123);
         let service_def =
             Service::new("def".to_string(), Some("def_network".to_string()), node_345);
-
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service_abc);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-def".to_string(), service_def);
+        let abc_id = ServiceId::new("alpha".into(), "abc".into());
+        let def_id = ServiceId::new("alpha".into(), "def".into());
+        state.write().unwrap().add_service(abc_id, service_abc);
+        state.write().unwrap().add_service(def_id, service_def);
 
         // Add direct message handler to dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
@@ -410,11 +400,8 @@ mod tests {
             Some("abc_network".to_string()),
             node.clone(),
         );
-
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service_abc);
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        state.write().unwrap().add_service(id.clone(), service_abc);
 
         // add direct message handler to the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -499,11 +486,8 @@ mod tests {
             Some("abc_network".to_string()),
             node.clone(),
         );
-
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service_abc);
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        state.write().unwrap().add_service(id.clone(), service_abc);
 
         // add direct message handler to the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
@@ -585,10 +569,8 @@ mod tests {
         let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service_def =
             Service::new("def".to_string(), Some("def_network".to_string()), node_345);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-def".to_string(), service_def);
+        let id = ServiceId::new("alpha".into(), "def".into());
+        state.write().unwrap().add_service(id.clone(), service_def);
 
         // add handler to dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
@@ -668,10 +650,8 @@ mod tests {
         let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service_def =
             Service::new("def".to_string(), Some("def_network".to_string()), node_345);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-def".to_string(), service_def);
+        let id = ServiceId::new("alpha".into(), "def".into());
+        state.write().unwrap().add_service(id.clone(), service_def);
 
         // add direct message handler
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);

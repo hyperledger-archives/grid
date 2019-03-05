@@ -13,7 +13,7 @@
 // limitations under the License.
 use crate::channel::Sender;
 use crate::circuit::handlers::create_message;
-use crate::circuit::service::{Service, SplinterNode};
+use crate::circuit::service::{Service, ServiceId, SplinterNode};
 use crate::circuit::SplinterState;
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
@@ -46,7 +46,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
         debug!("Handle Service Connect Request {:?}", msg);
         let circuit_name = msg.get_circuit();
         let service_id = msg.get_service_id();
-        let unique_id = format!("{}-{}", circuit_name, service_id);
+        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         let mut response = ServiceConnectResponse::new();
         response.set_circuit(circuit_name.into());
@@ -150,7 +150,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
         debug!("Handle Service Disconnect Request {:?}", msg);
         let circuit_name = msg.get_circuit();
         let service_id = msg.get_service_id();
-        let unique_id = format!("{}-{}", circuit_name, service_id);
+        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         let mut response = ServiceDisconnectResponse::new();
         response.set_circuit(circuit_name.into());
@@ -248,7 +248,7 @@ impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwar
         let node_id = msg.get_node_id();
         let node_endpoint = msg.get_node_endpoint();
 
-        let unique_id = format!("{}-{}", circuit_name, service_id);
+        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
@@ -301,7 +301,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectForward> for ServiceDisconnect
         debug!("Handle Service Connect Forward {:?}", msg);
         let circuit_name = msg.get_circuit();
         let service_id = msg.get_service_id();
-        let unique_id = format!("{}-{}", circuit_name, service_id);
+        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         // hold on to the write lock for the entirety of the function
         let mut state = rwlock_write_unwrap!(self.state);
@@ -312,7 +312,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectForward> for ServiceDisconnect
             if circuit.roster().contains(&service_id.to_string())
                 && state.service_directory.contains_key(&unique_id)
             {
-                state.remove_service(&format!("{}-{}", circuit_name, service_id));
+                state.remove_service(&unique_id);
             } else if circuit.roster().contains(&service_id.to_string())
                 && !state.service_directory.contains_key(&unique_id)
             {
@@ -564,12 +564,8 @@ mod tests {
             ServiceConnectResponse_Status::OK
         );
 
-        assert!(state
-            .read()
-            .unwrap()
-            .service_directory()
-            .get("alpha-abc")
-            .is_some());
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        assert!(state.read().unwrap().service_directory().get(&id).is_some());
     }
 
     #[test]
@@ -599,10 +595,8 @@ mod tests {
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service);
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        state.write().unwrap().add_service(id.clone(), service);
         let handler =
             ServiceConnectRequestHandler::new("123".to_string(), "127.0.0.1:0".to_string(), state);
 
@@ -690,12 +684,8 @@ mod tests {
             )
             .unwrap();
 
-        assert!(state
-            .read()
-            .unwrap()
-            .service_directory()
-            .get("alpha-abc")
-            .is_some());
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        assert!(state.read().unwrap().service_directory().get(&id).is_some());
     }
 
     #[test]
@@ -845,10 +835,8 @@ mod tests {
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service);
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        state.write().unwrap().add_service(id.clone(), service);
 
         let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state.clone());
 
@@ -907,12 +895,7 @@ mod tests {
             ServiceDisconnectResponse_Status::OK
         );
 
-        assert!(state
-            .read()
-            .unwrap()
-            .service_directory()
-            .get("alpha-abc")
-            .is_none());
+        assert!(state.read().unwrap().service_directory().get(&id).is_none());
     }
 
     #[test]
@@ -1008,10 +991,8 @@ mod tests {
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
-        state
-            .write()
-            .unwrap()
-            .add_service("alpha-abc".to_string(), service);
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        state.write().unwrap().add_service(id.clone(), service);
 
         let handler = ServiceDisconnectForwardHandler::new(state.clone());
 
@@ -1033,11 +1014,6 @@ mod tests {
             )
             .unwrap();
 
-        assert!(state
-            .read()
-            .unwrap()
-            .service_directory()
-            .get("alpha-abc")
-            .is_none());
+        assert!(state.read().unwrap().service_directory().get(&id).is_none());
     }
 }
