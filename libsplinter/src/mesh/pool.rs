@@ -17,10 +17,10 @@ use crossbeam_channel::TrySendError;
 use mio::{Event, Evented, Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel as mio_channel;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
-use std::mem;
 use std::sync::mpsc::TryRecvError;
 
 use crate::mesh::Envelope;
@@ -74,7 +74,7 @@ impl Pool {
         self.poll.register(
             connection.evented(),
             connection_token,
-            Ready::readable() | Ready::writable(),
+            Ready::readable(),
             PollOpt::level(),
         )?;
 
@@ -144,13 +144,13 @@ impl Pool {
     }
 
     fn try_handle_event(
-        &mut self,
+        &self,
         event: &Event,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
     ) -> Result<(), (usize, TryEventError)> {
         if let Some(entry) = self.entry_by_token(event.token()) {
             entry
-                .try_event(event, incoming_tx)
+                .try_event(event, incoming_tx, &self.poll)
                 .map_err(|err| (entry.id(), err))
         } else {
             Ok(())
@@ -158,9 +158,9 @@ impl Pool {
     }
 
     // Lookup an entry by either its connection's token or its outgoing queue's token
-    fn entry_by_token(&mut self, token: Token) -> Option<&mut Entry> {
+    fn entry_by_token(&self, token: Token) -> Option<&Entry> {
         match self.tokens.get(&token) {
-            Some(id) => self.entries.get_mut(id),
+            Some(id) => self.entries.get(id),
             None => None,
         }
     }
@@ -176,13 +176,14 @@ impl Pool {
     }
 }
 
-pub struct Entry {
+struct Entry {
     id: usize,
-    connection: Box<dyn Connection>,
+    connection: RefCell<Box<dyn Connection>>,
     connection_token: Token,
     outgoing: mio_channel::Receiver<Envelope>,
     outgoing_token: Token,
-    cached: Option<Vec<u8>>,
+    cached: RefCell<Option<Vec<u8>>>,
+    write_evented_guard: RefCell<bool>,
 }
 
 impl fmt::Debug for Entry {
@@ -196,7 +197,7 @@ impl fmt::Debug for Entry {
 }
 
 impl Entry {
-    pub fn new(
+    fn new(
         id: usize,
         connection: Box<dyn Connection>,
         connection_token: Token,
@@ -205,39 +206,41 @@ impl Entry {
     ) -> Self {
         Entry {
             id,
-            connection,
+            connection: RefCell::new(connection),
             connection_token,
             outgoing,
             outgoing_token,
-            cached: None,
+            cached: RefCell::new(None),
+            write_evented_guard: RefCell::new(false),
         }
     }
 
-    pub fn id(&self) -> usize {
+    fn id(&self) -> usize {
         self.id
     }
 
-    pub fn connection_token(&self) -> Token {
+    fn connection_token(&self) -> Token {
         self.connection_token
     }
 
-    pub fn outgoing_token(&self) -> Token {
+    fn outgoing_token(&self) -> Token {
         self.outgoing_token
     }
 
-    pub fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<Envelope>) {
-        (self.connection, self.outgoing)
+    fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<Envelope>) {
+        (self.connection.into_inner(), self.outgoing)
     }
 
-    pub fn try_event(
-        &mut self,
+    fn try_event(
+        &self,
         event: &Event,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        poll: &Poll,
     ) -> Result<(), TryEventError> {
         if self.outgoing_wants_read(event) {
-            self.try_read_outgoing()
+            self.try_read_outgoing(poll)
         } else if self.connection_wants_write(event) {
-            self.try_send_connection_from_cached()
+            self.try_send_connection_from_cached(poll)
         } else if self.connection_wants_read(event) {
             self.try_read_connection(incoming_tx)
         } else {
@@ -250,17 +253,17 @@ impl Entry {
     fn outgoing_wants_read(&self, event: &Event) -> bool {
         self.outgoing_token == event.token()
             && event.readiness().is_readable()
-            && self.cached.is_none()
+            && self.cached.borrow().is_none()
     }
 
-    fn try_read_outgoing(&mut self) -> Result<(), TryEventError> {
+    fn try_read_outgoing(&self, poll: &Poll) -> Result<(), TryEventError> {
         let envelope = match self.outgoing.try_recv() {
             Ok(envelope) => envelope,
             Err(TryRecvError::Empty) => return Ok(()),
             Err(TryRecvError::Disconnected) => return Err(TryEventError::OutgoingDisconnected),
         };
 
-        self.try_send_connection_or_cache(envelope.take_payload())
+        self.try_send_connection_or_cache(envelope.take_payload(), poll)
     }
 
     // -- Connection --
@@ -268,26 +271,54 @@ impl Entry {
     fn connection_wants_write(&self, event: &Event) -> bool {
         self.connection_token == event.token()
             && event.readiness().is_writable()
-            && self.cached.is_some()
+            && self.cached.borrow().is_some()
     }
 
     fn connection_wants_read(&self, event: &Event) -> bool {
         self.connection_token == event.token() && event.readiness().is_readable()
     }
 
-    fn try_send_connection_from_cached(&mut self) -> Result<(), TryEventError> {
-        if let Some(cached) = mem::replace(&mut self.cached, None) {
-            self.try_send_connection_or_cache(cached)
+    fn try_send_connection_from_cached(&self, poll: &Poll) -> Result<(), TryEventError> {
+        if let Some(cached) = self.cached.replace(None) {
+            self.try_send_connection_or_cache(cached, poll)
         } else {
             Ok(())
         }
     }
 
-    fn try_send_connection_or_cache(&mut self, payload: Vec<u8>) -> Result<(), TryEventError> {
-        match self.connection.send(&payload) {
-            Ok(()) => Ok(()),
+    fn try_send_connection_or_cache(
+        &self,
+        payload: Vec<u8>,
+        poll: &Poll,
+    ) -> Result<(), TryEventError> {
+        match self.connection.borrow_mut().send(&payload) {
+            Ok(()) => {
+                // Return to readable only.
+                if self.write_evented_guard.replace(false) {
+                    poll.reregister(
+                        self.connection.borrow().evented(),
+                        self.connection_token,
+                        Ready::readable(),
+                        PollOpt::level(),
+                    )
+                    .map_err(TryEventError::IoError)?;
+                }
+                Ok(())
+            }
             Err(SendError::WouldBlock) => {
-                self.cached = Some(payload);
+                self.cached.replace(Some(payload));
+                if !*self.write_evented_guard.borrow() {
+                    poll.reregister(
+                        self.connection.borrow().evented(),
+                        self.connection_token,
+                        Ready::readable() | Ready::writable(),
+                        PollOpt::level(),
+                    )
+                    .map_err(TryEventError::IoError)?;
+
+                    self.write_evented_guard.replace(true);
+                }
+
                 Ok(())
             }
             Err(SendError::Disconnected) => Err(TryEventError::ConnectionDisconnected),
@@ -297,11 +328,11 @@ impl Entry {
     }
 
     fn try_read_connection(
-        &mut self,
+        &self,
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
     ) -> Result<(), TryEventError> {
         if !incoming_tx.is_full() {
-            match self.connection.recv() {
+            match self.connection.borrow_mut().recv() {
                 Ok(payload) => match incoming_tx.try_send(Envelope::new(self.id, payload)) {
                     Err(TrySendError::Full(_)) => {
                         warn!("Dropped message due to full incoming queue");
