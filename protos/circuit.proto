@@ -51,13 +51,16 @@ message CircuitError {
     string correlation_id = 1;
 
     // service id of the sender of the message
-    string sender = 2;
+    string service_id = 2;
+
+    // circuit id of the sender of the message
+    string circuit_name = 3;
 
     // enum of the network specific error that was encountered
-    Error error = 3;
+    Error error = 4;
 
     // explanation of the error
-    string error_message = 4;
+    string error_message = 5;
 }
 
 message NetworkError {

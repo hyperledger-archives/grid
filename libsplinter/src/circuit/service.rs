@@ -14,15 +14,53 @@
 
 use serde_derive::{Deserialize, Serialize};
 
+use std::fmt;
+
+#[derive(Clone, Debug, Hash, PartialEq)]
+pub struct ServiceId {
+    circuit_name: String,
+    service_id: String,
+}
+
+impl ServiceId {
+    pub fn new(circuit_name: String, service_id: String) -> Self {
+        ServiceId {
+            circuit_name,
+            service_id,
+        }
+    }
+}
+
+impl fmt::Display for ServiceId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}::{}", self.circuit_name, self.service_id)
+    }
+}
+
+impl Eq for ServiceId {}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Service {
-    id: String,
+    service_id: String,
+    peer_id: Option<String>,
     node: SplinterNode,
 }
 
 impl Service {
-    pub fn new(id: String, node: SplinterNode) -> Self {
-        Service { id, node }
+    pub fn new(service_id: String, peer_id: Option<String>, node: SplinterNode) -> Self {
+        Service {
+            service_id,
+            peer_id,
+            node,
+        }
+    }
+
+    pub fn service_id(&self) -> &str {
+        &self.service_id
+    }
+
+    pub fn peer_id(&self) -> &Option<String> {
+        &self.peer_id
     }
 
     pub fn node(&self) -> &SplinterNode {
