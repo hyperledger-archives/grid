@@ -615,7 +615,7 @@ fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>
                 .ok_or_else(|| "Must provide a valid key path".to_string())?;
 
             match TlsTransport::new(
-                ca_file,
+                Some(ca_file),
                 client_key_file.clone(),
                 client_cert.clone(),
                 client_key_file,
