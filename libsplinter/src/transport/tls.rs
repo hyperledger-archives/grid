@@ -258,7 +258,7 @@ pub(crate) mod tests {
     use std::path::PathBuf;
     use tempdir::TempDir;
 
-    // Make a certificate and private key for the Certifcate Authority
+    // Make a certificate and private key for the Certificate Authority
     fn make_ca_cert() -> (PKey<Private>, X509) {
         let rsa = Rsa::generate(2048).unwrap();
         let privkey = PKey::from_rsa(rsa).unwrap();
