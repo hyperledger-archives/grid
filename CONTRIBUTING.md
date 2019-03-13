@@ -1,22 +1,21 @@
-# Contributing to Distributed Ledger
+# Contributing to Hyperledger Grid
 
-This document covers how to report issues and contribute code.
+Hyperledger Grid is Apache 2.0 licensed and accepts contributions via GitHub
+pull requests.
 
-## Topics
+Contributions from the community help improve the design and capabilities of
+Hyperledger Grid. These contributions are the best way to make a positive impact
+on the project.
 
-* [Reporting Issues](#reporting-issues)
-* [Contributing Code](#contributing-code)
+This repository contains the core components for Hyperledger Grid. We welcome
+contributors who can:
 
-# Reporting Issues
+* Report bugs or issues
+* Add features or enhancements
+* Create or expand tests
+* Improve documentation
 
-Please refer to the article on [Issue Tracking](http://intelledger.github.io/community/issue_tracking.html) in the Sawtooth Lake documentation.
+For more information, please see
+[Contributing](https://grid.hyperledger.org/community/contributing/)
+on the Hyperledger Grid website.
 
-# Contributing Code
-
-Distributed Ledger is Apache 2.0 licensed and accepts contributions via 
-[GitHub](https://github.com/hyperledger/) pull requests.
-
-Please refer to the article on 
-[Contributing](http://intelledger.github.io/community/contributing.html)
-in the Sawtooth Lake documentation for information on contributing, and the 
-guidelines to use. 
