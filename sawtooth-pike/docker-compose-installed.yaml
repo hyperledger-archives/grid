@@ -79,7 +79,7 @@ services:
       \""
 
   validator:
-    image: hyperledger/sawtooth-validator:1.0
+    image: hyperledger/sawtooth-validator:1.1
     container_name: pike-validator
     expose:
       - 9004
@@ -89,15 +89,21 @@ services:
         sawadm keygen && \
         sawtooth keygen my_key && \
         sawset genesis -k /root/.sawtooth/keys/my_key.priv && \
+        sawset proposal create \
+          -k /root/.sawtooth/keys/my_key.priv \
+          sawtooth.consensus.algorithm.name=Devmode \
+          sawtooth.consensus.algorithm.version=0.1 \
+          -o config.batch && \
         sawadm genesis config-genesis.batch && \
         sawtooth-validator -vv \
           --endpoint tcp://validator:9005 \
           --bind component:tcp://eth0:9004 \
           --bind network:tcp://eth0:9005 \
+          --bind consensus:tcp://eth0:5050 \
         \""
 
   rest-api:
-    image: hyperledger/sawtooth-rest-api:1.0
+    image: hyperledger/sawtooth-rest-api:1.1
     container_name: pike-sawtooth-rest-api
     expose:
       - 9008
@@ -106,7 +112,7 @@ services:
     entrypoint: sawtooth-rest-api --connect tcp://validator:9004 --bind rest-api:9008 -vv
 
   shell:
-    image: hyperledger/sawtooth-all:1.0
+    image: hyperledger/sawtooth-shell:1.1
     container_name: pike-shell
     entrypoint: "bash -c \"\
         sawtooth keygen && \
@@ -114,9 +120,18 @@ services:
         \""
 
   settings-tp:
-    image: hyperledger/sawtooth-settings-tp:1.0
+    image: hyperledger/sawtooth-settings-tp:1.1
     container_name: pike-settings-tp
     entrypoint: settings-tp -vv --connect tcp://validator:9004
+
+  devmode-rust:
+    image: hyperledger/sawtooth-devmode-engine-rust:1.1
+    container_name: sawtooth-devmode-engine-rust
+    depends_on:
+      - validator
+    command: |
+        devmode-engine-rust -v --connect tcp://validator:5050
+    stop_signal: SIGKILL
 
   pike-tp:
     image: pike-tp
