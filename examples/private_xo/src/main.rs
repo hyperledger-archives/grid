@@ -93,7 +93,9 @@ fn main() -> Result<(), CliError> {
             .finalize()
             .map_err(|err| CliError(format!("Invalid configuration: {:?}", err)))?,
     )
+    .manage(service_config)
     .manage(xo_state)
+    .manage(send)
     .mount(
         "/",
         routes![
