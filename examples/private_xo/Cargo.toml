@@ -28,7 +28,7 @@ log = "0.4"
 protobuf = "2.2"
 rocket = "0.4"
 rocket_contrib = "0.4"
-sawtooth-sdk = "0.2"
+sawtooth-sdk = { git = "https://github.com/hyperledger/sawtooth-sdk-rust" }
 serde = "1.0"
 serde_derive = "1.0"
 simple_logger = "1.0"
