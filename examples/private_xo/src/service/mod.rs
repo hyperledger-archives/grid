@@ -63,18 +63,29 @@ pub struct XoState {}
 
 #[derive(Debug, Clone)]
 pub struct ServiceConfig {
+    peer_id: String,
     circuit: String,
     service_id: String,
     verifiers: Vec<String>,
 }
 
 impl ServiceConfig {
-    pub fn new(circuit: String, service_id: String, verifiers: Vec<String>) -> Self {
+    pub fn new(
+        peer_id: String,
+        circuit: String,
+        service_id: String,
+        verifiers: Vec<String>,
+    ) -> Self {
         ServiceConfig {
+            peer_id,
             circuit,
             service_id,
             verifiers,
         }
+    }
+
+    pub fn peer_id(&self) -> &str {
+        &self.peer_id
     }
 
     pub fn circuit(&self) -> &str {

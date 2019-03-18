@@ -62,7 +62,6 @@ fn main() -> Result<(), CliError> {
             .expect("State DB File was not marked as a required attribute"),
     )?;
 
-    let service_config = get_service_config(&matches);
 
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(
@@ -71,6 +70,15 @@ fn main() -> Result<(), CliError> {
             .value_of("connect")
             .expect("Connect was not marked as a required attribute"),
     )?;
+
+    let service_config = get_service_config(
+        network
+            .peer_ids()
+            .get(0)
+            .cloned()
+            .ok_or_else(|| CliError("Unable to connect to Splinter Node".into()))?,
+        &matches,
+    );
 
     let (send, recv) = crossbeam_channel::bounded(5);
     start_service_loop(
@@ -106,7 +114,7 @@ fn main() -> Result<(), CliError> {
     Ok(())
 }
 
-fn get_service_config(matches: &clap::ArgMatches) -> ServiceConfig {
+fn get_service_config(peer_id: String, matches: &clap::ArgMatches) -> ServiceConfig {
     let circuit = matches
         .value_of("circuit")
         .expect("Circuit was not marked as a required attribute")
@@ -121,7 +129,7 @@ fn get_service_config(matches: &clap::ArgMatches) -> ServiceConfig {
         .map(ToString::to_string)
         .collect();
 
-    ServiceConfig::new(circuit, service_id, verifiers)
+    ServiceConfig::new(peer_id, circuit, service_id, verifiers)
 }
 
 /// Return the appropriate transport for the current arguments
