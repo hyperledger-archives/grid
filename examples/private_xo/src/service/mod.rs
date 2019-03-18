@@ -215,6 +215,12 @@ fn run_service_loop(
             ),
         }
     }
+
+    // This is a bit of a gross work-around the fact that Rocket can't be signaled to shutdown
+    // gracefully.  We'll give the disconnect message a little time to arive in the splinter node
+    // and exit the process.
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    std::process::exit(0);
 }
 
 /// Handles authorization messages
