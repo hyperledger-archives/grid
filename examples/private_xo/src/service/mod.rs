@@ -14,7 +14,6 @@
 
 mod error;
 
-use std::fmt::Write as FmtWrite;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::Builder;
@@ -25,7 +24,7 @@ use protobuf::Message;
 
 use libsplinter::network::{
     sender::{NetworkMessageSender, SendRequest},
-    Network,
+    Network, RecvTimeoutError,
 };
 use libsplinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
@@ -36,12 +35,14 @@ use libsplinter::protos::circuit::{
     ServiceConnectResponse, ServiceConnectResponse_Status, ServiceDisconnectRequest,
 };
 use libsplinter::protos::n_phase::{
-    NPhaseTransactionMessage, NPhaseTransactionMessage_Type, TransactionVerificationRequest,
-    TransactionVerificationResponse, TransactionVerificationResponse_Result,
+    NPhaseTransactionMessage, NPhaseTransactionMessage_Type, TransactionVerificationResponse,
+    TransactionVerificationResponse_Result,
 };
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
+use transact::protos::batch::Batch;
 
 pub use crate::service::error::ServiceError;
+use crate::transaction::XoState;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -57,9 +58,6 @@ macro_rules! unwrap_or_break {
         }
     };
 }
-
-#[derive(Clone, Default)]
-pub struct XoState {}
 
 #[derive(Debug, Clone)]
 pub struct ServiceConfig {
@@ -194,6 +192,11 @@ fn run_service_loop(
                     }
                 };
             }
+            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Disconnected) => {
+                warn!("Network disconnected");
+                break;
+            }
             Err(err) => debug!("Error: {:?}", err),
         }
     }
@@ -282,7 +285,6 @@ fn handle_circuit_msg(
         }
         _ => debug!("Received message {:?}", circuit_msg),
     }
-
     Ok(())
 }
 
@@ -291,14 +293,14 @@ fn handle_direct_msg(
     source_peer_id: &str,
     circuit_msg: &mut CircuitDirectMessage,
     reply_sender: &crossbeam_channel::Sender<SendRequest>,
-    state: &XoState,
+    xo_state: &XoState,
 ) -> Result<(), ServiceError> {
     let mut nphase_transaction_msg: NPhaseTransactionMessage =
         protobuf::parse_from_bytes(circuit_msg.get_payload())?;
 
     match nphase_transaction_msg.get_message_type() {
         NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_REQUEST => {
-            let mut _verification_request =
+            let mut verification_request =
                 nphase_transaction_msg.take_transaction_verification_request();
 
             debug!(
@@ -306,9 +308,61 @@ fn handle_direct_msg(
                 circuit_msg.get_circuit(),
                 circuit_msg.get_sender()
             );
+
+            let correlation_id = verification_request.take_correlation_id();
+            let batch: Batch =
+                protobuf::parse_from_bytes(verification_request.get_transaction_payload())?;
+
+            let output_hash = xo_state
+                .propose_change(transact::protocol::batch::Batch::from(batch.clone()))
+                .map_err(|err| ServiceError(format!("Unable to compute change: {}", err)))?;
+
+            let expected_output_hash = std::str::from_utf8(
+                verification_request.get_expected_output_hash(),
+            )
+            .map_err(|err| ServiceError(format!("Hash received was not utf8 bytes: {}", err)))?;
+
+            let mut response = TransactionVerificationResponse::new();
+            response.set_correlation_id(correlation_id);
+
+            if output_hash != expected_output_hash {
+                debug!(
+                    "Hash mismatch: expected {} but was {}",
+                    &expected_output_hash, &output_hash
+                );
+
+                response.set_result(TransactionVerificationResponse_Result::MISMATCHED_OUTPUT);
+                response.set_output_hash(output_hash.into_bytes());
+                xo_state
+                    .rollback()
+                    .map_err(|err| ServiceError(format!("Unable to rollback: {}", err)))?;
+            } else {
+                response.set_result(TransactionVerificationResponse_Result::VERIFIED);
+                xo_state
+                    .commit()
+                    .map_err(|err| ServiceError(format!("Unable to commit: {}", err)))?;
+            }
+
+            let mut nphase_msg = NPhaseTransactionMessage::new();
+            nphase_msg
+                .set_message_type(NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_RESPONSE);
+            nphase_msg.set_transaction_verification_response(response);
+
+            reply_sender.send(SendRequest::new(
+                source_peer_id.to_string(),
+                create_circuit_direct_msg(
+                    circuit_msg.take_circuit(),
+                    // The recipient was us, so set it as the sender
+                    circuit_msg.take_recipient(),
+                    // and vice-versa on the recipient of this message
+                    circuit_msg.take_sender(),
+                    &nphase_msg,
+                    circuit_msg.take_correlation_id(),
+                )?,
+            ))?;
         }
         NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_RESPONSE => {
-            let _verification_response =
+            let verification_response =
                 nphase_transaction_msg.take_transaction_verification_response();
 
             debug!(
@@ -316,6 +370,18 @@ fn handle_direct_msg(
                 circuit_msg.get_circuit(),
                 circuit_msg.get_sender()
             );
+
+            if verification_response.get_result()
+                == TransactionVerificationResponse_Result::VERIFIED
+            {
+                xo_state
+                    .commit()
+                    .map_err(|err| ServiceError(format!("Unable to commit: {}", err)))?;
+            } else {
+                xo_state
+                    .rollback()
+                    .map_err(|err| ServiceError(format!("Unable to rollback: {}", err)))?;
+            }
         }
         NPhaseTransactionMessage_Type::UNSET_NPHASE_TRANSACTION_MESSAGE_TYPE => warn!(
             "Ignoring improperly specified n-phase message from {}",
@@ -355,18 +421,18 @@ fn create_circuit_service_disconnect_request(
     )
 }
 
-fn create_circuit_direct_msg(
+pub fn create_circuit_direct_msg<M: protobuf::Message>(
     circuit: String,
     sender: String,
     recipient: String,
-    payload: Vec<u8>,
+    payload: &M,
     correlation_id: String,
 ) -> Result<Vec<u8>, ServiceError> {
     let mut direct_msg = CircuitDirectMessage::new();
     direct_msg.set_circuit(circuit);
     direct_msg.set_sender(sender);
     direct_msg.set_recipient(recipient);
-    direct_msg.set_payload(payload);
+    direct_msg.set_payload(payload.write_to_bytes()?);
     direct_msg.set_correlation_id(correlation_id);
 
     wrap_in_circuit_envelopes(CircuitMessageType::CIRCUIT_DIRECT_MESSAGE, direct_msg)
@@ -403,14 +469,6 @@ fn wrap_in_network_msg<M: protobuf::Message>(
     network_msg.set_payload(msg.write_to_bytes()?);
 
     network_msg.write_to_bytes().map_err(ServiceError::from)
-}
-
-fn to_hex(bytes: &[u8]) -> String {
-    let mut buf = String::with_capacity(bytes.len() * 2);
-    for b in bytes {
-        write!(&mut buf, "{:0x}", b).unwrap(); // this can't fail
-    }
-    buf
 }
 
 impl From<protobuf::ProtobufError> for ServiceError {
