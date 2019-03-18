@@ -20,6 +20,7 @@ use transact::batch::Batch;
 use transact::database::lmdb::{LmdbContext, LmdbDatabase};
 use transact::state::merkle::{MerkleDatabase, StateDatabaseError, INDEXES};
 
+mod adapter;
 
 struct XoShared {
     current_state_root: Option<String>,
