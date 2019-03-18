@@ -26,7 +26,7 @@ use crate::transaction::{XoState, XoStateError};
 pub fn get_state_by_address(
     xo_state: State<XoState>,
     address: String,
-) -> Result<Json<DataEnvelope<StateEntry>>, StateError> {
+) -> Result<Json<DataEnvelope<String>>, StateError> {
     if address.len() != 70 {
         return Err(StateError::BadRequest(format!(
             "\"{}\" is not a valid address",
@@ -34,11 +34,12 @@ pub fn get_state_by_address(
         )));
     }
 
-    log::debug!("Getting state at {}", &address);
-
-    let state_root = xo_state
-        .current_state_root()
-        .ok_or_else(|| StateError::ServiceUnavaible("There is currently no state".into()))?;
+    let state_root = xo_state.current_state_root();
+    log::debug!(
+        "Getting state at {}, from state root {}",
+        &address,
+        &state_root
+    );
 
     xo_state
         .get_state(&state_root, &address)
@@ -48,10 +49,7 @@ pub fn get_state_by_address(
         })
         .map(|data| {
             Json(DataEnvelope {
-                data: StateEntry {
-                    address: address.clone(),
-                    data,
-                },
+                data: base64::encode(&data),
                 head: state_root,
                 link: uri!(get_state_by_address: address = address).to_string(),
             })
@@ -87,8 +85,7 @@ pub fn list_state_with_params(
         .head
         .as_ref()
         .cloned()
-        .or_else(|| xo_state.current_state_root())
-        .ok_or_else(|| StateError::ServiceUnavaible("There is currently no state".into()))?;
+        .unwrap_or_else(|| xo_state.current_state_root());
 
     log::debug!(
         "Listing state with prefix {:?} from head {}",
