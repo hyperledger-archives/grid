@@ -13,12 +13,13 @@
 // limitations under the License.
 use std::error::Error;
 use std::fmt;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use transact::batch::Batch;
-use transact::database::lmdb::{LmdbContext, LmdbDatabase};
-use transact::state::merkle::{MerkleDatabase, StateDatabaseError, INDEXES};
+use transact::database::{btree::BTreeDatabase, Database};
+use transact::protocol::batch::Batch;
+use transact::state::{
+    merkle::{MerkleRadixTree, MerkleState, StateDatabaseError, INDEXES},
+};
 
 mod adapter;
 
@@ -36,14 +37,13 @@ impl XoShared {
 
 #[derive(Clone)]
 pub struct XoState {
-    db: LmdbDatabase,
+    db: Box<dyn Database>,
     shared: Arc<Mutex<XoShared>>,
 }
 
 impl XoState {
-    pub fn new(db_path: &str) -> Result<Self, XoStateError> {
-        let context = LmdbContext::new(Path::new(db_path), INDEXES.len(), Some(100 * 1024 * 1024))?;
-        let db = LmdbDatabase::new(context, &INDEXES)?;
+    pub fn new() -> Result<Self, XoStateError> {
+        let db = Box::new(BTreeDatabase::new(&INDEXES));
 
         Ok(XoState {
             db,
@@ -78,9 +78,12 @@ impl XoState {
         state_root: &str,
         address: &str,
     ) -> Result<Option<Vec<u8>>, XoStateError> {
-        let merkle_db = MerkleDatabase::new(self.db.clone(), Some(state_root))?;
+        let merkle_db = MerkleRadixTree::new(self.db.clone(), Some(state_root))?;
 
-        merkle_db.get_value(address).map_err(XoStateError::from)
+        merkle_db.get_value(address).map_err(|err| {
+            error!("Unable to get value from db: {}", &err);
+            XoStateError::from(err)
+        })
     }
 
     pub fn list_state(
@@ -89,7 +92,7 @@ impl XoState {
         prefix: Option<&str>,
     ) -> Result<Box<dyn Iterator<Item = Result<(String, Vec<u8>), XoStateError>>>, XoStateError>
     {
-        let merkle_db = MerkleDatabase::new(self.db.clone(), Some(state_root))?;
+        let merkle_db = MerkleRadixTree::new(self.db.clone(), Some(state_root))?;
 
         let iter: Box<dyn Iterator<Item = Result<(String, Vec<u8>), StateDatabaseError>>> =
             match merkle_db.leaves(prefix) {

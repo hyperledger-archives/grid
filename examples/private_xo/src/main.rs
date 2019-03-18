@@ -56,12 +56,7 @@ fn main() -> Result<(), CliError> {
     let running = Arc::new(AtomicBool::new(true));
     configure_shutdown_handler(Arc::clone(&running))?;
 
-    let xo_state = XoState::new(
-        matches
-            .value_of("state_db_file")
-            .expect("State DB File was not marked as a required attribute"),
-    )?;
-
+    let xo_state = XoState::new()?;
 
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(
@@ -229,14 +224,6 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .required(true)
                 .multiple(true)
                 .help("the name of a service that will validate a counter increment"),
-        )
-        .arg(
-            Arg::with_name("state_db_file")
-                .long("state-db-file")
-                .takes_value(true)
-                .value_name("DB_PATH")
-                .default_value("xo_state.lmdb")
-                .help("path to an lmdb database file used to store the service state"),
         )
         .arg(
             Arg::with_name("bind")
