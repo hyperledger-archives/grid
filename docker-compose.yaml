@@ -21,7 +21,8 @@ services:
     image: grid-track-and-trace-tp
     container_name: grid-track-and-trace-tp
     build:
-      context: contracts/track_and_trace/
+      context: .
+      dockerfile: contracts/track_and_trace/Dockerfile
       args:
         - http_proxy
         - https_proxy
@@ -32,6 +33,7 @@ services:
       - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
       - .:/grid
+      - /grid/sdk
       - /grid/contracts/track_and_trace/target
       - /grid/contracts/track_and_trace/src/messages
     entrypoint: |

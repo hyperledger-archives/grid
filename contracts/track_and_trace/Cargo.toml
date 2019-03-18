@@ -25,10 +25,7 @@ rust-crypto = "0.2.36"
 rustc-serialize = "0.3.22"
 sawtooth-zmq = "0.8.2-dev5"
 clap = "2"
-protobuf = "2"
+grid-sdk = { path = "../../sdk" }
 log = "0.3.0"
 log4rs = "0.7.0"
-
-[build-dependencies]
-protoc-rust = "2"
-glob = "0.2"
+protobuf = "2"

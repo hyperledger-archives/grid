@@ -18,19 +18,19 @@ extern crate crypto;
 extern crate log4rs;
 #[macro_use]
 extern crate log;
+extern crate grid_sdk;
 extern crate protobuf;
 extern crate rustc_serialize;
 extern crate sawtooth_sdk;
 
-mod handler;
 mod addressing;
-mod messages;
+mod handler;
 
-use std::process;
 use log::LogLevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use std::process;
 
 use sawtooth_sdk::processor::TransactionProcessor;
 
@@ -44,7 +44,7 @@ fn main() {
          "connection endpoint for validator")
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity"))
-        .get_matches();
+    .get_matches();
 
     let endpoint = matches
         .value_of("connect")
