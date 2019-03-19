@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:xenial
+FROM ubuntu:bionic as BUILDER
 
 # Install base dependencies
 RUN apt-get update \
@@ -37,27 +37,38 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
-ENV PATH=$PATH:/root/.cargo/bin
-
 # For Building Protobufs
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
     && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.5.1-linux-x86_64.zip
-RUN apt-get update && apt-get install -y protobuf-compiler
 
-# Build with dummy source in order to cache dependencies in Docker image
-WORKDIR /project
-RUN USER=root cargo new --bin splinterd --name splinterd
-RUN USER=root cargo new --bin libsplinter --name libsplinter
+ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
-# Copy lipsplinter
-WORKDIR /project/libsplinter
-COPY libsplinter/src libsplinter/Cargo.toml libsplinter/Cargo.lock* ./
+COPY ./protos /protos
+COPY ./libsplinter /libsplinter
 
-WORKDIR /project/splinterd
-COPY splinterd/Cargo.toml splinterd/Cargo.lock* ./
-RUN cargo build
+RUN USER=root cargo new --bin splinterd
+WORKDIR /splinterd
 
-ENV PATH=$PATH:/project/splinterd/target/debug/
+COPY ./splinterd/Cargo.toml ./Cargo.toml
+RUN cargo build --release
 
-ENTRYPOINT ["splinterd"]
+RUN rm src/*.rs
+COPY ./splinterd/src ./src
+
+RUN rm ./target/release/splinterd* ./target/release/deps/splinterd*
+RUN cargo build --release
+
+# create the standalone image
+FROM ubuntu:bionic
+
+RUN apt-get update \
+ && apt-get install -y libssl1.1 libzmq5 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=BUILDER /splinterd/target/release/splinterd /
+
+EXPOSE 8043
+EXPOSE 8945
+CMD ["splinterd"]
