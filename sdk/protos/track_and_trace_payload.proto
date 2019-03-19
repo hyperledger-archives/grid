@@ -15,8 +15,8 @@
 
 syntax = "proto3";
 
-import "property.proto";
-import "proposal.proto";
+import "track_and_trace_property.proto";
+import "track_and_trace_proposal.proto";
 
 
 message SCPayload {

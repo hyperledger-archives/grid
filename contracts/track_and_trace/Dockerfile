@@ -52,9 +52,14 @@ RUN apt-get update && apt-get install -y protobuf-compiler
 #   - /grid/contracts/track_and_trace/src/messages/
 WORKDIR /grid
 RUN USER=root cargo new --bin contracts/track_and_trace
+RUN USER=root cargo new --lib sdk --name grid-sdk
+
+# copy grid-sdk to build track and trace
+WORKDIR /grid/sdk
+COPY sdk ./
 
 WORKDIR /grid/contracts/track_and_trace
-COPY Cargo.toml Cargo.lock* ./
+COPY contracts/track_and_trace/Cargo.toml contracts/track_and_trace/Cargo.lock* ./
 RUN cargo build
 
 ENV PATH=$PATH:/grid/contracts/track_and_trace/target/debug/

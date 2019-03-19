@@ -8,6 +8,9 @@ contracts/track_and_trace/bin/
 contracts/track_and_trace/target/
 contracts/track_and_trace/src/messages/
 
+sdk/Cargo.lock
+sdk/target
+
 # Node
 **/node_modules
 **/package-lock.json

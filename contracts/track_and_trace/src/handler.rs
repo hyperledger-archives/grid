@@ -18,26 +18,42 @@ use protobuf::RepeatedField;
 
 use std::collections::HashMap;
 
+use grid_sdk::protos::track_and_trace_agent::{Agent, AgentContainer};
+use grid_sdk::protos::track_and_trace_payload::{
+    AnswerProposalAction, AnswerProposalAction_Response, CreateAgentAction,
+    CreateProposalAction, CreateRecordAction, CreateRecordTypeAction, FinalizeRecordAction,
+    RevokeReporterAction, SCPayload, UpdatePropertiesAction, SCPayload_Action
+};
+use grid_sdk::protos::track_and_trace_property::{
+    Property, PropertyContainer, PropertyPage, PropertyPageContainer,
+    PropertyPage_ReportedValue, PropertySchema, PropertySchema_DataType, PropertyValue,
+    Property_Reporter,
+};
+use grid_sdk::protos::track_and_trace_proposal::{
+    Proposal, ProposalContainer, Proposal_Role, Proposal_Status,
+};
+use grid_sdk::protos::track_and_trace_record::{
+    Record, RecordContainer, RecordType, RecordTypeContainer, Record_AssociatedAgent,
+};
+use sawtooth_sdk::messages::processor::TpProcessRequest;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
-use sawtooth_sdk::messages::processor::TpProcessRequest;
 
-use messages::*;
 use addressing::*;
 
 const PROPERTY_PAGE_MAX_LENGTH: usize = 256;
 
 #[derive(Debug, Clone)]
 enum Action {
-    CreateAgent(payload::CreateAgentAction),
-    CreateRecord(payload::CreateRecordAction),
-    FinalizeRecord(payload::FinalizeRecordAction),
-    CreateRecordType(payload::CreateRecordTypeAction),
-    UpdateProperties(payload::UpdatePropertiesAction),
-    CreateProposal(payload::CreateProposalAction),
-    AnswerProposal(payload::AnswerProposalAction),
-    RevokeReporter(payload::RevokeReporterAction),
+    CreateAgent(CreateAgentAction),
+    CreateRecord(CreateRecordAction),
+    FinalizeRecord(FinalizeRecordAction),
+    CreateRecordType(CreateRecordTypeAction),
+    UpdateProperties(UpdatePropertiesAction),
+    CreateProposal(CreateProposalAction),
+    AnswerProposal(AnswerProposalAction),
+    RevokeReporter(RevokeReporterAction),
 }
 
 struct SupplyChainPayload {
@@ -47,18 +63,18 @@ struct SupplyChainPayload {
 
 impl SupplyChainPayload {
     pub fn new(payload: &[u8]) -> Result<Option<SupplyChainPayload>, ApplyError> {
-        let payload: payload::SCPayload = match protobuf::parse_from_bytes(payload) {
+        let payload: SCPayload = match protobuf::parse_from_bytes(payload) {
             Ok(payload) => payload,
             Err(_) => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Cannot deserialize payload",
-                )))
+                )));
             }
         };
 
         let supply_chain_action = payload.get_action();
         let action = match supply_chain_action {
-            payload::SCPayload_Action::CREATE_AGENT => {
+            SCPayload_Action::CREATE_AGENT => {
                 let create_agent = payload.get_create_agent();
                 if create_agent.get_name() == "" {
                     return Err(ApplyError::InvalidTransaction(String::from(
@@ -67,7 +83,7 @@ impl SupplyChainPayload {
                 }
                 Action::CreateAgent(create_agent.clone())
             }
-            payload::SCPayload_Action::CREATE_RECORD => {
+            SCPayload_Action::CREATE_RECORD => {
                 let create_record = payload.get_create_record();
                 if create_record.get_record_id() == "" {
                     return Err(ApplyError::InvalidTransaction(String::from(
@@ -76,10 +92,10 @@ impl SupplyChainPayload {
                 }
                 Action::CreateRecord(create_record.clone())
             }
-            payload::SCPayload_Action::FINALIZE_RECORD => {
+            SCPayload_Action::FINALIZE_RECORD => {
                 Action::FinalizeRecord(payload.get_finalize_record().clone())
             }
-            payload::SCPayload_Action::CREATE_RECORD_TYPE => {
+            SCPayload_Action::CREATE_RECORD_TYPE => {
                 let create_record_type = payload.get_create_record_type();
                 if create_record_type.get_name() == "" {
                     return Err(ApplyError::InvalidTransaction(String::from(
@@ -102,16 +118,16 @@ impl SupplyChainPayload {
 
                 Action::CreateRecordType(create_record_type.clone())
             }
-            payload::SCPayload_Action::UPDATE_PROPERTIES => {
+            SCPayload_Action::UPDATE_PROPERTIES => {
                 Action::UpdateProperties(payload.get_update_properties().clone())
             }
-            payload::SCPayload_Action::CREATE_PROPOSAL => {
+            SCPayload_Action::CREATE_PROPOSAL => {
                 Action::CreateProposal(payload.get_create_proposal().clone())
             }
-            payload::SCPayload_Action::ANSWER_PROPOSAL => {
+            SCPayload_Action::ANSWER_PROPOSAL => {
                 Action::AnswerProposal(payload.get_answer_proposal().clone())
             }
-            payload::SCPayload_Action::REVOKE_REPORTER => {
+            SCPayload_Action::REVOKE_REPORTER => {
                 Action::RevokeReporter(payload.get_revoke_reporter().clone())
             }
         };
@@ -119,7 +135,7 @@ impl SupplyChainPayload {
             0 => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Timestamp is not set",
-                )))
+                )));
             }
             x => x,
         };
@@ -148,20 +164,19 @@ impl<'a> SupplyChainState<'a> {
         SupplyChainState { context: context }
     }
 
-    pub fn get_record(&mut self, record_id: &str) -> Result<Option<record::Record>, ApplyError> {
+    pub fn get_record(&mut self, record_id: &str) -> Result<Option<Record>, ApplyError> {
         let address = make_record_address(record_id);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let records: record::RecordContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(records) => records,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize record container",
-                            )))
-                        }
-                    };
+                let records: RecordContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
+                    Ok(records) => records,
+                    Err(_) => {
+                        return Err(ApplyError::InternalError(String::from(
+                            "Cannot deserialize record container",
+                        )));
+                    }
+                };
 
                 for record in records.get_entries() {
                     if record.record_id == record_id {
@@ -174,11 +189,7 @@ impl<'a> SupplyChainState<'a> {
         }
     }
 
-    pub fn set_record(
-        &mut self,
-        record_id: &str,
-        record: record::Record,
-    ) -> Result<(), ApplyError> {
+    pub fn set_record(&mut self, record_id: &str, record: Record) -> Result<(), ApplyError> {
         let address = make_record_address(record_id);
         let d = self.context.get_state(vec![address.clone()])?;
         let mut record_container = match d {
@@ -187,10 +198,10 @@ impl<'a> SupplyChainState<'a> {
                 Err(_) => {
                     return Err(ApplyError::InternalError(String::from(
                         "Cannot deserialize record container",
-                    )))
+                    )));
                 }
             },
-            None => record::RecordContainer::new(),
+            None => RecordContainer::new(),
         };
         // remove old record if it exists and sort the records by record id
         let records = record_container.get_entries().to_vec();
@@ -219,7 +230,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize record container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -230,21 +241,18 @@ impl<'a> SupplyChainState<'a> {
         Ok(())
     }
 
-    pub fn get_record_type(
-        &mut self,
-        type_name: &str,
-    ) -> Result<Option<record::RecordType>, ApplyError> {
+    pub fn get_record_type(&mut self, type_name: &str) -> Result<Option<RecordType>, ApplyError> {
         let address = make_record_type_address(type_name);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let record_types: record::RecordTypeContainer =
+                let record_types: RecordTypeContainer =
                     match protobuf::parse_from_bytes(packed.as_slice()) {
                         Ok(record_types) => record_types,
                         Err(_) => {
                             return Err(ApplyError::InternalError(String::from(
                                 "Cannot deserialize record type container",
-                            )))
+                            )));
                         }
                     };
 
@@ -262,7 +270,7 @@ impl<'a> SupplyChainState<'a> {
     pub fn set_record_type(
         &mut self,
         type_name: &str,
-        record_type: record::RecordType,
+        record_type: RecordType,
     ) -> Result<(), ApplyError> {
         let address = make_record_type_address(type_name);
         let d = self.context.get_state(vec![address.clone()])?;
@@ -272,10 +280,10 @@ impl<'a> SupplyChainState<'a> {
                 Err(_) => {
                     return Err(ApplyError::InternalError(String::from(
                         "Cannot deserialize record container",
-                    )))
+                    )));
                 }
             },
-            None => record::RecordTypeContainer::new(),
+            None => RecordTypeContainer::new(),
         };
 
         record_types.entries.push(record_type);
@@ -285,7 +293,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize record type container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -296,18 +304,18 @@ impl<'a> SupplyChainState<'a> {
         Ok(())
     }
 
-    pub fn get_agent(&mut self, agent_id: &str) -> Result<Option<agent::Agent>, ApplyError> {
+    pub fn get_agent(&mut self, agent_id: &str) -> Result<Option<Agent>, ApplyError> {
         let address = make_agent_address(agent_id);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let agents: agent::AgentContainer =
+                let agents: AgentContainer =
                     match protobuf::parse_from_bytes(packed.as_slice()) {
                         Ok(agents) => agents,
                         Err(_) => {
                             return Err(ApplyError::InternalError(String::from(
                                 "Cannot deserialize agent container",
-                            )))
+                            )));
                         }
                     };
 
@@ -322,7 +330,7 @@ impl<'a> SupplyChainState<'a> {
         }
     }
 
-    pub fn set_agent(&mut self, agent_id: &str, agent: agent::Agent) -> Result<(), ApplyError> {
+    pub fn set_agent(&mut self, agent_id: &str, agent: Agent) -> Result<(), ApplyError> {
         let address = make_agent_address(agent_id);
         let d = self.context.get_state(vec![address.clone()])?;
         let mut agents = match d {
@@ -331,10 +339,10 @@ impl<'a> SupplyChainState<'a> {
                 Err(_) => {
                     return Err(ApplyError::InternalError(String::from(
                         "Cannot deserialize agent container",
-                    )))
+                    )));
                 }
             },
-            None => agent::AgentContainer::new(),
+            None => AgentContainer::new(),
         };
 
         agents.entries.push(agent);
@@ -344,7 +352,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize agent container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -359,18 +367,18 @@ impl<'a> SupplyChainState<'a> {
         &mut self,
         record_id: &str,
         property_name: &str,
-    ) -> Result<Option<property::Property>, ApplyError> {
+    ) -> Result<Option<Property>, ApplyError> {
         let address = make_property_address(record_id, property_name, 0);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let properties: property::PropertyContainer =
+                let properties: PropertyContainer =
                     match protobuf::parse_from_bytes(packed.as_slice()) {
                         Ok(properties) => properties,
                         Err(_) => {
                             return Err(ApplyError::InternalError(String::from(
                                 "Cannot deserialize property container",
-                            )))
+                            )));
                         }
                     };
 
@@ -389,7 +397,7 @@ impl<'a> SupplyChainState<'a> {
         &mut self,
         record_id: &str,
         property_name: &str,
-        property: property::Property,
+        property: Property,
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, 0);
         let d = self.context.get_state(vec![address.clone()])?;
@@ -399,10 +407,10 @@ impl<'a> SupplyChainState<'a> {
                 Err(_) => {
                     return Err(ApplyError::InternalError(String::from(
                         "Cannot deserialize property container",
-                    )))
+                    )));
                 }
             },
-            None => property::PropertyContainer::new(),
+            None => PropertyContainer::new(),
         };
         // remove old property if it exists and sort the properties by name
         let properties = property_container.get_entries().to_vec();
@@ -429,7 +437,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize property container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -445,18 +453,18 @@ impl<'a> SupplyChainState<'a> {
         record_id: &str,
         property_name: &str,
         page: u32,
-    ) -> Result<Option<property::PropertyPage>, ApplyError> {
+    ) -> Result<Option<PropertyPage>, ApplyError> {
         let address = make_property_address(record_id, property_name, page);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let property_pages: property::PropertyPageContainer =
+                let property_pages: PropertyPageContainer =
                     match protobuf::parse_from_bytes(packed.as_slice()) {
                         Ok(property_pages) => property_pages,
                         Err(_) => {
                             return Err(ApplyError::InternalError(String::from(
                                 "Cannot deserialize property page container",
-                            )))
+                            )));
                         }
                     };
 
@@ -476,7 +484,7 @@ impl<'a> SupplyChainState<'a> {
         record_id: &str,
         property_name: &str,
         page_num: u32,
-        property_page: property::PropertyPage,
+        property_page: PropertyPage,
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, page_num);
         let d = self.context.get_state(vec![address.clone()])?;
@@ -486,10 +494,10 @@ impl<'a> SupplyChainState<'a> {
                 Err(_) => {
                     return Err(ApplyError::InternalError(String::from(
                         "Cannot deserialize property page container",
-                    )))
+                    )));
                 }
             },
-            None => property::PropertyPageContainer::new(),
+            None => PropertyPageContainer::new(),
         };
         // remove old property page if it exists and sort the property pages by name
         let pages = property_pages.get_entries().to_vec();
@@ -516,7 +524,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize property page container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -531,18 +539,18 @@ impl<'a> SupplyChainState<'a> {
         &mut self,
         record_id: &str,
         agent_id: &str,
-    ) -> Result<Option<proposal::ProposalContainer>, ApplyError> {
+    ) -> Result<Option<ProposalContainer>, ApplyError> {
         let address = make_proposal_address(record_id, agent_id);
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let proposals: proposal::ProposalContainer =
+                let proposals: ProposalContainer =
                     match protobuf::parse_from_bytes(packed.as_slice()) {
                         Ok(property_pages) => property_pages,
                         Err(_) => {
                             return Err(ApplyError::InternalError(String::from(
                                 "Cannot deserialize proposal container",
-                            )))
+                            )));
                         }
                     };
 
@@ -556,7 +564,7 @@ impl<'a> SupplyChainState<'a> {
         &mut self,
         record_id: &str,
         agent_id: &str,
-        proposals: proposal::ProposalContainer,
+        proposals: ProposalContainer,
     ) -> Result<(), ApplyError> {
         let address = make_proposal_address(record_id, agent_id);
         let serialized = match proposals.write_to_bytes() {
@@ -564,7 +572,7 @@ impl<'a> SupplyChainState<'a> {
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
                     "Cannot serialize proposal container",
-                )))
+                )));
             }
         };
         let mut sets = HashMap::new();
@@ -593,7 +601,7 @@ impl SupplyChainTransactionHandler {
 
     fn _create_agent(
         &self,
-        payload: payload::CreateAgentAction,
+        payload: CreateAgentAction,
         mut state: SupplyChainState,
         signer: &str,
         timestamp: u64,
@@ -604,13 +612,13 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Agent already exists: {}",
                     name
-                )))
+                )));
             }
             Ok(None) => (),
             Err(err) => return Err(err),
         }
 
-        let mut new_agent = agent::Agent::new();
+        let mut new_agent = Agent::new();
         new_agent.set_public_key(signer.to_string());
         new_agent.set_name(name.to_string());
         new_agent.set_timestamp(timestamp);
@@ -621,7 +629,7 @@ impl SupplyChainTransactionHandler {
 
     fn _create_record(
         &self,
-        payload: payload::CreateRecordAction,
+        payload: CreateRecordAction,
         mut state: SupplyChainState,
         signer: &str,
         timestamp: u64,
@@ -632,7 +640,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Agent is not register: {}",
                     signer
-                )))
+                )));
             }
             Err(err) => return Err(err),
         }
@@ -642,7 +650,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record already exists: {}",
                     record_id
-                )))
+                )));
             }
             Ok(None) => (),
             Err(err) => return Err(err),
@@ -655,14 +663,14 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record Type does not exist {}",
                     type_name
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
 
-        let mut type_schemata: HashMap<&str, property::PropertySchema> = HashMap::new();
-        let mut required_properties: HashMap<&str, property::PropertySchema> = HashMap::new();
-        let mut provided_properties: HashMap<&str, property::PropertyValue> = HashMap::new();
+        let mut type_schemata: HashMap<&str, PropertySchema> = HashMap::new();
+        let mut required_properties: HashMap<&str, PropertySchema> = HashMap::new();
+        let mut provided_properties: HashMap<&str, PropertyValue> = HashMap::new();
         for property in record_type.get_properties() {
             type_schemata.insert(property.get_name(), property.clone());
             if property.get_required() {
@@ -690,7 +698,7 @@ impl SupplyChainTransactionHandler {
                     return Err(ApplyError::InvalidTransaction(format!(
                         "Provided property {} is not in schemata",
                         provided_name
-                    )))
+                    )));
                 }
             };
             let provided_type = provided_properties.data_type;
@@ -712,12 +720,12 @@ impl SupplyChainTransactionHandler {
                 )));
             };
         }
-        let mut new_record = record::Record::new();
+        let mut new_record = Record::new();
         new_record.set_record_id(record_id.to_string());
         new_record.set_record_type(type_name.to_string());
         new_record.set_field_final(false);
 
-        let mut owner = record::Record_AssociatedAgent::new();
+        let mut owner = Record_AssociatedAgent::new();
         owner.set_agent_id(signer.to_string());
         owner.set_timestamp(timestamp);
         new_record.owners.push(owner.clone());
@@ -725,13 +733,13 @@ impl SupplyChainTransactionHandler {
 
         state.set_record(record_id, new_record)?;
 
-        let mut reporter = property::Property_Reporter::new();
+        let mut reporter = Property_Reporter::new();
         reporter.set_public_key(signer.to_string());
         reporter.set_authorized(true);
         reporter.set_index(0);
 
         for (property_name, property) in type_schemata {
-            let mut new_property = property::Property::new();
+            let mut new_property = Property::new();
             new_property.set_name(property_name.to_string());
             new_property.set_record_id(record_id.to_string());
             new_property.set_data_type(property.get_data_type());
@@ -740,15 +748,17 @@ impl SupplyChainTransactionHandler {
             new_property.set_wrapped(false);
             new_property.set_fixed(property.get_fixed());
             new_property.set_number_exponent(property.get_number_exponent());
-            new_property.set_enum_options(
-                RepeatedField::from_vec(property.get_enum_options().to_vec()));
-            new_property.set_struct_properties(
-                RepeatedField::from_vec(property.get_struct_properties().to_vec()));
+            new_property.set_enum_options(RepeatedField::from_vec(
+                property.get_enum_options().to_vec(),
+            ));
+            new_property.set_struct_properties(RepeatedField::from_vec(
+                property.get_struct_properties().to_vec(),
+            ));
             new_property.set_unit(property.get_unit().to_string());
 
             state.set_property(record_id, property_name, new_property.clone())?;
 
-            let mut new_property_page = property::PropertyPage::new();
+            let mut new_property_page = PropertyPage::new();
             new_property_page.set_name(property_name.to_string());
             new_property_page.set_record_id(record_id.to_string());
 
@@ -774,7 +784,7 @@ impl SupplyChainTransactionHandler {
 
     fn _finalize_record(
         &self,
-        payload: payload::FinalizeRecordAction,
+        payload: FinalizeRecordAction,
         mut state: SupplyChainState,
         signer: &str,
     ) -> Result<(), ApplyError> {
@@ -785,7 +795,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -794,7 +804,7 @@ impl SupplyChainTransactionHandler {
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Owner was not found",
-                )))
+                )));
             }
         };
         let custodian = match final_record.custodians.last() {
@@ -802,7 +812,7 @@ impl SupplyChainTransactionHandler {
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Custodian was not found",
-                )))
+                )));
             }
         };
 
@@ -827,7 +837,7 @@ impl SupplyChainTransactionHandler {
 
     fn _create_record_type(
         &self,
-        payload: payload::CreateRecordTypeAction,
+        payload: CreateRecordTypeAction,
         mut state: SupplyChainState,
         signer: &str,
     ) -> Result<(), ApplyError> {
@@ -837,12 +847,12 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Agent is not register: {}",
                     signer
-                )))
+                )));
             }
             Err(err) => return Err(err),
         }
         let name = payload.get_name();
-        let mut provided_properties: HashMap<&str, property::PropertySchema> = HashMap::new();
+        let mut provided_properties: HashMap<&str, PropertySchema> = HashMap::new();
         for property in payload.get_properties() {
             provided_properties.insert(property.get_name(), property.clone());
         }
@@ -851,12 +861,12 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record type already exists: {}",
                     signer
-                )))
+                )));
             }
             Ok(None) => (),
             Err(err) => return Err(err),
         }
-        let mut record_type = record::RecordType::new();
+        let mut record_type = RecordType::new();
         record_type.set_name(name.to_string());
         record_type.set_properties(RepeatedField::from_vec(payload.get_properties().to_vec()));
 
@@ -867,7 +877,7 @@ impl SupplyChainTransactionHandler {
 
     fn _update_properties(
         &self,
-        payload: payload::UpdatePropertiesAction,
+        payload: UpdatePropertiesAction,
         mut state: SupplyChainState,
         signer: &str,
         timestamp: u64,
@@ -879,7 +889,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -903,7 +913,7 @@ impl SupplyChainTransactionHandler {
                     return Err(ApplyError::InvalidTransaction(format!(
                         "Record does not have provided poperty: {}",
                         name
-                    )))
+                    )));
                 }
                 Err(err) => return Err(err),
             };
@@ -944,20 +954,16 @@ impl SupplyChainTransactionHandler {
                 Ok(None) => {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Property page does not exist",
-                    )))
+                    )));
                 }
                 Err(err) => return Err(err),
             };
 
-            let reported_value = match self._make_new_reported_value(
-                reporter_index,
-                timestamp,
-                update,
-                &prop,
-            ) {
-                Ok(reported_value) => reported_value,
-                Err(err) => return Err(err),
-            };
+            let reported_value =
+                match self._make_new_reported_value(reporter_index, timestamp, update, &prop) {
+                    Ok(reported_value) => reported_value,
+                    Err(err) => return Err(err),
+                };
             page.reported_values.push(reported_value);
             page.reported_values
                 .sort_by_key(|rv| (rv.clone().timestamp, rv.clone().reporter_index));
@@ -974,7 +980,7 @@ impl SupplyChainTransactionHandler {
                         new_page
                     }
                     Ok(None) => {
-                        let mut new_page = property::PropertyPage::new();
+                        let mut new_page = PropertyPage::new();
                         new_page.set_name(name.to_string());
                         new_page.set_record_id(record_id.to_string());
                         new_page
@@ -996,7 +1002,7 @@ impl SupplyChainTransactionHandler {
 
     fn _create_proposal(
         &self,
-        payload: payload::CreateProposalAction,
+        payload: CreateProposalAction,
         mut state: SupplyChainState,
         signer: &str,
         timestamp: u64,
@@ -1012,7 +1018,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Issuing agent does not exist: {}",
                     signer
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -1023,26 +1029,27 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Receiving agent does not exist: {}",
                     receiving_agent
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
 
         let mut proposals = match state.get_proposal_container(&record_id, &receiving_agent) {
             Ok(Some(proposals)) => proposals,
-            Ok(None) => proposal::ProposalContainer::new(),
+            Ok(None) => ProposalContainer::new(),
             Err(err) => return Err(err),
         };
 
-        let mut open_proposals = Vec::<proposal::Proposal>::new();
+        let mut open_proposals = Vec::<Proposal>::new();
         for prop in proposals.get_entries() {
-            if prop.status == proposal::Proposal_Status::OPEN {
+            if prop.status == Proposal_Status::OPEN {
                 open_proposals.push(prop.clone());
             }
         }
 
         for prop in open_proposals {
-            if prop.get_receiving_agent() == receiving_agent && prop.get_role() == role
+            if prop.get_receiving_agent() == receiving_agent
+                && prop.get_role() == role
                 && prop.get_record_id() == record_id
             {
                 return Err(ApplyError::InvalidTransaction(String::from(
@@ -1057,7 +1064,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -1069,13 +1076,13 @@ impl SupplyChainTransactionHandler {
             )));
         }
 
-        if role == proposal::Proposal_Role::OWNER || role == proposal::Proposal_Role::REPORTER {
+        if role == Proposal_Role::OWNER || role == Proposal_Role::REPORTER {
             let owner = match proposal_record.owners.last() {
                 Some(owner) => owner,
                 None => {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Owner not found",
-                    )))
+                    )));
                 }
             };
             if owner.get_agent_id() != signer {
@@ -1085,13 +1092,13 @@ impl SupplyChainTransactionHandler {
             }
         }
 
-        if role == proposal::Proposal_Role::CUSTODIAN {
+        if role == Proposal_Role::CUSTODIAN {
             let custodian = match proposal_record.custodians.last() {
                 Some(custodian) => custodian,
                 None => {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Custodian not found",
-                    )))
+                    )));
                 }
             };
 
@@ -1102,14 +1109,14 @@ impl SupplyChainTransactionHandler {
             }
         }
 
-        let mut new_proposal = proposal::Proposal::new();
+        let mut new_proposal = Proposal::new();
         new_proposal.set_record_id(record_id.to_string());
         new_proposal.set_timestamp(timestamp);
         new_proposal.set_issuing_agent(signer.to_string());
         new_proposal.set_receiving_agent(receiving_agent.to_string());
         new_proposal.set_role(role);
         new_proposal.set_properties(properties);
-        new_proposal.set_status(proposal::Proposal_Status::OPEN);
+        new_proposal.set_status(Proposal_Status::OPEN);
 
         proposals.entries.push(new_proposal);
         proposals.entries.sort_by_key(|p| {
@@ -1126,7 +1133,7 @@ impl SupplyChainTransactionHandler {
 
     fn _answer_proposal(
         &self,
-        payload: payload::AnswerProposalAction,
+        payload: AnswerProposalAction,
         mut state: SupplyChainState,
         signer: &str,
         timestamp: u64,
@@ -1141,7 +1148,7 @@ impl SupplyChainTransactionHandler {
             Ok(None) => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Proposal does not exist",
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -1153,7 +1160,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "No open proposals found for record {} for {}",
                     record_id, receiving_agent
-                )))
+                )));
             }
         };
 
@@ -1161,9 +1168,10 @@ impl SupplyChainTransactionHandler {
         let mut count = 0;
 
         for prop in proposals.get_entries() {
-            if prop.get_receiving_agent() == receiving_agent && prop.get_role() == role
+            if prop.get_receiving_agent() == receiving_agent
+                && prop.get_role() == role
                 && prop.get_record_id() == record_id
-                && prop.status == proposal::Proposal_Status::OPEN
+                && prop.status == Proposal_Status::OPEN
             {
                 current_proposal = prop.clone();
                 exists = true;
@@ -1181,23 +1189,23 @@ impl SupplyChainTransactionHandler {
         }
 
         match response {
-            payload::AnswerProposalAction_Response::CANCEL => {
+            AnswerProposalAction_Response::CANCEL => {
                 if current_proposal.get_issuing_agent() != signer {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Only the issuing agent can cancel a proposal",
                     )));
                 }
-                current_proposal.status = proposal::Proposal_Status::CANCELED;
+                current_proposal.status = Proposal_Status::CANCELED;
             }
-            payload::AnswerProposalAction_Response::REJECT => {
+            AnswerProposalAction_Response::REJECT => {
                 if current_proposal.get_receiving_agent() != signer {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Only the receiving agent can reject a proposal",
                     )));
                 }
-                current_proposal.status = proposal::Proposal_Status::REJECTED;
+                current_proposal.status = Proposal_Status::REJECTED;
             }
-            payload::AnswerProposalAction_Response::ACCEPT => {
+            AnswerProposalAction_Response::ACCEPT => {
                 if current_proposal.get_receiving_agent() != signer {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Only the receiving agent can Accept a proposal",
@@ -1210,7 +1218,7 @@ impl SupplyChainTransactionHandler {
                         return Err(ApplyError::InvalidTransaction(format!(
                             "Record in proposal does not exist: {}",
                             record_id
-                        )))
+                        )));
                     }
                     Err(err) => return Err(err),
                 };
@@ -1220,7 +1228,7 @@ impl SupplyChainTransactionHandler {
                     None => {
                         return Err(ApplyError::InvalidTransaction(String::from(
                             "Owner not found",
-                        )))
+                        )));
                     }
                 };
 
@@ -1229,14 +1237,14 @@ impl SupplyChainTransactionHandler {
                     None => {
                         return Err(ApplyError::InvalidTransaction(String::from(
                             "Custodian not found",
-                        )))
+                        )));
                     }
                 };
 
                 match role {
-                    proposal::Proposal_Role::OWNER => {
+                    Proposal_Role::OWNER => {
                         if owner.get_agent_id() != current_proposal.get_issuing_agent() {
-                            current_proposal.status = proposal::Proposal_Status::CANCELED;
+                            current_proposal.status = Proposal_Status::CANCELED;
                             info!("Record owner does not match the issuing agent of the proposal");
                             // remove old proposal and replace with new one
                             proposals.entries.remove(proposal_index);
@@ -1248,11 +1256,15 @@ impl SupplyChainTransactionHandler {
                                     p.clone().timestamp,
                                 )
                             });
-                            state.set_proposal_container(&record_id, &receiving_agent, proposals)?;
+                            state.set_proposal_container(
+                                &record_id,
+                                &receiving_agent,
+                                proposals,
+                            )?;
                             return Ok(());
                         }
 
-                        let mut new_owner = record::Record_AssociatedAgent::new();
+                        let mut new_owner = Record_AssociatedAgent::new();
                         new_owner.set_agent_id(receiving_agent.to_string());
                         new_owner.set_timestamp(timestamp);
                         proposal_record.owners.push(new_owner);
@@ -1265,7 +1277,7 @@ impl SupplyChainTransactionHandler {
                                     return Err(ApplyError::InvalidTransaction(format!(
                                         "RecordType does not exist: {}",
                                         proposal_record.get_record_type()
-                                    )))
+                                    )));
                                 }
                                 Err(err) => return Err(err),
                             };
@@ -1277,15 +1289,13 @@ impl SupplyChainTransactionHandler {
                                     Ok(None) => {
                                         return Err(ApplyError::InvalidTransaction(String::from(
                                             "Property does not exist",
-                                        )))
+                                        )));
                                     }
                                     Err(err) => return Err(err),
                                 };
 
                             let mut authorized = false;
-                            let mut new_reporters: Vec<
-                                property::Property_Reporter,
-                            > = Vec::new();
+                            let mut new_reporters: Vec<Property_Reporter> = Vec::new();
                             let temp_prob = prop.clone();
                             let reporters = temp_prob.get_reporters();
                             for reporter in reporters {
@@ -1304,7 +1314,7 @@ impl SupplyChainTransactionHandler {
                             }
 
                             if !authorized {
-                                let mut reporter = property::Property_Reporter::new();
+                                let mut reporter = Property_Reporter::new();
                                 reporter.set_public_key(receiving_agent.to_string());
                                 reporter.set_authorized(true);
                                 reporter.set_index(prop.reporters.len() as u32);
@@ -1314,11 +1324,11 @@ impl SupplyChainTransactionHandler {
                             prop.set_reporters(RepeatedField::from_vec(new_reporters));
                             state.set_property(record_id, prop.get_name(), prop.clone())?;
                         }
-                        current_proposal.status = proposal::Proposal_Status::ACCEPTED;
+                        current_proposal.status = Proposal_Status::ACCEPTED;
                     }
-                    proposal::Proposal_Role::CUSTODIAN => {
+                    Proposal_Role::CUSTODIAN => {
                         if custodian.get_agent_id() != current_proposal.get_issuing_agent() {
-                            current_proposal.status = proposal::Proposal_Status::CANCELED;
+                            current_proposal.status = Proposal_Status::CANCELED;
                             info!(
                                 "Record custodian does not match the issuing agent of the proposal"
                             );
@@ -1339,16 +1349,16 @@ impl SupplyChainTransactionHandler {
                             )?;
                         }
 
-                        let mut new_custodian = record::Record_AssociatedAgent::new();
+                        let mut new_custodian = Record_AssociatedAgent::new();
                         new_custodian.set_agent_id(receiving_agent.to_string());
                         new_custodian.set_timestamp(timestamp);
                         proposal_record.custodians.push(new_custodian.clone());
                         state.set_record(record_id, proposal_record)?;
-                        current_proposal.status = proposal::Proposal_Status::ACCEPTED;
+                        current_proposal.status = Proposal_Status::ACCEPTED;
                     }
-                    proposal::Proposal_Role::REPORTER => {
+                    Proposal_Role::REPORTER => {
                         if owner.get_agent_id() != current_proposal.get_issuing_agent() {
-                            current_proposal.status = proposal::Proposal_Status::CANCELED;
+                            current_proposal.status = Proposal_Status::CANCELED;
                             info!("Record owner does not match the issuing agent of the proposal");
                             // remove old proposal and replace with new one
                             proposals.entries.remove(proposal_index);
@@ -1360,11 +1370,15 @@ impl SupplyChainTransactionHandler {
                                     p.clone().timestamp,
                                 )
                             });
-                            state.set_proposal_container(&record_id, &receiving_agent, proposals)?;
+                            state.set_proposal_container(
+                                &record_id,
+                                &receiving_agent,
+                                proposals,
+                            )?;
                             return Ok(());
                         }
 
-                        let mut reporter = property::Property_Reporter::new();
+                        let mut reporter = Property_Reporter::new();
                         reporter.set_public_key(receiving_agent.to_string());
                         reporter.set_authorized(true);
 
@@ -1374,7 +1388,7 @@ impl SupplyChainTransactionHandler {
                                 Ok(None) => {
                                     return Err(ApplyError::InvalidTransaction(String::from(
                                         "Property does not exist",
-                                    )))
+                                    )));
                                 }
                                 Err(err) => return Err(err),
                             };
@@ -1382,7 +1396,7 @@ impl SupplyChainTransactionHandler {
                             prop.reporters.push(reporter.clone());
                             state.set_property(record_id, prop_name, prop)?;
                         }
-                        current_proposal.status = proposal::Proposal_Status::ACCEPTED;
+                        current_proposal.status = Proposal_Status::ACCEPTED;
                     }
                 }
             }
@@ -1404,7 +1418,7 @@ impl SupplyChainTransactionHandler {
 
     fn _revoke_reporter(
         &self,
-        payload: payload::RevokeReporterAction,
+        payload: RevokeReporterAction,
         mut state: SupplyChainState,
         signer: &str,
     ) -> Result<(), ApplyError> {
@@ -1418,7 +1432,7 @@ impl SupplyChainTransactionHandler {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exists: {}",
                     record_id
-                )))
+                )));
             }
             Err(err) => return Err(err),
         };
@@ -1428,7 +1442,7 @@ impl SupplyChainTransactionHandler {
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Owner was not found",
-                )))
+                )));
             }
         };
 
@@ -1451,12 +1465,12 @@ impl SupplyChainTransactionHandler {
                 Ok(None) => {
                     return Err(ApplyError::InvalidTransaction(format!(
                         "Property does not exists"
-                    )))
+                    )));
                 }
                 Err(err) => return Err(err),
             };
 
-            let mut new_reporters: Vec<property::Property_Reporter> = Vec::new();
+            let mut new_reporters: Vec<Property_Reporter> = Vec::new();
             let mut revoked = false;
             for reporter in prop.get_reporters() {
                 if reporter.get_public_key() == reporter_id {
@@ -1491,50 +1505,52 @@ impl SupplyChainTransactionHandler {
         &self,
         reporter_index: u32,
         timestamp: u64,
-        value: &property::PropertyValue,
-        property: &property::Property,
-    ) -> Result<property::PropertyPage_ReportedValue, ApplyError> {
-        let mut reported_value = property::PropertyPage_ReportedValue::new();
+        value: &PropertyValue,
+        property: &Property,
+    ) -> Result<PropertyPage_ReportedValue, ApplyError> {
+        let mut reported_value = PropertyPage_ReportedValue::new();
         reported_value.set_reporter_index(reporter_index);
         reported_value.set_timestamp(timestamp);
 
         match value.get_data_type() {
-            property::PropertySchema_DataType::TYPE_UNSET => {
+            PropertySchema_DataType::TYPE_UNSET => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "DataType is not set",
-                )))
+                )));
             }
-            property::PropertySchema_DataType::BYTES => {
+            PropertySchema_DataType::BYTES => {
                 reported_value.set_bytes_value(value.get_bytes_value().to_vec())
             }
-            property::PropertySchema_DataType::BOOLEAN => {
+            PropertySchema_DataType::BOOLEAN => {
                 reported_value.set_boolean_value(value.get_boolean_value())
             }
-            property::PropertySchema_DataType::NUMBER => {
+            PropertySchema_DataType::NUMBER => {
                 reported_value.set_number_value(value.get_number_value())
             }
-            property::PropertySchema_DataType::STRING => {
+            PropertySchema_DataType::STRING => {
                 reported_value.set_string_value(value.get_string_value().to_string())
             }
-            property::PropertySchema_DataType::ENUM => {
+            PropertySchema_DataType::ENUM => {
                 let enum_name = value.get_enum_value().to_string();
-                let enum_index = match property.enum_options.iter()
-                    .position(|name| name == &enum_name) {
-                        Some(index) => index,
-                        None => {
-                            return Err(ApplyError::InvalidTransaction(format!(
-                                "Provided enum name is not a valid option: {}",
-                                enum_name,
-                            )))
-                        }
-                    };
+                let enum_index = match property
+                    .enum_options
+                    .iter()
+                    .position(|name| name == &enum_name)
+                {
+                    Some(index) => index,
+                    None => {
+                        return Err(ApplyError::InvalidTransaction(format!(
+                            "Provided enum name is not a valid option: {}",
+                            enum_name,
+                        )));
+                    }
+                };
                 reported_value.set_enum_value(enum_index as u32)
             }
-            property::PropertySchema_DataType::STRUCT => {
-                match self._validate_struct_values(
-                    &value.struct_values,
-                    &property.struct_properties
-                ) {
+            PropertySchema_DataType::STRUCT => {
+                match self
+                    ._validate_struct_values(&value.struct_values, &property.struct_properties)
+                {
                     Ok(_) => (),
                     Err(e) => return Err(e),
                 }
@@ -1542,7 +1558,7 @@ impl SupplyChainTransactionHandler {
                 let struct_values = RepeatedField::from_vec(value.get_struct_values().to_vec());
                 reported_value.set_struct_values(struct_values)
             }
-            property::PropertySchema_DataType::LOCATION => {
+            PropertySchema_DataType::LOCATION => {
                 reported_value.set_location_value(value.get_location_value().clone())
             }
         };
@@ -1551,39 +1567,38 @@ impl SupplyChainTransactionHandler {
 
     fn _validate_struct_values(
         &self,
-        struct_values: &RepeatedField<property::PropertyValue>,
-        schema_values: &RepeatedField<property::PropertySchema>
+        struct_values: &RepeatedField<PropertyValue>,
+        schema_values: &RepeatedField<PropertySchema>,
     ) -> Result<(), ApplyError> {
         if struct_values.len() != schema_values.len() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Provided struct does not match schema length: {:?} != {:?}",
                 struct_values.len(),
                 schema_values.len(),
-            )))
+            )));
         }
 
         for schema in schema_values.iter() {
             let value = match struct_values.iter().find(|val| val.name == schema.name) {
                 Some(val) => val,
-                None => return Err(ApplyError::InvalidTransaction(format!(
-                    "Provided struct missing required property from schema: {}",
-                    schema.name,
-                )))
+                None => {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Provided struct missing required property from schema: {}",
+                        schema.name,
+                    )));
+                }
             };
 
             if value.data_type != schema.data_type {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Struct property \"{}\" must have data type: {:?}",
-                    schema.name,
-                    schema.data_type,
-                )))
+                    schema.name, schema.data_type,
+                )));
             }
 
-            if schema.data_type == property::PropertySchema_DataType::STRUCT {
-                match self._validate_struct_values(
-                    &value.struct_values,
-                    &schema.struct_properties
-                ) {
+            if schema.data_type == PropertySchema_DataType::STRUCT {
+                match self._validate_struct_values(&value.struct_values, &schema.struct_properties)
+                {
                     Ok(_) => (),
                     Err(e) => return Err(e),
                 }
@@ -1622,7 +1637,7 @@ impl TransactionHandler for SupplyChainTransactionHandler {
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Request must contain a payload",
-                )))
+                )));
             }
         };
 

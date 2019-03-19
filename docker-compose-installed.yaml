@@ -29,7 +29,7 @@ services:
         - no_proxy
     depends_on:
       - validator
-    entrypoint: grid-track-and-trace-tp -C tcp://validator:4004
+    entrypoint: grid-track-and-trace-tp -C tcp://validator:4004 -v
 
   validator:
     image: hyperledger/sawtooth-validator:1.0

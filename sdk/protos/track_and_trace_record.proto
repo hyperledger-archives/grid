@@ -15,7 +15,7 @@
 
 syntax = "proto3";
 
-import "property.proto";
+import "track_and_trace_property.proto";
 
 
 message Record {
