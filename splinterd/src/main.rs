@@ -83,7 +83,7 @@ fn main() {
             .map_err(ConfigError::from)
             .and_then(Config::from_file)
             .unwrap_or_else(|err| {
-                warn!("No config file loaded {:?}", err);
+                warn!("Unable to load {}: {}", config_file_path, err);
                 Config::default()
             })
     };

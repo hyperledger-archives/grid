@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -103,5 +105,23 @@ impl From<io::Error> for ConfigError {
 impl From<de::Error> for ConfigError {
     fn from(e: de::Error) -> Self {
         ConfigError::TomlParseError(e)
+    }
+}
+
+impl Error for ConfigError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ConfigError::ReadError(source) => Some(source),
+            ConfigError::TomlParseError(source) => Some(source),
+        }
+    }
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ConfigError::ReadError(source) => source.fmt(f),
+            ConfigError::TomlParseError(source) => write!(f, "Invalid File Format: {}", source),
+        }
     }
 }
