@@ -1,0 +1,55 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// -----------------------------------------------------------------------------
+
+syntax = "proto3";
+
+import "schema_state.proto";
+
+// SchemaPayload contains an action enum and the associated action payload.
+message SchemaPayload {
+    enum Action {
+        UNSET_ACTION = 0;
+        SCHEMA_CREATE = 1;
+        SCHEMA_UPDATE = 2;
+    }
+
+    Action action = 1;
+
+    // The smart contract will read from just one of these fields
+    // according to the Action. Only one of these should be set and must match
+    // the corresponding Action.
+    SchemaCreateAction schema_create = 2;
+    SchemaUpdateAction schema_update = 3;
+}
+
+// SchemaCreateAction adds a new Schema to state.
+message SchemaCreateAction {
+    // The name of the Schema.  This is also the unique identifier for the
+    // new Schema.
+    string schema_name = 1;
+     // An optional description of the schema.
+    string description = 2;
+    // The property definitions that make up the Schema; must not be empty.
+    repeated PropertyDefinition properties = 10;
+}
+
+// SchemaUpdateAction updates an existing Schema. The new properties will
+// be added to the Schema definitions.
+message SchemaUpdateAction {
+    // The name of the Schema to be updated.
+    string schema_name = 1;
+    // The property definitions to be added to the Schema; must not be empty.
+    repeated PropertyDefinition properties = 2;
+}
