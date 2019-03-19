@@ -20,9 +20,9 @@ use std::collections::HashMap;
 
 use grid_sdk::protos::track_and_trace_agent::{Agent, AgentContainer};
 use grid_sdk::protos::track_and_trace_payload::{
-    AnswerProposalAction, AnswerProposalAction_Response, CreateAgentAction,
-    CreateProposalAction, CreateRecordAction, CreateRecordTypeAction, FinalizeRecordAction,
-    RevokeReporterAction, SCPayload, UpdatePropertiesAction, SCPayload_Action
+    AnswerProposalAction, AnswerProposalAction_Response, CreateAgentAction, CreateProposalAction,
+    CreateRecordAction, CreateRecordTypeAction, FinalizeRecordAction, RevokeReporterAction,
+    SCPayload, SCPayload_Action, UpdatePropertiesAction,
 };
 use grid_sdk::protos::track_and_trace_property::{
     Property, PropertyContainer, PropertyPage, PropertyPageContainer, PropertyPage_ReportedValue,
@@ -308,15 +308,14 @@ impl<'a> SupplyChainState<'a> {
         let d = self.context.get_state(vec![address])?;
         match d {
             Some(packed) => {
-                let agents: AgentContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(agents) => agents,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize agent container",
-                            )));
-                        }
-                    };
+                let agents: AgentContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
+                    Ok(agents) => agents,
+                    Err(_) => {
+                        return Err(ApplyError::InternalError(String::from(
+                            "Cannot deserialize agent container",
+                        )));
+                    }
+                };
 
                 for agent in agents.get_entries() {
                     if agent.public_key == agent_id {
