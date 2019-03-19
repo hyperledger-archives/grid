@@ -129,7 +129,7 @@ message PropertySchema {
 }
 
 
-message PropertyValue {
+message TrackAndTracePropertyValue {
   // The name of the property being set
   string name = 1;
 
@@ -144,7 +144,7 @@ message PropertyValue {
   sint64 number_value = 13;
   string string_value = 14;
   string enum_value = 15;
-  repeated PropertyValue struct_values = 16;
+  repeated TrackAndTracePropertyValue struct_values = 16;
   Location location_value = 17;
 }
 
@@ -165,7 +165,7 @@ message PropertyPage {
     sint64 number_value = 13;
     string string_value = 14;
     uint32 enum_value = 15;
-    repeated PropertyValue struct_values = 16;
+    repeated TrackAndTracePropertyValue struct_values = 16;
     Location location_value = 17;
   }
 

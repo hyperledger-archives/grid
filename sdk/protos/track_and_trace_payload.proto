@@ -64,7 +64,7 @@ message CreateRecordAction {
   // The name of the RecordType this Record belongs to
   string record_type = 2;
 
-  repeated PropertyValue properties = 3;
+  repeated TrackAndTracePropertyValue properties = 3;
 }
 
 
@@ -85,7 +85,7 @@ message UpdatePropertiesAction {
   // The natural key of the Record
   string record_id = 1;
 
-  repeated PropertyValue properties = 2;
+  repeated TrackAndTracePropertyValue properties = 2;
 }
 
 

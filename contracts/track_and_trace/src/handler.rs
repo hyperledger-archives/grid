@@ -25,9 +25,8 @@ use grid_sdk::protos::track_and_trace_payload::{
     RevokeReporterAction, SCPayload, UpdatePropertiesAction, SCPayload_Action
 };
 use grid_sdk::protos::track_and_trace_property::{
-    Property, PropertyContainer, PropertyPage, PropertyPageContainer,
-    PropertyPage_ReportedValue, PropertySchema, PropertySchema_DataType, PropertyValue,
-    Property_Reporter,
+    Property, PropertyContainer, PropertyPage, PropertyPageContainer, PropertyPage_ReportedValue,
+    PropertySchema, PropertySchema_DataType, Property_Reporter, TrackAndTracePropertyValue,
 };
 use grid_sdk::protos::track_and_trace_proposal::{
     Proposal, ProposalContainer, Proposal_Role, Proposal_Status,
@@ -670,7 +669,7 @@ impl SupplyChainTransactionHandler {
 
         let mut type_schemata: HashMap<&str, PropertySchema> = HashMap::new();
         let mut required_properties: HashMap<&str, PropertySchema> = HashMap::new();
-        let mut provided_properties: HashMap<&str, PropertyValue> = HashMap::new();
+        let mut provided_properties: HashMap<&str, TrackAndTracePropertyValue> = HashMap::new();
         for property in record_type.get_properties() {
             type_schemata.insert(property.get_name(), property.clone());
             if property.get_required() {
@@ -1505,7 +1504,7 @@ impl SupplyChainTransactionHandler {
         &self,
         reporter_index: u32,
         timestamp: u64,
-        value: &PropertyValue,
+        value: &TrackAndTracePropertyValue,
         property: &Property,
     ) -> Result<PropertyPage_ReportedValue, ApplyError> {
         let mut reported_value = PropertyPage_ReportedValue::new();
@@ -1567,7 +1566,7 @@ impl SupplyChainTransactionHandler {
 
     fn _validate_struct_values(
         &self,
-        struct_values: &RepeatedField<PropertyValue>,
+        struct_values: &RepeatedField<TrackAndTracePropertyValue>,
         schema_values: &RepeatedField<PropertySchema>,
     ) -> Result<(), ApplyError> {
         if struct_values.len() != schema_values.len() {
