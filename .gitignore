@@ -11,6 +11,9 @@ contracts/track_and_trace/bin/
 contracts/track_and_trace/target/
 contracts/track_and_trace/src/messages/
 
+daemon/Cargo.lock
+daemon/target
+
 sdk/Cargo.lock
 sdk/target
 
