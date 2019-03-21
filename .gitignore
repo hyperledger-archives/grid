@@ -3,6 +3,9 @@
 *.sublime*
 
 # Rust
+cli/Cargo.lock
+cli/target
+
 contracts/track_and_trace/Cargo.lock
 contracts/track_and_trace/bin/
 contracts/track_and_trace/target/
