@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use protobuf::Message;
 use protobuf::RepeatedField;
 
 use std::error::Error as StdError;
 
 use crate::protos;
-use crate::protos::{FromNative, FromProto, IntoNative, IntoProto, ProtoConversionError};
+use crate::protos::{
+    FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
+};
 
 /// Native implementation of DataType enum
 #[derive(Debug, Clone, PartialEq)]
@@ -148,6 +151,30 @@ impl FromNative<PropertyDefinition> for protos::schema_state::PropertyDefinition
             .map(PropertyDefinition::into_proto)
             .collect::<Result<Vec<protos::schema_state::PropertyDefinition>, ProtoConversionError>>()?,));
         Ok(proto_property_definition)
+    }
+}
+
+impl FromBytes<PropertyDefinition> for PropertyDefinition {
+    fn from_bytes(bytes: &[u8]) -> Result<PropertyDefinition, ProtoConversionError> {
+        let proto: protos::schema_state::PropertyDefinition = protobuf::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get PropertyDefinition from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for PropertyDefinition {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from PropertyDefinition".to_string(),
+            )
+        })?;
+        Ok(bytes)
     }
 }
 
@@ -365,6 +392,28 @@ impl FromNative<Schema> for protos::schema_state::Schema {
     }
 }
 
+impl FromBytes<Schema> for Schema {
+    fn from_bytes(bytes: &[u8]) -> Result<Schema, ProtoConversionError> {
+        let proto: protos::schema_state::Schema =
+            protobuf::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get Schema from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for Schema {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError("Unable to get bytes from Scheman".to_string())
+        })?;
+        Ok(bytes)
+    }
+}
+
 impl IntoProto<protos::schema_state::Schema> for Schema {}
 impl IntoNative<Schema> for protos::schema_state::Schema {}
 
@@ -547,6 +596,30 @@ impl FromNative<PropertyValue> for protos::schema_state::PropertyValue {
                 )?,
         ));
         Ok(proto_property_value)
+    }
+}
+
+impl FromBytes<PropertyValue> for PropertyValue {
+    fn from_bytes(bytes: &[u8]) -> Result<PropertyValue, ProtoConversionError> {
+        let proto: protos::schema_state::PropertyValue = protobuf::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get PropertyValue from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for PropertyValue {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from PropertyValue".to_string(),
+            )
+        })?;
+        Ok(bytes)
     }
 }
 
@@ -811,6 +884,23 @@ mod tests {
     }
 
     #[test]
+    // check that a property definition can be converted to bytes and back
+    fn check_property_definition_bytes() {
+        let builder = PropertyDefinitionBuilder::new();
+        let original = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let property_definition = PropertyDefinition::from_bytes(&bytes).unwrap();
+        assert_eq!(property_definition, original);
+    }
+
+    #[test]
     // check that a schema with a enum property is built correctly
     fn check_schema_builder() {
         let builder = PropertyDefinitionBuilder::new();
@@ -839,6 +929,37 @@ mod tests {
         assert_eq!(schema.description, "Test Schema");
         assert_eq!(schema.owner, "owner");
         assert_eq!(schema.properties, vec![property_definition]);
+    }
+
+    #[test]
+    // check that a schema can be converted to bytes and back
+    fn check_schema_bytes() {
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::Enum)
+            .with_description("Optional".to_string())
+            .with_enum_options(vec![
+                "One".to_string(),
+                "Two".to_string(),
+                "Three".to_string(),
+            ])
+            .build()
+            .unwrap();
+
+        let builder = SchemaBuilder::new();
+        let original = builder
+            .with_name("TestSchema".to_string())
+            .with_description("Test Schema".to_string())
+            .with_owner("owner".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let schema = Schema::from_bytes(&bytes).unwrap();
+        assert_eq!(schema, original);
     }
 
     #[test]
@@ -879,5 +1000,22 @@ mod tests {
         assert_eq!(property_value.name, "TEST_STRUCT");
         assert_eq!(property_value.data_type, DataType::Struct);
         assert_eq!(property_value.struct_values, vec![string_value]);
+    }
+
+    #[test]
+    // check that a property value can be converted to bytes and back
+    fn check_property_value_bytes() {
+        let builder = PropertyValueBuilder::new();
+        let original = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_string_value("String value".to_string())
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let property_value = PropertyValue::from_bytes(&bytes).unwrap();
+        assert_eq!(property_value, original);
     }
 }
