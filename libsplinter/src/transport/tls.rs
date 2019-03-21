@@ -16,7 +16,7 @@ use mio::{unix::EventedFd, Evented, Poll, PollOpt, Ready, Token};
 use openssl::error::ErrorStack;
 use openssl::ssl::{
     Error as OpensslError, HandshakeError, SslAcceptor, SslConnector, SslFiletype, SslMethod,
-    SslStream,
+    SslStream, SslVerifyMode,
 };
 use url::{ParseError, Url};
 
@@ -37,13 +37,12 @@ pub struct TlsTransport {
 
 impl TlsTransport {
     pub fn new(
-        ca_cert: String,
+        ca_cert: Option<String>,
         client_key: String,
         client_cert: String,
         server_key: String,
         server_cert: String,
     ) -> Result<Self, TlsInitError> {
-        let ca_cert_path = Path::new(&ca_cert);
         let client_cert_path = Path::new(&client_cert);
         let client_key_path = Path::new(&client_key);
         let server_cert_path = Path::new(&server_cert);
@@ -54,16 +53,30 @@ impl TlsTransport {
         connector.set_private_key_file(&client_key_path, SslFiletype::PEM)?;
         connector.set_certificate_chain_file(client_cert_path)?;
         connector.check_private_key()?;
-        connector.set_ca_file(ca_cert_path)?;
-        let connector = connector.build();
 
         // Build TLS Acceptor
         let mut acceptor = SslAcceptor::mozilla_modern(SslMethod::tls())?;
         acceptor.set_private_key_file(server_key_path, SslFiletype::PEM)?;
         acceptor.set_certificate_chain_file(&server_cert_path)?;
         acceptor.check_private_key()?;
-        acceptor.set_ca_file(ca_cert_path)?;
-        let acceptor = acceptor.build();
+
+        // if ca_cert is provided set as accept cert, otherwise set verify to none
+        let (acceptor, connector) = {
+            if let Some(ca_cert) = ca_cert {
+                let ca_cert_path = Path::new(&ca_cert);
+                acceptor.set_ca_file(ca_cert_path)?;
+                connector.set_ca_file(ca_cert_path)?;
+                let connector = connector.build();
+                let acceptor = acceptor.build();
+                (acceptor, connector)
+            } else {
+                connector.set_verify(SslVerifyMode::NONE);
+                acceptor.set_verify(SslVerifyMode::NONE);
+                let connector = connector.build();
+                let acceptor = acceptor.build();
+                (acceptor, connector)
+            }
+        };
 
         Ok(TlsTransport {
             connector,
@@ -245,7 +258,7 @@ pub(crate) mod tests {
     use std::path::PathBuf;
     use tempdir::TempDir;
 
-    // Make a certificate and private key for the Certifcate Authority
+    // Make a certificate and private key for the Certificate Authority
     fn make_ca_cert() -> (PKey<Private>, X509) {
         let rsa = Rsa::generate(2048).unwrap();
         let privkey = PKey::from_rsa(rsa).unwrap();
@@ -337,18 +350,25 @@ pub(crate) mod tests {
         path
     }
 
-    pub fn create_test_tls_transport() -> TlsTransport {
+    pub fn create_test_tls_transport(insecure: bool) -> TlsTransport {
         // Genearte Certificat Authority keys and certificate
         let (ca_key, ca_cert) = make_ca_cert();
 
         // create temp directory to store ca.cert
         let temp_dir = TempDir::new("tls-transport-test").unwrap();
         let temp_dir_path = temp_dir.path();
-        let ca_path_file = write_file(
-            temp_dir_path.to_path_buf(),
-            "ca.cert",
-            &ca_cert.to_pem().unwrap(),
-        );
+        let ca_path_file = {
+            if insecure {
+                None
+            } else {
+                let ca_path_file = write_file(
+                    temp_dir_path.to_path_buf(),
+                    "ca.cert",
+                    &ca_cert.to_pem().unwrap(),
+                );
+                Some(ca_path_file)
+            }
+        };
 
         // Generate client and server keys and certificates
         let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key);
@@ -391,14 +411,27 @@ pub(crate) mod tests {
 
     #[test]
     fn test_transport() {
-        let transport = create_test_tls_transport();
+        let transport = create_test_tls_transport(true);
         tests::test_transport(transport, "127.0.0.1:0");
     }
 
     #[cfg(not(unix))]
     #[test]
     fn test_poll() {
-        let transport = create_test_tls_transport();
+        let transport = create_test_tls_transport(true);
+        tests::test_poll(transport, "127.0.0.1:0");
+    }
+
+    #[test]
+    fn test_transport_no_verify() {
+        let transport = create_test_tls_transport(false);
+        tests::test_transport(transport, "127.0.0.1:0");
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn test_poll_no_verify() {
+        let transport = create_test_tls_transport(false);
         tests::test_poll(transport, "127.0.0.1:0");
     }
 }

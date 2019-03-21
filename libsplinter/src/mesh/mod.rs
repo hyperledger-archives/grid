@@ -365,7 +365,7 @@ mod tests {
     #[cfg(not(unix))]
     #[test]
     fn test_connection_send_receive_tls() {
-        let tls = create_test_tls_transport();
+        let tls = create_test_tls_transport(true);
         test_single_connection_send_receive(tls, "127.0.0.1:0");
     }
 
@@ -383,13 +383,13 @@ mod tests {
 
     #[test]
     fn test_many_connections_tls() {
-        let tls = create_test_tls_transport();
+        let tls = create_test_tls_transport(true);
         test_many_connections(tls, "127.0.0.1:0");
     }
 
     #[test]
     fn test_add_remove_connections_tls() {
-        let tls = create_test_tls_transport();
+        let tls = create_test_tls_transport(true);
         test_add_remove_connections(tls, "127.0.0.1:0");
     }
 }
