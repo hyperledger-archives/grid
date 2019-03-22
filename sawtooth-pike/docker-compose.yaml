@@ -1,0 +1,119 @@
+# Copyright 2018 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "2.1"
+
+services:
+  pike-api:
+    image: pike-api
+    container_name: pike-api
+    volumes:
+      - .:/project
+    expose:
+      - 9001
+    ports:
+      - 9001:9001
+    entrypoint: "bash -c \"\
+      cd /project/contracts/sawtooth-pike/api && \
+      cargo build && \
+      tail -f /dev/null \
+      \""
+    build:
+      context: ./contracts/sawtooth-pike/api/
+    environment:
+      RUST_BACKTRACE: 1
+      ROCKET_ADDRESS: "0.0.0.0"
+      ROCKET_PORT: 9001
+      VALIDATOR_URL: tcp://validator:9004
+      DATABASE_URL: postgres://pike:pike@pike-db:5432/pike
+
+  pike-swagger-ui:
+    image: pike-swagger-ui
+    container_name: pike-swagger-ui
+    volumes:
+      - .:/project
+    expose:
+      - 80
+    ports:
+      - 9002:80
+    build:
+      context: .
+      dockerfile: ./contracts/sawtooth-pike/api/Dockerfile-swagger-ui
+
+  pike-db:
+    image: pike-db
+    container_name: pike-db
+    volumes:
+      - .:/project
+    environment:
+      POSTGRES_DB: pike
+      POSTGRES_USER: pike
+      POSTGRES_PASSWORD: pike
+    ports:
+      - 5432:5432
+    build:
+      context: ./contracts/sawtooth-pike/db/
+
+  pike-adminer:
+    image: adminer
+    container_name: pike-adminer
+    links:
+      - pike-db:db
+    ports:
+      - 9003:8080
+
+  pike-client:
+    image: pike-client
+    container_name: pike-client
+    entrypoint: "bash -c \"\
+      cd /project/contracts/sawtooth-pike/cli && \
+      cargo build && \
+      tail -f /dev/null \
+      \""
+    volumes:
+      - .:/project
+      - ./keys:/root/.sawtooth/keys
+    build:
+      context: ./contracts/sawtooth-pike/cli
+
+  pike-tp:
+    image: pike-tp
+    container_name: pike-tp
+    entrypoint: "bash -c \"\
+        cd /project/contracts/sawtooth-pike/tp/ && \
+        cargo build && \
+        pike -vv -C tcp://validator:9004
+        \""
+    volumes:
+      - .:/project
+    build:
+      context: ./contracts/sawtooth-pike/tp
+
+  pike-sde-service:
+    image: pike-sde-service
+    container_name: pike-sde-service
+    environment:
+      DATABASE_URL: postgres://pike:pike@pike-db:5432/pike
+    entrypoint: "bash -c \"
+      cd /project/contracts/sawtooth-pike/state_delta_export && \
+      cargo build && \
+      pike-sde -vv -c tcp://validator:9004 \""
+    volumes:
+      - .:/project
+    build:
+      context: ./contracts/sawtooth-pike/state_delta_export/
+    depends_on:
+      - validator
+      - rest-api
+      - pike-db
