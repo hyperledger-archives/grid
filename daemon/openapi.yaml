@@ -109,6 +109,76 @@ paths:
           $ref: "#/responses/500ServerError"
         503:
           $ref: "#/responses/503ServiceUnavailable"
+
+  /schema:
+    get:
+      tags:
+      - "schema"
+      summary: "Get a list of schemas"
+      description: "Fetches a list of schemas from the reporting database"
+      operationId: "get_schemas"
+      produces:
+      - "application/json"
+      responses:
+        202:
+          description: "List of schemas"
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                 $ref: "#/definitions/Schema"
+
+        400:
+          $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
+  /schema/{schema_name}:
+    get:
+      tags:
+      - "schema"
+      summary: "Find schema by schema name"
+      description: "Returns a single schema"
+      operationId: "get_schema_by_name"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "schema_name"
+        in: "path"
+        description: "Name of the schema to return"
+        required: true
+        type: "string"
+      responses:
+        202:
+          description: Successful operation
+          schema:
+            properties:
+              link:
+                $ref: "#/definitions/Schema"
+        400:
+          $ref: "#/responses/400BadRequest"
+        404:
+          $ref: "#/responses/404NotFound"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
 responses:
   400BadRequest:
     description: Request was malformed
@@ -266,3 +336,57 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/Batch"
+  Schema:
+    properties:
+      name:
+        type: string
+        example: "Lightbulb"
+      description:
+        type: string
+        example: "Example Lightbulb schema"
+      owener:
+        type: string
+        example: "philips001"
+      properties:
+        type: array
+        items:
+          $ref: "#/definitions/PropertyDefinition"
+
+  PropertyDefinition:
+    properties:
+      name:
+        type: string
+        example: "size"
+      data_type:
+        $ref: '#/definitions/DataTypeEnum'
+      description:
+        type: string
+        example: "Lightbulb radius, in millimeters"
+      required:
+        type: boolean
+        example: true
+      number_exponent:
+        type: integer
+        format: int32
+        example: -6
+      enum_options:
+        type: array
+        items:
+          type: string
+        example: ["filament", "CF", "LED"]
+      struct_properties:
+        type: array
+        items:
+          $ref: "#/definitions/PropertyDefinition"
+
+  DataTypeEnum:
+      description: Data type of a PropertyDefinition
+      type: string
+      enum:
+        - BYTES
+        - BOOLEAN
+        - NUMBER
+        - STRING
+        - ENUM
+        - STRUCT
+        - LOCATION
