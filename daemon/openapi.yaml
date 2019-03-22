@@ -1,0 +1,268 @@
+# Copyright 2017 Intel Corporation
+# Copyright 2019 Bitwise IO, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+
+swagger: '2.0'
+
+info:
+  version: "0.1.0"
+  title: Grid REST API
+  description:
+    _An API providing HTTP/JSON interface to Hyperledger Grid._
+
+paths:
+  /batches:
+    post:
+      tags:
+      - sawtooth_validator
+      summary: Sends a BatchList to the Sawtooth Validator
+      description: |
+        Accepts a protobuf formatted `BatchList` as an octet-stream binary
+        file and submits it to the validator to be committed.
+
+        The API will return immediately with a status of `202`. There will be
+        no `data` object, only a `link` to a `/batch_statuses` endpoint to be
+        polled to check the status of submitted batches.
+      consumes:
+        - application/octet-stream
+      operationId: "post_batches"
+      produces:
+      - "application/json"
+      parameters:
+        - name: BatchList
+          in: body
+          description: A binary encoded protobuf BatchList
+          schema:
+            $ref: "#/definitions/BatchList"
+          required: true
+      responses:
+        202:
+          description: Batches submitted for validation, but not yet committed
+          schema:
+            properties:
+              link:
+                $ref: "#/definitions/Link"
+        400:
+          $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          $ref: "#/responses/500ServerError"
+        503:
+          $ref: "#/responses/503ServiceUnavailable"
+
+  /batch_statuses:
+    get:
+      tags:
+      - sawtooth_validator
+      summary: Fetches the committed statuses for a set of batches from the
+        Sawtooth Validator
+      description: |
+        Fetches an array of objects with a status and id for each batch
+        requested. There are four possible statuses with string values
+        `'COMMITTED'`, `'INVALID'`, `'PENDING'`, and `'UNKNOWN'`.
+
+        The batch(es) you want to check can be specified using the `id` filter
+        parameter. If a `wait` time is specified in the URL, the API will wait
+        to respond until all batches are committed, or the time in seconds has
+        elapsed. If the value of `wait` is not set (i.e., `?wait&id=...`), or
+        it is set to any non-integer value other than `false`, the wait time
+        will be just under the API's specified timeout (usually 300).
+
+        Note that because this route does not return full resources, the
+        response will not be paginated, and there will be no `head` or
+        `paging` properties.
+      operationId: "get_batch_statuses_by_id"
+      produces:
+      - "application/json"
+      parameters:
+        - name: id
+          in: query
+          description: A comma-separated list of batch ids
+          type: string
+          required: true
+        - $ref: "#/parameters/wait"
+      responses:
+        200:
+          description: Successfully retrieved statuses
+          schema:
+            properties:
+              data:
+                $ref: "#/definitions/BatchStatuses"
+              link:
+                $ref: "#/definitions/Link"
+        400:
+          $ref: "#/responses/400BadRequest"
+        500:
+          $ref: "#/responses/500ServerError"
+        503:
+          $ref: "#/responses/503ServiceUnavailable"
+responses:
+  400BadRequest:
+    description: Request was malformed
+    schema:
+      $ref: "#/definitions/Error"
+  404NotFound:
+    description: Address or id did not match any resource
+    schema:
+      $ref: "#/definitions/Error"
+  429TooManyRequests:
+    description: Too many requests have been made to process batches
+    schema:
+      $ref: "#/definitions/Error"
+  500ServerError:
+    description: Something went wrong within the validator
+    schema:
+      $ref: "#/definitions/Error"
+  503ServiceUnavailable:
+    description: API is unable to reach the validator
+    schema:
+      $ref: "#/definitions/Error"
+
+parameters:
+  batch_id:
+    name: batch_id
+    in: path
+    type: string
+    required: true
+    description: Batch id
+  wait:
+    name: wait
+    in: query
+    type: integer
+    description: A time in seconds to wait for commit
+
+definitions:
+  Link:
+    type: string
+    example: https://api.grid.com/state?head=65cd3a3ce088b265b626f704b7f3db97b6f12e848dccb35d7806f3d0324c71b709ed360d602b8b658b94695374717e3bdb4b76f77886953777d5d008558247dd
+
+  Error:
+    properties:
+      code:
+        type: integer
+        example: 34
+      title:
+          type: string
+          example: No Batches Submitted
+      message:
+        type: string
+        example: >
+          The protobuf BatchList you submitted was empty and contained no
+          Batches. You must submit at least one Batch.
+
+  BatchStatuses:
+    type: array
+    items:
+      properties:
+        id:
+          type: string
+          example: 89807bfc9089e37e00d87d97357de14cfbc455cd608438d426a625a30a0da9a31c406983803c4aa27e1f32a3ff61709e8ec4b56abbc553d7d330635b5d27029c
+        status:
+          type: string
+          example: INVALID
+          enum:
+            - COMMITTED
+            - INVALID
+            - PENDING
+            - UNKNOWN
+        invalid_transactions:
+          type: array
+          items:
+            properties:
+              id:
+                type: string
+                example: 540a6803971d1880ec73a96cb97815a95d374cbad5d865925e5aa0432fcf1931539afe10310c122c5eaae15df61236079abbf4f258889359c4d175516934484a
+              message:
+                type: string
+                example: Verb is \"inc\" but name \"foo\" not in state
+              extended_data:
+                type: string
+                format: byte
+                example: ZXJyb3IgZGF0YQ==
+
+  TransactionHeader:
+    properties:
+      batcher_public_key:
+        type: string
+        example: 02d260a46457a064733153e09840c322bee1dff34445d7d49e19e60abd18fd0758
+      dependencies:
+        type: array
+        items:
+          type: string
+          example: 1baee350bdb60bcee60e3d325d43283cf830b4c23b2cb17d3bb43935bd7af3761c2bee79847c72a9e396a9ae58f48add4e43f94eb83f84442c6085c1dd5d4dbe
+      family_name:
+        type: string
+        example: intkey
+      family_version:
+        type: string
+        example: "1.0"
+      inputs:
+        type: array
+        items:
+          type: string
+          example: 1cf12650d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c
+      nonce:
+        type: string
+        example: QAApS4L
+      outputs:
+        type: array
+        items:
+          type: string
+          example: 1cf12650d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c
+      payload_sha512:
+        type: string
+        example: fb6135ef73f4fe77367f9384b3bbbb158f4b8603c9d612157108e5c271868fce2242ee4abd7a29397ba63780c3ccab13783dfd4d9f0167beda03cdb0e37b87f4
+      signer_public_key:
+        type: string
+        example: 038bba5708acc262464c9fe30d3de9e905a9a5fa30cedd151dd9cd09ea26d46d00
+  Transaction:
+    properties:
+      header:
+        $ref: "#/definitions/TransactionHeader"
+      header_signature:
+        type: string
+        example: 540a6803971d1880ec73a96cb97815a95d374cbad5d865925e5aa0432fcf1931539afe10310c122c5eaae15df61236079abbf4f258889359c4d175516934484a
+      payload:
+        type: string
+        format: binary
+
+  BatchHeader:
+    properties:
+      signer_public_key:
+        type: string
+        example: 038bba5708acc262464c9fe30d3de9e905a9a5fa30cedd151dd9cd09ea26d46d00
+      transaction_ids:
+        type: array
+        items:
+          type: string
+          example: 540a6803971d1880ec73a96cb97815a95d374cbad5d865925e5aa0432fcf1931539afe10310c122c5eaae15df61236079abbf4f258889359c4d175516934484a
+  Batch:
+    properties:
+      header:
+        $ref: "#/definitions/BatchHeader"
+      header_signature:
+        type: string
+        example:  89807bfc9089e37e00d87d97357de14cfbc455cd608438d426a625a30a0da9a31c406983803c4aa27e1f32a3ff61709e8ec4b56abbc553d7d330635b5d27029c
+      transactions:
+        type: array
+        items:
+          $ref: "#/definitions/Transaction"
+  BatchList:
+    properties:
+      batches:
+        type: array
+        items:
+          $ref: "#/definitions/Batch"
