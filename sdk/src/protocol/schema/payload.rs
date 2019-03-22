@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use protobuf::Message;
 use protobuf::RepeatedField;
 
 use std::error::Error as StdError;
 
 use crate::protocol::schema::state::PropertyDefinition;
 use crate::protos;
-use crate::protos::{FromNative, FromProto, IntoNative, IntoProto, ProtoConversionError};
+use crate::protos::{
+    FromBytes, FromNative, FromProto, IntoBytes, IntoNative, IntoProto, ProtoConversionError,
+};
 
 /// Native implementation for SchemaPayload_Action
 #[derive(Debug, Clone, PartialEq)]
@@ -97,6 +100,30 @@ impl FromNative<SchemaPayload> for protos::schema_payload::SchemaPayload {
         proto_payload.set_schema_create(payload.schema_create().clone().into_proto()?);
         proto_payload.set_schema_update(payload.schema_update().clone().into_proto()?);
         Ok(proto_payload)
+    }
+}
+
+impl FromBytes<SchemaPayload> for SchemaPayload {
+    fn from_bytes(bytes: &[u8]) -> Result<SchemaPayload, ProtoConversionError> {
+        let proto: protos::schema_payload::SchemaPayload = protobuf::parse_from_bytes(bytes)
+            .map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get SchemaPayload from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for SchemaPayload {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from SchemaPayload".to_string(),
+            )
+        })?;
+        Ok(bytes)
     }
 }
 
@@ -250,6 +277,30 @@ impl FromNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateActi
     }
 }
 
+impl FromBytes<SchemaCreateAction> for SchemaCreateAction {
+    fn from_bytes(bytes: &[u8]) -> Result<SchemaCreateAction, ProtoConversionError> {
+        let proto: protos::schema_payload::SchemaCreateAction = protobuf::parse_from_bytes(bytes)
+            .map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get SchemaCreateAction from bytes".to_string(),
+            )
+        })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for SchemaCreateAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from SchemaCreateAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
 impl IntoProto<protos::schema_payload::SchemaCreateAction> for SchemaCreateAction {}
 impl IntoNative<SchemaCreateAction> for protos::schema_payload::SchemaCreateAction {}
 
@@ -381,6 +432,30 @@ impl FromNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateActi
     }
 }
 
+impl FromBytes<SchemaUpdateAction> for SchemaUpdateAction {
+    fn from_bytes(bytes: &[u8]) -> Result<SchemaUpdateAction, ProtoConversionError> {
+        let proto: protos::schema_payload::SchemaUpdateAction = protobuf::parse_from_bytes(bytes)
+            .map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get SchemaUpdateAction from bytes".to_string(),
+            )
+        })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for SchemaUpdateAction {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from SchemaUpdateAction".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
 impl IntoProto<protos::schema_payload::SchemaUpdateAction> for SchemaUpdateAction {}
 impl IntoNative<SchemaUpdateAction> for protos::schema_payload::SchemaUpdateAction {}
 
@@ -486,6 +561,31 @@ mod tests {
     }
 
     #[test]
+    // check that a schema create can be converted to bytes and back
+    fn check_schema_create_bytes() {
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let builder = SchemaCreateBuilder::new();
+        let original = builder
+            .with_schema_name("TestSchema".to_string())
+            .with_description("Test Schema".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let create = SchemaCreateAction::from_bytes(&bytes).unwrap();
+        assert_eq!(create, original);
+    }
+
+    #[test]
     // check that a schema update action is built correctly
     fn check_schema_update_action() {
         let builder = PropertyDefinitionBuilder::new();
@@ -505,6 +605,30 @@ mod tests {
 
         assert_eq!(action.schema_name, "TestSchema");
         assert_eq!(action.properties, vec![property_definition]);
+    }
+
+    #[test]
+    // check that a schema update can be converted to bytes and back
+    fn check_schema_update_bytes() {
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let builder = SchemaUpdateBuilder::new();
+        let original = builder
+            .with_schema_name("TestSchema".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let update = SchemaUpdateAction::from_bytes(&bytes).unwrap();
+        assert_eq!(update, original);
     }
 
     #[test]
@@ -566,5 +690,36 @@ mod tests {
         assert_eq!(payload.action, Action::SchemaUpdate);
         assert_eq!(payload.schema_create, SchemaCreateAction::default());
         assert_eq!(payload.schema_update, action);
+    }
+
+    #[test]
+    // check that a schema payload can be converted to bytes and back
+    fn check_schema_payload_bytes() {
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let builder = SchemaUpdateBuilder::new();
+        let action = builder
+            .with_schema_name("TestSchema".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        let builder = SchemaPayloadBuilder::new();
+        let original = builder
+            .with_action(Action::SchemaUpdate)
+            .with_schema_update(action.clone())
+            .build()
+            .unwrap();
+
+        let bytes = original.clone().into_bytes().unwrap();
+
+        let payload = SchemaPayload::from_bytes(&bytes).unwrap();
+        assert_eq!(payload, original);
     }
 }

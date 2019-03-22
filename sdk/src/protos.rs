@@ -55,6 +55,14 @@ pub trait FromNative<N>: Sized {
     fn from_native(other: N) -> Result<Self, ProtoConversionError>;
 }
 
+pub trait FromBytes<N>: Sized {
+    fn from_bytes(bytes: &[u8]) -> Result<N, ProtoConversionError>;
+}
+
+pub trait IntoBytes: Sized {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError>;
+}
+
 pub trait IntoNative<T>: Sized
 where
     T: FromProto<Self>,
