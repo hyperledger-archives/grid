@@ -84,3 +84,9 @@ services:
       sawtooth-rest-api -vv
         --connect tcp://validator:4004
         --bind rest-api:8008
+
+  gridd:
+    build:
+      context: .
+      dockerfile: daemon/Dockerfile
+    entrypoint: "/gridd -v"
