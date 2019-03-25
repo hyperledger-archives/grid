@@ -1,3 +1,2 @@
-**/node_modules
-**/npm_debug.log
-**/public/dist
+**/target
+**/Cargo.lock
