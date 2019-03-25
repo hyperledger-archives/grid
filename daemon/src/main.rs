@@ -25,6 +25,7 @@ mod error;
 
 use simple_logger;
 
+use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -36,15 +37,18 @@ fn run() -> Result<(), DaemonError> {
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
         (about: "Daemon Package for Hyperledger Grid")
+        (@arg connect: -C --connect +takes_value "connection endpoint for validator")
         (@arg verbose: -v +multiple "Log verbosely")
     )
     .get_matches();
 
-    match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(log::Level::Warn),
-        1 => simple_logger::init_with_level(log::Level::Info),
-        _ => simple_logger::init_with_level(log::Level::Debug),
-    }?;
+    let config = GridConfigBuilder::default()
+        .with_cli_args(&matches)
+        .build()?;
+
+    simple_logger::init_with_level(config.log_level())?;
+
+    info!("Connecting to validator at {}", config.validator_endpoint());
 
     Ok(())
 }
