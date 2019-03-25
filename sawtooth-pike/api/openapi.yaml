@@ -1,0 +1,386 @@
+# Copyright 2018 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+
+openapi: '3.0.0'
+info:
+  description: ''
+  version: 0.0.0
+  title: Sawtooth Pike API
+host: localhost:9001
+basePath: /
+server:
+  - url: http://localhost:9001/
+  - description: Development server
+schemes:
+  - http
+paths:
+  /transactions:
+    post:
+      tags:
+        - transactions
+      operationId: submit transactions
+      requestBody:
+        description: protobuf describing transaction
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      parameters:
+        - name: wait
+          in: query
+          description: How long the rest API should wait for transactions to be committed
+          schema:
+            type: integer
+
+      responses:
+        '201':
+          description: all batches were submitted successfully and committed
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/BatchStatuses'
+
+        '202':
+          description: batches were submitted successfully but not all batches have been committed
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/BatchStatuses'
+
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Invalid Transaction
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while submitting batches
+
+  /batch_status:
+    get:
+      tags:
+        - transactions
+      operationId: get_batch_status
+      parameters:
+        - name: wait
+          in: query
+          description: How long the rest API should wait for transactions to be committed
+          schema:
+            type: integer
+        - name: ids
+          in: query
+          required: true
+          description: Comma separated list of batch ids we want to retrieve the status of
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/BatchStatuses'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Invalid Id
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while submitting batches
+
+
+  /agent:
+    get:
+      tags:
+        - agents
+      operationId: get_agents
+      responses:
+        '200':
+          description: List of agents
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/Agents'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving agents
+
+  /agent/{publickey}:
+    get:
+      tags:
+        - agents
+      operationId: get_agent
+      parameters:
+        - name: publickey
+          in: path
+          description: public key for agent
+          required: true
+
+      responses:
+        '200':
+          description: Retrieve agent with publickey
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/Agent'
+        '400':
+          description: Invalid Transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Invalid Transaction
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Agent with {publickey} not found
+
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving agent
+
+
+  /organization:
+    get:
+      tags:
+        - organizations
+      operationId: get_organizations
+      responses:
+        '200':
+          description: Retrieve list of organizations
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/Organizations'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving organizations
+
+  /organization/{id}:
+    get:
+      tags:
+        - organizations
+      operationId: get_organization
+      parameters:
+        - name: id
+          in: path
+          description: organization id
+          required: true
+
+      responses:
+        '200':
+          description: Retrieve organization with {id}
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/Organization'
+        '404':
+          description: Organization not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Not Found
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving organization
+
+
+  /smartpermission:
+    get:
+      tags:
+        - smart permissions
+      operationId: get_smart_permissions
+      responses:
+        '200':
+          description: Retrieve list of smart permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/SmartPermissions'
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving smart permissions
+
+  /smartpermission/{id}:
+    get:
+      tags:
+        - smart permissions
+      operationId: get_smart_permission
+      parameters:
+        - name: id
+          in: path
+          description: organization id
+          required: true
+
+      responses:
+        '200':
+          description: Retrieve smart permission associated with organization {id}
+          content:
+            application/json:
+              schema:
+                $ref: '#definitions/SmartPermission'
+        '404':
+          description: Smart permission not found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Not Found
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unexpected error occurred while retrieving smart permission
+
+
+definitions:
+  Error:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+  Agent:
+    type: object
+    properties:
+      publicKey:
+        type: string
+      name:
+        type: string
+      active:
+        type: boolean
+      roles:
+        type: array
+        items:
+          type: string
+      metadata:
+        type: array
+        items:
+          $ref: '#definitions/Metadata'
+
+  Agents:
+    type: array
+    items:
+      $ref: '#definitions/Agent'
+
+  Organization:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      address:
+        type: string
+
+  Organizations:
+    type: array
+    items:
+      $ref: '#definitions/Organization'
+
+  SmartPermission:
+    type: object
+    properties:
+      name:
+        type: string
+      org_id:
+        type: string
+
+  SmartPermissions:
+    type: array
+    items:
+      $ref: '#definitions/SmartPermission'
+
+
+  BatchStatus:
+    type: object
+    properties:
+      batch_id:
+        type: string
+      status:
+        type: string
+
+  BatchStatuses:
+    type: array
+    items:
+      $ref: '#definitions/BatchStatus'
+
+  Metadata:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string
