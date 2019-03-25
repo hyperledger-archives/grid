@@ -23,8 +23,9 @@ extern crate log;
 mod config;
 mod error;
 
-use crate::error::DaemonError;
 use simple_logger;
+
+use crate::error::DaemonError;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
