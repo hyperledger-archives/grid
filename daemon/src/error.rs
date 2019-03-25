@@ -1,4 +1,5 @@
 // Copyright 2019 Bitwise IO, Inc.
+// Copyright 2019 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,12 +21,14 @@ use log;
 #[derive(Debug)]
 pub enum DaemonError {
     LoggingInitializationError(Box<log::SetLoggerError>),
+    ConfigurationError(Box<ConfigurationError>),
 }
 
 impl Error for DaemonError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             DaemonError::LoggingInitializationError(err) => Some(err),
+            DaemonError::ConfigurationError(err) => Some(err),
         }
     }
 }
@@ -36,6 +39,7 @@ impl fmt::Display for DaemonError {
             DaemonError::LoggingInitializationError(e) => {
                 write!(f, "Logging initialization error: {}", e)
             }
+            DaemonError::ConfigurationError(e) => write!(f, "Configuration error: {}", e),
         }
     }
 }
@@ -43,5 +47,28 @@ impl fmt::Display for DaemonError {
 impl From<log::SetLoggerError> for DaemonError {
     fn from(err: log::SetLoggerError) -> DaemonError {
         DaemonError::LoggingInitializationError(Box::new(err))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ConfigurationError {
+    MissingValue(String),
+}
+
+impl Error for ConfigurationError {}
+
+impl fmt::Display for ConfigurationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ConfigurationError::MissingValue(config_field_name) => {
+                write!(f, "Missing configuration for {}", config_field_name)
+            }
+        }
+    }
+}
+
+impl From<ConfigurationError> for DaemonError {
+    fn from(err: ConfigurationError) -> Self {
+        DaemonError::ConfigurationError(Box::new(err))
     }
 }
