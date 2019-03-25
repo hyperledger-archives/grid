@@ -16,7 +16,7 @@
 syntax = "proto3";
 
 
-message Agent {
+message TrackAndTraceAgent {
   string public_key = 1;
 
   // A human readable name identifying the Agent
@@ -27,6 +27,6 @@ message Agent {
 }
 
 
-message AgentContainer {
-  repeated Agent entries = 1;
+message TrackAndTraceAgentContainer {
+  repeated TrackAndTraceAgent entries = 1;
 }

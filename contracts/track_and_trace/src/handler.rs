@@ -18,11 +18,13 @@ use protobuf::RepeatedField;
 
 use std::collections::HashMap;
 
-use grid_sdk::protos::track_and_trace_agent::{Agent, AgentContainer};
+use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
+use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgentContainer as AgentContainer;
+use grid_sdk::protos::track_and_trace_payload::CreateTrackAndTraceAgentAction as CreateAgentAction;
 use grid_sdk::protos::track_and_trace_payload::{
-    AnswerProposalAction, AnswerProposalAction_Response, CreateAgentAction, CreateProposalAction,
-    CreateRecordAction, CreateRecordTypeAction, FinalizeRecordAction, RevokeReporterAction,
-    SCPayload, SCPayload_Action, UpdatePropertiesAction,
+    AnswerProposalAction, AnswerProposalAction_Response, CreateProposalAction, CreateRecordAction,
+    CreateRecordTypeAction, FinalizeRecordAction, RevokeReporterAction, SCPayload,
+    SCPayload_Action, UpdatePropertiesAction,
 };
 use grid_sdk::protos::track_and_trace_property::{
     Property, PropertyContainer, PropertyPage, PropertyPageContainer, PropertyPage_ReportedValue,
