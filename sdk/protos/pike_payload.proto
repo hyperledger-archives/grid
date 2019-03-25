@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 
 syntax = "proto3";
-import "state.proto";
+import "pike_state.proto";
 
 message PikePayload {
   enum Action {
