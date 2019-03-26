@@ -24,6 +24,7 @@ actix-web = "0.7"
 clap = "2"
 ctrlc = "3.0"
 log = "0.4"
+protobuf = "2"
 sawtooth-sdk = "0.2"
 simple_logger = "1.0"
 
