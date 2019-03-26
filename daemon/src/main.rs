@@ -22,6 +22,7 @@ extern crate log;
 
 mod config;
 mod error;
+mod event;
 mod rest_api;
 
 use simple_logger;
