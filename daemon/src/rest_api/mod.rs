@@ -24,10 +24,10 @@ fn create_app() -> App {
     App::new().resource("/", |r| r.method(Method::GET).f(index))
 }
 
-pub fn run() -> Result<i32, RestApiError> {
+pub fn run(bind_url: &str) -> Result<i32, RestApiError> {
     let sys = actix::System::new("Grid-Rest-API");
 
-    server::new(create_app).bind("127.0.0.1:8080")?.start();
+    server::new(create_app).bind(bind_url)?.start();
 
     Ok(sys.run())
 }
