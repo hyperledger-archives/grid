@@ -22,6 +22,7 @@ extern crate log;
 
 mod config;
 mod error;
+mod rest_api;
 
 use simple_logger;
 
@@ -49,6 +50,8 @@ fn run() -> Result<(), DaemonError> {
     simple_logger::init_with_level(config.log_level())?;
 
     info!("Connecting to validator at {}", config.validator_endpoint());
+
+    let _ = rest_api::run()?;
 
     Ok(())
 }
