@@ -89,6 +89,12 @@ pub enum StateError {
     BadRequest(String),
     #[response(status = 404)]
     NotFound(String),
+
+    #[response(status = 500)]
+    Internal(String),
+
+    #[response(status = 503)]
+    ServiceUnavaible(String),
 }
 
 impl Error for StateError {
@@ -100,6 +106,8 @@ impl Error for StateError {
         match self {
             StateError::BadRequest(_) => "Invalid input format",
             StateError::NotFound(_) => "The requested state could not be found",
+            StateError::Internal(_) => "Internal Server Error",
+            StateError::ServiceUnavaible(_) => "The system is not ready",
         }
     }
 }
@@ -109,6 +117,8 @@ impl fmt::Display for StateError {
         match self {
             StateError::BadRequest(msg) => write!(f, "Invalid input: {}", msg),
             StateError::NotFound(msg) => write!(f, "Not Found: {}", msg),
+            StateError::Internal(err_msg) => write!(f, "Internal Server Error: {}", err_msg),
+            StateError::ServiceUnavaible(msg) => write!(f, "Service Unavailable: {}", msg),
         }
     }
 }

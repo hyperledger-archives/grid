@@ -34,16 +34,23 @@ ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 RUN rustup install nightly && \
     rustup default nightly
 
-# Create an empty project, copy over the Cargo toml, and buld the deps first
-RUN USER=root cargo new --bin private-xo
-WORKDIR /private-xo
+# Copy over libsplinter, protos and create the example folder, for the
+# relative dependencies
+COPY ./protos /protos
+COPY ./libsplinter /libsplinter
+RUN mkdir -p /examples
 
-COPY ./Cargo.toml ./Cargo.toml
+# Create an empty project, copy over the Cargo toml, and buld the deps first
+WORKDIR /examples
+RUN USER=root cargo new --bin private-xo
+WORKDIR /examples/private-xo
+
+COPY ./examples/private_xo/Cargo.toml ./Cargo.toml
 RUN cargo build --release
 
 # Copy over the source and build the app
 RUN rm src/*.rs
-COPY ./src ./src
+COPY ./examples/private_xo/src ./src
 
 RUN rm ./target/release/private-xo* ./target/release/deps/private_xo*
 RUN cargo build --release
@@ -56,7 +63,7 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /private-xo/target/release/private-xo /
+COPY --from=BUILDER /examples/private-xo/target/release/private-xo /
 
 EXPOSE 8000
 CMD ["/private-xo"]

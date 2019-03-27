@@ -19,11 +19,19 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+libsplinter = { path = "../../libsplinter" }
+base64 = "0.10"
 clap = "2.32"
+crossbeam-channel = "0.3"
+ctrlc = "3.0"
 log = "0.4"
 protobuf = "2.2"
 rocket = "0.4"
 rocket_contrib = "0.4"
-sawtooth-sdk = "0.1"
+sawtooth-sdk = { git = "https://github.com/hyperledger/sawtooth-sdk-rust" }
+sawtooth-xo = { git = "https://github.com/hyperledger/sawtooth-sdk-rust" }
 serde = "1.0"
 serde_derive = "1.0"
+simple_logger = "1.0"
+transact = { git = "https://github.com/bitwiseio/transact" }
+uuid = { version = "0.7", features = ["v4"] }
