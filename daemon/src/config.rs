@@ -22,6 +22,7 @@ use crate::error::ConfigurationError;
 pub struct GridConfig {
     validator_endpoint: String,
     log_level: Level,
+    rest_api_endpoint: String,
 }
 
 impl GridConfig {
@@ -32,11 +33,16 @@ impl GridConfig {
     pub fn log_level(&self) -> Level {
         self.log_level
     }
+
+    pub fn rest_api_endpoint(&self) -> &str {
+        &self.rest_api_endpoint
+    }
 }
 
 pub struct GridConfigBuilder {
     validator_endpoint: Option<String>,
     log_level: Option<Level>,
+    rest_api_endpoint: Option<String>,
 }
 
 impl Default for GridConfigBuilder {
@@ -44,6 +50,7 @@ impl Default for GridConfigBuilder {
         Self {
             validator_endpoint: Some("localhost:4004".to_owned()),
             log_level: Some(Level::Warn),
+            rest_api_endpoint: Some("localhost:8080".to_owned()),
         }
     }
 }
@@ -61,6 +68,10 @@ impl GridConfigBuilder {
                 _ => Some(Level::Debug),
             })
             .or_else(|| self.log_level.take()),
+            rest_api_endpoint: matches
+                .value_of("bind")
+                .map(ToOwned::to_owned)
+                .or_else(|| self.rest_api_endpoint.take()),
         }
     }
 
@@ -74,6 +85,10 @@ impl GridConfigBuilder {
                 .log_level
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("log_level".to_owned()))?,
+            rest_api_endpoint: self
+                .rest_api_endpoint
+                .take()
+                .ok_or_else(|| ConfigurationError::MissingValue("rest_api_endpoint".to_owned()))?,
         })
     }
 }
@@ -86,7 +101,14 @@ mod test {
     fn build_with_args() {
         let matches = clap::App::new("testapp")
             .arg(clap::Arg::with_name("connect").short("C").takes_value(true))
-            .get_matches_from(vec!["testapp", "-C", "validator:4004"]);
+            .arg(clap::Arg::with_name("bind").short("b").takes_value(true))
+            .get_matches_from(vec![
+                "testapp",
+                "-C",
+                "validator:4004",
+                "-b",
+                "rest_api:8080",
+            ]);
 
         let config = GridConfigBuilder::default()
             .with_cli_args(&matches)
@@ -94,12 +116,14 @@ mod test {
             .expect("Unable to build configuration");
 
         assert_eq!("validator:4004", config.validator_endpoint());
+        assert_eq!("rest_api:8080", config.rest_api_endpoint());
     }
 
     #[test]
     fn build_with_missing_args() {
         let matches = clap::App::new("testapp")
             .arg(clap::Arg::with_name("connect").short("C").takes_value(true))
+            .arg(clap::Arg::with_name("bind").short("b").takes_value(true))
             .get_matches_from(vec!["testapp"]);
 
         let config = GridConfigBuilder::default()
@@ -108,5 +132,6 @@ mod test {
             .expect("Unable to build configuration");
 
         assert_eq!("localhost:4004", config.validator_endpoint());
+        assert_eq!("localhost:8080", config.rest_api_endpoint());
     }
 }

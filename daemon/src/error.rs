@@ -18,10 +18,13 @@ use std::fmt;
 
 use log;
 
+use crate::rest_api::RestApiError;
+
 #[derive(Debug)]
 pub enum DaemonError {
     LoggingInitializationError(Box<log::SetLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
+    RestApiError(RestApiError),
 }
 
 impl Error for DaemonError {
@@ -29,6 +32,7 @@ impl Error for DaemonError {
         match self {
             DaemonError::LoggingInitializationError(err) => Some(err),
             DaemonError::ConfigurationError(err) => Some(err),
+            DaemonError::RestApiError(err) => Some(err),
         }
     }
 }
@@ -40,6 +44,7 @@ impl fmt::Display for DaemonError {
                 write!(f, "Logging initialization error: {}", e)
             }
             DaemonError::ConfigurationError(e) => write!(f, "Configuration error: {}", e),
+            DaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
         }
     }
 }
@@ -70,5 +75,11 @@ impl fmt::Display for ConfigurationError {
 impl From<ConfigurationError> for DaemonError {
     fn from(err: ConfigurationError) -> Self {
         DaemonError::ConfigurationError(Box::new(err))
+    }
+}
+
+impl From<RestApiError> for DaemonError {
+    fn from(err: RestApiError) -> DaemonError {
+        DaemonError::RestApiError(err)
     }
 }

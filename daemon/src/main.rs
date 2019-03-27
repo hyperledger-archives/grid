@@ -22,6 +22,7 @@ extern crate log;
 
 mod config;
 mod error;
+mod rest_api;
 
 use simple_logger;
 
@@ -39,6 +40,7 @@ fn run() -> Result<(), DaemonError> {
         (about: "Daemon Package for Hyperledger Grid")
         (@arg connect: -C --connect +takes_value "connection endpoint for validator")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
     )
     .get_matches();
 
@@ -49,6 +51,9 @@ fn run() -> Result<(), DaemonError> {
     simple_logger::init_with_level(config.log_level())?;
 
     info!("Connecting to validator at {}", config.validator_endpoint());
+
+    let _ = rest_api::run(config.rest_api_endpoint())?;
+    info!("Starting Rest API at {}", config.rest_api_endpoint());
 
     Ok(())
 }

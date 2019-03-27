@@ -19,6 +19,8 @@ authors = ["Contributors to Hyperledger Grid"]
 edition = "2018"
 
 [dependencies]
+actix = "0.7"
+actix-web = "0.7"
 clap = "2"
 log = "0.4"
 simple_logger = "1.0"
