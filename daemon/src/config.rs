@@ -48,9 +48,9 @@ pub struct GridConfigBuilder {
 impl Default for GridConfigBuilder {
     fn default() -> Self {
         Self {
-            validator_endpoint: Some("localhost:4004".to_owned()),
+            validator_endpoint: Some("127.0.0.1:4004".to_owned()),
             log_level: Some(Level::Warn),
-            rest_api_endpoint: Some("localhost:8080".to_owned()),
+            rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
         }
     }
 }
@@ -131,7 +131,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("localhost:4004", config.validator_endpoint());
-        assert_eq!("localhost:8080", config.rest_api_endpoint());
+        assert_eq!("127.0.0.1:4004", config.validator_endpoint());
+        assert_eq!("127.0.0.1:8080", config.rest_api_endpoint());
     }
 }
