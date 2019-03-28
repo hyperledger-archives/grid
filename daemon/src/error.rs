@@ -16,6 +16,8 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::event::EventProcessorError;
+
 use log;
 
 use crate::rest_api::RestApiError;
@@ -24,6 +26,7 @@ use crate::rest_api::RestApiError;
 pub enum DaemonError {
     LoggingInitializationError(Box<log::SetLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
+    EventProcessorError(Box<EventProcessorError>),
     RestApiError(RestApiError),
     StartUpError(Box<dyn Error>),
 }
@@ -33,6 +36,7 @@ impl Error for DaemonError {
         match self {
             DaemonError::LoggingInitializationError(err) => Some(err),
             DaemonError::ConfigurationError(err) => Some(err),
+            DaemonError::EventProcessorError(err) => Some(err),
             DaemonError::RestApiError(err) => Some(err),
             DaemonError::StartUpError(err) => Some(&**err),
         }
@@ -46,6 +50,7 @@ impl fmt::Display for DaemonError {
                 write!(f, "Logging initialization error: {}", e)
             }
             DaemonError::ConfigurationError(e) => write!(f, "Configuration error: {}", e),
+            DaemonError::EventProcessorError(e) => write!(f, "Event Processor Error: {}", e),
             DaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
             DaemonError::StartUpError(e) => write!(f, "Start-up error: {}", e),
         }
@@ -84,5 +89,11 @@ impl From<ConfigurationError> for DaemonError {
 impl From<RestApiError> for DaemonError {
     fn from(err: RestApiError) -> DaemonError {
         DaemonError::RestApiError(err)
+    }
+}
+
+impl From<EventProcessorError> for DaemonError {
+    fn from(err: EventProcessorError) -> Self {
+        DaemonError::EventProcessorError(Box::new(err))
     }
 }
