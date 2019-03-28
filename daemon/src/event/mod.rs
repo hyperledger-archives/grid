@@ -46,6 +46,13 @@ pub trait EventHandler: Send {
     fn handle_event(&self, event: &Event) -> Result<(), EventError>;
 }
 
+#[macro_export]
+macro_rules! event_handlers {
+    [$($handler:expr),*] => {
+        vec![$(Box::new($handler),)*]
+    };
+}
+
 pub struct EventProcessor {
     join_handle: thread::JoinHandle<Result<(), EventProcessorError>>,
     message_sender: Box<dyn MessageSender + Send>,
