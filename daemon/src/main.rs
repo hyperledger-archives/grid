@@ -50,10 +50,21 @@ fn run() -> Result<(), DaemonError> {
 
     simple_logger::init_with_level(config.log_level())?;
 
+    let (rest_api_shutdown_handle, rest_api_join_handle) =
+        rest_api::run(config.rest_api_endpoint())?;
+
     info!("Connecting to validator at {}", config.validator_endpoint());
 
-    let _ = rest_api::run(config.rest_api_endpoint())?;
-    info!("Starting Rest API at {}", config.rest_api_endpoint());
+    ctrlc::set_handler(move || {
+        if let Err(err) = rest_api_shutdown_handle.shutdown() {
+            error!("Unable to cleanly shutdown REST API server: {}", err);
+        }
+    })
+    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
+    rest_api_join_handle
+        .join()
+        .expect("The REST API thread panicked")?;
 
     Ok(())
 }
