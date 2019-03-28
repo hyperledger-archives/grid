@@ -33,9 +33,7 @@ services:
       - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
     volumes:
       - .:/grid
-      - /grid/sdk
       - /grid/contracts/track_and_trace/target
-      - /grid/contracts/track_and_trace/src/messages
     entrypoint: |
       bash -c "
         cargo build &&
