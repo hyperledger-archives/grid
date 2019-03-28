@@ -97,6 +97,7 @@ services:
         --bind rest-api:8008
 
   gridd:
+    container_name: gridd
     build:
       context: .
       dockerfile: daemon/Dockerfile
@@ -104,4 +105,4 @@ services:
       - 8080
     ports:
       - '8080:8080'
-    entrypoint: "/gridd -v -b gridd:8080"
+    entrypoint: /gridd -vv -b gridd:8080 -C tcp://validator:4004
