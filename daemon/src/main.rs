@@ -29,7 +29,7 @@ use simple_logger;
 
 use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
-use crate::event::EventProcessor;
+use crate::event::{block::BlockEventHandler, EventProcessor};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -62,9 +62,12 @@ fn run() -> Result<(), DaemonError> {
     })
     .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
-    let evt_processor =
-        EventProcessor::start(config.validator_endpoint(), "0000000000000000", vec![])
-            .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+    let evt_processor = EventProcessor::start(
+        config.validator_endpoint(),
+        "0000000000000000",
+        event_handlers![BlockEventHandler::new()],
+    )
+    .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
     let (_shutdown_handle, event_processor_join_handle) = evt_processor.take_shutdown_controls();
 
