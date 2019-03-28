@@ -29,6 +29,7 @@ use simple_logger;
 
 use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
+use crate::event::EventProcessor;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -54,8 +55,6 @@ fn run() -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint())?;
 
-    info!("Connecting to validator at {}", config.validator_endpoint());
-
     ctrlc::set_handler(move || {
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
@@ -63,9 +62,25 @@ fn run() -> Result<(), DaemonError> {
     })
     .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
+    let evt_processor =
+        EventProcessor::start(config.validator_endpoint(), "0000000000000000", vec![])
+            .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+
+    let (_shutdown_handle, event_processor_join_handle) = evt_processor.take_shutdown_controls();
+
     rest_api_join_handle
         .join()
-        .expect("The REST API thread panicked")?;
+        .map_err(|_| {
+            DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
+        })
+        .and_then(|res| res.map_err(DaemonError::from))?;
+
+    event_processor_join_handle
+        .join()
+        .map_err(|_| {
+            DaemonError::ShutdownError("Unable to cleanly join the event processor".into())
+        })
+        .and_then(|res| res.map_err(DaemonError::from))?;
 
     Ok(())
 }
