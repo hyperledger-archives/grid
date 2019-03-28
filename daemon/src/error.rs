@@ -29,6 +29,7 @@ pub enum DaemonError {
     EventProcessorError(Box<EventProcessorError>),
     RestApiError(RestApiError),
     StartUpError(Box<dyn Error>),
+    ShutdownError(String),
 }
 
 impl Error for DaemonError {
@@ -39,6 +40,7 @@ impl Error for DaemonError {
             DaemonError::EventProcessorError(err) => Some(err),
             DaemonError::RestApiError(err) => Some(err),
             DaemonError::StartUpError(err) => Some(&**err),
+            DaemonError::ShutdownError(_) => None,
         }
     }
 }
@@ -53,6 +55,7 @@ impl fmt::Display for DaemonError {
             DaemonError::EventProcessorError(e) => write!(f, "Event Processor Error: {}", e),
             DaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
             DaemonError::StartUpError(e) => write!(f, "Start-up error: {}", e),
+            DaemonError::ShutdownError(msg) => write!(f, "Unable to cleanly shutdown: {}", msg),
         }
     }
 }
