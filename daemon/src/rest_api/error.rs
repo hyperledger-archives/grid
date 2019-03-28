@@ -17,12 +17,14 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum RestApiError {
+    StartUpError(String),
     StdError(std::io::Error),
 }
 
 impl Error for RestApiError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            RestApiError::StartUpError(_) => None,
             RestApiError::StdError(err) => Some(err),
         }
     }
@@ -31,6 +33,7 @@ impl Error for RestApiError {
 impl fmt::Display for RestApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            RestApiError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
             RestApiError::StdError(e) => write!(f, "Std Error: {}", e),
         }
     }

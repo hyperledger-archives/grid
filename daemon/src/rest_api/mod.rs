@@ -15,6 +15,9 @@
 mod error;
 mod route_handler;
 
+use std::sync::mpsc;
+use std::thread;
+
 use actix_web::{http::Method, server, App};
 
 pub use crate::rest_api::error::RestApiError;
@@ -24,12 +27,54 @@ fn create_app() -> App {
     App::new().resource("/", |r| r.method(Method::GET).f(index))
 }
 
-pub fn run(bind_url: &str) -> Result<i32, RestApiError> {
-    let sys = actix::System::new("Grid-Rest-API");
+pub struct RestApiShutdownHandle {
+    do_shutdown: Box<dyn Fn() -> Result<(), RestApiError> + Send>,
+}
 
-    server::new(create_app).bind(bind_url)?.start();
+impl RestApiShutdownHandle {
+    pub fn shutdown(&self) -> Result<(), RestApiError> {
+        info!("Shutting down RestApi");
+        (*self.do_shutdown)()
+    }
+}
 
-    Ok(sys.run())
+pub fn run(
+    bind_url: &str,
+) -> Result<
+    (
+        RestApiShutdownHandle,
+        thread::JoinHandle<Result<i32, RestApiError>>,
+    ),
+    RestApiError,
+> {
+    let (tx, rx) = mpsc::channel();
+    let bind_url = bind_url.to_owned();
+    let join_handle = thread::Builder::new()
+        .name("GridRestApi".into())
+        .spawn(move || {
+            let sys = actix::System::new("Grid-Rest-API");
+
+            info!("Starting Rest API at {}", &bind_url);
+            let addr = server::new(create_app).bind(bind_url)?.start();
+
+            tx.send(addr).map_err(|err| {
+                RestApiError::StartUpError(format!("Unable to send Server Addr: {}", err))
+            })?;
+
+            Ok(sys.run())
+        })?;
+
+    let addr = rx.recv().map_err(|err| {
+        RestApiError::StartUpError(format!("Unable to receive Server Addr: {}", err))
+    })?;
+
+    let do_shutdown = Box::new(move || {
+        let _ = addr.send(server::StopServer { graceful: true });
+
+        Ok(())
+    });
+
+    Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
 }
 
 #[cfg(test)]
