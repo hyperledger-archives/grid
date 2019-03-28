@@ -3,23 +3,11 @@
 *.sublime*
 
 # Rust
-cli/Cargo.lock
-cli/target
+/Cargo.lock
+/target/
 
-contracts/*/Cargo.lock
 contracts/*/bin/
-contracts/*/target/
-
 contracts/track_and_trace/src/messages/
-
-contracts/schema/Cargo.lock
-contracts/schema/target/
-
-daemon/Cargo.lock
-daemon/target
-
-sdk/Cargo.lock
-sdk/target
 
 # Node
 **/node_modules

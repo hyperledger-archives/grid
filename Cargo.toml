@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "cli",
+    "contracts/pike",
+    "contracts/schema",
+    "contracts/track_and_trace",
+    "daemon",
+    "sdk"
+]
