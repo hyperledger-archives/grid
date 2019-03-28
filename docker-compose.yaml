@@ -106,3 +106,12 @@ services:
     ports:
       - '8080:8080'
     entrypoint: /gridd -vv -b gridd:8080 -C tcp://validator:4004
+
+  sawtooth-shell:
+    image: hyperledger/sawtooth-shell:1.1
+    container_name: grid-sawtooth-shell
+    command: |
+        bash -c "
+          sawtooth keygen &&
+          tail -f /dev/null
+        "
