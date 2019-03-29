@@ -55,13 +55,6 @@ fn run() -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint())?;
 
-    ctrlc::set_handler(move || {
-        if let Err(err) = rest_api_shutdown_handle.shutdown() {
-            error!("Unable to cleanly shutdown REST API server: {}", err);
-        }
-    })
-    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
-
     let evt_processor = EventProcessor::start(
         config.validator_endpoint(),
         "0000000000000000",
@@ -69,7 +62,18 @@ fn run() -> Result<(), DaemonError> {
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
-    let (_shutdown_handle, event_processor_join_handle) = evt_processor.take_shutdown_controls();
+    let (event_processor_shutdown_handle, event_processor_join_handle) =
+        evt_processor.take_shutdown_controls();
+
+    ctrlc::set_handler(move || {
+        if let Err(err) = rest_api_shutdown_handle.shutdown() {
+            error!("Unable to cleanly shutdown REST API server: {}", err);
+        }
+        if let Err(err) = event_processor_shutdown_handle.shutdown() {
+            error!("Unable to gracefully shutdown Event Processor: {}", err);
+        }
+    })
+    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
     rest_api_join_handle
         .join()
