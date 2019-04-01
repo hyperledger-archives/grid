@@ -25,6 +25,9 @@ mod error;
 mod event;
 mod rest_api;
 
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
@@ -65,7 +68,14 @@ fn run() -> Result<(), DaemonError> {
     let (event_processor_shutdown_handle, event_processor_join_handle) =
         evt_processor.take_shutdown_controls();
 
+    let ctrlc_triggered = AtomicBool::new(false);
     ctrlc::set_handler(move || {
+        if ctrlc_triggered.load(Ordering::SeqCst) {
+            eprintln!("Aborting due to multiple Ctrl-C events");
+            process::exit(1);
+        }
+
+        ctrlc_triggered.store(true, Ordering::SeqCst);
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
         }
