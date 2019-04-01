@@ -65,7 +65,8 @@ impl GridConfigBuilder {
             log_level: (match matches.occurrences_of("verbose") {
                 0 => Some(Level::Warn),
                 1 => Some(Level::Info),
-                _ => Some(Level::Debug),
+                2 => Some(Level::Debug),
+                _ => Some(Level::Trace),
             })
             .or_else(|| self.log_level.take()),
             rest_api_endpoint: matches
