@@ -33,7 +33,6 @@ pub struct RestApiShutdownHandle {
 
 impl RestApiShutdownHandle {
     pub fn shutdown(&self) -> Result<(), RestApiError> {
-        info!("Shutting down RestApi");
         (*self.do_shutdown)()
     }
 }
@@ -43,7 +42,7 @@ pub fn run(
 ) -> Result<
     (
         RestApiShutdownHandle,
-        thread::JoinHandle<Result<i32, RestApiError>>,
+        thread::JoinHandle<Result<(), RestApiError>>,
     ),
     RestApiError,
 > {
@@ -55,13 +54,21 @@ pub fn run(
             let sys = actix::System::new("Grid-Rest-API");
 
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(create_app).bind(bind_url)?.start();
+            let addr = server::new(create_app)
+                .bind(bind_url)?
+                .disable_signals()
+                .system_exit()
+                .start();
 
             tx.send(addr).map_err(|err| {
                 RestApiError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
 
-            Ok(sys.run())
+            sys.run();
+
+            info!("Rest API terminating");
+
+            Ok(())
         })?;
 
     let addr = rx.recv().map_err(|err| {
@@ -69,7 +76,9 @@ pub fn run(
     })?;
 
     let do_shutdown = Box::new(move || {
-        let _ = addr.send(server::StopServer { graceful: true });
+        debug!("Shutting down Rest API");
+        addr.do_send(server::StopServer { graceful: true });
+        debug!("Graceful signal sent to Rest API");
 
         Ok(())
     });
