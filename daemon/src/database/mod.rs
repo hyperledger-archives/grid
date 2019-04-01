@@ -19,14 +19,25 @@ pub mod error;
 pub mod models;
 pub mod schema;
 
+embed_migrations!("./migrations");
+
 use std::ops::Deref;
 
 use diesel::{
+    connection::Connection as _,
     pg::PgConnection,
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 
 pub use super::database::error::DatabaseError;
+
+pub fn run_migrations(database_url: &str) -> Result<(), DatabaseError> {
+    let connection = PgConnection::establish(database_url)?;
+
+    embedded_migrations::run(&connection)?;
+
+    Ok(())
+}
 
 pub fn create_connection_pool(database_url: &str) -> Result<ConnectionPool, DatabaseError> {
     let connection_manager = ConnectionManager::<PgConnection>::new(database_url);
