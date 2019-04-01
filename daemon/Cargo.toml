@@ -22,6 +22,7 @@ edition = "2018"
 actix = "0.7"
 actix-web = "0.7"
 clap = "2"
+ctrlc = "3.0"
 log = "0.4"
 simple_logger = "1.0"
 

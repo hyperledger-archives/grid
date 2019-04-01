@@ -25,6 +25,7 @@ pub enum DaemonError {
     LoggingInitializationError(Box<log::SetLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
     RestApiError(RestApiError),
+    StartUpError(Box<dyn Error>),
 }
 
 impl Error for DaemonError {
@@ -33,6 +34,7 @@ impl Error for DaemonError {
             DaemonError::LoggingInitializationError(err) => Some(err),
             DaemonError::ConfigurationError(err) => Some(err),
             DaemonError::RestApiError(err) => Some(err),
+            DaemonError::StartUpError(err) => Some(&**err),
         }
     }
 }
@@ -45,6 +47,7 @@ impl fmt::Display for DaemonError {
             }
             DaemonError::ConfigurationError(e) => write!(f, "Configuration error: {}", e),
             DaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
+            DaemonError::StartUpError(e) => write!(f, "Start-up error: {}", e),
         }
     }
 }
