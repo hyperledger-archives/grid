@@ -12,56 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM rust:1
+FROM ubuntu:bionic as GRID-TNT-BUILDER
 
-RUN apt-get update && apt-get install -y unzip libzmq3-dev
+# Install base dependencies
+RUN apt-get update \
+    && apt-get install -y -q \
+        build-essential \
+        curl \
+        gcc \
+        g++ \
+        libpq-dev \
+        libssl-dev \
+        libsasl2-dev \
+        libzmq3-dev \
+        openssl \
+        pkg-config \
+        unzip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN \
- if [ ! -z $HTTP_PROXY ] && [ -z $http_proxy ]; then \
-  http_proxy=$HTTP_PROXY; \
- fi; \
- if [ ! -z $HTTPS_PROXY ] && [ -z $https_proxy ]; then \
-  https_proxy=$HTTPS_PROXY; \
- fi; \
- if [ ! -z $http_proxy ]; then \
-  http_proxy_host=$(printf $http_proxy | sed 's|http.*://\(.*\):\(.*\)$|\1|');\
-  http_proxy_port=$(printf $http_proxy | sed 's|http.*://\(.*\):\(.*\)$|\2|');\
-  mkdir -p $HOME/.cargo \
-  && echo "[http]" >> $HOME/.cargo/config \
-  && echo 'proxy = "'$http_proxy_host:$http_proxy_port'"' >> $HOME/.cargo/config \
-  && cat $HOME/.cargo/config; \
- fi; \
- if [ ! -z $https_proxy ]; then \
-  https_proxy_host=$(printf $https_proxy | sed 's|http.*://\(.*\):\(.*\)$|\1|');\
-  https_proxy_port=$(printf $https_proxy | sed 's|http.*://\(.*\):\(.*\)$|\2|');\
-  mkdir -p $HOME/.cargo \
-  && echo "[https]" >> $HOME/.cargo/config \
-  && echo 'proxy = "'$https_proxy_host:$https_proxy_port'"' >> $HOME/.cargo/config \
-  && cat $HOME/.cargo/config; \
- fi;
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
 
 # For Building Protobufs
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
- && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
- && rm protoc-3.5.1-linux-x86_64.zip
-RUN apt-get update && apt-get install -y protobuf-compiler
+    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.5.1-linux-x86_64.zip
+
+ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+
+COPY ./sdk /sdk
+
+RUN USER=root cargo new --bin contracts/track_and_trace
+WORKDIR /contracts/track_and_trace
 
 # Build TP with dummy source in order to cache dependencies in Docker image.
-# Make sure not to use the `volumes` command to overwrite:
-#   - /grid/contracts/track_and_trace/target/
-#   - /grid/contracts/track_and_trace/src/messages/
-WORKDIR /grid
-RUN USER=root cargo new --bin contracts/track_and_trace
-RUN USER=root cargo new --lib sdk --name grid-sdk
+COPY ./contracts/track_and_trace/Cargo.toml ./Cargo.toml
+RUN cargo build --release
 
-# copy grid-sdk to build track and trace
-WORKDIR /grid/sdk
-COPY sdk ./
-
-WORKDIR /grid/contracts/track_and_trace
 COPY contracts/track_and_trace/Cargo.toml contracts/track_and_trace/Cargo.lock* ./
 RUN cargo build
 
-ENV PATH=$PATH:/grid/contracts/track_and_trace/target/debug/
+RUN rm src/*.rs
+COPY ./contracts/track_and_trace/src ./src
 
-ENTRYPOINT ["/grid/contracts/track_and_trace/target/debug/grid-track-and-trace-tp"]
+RUN rm ./target/release/grid-track-and-trace-tp* ./target/release/deps/grid_track_and_trace*
+RUN cargo build --release
+
+# Create the stand-alone stage
+FROM ubuntu:bionic
+
+RUN apt-get update \
+ && apt-get install -y libssl1.1 libzmq5 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=GRID-TNT-BUILDER /contracts/track_and_trace/target/release/grid-track-and-trace-tp /
+
+CMD ["/grid-track-and-trace-tp"]
