@@ -12,8 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{HttpRequest, HttpResponse};
+use crate::rest_api::{AppState, RestApiError};
 
-pub fn index(_req: &HttpRequest) -> HttpResponse {
-    HttpResponse::Ok().body("Hello world!")
+use actix::{Actor, Context, Handler, Message};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, State};
+use futures::future;
+use futures::future::Future;
+use protobuf;
+use sawtooth_sdk::messaging::stream::MessageSender;
+
+pub struct SawtoothMessageSender {
+    sender: Box<dyn MessageSender>,
+}
+
+impl Actor for SawtoothMessageSender {
+    type Context = Context<Self>;
+}
+
+impl SawtoothMessageSender {
+    pub fn new(sender: Box<dyn MessageSender>) -> SawtoothMessageSender {
+        SawtoothMessageSender { sender }
+    }
+}
+pub fn submit_batches(
+    (_req, _state): (HttpRequest<AppState>, State<AppState>),
+) -> Box<Future<Item = HttpResponse, Error = RestApiError>> {
+    unimplemented!()
+}
+
+pub fn get_batch_statuses(
+    (_req, _state): (HttpRequest<AppState>, State<AppState>),
+) -> Box<Future<Item = HttpResponse, Error = RestApiError>> {
+    unimplemented!()
 }

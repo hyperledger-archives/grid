@@ -27,6 +27,7 @@ log = "0.4"
 protobuf = "2"
 sawtooth-sdk = { git = "https://github.com/hyperledger/sawtooth-sdk-rust" }
 simple_logger = "1.0"
+futures = "0.1"
 
 [[bin]]
 name = "gridd"

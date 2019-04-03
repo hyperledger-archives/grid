@@ -18,13 +18,14 @@ mod route_handler;
 use std::sync::mpsc;
 use std::thread;
 
-use actix_web::{http::Method, server, App};
-
 pub use crate::rest_api::error::RestApiError;
-use crate::rest_api::route_handler::index;
+use crate::rest_api::route_handler::{get_batch_statuses, submit_batches, SawtoothMessageSender};
+use actix::{Actor, Addr, Context};
+use actix_web::{http::Method, server, App};
+use sawtooth_sdk::messaging::stream::MessageSender;
 
-fn create_app() -> App {
-    App::new().resource("/", |r| r.method(Method::GET).f(index))
+pub struct AppState {
+    sawtooth_connection: Addr<SawtoothMessageSender>,
 }
 
 pub struct RestApiShutdownHandle {
@@ -37,8 +38,22 @@ impl RestApiShutdownHandle {
     }
 }
 
+fn create_app(sawtooth_connection: Addr<SawtoothMessageSender>) -> App<AppState> {
+    App::with_state(AppState {
+        sawtooth_connection,
+    })
+    .resource("/batches", |r| {
+        r.method(Method::POST).with_async(submit_batches)
+    })
+    .resource("/batch_statuses", |r| {
+        r.name("batch_statuses");
+        r.method(Method::GET).with_async(get_batch_statuses)
+    })
+}
+
 pub fn run(
     bind_url: &str,
+    zmq_sender: Box<dyn MessageSender + Send>,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -52,9 +67,13 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
+            let zmq_connection_addr =
+                SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
+                    SawtoothMessageSender::new(zmq_sender)
+                });
 
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(create_app)
+            let addr = server::new(move || create_app(zmq_connection_addr.clone()))
                 .bind(bind_url)?
                 .disable_signals()
                 .system_exit()
