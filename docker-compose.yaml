@@ -23,21 +23,9 @@ services:
     build:
       context: .
       dockerfile: contracts/track_and_trace/Dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    environment:
-      - 'http_proxy=${http_proxy}'
-      - 'https_proxy=${https_proxy}'
-      - 'no_proxy=rest-api,eth0,validator,${no_proxy}'
-    volumes:
-      - .:/grid
-      - /grid/contracts/track_and_trace/target
     entrypoint: |
       bash -c "
-        cargo build &&
-        grid-track-and-trace-tp -v -C tcp://validator:4004
+        /grid-track-and-trace-tp -v -C tcp://validator:4004
       "
 
   validator:
