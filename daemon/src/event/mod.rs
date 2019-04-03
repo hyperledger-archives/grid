@@ -31,11 +31,10 @@ use sawtooth_sdk::{
     },
     messages::events::{Event, EventFilter, EventFilter_FilterType, EventList, EventSubscription},
     messages::validator::{Message, Message_MessageType},
-    messaging::{
-        stream::{MessageConnection, MessageSender, ReceiveError, SendError},
-        zmq_stream,
-    },
+    messaging::stream::{MessageSender, ReceiveError, SendError},
 };
+
+use crate::sawtooth_connection::SawtoothConnection;
 
 pub use super::event::error::{EventError, EventProcessorError};
 
@@ -102,14 +101,11 @@ impl EventProcessorShutdownHandle {
 
 impl EventProcessor {
     pub fn start(
-        address: &str,
+        sawtooth_connection: SawtoothConnection,
         last_known_block_id: &str,
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
-        info!("Connecting to validator at {}", address);
-        let connection = zmq_stream::ZmqMessageConnection::new(address);
-
-        let (message_sender, receiver) = connection.create();
+        let message_sender = sawtooth_connection.get_sender();
 
         let last_known_block_id = last_known_block_id.to_owned();
         let request = create_subscription_request(last_known_block_id);
@@ -135,7 +131,7 @@ impl EventProcessor {
         let join_handle = thread::Builder::new()
             .name("EventProcessor".into())
             .spawn(move || {
-                while let Ok(msg_result) = receiver.recv() {
+                while let Ok(msg_result) = sawtooth_connection.get_receiver().recv() {
                     match msg_result {
                         Ok(msg) => handle_message(msg, &event_handlers)?,
                         Err(ReceiveError::DisconnectedError) => break,
@@ -157,7 +153,7 @@ impl EventProcessor {
 
         Ok(Self {
             join_handle,
-            message_sender: Box::new(message_sender),
+            message_sender,
         })
     }
 

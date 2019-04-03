@@ -63,7 +63,7 @@ fn run() -> Result<(), DaemonError> {
         rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
 
     let evt_processor = EventProcessor::start(
-        config.validator_endpoint(),
+        sawtooth_connection,
         "0000000000000000",
         event_handlers![BlockEventHandler::new()],
     )
