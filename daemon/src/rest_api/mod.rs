@@ -104,24 +104,3 @@ pub fn run(
 
     Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use actix_web::test::TestServer;
-    use actix_web::HttpMessage;
-    use std::str;
-
-    #[test]
-    fn index_test() {
-        let mut srv = TestServer::new(|app| app.handler(index));
-
-        let req = srv.get().finish().unwrap();
-        let resp = srv.execute(req.send()).unwrap();
-        assert!(resp.status().is_success());
-
-        let body_bytes = srv.execute(resp.body()).unwrap();
-        let body_str = str::from_utf8(&body_bytes).unwrap();
-        assert_eq!(body_str, "Hello world!");
-    }
-}
