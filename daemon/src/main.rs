@@ -35,6 +35,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
+use crate::database::create_connection_pool;
 use crate::error::DaemonError;
 use crate::event::{block::BlockEventHandler, EventProcessor};
 use crate::sawtooth_connection::SawtoothConnection;
@@ -67,10 +68,12 @@ fn run() -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
 
+    let connection_pool = create_connection_pool(config.database_url())?;
+
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
         "0000000000000000",
-        event_handlers![BlockEventHandler::new()],
+        event_handlers![BlockEventHandler::new(connection_pool.clone())],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
