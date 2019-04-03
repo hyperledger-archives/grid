@@ -38,7 +38,6 @@ use log::Level;
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
-use crate::database::create_connection_pool;
 use crate::error::DaemonError;
 use crate::event::{block::BlockEventHandler, EventProcessor};
 use crate::sawtooth_connection::SawtoothConnection;
@@ -72,12 +71,14 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
+    database::run_migrations(config.database_url())?;
+
     let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
 
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
 
-    let connection_pool = create_connection_pool(config.database_url())?;
+    let connection_pool = database::create_connection_pool(config.database_url())?;
 
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
