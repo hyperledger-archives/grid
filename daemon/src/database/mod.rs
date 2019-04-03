@@ -16,6 +16,7 @@
  */
 
 pub mod error;
+pub mod schema;
 
 use std::ops::Deref;
 
