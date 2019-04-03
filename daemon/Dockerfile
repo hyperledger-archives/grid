@@ -27,7 +27,6 @@ RUN apt-get update \
         libzmq3-dev \
         openssl \
         pkg-config \
-        python \
         unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

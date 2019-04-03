@@ -48,7 +48,7 @@ pub struct GridConfigBuilder {
 impl Default for GridConfigBuilder {
     fn default() -> Self {
         Self {
-            validator_endpoint: Some("127.0.0.1:4004".to_owned()),
+            validator_endpoint: Some("tcp://127.0.0.1:4004".to_owned()),
             log_level: Some(Level::Warn),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
         }
@@ -65,7 +65,8 @@ impl GridConfigBuilder {
             log_level: (match matches.occurrences_of("verbose") {
                 0 => Some(Level::Warn),
                 1 => Some(Level::Info),
-                _ => Some(Level::Debug),
+                2 => Some(Level::Debug),
+                _ => Some(Level::Trace),
             })
             .or_else(|| self.log_level.take()),
             rest_api_endpoint: matches

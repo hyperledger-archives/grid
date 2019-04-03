@@ -22,12 +22,17 @@ extern crate log;
 
 mod config;
 mod error;
+mod event;
 mod rest_api;
+
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
+use crate::event::{block::BlockEventHandler, EventProcessor};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -53,18 +58,46 @@ fn run() -> Result<(), DaemonError> {
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint())?;
 
-    info!("Connecting to validator at {}", config.validator_endpoint());
+    let evt_processor = EventProcessor::start(
+        config.validator_endpoint(),
+        "0000000000000000",
+        event_handlers![BlockEventHandler::new()],
+    )
+    .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
+    let (event_processor_shutdown_handle, event_processor_join_handle) =
+        evt_processor.take_shutdown_controls();
+
+    let ctrlc_triggered = AtomicBool::new(false);
     ctrlc::set_handler(move || {
+        if ctrlc_triggered.load(Ordering::SeqCst) {
+            eprintln!("Aborting due to multiple Ctrl-C events");
+            process::exit(1);
+        }
+
+        ctrlc_triggered.store(true, Ordering::SeqCst);
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
+        }
+        if let Err(err) = event_processor_shutdown_handle.shutdown() {
+            error!("Unable to gracefully shutdown Event Processor: {}", err);
         }
     })
     .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
     rest_api_join_handle
         .join()
-        .expect("The REST API thread panicked")?;
+        .map_err(|_| {
+            DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
+        })
+        .and_then(|res| res.map_err(DaemonError::from))?;
+
+    event_processor_join_handle
+        .join()
+        .map_err(|_| {
+            DaemonError::ShutdownError("Unable to cleanly join the event processor".into())
+        })
+        .and_then(|res| res.map_err(DaemonError::from))?;
 
     Ok(())
 }
