@@ -47,6 +47,8 @@ fn run() -> Result<(), DaemonError> {
         (about: "Daemon Package for Hyperledger Grid")
         (@arg connect: -C --connect +takes_value "connection endpoint for validator")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg database_url: --("database-url") +takes_value
+         "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
     )
     .get_matches();
