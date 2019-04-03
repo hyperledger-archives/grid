@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::rest_api::{AppState, RestApiError};
+use crate::rest_api::{error::RestApiResponseError, AppState};
 
 use actix::{Actor, Context, Handler, Message};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, State};
@@ -36,12 +36,12 @@ impl SawtoothMessageSender {
 }
 pub fn submit_batches(
     (_req, _state): (HttpRequest<AppState>, State<AppState>),
-) -> Box<Future<Item = HttpResponse, Error = RestApiError>> {
+) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     unimplemented!()
 }
 
 pub fn get_batch_statuses(
     (_req, _state): (HttpRequest<AppState>, State<AppState>),
-) -> Box<Future<Item = HttpResponse, Error = RestApiError>> {
+) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     unimplemented!()
 }

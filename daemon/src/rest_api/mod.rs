@@ -18,7 +18,7 @@ mod route_handler;
 use std::sync::mpsc;
 use std::thread;
 
-pub use crate::rest_api::error::RestApiError;
+pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::route_handler::{get_batch_statuses, submit_batches, SawtoothMessageSender};
 use actix::{Actor, Addr, Context};
 use actix_web::{http::Method, server, App};
@@ -29,11 +29,11 @@ pub struct AppState {
 }
 
 pub struct RestApiShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), RestApiError> + Send>,
+    do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
 }
 
 impl RestApiShutdownHandle {
-    pub fn shutdown(&self) -> Result<(), RestApiError> {
+    pub fn shutdown(&self) -> Result<(), RestApiServerError> {
         (*self.do_shutdown)()
     }
 }
@@ -57,9 +57,9 @@ pub fn run(
 ) -> Result<
     (
         RestApiShutdownHandle,
-        thread::JoinHandle<Result<(), RestApiError>>,
+        thread::JoinHandle<Result<(), RestApiServerError>>,
     ),
-    RestApiError,
+    RestApiServerError,
 > {
     let (tx, rx) = mpsc::channel();
     let bind_url = bind_url.to_owned();
@@ -80,7 +80,7 @@ pub fn run(
                 .start();
 
             tx.send(addr).map_err(|err| {
-                RestApiError::StartUpError(format!("Unable to send Server Addr: {}", err))
+                RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
 
             sys.run();
@@ -91,7 +91,7 @@ pub fn run(
         })?;
 
     let addr = rx.recv().map_err(|err| {
-        RestApiError::StartUpError(format!("Unable to receive Server Addr: {}", err))
+        RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
     let do_shutdown = Box::new(move || {

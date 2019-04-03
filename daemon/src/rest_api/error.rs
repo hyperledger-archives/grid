@@ -12,35 +12,117 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use actix::MailboxError;
+use actix_web::error::{PayloadError, ResponseError, UrlGenerationError};
+use actix_web::HttpResponse;
 use std::error::Error;
+
 use std::fmt;
 
 #[derive(Debug)]
-pub enum RestApiError {
+pub enum RestApiServerError {
     StartUpError(String),
     StdError(std::io::Error),
 }
 
-impl Error for RestApiError {
+impl From<std::io::Error> for RestApiServerError {
+    fn from(err: std::io::Error) -> RestApiServerError {
+        RestApiServerError::StdError(err)
+    }
+}
+
+impl Error for RestApiServerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            RestApiError::StartUpError(_) => None,
-            RestApiError::StdError(err) => Some(err),
+            RestApiServerError::StartUpError(_) => None,
+            RestApiServerError::StdError(err) => Some(err),
         }
     }
 }
 
-impl fmt::Display for RestApiError {
+impl fmt::Display for RestApiServerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RestApiError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
-            RestApiError::StdError(e) => write!(f, "Std Error: {}", e),
+            RestApiServerError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
+            RestApiServerError::StdError(e) => write!(f, "Std Error: {}", e),
         }
     }
 }
 
-impl From<std::io::Error> for RestApiError {
-    fn from(err: std::io::Error) -> RestApiError {
-        RestApiError::StdError(err)
+#[derive(Debug)]
+pub enum RestApiResponseError {
+    BadRequest(String),
+    SawtoothConnectionError(String),
+    SawtoothValidatorResponseError(String),
+    RequestHandlerError(String),
+}
+
+impl Error for RestApiResponseError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            RestApiResponseError::BadRequest(_) => None,
+            RestApiResponseError::SawtoothConnectionError(_) => None,
+            RestApiResponseError::SawtoothValidatorResponseError(_) => None,
+            RestApiResponseError::RequestHandlerError(_) => None,
+        }
+    }
+}
+
+impl fmt::Display for RestApiResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RestApiResponseError::BadRequest(ref s) => write!(f, "Bad Request: {}", s),
+            RestApiResponseError::SawtoothConnectionError(ref s) => {
+                write!(f, "Zmq Connection Error: {}", s)
+            }
+            RestApiResponseError::SawtoothValidatorResponseError(ref s) => {
+                write!(f, "Sawtooth Validator Response Error: {}", s)
+            }
+            RestApiResponseError::RequestHandlerError(ref s) => {
+                write!(f, "Sawtooth Validator Response Error: {}", s)
+            }
+        }
+    }
+}
+
+// impl ResponseError trait allows to convert our errors into http responses with appropriate data
+impl ResponseError for RestApiResponseError {
+    fn error_response(&self) -> HttpResponse {
+        match *self {
+            RestApiResponseError::BadRequest(ref message) => {
+                HttpResponse::BadRequest().json(message)
+            }
+            RestApiResponseError::SawtoothConnectionError(ref message) => {
+                HttpResponse::ServiceUnavailable().json(message)
+            }
+            _ => HttpResponse::InternalServerError().json("Internal Server Error"),
+        }
+    }
+}
+
+impl From<PayloadError> for RestApiResponseError {
+    fn from(err: PayloadError) -> RestApiResponseError {
+        RestApiResponseError::BadRequest(format!(
+            "Payload was not well formated. {}",
+            err.to_string()
+        ))
+    }
+}
+
+impl From<MailboxError> for RestApiResponseError {
+    fn from(err: MailboxError) -> RestApiResponseError {
+        RestApiResponseError::RequestHandlerError(format!(
+            "Failed to deliver message to request handler. {}",
+            err.to_string()
+        ))
+    }
+}
+
+impl From<UrlGenerationError> for RestApiResponseError {
+    fn from(err: UrlGenerationError) -> RestApiResponseError {
+        RestApiResponseError::RequestHandlerError(format!(
+            "Failed generate response URL. {}",
+            err.to_string()
+        ))
     }
 }
