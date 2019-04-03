@@ -19,7 +19,18 @@ use actix_web::{HttpMessage, HttpRequest, HttpResponse, State};
 use futures::future;
 use futures::future::Future;
 use protobuf;
+use sawtooth_sdk::messages::batch::{Batch, BatchList};
+use sawtooth_sdk::messages::client_batch_submit::{
+    ClientBatchSubmitRequest, ClientBatchSubmitResponse, ClientBatchSubmitResponse_Status,
+};
+use sawtooth_sdk::messages::validator::Message_MessageType;
 use sawtooth_sdk::messaging::stream::MessageSender;
+use serde::Serialize;
+use std::time::Duration;
+use url::Url;
+use uuid::Uuid;
+
+const DEFAULT_TIME_OUT: u64 = 30;
 
 pub struct SawtoothMessageSender {
     sender: Box<dyn MessageSender>,
@@ -34,6 +45,84 @@ impl SawtoothMessageSender {
         SawtoothMessageSender { sender }
     }
 }
+
+struct SubmitBatches {
+    batch_list: BatchList,
+    response_url: Url,
+}
+
+impl Message for SubmitBatches {
+    type Result = Result<BatchStatusLink, RestApiResponseError>;
+}
+
+#[derive(Serialize)]
+pub struct BatchStatusLink {
+    pub link: String,
+}
+
+impl Handler<SubmitBatches> for SawtoothMessageSender {
+    type Result = Result<BatchStatusLink, RestApiResponseError>;
+
+    fn handle(&mut self, msg: SubmitBatches, _: &mut Context<Self>) -> Self::Result {
+        let mut client_submit_request = ClientBatchSubmitRequest::new();
+        client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
+            msg.batch_list.get_batches().to_vec(),
+        ));
+        let content = protobuf::Message::write_to_bytes(&client_submit_request).map_err(|err| {
+            RestApiResponseError::RequestHandlerError(format!(
+                "Failed to serialize batch submit request. {}",
+                err.to_string()
+            ))
+        })?;
+        let correlation_id = Uuid::new_v4().to_string();
+        let mut response_future = self
+            .sender
+            .send(
+                Message_MessageType::CLIENT_BATCH_SUBMIT_REQUEST,
+                &correlation_id,
+                &content,
+            )
+            .map_err(|err| {
+                RestApiResponseError::SawtoothConnectionError(format!(
+                    "Failed to send message to validator. {}",
+                    err.to_string()
+                ))
+            })?;
+        let response_status: ClientBatchSubmitResponse = protobuf::parse_from_bytes(
+            response_future
+                .get_timeout(Duration::new(DEFAULT_TIME_OUT, 0))
+                .map_err(|err| RestApiResponseError::RequestHandlerError(err.to_string()))?
+                .get_content(),
+        )
+        .map_err(|err| {
+            RestApiResponseError::RequestHandlerError(format!(
+                "Failed to parse validator response from bytes. {}",
+                err.to_string()
+            ))
+        })?;
+
+        match process_validator_response(response_status.get_status()) {
+            Ok(_) => {
+                let batch_query = msg
+                    .batch_list
+                    .get_batches()
+                    .iter()
+                    .map(Batch::get_header_signature)
+                    .collect::<Vec<_>>()
+                    .join(",");
+
+                let mut response_url = msg.response_url.clone();
+                response_url.set_query(Some(&format!("id={}", batch_query)));
+
+                Ok(BatchStatusLink {
+                    link: response_url.to_string(),
+                })
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
 pub fn submit_batches(
     (_req, _state): (HttpRequest<AppState>, State<AppState>),
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
@@ -44,4 +133,20 @@ pub fn get_batch_statuses(
     (_req, _state): (HttpRequest<AppState>, State<AppState>),
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     unimplemented!()
+}
+
+fn process_validator_response(
+    status: ClientBatchSubmitResponse_Status,
+) -> Result<(), RestApiResponseError> {
+    match status {
+        ClientBatchSubmitResponse_Status::OK => Ok(()),
+        ClientBatchSubmitResponse_Status::INVALID_BATCH => Err(RestApiResponseError::BadRequest(
+            "The submitted BatchList was rejected by the validator. It was '
+            'poorly formed, or has an invalid signature."
+                .to_string(),
+        )),
+        _ => Err(RestApiResponseError::SawtoothValidatorResponseError(
+            format!("Validator responded with error {:?}", status),
+        )),
+    }
 }
