@@ -15,13 +15,11 @@
  * -----------------------------------------------------------------------------
  */
 
-use log::Level;
-
 use crate::error::ConfigurationError;
 
+#[derive(Debug)]
 pub struct GridConfig {
     validator_endpoint: String,
-    log_level: Level,
     rest_api_endpoint: String,
     database_url: String,
 }
@@ -29,10 +27,6 @@ pub struct GridConfig {
 impl GridConfig {
     pub fn validator_endpoint(&self) -> &str {
         &self.validator_endpoint
-    }
-
-    pub fn log_level(&self) -> Level {
-        self.log_level
     }
 
     pub fn rest_api_endpoint(&self) -> &str {
@@ -45,7 +39,6 @@ impl GridConfig {
 
 pub struct GridConfigBuilder {
     validator_endpoint: Option<String>,
-    log_level: Option<Level>,
     rest_api_endpoint: Option<String>,
     database_url: Option<String>,
 }
@@ -54,7 +47,6 @@ impl Default for GridConfigBuilder {
     fn default() -> Self {
         Self {
             validator_endpoint: Some("tcp://127.0.0.1:4004".to_owned()),
-            log_level: Some(Level::Warn),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
             database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
         }
@@ -75,14 +67,6 @@ impl GridConfigBuilder {
                 })
                 .or_else(|| self.validator_endpoint.take()),
 
-            log_level: (match matches.occurrences_of("verbose") {
-                0 => Some(Level::Warn),
-                1 => Some(Level::Info),
-                2 => Some(Level::Debug),
-                _ => Some(Level::Trace),
-            })
-            .or_else(|| self.log_level.take()),
-
             rest_api_endpoint: matches
                 .value_of("bind")
                 .map(ToOwned::to_owned)
@@ -101,10 +85,6 @@ impl GridConfigBuilder {
                 .validator_endpoint
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("validator_endpoint".to_owned()))?,
-            log_level: self
-                .log_level
-                .take()
-                .ok_or_else(|| ConfigurationError::MissingValue("log_level".to_owned()))?,
             rest_api_endpoint: self
                 .rest_api_endpoint
                 .take()

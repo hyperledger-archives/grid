@@ -34,6 +34,7 @@ mod sawtooth_connection;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use log::Level;
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
@@ -59,11 +60,17 @@ fn run() -> Result<(), DaemonError> {
     )
     .get_matches();
 
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => Level::Warn,
+        1 => Level::Info,
+        2 => Level::Debug,
+        _ => Level::Trace,
+    };
+    simple_logger::init_with_level(log_level)?;
+
     let config = GridConfigBuilder::default()
         .with_cli_args(&matches)
         .build()?;
-
-    simple_logger::init_with_level(config.log_level())?;
 
     let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
 
