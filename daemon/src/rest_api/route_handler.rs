@@ -124,9 +124,38 @@ impl Handler<SubmitBatches> for SawtoothMessageSender {
 }
 
 pub fn submit_batches(
-    (_req, _state): (HttpRequest<AppState>, State<AppState>),
-) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    unimplemented!()
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+    req.body().from_err().and_then(
+        move |body| -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+            let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
+                Ok(batch_list) => batch_list,
+                Err(err) => {
+                    return Box::new(future::err(RestApiResponseError::BadRequest(format!(
+                        "Protobuf message was badly formatted. {}",
+                        err.to_string()
+                    ))));
+                }
+            };
+            let response_url = match req.url_for_static("batch_statuses") {
+                Ok(url) => url,
+                Err(err) => return Box::new(future::err(err.into())),
+            };
+
+            let res = state
+                .sawtooth_connection
+                .send(SubmitBatches {
+                    batch_list,
+                    response_url,
+                })
+                .from_err()
+                .and_then(|res| match res {
+                    Ok(link) => Ok(HttpResponse::Ok().json(link)),
+                    Err(err) => Err(err),
+                });
+            Box::new(res)
+        },
+    )
 }
 
 pub fn get_batch_statuses(
