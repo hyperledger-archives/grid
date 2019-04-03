@@ -23,6 +23,7 @@ pub struct GridConfig {
     validator_endpoint: String,
     log_level: Level,
     rest_api_endpoint: String,
+    database_url: String,
 }
 
 impl GridConfig {
@@ -37,12 +38,16 @@ impl GridConfig {
     pub fn rest_api_endpoint(&self) -> &str {
         &self.rest_api_endpoint
     }
+    pub fn database_url(&self) -> &str {
+        &self.database_url
+    }
 }
 
 pub struct GridConfigBuilder {
     validator_endpoint: Option<String>,
     log_level: Option<Level>,
     rest_api_endpoint: Option<String>,
+    database_url: Option<String>,
 }
 
 impl Default for GridConfigBuilder {
@@ -51,6 +56,7 @@ impl Default for GridConfigBuilder {
             validator_endpoint: Some("tcp://127.0.0.1:4004".to_owned()),
             log_level: Some(Level::Warn),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
+            database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
         }
     }
 }
@@ -68,6 +74,7 @@ impl GridConfigBuilder {
                     connect
                 })
                 .or_else(|| self.validator_endpoint.take()),
+
             log_level: (match matches.occurrences_of("verbose") {
                 0 => Some(Level::Warn),
                 1 => Some(Level::Info),
@@ -75,10 +82,16 @@ impl GridConfigBuilder {
                 _ => Some(Level::Trace),
             })
             .or_else(|| self.log_level.take()),
+
             rest_api_endpoint: matches
                 .value_of("bind")
                 .map(ToOwned::to_owned)
                 .or_else(|| self.rest_api_endpoint.take()),
+
+            database_url: matches
+                .value_of("database_url")
+                .map(ToOwned::to_owned)
+                .or_else(|| self.database_url.take()),
         }
     }
 
@@ -96,6 +109,10 @@ impl GridConfigBuilder {
                 .rest_api_endpoint
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("rest_api_endpoint".to_owned()))?,
+            database_url: self
+                .database_url
+                .take()
+                .ok_or_else(|| ConfigurationError::MissingValue("database_url".to_owned()))?,
         })
     }
 }
