@@ -24,6 +24,7 @@ mod config;
 mod error;
 mod event;
 mod rest_api;
+mod sawtooth_connection;
 
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
