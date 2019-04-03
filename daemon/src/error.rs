@@ -16,14 +16,15 @@
 use std::error::Error;
 use std::fmt;
 
-use crate::event::EventProcessorError;
-
 use log;
 
+use crate::database::DatabaseError;
+use crate::event::EventProcessorError;
 use crate::rest_api::RestApiServerError;
 
 #[derive(Debug)]
 pub enum DaemonError {
+    DatabaseError(Box<dyn Error>),
     LoggingInitializationError(Box<log::SetLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
     EventProcessorError(Box<EventProcessorError>),
@@ -35,6 +36,7 @@ pub enum DaemonError {
 impl Error for DaemonError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            DaemonError::DatabaseError(err) => Some(&**err),
             DaemonError::LoggingInitializationError(err) => Some(err),
             DaemonError::ConfigurationError(err) => Some(err),
             DaemonError::EventProcessorError(err) => Some(err),
@@ -48,6 +50,7 @@ impl Error for DaemonError {
 impl fmt::Display for DaemonError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            DaemonError::DatabaseError(e) => write!(f, "Database Error: {}", e),
             DaemonError::LoggingInitializationError(e) => {
                 write!(f, "Logging initialization error: {}", e)
             }
@@ -98,5 +101,11 @@ impl From<RestApiServerError> for DaemonError {
 impl From<EventProcessorError> for DaemonError {
     fn from(err: EventProcessorError) -> Self {
         DaemonError::EventProcessorError(Box::new(err))
+    }
+}
+
+impl From<DatabaseError> for DaemonError {
+    fn from(err: DatabaseError) -> Self {
+        DaemonError::DatabaseError(Box::new(err))
     }
 }

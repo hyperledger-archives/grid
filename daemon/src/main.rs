@@ -21,6 +21,7 @@ extern crate clap;
 extern crate log;
 
 mod config;
+mod database;
 mod error;
 mod event;
 mod rest_api;
