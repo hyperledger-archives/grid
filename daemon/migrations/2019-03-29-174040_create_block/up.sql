@@ -14,9 +14,9 @@
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS block (
-    block_id varchar(128) CONSTRAINT pk_block_id PRIMARY KEY,
-    block_num bigint NOT NULL,
-    state_root_hash varchar(64) NOT NULL
+    block_id VARCHAR(128) CONSTRAINT pk_block_id PRIMARY KEY,
+    block_num BIGINT NOT NULL,
+    state_root_hash VARCHAR(64) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS block_num_idx
