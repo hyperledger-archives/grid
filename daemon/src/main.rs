@@ -78,13 +78,16 @@ fn run() -> Result<(), DaemonError> {
 
     let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
 
-    let (rest_api_shutdown_handle, rest_api_join_handle) =
-        rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
-
     let connection_pool = database::create_connection_pool(config.database_url())?;
 
     let current_block =
         db::get_current_block_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
+
+    let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
+        config.rest_api_endpoint(),
+        sawtooth_connection.get_sender(),
+        connection_pool.clone(),
+    )?;
 
     let evt_processor = EventProcessor::start(
         sawtooth_connection,

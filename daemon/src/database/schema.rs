@@ -56,9 +56,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    agent,
-    block,
-    chain_record,
-    organization,
-);
+allow_tables_to_appear_in_same_query!(agent, block, chain_record, organization,);

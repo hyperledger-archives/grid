@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::database::ConnectionPool;
 use crate::rest_api::{error::RestApiResponseError, AppState};
-use actix::{Actor, Context, Handler, Message};
+use actix::{Actor, Context, Handler, Message, SyncContext};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
 use futures::future;
 use futures::future::Future;
@@ -32,6 +33,20 @@ use url::Url;
 use uuid::Uuid;
 
 const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
+
+pub struct DbExecutor {
+    connection_pool: ConnectionPool,
+}
+
+impl Actor for DbExecutor {
+    type Context = SyncContext<Self>;
+}
+
+impl DbExecutor {
+    pub fn new(connection_pool: ConnectionPool) -> DbExecutor {
+        DbExecutor { connection_pool }
+    }
+}
 
 pub struct SawtoothMessageSender {
     sender: Box<dyn MessageSender>,
