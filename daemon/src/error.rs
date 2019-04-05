@@ -20,14 +20,14 @@ use crate::event::EventProcessorError;
 
 use log;
 
-use crate::rest_api::RestApiError;
+use crate::rest_api::RestApiServerError;
 
 #[derive(Debug)]
 pub enum DaemonError {
     LoggingInitializationError(Box<log::SetLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
     EventProcessorError(Box<EventProcessorError>),
-    RestApiError(RestApiError),
+    RestApiError(RestApiServerError),
     StartUpError(Box<dyn Error>),
     ShutdownError(String),
 }
@@ -89,8 +89,8 @@ impl From<ConfigurationError> for DaemonError {
     }
 }
 
-impl From<RestApiError> for DaemonError {
-    fn from(err: RestApiError) -> DaemonError {
+impl From<RestApiServerError> for DaemonError {
+    fn from(err: RestApiServerError) -> DaemonError {
         DaemonError::RestApiError(err)
     }
 }

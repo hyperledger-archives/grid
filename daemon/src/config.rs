@@ -60,7 +60,13 @@ impl GridConfigBuilder {
         Self {
             validator_endpoint: matches
                 .value_of("connect")
-                .map(ToOwned::to_owned)
+                .map(|c| {
+                    let mut connect = ToOwned::to_owned(c);
+                    if !connect.contains("tcp://") {
+                        connect.insert_str(0, "tcp://");
+                    }
+                    connect
+                })
                 .or_else(|| self.validator_endpoint.take()),
             log_level: (match matches.occurrences_of("verbose") {
                 0 => Some(Level::Warn),
@@ -116,7 +122,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("validator:4004", config.validator_endpoint());
+        assert_eq!("tcp://validator:4004", config.validator_endpoint());
         assert_eq!("rest_api:8080", config.rest_api_endpoint());
     }
 
@@ -132,7 +138,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("127.0.0.1:4004", config.validator_endpoint());
+        assert_eq!("tcp://127.0.0.1:4004", config.validator_endpoint());
         assert_eq!("127.0.0.1:8080", config.rest_api_endpoint());
     }
 }

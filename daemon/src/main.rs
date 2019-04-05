@@ -24,6 +24,7 @@ mod config;
 mod error;
 mod event;
 mod rest_api;
+mod sawtooth_connection;
 
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -33,6 +34,7 @@ use simple_logger;
 use crate::config::GridConfigBuilder;
 use crate::error::DaemonError;
 use crate::event::{block::BlockEventHandler, EventProcessor};
+use crate::sawtooth_connection::SawtoothConnection;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -55,11 +57,13 @@ fn run() -> Result<(), DaemonError> {
 
     simple_logger::init_with_level(config.log_level())?;
 
+    let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
+
     let (rest_api_shutdown_handle, rest_api_join_handle) =
-        rest_api::run(config.rest_api_endpoint())?;
+        rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
 
     let evt_processor = EventProcessor::start(
-        config.validator_endpoint(),
+        sawtooth_connection,
         "0000000000000000",
         event_handlers![BlockEventHandler::new()],
     )

@@ -18,33 +18,48 @@ mod route_handler;
 use std::sync::mpsc;
 use std::thread;
 
+pub use crate::rest_api::error::RestApiServerError;
+use crate::rest_api::route_handler::{get_batch_statuses, submit_batches, SawtoothMessageSender};
+use actix::{Actor, Addr, Context};
 use actix_web::{http::Method, server, App};
+use sawtooth_sdk::messaging::stream::MessageSender;
 
-pub use crate::rest_api::error::RestApiError;
-use crate::rest_api::route_handler::index;
-
-fn create_app() -> App {
-    App::new().resource("/", |r| r.method(Method::GET).f(index))
+pub struct AppState {
+    sawtooth_connection: Addr<SawtoothMessageSender>,
 }
 
 pub struct RestApiShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), RestApiError> + Send>,
+    do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
 }
 
 impl RestApiShutdownHandle {
-    pub fn shutdown(&self) -> Result<(), RestApiError> {
+    pub fn shutdown(&self) -> Result<(), RestApiServerError> {
         (*self.do_shutdown)()
     }
 }
 
+fn create_app(sawtooth_connection: Addr<SawtoothMessageSender>) -> App<AppState> {
+    App::with_state(AppState {
+        sawtooth_connection,
+    })
+    .resource("/batches", |r| {
+        r.method(Method::POST).with_async(submit_batches)
+    })
+    .resource("/batch_statuses", |r| {
+        r.name("batch_statuses");
+        r.method(Method::GET).with_async(get_batch_statuses)
+    })
+}
+
 pub fn run(
     bind_url: &str,
+    zmq_sender: Box<dyn MessageSender + Send>,
 ) -> Result<
     (
         RestApiShutdownHandle,
-        thread::JoinHandle<Result<(), RestApiError>>,
+        thread::JoinHandle<Result<(), RestApiServerError>>,
     ),
-    RestApiError,
+    RestApiServerError,
 > {
     let (tx, rx) = mpsc::channel();
     let bind_url = bind_url.to_owned();
@@ -52,16 +67,20 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
+            let zmq_connection_addr =
+                SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
+                    SawtoothMessageSender::new(zmq_sender)
+                });
 
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(create_app)
+            let addr = server::new(move || create_app(zmq_connection_addr.clone()))
                 .bind(bind_url)?
                 .disable_signals()
                 .system_exit()
                 .start();
 
             tx.send(addr).map_err(|err| {
-                RestApiError::StartUpError(format!("Unable to send Server Addr: {}", err))
+                RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
 
             sys.run();
@@ -72,7 +91,7 @@ pub fn run(
         })?;
 
     let addr = rx.recv().map_err(|err| {
-        RestApiError::StartUpError(format!("Unable to receive Server Addr: {}", err))
+        RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
     let do_shutdown = Box::new(move || {
@@ -84,25 +103,4 @@ pub fn run(
     });
 
     Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use actix_web::test::TestServer;
-    use actix_web::HttpMessage;
-    use std::str;
-
-    #[test]
-    fn index_test() {
-        let mut srv = TestServer::new(|app| app.handler(index));
-
-        let req = srv.get().finish().unwrap();
-        let resp = srv.execute(req.send()).unwrap();
-        assert!(resp.status().is_success());
-
-        let body_bytes = srv.execute(resp.body()).unwrap();
-        let body_str = str::from_utf8(&body_bytes).unwrap();
-        assert_eq!(body_str, "Hello world!");
-    }
 }
