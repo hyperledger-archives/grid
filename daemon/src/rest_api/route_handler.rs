@@ -31,7 +31,7 @@ use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 
-const DEFAULT_TIME_OUT: u32 = 30;
+const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
 
 pub struct SawtoothMessageSender {
     sender: Box<dyn MessageSender>,
@@ -206,10 +206,76 @@ pub fn submit_batches(
     )
 }
 
+#[derive(Deserialize, Debug)]
+struct Params {
+    id: Vec<String>,
+}
+
 pub fn get_batch_statuses(
-    (_req, _state): (HttpRequest<AppState>, State<AppState>),
+    (state, query, req): (
+        State<AppState>,
+        Query<HashMap<String, String>>,
+        HttpRequest<AppState>,
+    ),
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    unimplemented!()
+    let batch_ids = match query.get("id") {
+        Some(ids) => ids.split(',').map(|id| id.to_string()).collect(),
+        None => {
+            return future::err(RestApiResponseError::BadRequest(
+                "Request for statuses missing id query.".to_string(),
+            ))
+            .responder();
+        }
+    };
+
+    // Max wait time allowed is 95% of network's configured timeout
+    let max_wait_time = (DEFAULT_TIME_OUT * 95) / 100;
+
+    let wait = match query.get("wait") {
+        Some(wait_time) => {
+            if wait_time == "false" {
+                None
+            } else {
+                match wait_time.parse::<u32>() {
+                    Ok(wait_time) => {
+                        if wait_time > max_wait_time {
+                            Some(max_wait_time)
+                        } else {
+                            Some(wait_time)
+                        }
+                    }
+                    Err(_) => {
+                        return future::err(RestApiResponseError::BadRequest(format!(
+                            "Query wait has invalid value {}. \
+                             It should set to false or a a time in seconds to wait for the commit",
+                            wait_time
+                        )))
+                        .responder();
+                    }
+                }
+            }
+        }
+
+        None => Some(max_wait_time),
+    };
+
+    let response_url = match req.url_for_static("batch_statuses") {
+        Ok(url) => format!("{}?{}", url, req.query_string()),
+        Err(err) => return Box::new(future::err(err.into())),
+    };
+
+    state
+        .sawtooth_connection
+        .send(BatchStatuses { batch_ids, wait })
+        .from_err()
+        .and_then(|res| match res {
+            Ok(batch_statuses) => Ok(HttpResponse::Ok().json(BatchStatusResponse {
+                data: batch_statuses,
+                link: response_url,
+            })),
+            Err(err) => Err(err),
+        })
+        .responder()
 }
 
 fn query_validator<T: protobuf::Message, C: protobuf::Message>(
