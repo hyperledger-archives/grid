@@ -20,11 +20,11 @@
 #
 # Build:
 #   $ cd grid
-#   $ docker build . -f docs/supply-chain-build-docs -t supply-chain-build-docs
+#   $ docker build . -f docs/grid-build-docs -t grid-build-docs
 #
 # Run:
 #   $ cd grid
-#   $ docker run -v $(pwd):/project/grid supply-chain-build-docs
+#   $ docker run -v $(pwd):/project/grid grid-build-docs
 
 FROM ubuntu:bionic
 
