@@ -40,6 +40,17 @@ services:
         grid-track-and-trace-tp -v -C tcp://validator:4004
       "
 
+  schema:
+    image: grid-schema-tp
+    container_name: grid-schema-tp
+    build:
+      context: .
+      dockerfile: contracts/schema/Dockerfile
+    entrypoint: |
+      bash -c "
+        /grid-schema-tp -v -C tcp://validator:4004
+      "
+
   validator:
     image: hyperledger/sawtooth-validator:1.1
     container_name: grid-sawtooth-validator
