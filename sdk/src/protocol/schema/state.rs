@@ -507,6 +507,133 @@ impl SchemaBuilder {
     }
 }
 
+/// Native implementation of SchemaList
+#[derive(Debug, Clone, PartialEq)]
+pub struct SchemaList {
+    schemas: Vec<Schema>,
+}
+
+impl SchemaList {
+    pub fn schemas(&self) -> &[Schema] {
+        &self.schemas
+    }
+}
+
+impl FromProto<protos::schema_state::SchemaList> for SchemaList {
+    fn from_proto(schema_list: protos::schema_state::SchemaList) -> Result<Self, ProtoConversionError> {
+        Ok(SchemaList {
+            schemas: schema_list
+                .get_schemas()
+                .to_vec()
+                .into_iter()
+                .map(Schema::from_proto)
+                .collect::<Result<Vec<Schema>, ProtoConversionError>>()?,
+        })
+    }
+}
+
+impl FromNative<SchemaList> for protos::schema_state::SchemaList {
+    fn from_native(schema_list: SchemaList) -> Result<Self, ProtoConversionError> {
+        let mut schema_list_proto = protos::schema_state::SchemaList::new();
+
+        schema_list_proto.set_schemas(RepeatedField::from_vec(
+            schema_list
+                .schemas()
+                .to_vec()
+                .into_iter()
+                .map(Schema::into_proto)
+                .collect::<Result<Vec<protos::schema_state::Schema>, ProtoConversionError>>()?,
+        ));
+
+        Ok(schema_list_proto)
+    }
+}
+
+impl FromBytes<SchemaList> for SchemaList {
+    fn from_bytes(bytes: &[u8]) -> Result<SchemaList, ProtoConversionError> {
+        let proto: protos::schema_state::SchemaList =
+            protobuf::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get SchemaList from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for SchemaList {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from SchemaList".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::schema_state::SchemaList> for SchemaList {}
+impl IntoNative<SchemaList> for protos::schema_state::SchemaList {}
+
+#[derive(Debug)]
+pub enum SchemaListBuildError {
+    MissingField(String),
+}
+
+impl StdError for SchemaListBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            SchemaListBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            SchemaListBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for SchemaListBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            SchemaListBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a SchemaList
+#[derive(Default, Clone)]
+pub struct SchemaListBuilder {
+    pub schemas: Vec<Schema>,
+}
+
+impl SchemaListBuilder {
+    pub fn new() -> Self {
+        SchemaListBuilder::default()
+    }
+
+    pub fn with_schemas(mut self, schemas: Vec<Schema>) -> SchemaListBuilder {
+        self.schemas = schemas;
+        self
+    }
+
+    pub fn build(self) -> Result<SchemaList, SchemaListBuildError> {
+        let schemas = {
+            if self.schemas.is_empty() {
+                return Err(SchemaListBuildError::MissingField(
+                    "'schemas' cannot be empty".to_string(),
+                ));
+            } else {
+                self.schemas
+            }
+        };
+
+        Ok(SchemaList { schemas })
+    }
+}
+
 /// Native implementation of PropertyValue
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyValue {

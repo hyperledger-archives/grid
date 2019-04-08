@@ -55,6 +55,11 @@ message Schema {
     repeated PropertyDefinition properties = 10;
 }
 
+message SchemaList {
+  // Schemas are stored in a list to handle any hash collisions
+  repeated Schema schemas = 1;
+}
+
 message PropertyValue {
     // The name of the property value.  Used to validate the property against a
     // Schema.

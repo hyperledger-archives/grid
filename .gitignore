@@ -9,7 +9,9 @@ cli/target
 contracts/track_and_trace/Cargo.lock
 contracts/track_and_trace/bin/
 contracts/track_and_trace/target/
-contracts/track_and_trace/src/messages/
+
+contracts/schema/Cargo.lock
+contracts/schema/target/
 
 daemon/Cargo.lock
 daemon/target
