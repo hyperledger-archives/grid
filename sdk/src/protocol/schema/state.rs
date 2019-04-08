@@ -293,7 +293,7 @@ impl PropertyDefinitionBuilder {
 
         let enum_options = {
             if data_type == DataType::Enum {
-                if self.enum_options.len() > 0 {
+                if !self.enum_options.is_empty() {
                     self.enum_options
                 } else {
                     return Err(PropertyDefinitionBuildError::EmptyVec(
@@ -307,7 +307,7 @@ impl PropertyDefinitionBuilder {
 
         let struct_properties = {
             if data_type == DataType::Struct {
-                if self.struct_properties.len() > 0 {
+                if !self.struct_properties.is_empty() {
                     self.struct_properties
                 } else {
                     return Err(PropertyDefinitionBuildError::EmptyVec(
@@ -489,7 +489,7 @@ impl SchemaBuilder {
 
         let description = self.description.unwrap_or_else(|| "".to_string());
         let properties = {
-            if self.properties.len() > 0 {
+            if !self.properties.is_empty() {
                 self.properties
             } else {
                 return Err(SchemaBuildError::MissingField(
@@ -689,10 +689,10 @@ impl FromProto<protos::schema_state::PropertyValue> for PropertyValue {
             name: property_value.get_name().to_string(),
             data_type: DataType::from_proto(property_value.get_data_type())?,
             bytes_value: property_value.get_bytes_value().to_vec(),
-            boolean_value: property_value.get_boolean_value().clone(),
-            number_value: property_value.get_number_value().clone(),
+            boolean_value: property_value.get_boolean_value(),
+            number_value: property_value.get_number_value(),
             string_value: property_value.get_string_value().to_string(),
-            enum_value: property_value.get_enum_value().clone(),
+            enum_value: property_value.get_enum_value(),
             struct_values: property_value
                 .get_struct_values()
                 .to_vec()
@@ -909,7 +909,7 @@ impl PropertyValueBuilder {
 
         let struct_values = {
             if data_type == DataType::Struct {
-                if self.struct_values.len() > 0 {
+                if !self.struct_values.is_empty() {
                     self.struct_values
                 } else {
                     return Err(PropertyValueBuildError::MissingField(
