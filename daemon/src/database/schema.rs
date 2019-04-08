@@ -18,13 +18,13 @@
 table! {
     agent (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
         public_key -> Varchar,
         org_id -> Varchar,
         active -> Bool,
         roles -> Array<Varchar>,
         metadata -> Array<Json>,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
     }
 }
 
