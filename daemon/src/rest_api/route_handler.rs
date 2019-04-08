@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::{models::Agent, ConnectionPool};
+use crate::database::{helpers as db, models::Agent, ConnectionPool};
 use crate::rest_api::{error::RestApiResponseError, AppState};
 use actix::{Actor, Context, Handler, Message, SyncContext};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
@@ -367,7 +367,6 @@ fn process_batch_status_response(
         )),
     }
 }
-
 #[derive(Debug, Serialize)]
 struct AgentSlice {
     public_key: String,
@@ -378,14 +377,33 @@ struct AgentSlice {
 }
 
 impl AgentSlice {
-    pub fn from_agent(agent: Agent) -> Self {
+    pub fn from_agent(agent: &Agent) -> Self {
         Self {
-            public_key: agent.public_key,
-            org_id: agent.org_id,
+            public_key: agent.public_key.clone(),
+            org_id: agent.org_id.clone(),
             active: agent.active,
-            roles: agent.roles,
-            metadata: agent.metadata,
+            roles: agent.roles.clone(),
+            metadata: agent.metadata.clone(),
         }
+    }
+}
+
+struct ListAgents;
+
+impl Message for ListAgents {
+    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+}
+
+impl Handler<ListAgents> for DbExecutor {
+    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+
+    fn handle(&mut self, _msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
+        let fetched_agents = db::get_agents(&*self.connection_pool.get()?)?
+            .iter()
+            .map(|agent| AgentSlice::from_agent(agent))
+            .collect();
+
+        Ok(fetched_agents)
     }
 }
 
