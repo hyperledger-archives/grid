@@ -41,7 +41,7 @@ use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
 
-use addressing::*;
+use crate::addressing::*;
 
 const PROPERTY_PAGE_MAX_LENGTH: usize = 256;
 

@@ -14,14 +14,8 @@
 
 #[macro_use]
 extern crate clap;
-extern crate crypto;
-extern crate log4rs;
 #[macro_use]
 extern crate log;
-extern crate grid_sdk;
-extern crate protobuf;
-extern crate rustc_serialize;
-extern crate sawtooth_sdk;
 
 mod addressing;
 mod handler;
