@@ -21,7 +21,7 @@ use std::thread;
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::route_handler::{
-    get_batch_statuses, submit_batches, DbExecutor, SawtoothMessageSender,
+    get_batch_statuses, list_agents, submit_batches, DbExecutor, SawtoothMessageSender,
 };
 use actix::{Actor, Addr, Context, SyncArbiter};
 use actix_web::{http::Method, server, App};
@@ -57,6 +57,7 @@ fn create_app(
         r.name("batch_statuses");
         r.method(Method::GET).with_async(get_batch_statuses)
     })
+    .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
 }
 
 pub fn run(

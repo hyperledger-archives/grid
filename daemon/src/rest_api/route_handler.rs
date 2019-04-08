@@ -407,6 +407,20 @@ impl Handler<ListAgents> for DbExecutor {
     }
 }
 
+pub fn list_agents(
+    req: HttpRequest<AppState>,
+) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+    req.state()
+        .database_connection
+        .send(ListAgents)
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
+            Err(err) => Err(err),
+        })
+        .responder()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
