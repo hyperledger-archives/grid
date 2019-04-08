@@ -18,6 +18,21 @@ use protobuf::RepeatedField;
 
 use std::collections::HashMap;
 
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        use sabre_sdk::ApplyError;
+        use sabre_sdk::TransactionContext;
+        use sabre_sdk::TransactionHandler;
+        use sabre_sdk::TpProcessRequest;
+        use sabre_sdk::{WasmPtr, execute_entrypoint};
+    } else {
+        use sawtooth_sdk::processor::handler::ApplyError;
+        use sawtooth_sdk::processor::handler::TransactionContext;
+        use sawtooth_sdk::processor::handler::TransactionHandler;
+        use sawtooth_sdk::messages::processor::TpProcessRequest;
+    }
+}
+
 use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
 use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgentContainer as AgentContainer;
 use grid_sdk::protos::track_and_trace_payload::CreateTrackAndTraceAgentAction as CreateAgentAction;
@@ -36,10 +51,6 @@ use grid_sdk::protos::track_and_trace_proposal::{
 use grid_sdk::protos::track_and_trace_record::{
     Record, RecordContainer, RecordType, RecordTypeContainer, Record_AssociatedAgent,
 };
-use sawtooth_sdk::messages::processor::TpProcessRequest;
-use sawtooth_sdk::processor::handler::ApplyError;
-use sawtooth_sdk::processor::handler::TransactionContext;
-use sawtooth_sdk::processor::handler::TransactionHandler;
 
 use crate::addressing::*;
 
@@ -167,7 +178,7 @@ impl<'a> SupplyChainState<'a> {
 
     pub fn get_record(&mut self, record_id: &str) -> Result<Option<Record>, ApplyError> {
         let address = make_record_address(record_id);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let records: RecordContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
@@ -192,7 +203,7 @@ impl<'a> SupplyChainState<'a> {
 
     pub fn set_record(&mut self, record_id: &str, record: Record) -> Result<(), ApplyError> {
         let address = make_record_address(record_id);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut record_container = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(records) => records,
@@ -234,17 +245,15 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
 
     pub fn get_record_type(&mut self, type_name: &str) -> Result<Option<RecordType>, ApplyError> {
         let address = make_record_type_address(type_name);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let record_types: RecordTypeContainer =
@@ -274,7 +283,7 @@ impl<'a> SupplyChainState<'a> {
         record_type: RecordType,
     ) -> Result<(), ApplyError> {
         let address = make_record_type_address(type_name);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut record_types = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(record_types) => record_types,
@@ -297,17 +306,15 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
 
     pub fn get_agent(&mut self, agent_id: &str) -> Result<Option<Agent>, ApplyError> {
         let address = make_agent_address(agent_id);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let agents: AgentContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
@@ -332,7 +339,7 @@ impl<'a> SupplyChainState<'a> {
 
     pub fn set_agent(&mut self, agent_id: &str, agent: Agent) -> Result<(), ApplyError> {
         let address = make_agent_address(agent_id);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut agents = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(agents) => agents,
@@ -355,10 +362,8 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
@@ -369,7 +374,7 @@ impl<'a> SupplyChainState<'a> {
         property_name: &str,
     ) -> Result<Option<Property>, ApplyError> {
         let address = make_property_address(record_id, property_name, 0);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let properties: PropertyContainer =
@@ -400,7 +405,7 @@ impl<'a> SupplyChainState<'a> {
         property: Property,
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, 0);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut property_container = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(properties) => properties,
@@ -440,10 +445,8 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
@@ -455,7 +458,7 @@ impl<'a> SupplyChainState<'a> {
         page: u32,
     ) -> Result<Option<PropertyPage>, ApplyError> {
         let address = make_property_address(record_id, property_name, page);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let property_pages: PropertyPageContainer =
@@ -487,7 +490,7 @@ impl<'a> SupplyChainState<'a> {
         property_page: PropertyPage,
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, page_num);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut property_pages = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(property_pages) => property_pages,
@@ -527,10 +530,8 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
@@ -541,7 +542,7 @@ impl<'a> SupplyChainState<'a> {
         agent_id: &str,
     ) -> Result<Option<ProposalContainer>, ApplyError> {
         let address = make_proposal_address(record_id, agent_id);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let proposals: ProposalContainer =
@@ -575,10 +576,8 @@ impl<'a> SupplyChainState<'a> {
                 )));
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
@@ -1245,6 +1244,7 @@ impl SupplyChainTransactionHandler {
                     Proposal_Role::OWNER => {
                         if owner.get_agent_id() != current_proposal.get_issuing_agent() {
                             current_proposal.status = Proposal_Status::CANCELED;
+                            #[cfg(not(target_arch = "wasm32"))]
                             info!("Record owner does not match the issuing agent of the proposal");
                             // remove old proposal and replace with new one
                             proposals.entries.remove(proposal_index);
@@ -1329,6 +1329,7 @@ impl SupplyChainTransactionHandler {
                     Proposal_Role::CUSTODIAN => {
                         if custodian.get_agent_id() != current_proposal.get_issuing_agent() {
                             current_proposal.status = Proposal_Status::CANCELED;
+                            #[cfg(not(target_arch = "wasm32"))]
                             info!(
                                 "Record custodian does not match the issuing agent of the proposal"
                             );
@@ -1359,6 +1360,7 @@ impl SupplyChainTransactionHandler {
                     Proposal_Role::REPORTER => {
                         if owner.get_agent_id() != current_proposal.get_issuing_agent() {
                             current_proposal.status = Proposal_Status::CANCELED;
+                            #[cfg(not(target_arch = "wasm32"))]
                             info!("Record owner does not match the issuing agent of the proposal");
                             // remove old proposal and replace with new one
                             proposals.entries.remove(proposal_index);
@@ -1625,7 +1627,7 @@ impl TransactionHandler for SupplyChainTransactionHandler {
     fn apply(
         &self,
         request: &TpProcessRequest,
-        context: &mut TransactionContext,
+        context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let payload = SupplyChainPayload::new(request.get_payload());
         let payload = match payload {
@@ -1644,6 +1646,7 @@ impl TransactionHandler for SupplyChainTransactionHandler {
         let signer = request.get_header().get_signer_public_key();
         let state = SupplyChainState::new(context);
 
+        #[cfg(not(target_arch = "wasm32"))]
         info!(
             "payload: {:?} {} {} {}",
             payload.get_action(),
@@ -1686,4 +1689,20 @@ impl TransactionHandler for SupplyChainTransactionHandler {
         }
         Ok(())
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+// Sabre apply must return a bool
+fn apply(request: &TpProcessRequest, context: &mut TransactionContext) -> Result<bool, ApplyError> {
+    let handler = SupplyChainTransactionHandler::new();
+    match handler.apply(request, context) {
+        Ok(_) => Ok(true),
+        Err(err) => Err(err),
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[no_mangle]
+pub unsafe fn entrypoint(payload: WasmPtr, signer: WasmPtr, signature: WasmPtr) -> i32 {
+    execute_entrypoint(payload, signer, signature, apply)
 }

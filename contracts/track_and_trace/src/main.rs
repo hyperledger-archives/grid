@@ -13,23 +13,27 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
+extern crate cfg_if;
+cfg_if! {
+    if #[cfg(not(target_arch = "wasm32"))] {
+        #[macro_use]
+        extern crate clap;
+        #[macro_use]
+        extern crate log;
+        use std::process;
+        use log::LogLevelFilter;
+        use log4rs::append::console::ConsoleAppender;
+        use log4rs::config::{Appender, Config, Root};
+        use log4rs::encode::pattern::PatternEncoder;
+        use sawtooth_sdk::processor::TransactionProcessor;
+        use handler::SupplyChainTransactionHandler;
+    }
+}
 
 mod addressing;
-mod handler;
+pub mod handler;
 
-use log::LogLevelFilter;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::config::{Appender, Config, Root};
-use log4rs::encode::pattern::PatternEncoder;
-use std::process;
-
-use sawtooth_sdk::processor::TransactionProcessor;
-
-use handler::SupplyChainTransactionHandler;
-
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let matches = clap_app!(intkey =>
         (version: crate_version!())
@@ -79,3 +83,6 @@ fn main() {
     processor.add_handler(&handler);
     processor.start();
 }
+
+#[cfg(target_arch = "wasm32")]
+fn main() {}
