@@ -18,14 +18,15 @@ use actix::{Actor, Context, Handler, Message};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, State};
 use futures::future;
 use futures::future::Future;
-use protobuf;
 use sawtooth_sdk::messages::batch::{Batch, BatchList};
 use sawtooth_sdk::messages::client_batch_submit::{
     ClientBatchSubmitRequest, ClientBatchSubmitResponse, ClientBatchSubmitResponse_Status,
+    ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
 };
 use sawtooth_sdk::messages::validator::Message_MessageType;
 use sawtooth_sdk::messaging::stream::MessageSender;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -53,6 +54,53 @@ struct SubmitBatches {
 
 impl Message for SubmitBatches {
     type Result = Result<BatchStatusLink, RestApiResponseError>;
+}
+
+struct BatchStatuses {
+    batch_ids: Vec<String>,
+    wait: Option<u32>,
+}
+
+impl Message for BatchStatuses {
+    type Result = Result<Vec<BatchStatus>, RestApiResponseError>;
+}
+
+#[derive(Serialize)]
+struct BatchStatus {
+    id: String,
+    invalid_transactions: Vec<HashMap<String, String>>,
+    status: String,
+}
+
+impl BatchStatus {
+    pub fn from_proto(proto: &ClientBatchStatus) -> BatchStatus {
+        BatchStatus {
+            id: proto.get_batch_id().to_string(),
+            invalid_transactions: proto
+                .get_invalid_transactions()
+                .iter()
+                .map(|txn| {
+                    let mut invalid_transaction_info = HashMap::new();
+                    invalid_transaction_info
+                        .insert("id".to_string(), txn.get_transaction_id().to_string());
+                    invalid_transaction_info
+                        .insert("message".to_string(), txn.get_message().to_string());
+                    invalid_transaction_info.insert(
+                        "extended_data".to_string(),
+                        base64::encode(txn.get_extended_data()),
+                    );
+                    invalid_transaction_info
+                })
+                .collect(),
+            status: format!("{:?}", proto.get_status()),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct BatchStatusResponse {
+    data: Vec<BatchStatus>,
+    link: String,
 }
 
 #[derive(Serialize)]
