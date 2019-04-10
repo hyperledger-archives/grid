@@ -15,7 +15,6 @@
 use protobuf;
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
-use std::collections::HashMap;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -65,7 +64,7 @@ impl<'a> PikeState<'a> {
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
         let address = compute_address(public_key, Resource::AGENT);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let agents: AgentList = match protobuf::parse_from_bytes(packed.as_slice()) {
@@ -91,7 +90,7 @@ impl<'a> PikeState<'a> {
 
     pub fn set_agent(&mut self, public_key: &str, new_agent: Agent) -> Result<(), ApplyError> {
         let address = compute_address(public_key, Resource::AGENT);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut agent_list = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(agents) => agents,
@@ -132,17 +131,15 @@ impl<'a> PikeState<'a> {
                 )))
             }
         };
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
 
     pub fn get_organization(&mut self, id: &str) -> Result<Option<Organization>, ApplyError> {
         let address = compute_address(id, Resource::ORG);
-        let d = self.context.get_state(vec![address])?;
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
                 let orgs: OrganizationList = match protobuf::parse_from_bytes(packed.as_slice()) {
@@ -172,7 +169,7 @@ impl<'a> PikeState<'a> {
         new_organization: Organization,
     ) -> Result<(), ApplyError> {
         let address = compute_address(id, Resource::ORG);
-        let d = self.context.get_state(vec![address.clone()])?;
+        let d = self.context.get_state_entry(&address)?;
         let mut organization_list = match d {
             Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
                 Ok(orgs) => orgs,
@@ -216,10 +213,8 @@ impl<'a> PikeState<'a> {
             }
         };
 
-        let mut sets = HashMap::new();
-        sets.insert(address, serialized);
         self.context
-            .set_state(sets)
+            .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
@@ -251,7 +246,7 @@ impl TransactionHandler for PikeTransactionHandler {
     fn apply(
         &self,
         request: &TpProcessRequest,
-        context: &mut TransactionContext,
+        context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let payload = protobuf::parse_from_bytes::<PikePayload>(request.get_payload())
             .map_err(|_| ApplyError::InternalError("Failed to parse payload".into()))?;
@@ -547,7 +542,7 @@ pub fn is_admin(signer: &str, org_id: &str, state: &mut PikeState) -> Result<(),
 // Sabre apply must return a bool
 fn apply(
     request: &TpProcessRequest,
-    context: &mut TransactionContext,
+    context: &mut dyn TransactionContext,
 ) -> Result<bool, ApplyError> {
 
     let handler = PikeTransactionHandler::new();
