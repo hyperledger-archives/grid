@@ -22,7 +22,6 @@ build = "build.rs"
 protobuf = "2"
 cfg-if = "0.1"
 hex = "0.3.1"
-addresser = {path = "../addresser"}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
