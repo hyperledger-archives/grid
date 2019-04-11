@@ -293,7 +293,7 @@ impl PropertyDefinitionBuilder {
 
         let enum_options = {
             if data_type == DataType::Enum {
-                if self.enum_options.len() > 0 {
+                if !self.enum_options.is_empty() {
                     self.enum_options
                 } else {
                     return Err(PropertyDefinitionBuildError::EmptyVec(
@@ -307,7 +307,7 @@ impl PropertyDefinitionBuilder {
 
         let struct_properties = {
             if data_type == DataType::Struct {
-                if self.struct_properties.len() > 0 {
+                if !self.struct_properties.is_empty() {
                     self.struct_properties
                 } else {
                     return Err(PropertyDefinitionBuildError::EmptyVec(
@@ -489,7 +489,7 @@ impl SchemaBuilder {
 
         let description = self.description.unwrap_or_else(|| "".to_string());
         let properties = {
-            if self.properties.len() > 0 {
+            if !self.properties.is_empty() {
                 self.properties
             } else {
                 return Err(SchemaBuildError::MissingField(
@@ -504,6 +504,133 @@ impl SchemaBuilder {
             owner,
             properties,
         })
+    }
+}
+
+/// Native implementation of SchemaList
+#[derive(Debug, Clone, PartialEq)]
+pub struct SchemaList {
+    schemas: Vec<Schema>,
+}
+
+impl SchemaList {
+    pub fn schemas(&self) -> &[Schema] {
+        &self.schemas
+    }
+}
+
+impl FromProto<protos::schema_state::SchemaList> for SchemaList {
+    fn from_proto(schema_list: protos::schema_state::SchemaList) -> Result<Self, ProtoConversionError> {
+        Ok(SchemaList {
+            schemas: schema_list
+                .get_schemas()
+                .to_vec()
+                .into_iter()
+                .map(Schema::from_proto)
+                .collect::<Result<Vec<Schema>, ProtoConversionError>>()?,
+        })
+    }
+}
+
+impl FromNative<SchemaList> for protos::schema_state::SchemaList {
+    fn from_native(schema_list: SchemaList) -> Result<Self, ProtoConversionError> {
+        let mut schema_list_proto = protos::schema_state::SchemaList::new();
+
+        schema_list_proto.set_schemas(RepeatedField::from_vec(
+            schema_list
+                .schemas()
+                .to_vec()
+                .into_iter()
+                .map(Schema::into_proto)
+                .collect::<Result<Vec<protos::schema_state::Schema>, ProtoConversionError>>()?,
+        ));
+
+        Ok(schema_list_proto)
+    }
+}
+
+impl FromBytes<SchemaList> for SchemaList {
+    fn from_bytes(bytes: &[u8]) -> Result<SchemaList, ProtoConversionError> {
+        let proto: protos::schema_state::SchemaList =
+            protobuf::parse_from_bytes(bytes).map_err(|_| {
+                ProtoConversionError::SerializationError(
+                    "Unable to get SchemaList from bytes".to_string(),
+                )
+            })?;
+        proto.into_native()
+    }
+}
+
+impl IntoBytes for SchemaList {
+    fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
+        let proto = self.into_proto()?;
+        let bytes = proto.write_to_bytes().map_err(|_| {
+            ProtoConversionError::SerializationError(
+                "Unable to get bytes from SchemaList".to_string(),
+            )
+        })?;
+        Ok(bytes)
+    }
+}
+
+impl IntoProto<protos::schema_state::SchemaList> for SchemaList {}
+impl IntoNative<SchemaList> for protos::schema_state::SchemaList {}
+
+#[derive(Debug)]
+pub enum SchemaListBuildError {
+    MissingField(String),
+}
+
+impl StdError for SchemaListBuildError {
+    fn description(&self) -> &str {
+        match *self {
+            SchemaListBuildError::MissingField(ref msg) => msg,
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            SchemaListBuildError::MissingField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for SchemaListBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            SchemaListBuildError::MissingField(ref s) => write!(f, "MissingField: {}", s),
+        }
+    }
+}
+
+/// Builder used to create a SchemaList
+#[derive(Default, Clone)]
+pub struct SchemaListBuilder {
+    pub schemas: Vec<Schema>,
+}
+
+impl SchemaListBuilder {
+    pub fn new() -> Self {
+        SchemaListBuilder::default()
+    }
+
+    pub fn with_schemas(mut self, schemas: Vec<Schema>) -> SchemaListBuilder {
+        self.schemas = schemas;
+        self
+    }
+
+    pub fn build(self) -> Result<SchemaList, SchemaListBuildError> {
+        let schemas = {
+            if self.schemas.is_empty() {
+                return Err(SchemaListBuildError::MissingField(
+                    "'schemas' cannot be empty".to_string(),
+                ));
+            } else {
+                self.schemas
+            }
+        };
+
+        Ok(SchemaList { schemas })
     }
 }
 
@@ -562,10 +689,10 @@ impl FromProto<protos::schema_state::PropertyValue> for PropertyValue {
             name: property_value.get_name().to_string(),
             data_type: DataType::from_proto(property_value.get_data_type())?,
             bytes_value: property_value.get_bytes_value().to_vec(),
-            boolean_value: property_value.get_boolean_value().clone(),
-            number_value: property_value.get_number_value().clone(),
+            boolean_value: property_value.get_boolean_value(),
+            number_value: property_value.get_number_value(),
             string_value: property_value.get_string_value().to_string(),
-            enum_value: property_value.get_enum_value().clone(),
+            enum_value: property_value.get_enum_value(),
             struct_values: property_value
                 .get_struct_values()
                 .to_vec()
@@ -782,7 +909,7 @@ impl PropertyValueBuilder {
 
         let struct_values = {
             if data_type == DataType::Struct {
-                if self.struct_values.len() > 0 {
+                if !self.struct_values.is_empty() {
                     self.struct_values
                 } else {
                     return Err(PropertyValueBuildError::MissingField(

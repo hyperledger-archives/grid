@@ -367,7 +367,7 @@ impl SchemaCreateBuilder {
         let description = self.description.unwrap_or_default();
 
         let properties = {
-            if self.properties.len() > 0 {
+            if !self.properties.is_empty() {
                 self.properties
             } else {
                 return Err(SchemaCreateBuildError::MissingField(
@@ -515,7 +515,7 @@ impl SchemaUpdateBuilder {
         })?;
 
         let properties = {
-            if self.properties.len() > 0 {
+            if !self.properties.is_empty() {
                 self.properties
             } else {
                 return Err(SchemaUpdateBuildError::MissingField(
