@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# docker build -f contracts/sawtooth-pike/tp/Dockerfile-installed-xenial -t sawtooth-pike-tp .
+# docker build -f contracts/pike/Dockerfile-installed-xenial -t sawtooth-pike-tp .
 
 # -------------=== pike tp build ===-------------
 
-FROM ubuntu:xenial as pike-tp-builder
+FROM ubuntu:xenial as grid-pike-tp-builder
 
 ENV VERSION=AUTO_STRICT
 
@@ -42,19 +42,18 @@ RUN /root/.cargo/bin/cargo install cargo-deb
 
 COPY . /project
 
-WORKDIR /project/contracts/sawtooth-pike/tp
+WORKDIR /project/contracts/pike
 
-RUN sed -i -e s/version.*$/version\ =\ \"$(../../../bin/get_version)\"/ Cargo.toml
 RUN /root/.cargo/bin/cargo deb
 
-# -------------=== pike tp docker build ===-------------
+# -------------=== grid pike tp docker build ===-------------
 
 FROM ubuntu:xenial
 
-COPY --from=pike-tp-builder /project/contracts/sawtooth-pike/tp/target/debian/pike*.deb /tmp
+COPY --from=grid-pike-tp-builder /project/contracts/pike/target/debian/grid-pike-tp*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/pike*.deb || true \
+ && dpkg -i /tmp/grid-pike-tp*.deb || true \
  && apt-get -f -y install
 
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["grid-pike-tp", "-vv"]

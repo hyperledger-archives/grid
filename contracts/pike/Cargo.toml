@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [package]
-name = "pike"
+name = "grid-pike-tp"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
 
