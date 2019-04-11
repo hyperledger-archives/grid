@@ -51,6 +51,7 @@ RUN cargo build --release
 
 RUN rm src/*.rs
 COPY ./daemon/src ./src
+COPY ./daemon/migrations ./migrations
 
 RUN rm ./target/release/gridd* ./target/release/deps/gridd*
 RUN cargo build --release
@@ -59,7 +60,7 @@ RUN cargo build --release
 FROM ubuntu:bionic
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 libzmq5 \
+ && apt-get install -y libssl1.1 libzmq5 libpq5 postgresql-client \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 

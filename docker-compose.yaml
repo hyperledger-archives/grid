@@ -104,7 +104,17 @@ services:
       - 8080
     ports:
       - '8080:8080'
-    entrypoint: /gridd -vv -b gridd:8080 -C tcp://validator:4004
+    entrypoint: |
+        bash -c "
+          # we need to wait for the db to have started.
+          until PGPASSWORD=grid_example psql -h db -U grid -c '\q'; do
+              >&2 echo \"Database is unavailable - sleeping\"
+              sleep 1
+          done
+
+          /gridd -vv -b gridd:8080 -C tcp://validator:4004 \
+              --database-url postgres://grid:grid_example@db/grid
+        "
 
   sawtooth-shell:
     image: hyperledger/sawtooth-shell:1.1
@@ -114,3 +124,14 @@ services:
           sawtooth keygen &&
           tail -f /dev/null
         "
+  db:
+    image: postgres
+    restart: always
+    expose:
+      - 5432
+    ports:
+        - "5432:5432"
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid

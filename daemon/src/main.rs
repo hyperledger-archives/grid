@@ -18,9 +18,14 @@
 #[macro_use]
 extern crate clap;
 #[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+#[macro_use]
 extern crate log;
 
 mod config;
+mod database;
 mod error;
 mod event;
 mod rest_api;
@@ -29,6 +34,7 @@ mod sawtooth_connection;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use log::Level;
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
@@ -47,25 +53,37 @@ fn run() -> Result<(), DaemonError> {
         (about: "Daemon Package for Hyperledger Grid")
         (@arg connect: -C --connect +takes_value "connection endpoint for validator")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg database_url: --("database-url") +takes_value
+         "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
     )
     .get_matches();
+
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => Level::Warn,
+        1 => Level::Info,
+        2 => Level::Debug,
+        _ => Level::Trace,
+    };
+    simple_logger::init_with_level(log_level)?;
 
     let config = GridConfigBuilder::default()
         .with_cli_args(&matches)
         .build()?;
 
-    simple_logger::init_with_level(config.log_level())?;
+    database::run_migrations(config.database_url())?;
 
     let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
 
     let (rest_api_shutdown_handle, rest_api_join_handle) =
         rest_api::run(config.rest_api_endpoint(), sawtooth_connection.get_sender())?;
 
+    let connection_pool = database::create_connection_pool(config.database_url())?;
+
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
         "0000000000000000",
-        event_handlers![BlockEventHandler::new()],
+        event_handlers![BlockEventHandler::new(connection_pool.clone())],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 

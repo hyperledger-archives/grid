@@ -23,6 +23,8 @@ actix = "0.7"
 actix-web = "0.7"
 clap = "2"
 ctrlc = "3.0"
+diesel = { version = "1.0.0", features = ["postgres", "r2d2"] }
+diesel_migrations = "1.4"
 log = "0.4"
 protobuf = "2"
 sawtooth-sdk = { git = "https://github.com/hyperledger/sawtooth-sdk-rust" }

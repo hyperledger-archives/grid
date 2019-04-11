@@ -15,15 +15,20 @@
  * -----------------------------------------------------------------------------
  */
 
+use diesel::prelude::*;
 use sawtooth_sdk::messages::events::{Event, Event_Attribute};
+
+use crate::database::{models::Block, schema, ConnectionPool};
 
 use super::{error::EventError, EventHandler};
 
-pub struct BlockEventHandler {}
+pub struct BlockEventHandler {
+    connection_pool: ConnectionPool,
+}
 
 impl BlockEventHandler {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(connection_pool: ConnectionPool) -> Self {
+        Self { connection_pool }
     }
 
     fn require_attr(attributes: &[Event_Attribute], key: &str) -> Result<String, EventError> {
@@ -43,16 +48,28 @@ impl EventHandler for BlockEventHandler {
     fn handle_event(&self, event: &Event) -> Result<(), EventError> {
         let attributes = event.get_attributes();
 
-        let block_id = Self::require_attr(attributes, "block_id")?;
-        let block_num = Self::require_attr(attributes, "block_num")?
-            .parse::<u64>()
-            .map_err(|err| EventError(format!("block_num was not a valid number: {}", err)))?;
-        let state_root_hash = Self::require_attr(attributes, "state_root_hash")?;
+        let block = Block {
+            block_id: Self::require_attr(attributes, "block_id")?,
+            block_num: Self::require_attr(attributes, "block_num")?
+                .parse::<i64>()
+                .map_err(|err| EventError(format!("block_num was not a valid number: {}", err)))?,
+            state_root_hash: Self::require_attr(attributes, "state_root_hash")?,
+        };
 
-        info!(
+        debug!(
             "Received sawtooth/block-commit ({}, {}, {})",
-            block_id, block_num, state_root_hash
+            block.block_id, block.block_num, block.state_root_hash
         );
+
+        let conn = self
+            .connection_pool
+            .get()
+            .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
+
+        diesel::insert_into(schema::block::table)
+            .values(&block)
+            .execute(&*conn)
+            .map_err(|err| EventError(format!("Unable to insert block in database: {}", err)))?;
 
         Ok(())
     }
