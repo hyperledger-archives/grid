@@ -16,12 +16,12 @@
 name = "pike"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
-build = "build.rs"
 
 [dependencies]
 protobuf = "2"
 cfg-if = "0.1"
 hex = "0.3.1"
+grid-sdk = {path = "../../sdk"}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
