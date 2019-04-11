@@ -23,6 +23,7 @@ use diesel::{
     dsl::{insert_into, update},
     pg::PgConnection,
     prelude::*,
+    result::Error::NotFound,
     QueryResult,
 };
 
@@ -58,4 +59,17 @@ pub fn get_agents(conn: &PgConnection) -> QueryResult<Vec<Agent>> {
         .select(agent::all_columns)
         .filter(agent::end_block_num.eq(MAX_BLOCK_NUM))
         .load::<Agent>(conn)
+}
+
+pub fn get_agent(conn: &PgConnection, public_key: &str) -> QueryResult<Option<Agent>> {
+    agent::table
+        .select(agent::all_columns)
+        .filter(
+            agent::public_key
+                .eq(public_key)
+                .and(agent::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
