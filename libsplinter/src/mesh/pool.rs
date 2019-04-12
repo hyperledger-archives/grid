@@ -37,11 +37,7 @@ pub struct Pool {
 
 impl fmt::Debug for Pool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut ids = self
-            .entries
-            .values()
-            .map(|entry| entry.id())
-            .collect::<Vec<usize>>();
+        let mut ids = self.entries.values().map(Entry::id).collect::<Vec<usize>>();
         ids.sort();
         write!(f, "Pool {{ {:?} }}", ids)
     }

@@ -67,7 +67,10 @@ impl PeerMap {
     ///
     /// This list does not include any of the redirected peer ids.
     fn peer_ids(&self) -> Vec<String> {
-        self.peers.keys().map(|left| left.to_string()).collect()
+        self.peers
+            .keys()
+            .map(std::string::ToString::to_string)
+            .collect()
     }
 
     /// Insert a new peer id for a given mesh id
