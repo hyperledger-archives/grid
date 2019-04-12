@@ -358,6 +358,7 @@ mod test {
     use crate::rest_api::AppState;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
     use futures::future::Future;
+    use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
         ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
         ClientBatchStatusResponse_Status, ClientBatchStatus_Status, ClientBatchSubmitResponse,
@@ -381,6 +382,9 @@ mod test {
         ClientBatchStatusResponseOK,
         ClientBatchStatusResponseInvalidId,
         ClientBatchStatusResponseInternalError,
+        ClientBatchSubmitResponseOK,
+        ClientBatchSubmitResponseInvalidBatch,
+        ClientBatchSubmitResponseInternalError,
     }
 
     impl MockMessageSender {
@@ -415,7 +419,19 @@ mod test {
                 }
                 ResponseType::ClientBatchStatusResponseInternalError => mock_validator_response
                     .set_content(get_batch_statuses_response_validator_internal_error()),
+                ResponseType::ClientBatchSubmitResponseOK => mock_validator_response.set_content(
+                    get_submit_batches_response(ClientBatchSubmitResponse_Status::OK),
+                ),
+                ResponseType::ClientBatchSubmitResponseInvalidBatch => mock_validator_response
+                    .set_content(get_submit_batches_response(
+                        ClientBatchSubmitResponse_Status::INVALID_BATCH,
+                    )),
+                ResponseType::ClientBatchSubmitResponseInternalError => mock_validator_response
+                    .set_content(get_submit_batches_response(
+                        ClientBatchSubmitResponse_Status::INTERNAL_ERROR,
+                    )),
             }
+
             let mock_resut = Ok(mock_validator_response);
             let (send, recv) = channel();
             send.send(mock_resut).unwrap();
@@ -623,6 +639,81 @@ mod test {
         let response = srv.execute(request.send()).unwrap();
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
+
+    ///
+    /// Verifies a POST /batches with an OK response.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - an serialized batch list
+    ///    It will receive a Protobuf response with status OK
+    ///    It should send back a JSON response with:
+    ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
+    ///
+    #[test]
+    fn test_post_batches_ok() {
+        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseOK);
+
+        let request = srv
+            .client(http::Method::POST, "/batches")
+            .body(get_batch_list())
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+
+        let deserialized: BatchStatusLink =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+
+        assert!(deserialized
+            .link
+            .contains(&format!("/batch_statuses?id={}", BATCH_ID_1)));
+    }
+
+    ///
+    /// Verifies a POST /batches with an INVALID_BATCH response.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - an serialized batch list
+    ///    It will receive a Protobuf response with status INVALID_BATCH
+    ///    It should send back a response with BadRequest status
+    ///
+    #[test]
+    fn test_post_batches_invalid_batch() {
+        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseInvalidBatch);
+
+        let request = srv
+            .client(http::Method::POST, "/batches")
+            .body(get_batch_list())
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
+    }
+
+    ///
+    /// Verifies a POST /batches responds with InternalError when the validator returns an error.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - an serialized batch list
+    ///    It will receive a Protobuf response with status INTERNAL_ERROR
+    ///    It should send back a response with InternalError status
+    ///
+    #[test]
+    fn test_post_batches_internal_error() {
+        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseInternalError);
+
+        let request = srv
+            .client(http::Method::POST, "/batches")
+            .body(get_batch_list())
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -667,6 +758,22 @@ mod test {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::INTERNAL_ERROR);
         protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn get_submit_batches_response(status: ClientBatchSubmitResponse_Status) -> Vec<u8> {
+        let mut batch_status_response = ClientBatchSubmitResponse::new();
+        batch_status_response.set_status(status);
+        protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn get_batch_list() -> Vec<u8> {
+        let mut batch_list = BatchList::new();
+        let mut batch = Batch::new();
+        batch.set_header_signature(BATCH_ID_1.to_string());
+        batch_list.set_batches(protobuf::RepeatedField::from_vec(vec![batch]));
+        protobuf::Message::write_to_bytes(&batch_list)
             .expect("Failed to write batch statuses to bytes")
     }
 
