@@ -65,7 +65,7 @@ impl Message for BatchStatuses {
     type Result = Result<Vec<BatchStatus>, RestApiResponseError>;
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct BatchStatus {
     id: String,
     invalid_transactions: Vec<HashMap<String, String>>,
@@ -97,13 +97,13 @@ impl BatchStatus {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct BatchStatusResponse {
     data: Vec<BatchStatus>,
     link: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BatchStatusLink {
     pub link: String,
 }
@@ -350,4 +350,324 @@ fn process_batch_status_response(
             format!("Validator responded with error {:?}", status),
         )),
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::rest_api::AppState;
+    use actix_web::{http, http::Method, test::TestServer, HttpMessage};
+    use futures::future::Future;
+    use sawtooth_sdk::messages::client_batch_submit::{
+        ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
+        ClientBatchStatusResponse_Status, ClientBatchStatus_Status, ClientBatchSubmitResponse,
+        ClientBatchSubmitResponse_Status,
+    };
+    use sawtooth_sdk::messages::validator::{Message, Message_MessageType};
+
+    use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
+    use std::sync::mpsc::channel;
+
+    static BATCH_ID_1: &str = "batch_1";
+    static BATCH_ID_2: &str = "batch_2";
+    static BATCH_ID_3: &str = "batch_3";
+
+    struct MockMessageSender {
+        response_type: ResponseType,
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    enum ResponseType {
+        ClientBatchStatusResponseOK,
+        ClientBatchStatusResponseInvalidId,
+        ClientBatchStatusResponseInternalError,
+    }
+
+    impl MockMessageSender {
+        fn new_boxed(response_type: ResponseType) -> Box<MockMessageSender> {
+            Box::new(MockMessageSender { response_type })
+        }
+    }
+
+    impl MessageSender for MockMessageSender {
+        fn send(
+            &self,
+            destination: Message_MessageType,
+            correlation_id: &str,
+            contents: &[u8],
+        ) -> Result<MessageFuture, SendError> {
+            let mut mock_validator_response = Message::new();
+            mock_validator_response.set_message_type(destination);
+            mock_validator_response.set_correlation_id(correlation_id.to_string());
+            match &self.response_type {
+                ResponseType::ClientBatchStatusResponseOK => {
+                    let request: ClientBatchStatusRequest =
+                        protobuf::parse_from_bytes(contents).unwrap();
+                    if request.get_batch_ids().len() <= 1 {
+                        mock_validator_response.set_content(get_batch_statuses_response_one_id())
+                    } else {
+                        mock_validator_response
+                            .set_content(get_batch_statuses_response_multiple_ids())
+                    }
+                }
+                ResponseType::ClientBatchStatusResponseInvalidId => {
+                    mock_validator_response.set_content(get_batch_statuses_response_invalid_id())
+                }
+                ResponseType::ClientBatchStatusResponseInternalError => mock_validator_response
+                    .set_content(get_batch_statuses_response_validator_internal_error()),
+            }
+            let mock_resut = Ok(mock_validator_response);
+            let (send, recv) = channel();
+            send.send(mock_resut).unwrap();
+            Ok(MessageFuture::new(recv))
+        }
+
+        fn reply(
+            &self,
+            _destination: Message_MessageType,
+            _correlation_id: &str,
+            _contents: &[u8],
+        ) -> Result<(), SendError> {
+            unimplemented!()
+        }
+
+        fn close(&mut self) {
+            unimplemented!()
+        }
+    }
+
+    fn create_test_server(response_type: ResponseType) -> TestServer {
+        TestServer::build_with_state(move || {
+            let mock_connection_addr =
+                SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
+                    SawtoothMessageSender::new(MockMessageSender::new_boxed(response_type))
+                });
+            AppState {
+                sawtooth_connection: mock_connection_addr,
+            }
+        })
+        .start(|app| {
+            app.resource("/batch_statuses", |r| {
+                r.name("batch_statuses");
+                r.method(Method::GET).with_async(get_batch_statuses)
+            })
+            .resource("/batches", |r| {
+                r.method(Method::POST).with_async(submit_batches)
+            });
+        })
+    }
+
+    ///
+    /// Verifies a GET /batch_statuses with one id works properly.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - a batch_ids property of BATCH_ID
+    ///    It will receive a Protobuf response with status OK:
+    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITED}
+    ///    It should send back a JSON response with:
+    ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
+    ///        - a data property matching the batch statuses received
+    ///
+    #[test]
+    fn test_get_batch_status_one_id() {
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/batch_statuses?id={}", BATCH_ID_1),
+            )
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+
+        let deserialized: BatchStatusResponse =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+
+        assert_eq!(deserialized.data.len(), 1);
+        assert_eq!(deserialized.data[0].id, BATCH_ID_1);
+        assert_eq!(deserialized.data[0].status, "COMMITTED");
+        assert_eq!(deserialized.data[0].invalid_transactions.len(), 0);
+        assert!(deserialized
+            .link
+            .contains(&format!("/batch_statuses?id={}", BATCH_ID_1)));
+    }
+
+    ///
+    /// Verifies a GET /batch_statuses with multiple ids works properly.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - a batch_ids property of BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
+    ///    It will receive a Protobuf response with status OK:
+    ///        - containing batch statuses of {batch_id: BATCH_ID_1,  status: COMMITED}
+    ///                                       {batch_id: BATCH_ID_2,  status: COMMITED}
+    ///                                       {batch_id: BATCH_ID_3,  status: COMMITED}
+    ///    It should send back a JSON response with:
+    ///        - a link property that ends in
+    ///             `/batch_statuses?id={BATCH_ID_1},{BATCH_ID_2},{BATCH_ID_3}`
+    ///        - a data property matching the batch statuses received
+    ///
+    #[test]
+    fn test_get_batch_status_multiple_ids() {
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!(
+                    "/batch_statuses?id={},{},{}",
+                    BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
+                ),
+            )
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+
+        let deserialized: BatchStatusResponse =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+
+        assert_eq!(deserialized.data.len(), 3);
+        assert_eq!(deserialized.data[0].id, BATCH_ID_1);
+        assert_eq!(deserialized.data[0].status, "COMMITTED");
+        assert_eq!(deserialized.data[0].invalid_transactions.len(), 0);
+
+        assert_eq!(deserialized.data[1].id, BATCH_ID_2);
+        assert_eq!(deserialized.data[1].status, "COMMITTED");
+        assert_eq!(deserialized.data[1].invalid_transactions.len(), 0);
+
+        assert_eq!(deserialized.data[2].id, BATCH_ID_3);
+        assert_eq!(deserialized.data[2].status, "COMMITTED");
+        assert_eq!(deserialized.data[2].invalid_transactions.len(), 0);
+        assert!(deserialized.link.contains(&format!(
+            "/batch_statuses?id={},{},{}",
+            BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
+        )));
+    }
+
+    ///
+    /// Verifies a GET /batch_statuses with one invalid id works properly.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - a batch_ids property of BATCH_ID
+    ///    It will receive a Protobuf response with status INVALID_ID:
+    ///    It should send back a response with status BadRequest:
+    ///        - with an error message explaining the error
+    ///
+    #[test]
+    fn test_get_batch_status_invalid_id() {
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseInvalidId);
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/batch_statuses?id={}", BATCH_ID_1),
+            )
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
+    }
+
+    ///
+    /// Verifies a GET /batch_statuses returns InternalError when validator responds with error.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - a batch_ids property of BATCH_ID
+    ///    It will receive a Protobuf response with status InternalError
+    ///    It should send back a response with status InternalError
+    ///
+    #[test]
+    fn test_get_batch_status_internal_error() {
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseInternalError);
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/batch_statuses?id={}", BATCH_ID_1),
+            )
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    ///
+    /// Verifies a GET /batch_statuses returns an error when the wait param is set with an invalid
+    /// value.
+    ///
+    ///    The TestServer will receive a request with :
+    ///        - a batch_ids property of BATCH_ID
+    ///        - wait param set to "not_a_number"
+    ///    It should send back a response with status BadRequest
+    ///
+    #[test]
+    fn test_get_batch_status_wait_error() {
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/batch_statuses?id={}&wait=not_a_number", BATCH_ID_1),
+            )
+            .finish()
+            .unwrap();
+
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
+    }
+    fn get_batch_statuses_response_one_id() -> Vec<u8> {
+        let mut batch_status_response = ClientBatchStatusResponse::new();
+        batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
+        let mut batch_status = ClientBatchStatus::new();
+        batch_status.set_batch_id(BATCH_ID_1.to_string());
+        batch_status.set_status(ClientBatchStatus_Status::COMMITTED);
+        batch_status_response
+            .set_batch_statuses(protobuf::RepeatedField::from_vec(vec![batch_status]));
+        protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn get_batch_statuses_response_multiple_ids() -> Vec<u8> {
+        let mut batch_status_response = ClientBatchStatusResponse::new();
+        batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
+        let mut batch_status_1 = ClientBatchStatus::new();
+        batch_status_1.set_batch_id(BATCH_ID_1.to_string());
+        batch_status_1.set_status(ClientBatchStatus_Status::COMMITTED);
+        let mut batch_status_2 = ClientBatchStatus::new();
+        batch_status_2.set_batch_id(BATCH_ID_2.to_string());
+        batch_status_2.set_status(ClientBatchStatus_Status::COMMITTED);
+        let mut batch_status_3 = ClientBatchStatus::new();
+        batch_status_3.set_batch_id(BATCH_ID_3.to_string());
+        batch_status_3.set_status(ClientBatchStatus_Status::COMMITTED);
+        batch_status_response.set_batch_statuses(protobuf::RepeatedField::from_vec(vec![
+            batch_status_1,
+            batch_status_2,
+            batch_status_3,
+        ]));
+        protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn get_batch_statuses_response_invalid_id() -> Vec<u8> {
+        let mut batch_status_response = ClientBatchStatusResponse::new();
+        batch_status_response.set_status(ClientBatchStatusResponse_Status::INVALID_ID);
+        protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn get_batch_statuses_response_validator_internal_error() -> Vec<u8> {
+        let mut batch_status_response = ClientBatchStatusResponse::new();
+        batch_status_response.set_status(ClientBatchStatusResponse_Status::INTERNAL_ERROR);
+        protobuf::Message::write_to_bytes(&batch_status_response)
+            .expect("Failed to write batch statuses to bytes")
+    }
+
 }
