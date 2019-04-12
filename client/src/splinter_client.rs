@@ -88,6 +88,6 @@ impl SplinterClient {
 fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
     hostname
         .to_socket_addrs()?
-        .find(|addr| addr.is_ipv4())
+        .find(std::net::SocketAddr::is_ipv4)
         .ok_or(SplinterError::CouldNotResolveHostName)
 }
