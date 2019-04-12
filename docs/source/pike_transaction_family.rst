@@ -68,9 +68,10 @@ Organization
 
 An organization has three fields:
 
-- id: a unique identifier for the organization
-- name: a user defined identifier for the organization
-- address: a physical address for the organization
+- id: A unique identifier for the organization.
+- name: A user defined identifier for the organization.
+- address: A physical address for the organization.
+- metadata: A list of key value pairs describing data about the organization.
 
 The id is the unique key for an Organization.
 
@@ -80,6 +81,7 @@ The id is the unique key for an Organization.
         string org_id = 1;
         string name = 2;
         string address = 3;
+        repeated KeyValueEntry metadata = 4;
     }
 
 Organization List
@@ -219,6 +221,7 @@ CREATE_ORGANIZATION
         string id = 1;
         string name = 2;
         string address = 3;
+        repeated KeyValueEntry metadata = 4;
       }
 
 UPDATE_ORGANIZATION
@@ -232,4 +235,5 @@ UPDATE_ORGANIZATION
         string id = 1;
         string name = 2;
         string address = 3;
+        repeated KeyValueEntry metadata = 4;
       }
