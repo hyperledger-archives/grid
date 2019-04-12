@@ -424,6 +424,9 @@ fn create_org(
     organization.set_org_id(payload.get_id().to_string());
     organization.set_name(payload.get_name().to_string());
     organization.set_address(payload.get_address().to_string());
+    organization.set_metadata(protobuf::RepeatedField::from_vec(
+        payload.get_metadata().to_vec(),
+    ));
     state.set_organization(payload.get_id(), organization)?;
 
     state
@@ -495,6 +498,11 @@ fn update_org(
     }
     if !payload.get_address().is_empty() {
         organization.set_address(payload.get_address().to_string());
+    }
+    if !payload.get_metadata().is_empty() {
+        organization.set_metadata(protobuf::RepeatedField::from_vec(
+            payload.get_metadata().to_vec(),
+        ));
     }
     state.set_organization(payload.get_id(), organization)
 }
