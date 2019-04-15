@@ -467,6 +467,7 @@ pub struct Organization {
     org_id: String,
     name: String,
     address: String,
+    metadata: Vec<KeyValueEntry>,
 }
 
 impl Organization {
@@ -481,6 +482,10 @@ impl Organization {
     pub fn address(&self) -> &str {
         &self.address
     }
+
+    pub fn metadata(&self) -> &[KeyValueEntry] {
+        &self.metadata
+    }
 }
 
 impl FromProto<protos::pike_state::Organization> for Organization {
@@ -489,6 +494,12 @@ impl FromProto<protos::pike_state::Organization> for Organization {
             org_id: org.get_org_id().to_string(),
             name: org.get_name().to_string(),
             address: org.get_address().to_string(),
+            metadata: org
+                .get_metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::from_proto)
+                .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
     }
 }
@@ -500,6 +511,15 @@ impl FromNative<Organization> for protos::pike_state::Organization {
         org_proto.set_org_id(org.org_id().to_string());
         org_proto.set_name(org.name().to_string());
         org_proto.set_address(org.address().to_string());
+        org_proto.set_metadata(RepeatedField::from_vec(
+            org
+                .metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::into_proto)
+                .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
+                )?,
+        ));
 
         Ok(org_proto)
     }
@@ -565,6 +585,7 @@ pub struct OrganizationBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
     pub address: Option<String>,
+    pub metadata: Vec<KeyValueEntry>,
 }
 
 impl OrganizationBuilder {
@@ -587,6 +608,11 @@ impl OrganizationBuilder {
         self
     }
 
+    pub fn with_metadata(mut self, metadata: Vec<KeyValueEntry>) -> OrganizationBuilder {
+        self.metadata = metadata;
+        self
+    }
+
     pub fn build(self) -> Result<Organization, OrganizationBuildError> {
         let org_id = self.org_id.ok_or_else(|| {
             OrganizationBuildError::MissingField("'org_id' field is required".to_string())
@@ -600,10 +626,13 @@ impl OrganizationBuilder {
             OrganizationBuildError::MissingField("'address' field is required".to_string())
         })?;
 
+        let metadata = self.metadata;
+
         Ok(Organization {
             org_id,
             name,
             address,
+            metadata,
         })
     }
 }
@@ -882,27 +911,44 @@ mod tests {
     #[test]
     // check that a Organization is built correctly
     fn check_organization_builder() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = OrganizationBuilder::new();
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
         assert_eq!(organization.org_id(), "organization");
         assert_eq!(organization.name(), "name");
         assert_eq!(organization.address(), "address");
+        assert_eq!(organization.metadata(), [key_value]);
     }
 
     #[test]
     // check that a Organization can be converted to bytes and back
     fn check_organization_bytes() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = OrganizationBuilder::new();
         let original = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
@@ -914,11 +960,19 @@ mod tests {
     #[test]
     // check that a OrganizationList is built correctly
     fn check_organization_lists_builder() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = OrganizationBuilder::new();
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
@@ -934,11 +988,19 @@ mod tests {
     #[test]
     // check that a OrganizationList can be converted to bytes and back
     fn check_organization_list_bytes() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = OrganizationBuilder::new();
         let organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 

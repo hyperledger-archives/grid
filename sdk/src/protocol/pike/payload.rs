@@ -460,6 +460,7 @@ pub struct CreateOrganizationAction {
     org_id: String,
     name: String,
     address: String,
+    metadata: Vec<KeyValueEntry>,
 }
 
 impl CreateOrganizationAction {
@@ -474,6 +475,10 @@ impl CreateOrganizationAction {
     pub fn address(&self) -> &str {
         &self.address
     }
+
+    pub fn metadata(&self) -> &[KeyValueEntry] {
+        &self.metadata
+    }
 }
 
 impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganizationAction {
@@ -484,6 +489,12 @@ impl FromProto<protos::pike_payload::CreateOrganizationAction> for CreateOrganiz
             org_id: create_org.get_id().to_string(),
             name: create_org.get_name().to_string(),
             address: create_org.get_address().to_string(),
+            metadata: create_org
+                .get_metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::from_proto)
+                .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
     }
 }
@@ -495,6 +506,15 @@ impl FromNative<CreateOrganizationAction> for protos::pike_payload::CreateOrgani
         proto_create_org.set_id(create_org.org_id().to_string());
         proto_create_org.set_name(create_org.name().to_string());
         proto_create_org.set_address(create_org.address().to_string());
+        proto_create_org.set_metadata(RepeatedField::from_vec(
+            create_org
+                .metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::into_proto)
+                .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
+                )?,
+        ));
 
         Ok(proto_create_org)
     }
@@ -562,6 +582,7 @@ pub struct CreateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
     pub address: Option<String>,
+    pub metadata: Vec<KeyValueEntry>,
 }
 
 impl CreateOrganizationActionBuilder {
@@ -584,6 +605,11 @@ impl CreateOrganizationActionBuilder {
         self
     }
 
+    pub fn with_metadata(mut self, metadata: Vec<KeyValueEntry>) -> CreateOrganizationActionBuilder {
+        self.metadata = metadata;
+        self
+    }
+
     pub fn build(self) -> Result<CreateOrganizationAction, CreateOrganizationActionBuildError> {
         let org_id = self.org_id.ok_or_else(|| {
             CreateOrganizationActionBuildError::MissingField(
@@ -601,10 +627,13 @@ impl CreateOrganizationActionBuilder {
             )
         })?;
 
+        let metadata = self.metadata;
+
         Ok(CreateOrganizationAction {
             org_id,
             name,
             address,
+            metadata,
         })
     }
 }
@@ -615,6 +644,7 @@ pub struct UpdateOrganizationAction {
     org_id: String,
     name: String,
     address: String,
+    metadata: Vec<KeyValueEntry>,
 }
 
 impl UpdateOrganizationAction {
@@ -629,6 +659,10 @@ impl UpdateOrganizationAction {
     pub fn address(&self) -> &str {
         &self.address
     }
+
+    pub fn metadata(&self) -> &[KeyValueEntry] {
+        &self.metadata
+    }
 }
 
 impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganizationAction {
@@ -639,6 +673,12 @@ impl FromProto<protos::pike_payload::UpdateOrganizationAction> for UpdateOrganiz
             org_id: create_org.get_id().to_string(),
             name: create_org.get_name().to_string(),
             address: create_org.get_address().to_string(),
+            metadata: create_org
+                .get_metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::from_proto)
+                .collect::<Result<Vec<KeyValueEntry>, ProtoConversionError>>()?,
         })
     }
 }
@@ -650,6 +690,15 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
         proto_update_org.set_id(update_org.org_id().to_string());
         proto_update_org.set_name(update_org.name().to_string());
         proto_update_org.set_address(update_org.address().to_string());
+        proto_update_org.set_metadata(RepeatedField::from_vec(
+            update_org
+                .metadata()
+                .to_vec()
+                .into_iter()
+                .map(KeyValueEntry::into_proto)
+                .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
+                )?,
+            ));
 
         Ok(proto_update_org)
     }
@@ -717,6 +766,7 @@ pub struct UpdateOrganizationActionBuilder {
     pub org_id: Option<String>,
     pub name: Option<String>,
     pub address: Option<String>,
+    pub metadata: Vec<KeyValueEntry>,
 }
 
 impl UpdateOrganizationActionBuilder {
@@ -739,6 +789,11 @@ impl UpdateOrganizationActionBuilder {
         self
     }
 
+    pub fn with_metadata(mut self, metadata: Vec<KeyValueEntry>) -> UpdateOrganizationActionBuilder {
+        self.metadata = metadata;
+        self
+    }
+
     pub fn build(self) -> Result<UpdateOrganizationAction, UpdateOrganizationActionBuildError> {
         let org_id = self.org_id.ok_or_else(|| {
             UpdateOrganizationActionBuildError::MissingField(
@@ -750,10 +805,13 @@ impl UpdateOrganizationActionBuilder {
 
         let address = self.address.unwrap_or_default();
 
+        let metadata = self.metadata;
+
         Ok(UpdateOrganizationAction {
             org_id,
             name,
             address,
+            metadata,
         })
     }
 }
@@ -1098,27 +1156,44 @@ mod tests {
     #[test]
     // check that a create_organization is built correctly
     fn check_create_organization_builder() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = CreateOrganizationActionBuilder::new();
         let create_organization = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
         assert_eq!(create_organization.org_id(), "organization");
         assert_eq!(create_organization.name(), "name");
         assert_eq!(create_organization.address(), "address");
+        assert_eq!(create_organization.metadata(), [key_value]);
     }
 
     #[test]
     // check that a create_organization can be converted to bytes and back
     fn check_create_organization_bytes() {
+        let builder = KeyValueEntryBuilder::new();
+        let key_value = builder
+            .with_key("Key".to_string())
+            .with_value("Value".to_string())
+            .build()
+            .unwrap();
+
         let builder = CreateOrganizationActionBuilder::new();
         let original = builder
             .with_org_id("organization".to_string())
             .with_name("name".to_string())
             .with_address("address".to_string())
+            .with_metadata(vec![key_value.clone()])
             .build()
             .unwrap();
 
