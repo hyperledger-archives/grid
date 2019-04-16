@@ -135,8 +135,7 @@ fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>
         Some("tls") => {
             let ca_file = matches
                 .value_of("ca_file")
-                .map(String::from)
-                .ok_or_else(|| CliError("Must provide a valid file containing ca certs".into()))?;
+                .map(String::from);
 
             let client_cert = matches
                 .value_of("client_cert")
@@ -147,6 +146,10 @@ fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>
                 .value_of("client_key")
                 .map(String::from)
                 .ok_or_else(|| CliError("Must provide a valid key path".into()))?;
+
+            if ca_file.is_none() {
+                warn!("No CA File provided; starting TlsTransport in insecure mode");
+            }
 
             // Reuse the cert and key as a server cert and key, as there currently isn't a client-
             // only TlsTransport implementation.
@@ -259,7 +262,6 @@ fn configure_app_args<'a, 'b>() -> App<'a, 'b> {
                 .long("ca-file")
                 .takes_value(true)
                 .value_name("FILE")
-                .requires_if("transport", "tls")
                 .help("file path to the trusted ca cert"),
         )
         .arg(
