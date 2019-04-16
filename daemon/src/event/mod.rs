@@ -41,9 +41,7 @@ pub use super::event::error::{EventError, EventProcessorError};
 const SHUTDOWN_TIMEOUT: u64 = 2;
 
 pub trait EventHandler: Send {
-    fn event_type(&self) -> &str;
-
-    fn handle_event(&self, event: &Event) -> Result<(), EventError>;
+    fn handle_events(&self, events: &[Event]) -> Result<(), EventError>;
 }
 
 #[macro_export]
@@ -181,7 +179,7 @@ fn handle_message(
         return Ok(());
     }
 
-    let mut event_list: EventList = match protobuf::parse_from_bytes(msg.get_content()) {
+    let event_list: EventList = match protobuf::parse_from_bytes(msg.get_content()) {
         Ok(event_list) => event_list,
         Err(err) => {
             warn!("Unable to parse event list; ignoring: {}", err);
@@ -189,17 +187,9 @@ fn handle_message(
         }
     };
 
-    for event in event_list.take_events().into_iter() {
-        let event_handler = event_handlers
-            .iter()
-            .find(|handler| handler.event_type() == event.get_event_type());
-
-        if let Some(event_handler) = event_handler {
-            if let Err(err) = event_handler.handle_event(&event) {
-                error!("Unable to handle event {}: {}", event.get_event_type(), err);
-            }
-        } else {
-            warn!("Unable to handle event {}", event.get_event_type());
+    for handler in event_handlers {
+        if let Err(err) = handler.handle_events(&event_list.get_events()) {
+            error!("An error occured while handling events: {}", err);
         }
     }
 

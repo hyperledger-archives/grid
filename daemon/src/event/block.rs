@@ -41,20 +41,9 @@ impl BlockEventHandler {
 }
 
 impl EventHandler for BlockEventHandler {
-    fn event_type(&self) -> &str {
-        "sawtooth/block-commit"
-    }
 
-    fn handle_event(&self, event: &Event) -> Result<(), EventError> {
-        let attributes = event.get_attributes();
-
-        let block = Block {
-            block_id: Self::require_attr(attributes, "block_id")?,
-            block_num: Self::require_attr(attributes, "block_num")?
-                .parse::<i64>()
-                .map_err(|err| EventError(format!("block_num was not a valid number: {}", err)))?,
-            state_root_hash: Self::require_attr(attributes, "state_root_hash")?,
-        };
+    fn handle_events(&self, events: &[Event]) -> Result<(), EventError> {
+        let block = get_block(events)?;
 
         debug!(
             "Received sawtooth/block-commit ({}, {}, {})",
