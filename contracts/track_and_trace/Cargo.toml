@@ -18,14 +18,23 @@ version = "0.11.0"
 authors = ["Cargill Incorporated"]
 description = "Grid Track and Trace Transaction Processor"
 homepage = "https://grid.hyperledger.org"
+edition = "2018"
 
 [dependencies]
-sawtooth-sdk = "^0.2"
-rust-crypto = "0.2.36"
-rustc-serialize = "0.3.22"
-sawtooth-zmq = "0.8.2-dev5"
 clap = "2"
 grid-sdk = { path = "../../sdk" }
+cfg-if = "0.1"
+hex = "0.3.1"
+protobuf = "2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
+sabre-sdk = "0.2"
+
+[target.'cfg(unix)'.dependencies]
+rust-crypto = "0.2.36"
+sawtooth-sdk = {git = "https://github.com/hyperledger/sawtooth-sdk-rust"}
+rustc-serialize = "0.3.22"
 log = "0.3.0"
 log4rs = "0.7.0"
-protobuf = "2"
+sawtooth-zmq = "0.8.2-dev5"
