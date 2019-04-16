@@ -56,10 +56,12 @@ message CreateOrganizationAction {
   string id = 1;
   string name = 2;
   string address = 3;
+  repeated KeyValueEntry metadata = 4;
 }
 
 message UpdateOrganizationAction {
   string id = 1;
   string name = 2;
   string address = 3;
+  repeated KeyValueEntry metadata = 4;
 }

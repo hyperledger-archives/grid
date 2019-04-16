@@ -36,6 +36,7 @@ message Organization {
   string org_id = 1;
   string name = 2;
   string address = 3;
+  repeated KeyValueEntry metadata = 4;
 }
 
 message OrganizationList {
