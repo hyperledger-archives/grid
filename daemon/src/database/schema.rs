@@ -16,9 +16,44 @@
  */
 
 table! {
+    agent (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        public_key -> Varchar,
+        org_id -> Varchar,
+        active -> Bool,
+        roles -> Array<Varchar>,
+        metadata -> Array<Json>,
+    }
+}
+
+table! {
     block (block_id) {
         block_id -> Varchar,
         block_num -> Int8,
         state_root_hash -> Varchar,
     }
 }
+
+table! {
+    chain_record (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+    }
+}
+
+table! {
+    organization (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        org_id -> Varchar,
+        name -> Varchar,
+        address -> Varchar,
+        metadata -> Array<Json>,
+    }
+}
+
+allow_tables_to_appear_in_same_query!(agent, block, chain_record, organization,);
