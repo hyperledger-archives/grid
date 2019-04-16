@@ -38,6 +38,17 @@ services:
       bash -c "
         /grid-schema-tp -v -C tcp://validator:4004
       "
+  
+  pike-tp:
+    image: grid-pike-tp
+    container_name: grid-pike-tp
+    build:
+      context: .
+      dockerfile: contracts/pike/Dockerfile
+    entrypoint: |
+      bash -c "
+        /grid-pike-tp -vv -C tcp://validator:4004
+      "
 
   validator:
     image: hyperledger/sawtooth-validator:1.1

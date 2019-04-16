@@ -16,7 +16,7 @@
 extern crate cfg_if;
 extern crate protobuf;
 extern crate crypto;
-extern crate addresser;
+extern crate grid_sdk;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -35,8 +35,8 @@ cfg_if! {
     }
 }
 
+pub mod addresser;
 pub mod handler;
-mod protos;
 
 //use sawtooth_sdk::processor::TransactionProcessor;
 //use handler::PikeTransactionHandler;

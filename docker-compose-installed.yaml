@@ -41,6 +41,16 @@ services:
       - validator
     entrypoint: grid-schema-tp -C tcp://validator:4004 -v
 
+  pike-tp:
+    image: grid-pike-tp-installed:${ISOLATION_ID}
+    container_name: grid-pike-tp-installed
+    build:
+      context: .
+      dockerfile: contracts/pike/Dockerfile-installed-${DISTRO}
+    depends_on:
+      - validator
+    entrypoint: grid-pike-tp -C tcp://validator:4004 -v
+
   validator:
     image: hyperledger/sawtooth-validator:1.1
     container_name: grid-sawtooth-validator
