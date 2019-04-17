@@ -759,3 +759,6 @@ conditions occurs:
 - The signer is not the Record's owner.
 - The reporter whose authorization is to be revoked is not an
   authorized reporter for the Record.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+.. https://creativecommons.org/licenses/by/4.0/

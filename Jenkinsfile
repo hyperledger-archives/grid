@@ -77,8 +77,8 @@ node ('master') {
         }
 
         stage ("Build documentation") {
-            sh 'docker build . -f docs/supply-chain-build-docs -t supply-chain-build-docs:$ISOLATION_ID'
-            sh 'docker run --rm -v $(pwd):/project/grid supply-chain-build-docs:$ISOLATION_ID'
+            sh 'docker build . -f docs/grid-build-docs -t grid-build-docs:$ISOLATION_ID'
+            sh 'docker run --rm -v $(pwd):/project/grid grid-build-docs:$ISOLATION_ID'
         }
 
         stage("Archive Build artifacts") {
