@@ -133,9 +133,7 @@ fn get_service_config(peer_id: String, matches: &clap::ArgMatches) -> ServiceCon
 fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>, CliError> {
     match matches.value_of("transport") {
         Some("tls") => {
-            let ca_file = matches
-                .value_of("ca_file")
-                .map(String::from);
+            let ca_file = matches.value_of("ca_file").map(String::from);
 
             let client_cert = matches
                 .value_of("client_cert")
