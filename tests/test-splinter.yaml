@@ -24,5 +24,10 @@ services:
     image: test-splinter:${ISOLATION_ID}
     volumes:
       - ../:/project/splinter
-    command: bash -c 'cargo test'
+    command: |
+        bash -c "
+            cargo test && \
+            echo \"Running private_xo tests...\" && \
+            (cd examples/private_xo && cargo +nightly test)
+        "
     stop_signal: SIGKILL
