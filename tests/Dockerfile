@@ -32,4 +32,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin \
     CARGO_INCREMENTAL=0
 
+RUN rustup install nightly
+
 WORKDIR /project/splinter/
