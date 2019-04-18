@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::error::Error;
-use std::fmt;
-
+use grid_sdk::protos;
 use log;
 use protobuf;
 use reqwest;
@@ -36,10 +34,12 @@ pub enum CliError {
     ProtobufError(protobuf::ProtobufError),
 
     ReqwestError(reqwest::Error),
+
+    GridProtoError(protos::ProtoConversionError),
 }
 
-impl Error for CliError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl StdError for CliError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             CliError::LoggingInitializationError(err) => Some(err),
             CliError::UserError(_) => None,
@@ -47,6 +47,7 @@ impl Error for CliError {
             CliError::ProtobufError(err) => Some(err),
             CliError::SigningError(err) => Some(err),
             CliError::ReqwestError(err) => Some(err),
+            CliError::GridProtoError(err) => Some(err),
         }
     }
 }
@@ -62,6 +63,7 @@ impl std::fmt::Display for CliError {
                 write!(f, "LoggingInitializationError: {}", err.description())
             }
             CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
+            CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
         }
     }
 }
@@ -93,5 +95,11 @@ impl From<protobuf::ProtobufError> for CliError {
 impl From<reqwest::Error> for CliError {
     fn from(err: reqwest::Error) -> Self {
         CliError::ReqwestError(err)
+    }
+}
+
+impl From<protos::ProtoConversionError> for CliError {
+    fn from(err: protos::ProtoConversionError) -> Self {
+        CliError::GridProtoError(err)
     }
 }

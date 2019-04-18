@@ -17,6 +17,7 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 
+mod actions;
 mod error;
 mod http;
 mod key;
