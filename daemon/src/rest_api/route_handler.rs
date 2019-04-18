@@ -424,7 +424,9 @@ pub fn list_agents(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::database;
     use crate::rest_api::AppState;
+    use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
@@ -438,6 +440,7 @@ mod test {
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
     use std::sync::mpsc::channel;
 
+    static DATABASE_URL: &str = "postgres://grid:grid_test@localhost/grid";
     static BATCH_ID_1: &str = "batch_1";
     static BATCH_ID_2: &str = "batch_2";
     static BATCH_ID_3: &str = "batch_3";
@@ -521,14 +524,21 @@ mod test {
         }
     }
 
+    fn get_connection_pool() -> ConnectionPool {
+        database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
+    }
+
     fn create_test_server(response_type: ResponseType) -> TestServer {
         TestServer::build_with_state(move || {
             let mock_connection_addr =
                 SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
                     SawtoothMessageSender::new(MockMessageSender::new_boxed(response_type))
                 });
+            let db_executor_addr =
+                SyncArbiter::start(1, move || DbExecutor::new(get_connection_pool()));
             AppState {
                 sawtooth_connection: mock_connection_addr,
+                database_connection: db_executor_addr,
             }
         })
         .start(|app| {
@@ -845,5 +855,4 @@ mod test {
         protobuf::Message::write_to_bytes(&batch_list)
             .expect("Failed to write batch statuses to bytes")
     }
-
 }
