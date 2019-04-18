@@ -178,6 +178,36 @@ paths:
           description: API is unable to reach the database
           schema:
             $ref: "#/definitions/Error"
+  /agent:
+    get:
+      tags:
+        - "agents"
+      summary: "Get a list of Agents"
+      description: "Fetches a list of agents from the reporting database"
+      operationId: "list_agents"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "List of Agents"
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Agents"
+        400:
+          $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
 
 responses:
   400BadRequest:
@@ -390,3 +420,30 @@ definitions:
         - ENUM
         - STRUCT
         - LOCATION
+
+  Agent:
+    properties:
+      public_key:
+        type: string
+        example: 038bba5708acc262464c9fe30d3de9e905a9a5fa30cedd151dd9cd09ea26d46d00
+      org_id:
+        type: string
+        example: 03c360a46457a284793153e09840c322bee1dcc34445d7d49e19e60abd18fd0758
+      active:
+        type: boolean
+      roles:
+        type: array
+        items:
+          type: string
+      metadata:
+        type: array
+        items:
+          $ref: '#definitions/Metadata'
+
+  Metadata:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string
