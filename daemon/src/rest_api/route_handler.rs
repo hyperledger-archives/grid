@@ -421,7 +421,7 @@ pub fn list_agents(
         .responder()
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "test-api", test))]
 mod test {
     use super::*;
     use crate::database;
