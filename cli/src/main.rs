@@ -18,6 +18,7 @@ extern crate clap;
 extern crate log;
 
 mod error;
+mod http;
 mod key;
 mod transaction;
 

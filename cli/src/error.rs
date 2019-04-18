@@ -17,6 +17,7 @@ use std::fmt;
 
 use log;
 use protobuf;
+use reqwest;
 use sawtooth_sdk::signing;
 use std;
 use std::error::Error as StdError;
@@ -33,6 +34,8 @@ pub enum CliError {
     IoError(io::Error),
 
     ProtobufError(protobuf::ProtobufError),
+
+    ReqwestError(reqwest::Error),
 }
 
 impl Error for CliError {
@@ -43,6 +46,7 @@ impl Error for CliError {
             CliError::IoError(err) => Some(err),
             CliError::ProtobufError(err) => Some(err),
             CliError::SigningError(err) => Some(err),
+            CliError::ReqwestError(err) => Some(err),
         }
     }
 }
@@ -57,6 +61,7 @@ impl std::fmt::Display for CliError {
             CliError::LoggingInitializationError(ref err) => {
                 write!(f, "LoggingInitializationError: {}", err.description())
             }
+            CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
         }
     }
 }
@@ -82,5 +87,11 @@ impl From<io::Error> for CliError {
 impl From<protobuf::ProtobufError> for CliError {
     fn from(err: protobuf::ProtobufError) -> Self {
         CliError::ProtobufError(err)
+    }
+}
+
+impl From<reqwest::Error> for CliError {
+    fn from(err: reqwest::Error) -> Self {
+        CliError::ReqwestError(err)
     }
 }

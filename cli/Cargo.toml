@@ -27,7 +27,9 @@ grid-sdk = { path = "../sdk" }
 rust-crypto = "0.2"
 protobuf = "2"
 users = "0.9"
+reqwest = "0.9"
 dirs = "1"
+serde = { version = "1", features = ["derive"] }
 
 [[bin]]
 name = "grid"
