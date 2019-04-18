@@ -22,6 +22,15 @@ edition = "2018"
 
 [dependencies]
 protobuf = "2"
+cfg-if = "0.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
+sabre-sdk = "0.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rust-crypto = "0.2"
+sawtooth-sdk = {git = "https://github.com/hyperledger/sawtooth-sdk-rust"}
 
 [build-dependencies]
 protoc-rust = "2"
