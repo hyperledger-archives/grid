@@ -367,7 +367,7 @@ fn process_batch_status_response(
         )),
     }
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct AgentSlice {
     public_key: String,
     org_id: String,
@@ -425,9 +425,13 @@ pub fn list_agents(
 mod test {
     use super::*;
     use crate::database;
+    use crate::database::{helpers::MAX_BLOCK_NUM, models::NewAgent};
     use crate::rest_api::AppState;
+
     use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
+    use diesel::pg::PgConnection;
+    use diesel::RunQueryDsl;
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
@@ -440,7 +444,11 @@ mod test {
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
     use std::sync::mpsc::channel;
 
-    static DATABASE_URL: &str = "postgres://grid:grid_test@localhost/grid";
+    static DATABASE_URL: &str = "postgres://grid_test:grid_test@localhost:5433/grid_test";
+
+    static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
+    static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";
+
     static BATCH_ID_1: &str = "batch_1";
     static BATCH_ID_2: &str = "batch_2";
     static BATCH_ID_3: &str = "batch_3";
@@ -548,7 +556,8 @@ mod test {
             })
             .resource("/batches", |r| {
                 r.method(Method::POST).with_async(submit_batches)
-            });
+            })
+            .resource("/agent", |r| r.method(Method::GET).with_async(list_agents));
         })
     }
 
@@ -793,6 +802,44 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
 
+    ///
+    /// Verifies a GET /agent responds with an Ok response
+    ///     with an empty Agents table
+    ///
+    ///     The TestServer will receive a request with no parameters
+    ///     It will receive a response with status Ok
+    ///     It should send back a response with:
+    ///         - body containing a list of Agents
+    #[test]
+    fn test_list_agents() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the agents table in the test database
+        clear_agents_table(&test_pool.get().unwrap());
+        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert!(body.is_empty());
+
+        // Adds a single Agent to the test database
+        populate_agent_table(&test_pool.get().unwrap());
+
+        // Making another request to the database
+        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let agent = body.first().unwrap();
+        assert_eq!(agent.public_key, KEY1.to_string());
+        assert_eq!(agent.org_id, KEY2.to_string());
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -854,5 +901,24 @@ mod test {
         batch_list.set_batches(protobuf::RepeatedField::from_vec(vec![batch]));
         protobuf::Message::write_to_bytes(&batch_list)
             .expect("Failed to write batch statuses to bytes")
+    }
+
+    fn populate_agent_table(conn: &PgConnection) {
+        let agent = NewAgent {
+            public_key: KEY1.to_string(),
+            org_id: KEY2.to_string(),
+            active: true,
+            roles: vec![],
+            metadata: vec![],
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+        };
+        clear_agents_table(conn);
+        database::helpers::insert_agents(conn, &[agent]).unwrap();
+    }
+
+    fn clear_agents_table(conn: &PgConnection) {
+        use crate::database::schema::agent::dsl::*;
+        diesel::delete(agent).execute(conn).unwrap();
     }
 }
