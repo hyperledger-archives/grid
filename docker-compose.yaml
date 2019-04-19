@@ -20,15 +20,22 @@ volumes:
 
 services:
 
-  track-and-trace-tp:
-    image: grid-track-and-trace-tp
-    container_name: grid-track-and-trace-tp
+  tnt-contract-builder:
+    image: tnt-contract-builder
+    container_name: tnt-contract-builder
     build:
       context: .
       dockerfile: contracts/track_and_trace/Dockerfile
+    volumes:
+      - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
-        /grid-track-and-trace-tp -v -C tcp://validator:4004
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        sabre cr --create grid_track_and_trace --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre ns --create a43b46 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm a43b46 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        echo '---------========= track and trace contract is loaded =========---------'
       "
 
   schema-tp:
