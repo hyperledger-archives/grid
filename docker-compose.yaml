@@ -15,6 +15,9 @@
 
 version: '2.1'
 
+volumes:
+  grid-shared:
+
 services:
 
   track-and-trace-tp:
@@ -57,19 +60,26 @@ services:
       - 4004
     ports:
       - '4020:4004'
+    volumes:
+      - grid-shared:/grid-shared
     # start the validator with an empty genesis batch
     entrypoint: |
       bash -c "
         if [ ! -f /etc/sawtooth/keys/validator.priv ]; then
           sawadm keygen &&
           sawtooth keygen my_key &&
+          cp /root/.sawtooth/keys/my_key.* /grid-shared &&
           sawset genesis -k /root/.sawtooth/keys/my_key.priv &&
           sawset proposal create \
             -k /root/.sawtooth/keys/my_key.priv \
             sawtooth.consensus.algorithm.name=Devmode \
             sawtooth.consensus.algorithm.version=0.1 \
             -o config.batch && 
-          sawadm genesis config-genesis.batch config.batch
+          sawset proposal create \
+            -k /root/.sawtooth/keys/my_key.priv \
+            sawtooth.swa.administrators=$$(cat /grid-shared/my_key.pub) \
+            -o sabre-admin.batch
+          sawadm genesis config-genesis.batch config.batch sabre-admin.batch
         fi;
         sawtooth-validator -vv \
           --endpoint tcp://validator:8800 \
@@ -126,6 +136,13 @@ services:
           /gridd -vv -b gridd:8080 -C tcp://validator:4004 \
               --database-url postgres://grid:grid_example@db/grid
         "
+
+  sabre-tp:
+    image: hyperledger/sawtooth-sabre-tp:latest
+    container_name: sawtooth-sabre-tp
+    depends_on:
+      - validator
+    entrypoint: sawtooth-sabre -vv --connect tcp://validator:4004
 
   sawtooth-shell:
     image: hyperledger/sawtooth-shell:1.1
