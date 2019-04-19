@@ -40,6 +40,7 @@ use log::Level;
 use simple_logger;
 
 use crate::config::GridConfigBuilder;
+use crate::database::{error::DatabaseError, helpers as db};
 use crate::error::DaemonError;
 use crate::event::{block::BlockEventHandler, EventProcessor};
 use crate::sawtooth_connection::SawtoothConnection;
@@ -82,9 +83,12 @@ fn run() -> Result<(), DaemonError> {
 
     let connection_pool = database::create_connection_pool(config.database_url())?;
 
+    let current_block =
+        db::get_current_block_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
+
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
-        "0000000000000000",
+        &current_block,
         event_handlers![BlockEventHandler::new(connection_pool.clone())],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
