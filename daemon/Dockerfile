@@ -43,6 +43,9 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/proto
 
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
+# Copy grid sdk dependency
+COPY ./sdk/ ../sdk/
+
 RUN USER=root cargo new --bin daemon
 WORKDIR /daemon
 

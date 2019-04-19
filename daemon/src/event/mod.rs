@@ -38,12 +38,13 @@ use crate::sawtooth_connection::SawtoothConnection;
 
 pub use super::event::error::{EventError, EventProcessorError};
 
+const PIKE_NAMESPACE: &'static str = "cad11d";
+const GRID_NAMESPACE: &'static str = "621dee";
+
 const SHUTDOWN_TIMEOUT: u64 = 2;
 
 pub trait EventHandler: Send {
-    fn event_type(&self) -> &str;
-
-    fn handle_event(&self, event: &Event) -> Result<(), EventError>;
+    fn handle_events(&self, events: &[Event]) -> Result<(), EventError>;
 }
 
 #[macro_export]
@@ -181,7 +182,7 @@ fn handle_message(
         return Ok(());
     }
 
-    let mut event_list: EventList = match protobuf::parse_from_bytes(msg.get_content()) {
+    let event_list: EventList = match protobuf::parse_from_bytes(msg.get_content()) {
         Ok(event_list) => event_list,
         Err(err) => {
             warn!("Unable to parse event list; ignoring: {}", err);
@@ -189,17 +190,9 @@ fn handle_message(
         }
     };
 
-    for event in event_list.take_events().into_iter() {
-        let event_handler = event_handlers
-            .iter()
-            .find(|handler| handler.event_type() == event.get_event_type());
-
-        if let Some(event_handler) = event_handler {
-            if let Err(err) = event_handler.handle_event(&event) {
-                error!("Unable to handle event {}: {}", event.get_event_type(), err);
-            }
-        } else {
-            warn!("Unable to handle event {}", event.get_event_type());
+    for handler in event_handlers {
+        if let Err(err) = handler.handle_events(&event_list.get_events()) {
+            error!("An error occured while handling events: {}", err);
         }
     }
 
@@ -229,13 +222,21 @@ fn create_subscription_request(last_known_block_id: String) -> ClientEventsSubsc
     let mut grid_state_filter = EventFilter::new();
     grid_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
     grid_state_filter.set_key("address".into());
-    grid_state_filter.set_match_string("621dee.*".into());
+    grid_state_filter.set_match_string(format!("{}.*", GRID_NAMESPACE));
+
+    let mut pike_state_filter = EventFilter::new();
+    pike_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
+    pike_state_filter.set_key("address".into());
+    pike_state_filter.set_match_string(format!("{}.*", PIKE_NAMESPACE));
 
     let mut state_delta_subscription = EventSubscription::new();
     state_delta_subscription.set_event_type("sawtooth/state-delta".into());
     state_delta_subscription
         .mut_filters()
         .push(grid_state_filter);
+    state_delta_subscription
+        .mut_filters()
+        .push(pike_state_filter);
 
     let mut request = ClientEventsSubscribeRequest::new();
     request.mut_subscriptions().push(block_info_subscription);
