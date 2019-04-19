@@ -14,7 +14,7 @@
 
 name: pike
 version: '1.0'
-wasm: tp/target/wasm32-unknown-unknown/release/pike.wasm
+wasm: target/wasm32-unknown-unknown/release/grid-pike-tp.wasm
 inputs:
   - 'cad11d'
 outputs:

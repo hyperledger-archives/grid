@@ -15,27 +15,38 @@
 FROM ubuntu:bionic as grid-pike-builder
 
 RUN apt-get update \
+&& apt-get install gnupg -y
+
+RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
+ && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
+ || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
+ && apt-get update \
  && apt-get install -y -q \
  curl \
  gcc \
  libssl-dev \
  libzmq3-dev \
  pkg-config \
+ sabre-cli \
  unzip \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
+
+ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
-# Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
+RUN rustup update \
+ && rustup default nightly \
+ && rustup target add wasm32-unknown-unknown --toolchain nightly
 
-ENV PATH=$PATH:/root/.cargo/bin
+# For Building Protobufs
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
+ && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
+ && rm protoc-3.5.1-linux-x86_64.zip
 
 COPY ./sdk /sdk
 
@@ -53,16 +64,8 @@ RUN rm src/*.rs
 COPY ./contracts/pike/src ./src
 
 RUN rm ./target/release/grid-pike-tp* ./target/release/deps/grid_pike*
-RUN cargo build --release
+RUN cargo build --target wasm32-unknown-unknown --release
 
-# Create the stand-alone stage
-FROM ubuntu:bionic
+COPY ./contracts/pike/pike.yaml ./pike.yaml
 
-RUN apt-get update \
- && apt-get install -y libssl1.1 libzmq5 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-COPY --from=grid-pike-builder /contracts/pike/target/release/grid-pike-tp /
-
-CMD ["/grid-pike-tp"]
+ENTRYPOINT []

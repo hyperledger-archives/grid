@@ -42,15 +42,22 @@ services:
         /grid-schema-tp -v -C tcp://validator:4004
       "
 
-  pike-tp:
-    image: grid-pike-tp
-    container_name: grid-pike-tp
+  pike-contract-builder:
+    image: pike-contract-builder
+    container_name: pike-contract-builder
     build:
       context: .
       dockerfile: contracts/pike/Dockerfile
+    volumes:
+      - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
-        /grid-pike-tp -vv -C tcp://validator:4004
+        while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
+        sabre cr --create pike --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename pike.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm cad11d pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        echo '---------========= pike contract is loaded =========---------'
       "
 
   validator:
