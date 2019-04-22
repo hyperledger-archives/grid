@@ -247,8 +247,10 @@ Numbers
 
 Enums
   An enum data type restricts values to a limited set of possible values. The
-  definition for this data type includes a list of strings names describing a
-  possible state of the enum.
+  definition for this data type includes a list of string names describing a
+  possible state of the enum. A ``PropertyValue`` for this data type contains
+  an integer value corresponding to the index of a value in the ``enum_option``
+  list.
 
   An enum value is represented as:
 
@@ -261,20 +263,18 @@ Enums
         required=True
     )
 
-  An instance of this enum is as follows:
+  An instance of a red enum is as follows:
 
   .. code-block:: python
 
     PropertyValue(
         name='color',
         data_type=PropertyDefinition.DataType.ENUM,
-        enum_value='white'
+        enum_value=1
     )
 
-  Due to the use of protobuf, there is no valid default value, so not setting
-  this value can either result in an error or can initialize the ``enum_value``
-  to one of the options in the property definition.  This detail is left to the
-  smart-contract implementer.
+  Due to the use of protobuf, the default value for ``enum_value`` is
+  ``0``.
 
 Structs
   A struct is a recursively defined collection of other named properties that
