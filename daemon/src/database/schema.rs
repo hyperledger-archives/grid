@@ -45,6 +45,49 @@ table! {
 }
 
 table! {
+    grid_property_definition (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        name -> Text,
+        schema_name -> Text,
+        data_type -> Text,
+        required -> Bool,
+        description -> Text,
+        number_exponent -> Int8,
+        enum_options -> Array<Text>,
+        struct_properties -> Array<Text>,
+    }
+}
+
+table! {
+    grid_property_value (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        name -> Text,
+        data_type -> Text,
+        bytes_value -> Nullable<Bytea>,
+        boolean_value -> Nullable<Bool>,
+        number_value -> Nullable<Int8>,
+        string_value -> Nullable<Text>,
+        enum_value -> Nullable<Int4>,
+        struct_values -> Nullable<Array<Text>>,
+    }
+}
+
+table! {
+    grid_schema (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        name -> Text,
+        description -> Text,
+        owner -> Text,
+    }
+}
+
+table! {
     organization (id) {
         id -> Int8,
         start_block_num -> Int8,
@@ -56,4 +99,12 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(agent, block, chain_record, organization,);
+allow_tables_to_appear_in_same_query!(
+    agent,
+    block,
+    chain_record,
+    grid_property_definition,
+    grid_property_value,
+    grid_schema,
+    organization,
+);

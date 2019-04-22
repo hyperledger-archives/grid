@@ -17,7 +17,9 @@
 
 use serde_json::Value as JsonValue;
 
-use super::schema::{agent, block, organization};
+use super::schema::{
+    agent, block, grid_property_definition, grid_property_value, grid_schema, organization,
+};
 
 #[derive(Insertable, Queryable)]
 #[table_name = "block"]
@@ -81,4 +83,84 @@ pub struct Organization {
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
     pub end_block_num: i64,
+}
+
+#[derive(Clone, Insertable, Debug)]
+#[table_name = "grid_schema"]
+pub struct NewGridSchema {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub description: String,
+    pub owner: String,
+}
+
+#[derive(Queryable, Debug)]
+pub struct GridSchema {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub description: String,
+    pub owner: String,
+}
+
+#[derive(Clone, Insertable, Debug)]
+#[table_name = "grid_property_definition"]
+pub struct NewGridPropertyDefinition {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub schema_name: String,
+    pub data_type: String,
+    pub required: bool,
+    pub description: String,
+    pub number_exponent: i64,
+    pub enum_options: Vec<String>,
+    pub struct_properties: Vec<String>,
+}
+
+#[derive(Queryable, Debug)]
+pub struct GridPropertyDefinition {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub schema_name: String,
+    pub data_type: String,
+    pub required: bool,
+    pub description: String,
+    pub number_exponent: i64,
+    pub enum_options: Vec<String>,
+    pub struct_properties: Vec<String>,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "grid_property_value"]
+pub struct NewGridPropertyValue {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+}
+
+#[derive(Queryable, Debug)]
+pub struct GridPropertyValue {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i64>,
+    pub struct_values: Option<Vec<String>>,
 }
