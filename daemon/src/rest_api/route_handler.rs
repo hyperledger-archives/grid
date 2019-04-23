@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::ConnectionPool;
+use crate::database::{models::Agent, ConnectionPool};
 use crate::rest_api::{error::RestApiResponseError, AppState};
 use actix::{Actor, Context, Handler, Message, SyncContext};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
@@ -27,6 +27,7 @@ use sawtooth_sdk::messages::client_batch_submit::{
 use sawtooth_sdk::messages::validator::Message_MessageType;
 use sawtooth_sdk::messaging::stream::MessageSender;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
@@ -364,6 +365,27 @@ fn process_batch_status_response(
         _ => Err(RestApiResponseError::SawtoothValidatorResponseError(
             format!("Validator responded with error {:?}", status),
         )),
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct AgentSlice {
+    public_key: String,
+    org_id: String,
+    active: bool,
+    roles: Vec<String>,
+    metadata: Vec<JsonValue>,
+}
+
+impl AgentSlice {
+    pub fn from_agent(agent: Agent) -> Self {
+        Self {
+            public_key: agent.public_key,
+            org_id: agent.org_id,
+            active: agent.active,
+            roles: agent.roles,
+            metadata: agent.metadata,
+        }
     }
 }
 
