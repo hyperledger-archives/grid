@@ -17,7 +17,7 @@
 
 use crate::error::CliError;
 use crate::http::submit_batches;
-use crate::transaction::pike_batch_builder;
+use crate::transaction::{pike_batch_builder, PIKE_NAMESPACE};
 use grid_sdk::{
     protocol::pike::payload::{
         Action, CreateOrganizationAction, PikePayloadBuilder, UpdateOrganizationAction,
@@ -38,7 +38,11 @@ pub fn do_create_organization(
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
     let batch_list = pike_batch_builder(key)
-        .add_transaction(&payload.into_proto()?)?
+        .add_transaction(
+            &payload.into_proto()?,
+            &[PIKE_NAMESPACE.to_string()],
+            &[PIKE_NAMESPACE.to_string()],
+        )?
         .create_batch_list();
 
     submit_batches(url, wait, &batch_list)
@@ -57,7 +61,11 @@ pub fn do_update_organization(
         .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
     let batch_list = pike_batch_builder(key)
-        .add_transaction(&payload.into_proto()?)?
+        .add_transaction(
+            &payload.into_proto()?,
+            &[PIKE_NAMESPACE.to_string()],
+            &[PIKE_NAMESPACE.to_string()],
+        )?
         .create_batch_list();
 
     submit_batches(url, wait, &batch_list)
