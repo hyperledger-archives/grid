@@ -27,6 +27,7 @@ cfg_if! {
     }
 }
 
+use grid_sdk::permissions::PermissionChecker;
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaPayload, SchemaUpdateAction,
 };
@@ -98,6 +99,7 @@ impl TransactionHandler for GridSchemaTransactionHandler {
 
         let signer = request.get_header().get_signer_public_key();
         let state = GridSchemaState::new(context);
+        let perm_checker = PermissionChecker::new(context);
 
         #[cfg(not(target_arch = "wasm32"))]
         info!(
@@ -108,8 +110,12 @@ impl TransactionHandler for GridSchemaTransactionHandler {
         );
 
         match payload.action() {
-            Action::SchemaCreate => schema_create(payload.schema_create(), signer, &state),
-            Action::SchemaUpdate => schema_update(payload.schema_update(), signer, &state),
+            Action::SchemaCreate => {
+                schema_create(payload.schema_create(), signer, &state, &perm_checker)
+            }
+            Action::SchemaUpdate => {
+                schema_update(payload.schema_update(), signer, &state, &perm_checker)
+            }
         }
     }
 }
@@ -118,6 +124,7 @@ fn schema_create(
     payload: &SchemaCreateAction,
     signer: &str,
     state: &GridSchemaState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     let schema_name = payload.schema_name();
     let description = payload.description();
@@ -129,6 +136,8 @@ fn schema_create(
             schema_name
         )));
     }
+
+    check_permission(perm_checker, signer, "can_create_schema")?;
 
     let agent = match state.get_agent(signer)? {
         Some(agent) => agent,
@@ -162,6 +171,7 @@ fn schema_update(
     payload: &SchemaUpdateAction,
     signer: &str,
     state: &GridSchemaState,
+    perm_checker: &PermissionChecker,
 ) -> Result<(), ApplyError> {
     let schema_name = payload.schema_name();
     let mut new_properties = payload.properties().to_vec();
@@ -175,6 +185,8 @@ fn schema_update(
             )));
         }
     };
+
+    check_permission(perm_checker, signer, "can_update_schema")?;
 
     let agent = match state.get_agent(signer)? {
         Some(agent) => agent,
@@ -226,6 +238,23 @@ fn schema_update(
         .map_err(|err| ApplyError::InvalidTransaction(format!("Cannot build schema: {}", err)))?;
 
     state.set_schema(schema_name, schema)
+}
+
+fn check_permission(
+    perm_checker: &PermissionChecker,
+    signer: &str,
+    permission: &str,
+) -> Result<(), ApplyError> {
+    match perm_checker.has_permission(signer, permission) {
+        Ok(true) => return Ok(()),
+        Ok(false) => {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signer does not have the {} permission: {}.",
+                permission, signer,
+            )))
+        }
+        Err(e) => return Err(ApplyError::InvalidTransaction(format!("{}", e))),
+    };
 }
 
 #[cfg(test)]
@@ -303,7 +332,10 @@ mod tests {
                 .with_org_id("test_org".to_string())
                 .with_public_key("agent_public_key".to_string())
                 .with_active(true)
-                .with_roles(vec!["Role".to_string()])
+                .with_roles(vec![
+                    "can_create_schema".to_string(),
+                    "can_update_schema".to_string(),
+                ])
                 .build()
                 .unwrap();
 
@@ -320,7 +352,10 @@ mod tests {
                 .with_org_id("test_org".to_string())
                 .with_public_key("agent_public_key".to_string())
                 .with_active(false)
-                .with_roles(vec!["Role".to_string()])
+                .with_roles(vec![
+                    "can_create_schema".to_string(),
+                    "can_update_schema".to_string(),
+                ])
                 .build()
                 .unwrap();
 
@@ -337,7 +372,26 @@ mod tests {
                 .with_org_id("wrong_org".to_string())
                 .with_public_key("agent_public_key".to_string())
                 .with_active(true)
-                .with_roles(vec!["Role".to_string()])
+                .with_roles(vec![
+                    "can_create_schema".to_string(),
+                    "can_update_schema".to_string(),
+                ])
+                .build()
+                .unwrap();
+
+            let builder = AgentListBuilder::new();
+            let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = compute_agent_address("agent_public_key");
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+
+        fn add_agent_no_roles(&self) {
+            let builder = AgentBuilder::new();
+            let agent = builder
+                .with_org_id("test_org".to_string())
+                .with_public_key("agent_public_key".to_string())
+                .with_active(true)
                 .build()
                 .unwrap();
 
@@ -385,6 +439,7 @@ mod tests {
     fn test_create_schema_handler_schema_already_exists() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -404,7 +459,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &state) {
+        match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Schema already exists, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema with name TestSchema already exists"));
@@ -418,6 +473,7 @@ mod tests {
     // is returned
     fn test_create_schema_handler_agent_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -437,7 +493,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &state) {
+        match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an Agent: agent_public_key"));
@@ -452,6 +508,7 @@ mod tests {
     fn test_create_schema_handler_inactive_agent() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent_inactive();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -471,10 +528,47 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &state) {
+        match schema_create(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an active Agent: agent_public_key"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    // Test that if the agent has the wrong roles an InvalidTransaction
+    // is returned
+    fn test_create_schema_handler_no_roles() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent_no_roles();
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
+        let signer = "agent_public_key";
+
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let builder = SchemaCreateBuilder::new();
+        let action = builder
+            .with_schema_name("TestSchema".to_string())
+            .with_description("Test Schema".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        match schema_create(&action, signer, &state, &perm_checker) {
+            Ok(()) => panic!("Agent does not have roles, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(
+                    "The signer does not have the can_create_schema permission: agent_public_key."
+                ));
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
@@ -485,6 +579,7 @@ mod tests {
     fn test_create_schema_handler_valid() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -504,13 +599,14 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(schema_create(&action, signer, &state).is_ok());
+        assert!(schema_create(&action, signer, &state, &perm_checker).is_ok());
     }
 
     #[test]
     // Test that if the schema does not exist in state an InvalidTransaction is returned
     fn test_update_schema_handler_schema_does_not_exists() {
         let transaction_context = MockTransactionContext::default();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -529,7 +625,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &state) {
+        match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Schema already exists, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema with name TestSchema does not exist"));
@@ -543,6 +639,7 @@ mod tests {
     fn test_update_schema_handler_agent_does_not_exist() {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -561,7 +658,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &state) {
+        match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an Agent: agent_public_key"));
@@ -576,6 +673,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent_inactive();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -594,7 +692,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &state) {
+        match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an active Agent: agent_public_key"));
@@ -609,6 +707,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent_wrong_organization();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -627,11 +726,48 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &state) {
+        match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains(
                     "The signer does not belong to the correct organization: wrong_org != test_org"
+                ));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    // Test that if the agent has the wrong roles an InvalidTransaction
+    // is returned
+    fn test_update_schema_handler_no_roles() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent_no_roles();
+        transaction_context.add_schema();
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
+        let signer = "agent_public_key";
+
+        let builder = PropertyDefinitionBuilder::new();
+        let property_definition = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::String)
+            .with_description("Optional".to_string())
+            .build()
+            .unwrap();
+
+        let builder = SchemaUpdateBuilder::new();
+        let action = builder
+            .with_schema_name("TestSchema".to_string())
+            .with_properties(vec![property_definition.clone()])
+            .build()
+            .unwrap();
+
+        match schema_update(&action, signer, &state, &perm_checker) {
+            Ok(()) => panic!("Agent does not have roles, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(
+                    "The signer does not have the can_update_schema permission: agent_public_key."
                 ));
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
@@ -644,6 +780,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -662,7 +799,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &state) {
+        match schema_update(&action, signer, &state, &perm_checker) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema already has PropertyDefination with name TEST"));
@@ -677,6 +814,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent();
+        let perm_checker = PermissionChecker::new(&transaction_context);
         let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
@@ -695,6 +833,6 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(schema_update(&action, signer, &state).is_ok());
+        assert!(schema_update(&action, signer, &state, &perm_checker).is_ok());
     }
 }
