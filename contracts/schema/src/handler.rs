@@ -97,7 +97,7 @@ impl TransactionHandler for GridSchemaTransactionHandler {
         validate_payload(&payload)?;
 
         let signer = request.get_header().get_signer_public_key();
-        let mut state = GridSchemaState::new(context);
+        let state = GridSchemaState::new(context);
 
         #[cfg(not(target_arch = "wasm32"))]
         info!(
@@ -108,8 +108,8 @@ impl TransactionHandler for GridSchemaTransactionHandler {
         );
 
         match payload.action() {
-            Action::SchemaCreate => schema_create(payload.schema_create(), signer, &mut state),
-            Action::SchemaUpdate => schema_update(payload.schema_update(), signer, &mut state),
+            Action::SchemaCreate => schema_create(payload.schema_create(), signer, &state),
+            Action::SchemaUpdate => schema_update(payload.schema_update(), signer, &state),
         }
     }
 }
@@ -117,7 +117,7 @@ impl TransactionHandler for GridSchemaTransactionHandler {
 fn schema_create(
     payload: &SchemaCreateAction,
     signer: &str,
-    state: &mut GridSchemaState,
+    state: &GridSchemaState,
 ) -> Result<(), ApplyError> {
     let schema_name = payload.schema_name();
     let description = payload.description();
@@ -161,7 +161,7 @@ fn schema_create(
 fn schema_update(
     payload: &SchemaUpdateAction,
     signer: &str,
-    state: &mut GridSchemaState,
+    state: &GridSchemaState,
 ) -> Result<(), ApplyError> {
     let schema_name = payload.schema_name();
     let mut new_properties = payload.properties().to_vec();
@@ -383,9 +383,9 @@ mod tests {
     // Test that if a schema with the same name already exists in state an InvalidTransaction
     // is returned
     fn test_create_schema_handler_schema_already_exists() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -404,7 +404,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &mut state) {
+        match schema_create(&action, signer, &state) {
             Ok(()) => panic!("Schema already exists, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema with name TestSchema already exists"));
@@ -417,8 +417,8 @@ mod tests {
     // Test that if the transaction signer is not an agent an InvalidTransaction
     // is returned
     fn test_create_schema_handler_agent_does_not_exist() {
-        let mut transaction_context = MockTransactionContext::default();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let transaction_context = MockTransactionContext::default();
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -437,7 +437,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &mut state) {
+        match schema_create(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an Agent: agent_public_key"));
@@ -450,9 +450,9 @@ mod tests {
     // Test that if the agent is inactive an InvalidTransaction
     // is returned
     fn test_create_schema_handler_inactive_agent() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent_inactive();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -471,7 +471,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_create(&action, signer, &mut state) {
+        match schema_create(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an active Agent: agent_public_key"));
@@ -483,9 +483,9 @@ mod tests {
     #[test]
     // Test that if the SchemaCreateAction is valid OK is returned
     fn test_create_schema_handler_valid() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -504,14 +504,14 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(schema_create(&action, signer, &mut state).is_ok());
+        assert!(schema_create(&action, signer, &state).is_ok());
     }
 
     #[test]
     // Test that if the schema does not exist in state an InvalidTransaction is returned
     fn test_update_schema_handler_schema_does_not_exists() {
-        let mut transaction_context = MockTransactionContext::default();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let transaction_context = MockTransactionContext::default();
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -529,7 +529,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &mut state) {
+        match schema_update(&action, signer, &state) {
             Ok(()) => panic!("Schema already exists, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema with name TestSchema does not exist"));
@@ -541,9 +541,9 @@ mod tests {
     #[test]
     // Test that if the signer is not an agent an InvalidTransaction is returned
     fn test_update_schema_handler_agent_does_not_exist() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -561,7 +561,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &mut state) {
+        match schema_update(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an Agent: agent_public_key"));
@@ -573,10 +573,10 @@ mod tests {
     #[test]
     // Test that if the agent is inactive an InvalidTransaction is returned
     fn test_update_schema_handler_inactive_agent() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent_inactive();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -594,7 +594,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &mut state) {
+        match schema_update(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("The signer is not an active Agent: agent_public_key"));
@@ -606,10 +606,10 @@ mod tests {
     #[test]
     // Test that if the agent belongs to the wrong organization an InvalidTransaction is returned
     fn test_update_schema_handler_agent_wrong_org() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent_wrong_organization();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -627,7 +627,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &mut state) {
+        match schema_update(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains(
@@ -641,10 +641,10 @@ mod tests {
     #[test]
     // Test that if a property already exists in that schema an InvalidTransaction is returned
     fn test_update_schema_handler_duplicate_property() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -662,7 +662,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match schema_update(&action, signer, &mut state) {
+        match schema_update(&action, signer, &state) {
             Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
             Err(ApplyError::InvalidTransaction(err)) => {
                 assert!(err.contains("Schema already has PropertyDefination with name TEST"));
@@ -674,10 +674,10 @@ mod tests {
     #[test]
     // Test that if the SchemaUpdateAction is valid an OK is returned
     fn test_update_schema_handler_valid() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
         transaction_context.add_schema();
         transaction_context.add_agent();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
         let signer = "agent_public_key";
 
         let builder = PropertyDefinitionBuilder::new();
@@ -695,6 +695,6 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(schema_update(&action, signer, &mut state).is_ok());
+        assert!(schema_update(&action, signer, &state).is_ok());
     }
 }

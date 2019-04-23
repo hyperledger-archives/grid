@@ -61,16 +61,16 @@ pub fn compute_schema_address(name: &str) -> String {
 
 /// GridSchemaState is in charge of handling getting and setting state.
 pub struct GridSchemaState<'a> {
-    context: &'a mut dyn TransactionContext,
+    context: &'a dyn TransactionContext,
 }
 
 impl<'a> GridSchemaState<'a> {
-    pub fn new(context: &'a mut dyn TransactionContext) -> GridSchemaState {
+    pub fn new(context: &'a dyn TransactionContext) -> GridSchemaState {
         GridSchemaState { context }
     }
 
     /// Gets a Pike Agent. Handles retrieving the correct agent from an AgentList.
-    pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
+    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
         let address = compute_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
@@ -99,7 +99,7 @@ impl<'a> GridSchemaState<'a> {
 
     /// Gets a Pike Organization. Handles retrieving the correct organization from an
     /// OrganizationList.
-    pub fn get_organization(&mut self, id: &str) -> Result<Option<Organization>, ApplyError> {
+    pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
         let address = compute_org_address(id);
         let d = self.context.get_state_entry(&address)?;
         match d {
@@ -127,7 +127,7 @@ impl<'a> GridSchemaState<'a> {
     }
 
     /// Gets a Grid Schema. Handles retrieving the correct Schema from a SchemaList
-    pub fn get_schema(&mut self, name: &str) -> Result<Option<Schema>, ApplyError> {
+    pub fn get_schema(&self, name: &str) -> Result<Option<Schema>, ApplyError> {
         let address = compute_schema_address(name);
         let d = self.context.get_state_entry(&address)?;
         match d {
@@ -158,7 +158,7 @@ impl<'a> GridSchemaState<'a> {
     /// at the address the schema will be stored. If a SchemaList does already exist, there has
     /// been a hash collision. The Schema is stored in the SchemaList, sorted by the Schema name,
     /// and set in state.
-    pub fn set_schema(&mut self, name: &str, new_schema: Schema) -> Result<(), ApplyError> {
+    pub fn set_schema(&self, name: &str, new_schema: Schema) -> Result<(), ApplyError> {
         let address = compute_schema_address(name);
         let d = self.context.get_state_entry(&address)?;
         // get list of existing schemas, or an empty vec if none
@@ -279,8 +279,8 @@ mod tests {
     #[test]
     // Test that if an agent does not exist in state, None is returned
     fn test_get_agent_none() {
-        let mut transaction_context = MockTransactionContext::default();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let transaction_context = MockTransactionContext::default();
+        let state = GridSchemaState::new(&transaction_context);
 
         let result = state.get_agent("agent_public_key").unwrap();
         assert!(result.is_none())
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     // Test that if an agent does exists in state, Some(Agent) is returned;
     fn test_get_agent_some() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
 
         let builder = AgentBuilder::new();
         let agent = builder
@@ -308,7 +308,7 @@ mod tests {
             .set_state_entry(agent_address, agent_bytes)
             .unwrap();
 
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
 
         let result = state.get_agent("agent_public_key").unwrap();
         assert!(result.is_some());
@@ -320,8 +320,8 @@ mod tests {
     #[test]
     // Test that if an org does not exist in state, None is returned
     fn test_get_organization_none() {
-        let mut transaction_context = MockTransactionContext::default();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let transaction_context = MockTransactionContext::default();
+        let state = GridSchemaState::new(&transaction_context);
 
         let result = state.get_organization("test_org").unwrap();
         assert!(result.is_none())
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     // Test that if an org does exists in state, Some(Organization) is returned
     fn test_get_organization_some() {
-        let mut transaction_context = MockTransactionContext::default();
+        let transaction_context = MockTransactionContext::default();
 
         let builder = OrganizationBuilder::new();
         let organization = builder
@@ -351,7 +351,7 @@ mod tests {
             .set_state_entry(org_address, org_bytes)
             .unwrap();
 
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let state = GridSchemaState::new(&transaction_context);
 
         let result = state.get_organization("test_org").unwrap();
         assert!(result.is_some());
@@ -366,8 +366,8 @@ mod tests {
     // 3. Test that if a schema is in state it will be returned as Some(Schema).
     // 4. Test that a schema can be replaced
     fn test_grid_schema_state() {
-        let mut transaction_context = MockTransactionContext::default();
-        let mut state = GridSchemaState::new(&mut transaction_context);
+        let transaction_context = MockTransactionContext::default();
+        let state = GridSchemaState::new(&transaction_context);
 
         let result = state.get_schema("TestSchema").unwrap();
         assert!(result.is_none());
