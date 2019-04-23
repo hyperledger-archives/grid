@@ -31,7 +31,7 @@ services:
       - validator
     entrypoint: grid-track-and-trace-tp -C tcp://validator:4004 -v
 
-  schema:
+  schema-tp:
     image: grid-schema-tp-installed:${ISOLATION_ID}
     container_name: grid-schema-tp-installed
     build:

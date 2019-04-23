@@ -30,13 +30,12 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
-# For Building Protobufs
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
- && curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
- && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
- && rm protoc-3.5.1-linux-x86_64.zip
+# Install protoc
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
 
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+ENV PATH=$PATH:/root/.cargo/bin
 
 COPY ./sdk /sdk
 
