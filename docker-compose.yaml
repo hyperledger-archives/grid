@@ -38,7 +38,7 @@ services:
       bash -c "
         /grid-schema-tp -v -C tcp://validator:4004
       "
-  
+
   pike-tp:
     image: grid-pike-tp
     container_name: grid-pike-tp
