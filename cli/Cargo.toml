@@ -30,6 +30,7 @@ users = "0.9"
 reqwest = "0.9"
 dirs = "1"
 serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.8"
 
 [[bin]]
 name = "grid"

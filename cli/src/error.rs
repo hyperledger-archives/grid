@@ -17,6 +17,7 @@ use log;
 use protobuf;
 use reqwest;
 use sawtooth_sdk::signing;
+use serde_yaml;
 use std;
 use std::error::Error as StdError;
 use std::io;
@@ -24,17 +25,13 @@ use std::io;
 #[derive(Debug)]
 pub enum CliError {
     LoggingInitializationError(Box<log::SetLoggerError>),
-
+    InvalidYamlError(String),
+    PayloadError(String),
     UserError(String),
-
     SigningError(signing::Error),
-
     IoError(io::Error),
-
     ProtobufError(protobuf::ProtobufError),
-
     ReqwestError(reqwest::Error),
-
     GridProtoError(protos::ProtoConversionError),
 }
 
@@ -42,6 +39,8 @@ impl StdError for CliError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             CliError::LoggingInitializationError(err) => Some(err),
+            CliError::InvalidYamlError(_) => None,
+            CliError::PayloadError(_) => None,
             CliError::UserError(_) => None,
             CliError::IoError(err) => Some(err),
             CliError::ProtobufError(err) => Some(err),
@@ -56,6 +55,8 @@ impl std::fmt::Display for CliError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             CliError::UserError(ref err) => write!(f, "Error: {}", err),
+            CliError::InvalidYamlError(ref err) => write!(f, "InvalidYamlError: {}", err),
+            CliError::PayloadError(ref err) => write!(f, "PayloadError: {}", err),
             CliError::IoError(ref err) => write!(f, "IoError: {}", err),
             CliError::SigningError(ref err) => write!(f, "SigningError: {}", err.description()),
             CliError::ProtobufError(ref err) => write!(f, "ProtobufError: {}", err.description()),
@@ -83,6 +84,11 @@ impl From<signing::Error> for CliError {
 impl From<io::Error> for CliError {
     fn from(err: io::Error) -> Self {
         CliError::IoError(err)
+    }
+}
+impl From<serde_yaml::Error> for CliError {
+    fn from(err: serde_yaml::Error) -> Self {
+        CliError::InvalidYamlError(err.to_string())
     }
 }
 
