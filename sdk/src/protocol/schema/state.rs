@@ -31,6 +31,7 @@ pub enum DataType {
     String,
     Enum,
     Struct,
+    LatLong,
 }
 
 impl FromProto<protos::schema_state::PropertyDefinition_DataType> for DataType {
@@ -44,6 +45,7 @@ impl FromProto<protos::schema_state::PropertyDefinition_DataType> for DataType {
             protos::schema_state::PropertyDefinition_DataType::STRING => Ok(DataType::String),
             protos::schema_state::PropertyDefinition_DataType::ENUM => Ok(DataType::Enum),
             protos::schema_state::PropertyDefinition_DataType::STRUCT => Ok(DataType::Struct),
+            protos::schema_state::PropertyDefinition_DataType::LAT_LONG => Ok(DataType::LatLong),
             protos::schema_state::PropertyDefinition_DataType::UNSET_DATA_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert PropertyDefinition_DataType with type unset.".to_string(),
@@ -62,6 +64,7 @@ impl FromNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
             DataType::String => Ok(protos::schema_state::PropertyDefinition_DataType::STRING),
             DataType::Enum => Ok(protos::schema_state::PropertyDefinition_DataType::ENUM),
             DataType::Struct => Ok(protos::schema_state::PropertyDefinition_DataType::STRUCT),
+            DataType::LatLong => Ok(protos::schema_state::PropertyDefinition_DataType::LAT_LONG),
         }
     }
 }
