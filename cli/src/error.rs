@@ -41,7 +41,7 @@ impl fmt::Display for CliError {
 }
 
 impl From<log::SetLoggerError> for CliError {
-    fn from(err: log::SetLoggerError) -> CliError {
+    fn from(err: log::SetLoggerError) -> Self {
         CliError::LoggingInitializationError(Box::new(err))
     }
 }
