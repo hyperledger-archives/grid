@@ -66,7 +66,7 @@ contains one field:
 Organization
 ------------
 
-An organization has three fields:
+An organization has four fields:
 
 - id: A unique identifier for the organization.
 - name: A user defined identifier for the organization.
