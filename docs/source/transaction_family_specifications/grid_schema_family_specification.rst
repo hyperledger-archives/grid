@@ -78,7 +78,7 @@ following:
 - Name
 - Corresponding value of data type
 
-.. code-block:: python
+.. code-block:: protobuf
 
   message PropertyValue {
       // The name of the property value.  Used to validate the property against
@@ -430,7 +430,7 @@ fields in a schema may be optional.
 
 We can define a data structure that uses this schema for validation as follows:
 
-.. code-block:: python
+.. code-block:: protobuf
 
   message Lightbulb {
       string id = 1;
