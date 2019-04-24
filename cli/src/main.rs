@@ -18,6 +18,7 @@ extern crate clap;
 extern crate log;
 
 mod error;
+mod key;
 
 use simple_logger;
 

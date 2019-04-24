@@ -16,25 +16,42 @@ use std::error::Error;
 use std::fmt;
 
 use log;
+use sawtooth_sdk::signing;
+use std;
+use std::error::Error as StdError;
+use std::io;
 
 #[derive(Debug)]
 pub enum CliError {
     LoggingInitializationError(Box<log::SetLoggerError>),
+
+    UserError(String),
+
+    SigningError(signing::Error),
+
+    IoError(io::Error),
+
 }
 
 impl Error for CliError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             CliError::LoggingInitializationError(err) => Some(err),
+            CliError::UserError(_) => None,
+            CliError::IoError(err) => Some(err),
+            CliError::SigningError(err) => Some(err),
         }
     }
 }
 
-impl fmt::Display for CliError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            CliError::LoggingInitializationError(e) => {
-                write!(f, "Logging initialization error: {}", e)
+impl std::fmt::Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            CliError::UserError(ref err) => write!(f, "Error: {}", err),
+            CliError::IoError(ref err) => write!(f, "IoError: {}", err),
+            CliError::SigningError(ref err) => write!(f, "SigningError: {}", err.description()),
+            CliError::LoggingInitializationError(ref err) => {
+                write!(f, "LoggingInitializationError: {}", err.description())
             }
         }
     }
@@ -43,5 +60,17 @@ impl fmt::Display for CliError {
 impl From<log::SetLoggerError> for CliError {
     fn from(err: log::SetLoggerError) -> Self {
         CliError::LoggingInitializationError(Box::new(err))
+    }
+}
+
+impl From<signing::Error> for CliError {
+    fn from(err: signing::Error) -> Self {
+        CliError::SigningError(err)
+    }
+}
+
+impl From<io::Error> for CliError {
+    fn from(err: io::Error) -> Self {
+        CliError::IoError(err)
     }
 }
