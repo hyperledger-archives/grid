@@ -19,6 +19,7 @@ extern crate log;
 
 mod error;
 mod key;
+mod transaction;
 
 use simple_logger;
 

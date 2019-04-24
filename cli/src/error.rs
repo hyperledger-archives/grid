@@ -16,6 +16,7 @@ use std::error::Error;
 use std::fmt;
 
 use log;
+use protobuf;
 use sawtooth_sdk::signing;
 use std;
 use std::error::Error as StdError;
@@ -31,6 +32,7 @@ pub enum CliError {
 
     IoError(io::Error),
 
+    ProtobufError(protobuf::ProtobufError),
 }
 
 impl Error for CliError {
@@ -39,6 +41,7 @@ impl Error for CliError {
             CliError::LoggingInitializationError(err) => Some(err),
             CliError::UserError(_) => None,
             CliError::IoError(err) => Some(err),
+            CliError::ProtobufError(err) => Some(err),
             CliError::SigningError(err) => Some(err),
         }
     }
@@ -50,6 +53,7 @@ impl std::fmt::Display for CliError {
             CliError::UserError(ref err) => write!(f, "Error: {}", err),
             CliError::IoError(ref err) => write!(f, "IoError: {}", err),
             CliError::SigningError(ref err) => write!(f, "SigningError: {}", err.description()),
+            CliError::ProtobufError(ref err) => write!(f, "ProtobufError: {}", err.description()),
             CliError::LoggingInitializationError(ref err) => {
                 write!(f, "LoggingInitializationError: {}", err.description())
             }
@@ -72,5 +76,11 @@ impl From<signing::Error> for CliError {
 impl From<io::Error> for CliError {
     fn from(err: io::Error) -> Self {
         CliError::IoError(err)
+    }
+}
+
+impl From<protobuf::ProtobufError> for CliError {
+    fn from(err: protobuf::ProtobufError) -> Self {
+        CliError::ProtobufError(err)
     }
 }
