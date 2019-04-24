@@ -13,16 +13,15 @@
 // limitations under the License.
 
 mod error;
-mod route_handler;
+mod routes;
 
 use std::sync::mpsc;
 use std::thread;
 
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
-use crate::rest_api::route_handler::{
-    get_batch_statuses, list_agents, submit_batches, DbExecutor, SawtoothMessageSender,
-};
+use crate::rest_api::routes::{get_batch_statuses, list_agents, submit_batches};
+use crate::rest_api::routes::{DbExecutor, SawtoothMessageSender};
 use actix::{Actor, Addr, Context, SyncArbiter};
 use actix_web::{http::Method, server, App};
 use sawtooth_sdk::messaging::stream::MessageSender;
