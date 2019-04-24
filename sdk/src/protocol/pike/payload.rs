@@ -605,7 +605,10 @@ impl CreateOrganizationActionBuilder {
         self
     }
 
-    pub fn with_metadata(mut self, metadata: Vec<KeyValueEntry>) -> CreateOrganizationActionBuilder {
+    pub fn with_metadata(
+        mut self,
+        metadata: Vec<KeyValueEntry>,
+    ) -> CreateOrganizationActionBuilder {
         self.metadata = metadata;
         self
     }
@@ -698,7 +701,7 @@ impl FromNative<UpdateOrganizationAction> for protos::pike_payload::UpdateOrgani
                 .map(KeyValueEntry::into_proto)
                 .collect::<Result<Vec<protos::pike_state::KeyValueEntry>, ProtoConversionError>>(
                 )?,
-            ));
+        ));
 
         Ok(proto_update_org)
     }
@@ -789,7 +792,10 @@ impl UpdateOrganizationActionBuilder {
         self
     }
 
-    pub fn with_metadata(mut self, metadata: Vec<KeyValueEntry>) -> UpdateOrganizationActionBuilder {
+    pub fn with_metadata(
+        mut self,
+        metadata: Vec<KeyValueEntry>,
+    ) -> UpdateOrganizationActionBuilder {
         self.metadata = metadata;
         self
     }
