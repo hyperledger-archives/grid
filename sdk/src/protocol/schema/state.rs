@@ -447,7 +447,7 @@ impl IntoBytes for Schema {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
-            ProtoConversionError::SerializationError("Unable to get bytes from Scheman".to_string())
+            ProtoConversionError::SerializationError("Unable to get bytes from Schema".to_string())
         })?;
         Ok(bytes)
     }
