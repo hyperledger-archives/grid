@@ -47,6 +47,7 @@ following:
           STRING = 4;
           ENUM = 5;
           STRUCT = 6;
+          LAT_LONG = 7;
       }
 
       // The name of the property
@@ -74,7 +75,7 @@ PropertyValue
 A property value is defined using a ``PropertyValue`` which includes the
 following:
 
-- Data type (one of: BYTES, BOOLEAN, NUMBER, STRING, ENUM, STRUCT)
+- Data type (one of: BYTES, BOOLEAN, NUMBER, STRING, ENUM, STRUCT, LAT_LONG)
 - Name
 - Corresponding value of data type
 
@@ -96,6 +97,7 @@ following:
       string string_value = 13;
       uint32 enum_value = 14;
       repeated PropertyValue struct_values = 15;
+      LatLong lat_long_value = 16;
   }
 
 Data Types
@@ -334,6 +336,39 @@ Structs
   property definition, or it is invalid.  The defaults for the struct values
   themselves depend on their data types and/or the smart-contract implementer
   validation rules.
+
+Latitude/Longitude
+  Latitude/Longitude (Lat/Long) values are represented as a predefined struct
+  made up of a latitude, longitude pair.  Both latitude and longitude are
+  represented as signed integers indicating millionths of degrees.
+
+  A latitude/longitude (lat/long) value would be represented as follows:
+
+  .. code-block:: python
+
+    PropertyDefintion(
+        name='origin',
+        data_type=PropertyDefinition.DataType.LAT_LONG,
+        required=True
+    )
+
+
+  A lat/long instance would be as follows:
+
+  .. code-block:: python
+
+    PropertyValue(
+        name='origin',
+        data_type=PropertyDefinition.DataType.LAT_LONG,
+        lat_long_value=LatLong(
+            latitude=44977753,
+            longitude=-93265015)
+    )
+
+
+  Due to the use of protobuf, the default values for `LatLong` would be `(0, 0)`.
+  While this is a valid lat/long, it could be used to indicate an error, depending
+  on the choice of the smart-contract implementer.
 
 Schemas
 -------
