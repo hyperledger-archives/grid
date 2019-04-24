@@ -72,6 +72,42 @@ impl FromNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
 impl IntoProto<protos::schema_state::PropertyDefinition_DataType> for DataType {}
 impl IntoNative<DataType> for protos::schema_state::PropertyDefinition_DataType {}
 
+pub struct LatLong {
+    latitude: i64,
+    longitude: i64,
+}
+
+impl LatLong {
+    pub fn latitude(&self) -> &i64 {
+        &self.latitude
+    }
+
+    pub fn longitude(&self) -> &i64 {
+        &self.longitude
+    }
+}
+
+impl FromProto<protos::schema_state::LatLong> for LatLong {
+    fn from_proto(lat_long: protos::schema_state::LatLong) -> Result<Self, ProtoConversionError> {
+        Ok(LatLong {
+            latitude: lat_long.get_latitude(),
+            longitude: lat_long.get_longitude(),
+        })
+    }
+}
+
+impl FromNative<LatLong> for protos::schema_state::LatLong {
+    fn from_native(lat_long: LatLong) -> Result<Self, ProtoConversionError> {
+        let mut proto_lat_long = protos::schema_state::LatLong::new();
+        proto_lat_long.set_latitude(lat_long.latitude().clone());
+        proto_lat_long.set_longitude(lat_long.longitude().clone());
+        Ok(proto_lat_long)
+    }
+}
+
+impl IntoProto<protos::schema_state::LatLong> for LatLong {}
+impl IntoNative<LatLong> for protos::schema_state::LatLong {}
+
 /// Native implementation of PropertyDefinition
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyDefinition {
