@@ -16,41 +16,6 @@
 version: '2.1'
 
 services:
-
-  track-and-trace-tp:
-    image: grid-track-and-trace-tp-installed:${ISOLATION_ID}
-    container_name: grid-track-and-trace-tp-installed
-    build:
-      context: .
-      dockerfile: contracts/track_and_trace/Dockerfile-installed-${DISTRO}
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    depends_on:
-      - validator
-    entrypoint: grid-track-and-trace-tp -C tcp://validator:4004 -v
-
-  schema-tp:
-    image: grid-schema-tp-installed:${ISOLATION_ID}
-    container_name: grid-schema-tp-installed
-    build:
-      context: .
-      dockerfile: contracts/schema/Dockerfile-installed
-    depends_on:
-      - validator
-    entrypoint: grid-schema-tp -C tcp://validator:4004 -v
-
-  pike-tp:
-    image: grid-pike-tp-installed:${ISOLATION_ID}
-    container_name: grid-pike-tp-installed
-    build:
-      context: .
-      dockerfile: contracts/pike/Dockerfile-installed-${DISTRO}
-    depends_on:
-      - validator
-    entrypoint: grid-pike-tp -C tcp://validator:4004 -v
-
   validator:
     image: hyperledger/sawtooth-validator:1.1
     container_name: grid-sawtooth-validator
