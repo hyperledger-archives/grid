@@ -1,4 +1,4 @@
-// Copyright 2018 Cargill Incorporated
+// Copyright 2019 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! Contains functions which assist with signing key management
 
+use dirs;
 use std::env;
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 
 use users::get_current_username;
 
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
 
-use error::CliError;
+use crate::error::CliError;
 
 /// Return a signing key loaded from the user's environment
 ///
@@ -47,20 +47,26 @@ use error::CliError;
 ///
 /// If a HOME or USER environment variable is required but cannot be
 /// retrieved from the environment, a CliError::VarError is returned.
-pub fn load_signing_key(name: Option<&str>) -> Result<Secp256k1PrivateKey, CliError> {
-    let username: String = name.map(|s| String::from(s))
+pub fn load_signing_key(name: Option<String>) -> Result<Secp256k1PrivateKey, CliError> {
+    let username: String = name
         .ok_or_else(|| env::var("USER"))
-        .or_else(|_| get_current_username().ok_or(0))
+        .or_else(|_| {
+            get_current_username()
+                .ok_or(0)
+                .and_then(|os_str| os_str.into_string().map_err(|_| 0))
+        })
         .map_err(|_| {
             CliError::UserError(String::from(
                 "Could not load signing key: unable to determine username",
             ))
         })?;
 
-    let private_key_filename = env::home_dir()
-        .ok_or(CliError::UserError(String::from(
-            "Could not load signing key: unable to determine home directory",
-        )))
+    let private_key_filename = dirs::home_dir()
+        .ok_or_else(|| {
+            CliError::UserError(String::from(
+                "Could not load signing key: unable to determine home directory",
+            ))
+        })
         .and_then(|mut p| {
             p.push(".sawtooth");
             p.push("keys");
@@ -86,7 +92,7 @@ pub fn load_signing_key(name: Option<&str>) -> Result<Secp256k1PrivateKey, CliEr
             return Err(CliError::UserError(format!(
                 "Empty key file: {}",
                 private_key_filename.display()
-            )))
+            )));
         }
     };
 
