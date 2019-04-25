@@ -22,10 +22,12 @@ use super::schema;
 
 mod agents;
 mod blocks;
+mod grid_schemas;
 mod organizations;
 
 pub const MAX_BLOCK_NUM: i64 = i64::MAX;
 
 pub use agents::*;
 pub use blocks::*;
+pub use grid_schemas::*;
 pub use organizations::*;
