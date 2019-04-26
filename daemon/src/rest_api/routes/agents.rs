@@ -74,3 +74,29 @@ pub fn list_agents(
         })
         .responder()
 }
+
+struct FetchAgent {
+    public_key: String,
+}
+
+impl Message for FetchAgent {
+    type Result = Result<AgentSlice, RestApiResponseError>;
+}
+
+impl Handler<FetchAgent> for DbExecutor {
+    type Result = Result<AgentSlice, RestApiResponseError>;
+
+    fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
+        let fetched_agent = match db::get_agent(&*self.connection_pool.get()?, &msg.public_key)? {
+            Some(agent) => AgentSlice::from_agent(&agent),
+            None => {
+                return Err(RestApiResponseError::NotFoundError(format!(
+                    "Could not find agent with public key: {}",
+                    msg.public_key
+                )));
+            }
+        };
+
+        Ok(fetched_agent)
+    }
+}
