@@ -189,7 +189,7 @@ paths:
         - "application/json"
       responses:
         200:
-          description: "List of Agents"
+          description: Successful operation
           schema:
             properties:
               data:
@@ -272,6 +272,46 @@ paths:
           description: API is unable to reach the database
           schema:
             $ref: "#/definitions/Error"
+
+  /agent/{public_key}:
+    get:
+      tags:
+        - "agent"
+      summary: "Find agent by public key"
+      description: "Returns a single agent from reporting database"
+      operationId: "fetch_agent"
+      produces:
+        - "application/json"
+      parameters:
+        - "public_key"
+        in: "path"
+        description: "Public key of the agent to return"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Agent"
+        400:
+          $ref: "#/responses/400BadRequest"
+        404:
+          $ref: "#/responses/404NotFound"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
 
 responses:
   400BadRequest:
