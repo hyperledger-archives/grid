@@ -37,6 +37,9 @@ uuid = { version = "0.6", features = ["v4"] }
 url = "1.7.1"
 base64 = "0.10"
 
+[features]
+test-api = []
+
 [[bin]]
 name = "gridd"
 path = "src/main.rs"

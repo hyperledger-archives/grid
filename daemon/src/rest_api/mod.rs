@@ -18,14 +18,18 @@ mod route_handler;
 use std::sync::mpsc;
 use std::thread;
 
+use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
-use crate::rest_api::route_handler::{get_batch_statuses, submit_batches, SawtoothMessageSender};
-use actix::{Actor, Addr, Context};
+use crate::rest_api::route_handler::{
+    get_batch_statuses, list_agents, submit_batches, DbExecutor, SawtoothMessageSender,
+};
+use actix::{Actor, Addr, Context, SyncArbiter};
 use actix_web::{http::Method, server, App};
 use sawtooth_sdk::messaging::stream::MessageSender;
 
 pub struct AppState {
     sawtooth_connection: Addr<SawtoothMessageSender>,
+    database_connection: Addr<DbExecutor>,
 }
 
 pub struct RestApiShutdownHandle {
@@ -38,9 +42,13 @@ impl RestApiShutdownHandle {
     }
 }
 
-fn create_app(sawtooth_connection: Addr<SawtoothMessageSender>) -> App<AppState> {
+fn create_app(
+    sawtooth_connection: Addr<SawtoothMessageSender>,
+    database_connection: Addr<DbExecutor>,
+) -> App<AppState> {
     App::with_state(AppState {
         sawtooth_connection,
+        database_connection,
     })
     .resource("/batches", |r| {
         r.method(Method::POST).with_async(submit_batches)
@@ -49,11 +57,13 @@ fn create_app(sawtooth_connection: Addr<SawtoothMessageSender>) -> App<AppState>
         r.name("batch_statuses");
         r.method(Method::GET).with_async(get_batch_statuses)
     })
+    .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
 }
 
 pub fn run(
     bind_url: &str,
     zmq_sender: Box<dyn MessageSender + Send>,
+    connection_pool: ConnectionPool,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -71,13 +81,16 @@ pub fn run(
                 SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
                     SawtoothMessageSender::new(zmq_sender)
                 });
-
+            let db_executor_addr =
+                SyncArbiter::start(2, move || DbExecutor::new(connection_pool.clone()));
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(move || create_app(zmq_connection_addr.clone()))
-                .bind(bind_url)?
-                .disable_signals()
-                .system_exit()
-                .start();
+            let addr = server::new(move || {
+                create_app(zmq_connection_addr.clone(), db_executor_addr.clone())
+            })
+            .bind(bind_url)?
+            .disable_signals()
+            .system_exit()
+            .start();
 
             tx.send(addr).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))

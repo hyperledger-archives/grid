@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::database::{helpers as db, models::Agent, ConnectionPool};
 use crate::rest_api::{error::RestApiResponseError, AppState};
-use actix::{Actor, Context, Handler, Message};
+use actix::{Actor, Context, Handler, Message, SyncContext};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
 use futures::future;
 use futures::future::Future;
@@ -26,12 +27,27 @@ use sawtooth_sdk::messages::client_batch_submit::{
 use sawtooth_sdk::messages::validator::Message_MessageType;
 use sawtooth_sdk::messaging::stream::MessageSender;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 
 const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
+
+pub struct DbExecutor {
+    connection_pool: ConnectionPool,
+}
+
+impl Actor for DbExecutor {
+    type Context = SyncContext<Self>;
+}
+
+impl DbExecutor {
+    pub fn new(connection_pool: ConnectionPool) -> DbExecutor {
+        DbExecutor { connection_pool }
+    }
+}
 
 pub struct SawtoothMessageSender {
     sender: Box<dyn MessageSender>,
@@ -351,12 +367,71 @@ fn process_batch_status_response(
         )),
     }
 }
+#[derive(Debug, Serialize, Deserialize)]
+struct AgentSlice {
+    public_key: String,
+    org_id: String,
+    active: bool,
+    roles: Vec<String>,
+    metadata: Vec<JsonValue>,
+}
 
-#[cfg(test)]
+impl AgentSlice {
+    pub fn from_agent(agent: &Agent) -> Self {
+        Self {
+            public_key: agent.public_key.clone(),
+            org_id: agent.org_id.clone(),
+            active: agent.active,
+            roles: agent.roles.clone(),
+            metadata: agent.metadata.clone(),
+        }
+    }
+}
+
+struct ListAgents;
+
+impl Message for ListAgents {
+    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+}
+
+impl Handler<ListAgents> for DbExecutor {
+    type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
+
+    fn handle(&mut self, _msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
+        let fetched_agents = db::get_agents(&*self.connection_pool.get()?)?
+            .iter()
+            .map(|agent| AgentSlice::from_agent(agent))
+            .collect();
+
+        Ok(fetched_agents)
+    }
+}
+
+pub fn list_agents(
+    req: HttpRequest<AppState>,
+) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+    req.state()
+        .database_connection
+        .send(ListAgents)
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
+            Err(err) => Err(err),
+        })
+        .responder()
+}
+
+#[cfg(all(feature = "test-api", test))]
 mod test {
     use super::*;
+    use crate::database;
+    use crate::database::{helpers::MAX_BLOCK_NUM, models::NewAgent};
     use crate::rest_api::AppState;
+
+    use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
+    use diesel::pg::PgConnection;
+    use diesel::RunQueryDsl;
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
@@ -368,6 +443,11 @@ mod test {
 
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
     use std::sync::mpsc::channel;
+
+    static DATABASE_URL: &str = "postgres://grid_test:grid_test@localhost:5433/grid_test";
+
+    static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
+    static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";
 
     static BATCH_ID_1: &str = "batch_1";
     static BATCH_ID_2: &str = "batch_2";
@@ -452,14 +532,21 @@ mod test {
         }
     }
 
+    fn get_connection_pool() -> ConnectionPool {
+        database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
+    }
+
     fn create_test_server(response_type: ResponseType) -> TestServer {
         TestServer::build_with_state(move || {
             let mock_connection_addr =
                 SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
                     SawtoothMessageSender::new(MockMessageSender::new_boxed(response_type))
                 });
+            let db_executor_addr =
+                SyncArbiter::start(1, move || DbExecutor::new(get_connection_pool()));
             AppState {
                 sawtooth_connection: mock_connection_addr,
+                database_connection: db_executor_addr,
             }
         })
         .start(|app| {
@@ -469,7 +556,8 @@ mod test {
             })
             .resource("/batches", |r| {
                 r.method(Method::POST).with_async(submit_batches)
-            });
+            })
+            .resource("/agent", |r| r.method(Method::GET).with_async(list_agents));
         })
     }
 
@@ -714,6 +802,44 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
 
+    ///
+    /// Verifies a GET /agent responds with an Ok response
+    ///     with an empty Agents table
+    ///
+    ///     The TestServer will receive a request with no parameters
+    ///     It will receive a response with status Ok
+    ///     It should send back a response with:
+    ///         - body containing a list of Agents
+    #[test]
+    fn test_list_agents() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the agents table in the test database
+        clear_agents_table(&test_pool.get().unwrap());
+        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert!(body.is_empty());
+
+        // Adds a single Agent to the test database
+        populate_agent_table(&test_pool.get().unwrap());
+
+        // Making another request to the database
+        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let agent = body.first().unwrap();
+        assert_eq!(agent.public_key, KEY1.to_string());
+        assert_eq!(agent.org_id, KEY2.to_string());
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -777,4 +903,22 @@ mod test {
             .expect("Failed to write batch statuses to bytes")
     }
 
+    fn populate_agent_table(conn: &PgConnection) {
+        let agent = NewAgent {
+            public_key: KEY1.to_string(),
+            org_id: KEY2.to_string(),
+            active: true,
+            roles: vec![],
+            metadata: vec![],
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+        };
+        clear_agents_table(conn);
+        database::helpers::insert_agents(conn, &[agent]).unwrap();
+    }
+
+    fn clear_agents_table(conn: &PgConnection) {
+        use crate::database::schema::agent::dsl::*;
+        diesel::delete(agent).execute(conn).unwrap();
+    }
 }

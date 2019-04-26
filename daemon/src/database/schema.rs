@@ -18,13 +18,13 @@
 table! {
     agent (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
         public_key -> Varchar,
         org_id -> Varchar,
         active -> Bool,
         roles -> Array<Varchar>,
         metadata -> Array<Json>,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
     }
 }
 
@@ -56,9 +56,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    agent,
-    block,
-    chain_record,
-    organization,
-);
+allow_tables_to_appear_in_same_query!(agent, block, chain_record, organization,);

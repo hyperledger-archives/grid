@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::NewAgent;
+use super::models::{Agent, NewAgent};
 use super::schema::agent;
 use super::MAX_BLOCK_NUM;
 
@@ -51,4 +51,11 @@ fn update_agent_end_block_num(
         .set(agent::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn get_agents(conn: &PgConnection) -> QueryResult<Vec<Agent>> {
+    agent::table
+        .select(agent::all_columns)
+        .filter(agent::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<Agent>(conn)
 }

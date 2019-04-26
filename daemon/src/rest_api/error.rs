@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::database::DatabaseError;
+
 use actix::MailboxError;
 use actix_web::error::{PayloadError, ResponseError, UrlGenerationError};
 use actix_web::HttpResponse;
+use diesel;
 use std::error::Error;
 
 use std::fmt;
@@ -55,6 +58,7 @@ pub enum RestApiResponseError {
     SawtoothConnectionError(String),
     SawtoothValidatorResponseError(String),
     RequestHandlerError(String),
+    DatabaseError(String),
 }
 
 impl Error for RestApiResponseError {
@@ -64,6 +68,7 @@ impl Error for RestApiResponseError {
             RestApiResponseError::SawtoothConnectionError(_) => None,
             RestApiResponseError::SawtoothValidatorResponseError(_) => None,
             RestApiResponseError::RequestHandlerError(_) => None,
+            RestApiResponseError::DatabaseError(_) => None,
         }
     }
 }
@@ -81,6 +86,7 @@ impl fmt::Display for RestApiResponseError {
             RestApiResponseError::RequestHandlerError(ref s) => {
                 write!(f, "Sawtooth Validator Response Error: {}", s)
             }
+            RestApiResponseError::DatabaseError(ref s) => write!(f, "Database Error: {}", s),
         }
     }
 }
@@ -93,6 +99,9 @@ impl ResponseError for RestApiResponseError {
                 HttpResponse::BadRequest().json(message)
             }
             RestApiResponseError::SawtoothConnectionError(ref message) => {
+                HttpResponse::ServiceUnavailable().json(message)
+            }
+            RestApiResponseError::DatabaseError(ref message) => {
                 HttpResponse::ServiceUnavailable().json(message)
             }
             _ => HttpResponse::InternalServerError().json("Internal Server Error"),
@@ -122,6 +131,21 @@ impl From<UrlGenerationError> for RestApiResponseError {
     fn from(err: UrlGenerationError) -> RestApiResponseError {
         RestApiResponseError::RequestHandlerError(format!(
             "Failed generate response URL. {}",
+            err.to_string()
+        ))
+    }
+}
+
+impl From<DatabaseError> for RestApiResponseError {
+    fn from(err: DatabaseError) -> RestApiResponseError {
+        RestApiResponseError::DatabaseError(format!("Database Error occured: {}", err.to_string()))
+    }
+}
+
+impl From<diesel::result::Error> for RestApiResponseError {
+    fn from(err: diesel::result::Error) -> Self {
+        RestApiResponseError::DatabaseError(format!(
+            "Database Result Error occured: {}",
             err.to_string()
         ))
     }
