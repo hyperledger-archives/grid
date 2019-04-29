@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::NewOrganization;
+use super::models::{NewOrganization, Organization};
 use super::schema::organization;
 use super::MAX_BLOCK_NUM;
 
@@ -54,4 +54,11 @@ fn update_org_end_block_num(
         .set(organization::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn list_organizations(conn: &PgConnection) -> QueryResult<Vec<Organization>> {
+    organization::table
+        .select(organization::all_columns)
+        .filter(organization::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<Organization>(conn)
 }
