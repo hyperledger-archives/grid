@@ -59,6 +59,7 @@ pub enum RestApiResponseError {
     SawtoothValidatorResponseError(String),
     RequestHandlerError(String),
     DatabaseError(String),
+    NotFoundError(String),
 }
 
 impl Error for RestApiResponseError {
@@ -69,6 +70,7 @@ impl Error for RestApiResponseError {
             RestApiResponseError::SawtoothValidatorResponseError(_) => None,
             RestApiResponseError::RequestHandlerError(_) => None,
             RestApiResponseError::DatabaseError(_) => None,
+            RestApiResponseError::NotFoundError(_) => None,
         }
     }
 }
@@ -86,6 +88,7 @@ impl fmt::Display for RestApiResponseError {
             RestApiResponseError::RequestHandlerError(ref s) => {
                 write!(f, "Sawtooth Validator Response Error: {}", s)
             }
+            RestApiResponseError::NotFoundError(ref s) => write!(f, "Not Found Error: {}", s),
             RestApiResponseError::DatabaseError(ref s) => write!(f, "Database Error: {}", s),
         }
     }
@@ -103,6 +106,9 @@ impl ResponseError for RestApiResponseError {
             }
             RestApiResponseError::DatabaseError(ref message) => {
                 HttpResponse::ServiceUnavailable().json(message)
+            }
+            RestApiResponseError::NotFoundError(ref message) => {
+                HttpResponse::NotFound().json(message)
             }
             _ => HttpResponse::InternalServerError().json("Internal Server Error"),
         }
