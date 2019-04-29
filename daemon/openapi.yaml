@@ -120,7 +120,7 @@ paths:
       produces:
       - "application/json"
       responses:
-        202:
+        200:
           description: "List of schemas"
           schema:
             properties:
@@ -158,7 +158,7 @@ paths:
         required: true
         type: "string"
       responses:
-        202:
+        200:
           description: Successful operation
           schema:
             properties:
@@ -181,7 +181,7 @@ paths:
   /agent:
     get:
       tags:
-        - "agents"
+        - "agent"
       summary: "Get a list of Agents"
       description: "Fetches a list of agents from the reporting database"
       operationId: "list_agents"
@@ -195,7 +195,7 @@ paths:
               data:
                 type: array
                 items:
-                  $ref: "#/definitions/Agents"
+                  $ref: "#/definitions/Agent"
         400:
           $ref: "#/responses/400BadRequest"
         429:
@@ -438,7 +438,7 @@ definitions:
       metadata:
         type: array
         items:
-          $ref: '#definitions/Metadata'
+          $ref: '#/definitions/Metadata'
 
   Metadata:
     type: object
