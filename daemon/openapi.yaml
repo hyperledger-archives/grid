@@ -431,10 +431,12 @@ definitions:
         example: 03c360a46457a284793153e09840c322bee1dcc34445d7d49e19e60abd18fd0758
       active:
         type: boolean
+        example: "true"
       roles:
         type: array
         items:
           type: string
+          example: "admin"
       metadata:
         type: array
         items:
@@ -445,5 +447,7 @@ definitions:
     properties:
       key:
         type: string
+        example: "industry"
       value:
         type: string
+        example: "eletronics"
