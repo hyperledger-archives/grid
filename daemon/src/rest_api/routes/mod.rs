@@ -61,7 +61,8 @@ mod test {
     use crate::database;
     use crate::database::{
         helpers::MAX_BLOCK_NUM,
-        models::{NewAgent, NewOrganization},
+        models::{NewAgent, NewGridPropertyDefinition, NewGridSchema, NewOrganization},
+        schema::{grid_property_definition, grid_schema},
     };
     use crate::rest_api::{
         routes::{AgentSlice, BatchStatusResponse, OrganizationSlice},
@@ -70,6 +71,7 @@ mod test {
 
     use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
+    use diesel::dsl::insert_into;
     use diesel::pg::PgConnection;
     use diesel::RunQueryDsl;
     use futures::future::Future;
@@ -214,6 +216,12 @@ mod test {
             })
             .resource("/organization/{id}", |r| {
                 r.method(Method::GET).with_async(fetch_organization)
+            })
+            .resource("/schema", |r| {
+                r.method(Method::GET).with_async(list_grid_schemas)
+            })
+            .resource("/schema/{name}", |r| {
+                r.method(Method::GET).with_async(fetch_grid_schema)
             });
         })
     }
@@ -701,6 +709,83 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
+    /// Verifies a GET /schema responds with an OK response with a
+    ///     list_grid_schemas request.
+    ///
+    ///     The TestServer will receive a request with no parameters,
+    ///         then will respond with an Ok status and a list of Grid Schemas.
+    #[test]
+    fn test_list_schemas() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the grid schema table in the test database
+        clear_grid_schema_table(&test_pool.get().unwrap());
+        let request = srv.client(http::Method::GET, "/schema").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<GridSchemaSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
+        let request = srv.client(http::Method::GET, "/schema").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<GridSchemaSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_schema = body.first().unwrap();
+        assert_eq!(test_schema.name, "Test Grid Schema".to_string());
+        assert_eq!(test_schema.owner, "phillips001".to_string());
+        assert_eq!(test_schema.properties.len(), 2);
+    }
+
+    ///
+    /// Verifies a GET /schema/{name} responds with an OK response
+    ///     and the Grid Schema with the specified name
+    ///
+    #[test]
+    fn test_fetch_schema_ok() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/schema/{}", "Test Grid Schema".to_string()),
+            )
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let test_schema: GridSchemaSlice =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(test_schema.name, "Test Grid Schema".to_string());
+        assert_eq!(test_schema.owner, "phillips001".to_string());
+        assert_eq!(test_schema.properties.len(), 2);
+    }
+
+    ///
+    /// Verifies a GET /schema/{name} responds with a Not Found error
+    ///     when there is no Grid Schema with the specified name
+    ///
+    #[test]
+    fn test_fetch_schema_not_found() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        clear_grid_schema_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(http::Method::GET, "/schema/not_in_database")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -823,5 +908,78 @@ mod test {
     fn clear_organization_table(conn: &PgConnection) {
         use crate::database::schema::organization::dsl::*;
         diesel::delete(organization).execute(conn).unwrap();
+    }
+
+    fn get_grid_schema() -> Vec<NewGridSchema> {
+        vec![NewGridSchema {
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+            name: "Test Grid Schema".to_string(),
+            description: "Example test grid schema".to_string(),
+            owner: "phillips001".to_string(),
+        }]
+    }
+
+    fn populate_grid_schema_table(conn: &PgConnection, schemas: &[NewGridSchema]) {
+        clear_grid_schema_table(conn);
+        populate_property_definition_table(conn, &get_property_definition());
+        insert_into(grid_schema::table)
+            .values(schemas)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn clear_grid_schema_table(conn: &PgConnection) {
+        use crate::database::schema::grid_schema::dsl::*;
+        diesel::delete(grid_schema).execute(conn).unwrap();
+    }
+
+    fn get_property_definition() -> Vec<NewGridPropertyDefinition> {
+        vec![
+            NewGridPropertyDefinition {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "Definition Name".to_string(),
+                schema_name: "Test Grid Schema".to_string(),
+                data_type: "Lightbulb".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+            },
+            NewGridPropertyDefinition {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "Other Definition Name".to_string(),
+                schema_name: "Test Grid Schema".to_string(),
+                data_type: "New Lightbulb".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+            },
+        ]
+    }
+
+    fn populate_property_definition_table(
+        conn: &PgConnection,
+        definitions: &[NewGridPropertyDefinition],
+    ) {
+        clear_property_definition_table(conn);
+        insert_into(grid_property_definition::table)
+            .values(definitions)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn clear_property_definition_table(conn: &PgConnection) {
+        use crate::database::schema::grid_property_definition::dsl::*;
+        diesel::delete(grid_property_definition)
+            .execute(conn)
+            .unwrap();
     }
 }
