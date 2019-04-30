@@ -19,7 +19,7 @@ use crate::database::{
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse};
+use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -148,4 +148,20 @@ impl Handler<FetchGridSchema> for DbExecutor {
 
         Ok(fetched_schema)
     }
+}
+
+pub fn fetch_grid_schema(
+    req: HttpRequest<AppState>,
+    schema_name: Path<String>,
+) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+    req.state()
+        .database_connection
+        .send(FetchGridSchema {
+            name: schema_name.into_inner(),
+        })
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(schema) => Ok(HttpResponse::Ok().json(schema)),
+            Err(err) => Err(err),
+        })
 }
