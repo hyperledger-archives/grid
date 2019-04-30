@@ -15,10 +15,12 @@
 mod agents;
 mod batches;
 mod organizations;
+mod schemas;
 
 pub use agents::*;
 pub use batches::*;
 pub use organizations::*;
+pub use schemas::*;
 
 use crate::database::ConnectionPool;
 
