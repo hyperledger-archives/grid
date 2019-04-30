@@ -23,6 +23,7 @@ use diesel::{
     dsl::{insert_into, update},
     pg::PgConnection,
     prelude::*,
+    result::Error::NotFound,
     QueryResult,
 };
 
@@ -61,4 +62,20 @@ pub fn list_organizations(conn: &PgConnection) -> QueryResult<Vec<Organization>>
         .select(organization::all_columns)
         .filter(organization::end_block_num.eq(MAX_BLOCK_NUM))
         .load::<Organization>(conn)
+}
+
+pub fn fetch_organization(
+    conn: &PgConnection,
+    organization_id: &str,
+) -> QueryResult<Option<Organization>> {
+    organization::table
+        .select(organization::all_columns)
+        .filter(
+            organization::org_id
+                .eq(organization_id)
+                .and(organization::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
