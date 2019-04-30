@@ -209,6 +209,34 @@ paths:
           schema:
             $ref: "#/definitions/Error"
 
+  /organization:
+    get:
+      tags:
+        - "organization"
+      operationId: "list_organizations"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Retrieve list of organizations"
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Organization"
+        400:
+          $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
 responses:
   400BadRequest:
     description: Request was malformed
@@ -437,6 +465,23 @@ definitions:
         items:
           type: string
           example: "admin"
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/Metadata'
+
+  Organization:
+    type: object
+    properties:
+      id:
+        type: string
+        example: "philips001"
+      name:
+        type: string
+        example: "Philips"
+      address:
+        type: string
+        example: "Amstelplein 2 1096 BC Amsterdam The Netherlands"
       metadata:
         type: array
         items:

@@ -14,9 +14,11 @@
 
 mod agents;
 mod batches;
+mod organizations;
 
 pub use agents::*;
 pub use batches::*;
+pub use organizations::*;
 
 use crate::database::ConnectionPool;
 
@@ -55,9 +57,12 @@ impl SawtoothMessageSender {
 mod test {
     use super::*;
     use crate::database;
-    use crate::database::{helpers::MAX_BLOCK_NUM, models::NewAgent};
+    use crate::database::{
+        helpers::MAX_BLOCK_NUM,
+        models::{NewAgent, NewOrganization},
+    };
     use crate::rest_api::{
-        routes::{AgentSlice, BatchStatusResponse},
+        routes::{AgentSlice, BatchStatusResponse, OrganizationSlice},
         AppState,
     };
 
@@ -81,6 +86,14 @@ mod test {
 
     static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
     static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";
+    static KEY3: &str = "333333333333333333333333333333333333333333333333333333333333333333";
+
+    static ORG_NAME_1: &str = "my_org";
+    static ORG_NAME_2: &str = "other_org";
+
+    static ADDRESS_1: &str = "my_address";
+    static ADDRESS_2: &str = "my_address_2";
+    static UPDATED_ADDRESS_2: &str = "my_updated_address";
 
     static BATCH_ID_1: &str = "batch_1";
     static BATCH_ID_2: &str = "batch_2";
@@ -190,7 +203,10 @@ mod test {
             .resource("/batches", |r| {
                 r.method(Method::POST).with_async(submit_batches)
             })
-            .resource("/agent", |r| r.method(Method::GET).with_async(list_agents));
+            .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
+            .resource("/organization", |r| {
+                r.method(Method::GET).with_async(list_organizations)
+            });
         })
     }
 
@@ -473,6 +489,90 @@ mod test {
         assert_eq!(agent.org_id, KEY2.to_string());
     }
 
+    ///
+    /// Verifies a GET /organization responds with an Ok response
+    ///     with an empty organization table
+    ///
+    #[test]
+    fn test_list_organizations_empty() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the organization table in the test database
+        clear_organization_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(http::Method::GET, "/organization")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<OrganizationSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert!(body.is_empty());
+    }
+
+    ///
+    /// Verifies a GET /organization responds with an Ok response
+    ///     with a list containing one organization
+    ///
+    #[test]
+    fn test_list_organizations() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds an organization to the test database
+        populate_organization_table(&test_pool.get().unwrap(), get_organization());
+
+        // Making another request to the database
+        let request = srv
+            .client(http::Method::GET, "/organization")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<OrganizationSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let org = body.first().unwrap();
+        assert_eq!(org.name, ORG_NAME_1.to_string());
+        assert_eq!(org.org_id, KEY2.to_string());
+        assert_eq!(org.address, ADDRESS_1.to_string());
+    }
+
+    ///
+    /// Verifies a GET /organization responds with an Ok response
+    /// with a list containing one organization, when there's two records for the same
+    /// organization_id. The rest-api should return a list with a single organization with the
+    /// record that contains the most recent information for that organization
+    /// (end_block_num == MAX_BLOCK_NUM)
+    ///
+    #[test]
+    fn test_list_organizations_updated() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds two instances of organization with the same org_id to the test database
+        populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
+
+        // Making another request to the database
+        let request = srv
+            .client(http::Method::GET, "/organization")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<OrganizationSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let org = body.first().unwrap();
+        assert_eq!(org.name, ORG_NAME_2.to_string());
+        assert_eq!(org.org_id, KEY3.to_string());
+        // Checks is returned the organization with the most recent information
+        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -553,5 +653,47 @@ mod test {
     fn clear_agents_table(conn: &PgConnection) {
         use crate::database::schema::agent::dsl::*;
         diesel::delete(agent).execute(conn).unwrap();
+    }
+
+    fn get_organization() -> Vec<NewOrganization> {
+        vec![NewOrganization {
+            org_id: KEY2.to_string(),
+            name: ORG_NAME_1.to_string(),
+            address: ADDRESS_1.to_string(),
+            metadata: vec![],
+            start_block_num: 1,
+            end_block_num: database::helpers::MAX_BLOCK_NUM,
+        }]
+    }
+
+    fn get_updated_organization() -> Vec<NewOrganization> {
+        vec![
+            NewOrganization {
+                org_id: KEY3.to_string(),
+                name: ORG_NAME_2.to_string(),
+                address: ADDRESS_2.to_string(),
+                metadata: vec![],
+                start_block_num: 2,
+                end_block_num: 4,
+            },
+            NewOrganization {
+                org_id: KEY3.to_string(),
+                name: ORG_NAME_2.to_string(),
+                address: UPDATED_ADDRESS_2.to_string(),
+                metadata: vec![],
+                start_block_num: 4,
+                end_block_num: database::helpers::MAX_BLOCK_NUM,
+            },
+        ]
+    }
+
+    fn populate_organization_table(conn: &PgConnection, organizations: Vec<NewOrganization>) {
+        clear_organization_table(conn);
+        database::helpers::insert_organizations(conn, &organizations).unwrap();
+    }
+
+    fn clear_organization_table(conn: &PgConnection) {
+        use crate::database::schema::organization::dsl::*;
+        diesel::delete(organization).execute(conn).unwrap();
     }
 }
