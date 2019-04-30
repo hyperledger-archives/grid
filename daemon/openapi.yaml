@@ -237,6 +237,42 @@ paths:
           description: API is unable to reach the database
           schema:
             $ref: "#/definitions/Error"
+
+  /organization/{id}:
+    get:
+      tags:
+        - "organization"
+      operationId: "fetch_organization"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "Id of the organization to return"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            properties:
+              link:
+                $ref: "#/definitions/Organization"
+        400:
+          $ref: "#/responses/400BadRequest"
+        404:
+          $ref: "#/responses/404NotFound"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
 responses:
   400BadRequest:
     description: Request was malformed

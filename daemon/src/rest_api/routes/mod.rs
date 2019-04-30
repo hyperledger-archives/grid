@@ -206,6 +206,9 @@ mod test {
             .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
             .resource("/organization", |r| {
                 r.method(Method::GET).with_async(list_organizations)
+            })
+            .resource("/organization/{id}", |r| {
+                r.method(Method::GET).with_async(fetch_organization)
             });
         })
     }
@@ -567,6 +570,83 @@ mod test {
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let org = body.first().unwrap();
+        assert_eq!(org.name, ORG_NAME_2.to_string());
+        assert_eq!(org.org_id, KEY3.to_string());
+        // Checks is returned the organization with the most recent information
+        assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+    }
+
+    ///
+    /// Verifies a GET /organization/{id} responds with NotFound response
+    /// when there is no organization with the specified id.
+    ///
+    #[test]
+    fn test_fetch_organization_not_found() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the organization table in the test database
+        clear_organization_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(http::Method::GET, "/organization/not_a_valid_id")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /organization/{id} responds with Ok response
+    /// when there is an organization with the specified id.
+    ///
+    #[test]
+    fn test_fetch_organization_ok() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds an organization to the test database
+        populate_organization_table(&test_pool.get().unwrap(), get_organization());
+
+        // Making another request to the database
+        let request = srv
+            .client(http::Method::GET, &format!("/organization/{}", KEY2))
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let org: OrganizationSlice =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(org.name, ORG_NAME_1.to_string());
+        assert_eq!(org.org_id, KEY2.to_string());
+        assert_eq!(org.address, ADDRESS_1.to_string());
+    }
+
+    ///
+    /// Verifies a GET /organization/{id} responds with an Ok response
+    /// with a single organization, when there's two records for the same
+    /// organization_id. The rest-api should return a single organization with the
+    /// record that contains the most recent information for that organization
+    /// (end_block_num == MAX_BLOCK_NUM)
+    ///
+    #[test]
+    fn test_fetch_organization_updated_ok() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds an organization to the test database
+        populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
+
+        // Making another request to the database
+        let request = srv
+            .client(http::Method::GET, &format!("/organization/{}", KEY3))
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let org: OrganizationSlice =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information

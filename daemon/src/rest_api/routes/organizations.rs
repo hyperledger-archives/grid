@@ -70,3 +70,46 @@ pub fn list_organizations(
             Err(err) => Err(err),
         })
 }
+
+struct FetchOrganization {
+    organization_id: String,
+}
+
+impl Message for FetchOrganization {
+    type Result = Result<OrganizationSlice, RestApiResponseError>;
+}
+
+impl Handler<FetchOrganization> for DbExecutor {
+    type Result = Result<OrganizationSlice, RestApiResponseError>;
+
+    fn handle(&mut self, msg: FetchOrganization, _: &mut SyncContext<Self>) -> Self::Result {
+        let organization =
+            match db::fetch_organization(&*self.connection_pool.get()?, &msg.organization_id)? {
+                Some(organization) => OrganizationSlice::from_organization(&organization),
+                None => {
+                    return Err(RestApiResponseError::NotFoundError(format!(
+                        "Could not find organization with id: {}",
+                        msg.organization_id
+                    )));
+                }
+            };
+
+        Ok(organization)
+    }
+}
+
+pub fn fetch_organization(
+    req: HttpRequest<AppState>,
+    organization_id: Path<String>,
+) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+    req.state()
+        .database_connection
+        .send(FetchOrganization {
+            organization_id: organization_id.into_inner(),
+        })
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(organization) => Ok(HttpResponse::Ok().json(organization)),
+            Err(err) => Err(err),
+        })
+}
