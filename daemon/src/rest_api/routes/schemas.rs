@@ -118,3 +118,34 @@ pub fn list_grid_schemas(
         })
         .responder()
 }
+
+struct FetchGridSchema {
+    name: String,
+}
+
+impl Message for FetchGridSchema {
+    type Result = Result<GridSchemaSlice, RestApiResponseError>;
+}
+
+impl Handler<FetchGridSchema> for DbExecutor {
+    type Result = Result<GridSchemaSlice, RestApiResponseError>;
+
+    fn handle(&mut self, msg: FetchGridSchema, _: &mut SyncContext<Self>) -> Self::Result {
+        let properties = db::list_grid_property_definitions_with_schema_name(
+            &*self.connection_pool.get()?,
+            &msg.name,
+        )?;
+        let fetched_schema = match db::fetch_grid_schema(&*self.connection_pool.get()?, &msg.name)?
+        {
+            Some(schema) => GridSchemaSlice::from_schema(&schema, properties),
+            None => {
+                return Err(RestApiResponseError::NotFoundError(format!(
+                    "Could not find schema with name: {}",
+                    msg.name
+                )));
+            }
+        };
+
+        Ok(fetched_schema)
+    }
+}
