@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{NewGridPropertyDefinition, NewGridSchema};
+use super::models::{GridSchema, NewGridPropertyDefinition, NewGridSchema};
 
 use super::schema::{grid_property_definition, grid_schema};
 use super::MAX_BLOCK_NUM;
@@ -82,4 +82,11 @@ pub fn update_definition_end_block_num(
         .set(grid_property_definition::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn list_grid_schemas(conn: &PgConnection) -> QueryResult<Vec<GridSchema>> {
+    grid_schema::table
+        .select(grid_schema::all_columns)
+        .filter(grid_schema::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<GridSchema>(conn)
 }
