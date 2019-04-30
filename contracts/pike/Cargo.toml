@@ -27,7 +27,7 @@ grid-sdk = {path = "../../sdk"}
 rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
 sabre-sdk = "0.2"
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 sawtooth-sdk = {git = "https://github.com/hyperledger/sawtooth-sdk-rust"}
 log = "0.3.8"
 log4rs = "0.7.0"
