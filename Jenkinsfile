@@ -83,6 +83,7 @@ node ('master') {
 
         stage("Archive Build artifacts") {
             sh 'mkdir -p build/debs'
+            sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd-installed:${ISOLATION_ID} bash -c "cp /tmp/grid-daemon*.deb /debs && chown -R ${JENKINS_UID} /debs"'
             archiveArtifacts artifacts: '*.tgz, *.zip'
             archiveArtifacts artifacts: 'build/debs/*.deb', allowEmptyArchive: true
             archiveArtifacts artifacts: 'docs/build/html/**, docs/build/latex/*.pdf'
