@@ -27,8 +27,8 @@ cfg_if! {
     }
 }
 
-use crate::protos::{FromBytes, ProtoConversionError};
 use crate::protocol::pike::state::{Agent, AgentList};
+use crate::protos::{FromBytes, ProtoConversionError};
 
 const PIKE_NAMESPACE: &'static str = "cad11d";
 const PIKE_AGENT_RESOURCE: &'static str = "00";
@@ -53,8 +53,9 @@ impl fmt::Display for PermissionCheckerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             PermissionCheckerError::Context(ref e) => e.fmt(f),
-            PermissionCheckerError::InvalidPublicKey(ref msg) => write!(
-                f, "InvalidPublicKey: {}", msg),
+            PermissionCheckerError::InvalidPublicKey(ref msg) => {
+                write!(f, "InvalidPublicKey: {}", msg)
+            }
             PermissionCheckerError::ProtoConversion(ref e) => e.fmt(f),
         }
     }
@@ -108,13 +109,21 @@ impl<'a> PermissionChecker<'a> {
     /// * `permission` - Permission string to be checked.
     ///
     pub fn has_permission(
-        &self, public_key: &str, permission: &str
+        &self,
+        public_key: &str,
+        permission: &str,
     ) -> Result<bool, PermissionCheckerError> {
         let agent = self.get_agent(public_key)?;
         match agent {
-            Some(agent) => Ok(agent.roles().into_iter().find(|&r| r == permission).is_some()),
-            None => Err(PermissionCheckerError::InvalidPublicKey(
-                format!("The signer is not an Agent: {}", public_key))),
+            Some(agent) => Ok(agent
+                .roles()
+                .into_iter()
+                .find(|&r| r == permission)
+                .is_some()),
+            None => Err(PermissionCheckerError::InvalidPublicKey(format!(
+                "The signer is not an Agent: {}",
+                public_key
+            ))),
         }
     }
 
@@ -143,8 +152,8 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use crate::protos::IntoBytes;
     use crate::protocol::pike::state::{AgentBuilder, AgentListBuilder};
+    use crate::protos::IntoBytes;
 
     const ROLE_A: &str = "Role A";
     const ROLE_B: &str = "Role B";

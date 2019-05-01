@@ -520,7 +520,9 @@ impl SchemaList {
 }
 
 impl FromProto<protos::schema_state::SchemaList> for SchemaList {
-    fn from_proto(schema_list: protos::schema_state::SchemaList) -> Result<Self, ProtoConversionError> {
+    fn from_proto(
+        schema_list: protos::schema_state::SchemaList,
+    ) -> Result<Self, ProtoConversionError> {
         Ok(SchemaList {
             schemas: schema_list
                 .get_schemas()

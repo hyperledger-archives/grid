@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use protobuf;
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
+use protobuf;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -31,12 +31,12 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::pike_payload::{CreateAgentAction, CreateOrganizationAction,
-                                     PikePayload,
-                                     PikePayload_Action as Action, UpdateAgentAction,
-                                     UpdateOrganizationAction};
-use grid_sdk::protos::pike_state::{Agent, AgentList, Organization, OrganizationList};
 use addresser::{resource_to_byte, Resource};
+use grid_sdk::protos::pike_payload::{
+    CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
+    UpdateAgentAction, UpdateOrganizationAction,
+};
+use grid_sdk::protos::pike_state::{Agent, AgentList, Organization, OrganizationList};
 
 pub struct PikeTransactionHandler {
     family_name: String,
@@ -429,9 +429,9 @@ fn create_org(
     ));
     state.set_organization(payload.get_id(), organization)?;
 
-    state
-        .get_agent(signer)
-        .map_err(|e| ApplyError::InternalError(format!("Failed to create organization: {:?}", e)))?;
+    state.get_agent(signer).map_err(|e| {
+        ApplyError::InternalError(format!("Failed to create organization: {:?}", e))
+    })?;
 
     // Check if the agent already exists
     match state.get_agent(signer) {
@@ -453,9 +453,9 @@ fn create_org(
     agent.set_public_key(signer.to_string());
     agent.set_org_id(payload.get_id().to_string());
     agent.set_active(true);
-    agent.set_roles(protobuf::RepeatedField::from_vec(vec![
-        String::from("admin"),
-    ]));
+    agent.set_roles(protobuf::RepeatedField::from_vec(vec![String::from(
+        "admin",
+    )]));
 
     state
         .set_agent(signer, agent)
@@ -552,13 +552,11 @@ fn apply(
     request: &TpProcessRequest,
     context: &mut dyn TransactionContext,
 ) -> Result<bool, ApplyError> {
-
     let handler = PikeTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err)
+        Err(err) => Err(err),
     }
-
 }
 
 #[cfg(target_arch = "wasm32")]

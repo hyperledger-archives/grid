@@ -512,8 +512,7 @@ impl FromNative<Organization> for protos::pike_state::Organization {
         org_proto.set_name(org.name().to_string());
         org_proto.set_address(org.address().to_string());
         org_proto.set_metadata(RepeatedField::from_vec(
-            org
-                .metadata()
+            org.metadata()
                 .to_vec()
                 .into_iter()
                 .map(KeyValueEntry::into_proto)

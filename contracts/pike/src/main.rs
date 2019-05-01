@@ -14,9 +14,9 @@
 
 #[macro_use]
 extern crate cfg_if;
-extern crate protobuf;
 extern crate crypto;
 extern crate grid_sdk;
+extern crate protobuf;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -50,7 +50,7 @@ fn main() {
          "connection endpoint for validator")
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity"))
-        .get_matches();
+    .get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
         1 => simple_logger::init_with_level(LogLevel::Info),
@@ -72,5 +72,4 @@ fn main() {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn main() {
-}
+fn main() {}
