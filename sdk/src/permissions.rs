@@ -98,7 +98,7 @@ impl<'a> PermissionChecker<'a> {
     /// * `context` - A reference to the transaction context.
     ///
     pub fn new(context: &'a TransactionContext) -> PermissionChecker {
-        PermissionChecker { context: context }
+        PermissionChecker { context }
     }
 
     /// Checks whether an agent with a given public key has a certain role.
