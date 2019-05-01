@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[macro_use]
+extern crate log;
+
 mod error;
 
 use std::fmt::Write as FmtWrite;
@@ -23,10 +26,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
 
-use ::log::LogLevel;
-use ::log::{debug, error, info, log, warn};
 use clap::{App, Arg};
 use crossbeam_channel;
+use log::LogLevel;
 use protobuf::{self, Message};
 use sha2::{Digest, Sha256};
 use threadpool::ThreadPool;

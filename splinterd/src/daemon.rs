@@ -43,7 +43,6 @@ use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
-use ::log::{debug, error, info, log, warn};
 use crossbeam_channel;
 use protobuf::Message;
 
