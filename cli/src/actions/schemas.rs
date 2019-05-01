@@ -12,12 +12,64 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::error::CliError;
+use crate::http::submit_batches;
+use crate::transaction::{schema_batch_builder, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE};
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder, SchemaUpdateBuilder,
 };
 use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDefinitionBuilder};
+use grid_sdk::protos::IntoProto;
+
+use crate::error::CliError;
 use serde_yaml::{Mapping, Sequence, Value};
+
+pub fn do_create_schemas(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    path: &str,
+) -> Result<(), CliError> {
+    let payloads = parse_yaml(path, Action::SchemaCreate)?;
+    let mut batch_list_builder = schema_batch_builder(key);
+    for payload in payloads {
+        batch_list_builder = batch_list_builder.add_transaction(
+            &payload.into_proto()?,
+            &[
+                PIKE_NAMESPACE.to_string(),
+                GRID_SCHEMA_NAMESPACE.to_string(),
+            ],
+            &[GRID_SCHEMA_NAMESPACE.to_string()],
+        )?;
+    }
+
+    let batch_list = batch_list_builder.create_batch_list();
+
+    submit_batches(url, wait, &batch_list)
+}
+
+pub fn do_update_schemas(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    path: &str,
+) -> Result<(), CliError> {
+    let payloads = parse_yaml(path, Action::SchemaUpdate)?;
+    let mut batch_list_builder = schema_batch_builder(key);
+    for payload in payloads {
+        batch_list_builder = batch_list_builder.add_transaction(
+            &payload.into_proto()?,
+            &[
+                PIKE_NAMESPACE.to_string(),
+                GRID_SCHEMA_NAMESPACE.to_string(),
+            ],
+            &[GRID_SCHEMA_NAMESPACE.to_string()],
+        )?;
+    }
+
+    let batch_list = batch_list_builder.create_batch_list();
+
+    submit_batches(url, wait, &batch_list)
+}
 
 fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError> {
     let file = std::fs::File::open(path)?;

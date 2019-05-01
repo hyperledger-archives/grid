@@ -35,7 +35,7 @@ use simple_logger;
 
 use crate::error::CliError;
 
-use actions::{agents, organizations as orgs};
+use actions::{agents, organizations as orgs, schemas};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -90,6 +90,18 @@ fn run() -> Result<(), CliError> {
                 (@arg address: +takes_value "Physical address for organization")
                 (@arg metadata: --metadata +takes_value +multiple
                     "Comma-separated key value pairs stored in metadata")
+            )
+        )
+        (@subcommand schema =>
+            (about: "Update or create schemas")
+            (@setting SubcommandRequiredElseHelp)
+            (@subcommand create =>
+                (about: "Create schemas from a yaml file")
+                (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
+            )
+            (@subcommand update =>
+                (about: "Update schemas from a yaml file")
+                (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
             )
         )
     )
@@ -167,6 +179,15 @@ fn run() -> Result<(), CliError> {
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
                 orgs::do_update_organization(&url, key, wait, update_org)?
+            }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
+        ("schema", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                schemas::do_create_schemas(&url, key, wait, m.value_of("path").unwrap())?
+            }
+            ("update", Some(m)) => {
+                schemas::do_update_schemas(&url, key, wait, m.value_of("path").unwrap())?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
