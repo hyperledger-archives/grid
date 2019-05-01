@@ -30,8 +30,8 @@ cfg_if! {
 use crate::protocol::pike::state::{Agent, AgentList};
 use crate::protos::{FromBytes, ProtoConversionError};
 
-const PIKE_NAMESPACE: &'static str = "cad11d";
-const PIKE_AGENT_RESOURCE: &'static str = "00";
+const PIKE_NAMESPACE: &str = "cad11d";
+const PIKE_AGENT_RESOURCE: &str = "00";
 
 fn compute_agent_address(public_key: &str) -> String {
     let mut sha = Sha512::new();
