@@ -57,6 +57,8 @@ impl EventHandler for BlockEventHandler {
             block.block_id, block.block_num, block.state_root_hash
         );
 
+        trace!("The following operations will be performed: {:#?}", db_ops);
+
         let conn = self
             .connection_pool
             .get()
@@ -198,6 +200,7 @@ fn state_change_to_db_operation(
     }
 }
 
+#[derive(Debug)]
 enum DbOperation {
     InsertAgents(Vec<NewAgent>),
     InsertOrganizations(Vec<NewOrganization>),
