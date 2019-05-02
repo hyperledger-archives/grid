@@ -5,6 +5,7 @@ Table of Contents
 .. toctree::
 
    introduction.rst
+   about_grid.rst
    transaction_family_specifications.rst
 
 .. Licensed under Creative Commons Attribution 4.0 International License
