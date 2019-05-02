@@ -34,45 +34,46 @@ use crate::key;
 
 use crate::CliError;
 
-const PIKE_NAMESPACE: &str = "cad11d";
+pub const PIKE_NAMESPACE: &str = "cad11d";
 const PIKE_FAMILY_NAME: &str = "pike";
 const PIKE_FAMILY_VERSION: &str = "0.1";
 
+pub const GRID_SCHEMA_NAMESPACE: &str = "621dee01";
+const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
+const GRID_SCHEMA_FAMILY_VERSION: &str = "1.0";
+
+pub fn schema_batch_builder(key: Option<String>) -> BatchBuilder {
+    BatchBuilder::new(GRID_SCHEMA_FAMILY_NAME, GRID_SCHEMA_FAMILY_VERSION, key)
+}
+
 pub fn pike_batch_builder(key: Option<String>) -> BatchBuilder {
-    BatchBuilder::new(
-        PIKE_FAMILY_NAME,
-        PIKE_FAMILY_VERSION,
-        vec![PIKE_NAMESPACE.into()],
-        key,
-    )
+    BatchBuilder::new(PIKE_FAMILY_NAME, PIKE_FAMILY_VERSION, key)
 }
 
 #[derive(Clone)]
 pub struct BatchBuilder {
     family_name: String,
     family_version: String,
-    namespaces: Vec<String>,
     key_name: Option<String>,
     batches: Vec<Batch>,
 }
 
 impl BatchBuilder {
-    pub fn new(
-        family_name: &str,
-        family_version: &str,
-        namespaces: Vec<String>,
-        key_name: Option<String>,
-    ) -> BatchBuilder {
+    pub fn new(family_name: &str, family_version: &str, key_name: Option<String>) -> BatchBuilder {
         BatchBuilder {
             family_name: family_name.to_string(),
             family_version: family_version.to_string(),
-            namespaces,
             key_name,
             batches: Vec::new(),
         }
     }
 
-    pub fn add_transaction<T: protobuf::Message>(&mut self, payload: &T) -> Result<Self, CliError> {
+    pub fn add_transaction<T: protobuf::Message>(
+        &mut self,
+        payload: &T,
+        inputs: &[String],
+        outputs: &[String],
+    ) -> Result<Self, CliError> {
         let private_key = key::load_signing_key(self.key_name.clone())?;
         let context = signing::create_context("secp256k1")?;
         let public_key = context.get_public_key(&private_key)?.as_hex();
@@ -88,8 +89,8 @@ impl BatchBuilder {
         txn_header.set_signer_public_key(public_key.clone());
         txn_header.set_batcher_public_key(public_key.clone());
 
-        txn_header.set_inputs(protobuf::RepeatedField::from_vec(self.namespaces.clone()));
-        txn_header.set_outputs(protobuf::RepeatedField::from_vec(self.namespaces.clone()));
+        txn_header.set_inputs(protobuf::RepeatedField::from_vec(inputs.to_vec()));
+        txn_header.set_outputs(protobuf::RepeatedField::from_vec(outputs.to_vec()));
 
         let payload_bytes = payload.write_to_bytes()?;
         let mut sha = Sha512::new();
