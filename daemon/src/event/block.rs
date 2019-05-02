@@ -73,6 +73,7 @@ impl EventHandler for BlockEventHandler {
                             "Fork detected. Replaced {} at height {}, with block {}.",
                             &b.block_id, &b.block_num, &block.block_id
                         );
+                        db::insert_block(&conn, &block)?;
                     }
                     Ok(Some(_)) => {
                         info!(
@@ -80,16 +81,16 @@ impl EventHandler for BlockEventHandler {
                             &block.block_id, block.block_num
                         );
                     }
-                    Ok(None) => info!("Received new block {}", block.block_id),
+                    Ok(None) => {
+                        info!("Received new block {}", block.block_id);
+                        db::insert_block(&conn, &block)?;
+                    }
                     Err(err) => {
                         return Err(err);
                     }
                 }
 
-                db_ops
-                    .iter()
-                    .try_for_each(|op| op.execute(&conn))
-                    .and_then(|_| db::insert_block(&conn, &block))
+                db_ops.iter().try_for_each(|op| op.execute(&conn))
             })
             .map_err(|err| EventError(format!("Database transaction failed {}", err)))
     }
