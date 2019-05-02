@@ -12,9 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::error::Error;
+use std::fmt;
+
 #[derive(Debug, PartialEq)]
 pub struct RecvError {
     pub error: String,
+}
+
+impl Error for RecvError {}
+
+impl fmt::Display for RecvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Receive Error: {}", self.error)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,13 +34,47 @@ pub enum TryRecvError {
     Disconnected,
 }
 
+impl Error for TryRecvError {}
+
+impl fmt::Display for TryRecvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TryRecvError::Empty => f.write_str("Unable to receive: channel is empty"),
+            TryRecvError::Disconnected => {
+                f.write_str("Unable to receive: channel has disconnected")
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum RecvTimeoutError {
     Timeout,
     Disconnected,
 }
 
+impl Error for RecvTimeoutError {}
+
+impl fmt::Display for RecvTimeoutError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RecvTimeoutError::Timeout => f.write_str("Unable to receive: Timeout"),
+            RecvTimeoutError::Disconnected => {
+                f.write_str("Unable to receive: channel has disconnected")
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SendError {
     pub error: String,
+}
+
+impl Error for SendError {}
+
+impl fmt::Display for SendError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Send Error: {}", self.error)
+    }
 }
