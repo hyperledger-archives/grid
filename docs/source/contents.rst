@@ -6,6 +6,7 @@ Table of Contents
 
    introduction.rst
    about_grid.rst
+   app_developers_guide.rst
    transaction_family_specifications.rst
 
 .. Licensed under Creative Commons Attribution 4.0 International License
