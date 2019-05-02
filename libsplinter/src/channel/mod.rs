@@ -16,11 +16,14 @@
 // that is used must have the following Receiver trait implemented, then the receiver end of the
 // channel can be passed to the NetworkMessageSender.
 mod crossbeam;
+mod error;
 #[cfg(test)]
 pub mod mock;
 mod mpsc;
 
 use std::time::Duration;
+
+pub use super::channel::error::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
 pub trait Receiver<T>: Send {
     fn recv(&self) -> Result<T, RecvError>;
@@ -40,26 +43,4 @@ impl<T> Clone for Box<Sender<T>> {
     fn clone(&self) -> Box<Sender<T>> {
         self.box_clone()
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct RecvError {
-    pub error: String,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TryRecvError {
-    Empty,
-    Disconnected,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RecvTimeoutError {
-    Timeout,
-    Disconnected,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct SendError {
-    pub error: String,
 }
