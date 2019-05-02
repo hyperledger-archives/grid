@@ -103,6 +103,9 @@ fn run() -> Result<(), CliError> {
                 (about: "Update schemas from a yaml file")
                 (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
             )
+            (@subcommand list =>
+                (about: "List currently defined schemas")
+            )
         )
     )
     .get_matches();
@@ -189,6 +192,7 @@ fn run() -> Result<(), CliError> {
             ("update", Some(m)) => {
                 schemas::do_update_schemas(&url, key, wait, m.value_of("path").unwrap())?
             }
+            ("list", Some(_)) => schemas::do_list_schemas(&url)?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),

@@ -19,6 +19,7 @@ use grid_sdk::protocol::schema::payload::{
 };
 use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDefinitionBuilder};
 use grid_sdk::protos::IntoProto;
+use reqwest::Client;
 
 use crate::error::CliError;
 use serde::Deserialize;
@@ -66,6 +67,16 @@ pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionS
             def.struct_properties,
         );
     });
+}
+
+pub fn do_list_schemas(url: &str) -> Result<(), CliError> {
+    let client = Client::new();
+    let schemas = client
+        .get(&format!("{}/schema", url))
+        .send()?
+        .json::<Vec<GridSchemaSlice>>()?;
+    schemas.iter().for_each(|schema| display_schema(schema));
+    Ok(())
 }
 
 pub fn do_create_schemas(
