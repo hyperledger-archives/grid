@@ -16,7 +16,6 @@ use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::network::{NetworkEcho, NetworkMessage, NetworkMessageType};
 
-use ::log::{debug, log};
 use protobuf::Message;
 
 // Implements a handler that handles NetworkEcho Messages

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::log::{error, log};
 use crossbeam_channel;
 use mio::{Event, Events, Token};
 use mio_extras::channel as mio_channel;

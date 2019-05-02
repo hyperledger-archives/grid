@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[macro_use]
+extern crate log;
+
 mod certs;
 mod config;
 mod daemon;
@@ -20,12 +23,11 @@ use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
 use crate::daemon::SplinterDaemon;
 
-use ::log::LogLevel;
-use ::log::{debug, error, info, log, warn};
 use clap::{clap_app, crate_version};
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::{TlsInitError, TlsTransport};
 use libsplinter::transport::Transport;
+use log::LogLevel;
 use openssl::error::ErrorStack;
 use tempdir::TempDir;
 

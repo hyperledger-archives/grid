@@ -17,8 +17,6 @@ use crate::network::sender::SendRequest;
 use crate::protos::circuit::{CircuitMessage, CircuitMessageType};
 use crate::protos::network::NetworkMessageType;
 
-use ::log::{debug, log};
-
 // Implements a handler that pass messages to another dispatcher loop
 pub struct CircuitMessageHandler {
     sender: Box<Sender<DispatchMessage<CircuitMessageType>>>,

@@ -24,7 +24,6 @@ use crate::rwlock_read_unwrap;
 
 use std::sync::{Arc, RwLock};
 
-use ::log::{debug, log, warn};
 use protobuf::Message;
 
 // Implements a handler that handles CircuitDirectMessage

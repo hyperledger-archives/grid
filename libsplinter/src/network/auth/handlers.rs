@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ::log::{debug, info, log, warn};
 use protobuf::Message;
 
 use crate::channel::Sender;

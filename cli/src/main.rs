@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[macro_use]
+extern crate log;
+
 mod actions;
 mod error;
 
@@ -20,9 +23,8 @@ use crate::error::CliError;
 
 use std::str::FromStr;
 
-use ::log::LogLevel;
-use ::log::{error, log};
 use clap::clap_app;
+use log::LogLevel;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");

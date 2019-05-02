@@ -23,8 +23,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use ::log::{error, log, warn};
-
 use crate::channel::{Receiver, RecvTimeoutError, SendError, Sender};
 use crate::network::sender::SendRequest;
 

@@ -22,8 +22,6 @@ use crate::rwlock_read_unwrap;
 
 use std::sync::{Arc, RwLock};
 
-use ::log::{debug, log, warn};
-
 // Implements a handler that handles CircuitError messages
 pub struct CircuitErrorHandler {
     node_id: String,
