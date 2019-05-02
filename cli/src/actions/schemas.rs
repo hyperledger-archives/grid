@@ -79,6 +79,16 @@ pub fn do_list_schemas(url: &str) -> Result<(), CliError> {
     Ok(())
 }
 
+pub fn do_show_schema(url: &str, name: &str) -> Result<(), CliError> {
+    let client = Client::new();
+    let schema = client
+        .get(&format!("{}/schema/{}", url, name))
+        .send()?
+        .json::<GridSchemaSlice>()?;
+    display_schema(&schema);
+    Ok(())
+}
+
 pub fn do_create_schemas(
     url: &str,
     key: Option<String>,

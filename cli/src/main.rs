@@ -106,6 +106,10 @@ fn run() -> Result<(), CliError> {
             (@subcommand list =>
                 (about: "List currently defined schemas")
             )
+            (@subcommand show =>
+                (about: "Show schema specified by name argument")
+                (@arg name: +takes_value +required "Name of schema")
+            )
         )
     )
     .get_matches();
@@ -193,6 +197,7 @@ fn run() -> Result<(), CliError> {
                 schemas::do_update_schemas(&url, key, wait, m.value_of("path").unwrap())?
             }
             ("list", Some(_)) => schemas::do_list_schemas(&url)?,
+            ("show", Some(m)) => schemas::do_show_schema(&url, m.value_of("name").unwrap())?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
