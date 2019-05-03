@@ -59,7 +59,7 @@ pub struct PikeState<'a> {
 
 impl<'a> PikeState<'a> {
     pub fn new(context: &'a mut TransactionContext) -> PikeState {
-        PikeState { context: context }
+        PikeState { context }
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
