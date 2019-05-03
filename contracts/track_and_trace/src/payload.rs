@@ -86,7 +86,7 @@ impl SupplyChainPayload {
                     )));
                 };
                 let properties = create_record_type.get_properties();
-                if properties.len() == 0 {
+                if properties.is_empty() {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Record type must have at least one property",
                     )));
