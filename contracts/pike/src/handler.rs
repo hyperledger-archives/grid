@@ -44,7 +44,7 @@ pub struct PikeTransactionHandler {
     namespaces: Vec<String>,
 }
 
-const NAMESPACE: &'static str = "cad11d";
+const NAMESPACE: &str = "cad11d";
 
 fn compute_address(name: &str, resource: Resource) -> String {
     let mut sha = Sha512::new();
