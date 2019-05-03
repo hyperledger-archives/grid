@@ -219,28 +219,38 @@ fn create_subscription_request(last_known_block_id: String) -> ClientEventsSubsc
     let mut block_info_subscription = EventSubscription::new();
     block_info_subscription.set_event_type("sawtooth/block-commit".into());
 
+    // Event subscription for Grid
     let mut grid_state_filter = EventFilter::new();
     grid_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
     grid_state_filter.set_key("address".into());
-    grid_state_filter.set_match_string(format!("{}.*", GRID_NAMESPACE));
+    grid_state_filter.set_match_string(format!("^{}.*", GRID_NAMESPACE));
 
+    let mut grid_state_delta_subscription = EventSubscription::new();
+    grid_state_delta_subscription.set_event_type("sawtooth/state-delta".into());
+    grid_state_delta_subscription
+        .mut_filters()
+        .push(grid_state_filter);
+
+    // Event subscription for Pike
     let mut pike_state_filter = EventFilter::new();
     pike_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
     pike_state_filter.set_key("address".into());
-    pike_state_filter.set_match_string(format!("{}.*", PIKE_NAMESPACE));
+    pike_state_filter.set_match_string(format!("^{}.*", PIKE_NAMESPACE));
 
-    let mut state_delta_subscription = EventSubscription::new();
-    state_delta_subscription.set_event_type("sawtooth/state-delta".into());
-    state_delta_subscription
-        .mut_filters()
-        .push(grid_state_filter);
-    state_delta_subscription
+    let mut pike_state_delta_subscription = EventSubscription::new();
+    pike_state_delta_subscription.set_event_type("sawtooth/state-delta".into());
+    pike_state_delta_subscription
         .mut_filters()
         .push(pike_state_filter);
 
     let mut request = ClientEventsSubscribeRequest::new();
     request.mut_subscriptions().push(block_info_subscription);
-    request.mut_subscriptions().push(state_delta_subscription);
+    request
+        .mut_subscriptions()
+        .push(pike_state_delta_subscription);
+    request
+        .mut_subscriptions()
+        .push(grid_state_delta_subscription);
     request.mut_last_known_block_ids().push(last_known_block_id);
 
     request
