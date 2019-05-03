@@ -90,12 +90,12 @@ table! {
 table! {
     organization (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
         org_id -> Varchar,
         name -> Varchar,
         address -> Varchar,
         metadata -> Array<Json>,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
     }
 }
 

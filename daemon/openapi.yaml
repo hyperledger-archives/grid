@@ -120,7 +120,7 @@ paths:
       produces:
       - "application/json"
       responses:
-        202:
+        200:
           description: "List of schemas"
           schema:
             properties:
@@ -158,7 +158,7 @@ paths:
         required: true
         type: "string"
       responses:
-        202:
+        200:
           description: Successful operation
           schema:
             properties:
@@ -181,7 +181,7 @@ paths:
   /agent:
     get:
       tags:
-        - "agents"
+        - "agent"
       summary: "Get a list of Agents"
       description: "Fetches a list of agents from the reporting database"
       operationId: "list_agents"
@@ -195,9 +195,73 @@ paths:
               data:
                 type: array
                 items:
-                  $ref: "#/definitions/Agents"
+                  $ref: "#/definitions/Agent"
         400:
           $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
+  /organization:
+    get:
+      tags:
+        - "organization"
+      operationId: "list_organizations"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Retrieve list of organizations"
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: "#/definitions/Organization"
+        400:
+          $ref: "#/responses/400BadRequest"
+        429:
+          $ref: "#/responses/429TooManyRequests"
+        500:
+          description: Something went wrong within the database
+          schema:
+            $ref: "#/definitions/Error"
+        503:
+          description: API is unable to reach the database
+          schema:
+            $ref: "#/definitions/Error"
+
+  /organization/{id}:
+    get:
+      tags:
+        - "organization"
+      operationId: "fetch_organization"
+      produces:
+        - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "Id of the organization to return"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            properties:
+              link:
+                $ref: "#/definitions/Organization"
+        400:
+          $ref: "#/responses/400BadRequest"
+        404:
+          $ref: "#/responses/404NotFound"
         429:
           $ref: "#/responses/429TooManyRequests"
         500:
@@ -431,19 +495,40 @@ definitions:
         example: 03c360a46457a284793153e09840c322bee1dcc34445d7d49e19e60abd18fd0758
       active:
         type: boolean
+        example: "true"
       roles:
         type: array
         items:
           type: string
+          example: "admin"
       metadata:
         type: array
         items:
-          $ref: '#definitions/Metadata'
+          $ref: '#/definitions/Metadata'
+
+  Organization:
+    type: object
+    properties:
+      id:
+        type: string
+        example: "philips001"
+      name:
+        type: string
+        example: "Philips"
+      address:
+        type: string
+        example: "Amstelplein 2 1096 BC Amsterdam The Netherlands"
+      metadata:
+        type: array
+        items:
+          $ref: '#/definitions/Metadata'
 
   Metadata:
     type: object
     properties:
       key:
         type: string
+        example: "industry"
       value:
         type: string
+        example: "eletronics"
