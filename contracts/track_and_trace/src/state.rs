@@ -86,13 +86,11 @@ impl<'a> SupplyChainState<'a> {
         // remove old record if it exists and sort the records by record id
         let records = record_container.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for record in records.clone() {
+        for (i, record) in records.iter().enumerate() {
             if record.record_id == record_id {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
         if let Some(i) = index {
@@ -285,13 +283,11 @@ impl<'a> SupplyChainState<'a> {
         // remove old property if it exists and sort the properties by name
         let properties = property_container.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for prop in properties.clone() {
+        for (i, prop) in properties.iter().enumerate() {
             if prop.name == property_name {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
         if let Some(i) = index {
@@ -367,13 +363,11 @@ impl<'a> SupplyChainState<'a> {
         // remove old property page if it exists and sort the property pages by name
         let pages = property_pages.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for page in pages.clone() {
+        for (i, page) in pages.iter().enumerate() {
             if page.name == property_name {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
         if let Some(i) = index {

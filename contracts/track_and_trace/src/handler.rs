@@ -634,9 +634,8 @@ impl SupplyChainTransactionHandler {
         };
 
         let mut proposal_index = 0;
-        let mut count = 0;
 
-        for prop in proposals.get_entries() {
+        for (i, prop) in proposals.get_entries().iter().enumerate() {
             if prop.get_receiving_agent() == receiving_agent
                 && prop.get_role() == role
                 && prop.get_record_id() == record_id
@@ -644,10 +643,9 @@ impl SupplyChainTransactionHandler {
             {
                 current_proposal = prop.clone();
                 exists = true;
-                proposal_index = count;
+                proposal_index = i;
                 break;
             }
-            count = count + 1;
         }
 
         if !exists {
