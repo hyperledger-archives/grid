@@ -123,10 +123,7 @@ impl SupplyChainPayload {
             x => x,
         };
 
-        Ok(Some(SupplyChainPayload {
-            action: action,
-            timestamp: timestamp,
-        }))
+        Ok(Some(SupplyChainPayload { action, timestamp }))
     }
 
     pub fn get_action(&self) -> Action {

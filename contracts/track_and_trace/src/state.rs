@@ -41,7 +41,7 @@ pub struct SupplyChainState<'a> {
 
 impl<'a> SupplyChainState<'a> {
     pub fn new(context: &'a mut TransactionContext) -> SupplyChainState {
-        SupplyChainState { context: context }
+        SupplyChainState { context }
     }
 
     pub fn get_record(&mut self, record_id: &str) -> Result<Option<Record>, ApplyError> {
