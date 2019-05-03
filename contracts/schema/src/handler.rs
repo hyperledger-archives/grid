@@ -246,15 +246,13 @@ fn check_permission(
     permission: &str,
 ) -> Result<(), ApplyError> {
     match perm_checker.has_permission(signer, permission) {
-        Ok(true) => return Ok(()),
-        Ok(false) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signer does not have the {} permission: {}.",
-                permission, signer,
-            )))
-        }
-        Err(e) => return Err(ApplyError::InvalidTransaction(format!("{}", e))),
-    };
+        Ok(true) => Ok(()),
+        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
+            "The signer does not have the {} permission: {}.",
+            permission, signer,
+        ))),
+        Err(e) => Err(ApplyError::InvalidTransaction(format!("{}", e))),
+    }
 }
 
 #[cfg(test)]
