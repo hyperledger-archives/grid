@@ -115,7 +115,7 @@ impl<'a> PermissionChecker<'a> {
     ) -> Result<bool, PermissionCheckerError> {
         let agent = self.get_agent(public_key)?;
         match agent {
-            Some(agent) => Ok(agent.roles().into_iter().any(|r| r == permission)),
+            Some(agent) => Ok(agent.roles().iter().any(|r| r == permission)),
             None => Err(PermissionCheckerError::InvalidPublicKey(format!(
                 "The signer is not an Agent: {}",
                 public_key
