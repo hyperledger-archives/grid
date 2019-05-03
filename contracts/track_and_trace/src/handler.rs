@@ -286,9 +286,9 @@ impl SupplyChainTransactionHandler {
         };
 
         if owner.agent_id != signer || custodian.agent_id != signer {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Must be owner and custodian to finalize record"
-            )));
+            return Err(ApplyError::InvalidTransaction(
+                "Must be owner and custodian to finalize record".to_string(),
+            ));
         }
         if final_record.get_field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -917,9 +917,9 @@ impl SupplyChainTransactionHandler {
         };
 
         if owner.get_agent_id() != signer {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Must be owner to revoke reporters"
-            )));
+            return Err(ApplyError::InvalidTransaction(
+                "Must be owner to revoke reporters".to_string(),
+            ));
         }
 
         if revoke_record.get_field_final() {
@@ -933,9 +933,9 @@ impl SupplyChainTransactionHandler {
             let mut prop = match state.get_property(record_id, prop_name) {
                 Ok(Some(prop)) => prop,
                 Ok(None) => {
-                    return Err(ApplyError::InvalidTransaction(format!(
-                        "Property does not exists"
-                    )));
+                    return Err(ApplyError::InvalidTransaction(
+                        "Property does not exists".to_string(),
+                    ));
                 }
                 Err(err) => return Err(err),
             };
@@ -945,9 +945,9 @@ impl SupplyChainTransactionHandler {
             for reporter in prop.get_reporters() {
                 if reporter.get_public_key() == reporter_id {
                     if !reporter.get_authorized() {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Reporter is already unauthorized."
-                        )));
+                        return Err(ApplyError::InvalidTransaction(
+                            "Reporter is already unauthorized.".to_string(),
+                        ));
                     }
                     let mut unauthorized_reporter = reporter.clone();
                     unauthorized_reporter.set_authorized(false);
