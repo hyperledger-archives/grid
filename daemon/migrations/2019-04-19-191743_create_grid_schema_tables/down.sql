@@ -21,3 +21,4 @@ DROP INDEX IF EXISTS grid_property_definition_name_block_num_idx;
 
 DROP TABLE IF EXISTS grid_property_value;
 DROP INDEX IF EXISTS grid_property_value_name_block_num_idx;
+DROP TYPE IF EXISTS latlong;
