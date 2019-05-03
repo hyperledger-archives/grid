@@ -95,12 +95,9 @@ impl<'a> SupplyChainState<'a> {
             count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                record_container.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            record_container.entries.remove(i);
+        }
         record_container.entries.push(record);
         record_container
             .entries
@@ -297,12 +294,9 @@ impl<'a> SupplyChainState<'a> {
             count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                property_container.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            property_container.entries.remove(i);
+        }
         property_container.entries.push(property);
         property_container.entries.sort_by_key(|p| p.clone().name);
         let serialized = match property_container.write_to_bytes() {
@@ -382,12 +376,9 @@ impl<'a> SupplyChainState<'a> {
             count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                property_pages.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            property_pages.entries.remove(i);
+        }
         property_pages.entries.push(property_page);
         property_pages.entries.sort_by_key(|pp| pp.clone().name);
         let serialized = match property_pages.write_to_bytes() {
