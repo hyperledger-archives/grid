@@ -112,7 +112,7 @@ impl<'a> PikeState<'a> {
                 index = Some(count);
                 break;
             }
-            count = count + 1;
+            count += 1;
         }
 
         match index {
@@ -191,7 +191,7 @@ impl<'a> PikeState<'a> {
                 index = Some(count);
                 break;
             }
-            count = count + 1;
+            count += 1;
         }
 
         match index {
