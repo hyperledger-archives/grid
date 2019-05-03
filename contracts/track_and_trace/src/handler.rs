@@ -439,7 +439,7 @@ impl SupplyChainTransactionHandler {
             state.set_property_page(record_id, name, page_number, page.clone())?;
             if page.reported_values.len() >= PROPERTY_PAGE_MAX_LENGTH {
                 let mut new_page_number = page_number + 1;
-                if page_number + 1 <= PROPERTY_PAGE_MAX_LENGTH as u32 {
+                if page_number < PROPERTY_PAGE_MAX_LENGTH as u32 {
                     new_page_number = 1;
                 }
 
