@@ -106,13 +106,11 @@ impl<'a> PikeState<'a> {
         // remove old agent if it exists and sort the agents by public key
         let agents = agent_list.get_agents().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for agent in agents.clone() {
+        for (i, agent) in agents.iter().enumerate() {
             if agent.public_key == public_key {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count += 1;
         }
 
         match index {
@@ -185,13 +183,11 @@ impl<'a> PikeState<'a> {
         // remove old agent if it exists and sort the agents by public key
         let organizations = organization_list.get_organizations().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for organization in organizations.clone() {
+        for (i, organization) in organizations.iter().enumerate() {
             if organization.org_id == id {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count += 1;
         }
 
         match index {
