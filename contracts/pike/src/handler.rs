@@ -113,12 +113,9 @@ impl<'a> PikeState<'a> {
             }
         }
 
-        match index {
-            Some(x) => {
-                agent_list.agents.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            agent_list.agents.remove(i);
+        }
         agent_list.agents.push(new_agent);
         agent_list.agents.sort_by_key(|a| a.clone().public_key);
         let serialized = match protobuf::Message::write_to_bytes(&agent_list) {
@@ -190,12 +187,9 @@ impl<'a> PikeState<'a> {
             }
         }
 
-        match index {
-            Some(x) => {
-                organization_list.organizations.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            organization_list.organizations.remove(i);
+        }
         organization_list.organizations.push(new_organization);
         organization_list
             .organizations
