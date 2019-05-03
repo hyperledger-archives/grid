@@ -438,10 +438,11 @@ impl SupplyChainTransactionHandler {
                 .sort_by_key(|rv| (rv.clone().timestamp, rv.clone().reporter_index));
             state.set_property_page(record_id, name, page_number, page.clone())?;
             if page.reported_values.len() >= PROPERTY_PAGE_MAX_LENGTH {
-                let mut new_page_number = page_number + 1;
-                if page_number < PROPERTY_PAGE_MAX_LENGTH as u32 {
-                    new_page_number = 1;
-                }
+                let new_page_number = if page_number < PROPERTY_PAGE_MAX_LENGTH as u32 {
+                    1
+                } else {
+                    page_number + 1
+                };
 
                 let new_page = match state.get_property_page(record_id, name, new_page_number) {
                     Ok(Some(mut new_page)) => {
