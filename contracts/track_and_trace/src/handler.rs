@@ -60,6 +60,8 @@ pub struct SupplyChainTransactionHandler {
 }
 
 impl SupplyChainTransactionHandler {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> SupplyChainTransactionHandler {
         SupplyChainTransactionHandler {
             family_name: "grid_track_and_trace".to_string(),

@@ -211,6 +211,8 @@ impl<'a> PikeState<'a> {
 }
 
 impl PikeTransactionHandler {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> PikeTransactionHandler {
         PikeTransactionHandler {
             family_name: "pike".to_string(),
