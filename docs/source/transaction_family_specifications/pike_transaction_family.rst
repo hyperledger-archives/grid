@@ -237,3 +237,6 @@ UPDATE_ORGANIZATION
         string address = 3;
         repeated KeyValueEntry metadata = 4;
       }
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+.. https://creativecommons.org/licenses/by/4.0/
