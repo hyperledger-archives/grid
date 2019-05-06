@@ -168,7 +168,7 @@ pub struct GridPropertyValue {
     pub boolean_value: Option<bool>,
     pub number_value: Option<i64>,
     pub string_value: Option<String>,
-    pub enum_value: Option<i64>,
+    pub enum_value: Option<i32>,
     pub struct_values: Option<Vec<String>>,
     pub lat_long_value: Option<LatLongValue>,
 }
