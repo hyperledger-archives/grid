@@ -56,7 +56,6 @@ pub unsafe fn entrypoint(payload: WasmPtr, signer: WasmPtr, signature: WasmPtr) 
     execute_entrypoint(payload, signer, signature, apply)
 }
 
-#[derive(Default)]
 pub struct GridSchemaTransactionHandler {
     family_name: String,
     family_versions: Vec<String>,
@@ -64,6 +63,8 @@ pub struct GridSchemaTransactionHandler {
 }
 
 impl GridSchemaTransactionHandler {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         GridSchemaTransactionHandler {
             family_name: "grid_schema".to_string(),
@@ -246,15 +247,13 @@ fn check_permission(
     permission: &str,
 ) -> Result<(), ApplyError> {
     match perm_checker.has_permission(signer, permission) {
-        Ok(true) => return Ok(()),
-        Ok(false) => {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signer does not have the {} permission: {}.",
-                permission, signer,
-            )))
-        }
-        Err(e) => return Err(ApplyError::InvalidTransaction(format!("{}", e))),
-    };
+        Ok(true) => Ok(()),
+        Ok(false) => Err(ApplyError::InvalidTransaction(format!(
+            "The signer does not have the {} permission: {}.",
+            permission, signer,
+        ))),
+        Err(e) => Err(ApplyError::InvalidTransaction(format!("{}", e))),
+    }
 }
 
 #[cfg(test)]

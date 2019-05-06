@@ -14,7 +14,7 @@
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
-use grid_sdk::protocol::pike::state::{Agent, AgentList, Organization, OrganizationList};
+use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::schema::state::{Schema, SchemaList, SchemaListBuilder};
 use grid_sdk::protos::{FromBytes, IntoBytes};
 
@@ -33,7 +33,6 @@ pub const GRID_SCHEMA_NAMESPACE: &str = "01";
 
 pub const PIKE_NAMESPACE: &str = "cad11d";
 pub const PIKE_AGENT_NAMESPACE: &str = "00";
-pub const PIKE_ORG_NAMESPACE: &str = "01";
 
 /// Computes the address a Pike Agent is stored at based on its public_key
 pub fn compute_agent_address(public_key: &str) -> String {
@@ -41,14 +40,6 @@ pub fn compute_agent_address(public_key: &str) -> String {
     sha.input(public_key.as_bytes());
 
     String::from(PIKE_NAMESPACE) + PIKE_AGENT_NAMESPACE + &sha.result_str()[..62].to_string()
-}
-
-/// Computes the address a Pike Organization is stored at based on its name
-pub fn compute_org_address(name: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input(name.as_bytes());
-
-    String::from(PIKE_NAMESPACE) + PIKE_ORG_NAMESPACE + &sha.result_str()[..62].to_string()
 }
 
 /// Computes the address a Grid Schema is stored at based on its name
@@ -89,35 +80,6 @@ impl<'a> GridSchemaState<'a> {
                 for agent in agents.agents() {
                     if agent.public_key() == public_key {
                         return Ok(Some(agent.clone()));
-                    }
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
-    }
-
-    /// Gets a Pike Organization. Handles retrieving the correct organization from an
-    /// OrganizationList.
-    pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
-        let address = compute_org_address(id);
-        let d = self.context.get_state_entry(&address)?;
-        match d {
-            Some(packed) => {
-                let orgs: OrganizationList = match OrganizationList::from_bytes(packed.as_slice()) {
-                    Ok(orgs) => orgs,
-                    Err(err) => {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Cannot deserialize organization list: {:?}",
-                            err,
-                        )));
-                    }
-                };
-
-                // find the organization with the correct org id
-                for org in orgs.organizations() {
-                    if org.org_id() == id {
-                        return Ok(Some(org.clone()));
                     }
                 }
                 Ok(None)
@@ -220,9 +182,7 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashMap;
 
-    use grid_sdk::protocol::pike::state::{
-        AgentBuilder, AgentListBuilder, OrganizationBuilder, OrganizationListBuilder,
-    };
+    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
     use grid_sdk::protocol::schema::state::{DataType, PropertyDefinitionBuilder, SchemaBuilder};
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
 
@@ -315,49 +275,6 @@ mod tests {
         let agent = result.unwrap();
 
         assert_eq!(agent.public_key(), "agent_public_key");
-    }
-
-    #[test]
-    // Test that if an org does not exist in state, None is returned
-    fn test_get_organization_none() {
-        let transaction_context = MockTransactionContext::default();
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_organization("test_org").unwrap();
-        assert!(result.is_none())
-    }
-
-    #[test]
-    // Test that if an org does exists in state, Some(Organization) is returned
-    fn test_get_organization_some() {
-        let transaction_context = MockTransactionContext::default();
-
-        let builder = OrganizationBuilder::new();
-        let organization = builder
-            .with_org_id("test_org".to_string())
-            .with_name("name".to_string())
-            .with_address("address".to_string())
-            .build()
-            .unwrap();
-
-        let builder = OrganizationListBuilder::new();
-        let organization_list = builder
-            .with_organizations(vec![organization.clone()])
-            .build()
-            .unwrap();
-        let org_bytes = organization_list.into_bytes().unwrap();
-        let org_address = compute_org_address("test_org");
-        transaction_context
-            .set_state_entry(org_address, org_bytes)
-            .unwrap();
-
-        let state = GridSchemaState::new(&transaction_context);
-
-        let result = state.get_organization("test_org").unwrap();
-        assert!(result.is_some());
-        let organization = result.unwrap();
-
-        assert_eq!(organization.org_id(), "test_org");
     }
 
     #[test]

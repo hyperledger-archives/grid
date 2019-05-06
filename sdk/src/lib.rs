@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Required due to a bug in rust-protobuf: https://github.com/stepancheg/rust-protobuf/issues/331
+#![allow(renamed_and_removed_lints)]
+
 #[macro_use]
 extern crate cfg_if;
 

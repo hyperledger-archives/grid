@@ -38,8 +38,8 @@ use crate::sawtooth_connection::SawtoothConnection;
 
 pub use super::event::error::{EventError, EventProcessorError};
 
-const PIKE_NAMESPACE: &'static str = "cad11d";
-const GRID_NAMESPACE: &'static str = "621dee";
+const PIKE_NAMESPACE: &str = "cad11d";
+const GRID_NAMESPACE: &str = "621dee";
 
 const SHUTDOWN_TIMEOUT: u64 = 2;
 

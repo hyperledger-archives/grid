@@ -60,6 +60,8 @@ pub struct SupplyChainTransactionHandler {
 }
 
 impl SupplyChainTransactionHandler {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> SupplyChainTransactionHandler {
         SupplyChainTransactionHandler {
             family_name: "grid_track_and_trace".to_string(),
@@ -286,9 +288,9 @@ impl SupplyChainTransactionHandler {
         };
 
         if owner.agent_id != signer || custodian.agent_id != signer {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Must be owner and custodian to finalize record"
-            )));
+            return Err(ApplyError::InvalidTransaction(
+                "Must be owner and custodian to finalize record".to_string(),
+            ));
         }
         if final_record.get_field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -438,10 +440,11 @@ impl SupplyChainTransactionHandler {
                 .sort_by_key(|rv| (rv.clone().timestamp, rv.clone().reporter_index));
             state.set_property_page(record_id, name, page_number, page.clone())?;
             if page.reported_values.len() >= PROPERTY_PAGE_MAX_LENGTH {
-                let mut new_page_number = page_number + 1;
-                if page_number + 1 <= PROPERTY_PAGE_MAX_LENGTH as u32 {
-                    new_page_number = 1;
-                }
+                let new_page_number = if page_number < PROPERTY_PAGE_MAX_LENGTH as u32 {
+                    1
+                } else {
+                    page_number + 1
+                };
 
                 let new_page = match state.get_property_page(record_id, name, new_page_number) {
                     Ok(Some(mut new_page)) => {
@@ -634,9 +637,8 @@ impl SupplyChainTransactionHandler {
         };
 
         let mut proposal_index = 0;
-        let mut count = 0;
 
-        for prop in proposals.get_entries() {
+        for (i, prop) in proposals.get_entries().iter().enumerate() {
             if prop.get_receiving_agent() == receiving_agent
                 && prop.get_role() == role
                 && prop.get_record_id() == record_id
@@ -644,10 +646,9 @@ impl SupplyChainTransactionHandler {
             {
                 current_proposal = prop.clone();
                 exists = true;
-                proposal_index = count;
+                proposal_index = i;
                 break;
             }
-            count = count + 1;
         }
 
         if !exists {
@@ -919,9 +920,9 @@ impl SupplyChainTransactionHandler {
         };
 
         if owner.get_agent_id() != signer {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "Must be owner to revoke reporters"
-            )));
+            return Err(ApplyError::InvalidTransaction(
+                "Must be owner to revoke reporters".to_string(),
+            ));
         }
 
         if revoke_record.get_field_final() {
@@ -935,9 +936,9 @@ impl SupplyChainTransactionHandler {
             let mut prop = match state.get_property(record_id, prop_name) {
                 Ok(Some(prop)) => prop,
                 Ok(None) => {
-                    return Err(ApplyError::InvalidTransaction(format!(
-                        "Property does not exists"
-                    )));
+                    return Err(ApplyError::InvalidTransaction(
+                        "Property does not exists".to_string(),
+                    ));
                 }
                 Err(err) => return Err(err),
             };
@@ -947,9 +948,9 @@ impl SupplyChainTransactionHandler {
             for reporter in prop.get_reporters() {
                 if reporter.get_public_key() == reporter_id {
                     if !reporter.get_authorized() {
-                        return Err(ApplyError::InvalidTransaction(format!(
-                            "Reporter is already unauthorized."
-                        )));
+                        return Err(ApplyError::InvalidTransaction(
+                            "Reporter is already unauthorized.".to_string(),
+                        ));
                     }
                     let mut unauthorized_reporter = reporter.clone();
                     unauthorized_reporter.set_authorized(false);
@@ -1083,15 +1084,15 @@ impl SupplyChainTransactionHandler {
 
 impl TransactionHandler for SupplyChainTransactionHandler {
     fn family_name(&self) -> String {
-        return self.family_name.clone();
+        self.family_name.clone()
     }
 
     fn family_versions(&self) -> Vec<String> {
-        return self.family_versions.clone();
+        self.family_versions.clone()
     }
 
     fn namespaces(&self) -> Vec<String> {
-        return self.namespaces.clone();
+        self.namespaces.clone()
     }
 
     fn apply(

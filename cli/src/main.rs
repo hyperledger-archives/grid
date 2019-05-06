@@ -115,7 +115,7 @@ fn run() -> Result<(), CliError> {
 
     let url = matches.value_of("url").unwrap_or("http://localhost:8000");
 
-    let key = matches.value_of("key").map(|k| k.to_string());
+    let key = matches.value_of("key").map(ToString::to_string);
 
     let wait = value_t!(matches, "wait", u64).unwrap_or(0);
 

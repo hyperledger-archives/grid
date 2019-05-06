@@ -101,6 +101,7 @@ pub struct NewGridSchema {
     pub owner: String,
 }
 
+#[allow(dead_code)]
 #[derive(Queryable, Debug)]
 pub struct GridSchema {
     pub id: i64,
@@ -126,6 +127,7 @@ pub struct NewGridPropertyDefinition {
     pub struct_properties: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Queryable, Debug)]
 pub struct GridPropertyDefinition {
     pub id: i64,
@@ -157,6 +159,7 @@ pub struct NewGridPropertyValue {
     pub lat_long_value: Option<LatLongValue>,
 }
 
+#[allow(dead_code)]
 #[derive(Queryable, Debug)]
 pub struct GridPropertyValue {
     pub id: i64,

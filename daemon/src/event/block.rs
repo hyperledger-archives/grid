@@ -101,7 +101,7 @@ impl EventHandler for BlockEventHandler {
 
 fn get_block(events: &[Event]) -> Result<Block, EventError> {
     events
-        .into_iter()
+        .iter()
         .filter(|event| event.get_event_type() == "sawtooth/block-commit")
         .map(|event| {
             let attributes = event.get_attributes();
@@ -129,7 +129,7 @@ fn require_attr(attributes: &[Event_Attribute], key: &str) -> Result<String, Eve
 
 fn get_db_operations(events: &[Event], block_num: i64) -> Result<Vec<DbOperation>, EventError> {
     events
-        .into_iter()
+        .iter()
         .filter(|event| event.get_event_type() == "sawtooth/state-delta")
         .filter_map(|event| protobuf::parse_from_bytes::<StateChangeList>(&event.data).ok())
         .flat_map(|mut state_changes| state_changes.take_state_changes().into_iter())
@@ -150,7 +150,7 @@ fn state_change_to_db_operation(
             let agents = AgentList::from_bytes(&state_change.value)
                 .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                 .agents()
-                .into_iter()
+                .iter()
                 .map(|agent| NewAgent {
                     public_key: agent.public_key().to_string(),
                     org_id: agent.org_id().to_string(),
@@ -176,7 +176,7 @@ fn state_change_to_db_operation(
             let orgs = OrganizationList::from_bytes(&state_change.value)
                 .map_err(|err| EventError(format!("Failed to parse organization list {}", err)))?
                 .organizations()
-                .into_iter()
+                .iter()
                 .map(|org| NewOrganization {
                     org_id: org.org_id().to_string(),
                     name: org.name().to_string(),

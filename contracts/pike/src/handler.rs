@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use protobuf;
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
+use protobuf;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -31,12 +31,12 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::pike_payload::{CreateAgentAction, CreateOrganizationAction,
-                                     PikePayload,
-                                     PikePayload_Action as Action, UpdateAgentAction,
-                                     UpdateOrganizationAction};
-use grid_sdk::protos::pike_state::{Agent, AgentList, Organization, OrganizationList};
 use addresser::{resource_to_byte, Resource};
+use grid_sdk::protos::pike_payload::{
+    CreateAgentAction, CreateOrganizationAction, PikePayload, PikePayload_Action as Action,
+    UpdateAgentAction, UpdateOrganizationAction,
+};
+use grid_sdk::protos::pike_state::{Agent, AgentList, Organization, OrganizationList};
 
 pub struct PikeTransactionHandler {
     family_name: String,
@@ -44,7 +44,7 @@ pub struct PikeTransactionHandler {
     namespaces: Vec<String>,
 }
 
-const NAMESPACE: &'static str = "cad11d";
+const NAMESPACE: &str = "cad11d";
 
 fn compute_address(name: &str, resource: Resource) -> String {
     let mut sha = Sha512::new();
@@ -59,7 +59,7 @@ pub struct PikeState<'a> {
 
 impl<'a> PikeState<'a> {
     pub fn new(context: &'a mut TransactionContext) -> PikeState {
-        PikeState { context: context }
+        PikeState { context }
     }
 
     pub fn get_agent(&mut self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
@@ -106,21 +106,16 @@ impl<'a> PikeState<'a> {
         // remove old agent if it exists and sort the agents by public key
         let agents = agent_list.get_agents().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for agent in agents.clone() {
+        for (i, agent) in agents.iter().enumerate() {
             if agent.public_key == public_key {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                agent_list.agents.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            agent_list.agents.remove(i);
+        }
         agent_list.agents.push(new_agent);
         agent_list.agents.sort_by_key(|a| a.clone().public_key);
         let serialized = match protobuf::Message::write_to_bytes(&agent_list) {
@@ -185,21 +180,16 @@ impl<'a> PikeState<'a> {
         // remove old agent if it exists and sort the agents by public key
         let organizations = organization_list.get_organizations().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for organization in organizations.clone() {
+        for (i, organization) in organizations.iter().enumerate() {
             if organization.org_id == id {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                organization_list.organizations.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            organization_list.organizations.remove(i);
+        }
         organization_list.organizations.push(new_organization);
         organization_list
             .organizations
@@ -221,6 +211,8 @@ impl<'a> PikeState<'a> {
 }
 
 impl PikeTransactionHandler {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> PikeTransactionHandler {
         PikeTransactionHandler {
             family_name: "pike".to_string(),
@@ -232,15 +224,15 @@ impl PikeTransactionHandler {
 
 impl TransactionHandler for PikeTransactionHandler {
     fn family_name(&self) -> String {
-        return self.family_name.clone();
+        self.family_name.clone()
     }
 
     fn family_versions(&self) -> Vec<String> {
-        return self.family_versions.clone();
+        self.family_versions.clone()
     }
 
     fn namespaces(&self) -> Vec<String> {
-        return self.namespaces.clone();
+        self.namespaces.clone()
     }
 
     fn apply(
@@ -429,9 +421,9 @@ fn create_org(
     ));
     state.set_organization(payload.get_id(), organization)?;
 
-    state
-        .get_agent(signer)
-        .map_err(|e| ApplyError::InternalError(format!("Failed to create organization: {:?}", e)))?;
+    state.get_agent(signer).map_err(|e| {
+        ApplyError::InternalError(format!("Failed to create organization: {:?}", e))
+    })?;
 
     // Check if the agent already exists
     match state.get_agent(signer) {
@@ -453,9 +445,9 @@ fn create_org(
     agent.set_public_key(signer.to_string());
     agent.set_org_id(payload.get_id().to_string());
     agent.set_active(true);
-    agent.set_roles(protobuf::RepeatedField::from_vec(vec![
-        String::from("admin"),
-    ]));
+    agent.set_roles(protobuf::RepeatedField::from_vec(vec![String::from(
+        "admin",
+    )]));
 
     state
         .set_agent(signer, agent)
@@ -552,13 +544,11 @@ fn apply(
     request: &TpProcessRequest,
     context: &mut dyn TransactionContext,
 ) -> Result<bool, ApplyError> {
-
     let handler = PikeTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err)
+        Err(err) => Err(err),
     }
-
 }
 
 #[cfg(target_arch = "wasm32")]

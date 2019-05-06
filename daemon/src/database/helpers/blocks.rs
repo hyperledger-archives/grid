@@ -58,7 +58,7 @@ pub fn get_block_by_block_num(conn: &PgConnection, block_num: i64) -> QueryResul
         .select(block::all_columns)
         .filter(block::block_num.eq(&block_num))
         .first(conn)
-        .map(|block| Some(block))
+        .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 

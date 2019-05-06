@@ -206,7 +206,7 @@ pub fn get_batch_statuses(
     ),
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     let batch_ids = match query.get("id") {
-        Some(ids) => ids.split(',').map(|id| id.to_string()).collect(),
+        Some(ids) => ids.split(',').map(ToString::to_string).collect(),
         None => {
             return future::err(RestApiResponseError::BadRequest(
                 "Request for statuses missing id query.".to_string(),

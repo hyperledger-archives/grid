@@ -41,7 +41,7 @@ pub struct SupplyChainState<'a> {
 
 impl<'a> SupplyChainState<'a> {
     pub fn new(context: &'a mut TransactionContext) -> SupplyChainState {
-        SupplyChainState { context: context }
+        SupplyChainState { context }
     }
 
     pub fn get_record(&mut self, record_id: &str) -> Result<Option<Record>, ApplyError> {
@@ -86,21 +86,16 @@ impl<'a> SupplyChainState<'a> {
         // remove old record if it exists and sort the records by record id
         let records = record_container.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for record in records.clone() {
+        for (i, record) in records.iter().enumerate() {
             if record.record_id == record_id {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                record_container.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            record_container.entries.remove(i);
+        }
         record_container.entries.push(record);
         record_container
             .entries
@@ -288,21 +283,16 @@ impl<'a> SupplyChainState<'a> {
         // remove old property if it exists and sort the properties by name
         let properties = property_container.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for prop in properties.clone() {
+        for (i, prop) in properties.iter().enumerate() {
             if prop.name == property_name {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                property_container.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            property_container.entries.remove(i);
+        }
         property_container.entries.push(property);
         property_container.entries.sort_by_key(|p| p.clone().name);
         let serialized = match property_container.write_to_bytes() {
@@ -373,21 +363,16 @@ impl<'a> SupplyChainState<'a> {
         // remove old property page if it exists and sort the property pages by name
         let pages = property_pages.get_entries().to_vec();
         let mut index = None;
-        let mut count = 0;
-        for page in pages.clone() {
+        for (i, page) in pages.iter().enumerate() {
             if page.name == property_name {
-                index = Some(count);
+                index = Some(i);
                 break;
             }
-            count = count + 1;
         }
 
-        match index {
-            Some(x) => {
-                property_pages.entries.remove(x);
-            }
-            None => (),
-        };
+        if let Some(i) = index {
+            property_pages.entries.remove(i);
+        }
         property_pages.entries.push(property_page);
         property_pages.entries.sort_by_key(|pp| pp.clone().name);
         let serialized = match property_pages.write_to_bytes() {
