@@ -24,6 +24,7 @@ message PropertyDefinition {
         STRING = 4;
         ENUM = 5;
         STRUCT = 6;
+        LAT_LONG = 7;
     }
     // The name of the property
     string name = 1;
@@ -56,8 +57,14 @@ message Schema {
 }
 
 message SchemaList {
-  // Schemas are stored in a list to handle any hash collisions
-  repeated Schema schemas = 1;
+    // Schemas are stored in a list to handle any hash collisions
+    repeated Schema schemas = 1;
+}
+
+message LatLong {
+    // Coordinates are expected to be in millionths of a degree
+    sint64 latitude = 1;
+    sint64 longitude = 2;
 }
 
 message PropertyValue {
@@ -75,4 +82,5 @@ message PropertyValue {
     string string_value = 13;
     uint32 enum_value = 14;
     repeated PropertyValue struct_values = 15;
+    LatLong lat_long_value = 16;
 }

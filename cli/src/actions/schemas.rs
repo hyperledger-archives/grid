@@ -249,6 +249,7 @@ fn parse_data_type(data_type: &str) -> Result<DataType, CliError> {
         "number" => Ok(DataType::Number),
         "enum" => Ok(DataType::Enum),
         "struct" => Ok(DataType::Struct),
+        "lat_long" => Ok(DataType::LatLong),
         _ => Err(CliError::InvalidYamlError(format!(
             "Invalid data type for PropertyDefinition: {}",
             data_type
@@ -382,7 +383,7 @@ mod test {
               data_type: STRING
               description: "RGB value" "##;
 
-    static PHONE_YAML_EXAMPLE: &[u8; 492] = br##"
+    static PHONE_YAML_EXAMPLE: &[u8; 630] = br##"
 - name: "Phone"
   description: "Example phone schema"
   properties:
@@ -398,7 +399,10 @@ mod test {
       - name: "price"
         data_type: NUMBER
         description: "Price of phone rounded to the nearest dollar"
-        number_exponent: 0"##;
+        number_exponent: 0
+      - name: "manufacturer_location"
+        data_type: lat_long
+        description: "Location where manufacturer is headquarted.""##;
 
     ///
     /// Verifies parse_yaml returns a valid SchemaPayload with SchemaCreateAction set from a yaml
@@ -496,6 +500,7 @@ mod test {
         assert_eq!(parse_data_type("NUMBER").unwrap(), DataType::Number);
         assert_eq!(parse_data_type("enum").unwrap(), DataType::Enum);
         assert_eq!(parse_data_type("Struct").unwrap(), DataType::Struct);
+        assert_eq!(parse_data_type("lat_long").unwrap(), DataType::LatLong);
 
         // Check the method returns an error for an invalid input
         assert!(parse_data_type("not_a_valid_type").is_err());
@@ -742,6 +747,11 @@ mod test {
                 false,
                 "Price of phone rounded to the nearest dollar",
             ),
+            make_lat_long_property_definition(
+                "manufacturer_location",
+                false,
+                "Location where manufacturer is headquarted.",
+            ),
         ]
     }
 
@@ -801,6 +811,20 @@ mod test {
         PropertyDefinitionBuilder::new()
             .with_name(name.to_string())
             .with_data_type(DataType::String)
+            .with_required(required)
+            .with_description(description.to_string())
+            .build()
+            .unwrap()
+    }
+
+    fn make_lat_long_property_definition(
+        name: &str,
+        required: bool,
+        description: &str,
+    ) -> PropertyDefinition {
+        PropertyDefinitionBuilder::new()
+            .with_name(name.to_string())
+            .with_data_type(DataType::LatLong)
             .with_required(required)
             .with_description(description.to_string())
             .build()

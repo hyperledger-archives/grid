@@ -31,6 +31,7 @@ pub enum DataType {
     String,
     Enum,
     Struct,
+    LatLong,
 }
 
 impl FromProto<protos::schema_state::PropertyDefinition_DataType> for DataType {
@@ -44,6 +45,7 @@ impl FromProto<protos::schema_state::PropertyDefinition_DataType> for DataType {
             protos::schema_state::PropertyDefinition_DataType::STRING => Ok(DataType::String),
             protos::schema_state::PropertyDefinition_DataType::ENUM => Ok(DataType::Enum),
             protos::schema_state::PropertyDefinition_DataType::STRUCT => Ok(DataType::Struct),
+            protos::schema_state::PropertyDefinition_DataType::LAT_LONG => Ok(DataType::LatLong),
             protos::schema_state::PropertyDefinition_DataType::UNSET_DATA_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
                     "Cannot convert PropertyDefinition_DataType with type unset.".to_string(),
@@ -62,12 +64,50 @@ impl FromNative<DataType> for protos::schema_state::PropertyDefinition_DataType 
             DataType::String => Ok(protos::schema_state::PropertyDefinition_DataType::STRING),
             DataType::Enum => Ok(protos::schema_state::PropertyDefinition_DataType::ENUM),
             DataType::Struct => Ok(protos::schema_state::PropertyDefinition_DataType::STRUCT),
+            DataType::LatLong => Ok(protos::schema_state::PropertyDefinition_DataType::LAT_LONG),
         }
     }
 }
 
 impl IntoProto<protos::schema_state::PropertyDefinition_DataType> for DataType {}
 impl IntoNative<DataType> for protos::schema_state::PropertyDefinition_DataType {}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LatLong {
+    latitude: i64,
+    longitude: i64,
+}
+
+impl LatLong {
+    pub fn latitude(&self) -> &i64 {
+        &self.latitude
+    }
+
+    pub fn longitude(&self) -> &i64 {
+        &self.longitude
+    }
+}
+
+impl FromProto<protos::schema_state::LatLong> for LatLong {
+    fn from_proto(lat_long: protos::schema_state::LatLong) -> Result<Self, ProtoConversionError> {
+        Ok(LatLong {
+            latitude: lat_long.get_latitude(),
+            longitude: lat_long.get_longitude(),
+        })
+    }
+}
+
+impl FromNative<LatLong> for protos::schema_state::LatLong {
+    fn from_native(lat_long: LatLong) -> Result<Self, ProtoConversionError> {
+        let mut proto_lat_long = protos::schema_state::LatLong::new();
+        proto_lat_long.set_latitude(lat_long.latitude().clone());
+        proto_lat_long.set_longitude(lat_long.longitude().clone());
+        Ok(proto_lat_long)
+    }
+}
+
+impl IntoProto<protos::schema_state::LatLong> for LatLong {}
+impl IntoNative<LatLong> for protos::schema_state::LatLong {}
 
 /// Native implementation of PropertyDefinition
 #[derive(Debug, Clone, PartialEq)]
@@ -408,7 +448,7 @@ impl IntoBytes for Schema {
     fn into_bytes(self) -> Result<Vec<u8>, ProtoConversionError> {
         let proto = self.into_proto()?;
         let bytes = proto.write_to_bytes().map_err(|_| {
-            ProtoConversionError::SerializationError("Unable to get bytes from Scheman".to_string())
+            ProtoConversionError::SerializationError("Unable to get bytes from Schema".to_string())
         })?;
         Ok(bytes)
     }
@@ -520,7 +560,9 @@ impl SchemaList {
 }
 
 impl FromProto<protos::schema_state::SchemaList> for SchemaList {
-    fn from_proto(schema_list: protos::schema_state::SchemaList) -> Result<Self, ProtoConversionError> {
+    fn from_proto(
+        schema_list: protos::schema_state::SchemaList,
+    ) -> Result<Self, ProtoConversionError> {
         Ok(SchemaList {
             schemas: schema_list
                 .get_schemas()
@@ -645,6 +687,7 @@ pub struct PropertyValue {
     string_value: String,
     enum_value: u32,
     struct_values: Vec<PropertyValue>,
+    lat_long_value: LatLong,
 }
 
 impl PropertyValue {
@@ -679,6 +722,10 @@ impl PropertyValue {
     pub fn struct_values(&self) -> &[PropertyValue] {
         &self.struct_values
     }
+
+    pub fn lat_long_value(&self) -> &LatLong {
+        &self.lat_long_value
+    }
 }
 
 impl FromProto<protos::schema_state::PropertyValue> for PropertyValue {
@@ -699,6 +746,7 @@ impl FromProto<protos::schema_state::PropertyValue> for PropertyValue {
                 .into_iter()
                 .map(PropertyValue::from_proto)
                 .collect::<Result<Vec<PropertyValue>, ProtoConversionError>>()?,
+            lat_long_value: property_value.get_lat_long_value().clone().into_native()?,
         })
     }
 }
@@ -722,6 +770,8 @@ impl FromNative<PropertyValue> for protos::schema_state::PropertyValue {
                 .collect::<Result<Vec<protos::schema_state::PropertyValue>, ProtoConversionError>>(
                 )?,
         ));
+        proto_property_value
+            .set_lat_long_value(property_value.lat_long_value().clone().into_proto()?);
         Ok(proto_property_value)
     }
 }
@@ -791,6 +841,7 @@ pub struct PropertyValueBuilder {
     pub string_value: Option<String>,
     pub enum_value: Option<u32>,
     pub struct_values: Vec<PropertyValue>,
+    pub lat_long_value: Option<LatLong>,
 }
 
 impl PropertyValueBuilder {
@@ -835,6 +886,11 @@ impl PropertyValueBuilder {
 
     pub fn with_struct_values(mut self, struct_values: Vec<PropertyValue>) -> PropertyValueBuilder {
         self.struct_values = struct_values;
+        self
+    }
+
+    pub fn with_lat_long_value(mut self, lat_long_value: LatLong) -> PropertyValueBuilder {
+        self.lat_long_value = Some(lat_long_value);
         self
     }
 
@@ -921,6 +977,21 @@ impl PropertyValueBuilder {
             }
         };
 
+        let lat_long_value = {
+            if data_type == DataType::LatLong {
+                self.lat_long_value.ok_or_else(|| {
+                    PropertyValueBuildError::MissingField(
+                        "'lat_long_value' field is required".to_string(),
+                    )
+                })?
+            } else {
+                LatLong {
+                    latitude: 0,
+                    longitude: 0,
+                }
+            }
+        };
+
         Ok(PropertyValue {
             name,
             data_type,
@@ -930,6 +1001,7 @@ impl PropertyValueBuilder {
             string_value,
             enum_value,
             struct_values,
+            lat_long_value,
         })
     }
 }
@@ -1127,6 +1199,26 @@ mod tests {
         assert_eq!(property_value.name, "TEST_STRUCT");
         assert_eq!(property_value.data_type, DataType::Struct);
         assert_eq!(property_value.struct_values, vec![string_value]);
+    }
+
+    #[test]
+    // check that a property value with a lat_long data type is built correctly
+    fn check_property_value_builder_lat_long() {
+        let lat_long = LatLong {
+            latitude: 44977753,
+            longitude: -93265015,
+        };
+        let builder = PropertyValueBuilder::new();
+        let property_value = builder
+            .with_name("TEST".to_string())
+            .with_data_type(DataType::LatLong)
+            .with_lat_long_value(lat_long.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(property_value.name, "TEST");
+        assert_eq!(property_value.data_type, DataType::LatLong);
+        assert_eq!(property_value.lat_long_value, lat_long);
     }
 
     #[test]

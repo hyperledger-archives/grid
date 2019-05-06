@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use crate::database::models::LatLong;
+
 table! {
     agent (id) {
         id -> Int8,
@@ -61,6 +63,8 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use super::LatLong;
     grid_property_value (id) {
         id -> Int8,
         start_block_num -> Int8,
@@ -73,6 +77,7 @@ table! {
         string_value -> Nullable<Text>,
         enum_value -> Nullable<Int4>,
         struct_values -> Nullable<Array<Text>>,
+        lat_long_value -> Nullable<LatLong>,
     }
 }
 
