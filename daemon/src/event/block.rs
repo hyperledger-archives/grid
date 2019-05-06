@@ -18,7 +18,10 @@
 use diesel::prelude::*;
 use diesel::result::Error;
 use grid_sdk::{
-    protocol::pike::state::{AgentList, OrganizationList},
+    protocol::{
+        pike::state::{AgentList, OrganizationList},
+        schema::state::SchemaList,
+    },
     protos::FromBytes,
 };
 use protobuf;
@@ -31,7 +34,7 @@ use serde_json::Value as JsonValue;
 
 use crate::database::{
     helpers as db,
-    models::{Block, NewAgent, NewOrganization},
+    models::{Block, NewAgent, NewGridPropertyDefinition, NewGridSchema, NewOrganization},
     ConnectionPool,
 };
 
@@ -194,6 +197,55 @@ fn state_change_to_db_operation(
 
             Ok(DbOperation::InsertOrganizations(orgs))
         }
+        "621dee01" => {
+            let schema_defs = SchemaList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
+                .schemas()
+                .iter()
+                .map(|state_schema| {
+                    let schema = NewGridSchema {
+                        name: state_schema.name().to_string(),
+                        description: state_schema.description().to_string(),
+                        owner: state_schema.owner().to_string(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                    };
+
+                    let definitions = state_schema
+                        .properties()
+                        .iter()
+                        .map(|props| NewGridPropertyDefinition {
+                            name: props.name().to_string(),
+                            schema_name: state_schema.name().to_string(),
+                            data_type: format!("{:?}", props.data_type()),
+                            required: *props.required(),
+                            description: props.description().to_string(),
+                            number_exponent: *props.number_exponent() as i64,
+                            enum_options: props.enum_options().to_vec(),
+                            struct_properties: props
+                                .struct_properties()
+                                .iter()
+                                .map(|x| x.name().to_string())
+                                .collect(),
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                        })
+                        .collect::<Vec<NewGridPropertyDefinition>>();
+
+                    (schema, definitions)
+                })
+                .collect::<Vec<(NewGridSchema, Vec<NewGridPropertyDefinition>)>>();
+
+            let definitions = schema_defs
+                .clone()
+                .into_iter()
+                .flat_map(|(_, d)| d.into_iter())
+                .collect();
+
+            let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
+
+            Ok(DbOperation::InsertGridSchemas(schemas, definitions))
+        }
         _ => Err(EventError(format!(
             "Could not handle state change unknown address: {}",
             &state_change.address
@@ -205,6 +257,7 @@ fn state_change_to_db_operation(
 enum DbOperation {
     InsertAgents(Vec<NewAgent>),
     InsertOrganizations(Vec<NewOrganization>),
+    InsertGridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
 }
 
 impl DbOperation {
@@ -212,6 +265,10 @@ impl DbOperation {
         match *self {
             DbOperation::InsertAgents(ref agents) => db::insert_agents(conn, agents),
             DbOperation::InsertOrganizations(ref orgs) => db::insert_organizations(conn, orgs),
+            DbOperation::InsertGridSchemas(ref schemas, ref defs) => {
+                db::insert_grid_schemas(conn, schemas)?;
+                db::insert_grid_property_definitions(conn, defs)
+            }
         }
     }
 }
