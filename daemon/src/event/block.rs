@@ -223,7 +223,7 @@ fn state_change_to_db_operation(
                             data_type: format!("{:?}", props.data_type()),
                             required: *props.required(),
                             description: props.description().to_string(),
-                            number_exponent: *props.number_exponent() as i64,
+                            number_exponent: i64::from(*props.number_exponent()),
                             enum_options: props.enum_options().to_vec(),
                             struct_properties: props
                                 .struct_properties()
