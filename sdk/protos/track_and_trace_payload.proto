@@ -15,20 +15,18 @@
 
 syntax = "proto3";
 
-import "track_and_trace_property.proto";
-import "track_and_trace_proposal.proto";
+import "track_and_trace_state.proto";
+import "schema_state.proto";
 
-
-message SCPayload {
+message TrackAndTracePayload {
   enum Action {
-    CREATE_AGENT = 0;
+    UNSET_ACTION = 0;
     CREATE_RECORD = 1;
     FINALIZE_RECORD = 2;
-    CREATE_RECORD_TYPE = 3;
-    UPDATE_PROPERTIES = 4;
-    CREATE_PROPOSAL = 5;
-    ANSWER_PROPOSAL = 6;
-    REVOKE_REPORTER = 7;
+    UPDATE_PROPERTIES = 3;
+    CREATE_PROPOSAL = 4;
+    ANSWER_PROPOSAL = 5;
+    REVOKE_REPORTER = 6;
   }
 
   Action action = 1;
@@ -39,32 +37,22 @@ message SCPayload {
 
   // The transaction handler will read from just one of these fields
   // according to the Action.
-  CreateTrackAndTraceAgentAction create_agent = 3;
-  CreateRecordAction create_record = 4;
-  FinalizeRecordAction finalize_record = 5;
-  CreateRecordTypeAction create_record_type = 6;
-  UpdatePropertiesAction update_properties = 7;
-  CreateProposalAction create_proposal = 8;
-  AnswerProposalAction answer_proposal = 9;
-  RevokeReporterAction revoke_reporter = 10;
+  CreateRecordAction create_record = 3;
+  FinalizeRecordAction finalize_record = 4;
+  UpdatePropertiesAction update_properties = 6;
+  CreateProposalAction create_proposal = 7;
+  AnswerProposalAction answer_proposal = 8;
+  RevokeReporterAction revoke_reporter = 9;
 }
-
-
-message CreateTrackAndTraceAgentAction {
-  // The human-readable name of the Agent. This does not need to be
-  // unique.
-  string name = 1;
-}
-
 
 message CreateRecordAction {
   // The natural key of the Record
   string record_id = 1;
 
-  // The name of the RecordType this Record belongs to
-  string record_type = 2;
+  // The name of the Schema this Record belongs to
+  string schema = 2;
 
-  repeated TrackAndTracePropertyValue properties = 3;
+  repeated PropertyValue properties = 3;
 }
 
 
@@ -73,19 +61,11 @@ message FinalizeRecordAction {
   string record_id = 1;
 }
 
-
-message CreateRecordTypeAction {
-  string name = 1;
-
-  repeated PropertySchema properties = 2;
-}
-
-
 message UpdatePropertiesAction {
   // The natural key of the Record
   string record_id = 1;
 
-  repeated TrackAndTracePropertyValue properties = 2;
+  repeated PropertyValue properties = 2;
 }
 
 
