@@ -63,7 +63,6 @@ pub struct GridSchemaTransactionHandler {
 }
 
 impl GridSchemaTransactionHandler {
-
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         GridSchemaTransactionHandler {

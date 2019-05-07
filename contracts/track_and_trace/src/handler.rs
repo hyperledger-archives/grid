@@ -60,7 +60,6 @@ pub struct SupplyChainTransactionHandler {
 }
 
 impl SupplyChainTransactionHandler {
-
     #[allow(clippy::new_without_default)]
     pub fn new() -> SupplyChainTransactionHandler {
         SupplyChainTransactionHandler {
