@@ -127,7 +127,10 @@ fn require_attr(attributes: &[Event_Attribute], key: &str) -> Result<String, Eve
         .ok_or_else(|| EventError(format!("Unable to find {}", key)))
 }
 
-fn get_db_operations(events: &[Event], block_num: i64) -> Result<Vec<DbOperation>, EventError> {
+fn get_db_operations(
+    events: &[Event],
+    block_num: i64,
+) -> Result<Vec<DbInsertOperation>, EventError> {
     events
         .iter()
         .filter(|event| event.get_event_type() == "sawtooth/state-delta")
@@ -138,13 +141,13 @@ fn get_db_operations(events: &[Event], block_num: i64) -> Result<Vec<DbOperation
                 || &state_change.address[0..6] == GRID_NAMESPACE
         })
         .map(|state_change| state_change_to_db_operation(&state_change, block_num))
-        .collect::<Result<Vec<DbOperation>, EventError>>()
+        .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
 fn state_change_to_db_operation(
     state_change: &StateChange,
     block_num: i64,
-) -> Result<DbOperation, EventError> {
+) -> Result<DbInsertOperation, EventError> {
     match &state_change.address[0..8] {
         "cad11d00" => {
             let agents = AgentList::from_bytes(&state_change.value)
@@ -170,7 +173,7 @@ fn state_change_to_db_operation(
                 })
                 .collect::<Vec<NewAgent>>();
 
-            Ok(DbOperation::InsertAgents(agents))
+            Ok(DbInsertOperation::Agents(agents))
         }
         "cad11d01" => {
             let orgs = OrganizationList::from_bytes(&state_change.value)
@@ -195,7 +198,7 @@ fn state_change_to_db_operation(
                 })
                 .collect::<Vec<NewOrganization>>();
 
-            Ok(DbOperation::InsertOrganizations(orgs))
+            Ok(DbInsertOperation::Organizations(orgs))
         }
         "621dee01" => {
             let schema_defs = SchemaList::from_bytes(&state_change.value)
@@ -244,7 +247,7 @@ fn state_change_to_db_operation(
 
             let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
 
-            Ok(DbOperation::InsertGridSchemas(schemas, definitions))
+            Ok(DbInsertOperation::GridSchemas(schemas, definitions))
         }
         _ => Err(EventError(format!(
             "Could not handle state change unknown address: {}",
@@ -254,18 +257,18 @@ fn state_change_to_db_operation(
 }
 
 #[derive(Debug)]
-enum DbOperation {
-    InsertAgents(Vec<NewAgent>),
-    InsertOrganizations(Vec<NewOrganization>),
-    InsertGridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
+enum DbInsertOperation {
+    Agents(Vec<NewAgent>),
+    Organizations(Vec<NewOrganization>),
+    GridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
 }
 
-impl DbOperation {
+impl DbInsertOperation {
     fn execute(&self, conn: &PgConnection) -> QueryResult<()> {
         match *self {
-            DbOperation::InsertAgents(ref agents) => db::insert_agents(conn, agents),
-            DbOperation::InsertOrganizations(ref orgs) => db::insert_organizations(conn, orgs),
-            DbOperation::InsertGridSchemas(ref schemas, ref defs) => {
+            DbInsertOperation::Agents(ref agents) => db::insert_agents(conn, agents),
+            DbInsertOperation::Organizations(ref orgs) => db::insert_organizations(conn, orgs),
+            DbInsertOperation::GridSchemas(ref schemas, ref defs) => {
                 db::insert_grid_schemas(conn, schemas)?;
                 db::insert_grid_property_definitions(conn, defs)
             }
