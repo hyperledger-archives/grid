@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Copyright 2019 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+top_dir=$(cd $(dirname $(dirname $0)) && pwd)
+
+dirs="
+    $top_dir/sdk
+    $top_dir/cli
+    $top_dir/contracts/schema
+    $top_dir/contracts/pike
+    $top_dir/contracts/track_and_trace
+    $top_dir/daemon
+"
+
+exitcode=0
+
+for dir in $dirs; do
+    cd $dir
+    echo "$dir"
+
+    echo "-- rustfmt"
+
+    diff=$(cargo fmt -- --check)
+    rustfmt_exit=$?
+
+    # cargo fmt -- --check returns the following exit codes:
+    #
+    # 0 = No errors
+    # 1 = Formatted code differs from existing code (check only)
+
+    if [[ $rustfmt_exit != 0 ]]; then
+        exitcode=1
+        if [[ $rustfmt_exit == 1 ]]; then
+            echo "Incorrect formatting: $dir (error code: $rustfmt_exit)"
+            echo "$diff"
+        else
+            echo "rustfmt encountered an operational error"
+        fi
+    fi
+
+    echo "-- Clippy"
+
+    cargo clippy -- -D warnings
+    clippy_exit=$?
+
+    # cargo clippy -- -D warnings returns the following exit codes:
+    #
+    # 0 = No errors or warnings
+    # 101 = rustc or clippy has found errors or warnings in the code
+
+    if [[ $clippy_exit != 0 ]]; then
+        exitcode=1
+        if [[ $clippy_exit == 101 ]]; then
+            echo "Clippy errors were found: $dir (error code: $clippy_exit)"
+        else
+            echo "Clippy encountered an operational error"
+        fi
+    fi
+
+done
+
+exit $exitcode
