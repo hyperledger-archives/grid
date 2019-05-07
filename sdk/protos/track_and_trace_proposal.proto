@@ -16,7 +16,7 @@
 syntax = "proto3";
 
 
-message Proposal {
+message DeprecatedProposal {
   enum Role {
     OWNER = 0;
     CUSTODIAN = 1;
@@ -61,6 +61,6 @@ message Proposal {
 }
 
 
-message ProposalContainer {
-  repeated Proposal entries = 1;
+message DeprecatedProposalContainer {
+  repeated DeprecatedProposal entries = 1;
 }

@@ -18,7 +18,7 @@ syntax = "proto3";
 import "track_and_trace_property.proto";
 
 
-message Record {
+message DeprecatedRecord {
   message AssociatedAgent {
     string agent_id = 1;
     uint64 timestamp = 2;
@@ -41,8 +41,8 @@ message Record {
 }
 
 
-message RecordContainer {
-  repeated Record entries = 1;
+message DeprecatedRecordContainer {
+  repeated DeprecatedRecord entries = 1;
 }
 
 
