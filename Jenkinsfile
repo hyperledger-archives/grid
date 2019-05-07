@@ -61,6 +61,11 @@ node ('master') {
         // Set the ISOLATION_ID environment variable for the whole pipeline
         env.ISOLATION_ID = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
 
+        stage("Run Lint") {
+            sh 'docker build . -f docker/lint -t lint-grid:$ISOLATION_ID'
+            sh 'docker run --rm -v $(pwd):/project/grid lint-grid:$ISOLATION_ID'
+        }
+
         // Use a docker container to build and protogen, so that the Jenkins
         // environment doesn't need all the dependencies.
         stage("Build Test Dependencies") {
