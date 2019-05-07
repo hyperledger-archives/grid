@@ -113,3 +113,17 @@ pub fn fetch_grid_schema(conn: &PgConnection, name: &str) -> QueryResult<Option<
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
+
+pub fn list_grid_property_definitions_with_schema_name(
+    conn: &PgConnection,
+    schema_name: &str,
+) -> QueryResult<Vec<GridPropertyDefinition>> {
+    grid_property_definition::table
+        .select(grid_property_definition::all_columns)
+        .filter(
+            grid_property_definition::schema_name
+                .eq(schema_name)
+                .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .load::<GridPropertyDefinition>(conn)
+}
