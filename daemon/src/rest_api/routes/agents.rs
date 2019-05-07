@@ -16,7 +16,7 @@ use crate::database::{helpers as db, models::Agent};
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse};
+use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -73,4 +73,46 @@ pub fn list_agents(
             Err(err) => Err(err),
         })
         .responder()
+}
+
+struct FetchAgent {
+    public_key: String,
+}
+
+impl Message for FetchAgent {
+    type Result = Result<AgentSlice, RestApiResponseError>;
+}
+
+impl Handler<FetchAgent> for DbExecutor {
+    type Result = Result<AgentSlice, RestApiResponseError>;
+
+    fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
+        let fetched_agent = match db::get_agent(&*self.connection_pool.get()?, &msg.public_key)? {
+            Some(agent) => AgentSlice::from_agent(&agent),
+            None => {
+                return Err(RestApiResponseError::NotFoundError(format!(
+                    "Could not find agent with public key: {}",
+                    msg.public_key
+                )));
+            }
+        };
+
+        Ok(fetched_agent)
+    }
+}
+
+pub fn fetch_agent(
+    req: HttpRequest<AppState>,
+    public_key: Path<String>,
+) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+    req.state()
+        .database_connection
+        .send(FetchAgent {
+            public_key: public_key.into_inner(),
+        })
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(agent) => Ok(HttpResponse::Ok().json(agent)),
+            Err(err) => Err(err),
+        })
 }

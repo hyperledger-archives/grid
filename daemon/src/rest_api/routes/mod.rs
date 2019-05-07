@@ -204,6 +204,9 @@ mod test {
                 r.method(Method::POST).with_async(submit_batches)
             })
             .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
+            .resource("/agent/{public_key}", |r| {
+                r.method(Method::GET).with_async(fetch_agent)
+            })
             .resource("/organization", |r| {
                 r.method(Method::GET).with_async(list_organizations)
             })
@@ -651,6 +654,49 @@ mod test {
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
         assert_eq!(org.address, UPDATED_ADDRESS_2.to_string());
+    }
+
+    ///
+    /// Verifies a GET /agent/{public_key} responds with an Ok response
+    ///     with an Agent with the specified public key.
+    ///
+    #[test]
+    fn test_fetch_agent_ok() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        //Adds an agent to the test database
+        populate_agent_table(&test_pool.get().unwrap());
+
+        let request = srv
+            .client(http::Method::GET, &format!("/agent/{}", KEY1))
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let agent: AgentSlice = serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(agent.public_key, KEY1.to_string());
+        assert_eq!(agent.org_id, KEY2.to_string());
+    }
+
+    ///
+    /// Verifies a GET /agent/{public_key} responds with a Not Found response
+    ///     when the public key is not assigned to any Agent.
+    ///
+    #[test]
+    fn test_fetch_agent_not_found() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clear the agents table in the test database
+        clear_agents_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(http::Method::GET, "/agent/unknown_public_key")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
