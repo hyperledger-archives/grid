@@ -72,7 +72,17 @@ node ('master') {
         // environment doesn't need all the dependencies.
         stage("Build Test Dependencies") {
             sh 'docker-compose -f docker-compose-installed.yaml build --force-rm'
+            sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
         }
+
+        stage("Run unit tests") {
+            sh 'docker-compose -f docker/compose/grid_tests.yaml up --abort-on-container-exit --exit-code-from grid_tests'
+            sh 'docker-compose -f docker/compose/grid_tests.yaml down'
+        }
+
+         stage("Run integration tests") {
+            sh './bin/run_integration_tests'
+         }
 
         stage("Create git archive") {
             sh '''
