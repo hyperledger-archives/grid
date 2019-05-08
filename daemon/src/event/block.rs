@@ -20,7 +20,8 @@ use diesel::result::Error;
 use grid_sdk::{
     protocol::{
         pike::state::{AgentList, OrganizationList},
-        schema::state::SchemaList,
+        schema::state::{DataType, PropertyDefinition, PropertyValue, SchemaList},
+        track_and_trace::state::{PropertyList, PropertyPageList, ProposalList, RecordList},
     },
     protos::FromBytes,
 };
@@ -31,10 +32,15 @@ use sawtooth_sdk::messages::{
     transaction_receipt::{StateChange, StateChangeList},
 };
 use serde_json::Value as JsonValue;
+use std::i64;
 
 use crate::database::{
     helpers as db,
-    models::{Block, NewAgent, NewGridPropertyDefinition, NewGridSchema, NewOrganization},
+    models::{
+        Block, LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition,
+        NewGridPropertyValue, NewGridSchema, NewOrganization, NewProperty, NewProposal, NewRecord,
+        NewReportedValue, NewReporter,
+    },
     ConnectionPool,
 };
 
@@ -237,6 +243,160 @@ fn state_change_to_db_operation(
 
             Ok(DbInsertOperation::GridSchemas(schemas, definitions))
         }
+        TRACK_AND_TRACE_PROPERTY if &state_change.address[66..] == "0000" => {
+            let properties = PropertyList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
+                .properties()
+                .iter()
+                .map(|prop| {
+                    let property = NewProperty {
+                        name: prop.name().to_string(),
+                        record_id: prop.record_id().to_string(),
+                        property_definition: prop.property_definition().name().to_string(),
+                        current_page: *prop.current_page() as i32,
+                        wrapped: *prop.wrapped(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                    };
+
+                    let reporters = prop
+                        .reporters()
+                        .iter()
+                        .map(|reporter| NewReporter {
+                            property_name: prop.name().to_string(),
+                            public_key: reporter.public_key().to_string(),
+                            authorized: *reporter.authorized(),
+                            reporter_index: *reporter.index() as i32,
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                        })
+                        .collect::<Vec<NewReporter>>();
+
+                    (property, reporters)
+                })
+                .collect::<Vec<(NewProperty, Vec<NewReporter>)>>();
+
+            let reporters = properties
+                .clone()
+                .into_iter()
+                .flat_map(|(_, r)| r.into_iter())
+                .collect();
+
+            let properties = properties.into_iter().map(|(s, _)| s).collect();
+
+            Ok(DbInsertOperation::Properties(properties, reporters))
+        }
+        TRACK_AND_TRACE_PROPERTY => {
+            let property_pages = PropertyPageList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse property page list {}", err)))?
+                .property_pages()
+                .to_vec();
+
+            let property_values = make_property_values(
+                block_num,
+                &property_pages
+                    .clone()
+                    .into_iter()
+                    .flat_map(|page| {
+                        page.reported_values()
+                            .to_vec()
+                            .into_iter()
+                            .map(|r| r.value().clone())
+                    })
+                    .collect::<Vec<PropertyValue>>(),
+            );
+
+            let reported_values = property_pages
+                .clone()
+                .into_iter()
+                .flat_map(|page| {
+                    page.reported_values()
+                        .to_vec()
+                        .into_iter()
+                        .map(move |value| NewReportedValue {
+                            property_name: page.name().to_string(),
+                            record_id: page.record_id().to_string(),
+                            reporter_index: *value.reporter_index() as i32,
+                            timestamp: *value.timestamp() as i64,
+                            value_name: value.value().name().to_string(),
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                        })
+                })
+                .collect::<Vec<NewReportedValue>>();
+
+            Ok(DbInsertOperation::ReportedValues(
+                reported_values,
+                property_values,
+            ))
+        }
+        TRACK_AND_TRACE_PROPOSAL => {
+            let proposals = ProposalList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
+                .proposals()
+                .iter()
+                .map(|proposal| NewProposal {
+                    record_id: proposal.record_id().to_string(),
+                    timestamp: *proposal.timestamp() as i64,
+                    issuing_agent: proposal.issuing_agent().to_string(),
+                    receiving_agent: proposal.receiving_agent().to_string(),
+                    role: format!("{:?}", proposal.role()),
+                    properties: proposal.properties().to_vec(),
+                    status: format!("{:?}", proposal.status()),
+                    terms: proposal.terms().to_string(),
+                    start_block_num: block_num,
+                    end_block_num: db::MAX_BLOCK_NUM,
+                })
+                .collect::<Vec<NewProposal>>();
+
+            Ok(DbInsertOperation::Proposals(proposals))
+        }
+        TRACK_AND_TRACE_RECORD => {
+            let record_list = RecordList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
+                .records()
+                .to_vec();
+
+            let records = record_list
+                .iter()
+                .map(|record| NewRecord {
+                    record_id: record.record_id().to_string(),
+                    final_: *record.field_final(),
+                    schema: record.schema().to_string(),
+                    owners: record
+                        .owners()
+                        .iter()
+                        .map(|x| x.agent_id().to_string())
+                        .collect(),
+                    custodians: record
+                        .custodians()
+                        .iter()
+                        .map(|x| x.agent_id().to_string())
+                        .collect(),
+                    start_block_num: block_num,
+                    end_block_num: db::MAX_BLOCK_NUM,
+                })
+                .collect::<Vec<NewRecord>>();
+
+            let associated_agents = record_list
+                .iter()
+                .flat_map(|record| {
+                    record
+                        .owners()
+                        .iter()
+                        .chain(record.custodians().iter())
+                        .map(move |agent| NewAssociatedAgent {
+                            agent_id: agent.agent_id().to_string(),
+                            record_id: record.record_id().to_string(),
+                            timestamp: *agent.timestamp() as i64,
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                        })
+                })
+                .collect::<Vec<NewAssociatedAgent>>();
+
+            Ok(DbInsertOperation::Records(records, associated_agents))
+        }
         _ => Err(EventError(format!(
             "Could not handle state change unknown address: {}",
             &state_change.address
@@ -249,6 +409,10 @@ enum DbInsertOperation {
     Agents(Vec<NewAgent>),
     Organizations(Vec<NewOrganization>),
     GridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
+    Properties(Vec<NewProperty>, Vec<NewReporter>),
+    ReportedValues(Vec<NewReportedValue>, Vec<NewGridPropertyValue>),
+    Proposals(Vec<NewProposal>),
+    Records(Vec<NewRecord>, Vec<NewAssociatedAgent>),
 }
 
 impl DbInsertOperation {
@@ -259,6 +423,19 @@ impl DbInsertOperation {
             DbInsertOperation::GridSchemas(ref schemas, ref defs) => {
                 db::insert_grid_schemas(conn, schemas)?;
                 db::insert_grid_property_definitions(conn, defs)
+            }
+            DbInsertOperation::Properties(ref properties, ref reporters) => {
+                db::insert_properties(conn, properties)?;
+                db::insert_reporters(conn, reporters)
+            }
+            DbInsertOperation::ReportedValues(ref reported_values, ref values) => {
+                db::insert_reported_values(conn, reported_values)?;
+                db::insert_grid_property_values(conn, values)
+            }
+            DbInsertOperation::Proposals(ref proposals) => db::insert_proposals(conn, proposals),
+            DbInsertOperation::Records(ref records, ref associated_agents) => {
+                db::insert_records(conn, records)?;
+                db::insert_associated_agents(conn, associated_agents)
             }
         }
     }
