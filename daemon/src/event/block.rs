@@ -217,26 +217,11 @@ fn state_change_to_db_operation(
                         end_block_num: db::MAX_BLOCK_NUM,
                     };
 
-                    let definitions = state_schema
-                        .properties()
-                        .iter()
-                        .map(|props| NewGridPropertyDefinition {
-                            name: props.name().to_string(),
-                            schema_name: state_schema.name().to_string(),
-                            data_type: format!("{:?}", props.data_type()),
-                            required: *props.required(),
-                            description: props.description().to_string(),
-                            number_exponent: i64::from(*props.number_exponent()),
-                            enum_options: props.enum_options().to_vec(),
-                            struct_properties: props
-                                .struct_properties()
-                                .iter()
-                                .map(|x| x.name().to_string())
-                                .collect(),
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
-                        })
-                        .collect::<Vec<NewGridPropertyDefinition>>();
+                    let definitions = make_property_definitions(
+                        block_num,
+                        state_schema.name(),
+                        state_schema.properties(),
+                    );
 
                     (schema, definitions)
                 })
@@ -277,4 +262,93 @@ impl DbInsertOperation {
             }
         }
     }
+}
+
+fn make_property_values(
+    start_block_num: i64,
+    values: &[PropertyValue],
+) -> Vec<NewGridPropertyValue> {
+    let mut new_values = Vec::new();
+
+    for value in values {
+        let mut new_value = NewGridPropertyValue {
+            name: value.name().to_string(),
+            data_type: format!("{:?}", value.data_type()),
+            start_block_num,
+            end_block_num: db::MAX_BLOCK_NUM,
+            ..NewGridPropertyValue::default()
+        };
+
+        match value.data_type() {
+            DataType::Bytes => new_value.bytes_value = Some(value.bytes_value().to_vec()),
+            DataType::Boolean => new_value.boolean_value = Some(*value.boolean_value()),
+            DataType::Number => new_value.number_value = Some(*value.number_value()),
+            DataType::String => new_value.string_value = Some(value.string_value().to_string()),
+            DataType::Enum => new_value.enum_value = Some(*value.enum_value() as i32),
+            DataType::Struct => {
+                new_value.struct_values = Some(
+                    value
+                        .struct_values()
+                        .iter()
+                        .map(|x| x.name().to_string())
+                        .collect(),
+                )
+            }
+            DataType::LatLong => {
+                let lat_long_value = LatLongValue(
+                    *value.lat_long_value().latitude(),
+                    *value.lat_long_value().longitude(),
+                );
+                new_value.lat_long_value = Some(lat_long_value);
+            }
+        };
+
+        new_values.push(new_value);
+
+        if !value.struct_values().is_empty() {
+            new_values.append(&mut make_property_values(
+                start_block_num,
+                value.struct_values(),
+            ));
+        }
+    }
+
+    new_values
+}
+
+fn make_property_definitions(
+    start_block_num: i64,
+    schema_name: &str,
+    definitions: &[PropertyDefinition],
+) -> Vec<NewGridPropertyDefinition> {
+    let mut properties = Vec::new();
+
+    for def in definitions {
+        properties.push(NewGridPropertyDefinition {
+            name: def.name().to_string(),
+            schema_name: schema_name.to_string(),
+            data_type: format!("{:?}", def.data_type()),
+            required: *def.required(),
+            description: def.description().to_string(),
+            number_exponent: i64::from(*def.number_exponent()),
+            enum_options: def.enum_options().to_vec(),
+            struct_properties: def
+                .struct_properties()
+                .iter()
+                .map(|x| x.name().to_string())
+                .collect(),
+            start_block_num,
+            end_block_num: db::MAX_BLOCK_NUM,
+        });
+
+        if !def.struct_properties().is_empty() {
+            properties.append(&mut make_property_definitions(
+                start_block_num,
+                schema_name,
+                def.struct_properties(),
+            ));
+        }
+    }
+
+    properties
 }

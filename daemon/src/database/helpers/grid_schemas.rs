@@ -15,7 +15,10 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema, NewGridPropertyValue};
+use super::models::{
+    GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridPropertyValue,
+    NewGridSchema,
+};
 use super::schema::{grid_property_definition, grid_property_value, grid_schema};
 use super::MAX_BLOCK_NUM;
 
