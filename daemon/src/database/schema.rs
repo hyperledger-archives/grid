@@ -27,8 +27,17 @@ table! {
         active -> Bool,
         roles -> Array<Varchar>,
         metadata -> Array<Json>,
+    }
+}
+
+table! {
+    associated_agent (id) {
+        id -> Int8,
+        record_id -> Text,
         start_block_num -> Int8,
         end_block_num -> Int8,
+        agent_id -> Text,
+        timestamp -> Int8,
     }
 }
 
@@ -106,12 +115,86 @@ table! {
     }
 }
 
+table! {
+    property (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        name -> Text,
+        record_id -> Text,
+        property_definition -> Text,
+        current_page -> Int4,
+        wrapped -> Bool,
+    }
+}
+
+table! {
+    proposal (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        record_id -> Text,
+        timestamp -> Int8,
+        issuing_agent -> Text,
+        receiving_agent -> Text,
+        role -> Text,
+        properties -> Array<Text>,
+        status -> Text,
+        terms -> Text,
+    }
+}
+
+table! {
+    record (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        record_id -> Text,
+        schema -> Text,
+        #[sql_name = "final"]
+        final_ -> Bool,
+        owners -> Array<Text>,
+        custodians -> Array<Text>,
+    }
+}
+
+table! {
+    reported_value (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        property_name -> Text,
+        record_id -> Text,
+        reporter_index -> Int4,
+        timestamp -> Int8,
+        value_name -> Text,
+    }
+}
+
+table! {
+    reporter (id) {
+        id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+        property_name -> Text,
+        public_key -> Text,
+        authorized -> Bool,
+        reporter_index -> Int4,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     agent,
+    associated_agent,
     block,
     chain_record,
     grid_property_definition,
     grid_property_value,
     grid_schema,
     organization,
+    property,
+    proposal,
+    record,
+    reported_value,
+    reporter,
 );
