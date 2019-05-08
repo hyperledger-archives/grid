@@ -20,6 +20,8 @@ use crate::database::models::LatLong;
 table! {
     agent (id) {
         id -> Int8,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
         public_key -> Varchar,
         org_id -> Varchar,
         active -> Bool,
