@@ -16,6 +16,18 @@
 version: '2.1'
 
 services:
+
+  gridd:
+    image: gridd-installed:${ISOLATION_ID}
+    container_name: gridd-installed
+    build:
+      context: .
+      dockerfile: daemon/Dockerfile-installed-${DISTRO}
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+
   validator:
     image: hyperledger/sawtooth-validator:1.1
     container_name: grid-sawtooth-validator

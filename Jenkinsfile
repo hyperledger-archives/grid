@@ -60,6 +60,7 @@ node ('master') {
 
         // Set the ISOLATION_ID environment variable for the whole pipeline
         env.ISOLATION_ID = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
+        env.COMPOSE_PROJECT_NAME = sh(returnStdout: true, script: 'printf $BUILD_TAG | sha256sum | cut -c1-64').trim()
 
         stage("Run Lint") {
             sh 'docker build . -f docker/lint -t lint-grid:$ISOLATION_ID'
@@ -88,6 +89,7 @@ node ('master') {
 
         stage("Archive Build artifacts") {
             sh 'mkdir -p build/debs'
+            sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd-installed:${ISOLATION_ID} bash -c "cp /tmp/grid-daemon*.deb /debs && chown -R ${JENKINS_UID} /debs"'
             archiveArtifacts artifacts: '*.tgz, *.zip'
             archiveArtifacts artifacts: 'build/debs/*.deb', allowEmptyArchive: true
             archiveArtifacts artifacts: 'docs/build/html/**, docs/build/latex/*.pdf'
