@@ -38,7 +38,10 @@ use crate::database::{
     ConnectionPool,
 };
 
-use super::{error::EventError, EventHandler, GRID_NAMESPACE, PIKE_NAMESPACE};
+use super::{
+    error::EventError, EventHandler, GRID_NAMESPACE, GRID_SCHEMA, PIKE_AGENT, PIKE_NAMESPACE,
+    PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
+};
 
 pub struct BlockEventHandler {
     connection_pool: ConnectionPool,
@@ -149,7 +152,7 @@ fn state_change_to_db_operation(
     block_num: i64,
 ) -> Result<DbInsertOperation, EventError> {
     match &state_change.address[0..8] {
-        "cad11d00" => {
+        PIKE_AGENT => {
             let agents = AgentList::from_bytes(&state_change.value)
                 .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                 .agents()
@@ -175,7 +178,7 @@ fn state_change_to_db_operation(
 
             Ok(DbInsertOperation::Agents(agents))
         }
-        "cad11d01" => {
+        PIKE_ORG => {
             let orgs = OrganizationList::from_bytes(&state_change.value)
                 .map_err(|err| EventError(format!("Failed to parse organization list {}", err)))?
                 .organizations()
@@ -200,7 +203,7 @@ fn state_change_to_db_operation(
 
             Ok(DbInsertOperation::Organizations(orgs))
         }
-        "621dee01" => {
+        GRID_SCHEMA => {
             let schema_defs = SchemaList::from_bytes(&state_change.value)
                 .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
                 .schemas()
