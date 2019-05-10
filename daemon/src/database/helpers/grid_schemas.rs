@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{NewGridPropertyDefinition, NewGridSchema};
+use super::models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 
 use super::schema::{grid_property_definition, grid_schema};
 use super::MAX_BLOCK_NUM;
@@ -24,6 +24,7 @@ use diesel::{
     dsl::{insert_into, update},
     pg::PgConnection,
     prelude::*,
+    result::Error::NotFound,
     QueryResult,
 };
 
@@ -82,4 +83,47 @@ pub fn update_definition_end_block_num(
         .set(grid_property_definition::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn list_grid_schemas(conn: &PgConnection) -> QueryResult<Vec<GridSchema>> {
+    grid_schema::table
+        .select(grid_schema::all_columns)
+        .filter(grid_schema::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<GridSchema>(conn)
+}
+
+pub fn list_grid_property_definitions(
+    conn: &PgConnection,
+) -> QueryResult<Vec<GridPropertyDefinition>> {
+    grid_property_definition::table
+        .select(grid_property_definition::all_columns)
+        .filter(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<GridPropertyDefinition>(conn)
+}
+
+pub fn fetch_grid_schema(conn: &PgConnection, name: &str) -> QueryResult<Option<GridSchema>> {
+    grid_schema::table
+        .select(grid_schema::all_columns)
+        .filter(
+            grid_schema::name
+                .eq(name)
+                .and(grid_schema::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn list_grid_property_definitions_with_schema_name(
+    conn: &PgConnection,
+    schema_name: &str,
+) -> QueryResult<Vec<GridPropertyDefinition>> {
+    grid_property_definition::table
+        .select(grid_property_definition::all_columns)
+        .filter(
+            grid_property_definition::schema_name
+                .eq(schema_name)
+                .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .load::<GridPropertyDefinition>(conn)
 }
