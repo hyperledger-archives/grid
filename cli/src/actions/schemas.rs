@@ -21,7 +21,52 @@ use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDe
 use grid_sdk::protos::IntoProto;
 
 use crate::error::CliError;
+use serde::Deserialize;
 use serde_yaml::{Mapping, Sequence, Value};
+
+#[derive(Debug, Deserialize)]
+pub struct GridSchemaSlice {
+    pub name: String,
+    pub description: String,
+    pub owner: String,
+    pub properties: Vec<GridPropertyDefinitionSlice>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GridPropertyDefinitionSlice {
+    pub name: String,
+    pub schema_name: String,
+    pub data_type: String,
+    pub required: bool,
+    pub description: String,
+    pub number_exponent: i64,
+    pub enum_options: Vec<String>,
+    pub struct_properties: Vec<String>,
+}
+
+pub fn display_schema(schema: &GridSchemaSlice) {
+    println!(
+        "Name: {:?}\n Description: {:?}\n Owner: {:?}\n Properties:",
+        schema.name, schema.description, schema.owner,
+    );
+    display_schema_property_definitions(&schema.properties);
+}
+
+pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionSlice]) {
+    properties.iter().for_each(|def| {
+        println!(
+            "\tName: {:?}\n\t Data Type: {:?}\n\t Required: {:?}\n\t Description: {:?}
+        Number Exponent: {:?}\n\t Enum Options: {:?}\n\t Struct Properties: {:?}",
+            def.name,
+            def.data_type,
+            def.required,
+            def.description,
+            def.number_exponent,
+            def.enum_options,
+            def.struct_properties,
+        );
+    });
+}
 
 pub fn do_create_schemas(
     url: &str,
