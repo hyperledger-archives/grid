@@ -38,6 +38,12 @@ impl Reporter {
     pub fn index(&self) -> &u32 {
         &self.index
     }
+    pub fn into_builder(self) -> ReporterBuilder {
+        ReporterBuilder::new()
+            .with_public_key(self.public_key)
+            .with_authorized(self.authorized)
+            .with_index(self.index)
+    }
 }
 
 #[derive(Default, Clone)]
@@ -153,6 +159,16 @@ impl Property {
     }
     pub fn wrapped(&self) -> &bool {
         &self.wrapped
+    }
+
+    pub fn into_builder(self) -> PropertyBuilder {
+        PropertyBuilder::new()
+            .with_name(self.name)
+            .with_record_id(self.record_id)
+            .with_property_definition(self.property_definition)
+            .with_reporters(self.reporters)
+            .with_current_page(self.current_page)
+            .with_wrapped(self.wrapped)
     }
 }
 
@@ -293,6 +309,10 @@ impl PropertyList {
     pub fn properties(&self) -> &[Property] {
         &self.properties
     }
+
+    pub fn into_builder(self) -> PropertyListBuilder {
+        PropertyListBuilder::new().with_properties(self.properties)
+    }
 }
 
 #[derive(Default, Clone)]
@@ -386,6 +406,12 @@ impl ReportedValue {
     }
     pub fn value(&self) -> &PropertyValue {
         &self.value
+    }
+    pub fn into_builder(self) -> ReportedValueBuilder {
+        ReportedValueBuilder::new()
+            .with_reporter_index(self.reporter_index)
+            .with_timestamp(self.timestamp)
+            .with_value(self.value)
     }
 }
 
@@ -494,6 +520,13 @@ impl PropertyPage {
     }
     pub fn reported_values(&self) -> &[ReportedValue] {
         &self.reported_values
+    }
+
+    pub fn into_builder(self) -> PropertyPageBuilder {
+        PropertyPageBuilder::new()
+            .with_name(self.name)
+            .with_record_id(self.record_id)
+            .with_reported_values(self.reported_values)
     }
 }
 
@@ -609,6 +642,10 @@ pub struct PropertyPageList {
 impl PropertyPageList {
     pub fn property_pages(&self) -> &[PropertyPage] {
         &self.property_pages
+    }
+
+    pub fn into_builder(self) -> PropertyPageListBuilder {
+        PropertyPageListBuilder::new().with_property_pages(self.property_pages)
     }
 }
 
@@ -806,7 +843,19 @@ impl Proposal {
     pub fn terms(&self) -> &str {
         &self.terms
     }
+    pub fn into_builder(self) -> ProposalBuilder {
+        ProposalBuilder::new()
+            .with_record_id(self.record_id)
+            .with_timestamp(self.timestamp)
+            .with_issuing_agent(self.issuing_agent)
+            .with_receiving_agent(self.receiving_agent)
+            .with_role(self.role)
+            .with_properties(self.properties)
+            .with_status(self.status)
+            .with_terms(self.terms)
+    }
 }
+
 #[derive(Default, Debug)]
 pub struct ProposalBuilder {
     record_id: Option<String>,
@@ -961,6 +1010,10 @@ impl ProposalList {
     pub fn proposals(&self) -> &[Proposal] {
         &self.proposals
     }
+
+    pub fn into_builder(self) -> ProposalListBuilder {
+        ProposalListBuilder::new().with_proposals(self.proposals)
+    }
 }
 
 #[derive(Default, Debug)]
@@ -1052,6 +1105,12 @@ impl AssociatedAgent {
     }
     pub fn timestamp(&self) -> &u64 {
         &self.timestamp
+    }
+
+    pub fn into_builder(self) -> AssociatedAgentBuilder {
+        AssociatedAgentBuilder::new()
+            .with_agent_id(self.agent_id)
+            .with_timestamp(self.timestamp)
     }
 }
 
@@ -1158,6 +1217,14 @@ impl Record {
     }
     pub fn field_final(&self) -> &bool {
         &self.field_final
+    }
+    pub fn into_builder(self) -> RecordBuilder {
+        RecordBuilder::new()
+            .with_record_id(self.record_id)
+            .with_schema(self.schema)
+            .with_owners(self.owners)
+            .with_custodians(self.custodians)
+            .with_field_final(self.field_final)
     }
 }
 
@@ -1309,6 +1376,10 @@ impl RecordList {
     pub fn records(&self) -> &[Record] {
         &self.records
     }
+
+    pub fn into_builder(self) -> RecordListBuilder {
+        RecordListBuilder::new().with_records(self.records)
+    }
 }
 
 #[derive(Default, Debug)]
@@ -1418,6 +1489,22 @@ mod tests {
     }
 
     #[test]
+    fn test_reporter_into_builder() {
+        let reporter = ReporterBuilder::new()
+            .with_public_key("1234".to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .unwrap();
+
+        let builder = reporter.into_builder();
+
+        assert_eq!(builder.public_key, Some("1234".to_string()));
+        assert_eq!(builder.authorized, Some(true));
+        assert_eq!(builder.index, Some(0));
+    }
+
+    #[test]
     fn test_reporter_bytes() {
         let builder = ReporterBuilder::new();
         let original = builder
@@ -1463,6 +1550,43 @@ mod tests {
         assert!(property.reporters().iter().any(|x| *x == reporter));
         assert_eq!(*property.current_page(), 0);
         assert_eq!(*property.wrapped(), true);
+    }
+
+    #[test]
+    fn test_property_into_builder() {
+        let property_definition = PropertyDefinitionBuilder::new()
+            .with_name("i dunno".into())
+            .with_data_type(DataType::String)
+            .with_required(true)
+            .with_description("test".into())
+            .build()
+            .unwrap();
+
+        let reporter = ReporterBuilder::new()
+            .with_public_key("1234".to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .unwrap();
+
+        let property = PropertyBuilder::new()
+            .with_name("taco".into())
+            .with_record_id("taco1234".into())
+            .with_property_definition(property_definition.clone())
+            .with_reporters(vec![reporter.clone()])
+            .with_current_page(0)
+            .with_wrapped(true)
+            .build()
+            .unwrap();
+
+        let builder = property.into_builder();
+
+        assert_eq!(builder.name, Some("taco".to_string()));
+        assert_eq!(builder.record_id, Some("taco1234".to_string()));
+        assert_eq!(builder.property_definition, Some(property_definition));
+        assert_eq!(builder.reporters, Some(vec![reporter]));
+        assert_eq!(builder.current_page, Some(0));
+        assert_eq!(builder.wrapped, Some(true));
     }
 
     #[test]
@@ -1528,6 +1652,43 @@ mod tests {
             .unwrap();
 
         assert!(property_list.properties().iter().any(|x| *x == property));
+    }
+
+    #[test]
+    fn test_property_list_into_builder() {
+        let property_definition = PropertyDefinitionBuilder::new()
+            .with_name("i dunno".into())
+            .with_data_type(DataType::String)
+            .with_required(true)
+            .with_description("test".into())
+            .build()
+            .unwrap();
+
+        let reporter = ReporterBuilder::new()
+            .with_public_key("1234".to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .unwrap();
+
+        let property = PropertyBuilder::new()
+            .with_name("taco".into())
+            .with_record_id("taco1234".into())
+            .with_property_definition(property_definition.clone())
+            .with_reporters(vec![reporter.clone()])
+            .with_current_page(0)
+            .with_wrapped(true)
+            .build()
+            .unwrap();
+
+        let property_list = PropertyListBuilder::new()
+            .with_properties(vec![property.clone()])
+            .build()
+            .unwrap();
+
+        let builder = property_list.into_builder();
+
+        assert_eq!(builder.properties, Some(vec![property]));
     }
 
     #[test]
@@ -1597,6 +1758,36 @@ mod tests {
     }
 
     #[test]
+    fn test_property_page_into_builder() {
+        let property_value = PropertyValueBuilder::new()
+            .with_name("egg".into())
+            .with_data_type(DataType::Number)
+            .with_number_value(42)
+            .build()
+            .unwrap();
+
+        let reported_value = ReportedValueBuilder::new()
+            .with_reporter_index(0)
+            .with_timestamp(214)
+            .with_value(property_value)
+            .build()
+            .unwrap();
+
+        let property_page = PropertyPageBuilder::new()
+            .with_name("egg".into())
+            .with_record_id("egg1234".into())
+            .with_reported_values(vec![reported_value.clone()])
+            .build()
+            .unwrap();
+
+        let builder = property_page.into_builder();
+
+        assert_eq!(builder.name, Some("egg".to_string()));
+        assert_eq!(builder.record_id, Some("egg1234".to_string()));
+        assert_eq!(builder.reported_values, Some(vec![reported_value]));
+    }
+
+    #[test]
     fn test_property_page_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1657,6 +1848,39 @@ mod tests {
     }
 
     #[test]
+    fn test_property_page_list_into_builder() {
+        let property_value = PropertyValueBuilder::new()
+            .with_name("egg".into())
+            .with_data_type(DataType::Number)
+            .with_number_value(42)
+            .build()
+            .unwrap();
+
+        let reported_value = ReportedValueBuilder::new()
+            .with_reporter_index(0)
+            .with_timestamp(214)
+            .with_value(property_value)
+            .build()
+            .unwrap();
+
+        let property_page = PropertyPageBuilder::new()
+            .with_name("egg".into())
+            .with_record_id("egg1234".into())
+            .with_reported_values(vec![reported_value.clone()])
+            .build()
+            .unwrap();
+
+        let property_page_list = PropertyPageListBuilder::new()
+            .with_property_pages(vec![property_page.clone()])
+            .build()
+            .unwrap();
+
+        let builder = property_page_list.into_builder();
+
+        assert_eq!(builder.property_pages, Some(vec![property_page]))
+    }
+
+    #[test]
     fn test_property_page_list_bytes() {
         let property_value = PropertyValueBuilder::new()
             .with_name("egg".into())
@@ -1712,6 +1936,32 @@ mod tests {
     }
 
     #[test]
+    fn test_proposal_into_builder() {
+        let proposal = ProposalBuilder::new()
+            .with_record_id("egg1234".into())
+            .with_timestamp(214)
+            .with_issuing_agent("james".into())
+            .with_receiving_agent("joe".into())
+            .with_role(Role::Owner)
+            .with_properties(vec!["wet".into()])
+            .with_status(Status::Open)
+            .with_terms("a term".into())
+            .build()
+            .unwrap();
+
+        let builder = proposal.into_builder();
+
+        assert_eq!(builder.record_id, Some("egg1234".to_string()));
+        assert_eq!(builder.timestamp, Some(214));
+        assert_eq!(builder.issuing_agent, Some("james".to_string()));
+        assert_eq!(builder.receiving_agent, Some("joe".to_string()));
+        assert_eq!(builder.role, Some(Role::Owner));
+        assert_eq!(builder.properties, Some(vec!["wet".to_string()]));
+        assert_eq!(builder.status, Some(Status::Open));
+        assert_eq!(builder.terms, Some("a term".to_string()));
+    }
+
+    #[test]
     fn test_proposal_bytes() {
         let proposal = ProposalBuilder::new()
             .with_record_id("egg1234".into())
@@ -1748,6 +1998,30 @@ mod tests {
             .unwrap();
 
         assert!(proposal_list.proposals().iter().any(|x| *x == proposal));
+    }
+
+    #[test]
+    fn test_proposal_list_into_builder() {
+        let proposal = ProposalBuilder::new()
+            .with_record_id("egg1234".into())
+            .with_timestamp(214)
+            .with_issuing_agent("james".into())
+            .with_receiving_agent("joe".into())
+            .with_role(Role::Owner)
+            .with_properties(vec!["wet".into(), "gets everywhere".into()])
+            .with_status(Status::Open)
+            .with_terms("a term".into())
+            .build()
+            .unwrap();
+
+        let proposal_list = ProposalListBuilder::new()
+            .with_proposals(vec![proposal.clone()])
+            .build()
+            .unwrap();
+
+        let builder = proposal_list.into_builder();
+
+        assert_eq!(builder.proposals, Some(vec![proposal]));
     }
 
     #[test]
@@ -1797,6 +2071,32 @@ mod tests {
     }
 
     #[test]
+    fn test_record_into_builder() {
+        let associated_agent = AssociatedAgentBuilder::new()
+            .with_agent_id("agent1234".into())
+            .with_timestamp(2132)
+            .build()
+            .unwrap();
+
+        let record = RecordBuilder::new()
+            .with_record_id("egg1234".into())
+            .with_schema("egg".into())
+            .with_owners(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent.clone()])
+            .with_field_final(false)
+            .build()
+            .unwrap();
+
+        let builder = record.into_builder();
+
+        assert_eq!(builder.record_id, Some("egg1234".to_string()));
+        assert_eq!(builder.schema, Some("egg".to_string()));
+        assert_eq!(builder.owners, Some(vec![associated_agent.clone()]));
+        assert_eq!(builder.custodians, Some(vec![associated_agent.clone()]));
+        assert_eq!(builder.field_final, Some(false));
+    }
+
+    #[test]
     fn test_record_bytes() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -1842,6 +2142,33 @@ mod tests {
     }
 
     #[test]
+    fn test_record_list_into_builder() {
+        let associated_agent = AssociatedAgentBuilder::new()
+            .with_agent_id("agent1234".into())
+            .with_timestamp(2132)
+            .build()
+            .unwrap();
+
+        let record = RecordBuilder::new()
+            .with_record_id("egg1234".into())
+            .with_schema("egg".into())
+            .with_owners(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent.clone()])
+            .with_field_final(false)
+            .build()
+            .unwrap();
+
+        let record_list = RecordListBuilder::new()
+            .with_records(vec![record.clone()])
+            .build()
+            .unwrap();
+
+        let builder = record_list.into_builder();
+
+        assert_eq!(builder.records, Some(vec![record]));
+    }
+
+    #[test]
     fn test_record_list_bytes() {
         let associated_agent = AssociatedAgentBuilder::new()
             .with_agent_id("agent1234".into())
@@ -1866,4 +2193,17 @@ mod tests {
         test_from_bytes(record_list, RecordList::from_bytes);
     }
 
+    #[test]
+    fn test_associated_agent_into_builder() {
+        let associated_agent = AssociatedAgentBuilder::new()
+            .with_agent_id("agent1234".into())
+            .with_timestamp(2132)
+            .build()
+            .unwrap();
+
+        let builder = associated_agent.into_builder();
+
+        assert_eq!(builder.agent_id, Some("agent1234".to_string()));
+        assert_eq!(builder.timestamp, Some(2132));
+    }
 }
