@@ -32,20 +32,32 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
-use grid_sdk::protos::track_and_trace_payload::CreateTrackAndTraceAgentAction as CreateAgentAction;
-use grid_sdk::protos::track_and_trace_payload::{
-    AnswerProposalAction, AnswerProposalAction_Response, CreateProposalAction, CreateRecordAction,
-    CreateRecordTypeAction, FinalizeRecordAction, RevokeReporterAction, UpdatePropertiesAction,
+use grid_sdk::protos::deprecated_track_and_trace_payload::DeprecatedCreateTrackAndTraceAgentAction as CreateAgentAction;
+use grid_sdk::protos::deprecated_track_and_trace_payload::{
+    DeprecatedAnswerProposalAction as AnswerProposalAction,
+    DeprecatedAnswerProposalAction_Response as AnswerProposalAction_Response,
+    DeprecatedCreateProposalAction as CreateProposalAction,
+    DeprecatedCreateRecordAction as CreateRecordAction,
+    DeprecatedCreateRecordTypeAction as CreateRecordTypeAction,
+    DeprecatedFinalizeRecordAction as FinalizeRecordAction,
+    DeprecatedRevokeReporterAction as RevokeReporterAction,
+    DeprecatedUpdatePropertiesAction as UpdatePropertiesAction,
 };
+use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
 use grid_sdk::protos::track_and_trace_property::{
-    Property, PropertyPage, PropertyPage_ReportedValue, PropertySchema, PropertySchema_DataType,
-    Property_Reporter, TrackAndTracePropertyValue,
+    DeprecatedProperty as Property, DeprecatedPropertyPage as PropertyPage,
+    DeprecatedPropertyPage_ReportedValue as PropertyPage_ReportedValue,
+    DeprecatedProperty_Reporter as Property_Reporter, PropertySchema, PropertySchema_DataType,
+    TrackAndTracePropertyValue,
 };
 use grid_sdk::protos::track_and_trace_proposal::{
-    Proposal, ProposalContainer, Proposal_Role, Proposal_Status,
+    DeprecatedProposal as Proposal, DeprecatedProposalContainer as ProposalContainer,
+    DeprecatedProposal_Role as Proposal_Role, DeprecatedProposal_Status as Proposal_Status,
 };
-use grid_sdk::protos::track_and_trace_record::{Record, RecordType, Record_AssociatedAgent};
+use grid_sdk::protos::track_and_trace_record::{
+    DeprecatedRecord as Record, DeprecatedRecord_AssociatedAgent as Record_AssociatedAgent,
+    RecordType,
+};
 
 use crate::addressing::*;
 use crate::payload::{Action, SupplyChainPayload};

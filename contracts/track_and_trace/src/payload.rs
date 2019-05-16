@@ -20,11 +20,15 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::track_and_trace_payload::CreateTrackAndTraceAgentAction as CreateAgentAction;
-use grid_sdk::protos::track_and_trace_payload::{
-    AnswerProposalAction, CreateProposalAction, CreateRecordAction, CreateRecordTypeAction,
-    FinalizeRecordAction, RevokeReporterAction, SCPayload, SCPayload_Action,
-    UpdatePropertiesAction,
+use grid_sdk::protos::deprecated_track_and_trace_payload::DeprecatedCreateTrackAndTraceAgentAction as CreateAgentAction;
+use grid_sdk::protos::deprecated_track_and_trace_payload::{
+    DeprecatedAnswerProposalAction as AnswerProposalAction,
+    DeprecatedCreateProposalAction as CreateProposalAction,
+    DeprecatedCreateRecordAction as CreateRecordAction,
+    DeprecatedCreateRecordTypeAction as CreateRecordTypeAction,
+    DeprecatedFinalizeRecordAction as FinalizeRecordAction,
+    DeprecatedRevokeReporterAction as RevokeReporterAction,
+    DeprecatedUpdatePropertiesAction as UpdatePropertiesAction, SCPayload, SCPayload_Action,
 };
 
 #[derive(Debug, Clone)]

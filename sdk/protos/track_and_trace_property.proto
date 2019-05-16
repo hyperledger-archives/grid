@@ -16,7 +16,7 @@
 syntax = "proto3";
 
 
-message Property {
+message DeprecatedProperty {
   message Reporter {
     // The public key of the Agent authorized to report updates.
     string public_key = 1;
@@ -77,8 +77,8 @@ message Property {
 }
 
 
-message PropertyContainer {
-  repeated Property entries = 1;
+message DeprecatedPropertyContainer {
+  repeated DeprecatedProperty entries = 1;
 }
 
 
@@ -149,7 +149,7 @@ message TrackAndTracePropertyValue {
 }
 
 
-message PropertyPage {
+message DeprecatedPropertyPage {
   message ReportedValue {
     // The index of the reporter id in reporters field
     uint32 reporter_index = 1;
@@ -181,8 +181,8 @@ message PropertyPage {
 }
 
 
-message PropertyPageContainer {
-  repeated PropertyPage entries = 1;
+message DeprecatedPropertyPageContainer {
+  repeated DeprecatedPropertyPage entries = 1;
 }
 
 

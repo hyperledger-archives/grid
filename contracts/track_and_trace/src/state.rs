@@ -25,11 +25,14 @@ cfg_if! {
 use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
 use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgentContainer as AgentContainer;
 use grid_sdk::protos::track_and_trace_property::{
-    Property, PropertyContainer, PropertyPage, PropertyPageContainer,
+    DeprecatedProperty as Property, DeprecatedPropertyContainer as PropertyContainer,
+    DeprecatedPropertyPage as PropertyPage,
+    DeprecatedPropertyPageContainer as PropertyPageContainer,
 };
-use grid_sdk::protos::track_and_trace_proposal::ProposalContainer;
+use grid_sdk::protos::track_and_trace_proposal::DeprecatedProposalContainer as ProposalContainer;
 use grid_sdk::protos::track_and_trace_record::{
-    Record, RecordContainer, RecordType, RecordTypeContainer,
+    DeprecatedRecord as Record, DeprecatedRecordContainer as RecordContainer, RecordType,
+    RecordTypeContainer,
 };
 use protobuf::Message;
 
