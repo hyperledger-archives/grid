@@ -22,7 +22,7 @@ edition = "2018"
 clap = "2"
 log = "0.4"
 simple_logger = "1.0"
-sawtooth-sdk = "0.2.0"
+sawtooth-sdk = {git = "https://github.com/hyperledger/sawtooth-sdk-rust"}
 grid-sdk = { path = "../sdk" }
 rust-crypto = "0.2"
 protobuf = "2"
