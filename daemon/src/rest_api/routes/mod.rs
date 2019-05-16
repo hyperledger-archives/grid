@@ -86,7 +86,7 @@ mod test {
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
     use std::sync::mpsc::channel;
 
-    static DATABASE_URL: &str = "postgres://grid_test:grid_test@localhost:5433/grid_test";
+    static DATABASE_URL: &str = "postgres://grid_test:grid_test@test_server:5432/grid_test";
 
     static KEY1: &str = "111111111111111111111111111111111111111111111111111111111111111111";
     static KEY2: &str = "222222222222222222222222222222222222222222222222222222222222222222";

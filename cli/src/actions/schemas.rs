@@ -383,7 +383,7 @@ mod test {
               data_type: STRING
               description: "RGB value" "##;
 
-    static PHONE_YAML_EXAMPLE: &[u8; 630] = br##"
+    static PHONE_YAML_EXAMPLE: &[u8; 625] = br##"
 - name: "Phone"
   description: "Example phone schema"
   properties:
