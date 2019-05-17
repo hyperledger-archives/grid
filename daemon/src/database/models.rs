@@ -24,7 +24,8 @@ use serde_json::Value as JsonValue;
 use std::io::Write;
 
 use super::schema::{
-    agent, block, grid_property_definition, grid_property_value, grid_schema, organization,
+    agent, associated_agent, block, grid_property_definition, grid_property_value, grid_schema,
+    organization, property, proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -53,15 +54,14 @@ pub struct NewAgent {
 pub struct Agent {
     ///  This is the record id for the slowly-changing-dimensions table.
     pub id: i64,
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_block_num: i64,
+    pub end_block_num: i64,
     pub public_key: String,
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
     pub metadata: Vec<JsonValue>,
-
-    // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
 }
 
 #[derive(Insertable, Debug)]
@@ -143,7 +143,7 @@ pub struct GridPropertyDefinition {
     pub struct_properties: Vec<String>,
 }
 
-#[derive(Insertable, Debug)]
+#[derive(Insertable, Debug, Default)]
 #[table_name = "grid_property_value"]
 pub struct NewGridPropertyValue {
     pub start_block_num: i64,
@@ -159,8 +159,7 @@ pub struct NewGridPropertyValue {
     pub lat_long_value: Option<LatLongValue>,
 }
 
-#[allow(dead_code)]
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Default, Debug)]
 pub struct GridPropertyValue {
     pub id: i64,
     pub start_block_num: i64,
@@ -203,6 +202,156 @@ impl FromSql<LatLong, Pg> for LatLongValue {
         let long = bytes.read_i64::<NetworkEndian>()?;
         Ok(LatLongValue(lat, long))
     }
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "associated_agent"]
+pub struct NewAssociatedAgent {
+    pub record_id: String,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub agent_id: String,
+    pub timestamp: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct AssociatedAgent {
+    pub id: i64,
+    pub record_id: String,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub agent_id: String,
+    pub timestamp: i64,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "property"]
+pub struct NewProperty {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub record_id: String,
+    pub property_definition: String,
+    pub current_page: i32,
+    pub wrapped: bool,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug, Clone)]
+pub struct Property {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub name: String,
+    pub record_id: String,
+    pub property_definition: String,
+    pub current_page: i64,
+    pub wrapped: bool,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "proposal"]
+pub struct NewProposal {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub record_id: String,
+    pub timestamp: i64,
+    pub issuing_agent: String,
+    pub receiving_agent: String,
+    pub role: String,
+    pub properties: Vec<String>,
+    pub status: String,
+    pub terms: String,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct Propsal {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub record_id: String,
+    pub timestamp: i64,
+    pub issuing_agent: String,
+    pub receiving_agent: String,
+    pub role: String,
+    pub properties: Vec<String>,
+    pub status: String,
+    pub terms: String,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "record"]
+pub struct NewRecord {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub record_id: String,
+    pub schema: String,
+    pub final_: bool,
+    pub owners: Vec<String>,
+    pub custodians: Vec<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct Record {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub record_id: String,
+    pub schema: String,
+    pub final_: bool,
+    pub owners: Vec<String>,
+    pub custodians: Vec<String>,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "reported_value"]
+pub struct NewReportedValue {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub property_name: String,
+    pub record_id: String,
+    pub reporter_index: i32,
+    pub timestamp: i64,
+    pub value_name: String,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct ReportedValue {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub property_name: String,
+    pub record_id: String,
+    pub reporter_index: i32,
+    pub timestamp: i64,
+    pub value_name: String,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "reporter"]
+pub struct NewReporter {
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub property_name: String,
+    pub public_key: String,
+    pub authorized: bool,
+    pub reporter_index: i32,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct Reporter {
+    pub id: i64,
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+    pub property_name: String,
+    pub public_key: String,
+    pub authorized: bool,
+    pub reporter_index: i32,
 }
 
 #[cfg(test)]

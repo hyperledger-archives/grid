@@ -39,7 +39,16 @@ use crate::sawtooth_connection::SawtoothConnection;
 pub use super::event::error::{EventError, EventProcessorError};
 
 const PIKE_NAMESPACE: &str = "cad11d";
+const PIKE_AGENT: &str = "cad11d00";
+const PIKE_ORG: &str = "cad11d01";
+
 const GRID_NAMESPACE: &str = "621dee";
+const GRID_SCHEMA: &str = "621dee01";
+
+const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
+const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
+const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
+const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
 
 const SHUTDOWN_TIMEOUT: u64 = 2;
 
@@ -219,41 +228,31 @@ fn create_subscription_request(last_known_block_id: String) -> ClientEventsSubsc
     let mut block_info_subscription = EventSubscription::new();
     block_info_subscription.set_event_type("sawtooth/block-commit".into());
 
-    // Event subscription for Grid
-    let mut grid_state_filter = EventFilter::new();
-    grid_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
-    grid_state_filter.set_key("address".into());
-    grid_state_filter.set_match_string(format!("^{}.*", GRID_NAMESPACE));
-
-    let mut grid_state_delta_subscription = EventSubscription::new();
-    grid_state_delta_subscription.set_event_type("sawtooth/state-delta".into());
-    grid_state_delta_subscription
-        .mut_filters()
-        .push(grid_state_filter);
-
-    // Event subscription for Pike
-    let mut pike_state_filter = EventFilter::new();
-    pike_state_filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
-    pike_state_filter.set_key("address".into());
-    pike_state_filter.set_match_string(format!("^{}.*", PIKE_NAMESPACE));
-
-    let mut pike_state_delta_subscription = EventSubscription::new();
-    pike_state_delta_subscription.set_event_type("sawtooth/state-delta".into());
-    pike_state_delta_subscription
-        .mut_filters()
-        .push(pike_state_filter);
+    let grid_subscription = make_event_filter(GRID_NAMESPACE);
+    let pike_subscription = make_event_filter(PIKE_NAMESPACE);
+    let tnt_subscription = make_event_filter(TRACK_AND_TRACE_NAMESPACE);
 
     let mut request = ClientEventsSubscribeRequest::new();
     request.mut_subscriptions().push(block_info_subscription);
-    request
-        .mut_subscriptions()
-        .push(pike_state_delta_subscription);
-    request
-        .mut_subscriptions()
-        .push(grid_state_delta_subscription);
+    request.mut_subscriptions().push(pike_subscription);
+    request.mut_subscriptions().push(grid_subscription);
+    request.mut_subscriptions().push(tnt_subscription);
     request.mut_last_known_block_ids().push(last_known_block_id);
 
     request
+}
+
+fn make_event_filter(namespace: &str) -> EventSubscription {
+    let mut filter = EventFilter::new();
+    filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
+    filter.set_key("address".into());
+    filter.set_match_string(format!("^{}.*", namespace));
+
+    let mut event_subscription = EventSubscription::new();
+    event_subscription.set_event_type("sawtooth/state-delta".into());
+    event_subscription.mut_filters().push(filter);
+
+    event_subscription
 }
 
 fn correlation_id() -> String {

@@ -15,9 +15,11 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
-
-use super::schema::{grid_property_definition, grid_schema};
+use super::models::{
+    GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridPropertyValue,
+    NewGridSchema,
+};
+use super::schema::{grid_property_definition, grid_property_value, grid_schema};
 use super::MAX_BLOCK_NUM;
 
 use diesel::{
@@ -126,4 +128,34 @@ pub fn list_grid_property_definitions_with_schema_name(
                 .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .load::<GridPropertyDefinition>(conn)
+}
+
+pub fn insert_grid_property_values(
+    conn: &PgConnection,
+    values: &[NewGridPropertyValue],
+) -> QueryResult<()> {
+    for value in values {
+        update_grid_property_value_end_block_num(conn, &value.name, value.start_block_num)?;
+    }
+
+    insert_into(grid_property_value::table)
+        .values(values)
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn update_grid_property_value_end_block_num(
+    conn: &PgConnection,
+    property_name: &str,
+    current_block_num: i64,
+) -> QueryResult<()> {
+    update(grid_property_value::table)
+        .filter(
+            grid_property_value::name
+                .eq(property_name)
+                .and(grid_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .set(grid_property_value::end_block_num.eq(current_block_num))
+        .execute(conn)
+        .map(|_| ())
 }
