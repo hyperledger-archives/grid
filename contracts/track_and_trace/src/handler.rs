@@ -860,26 +860,25 @@ impl TrackAndTraceTransactionHandler {
 
     fn _revoke_reporter(
         &self,
-        payload: RevokeReporterAction,
-        mut state: SupplyChainState,
+        payload: &RevokeReporterAction,
+        state: &mut TrackAndTraceState,
         signer: &str,
     ) -> Result<(), ApplyError> {
-        let record_id = payload.get_record_id();
-        let reporter_id = payload.get_reporter_id();
-        let properties = payload.get_properties();
+        let record_id = payload.record_id();
+        let reporter_id = payload.reporter_id();
+        let properties = payload.properties();
 
-        let revoke_record = match state.get_record(record_id) {
-            Ok(Some(record)) => record,
-            Ok(None) => {
+        let revoke_record = match state.get_record(record_id)? {
+            Some(record) => record,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exists: {}",
                     record_id
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        let owner = match revoke_record.owners.last() {
+        let owner = match revoke_record.owners().last() {
             Some(x) => x,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
@@ -888,13 +887,13 @@ impl TrackAndTraceTransactionHandler {
             }
         };
 
-        if owner.get_agent_id() != signer {
+        if owner.agent_id() != signer {
             return Err(ApplyError::InvalidTransaction(
                 "Must be owner to revoke reporters".to_string(),
             ));
         }
 
-        if revoke_record.get_field_final() {
+        if *revoke_record.field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Record is final: {}",
                 record_id
@@ -902,46 +901,60 @@ impl TrackAndTraceTransactionHandler {
         }
 
         for prop_name in properties {
-            let mut prop = match state.get_property(record_id, prop_name) {
-                Ok(Some(prop)) => prop,
-                Ok(None) => {
-                    return Err(ApplyError::InvalidTransaction(
-                        "Property does not exists".to_string(),
-                    ));
+            let prop = match state.get_property(record_id, prop_name)? {
+                Some(prop) => prop,
+                None => {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Property does not exist: {}",
+                        prop_name
+                    )));
                 }
-                Err(err) => return Err(err),
             };
 
-            let mut new_reporters: Vec<Property_Reporter> = Vec::new();
             let mut revoked = false;
-            for reporter in prop.get_reporters() {
-                if reporter.get_public_key() == reporter_id {
-                    if !reporter.get_authorized() {
-                        return Err(ApplyError::InvalidTransaction(
-                            "Reporter is already unauthorized.".to_string(),
-                        ));
+            let new_reporters = prop
+                .reporters()
+                .to_vec()
+                .iter()
+                .map(|reporter| {
+                    if reporter.public_key() == reporter_id {
+                        if !*reporter.authorized() {
+                            return Err(ApplyError::InvalidTransaction(
+                                "Reporter is already unauthorized.".to_string(),
+                            ));
+                        }
+                        revoked = true;
+                        reporter
+                            .clone()
+                            .into_builder()
+                            .with_authorized(false)
+                            .build()
+                            .map_err(|err| map_builder_error_to_apply_error(err, "Reporter"))
+                    } else {
+                        Ok(reporter.clone())
                     }
-                    let mut unauthorized_reporter = reporter.clone();
-                    unauthorized_reporter.set_authorized(false);
-                    revoked = true;
-                    new_reporters.push(unauthorized_reporter);
-                } else {
-                    new_reporters.push(reporter.clone());
-                }
-            }
+                })
+                .collect::<Result<Vec<_>, ApplyError>>()?;
+
             if !revoked {
                 return Err(ApplyError::InvalidTransaction(format!(
-                    "Reporter cannot be revoked: {}",
-                    reporter_id
+                    "{} not a reporter for property {}",
+                    reporter_id, prop_name
                 )));
             }
-            prop.set_reporters(RepeatedField::from_vec(new_reporters));
+            let updated_property = prop
+                .clone()
+                .into_builder()
+                .with_reporters(new_reporters)
+                .build()
+                .map_err(|err| map_builder_error_to_apply_error(err, "Property"))?;
 
-            state.set_property(record_id, prop_name, prop)?;
+            state.set_property(record_id, prop_name, updated_property)?;
         }
 
         Ok(())
     }
+}
 
 fn map_builder_error_to_apply_error(err: BuilderError, protocol_name: &str) -> ApplyError {
     ApplyError::InvalidTransaction(format!(
@@ -1003,8 +1016,8 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
             Action::AnswerProposal(action_payload) => {
                 self._answer_proposal(action_payload, &mut state, signer, *payload.timestamp())?
             }
-            Action::RevokeReporter(revoke_reporter_payload) => {
-                self._revoke_reporter(revoke_reporter_payload, state, signer)?
+            Action::RevokeReporter(action_payload) => {
+                self._revoke_reporter(action_payload, &mut state, signer)?
             }
         }
         Ok(())
@@ -2879,6 +2892,207 @@ mod tests {
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
     }
+
+    #[test]
+    /// Test that when the RevokeReporterAction is valid an Ok is returned and the properties
+    /// reporters are updated.
+    fn test_revoke_reporter_valid() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+
+        transaction_context.add_record();
+
+        transaction_context.add_property_with_reporter(
+            REQUIRED_PROPERTY_NAME,
+            reporter_key,
+            true,
+            required_property_definition(),
+        );
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        assert!(transaction_handler
+            ._revoke_reporter(&payload, &mut state, PUBLIC_KEY,)
+            .is_ok());
+
+        let required_property = state
+            .get_property(RECORD_ID, REQUIRED_PROPERTY_NAME)
+            .expect("Failed to fetch required property")
+            .expect("Required property not found");
+
+        assert_eq!(
+            required_property,
+            make_property_with_reporter(
+                REQUIRED_PROPERTY_NAME,
+                reporter_key,
+                false,
+                required_property_definition()
+            )
+        );
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if the record does not exist
+    fn test_revoke_reporter_record_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, PUBLIC_KEY) {
+            Ok(()) => panic!("Record does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record does not exists: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if the signer is not the record's owner
+    fn test_revoke_reporter_signer_not_owner() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, "not_owner_key") {
+            Ok(()) => panic!("Signer not owner, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Must be owner to revoke reporters"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if the record is final
+    fn test_revoke_reporter_record_is_final() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+        transaction_context.add_finalized_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, PUBLIC_KEY) {
+            Ok(()) => panic!("Record is final, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record is final: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if one of the payload's properties do not
+    /// exist
+    fn test_revoke_reporter_property_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, PUBLIC_KEY) {
+            Ok(()) => panic!("Property does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Property does not exist: {}",
+                    REQUIRED_PROPERTY_NAME
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if the reporter is already
+    /// unauthorized
+    fn test_revoke_reporter_already_unauthorized() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+        transaction_context.add_record();
+        transaction_context.add_property_with_reporter(
+            REQUIRED_PROPERTY_NAME,
+            reporter_key,
+            false,
+            required_property_definition(),
+        );
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, PUBLIC_KEY) {
+            Ok(()) => {
+                panic!("Reporter already unauthorized, InvalidTransaction should be returned")
+            }
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Reporter is already unauthorized."));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that when the RevokeReporterAction fails if the key is not a valid reporter for the
+    /// property
+    fn test_revoke_reporter_not_valid() {
+        let mut transaction_context = MockTransactionContext::default();
+        let reporter_key = "reporter_key";
+        transaction_context.add_record();
+        transaction_context.add_property(REQUIRED_PROPERTY_NAME, required_property_definition());
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let payload =
+            revoke_reporter_action(reporter_key, vec![REQUIRED_PROPERTY_NAME.to_string()]);
+
+        match transaction_handler._revoke_reporter(&payload, &mut state, PUBLIC_KEY) {
+            Ok(()) => {
+                panic!("Reporter already unauthorized, InvalidTransaction should be returned")
+            }
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "{} not a reporter for property {}",
+                    reporter_key, REQUIRED_PROPERTY_NAME
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
     fn optional_property_value() -> PropertyValue {
         PropertyValueBuilder::new()
             .with_name(OPTIONAL_PROPERTY_NAME.to_string())
