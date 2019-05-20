@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use protobuf;
-use protobuf::RepeatedField;
-
 use std::collections::HashMap;
 
 cfg_if! {
@@ -73,57 +70,51 @@ impl TrackAndTraceTransactionHandler {
 
     fn _create_record(
         &self,
-        payload: CreateRecordAction,
-        mut state: SupplyChainState,
+        payload: &CreateRecordAction,
+        state: &mut TrackAndTraceState,
         signer: &str,
         timestamp: u64,
     ) -> Result<(), ApplyError> {
-        match state.get_agent(signer) {
-            Ok(Some(_)) => (),
-            Ok(None) => {
+        match state.get_agent(signer)? {
+            Some(_) => (),
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
-                    "Agent is not register: {}",
+                    "Agent is not registered: {}",
                     signer
                 )));
             }
-            Err(err) => return Err(err),
         }
-        let record_id = payload.get_record_id();
-        match state.get_record(record_id) {
-            Ok(Some(_)) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Record already exists: {}",
-                    record_id
-                )));
-            }
-            Ok(None) => (),
-            Err(err) => return Err(err),
+        let record_id = payload.record_id();
+        if state.get_record(record_id)?.is_some() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Record already exists: {}",
+                record_id
+            )));
         }
 
-        let type_name = payload.get_record_type();
-        let record_type = match state.get_record_type(type_name) {
-            Ok(Some(record_type)) => record_type,
-            Ok(None) => {
+        let schema_name = payload.schema();
+        let schema = match state.get_schema(schema_name)? {
+            Some(schema) => schema,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
-                    "Record Type does not exist {}",
-                    type_name
+                    "Schema does not exist {}",
+                    schema_name
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        let mut type_schemata: HashMap<&str, PropertySchema> = HashMap::new();
-        let mut required_properties: HashMap<&str, PropertySchema> = HashMap::new();
-        let mut provided_properties: HashMap<&str, TrackAndTracePropertyValue> = HashMap::new();
-        for property in record_type.get_properties() {
-            type_schemata.insert(property.get_name(), property.clone());
-            if property.get_required() {
-                required_properties.insert(property.get_name(), property.clone());
+        let mut type_schemata: HashMap<&str, PropertyDefinition> = HashMap::new();
+        let mut required_properties: HashMap<&str, PropertyDefinition> = HashMap::new();
+        let mut provided_properties: HashMap<&str, PropertyValue> = HashMap::new();
+        for property in schema.properties() {
+            type_schemata.insert(property.name(), property.clone());
+            if *property.required() {
+                required_properties.insert(property.name(), property.clone());
             }
         }
 
-        for property in payload.get_properties() {
-            provided_properties.insert(property.get_name(), property.clone());
+        for property in payload.properties() {
+            provided_properties.insert(property.name(), property.clone());
         }
 
         for name in required_properties.keys() {
@@ -137,90 +128,84 @@ impl TrackAndTraceTransactionHandler {
 
         for (provided_name, provided_properties) in provided_properties.clone() {
             let required_type = match type_schemata.get(provided_name) {
-                Some(required_type) => required_type.data_type,
+                Some(required_type) => required_type.data_type(),
                 None => {
                     return Err(ApplyError::InvalidTransaction(format!(
-                        "Provided property {} is not in schemata",
+                        "Provided property {} is not in schema",
                         provided_name
                     )));
                 }
             };
-            let provided_type = provided_properties.data_type;
+            let provided_type = provided_properties.data_type();
             if provided_type != required_type {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Value provided for {} is the wrong type",
                     provided_name
                 )));
             };
-
-            let is_delayed = match type_schemata.get(provided_name) {
-                Some(property_schema) => property_schema.delayed,
-                None => false,
-            };
-            if is_delayed {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Property is 'delayed', and cannot be set at record creation: {}",
-                    provided_name
-                )));
-            };
         }
-        let mut new_record = Record::new();
-        new_record.set_record_id(record_id.to_string());
-        new_record.set_record_type(type_name.to_string());
-        new_record.set_field_final(false);
 
-        let mut owner = Record_AssociatedAgent::new();
-        owner.set_agent_id(signer.to_string());
-        owner.set_timestamp(timestamp);
-        new_record.owners.push(owner.clone());
-        new_record.custodians.push(owner.clone());
+        let owner = AssociatedAgentBuilder::new()
+            .with_agent_id(signer.to_string())
+            .with_timestamp(timestamp)
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "AssociatedAgent"))?;
+
+        let new_record = RecordBuilder::new()
+            .with_record_id(record_id.to_string())
+            .with_schema(schema_name.to_string())
+            .with_field_final(false)
+            .with_owners(vec![owner.clone()])
+            .with_custodians(vec![owner.clone()])
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "Record"))?;
 
         state.set_record(record_id, new_record)?;
 
-        let mut reporter = Property_Reporter::new();
-        reporter.set_public_key(signer.to_string());
-        reporter.set_authorized(true);
-        reporter.set_index(0);
+        let reporter = ReporterBuilder::new()
+            .with_public_key(signer.to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "Reporter"))?;
 
         for (property_name, property) in type_schemata {
-            let mut new_property = Property::new();
-            new_property.set_name(property_name.to_string());
-            new_property.set_record_id(record_id.to_string());
-            new_property.set_data_type(property.get_data_type());
-            new_property.reporters.push(reporter.clone());
-            new_property.set_current_page(1);
-            new_property.set_wrapped(false);
-            new_property.set_fixed(property.get_fixed());
-            new_property.set_number_exponent(property.get_number_exponent());
-            new_property.set_enum_options(RepeatedField::from_vec(
-                property.get_enum_options().to_vec(),
-            ));
-            new_property.set_struct_properties(RepeatedField::from_vec(
-                property.get_struct_properties().to_vec(),
-            ));
-            new_property.set_unit(property.get_unit().to_string());
+            let new_property = PropertyBuilder::new()
+                .with_name(property_name.to_string())
+                .with_record_id(record_id.to_string())
+                .with_property_definition(property.clone())
+                .with_reporters(vec![reporter.clone()])
+                .with_current_page(1)
+                .with_wrapped(false)
+                .build()
+                .map_err(|err| map_builder_error_to_apply_error(err, "Property"))?;
 
             state.set_property(record_id, property_name, new_property.clone())?;
 
-            let mut new_property_page = PropertyPage::new();
-            new_property_page.set_name(property_name.to_string());
-            new_property_page.set_record_id(record_id.to_string());
+            let mut new_property_page = PropertyPageBuilder::new()
+                .with_name(property_name.to_string())
+                .with_record_id(record_id.to_string());
 
             if provided_properties.contains_key(property_name) {
-                let provided_property = &provided_properties[property_name];
-                let reported_value = match self._make_new_reported_value(
-                    0,
-                    timestamp,
-                    provided_property,
-                    &new_property,
-                ) {
-                    Ok(reported_value) => reported_value,
-                    Err(err) => return Err(err),
-                };
+                let provided_property = provided_properties[property_name].clone();
+                let reported_value = ReportedValueBuilder::new()
+                    .with_reporter_index(0)
+                    .with_timestamp(timestamp)
+                    .with_value(provided_property)
+                    .build()
+                    .map_err(|err| map_builder_error_to_apply_error(err, "ReportedValue"))?;
 
-                new_property_page.reported_values.push(reported_value);
+                new_property_page = new_property_page.with_reported_values(vec![reported_value]);
             }
-            state.set_property_page(record_id, property_name, 1, new_property_page)?;
+
+            state.set_property_page(
+                record_id,
+                property_name,
+                1,
+                new_property_page
+                    .build()
+                    .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
+            )?;
         }
 
         Ok(())
@@ -1013,6 +998,12 @@ impl TrackAndTraceTransactionHandler {
 
         Ok(())
     }
+fn map_builder_error_to_apply_error(err: BuilderError, protocol_name: &str) -> ApplyError {
+    ApplyError::InvalidTransaction(format!(
+        "Failed to build {}. {}",
+        protocol_name,
+        err.to_string()
+    ))
 }
 
 impl TransactionHandler for TrackAndTraceTransactionHandler {
@@ -1052,8 +1043,9 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
         );
 
         match payload.action() {
-            Action::CreateRecord(record_payload) => {
-                self._create_record(record_payload, state, signer, payload.get_timestamp())?
+            Action::CreateRecord(action_payload) => {
+                self._create_record(action_payload, &mut state, signer, *payload.timestamp())?
+            }
             }
             Action::FinalizeRecord(finalize_payload) => {
                 self._finalize_record(finalize_payload, state, signer)?
@@ -1321,6 +1313,278 @@ mod tests {
             let property_list_address = make_property_address(RECORD_ID, property_name, 0);
             self.set_state_entry(property_list_address, property_list_bytes)
                 .unwrap();
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is valid an OK is returned and that a new Record,
+    /// Property and PropertyPage are added to state
+    fn test_create_record_handler_valid() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            required_property_value(),
+        ]);
+
+        assert!(transaction_handler
+            ._create_record(&create_record_action, &mut state, PUBLIC_KEY, TIMESTAMP)
+            .is_ok());
+
+        let record = state
+            .get_record(RECORD_ID)
+            .expect("Failed to fetch record")
+            .expect("No record found");
+
+        assert_eq!(record, make_record());
+
+        let optional_property = state
+            .get_property(RECORD_ID, OPTIONAL_PROPERTY_NAME)
+            .expect("Failed to fetch optional property")
+            .expect("Optional property not found");
+
+        assert_eq!(
+            optional_property,
+            make_property(OPTIONAL_PROPERTY_NAME, optional_property_definition())
+        );
+
+        let required_property = state
+            .get_property(RECORD_ID, REQUIRED_PROPERTY_NAME)
+            .expect("Failed to fetch required property")
+            .expect("Required property not found");
+
+        assert_eq!(
+            required_property,
+            make_property(REQUIRED_PROPERTY_NAME, required_property_definition())
+        );
+
+        let property_page_optional = state
+            .get_property_page(RECORD_ID, OPTIONAL_PROPERTY_NAME, 1)
+            .expect("Failed to fetch property page for optional property")
+            .expect("Property page for optional property not found");
+
+        assert_eq!(
+            property_page_optional,
+            make_property_page(OPTIONAL_PROPERTY_NAME, optional_property_value())
+        );
+
+        let property_page_required = state
+            .get_property_page(RECORD_ID, REQUIRED_PROPERTY_NAME, 1)
+            .expect("Failed to fetch property page for required property")
+            .expect("Property page for required property not found");
+
+        assert_eq!(
+            property_page_required,
+            make_property_page(REQUIRED_PROPERTY_NAME, required_property_value())
+        );
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if the signer is not an Agent.
+    fn test_create_record_agent_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            required_property_value(),
+        ]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Agent does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Agent is not registered: {}", PUBLIC_KEY)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if the schema does not exist.
+    fn test_create_record_schema_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            required_property_value(),
+        ]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Schema does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Schema does not exist {}", SCHEMA_NAME)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if the a record with the same id
+    /// already exists.
+    fn test_create_record_already_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_schema();
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            required_property_value(),
+        ]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record id is duplicated, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record already exists: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if the the payload is missing a required
+    /// property as defined in the schema.
+    fn test_create_record_missing_required_property() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_schema();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let create_record_action =
+            create_record_action_with_properties(vec![optional_property_value()]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Required property is missing, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Required property {} not provided",
+                    REQUIRED_PROPERTY_NAME
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if the the payload has an extra property
+    /// that is not defined in the schema.
+    fn test_create_record_extra_property() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_schema();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let property_value_extra = PropertyValueBuilder::new()
+            .with_name("invalid_property".to_string())
+            .with_data_type(DataType::String)
+            .with_string_value("Property that does not exist in schema".to_string())
+            .build()
+            .expect("Failed to build property value");
+
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            required_property_value(),
+            property_value_extra.clone(),
+        ]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!(
+                "There is an invalid property in the payload,
+                InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Provided property invalid_property is not in schema"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateRecordAction is invalid if a property value has a type that is not
+    /// the same as the type in the property definition.
+    fn test_create_record_invalid_property_value_type() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        let property_value_wrong = PropertyValueBuilder::new()
+            .with_name(REQUIRED_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::Number)
+            .with_number_value(123)
+            .build()
+            .expect("Failed to build property value");
+
+        let create_record_action = create_record_action_with_properties(vec![
+            optional_property_value(),
+            property_value_wrong.clone(),
+        ]);
+
+        match transaction_handler._create_record(
+            &create_record_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!(
+                "There is an invalid property value in the payload,
+                InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Value provided for {} is the wrong type",
+                    REQUIRED_PROPERTY_NAME
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
     }
 
