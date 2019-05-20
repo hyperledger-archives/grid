@@ -66,7 +66,7 @@ impl<'a> GridSchemaState<'a> {
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let agents: AgentList = match AgentList::from_bytes(packed.as_slice()) {
+                let agents = match AgentList::from_bytes(packed.as_slice()) {
                     Ok(agents) => agents,
                     Err(err) => {
                         return Err(ApplyError::InvalidTransaction(format!(
@@ -94,11 +94,11 @@ impl<'a> GridSchemaState<'a> {
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let schemas: SchemaList = match SchemaList::from_bytes(packed.as_slice()) {
+                let schemas = match SchemaList::from_bytes(packed.as_slice()) {
                     Ok(schemas) => schemas,
                     Err(err) => {
                         return Err(ApplyError::InvalidTransaction(format!(
-                            "Cannot deserialize organization list: {:?}",
+                            "Cannot deserialize schema list: {:?}",
                             err,
                         )));
                     }
