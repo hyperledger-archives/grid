@@ -213,22 +213,21 @@ impl TrackAndTraceTransactionHandler {
 
     fn _finalize_record(
         &self,
-        payload: FinalizeRecordAction,
-        mut state: SupplyChainState,
+        payload: &FinalizeRecordAction,
+        state: &mut TrackAndTraceState,
         signer: &str,
     ) -> Result<(), ApplyError> {
-        let record_id = payload.get_record_id();
-        let final_record = match state.get_record(record_id) {
-            Ok(Some(final_record)) => final_record,
-            Ok(None) => {
+        let record_id = payload.record_id();
+        let final_record = match state.get_record(record_id)? {
+            Some(final_record) => final_record,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
                 )));
             }
-            Err(err) => return Err(err),
         };
-        let owner = match final_record.owners.last() {
+        let owner = match final_record.owners().last() {
             Some(x) => x,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
@@ -236,7 +235,7 @@ impl TrackAndTraceTransactionHandler {
                 )));
             }
         };
-        let custodian = match final_record.custodians.last() {
+        let custodian = match final_record.custodians().last() {
             Some(x) => x,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
@@ -245,21 +244,26 @@ impl TrackAndTraceTransactionHandler {
             }
         };
 
-        if owner.agent_id != signer || custodian.agent_id != signer {
+        if owner.agent_id() != signer || custodian.agent_id() != signer {
             return Err(ApplyError::InvalidTransaction(
                 "Must be owner and custodian to finalize record".to_string(),
             ));
         }
-        if final_record.get_field_final() {
+        if *final_record.field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Record is already final: {}",
                 record_id
             )));
         }
 
-        let mut record_clone = final_record.clone();
-        record_clone.set_field_final(true);
-        state.set_record(record_id, record_clone)?;
+        let updated_record = final_record
+            .clone()
+            .into_builder()
+            .with_field_final(true)
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "Record"))?;
+
+        state.set_record(record_id, updated_record)?;
 
         Ok(())
     }
@@ -1046,9 +1050,9 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
             Action::CreateRecord(action_payload) => {
                 self._create_record(action_payload, &mut state, signer, *payload.timestamp())?
             }
+            Action::FinalizeRecord(action_payload) => {
+                self._finalize_record(action_payload, &mut state, signer)?
             }
-            Action::FinalizeRecord(finalize_payload) => {
-                self._finalize_record(finalize_payload, state, signer)?
             }
 
             Action::UpdateProperties(update_properties_payload) => self._update_properties(
@@ -1588,6 +1592,105 @@ mod tests {
         }
     }
 
+    #[test]
+    /// Test that if the FinalizeRecordAction is valid an OK is returned and that the record is
+    /// marked as finalized
+    fn test_finalize_record_handler_valid() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        assert!(transaction_handler
+            ._finalize_record(&create_finalize_record(), &mut state, PUBLIC_KEY)
+            .is_ok());
+
+        let finalized_record = state
+            .get_record(RECORD_ID)
+            .expect("Failed to fetch record")
+            .expect("Record not found");
+
+        assert!(finalized_record.field_final());
+    }
+
+    #[test]
+    /// Test that if the FinalizeRecordAction fails if a record with the provided id does
+    /// not exist.
+    fn test_finalize_record_handler_record_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._finalize_record(
+            &create_finalize_record(),
+            &mut state,
+            PUBLIC_KEY,
+        ) {
+            Ok(()) => panic!("Record does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record does not exist: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the FinalizeRecordAction fails if the signer is not record owner nor
+    // custodian
+    fn test_finalize_record_handler_signer_not_owner_nor_custodian() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+        let signer = "agent_public_key_not_owner";
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._finalize_record(&create_finalize_record(), &mut state, signer) {
+            Ok(()) => panic!(
+                "Signer is not record owner nor custodian, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Must be owner and custodian to finalize record"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the FinalizeRecordAction fails if the record is alreadt final.
+    fn test_finalize_record_handler_record_already_final() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_finalized_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._finalize_record(
+            &create_finalize_record(),
+            &mut state,
+            PUBLIC_KEY,
+        ) {
+            Ok(()) => panic!("Record is already final, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record is already final: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
 
     fn optional_property_value() -> PropertyValue {
         PropertyValueBuilder::new()
