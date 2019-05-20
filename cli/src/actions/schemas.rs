@@ -19,9 +19,75 @@ use grid_sdk::protocol::schema::payload::{
 };
 use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDefinitionBuilder};
 use grid_sdk::protos::IntoProto;
+use reqwest::Client;
 
 use crate::error::CliError;
+use serde::Deserialize;
 use serde_yaml::{Mapping, Sequence, Value};
+
+#[derive(Debug, Deserialize)]
+pub struct GridSchemaSlice {
+    pub name: String,
+    pub description: String,
+    pub owner: String,
+    pub properties: Vec<GridPropertyDefinitionSlice>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GridPropertyDefinitionSlice {
+    pub name: String,
+    pub schema_name: String,
+    pub data_type: String,
+    pub required: bool,
+    pub description: String,
+    pub number_exponent: i64,
+    pub enum_options: Vec<String>,
+    pub struct_properties: Vec<String>,
+}
+
+pub fn display_schema(schema: &GridSchemaSlice) {
+    println!(
+        "Name: {:?}\n Description: {:?}\n Owner: {:?}\n Properties:",
+        schema.name, schema.description, schema.owner,
+    );
+    display_schema_property_definitions(&schema.properties);
+}
+
+pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionSlice]) {
+    properties.iter().for_each(|def| {
+        println!(
+            "\tName: {:?}\n\t Data Type: {:?}\n\t Required: {:?}\n\t Description: {:?}
+        Number Exponent: {:?}\n\t Enum Options: {:?}\n\t Struct Properties: {:?}",
+            def.name,
+            def.data_type,
+            def.required,
+            def.description,
+            def.number_exponent,
+            def.enum_options,
+            def.struct_properties,
+        );
+    });
+}
+
+pub fn do_list_schemas(url: &str) -> Result<(), CliError> {
+    let client = Client::new();
+    let schemas = client
+        .get(&format!("{}/schema", url))
+        .send()?
+        .json::<Vec<GridSchemaSlice>>()?;
+    schemas.iter().for_each(|schema| display_schema(schema));
+    Ok(())
+}
+
+pub fn do_show_schema(url: &str, name: &str) -> Result<(), CliError> {
+    let client = Client::new();
+    let schema = client
+        .get(&format!("{}/schema/{}", url, name))
+        .send()?
+        .json::<GridSchemaSlice>()?;
+    display_schema(&schema);
+    Ok(())
+}
 
 pub fn do_create_schemas(
     url: &str,
