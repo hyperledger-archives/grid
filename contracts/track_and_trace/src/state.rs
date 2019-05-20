@@ -22,47 +22,44 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
-use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgentContainer as AgentContainer;
-use grid_sdk::protos::track_and_trace_property::{
-    DeprecatedProperty as Property, DeprecatedPropertyContainer as PropertyContainer,
-    DeprecatedPropertyPage as PropertyPage,
-    DeprecatedPropertyPageContainer as PropertyPageContainer,
+use grid_sdk::protocol::pike::state::{Agent, AgentList};
+use grid_sdk::protocol::schema::state::{Schema, SchemaList};
+use grid_sdk::protocol::track_and_trace::state::{
+    Property, PropertyList, PropertyListBuilder, PropertyPage, PropertyPageList,
+    PropertyPageListBuilder, ProposalList, Record, RecordList, RecordListBuilder,
 };
-use grid_sdk::protos::track_and_trace_proposal::DeprecatedProposalContainer as ProposalContainer;
-use grid_sdk::protos::track_and_trace_record::{
-    DeprecatedRecord as Record, DeprecatedRecordContainer as RecordContainer, RecordType,
-    RecordTypeContainer,
-};
-use protobuf::Message;
+
+use grid_sdk::protos::{FromBytes, IntoBytes};
 
 use crate::addressing::*;
 
-pub struct SupplyChainState<'a> {
+pub struct TrackAndTraceState<'a> {
     context: &'a mut TransactionContext,
 }
 
-impl<'a> SupplyChainState<'a> {
-    pub fn new(context: &'a mut TransactionContext) -> SupplyChainState {
-        SupplyChainState { context }
+impl<'a> TrackAndTraceState<'a> {
+    pub fn new(context: &'a mut TransactionContext) -> TrackAndTraceState {
+        TrackAndTraceState { context }
     }
 
-    pub fn get_record(&mut self, record_id: &str) -> Result<Option<Record>, ApplyError> {
+    pub fn get_record(&self, record_id: &str) -> Result<Option<Record>, ApplyError> {
         let address = make_record_address(record_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let records: RecordContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
+                let records = match RecordList::from_bytes(packed.as_slice()) {
                     Ok(records) => records,
-                    Err(_) => {
-                        return Err(ApplyError::InternalError(String::from(
-                            "Cannot deserialize record container",
+                    Err(err) => {
+                        return Err(ApplyError::InternalError(format!(
+                            "Cannot deserialize record list: {:?}",
+                            err,
                         )));
                     }
                 };
 
-                for record in records.get_entries() {
-                    if record.record_id == record_id {
+                // find the record with the correct id
+                for record in records.records() {
+                    if record.record_id() == record_id {
                         return Ok(Some(record.clone()));
                     }
                 }
@@ -72,42 +69,48 @@ impl<'a> SupplyChainState<'a> {
         }
     }
 
-    pub fn set_record(&mut self, record_id: &str, record: Record) -> Result<(), ApplyError> {
+    pub fn set_record(&self, record_id: &str, record: Record) -> Result<(), ApplyError> {
         let address = make_record_address(record_id);
         let d = self.context.get_state_entry(&address)?;
-        let mut record_container = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(records) => records,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize record container",
+        let mut records = match d {
+            Some(packed) => match RecordList::from_bytes(packed.as_slice()) {
+                Ok(record_list) => record_list.records().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize record list: {:?}",
+                        err
                     )));
                 }
             },
-            None => RecordContainer::new(),
+            None => vec![],
         };
-        // remove old record if it exists and sort the records by record id
-        let records = record_container.get_entries().to_vec();
+
         let mut index = None;
         for (i, record) in records.iter().enumerate() {
-            if record.record_id == record_id {
+            if record.record_id() == record_id {
                 index = Some(i);
                 break;
             }
         }
 
         if let Some(i) = index {
-            record_container.entries.remove(i);
+            records.remove(i);
         }
-        record_container.entries.push(record);
-        record_container
-            .entries
-            .sort_by_key(|r| r.clone().record_id);
-        let serialized = match record_container.write_to_bytes() {
+        records.push(record);
+        records.sort_by_key(|r| r.record_id().to_string());
+        let record_list = RecordListBuilder::new()
+            .with_records(records)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build record list: {:?}", err))
+            })?;
+
+        let serialized = match record_list.into_bytes() {
             Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize record container",
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize record list: {:?}",
+                    err
                 )));
             }
         };
@@ -117,24 +120,25 @@ impl<'a> SupplyChainState<'a> {
         Ok(())
     }
 
-    pub fn get_record_type(&mut self, type_name: &str) -> Result<Option<RecordType>, ApplyError> {
-        let address = make_record_type_address(type_name);
+    pub fn get_schema(&self, schema_name: &str) -> Result<Option<Schema>, ApplyError> {
+        let address = make_schema_address(schema_name);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let record_types: RecordTypeContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(record_types) => record_types,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize record type container",
-                            )));
-                        }
-                    };
+                let schemas = match SchemaList::from_bytes(packed.as_slice()) {
+                    Ok(schemas) => schemas,
+                    Err(err) => {
+                        return Err(ApplyError::InternalError(format!(
+                            "Cannot deserialize schema list: {:?}",
+                            err,
+                        )));
+                    }
+                };
 
-                for record_type in record_types.get_entries() {
-                    if record_type.name == type_name {
-                        return Ok(Some(record_type.clone()));
+                // find the schema with the correct name
+                for schema in schemas.schemas() {
+                    if schema.name() == schema_name {
+                        return Ok(Some(schema.clone()));
                     }
                 }
                 Ok(None)
@@ -143,57 +147,25 @@ impl<'a> SupplyChainState<'a> {
         }
     }
 
-    pub fn set_record_type(
-        &mut self,
-        type_name: &str,
-        record_type: RecordType,
-    ) -> Result<(), ApplyError> {
-        let address = make_record_type_address(type_name);
-        let d = self.context.get_state_entry(&address)?;
-        let mut record_types = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(record_types) => record_types,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize record container",
-                    )));
-                }
-            },
-            None => RecordTypeContainer::new(),
-        };
-
-        record_types.entries.push(record_type);
-        record_types.entries.sort_by_key(|rt| rt.clone().name);
-        let serialized = match record_types.write_to_bytes() {
-            Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize record type container",
-                )));
-            }
-        };
-        self.context
-            .set_state_entry(address, serialized)
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-    }
-
-    pub fn get_agent(&mut self, agent_id: &str) -> Result<Option<Agent>, ApplyError> {
-        let address = make_agent_address(agent_id);
+    /// Gets a Pike Agent. Handles retrieving the correct agent from an AgentList.
+    pub fn get_agent(&self, public_key: &str) -> Result<Option<Agent>, ApplyError> {
+        let address = make_agent_address(public_key);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let agents: AgentContainer = match protobuf::parse_from_bytes(packed.as_slice()) {
+                let agents = match AgentList::from_bytes(packed.as_slice()) {
                     Ok(agents) => agents,
-                    Err(_) => {
-                        return Err(ApplyError::InternalError(String::from(
-                            "Cannot deserialize agent container",
+                    Err(err) => {
+                        return Err(ApplyError::InternalError(format!(
+                            "Cannot deserialize agent list: {:?}",
+                            err,
                         )));
                     }
                 };
 
-                for agent in agents.get_entries() {
-                    if agent.public_key == agent_id {
+                // find the agent with the correct public_key
+                for agent in agents.agents() {
+                    if agent.public_key() == public_key {
                         return Ok(Some(agent.clone()));
                     }
                 }
@@ -203,39 +175,8 @@ impl<'a> SupplyChainState<'a> {
         }
     }
 
-    pub fn set_agent(&mut self, agent_id: &str, agent: Agent) -> Result<(), ApplyError> {
-        let address = make_agent_address(agent_id);
-        let d = self.context.get_state_entry(&address)?;
-        let mut agents = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(agents) => agents,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize agent container",
-                    )));
-                }
-            },
-            None => AgentContainer::new(),
-        };
-
-        agents.entries.push(agent);
-        agents.entries.sort_by_key(|a| a.clone().public_key);
-        let serialized = match agents.write_to_bytes() {
-            Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize agent container",
-                )));
-            }
-        };
-        self.context
-            .set_state_entry(address, serialized)
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-    }
-
     pub fn get_property(
-        &mut self,
+        &self,
         record_id: &str,
         property_name: &str,
     ) -> Result<Option<Property>, ApplyError> {
@@ -243,18 +184,19 @@ impl<'a> SupplyChainState<'a> {
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let properties: PropertyContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(properties) => properties,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize property container",
-                            )));
-                        }
-                    };
+                let properties = match PropertyList::from_bytes(packed.as_slice()) {
+                    Ok(properties) => properties,
+                    Err(err) => {
+                        return Err(ApplyError::InternalError(format!(
+                            "Cannot deserialize property list: {:?}",
+                            err,
+                        )));
+                    }
+                };
 
-                for property in properties.get_entries() {
-                    if property.name == property_name {
+                // find the property with the correct name
+                for property in properties.properties() {
+                    if property.name() == property_name {
                         return Ok(Some(property.clone()));
                     }
                 }
@@ -265,44 +207,55 @@ impl<'a> SupplyChainState<'a> {
     }
 
     pub fn set_property(
-        &mut self,
+        &self,
         record_id: &str,
         property_name: &str,
         property: Property,
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, 0);
         let d = self.context.get_state_entry(&address)?;
-        let mut property_container = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(properties) => properties,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize property container",
+        let mut properties = match d {
+            Some(packed) => match PropertyList::from_bytes(packed.as_slice()) {
+                Ok(property_list) => property_list.properties().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize property list: {:?}",
+                        err
                     )));
                 }
             },
-            None => PropertyContainer::new(),
+            None => vec![],
         };
+
         // remove old property if it exists and sort the properties by name
-        let properties = property_container.get_entries().to_vec();
         let mut index = None;
         for (i, prop) in properties.iter().enumerate() {
-            if prop.name == property_name {
+            if prop.name() == property_name {
                 index = Some(i);
                 break;
             }
         }
 
         if let Some(i) = index {
-            property_container.entries.remove(i);
+            properties.remove(i);
         }
-        property_container.entries.push(property);
-        property_container.entries.sort_by_key(|p| p.clone().name);
-        let serialized = match property_container.write_to_bytes() {
+        properties.push(property);
+        properties.sort_by_key(|p| p.name().to_string());
+
+        // build new PropertyList and set in state
+        let property_list = PropertyListBuilder::new()
+            .with_properties(properties)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build property list: {:?}", err,))
+            })?;
+
+        let serialized = match property_list.into_bytes() {
             Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize property container",
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize property list: {:?}",
+                    err
                 )));
             }
         };
@@ -313,7 +266,7 @@ impl<'a> SupplyChainState<'a> {
     }
 
     pub fn get_property_page(
-        &mut self,
+        &self,
         record_id: &str,
         property_name: &str,
         page: u32,
@@ -322,18 +275,19 @@ impl<'a> SupplyChainState<'a> {
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let property_pages: PropertyPageContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(property_pages) => property_pages,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize property page container",
-                            )));
-                        }
-                    };
+                let property_pages = match PropertyPageList::from_bytes(packed.as_slice()) {
+                    Ok(property_pages) => property_pages,
+                    Err(err) => {
+                        return Err(ApplyError::InternalError(format!(
+                            "Cannot deserialize property page list: {:?}",
+                            err,
+                        )));
+                    }
+                };
 
-                for property_page in property_pages.get_entries() {
-                    if property_page.name == property_name {
+                // find the property with the correct name
+                for property_page in property_pages.property_pages() {
+                    if property_page.name() == property_name {
                         return Ok(Some(property_page.clone()));
                     }
                 }
@@ -344,7 +298,7 @@ impl<'a> SupplyChainState<'a> {
     }
 
     pub fn set_property_page(
-        &mut self,
+        &self,
         record_id: &str,
         property_name: &str,
         page_num: u32,
@@ -352,37 +306,51 @@ impl<'a> SupplyChainState<'a> {
     ) -> Result<(), ApplyError> {
         let address = make_property_address(record_id, property_name, page_num);
         let d = self.context.get_state_entry(&address)?;
-        let mut property_pages = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(property_pages) => property_pages,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize property page container",
+        let mut pages = match d {
+            Some(packed) => match PropertyPageList::from_bytes(packed.as_slice()) {
+                Ok(property_page_list) => property_page_list.property_pages().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize property page list: {:?}",
+                        err
                     )));
                 }
             },
-            None => PropertyPageContainer::new(),
+            None => vec![],
         };
+
         // remove old property page if it exists and sort the property pages by name
-        let pages = property_pages.get_entries().to_vec();
         let mut index = None;
         for (i, page) in pages.iter().enumerate() {
-            if page.name == property_name {
+            if page.name() == property_name {
                 index = Some(i);
                 break;
             }
         }
 
         if let Some(i) = index {
-            property_pages.entries.remove(i);
+            pages.remove(i);
         }
-        property_pages.entries.push(property_page);
-        property_pages.entries.sort_by_key(|pp| pp.clone().name);
-        let serialized = match property_pages.write_to_bytes() {
+        pages.push(property_page);
+        pages.sort_by_key(|pp| pp.name().to_string());
+
+        // build new PropertyPageList and set in state
+        let property_page_list = PropertyPageListBuilder::new()
+            .with_property_pages(pages)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!(
+                    "Cannot build property page list: {:?}",
+                    err
+                ))
+            })?;
+
+        let serialized = match property_page_list.into_bytes() {
             Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize property page container",
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize property page list: {:?}",
+                    err
                 )));
             }
         };
@@ -392,43 +360,38 @@ impl<'a> SupplyChainState<'a> {
         Ok(())
     }
 
-    pub fn get_proposal_container(
-        &mut self,
+    pub fn get_proposal_list(
+        &self,
         record_id: &str,
         agent_id: &str,
-    ) -> Result<Option<ProposalContainer>, ApplyError> {
+    ) -> Result<Option<ProposalList>, ApplyError> {
         let address = make_proposal_address(record_id, agent_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
-            Some(packed) => {
-                let proposals: ProposalContainer =
-                    match protobuf::parse_from_bytes(packed.as_slice()) {
-                        Ok(property_pages) => property_pages,
-                        Err(_) => {
-                            return Err(ApplyError::InternalError(String::from(
-                                "Cannot deserialize proposal container",
-                            )));
-                        }
-                    };
-
-                Ok(Some(proposals))
-            }
+            Some(packed) => match ProposalList::from_bytes(packed.as_slice()) {
+                Ok(proposal_list) => Ok(Some(proposal_list)),
+                Err(err) => Err(ApplyError::InternalError(format!(
+                    "Cannot deserialize proposal list: {:?}",
+                    err,
+                ))),
+            },
             None => Ok(None),
         }
     }
 
-    pub fn set_proposal_container(
-        &mut self,
+    pub fn set_proposal_list(
+        &self,
         record_id: &str,
         agent_id: &str,
-        proposals: ProposalContainer,
+        proposals: ProposalList,
     ) -> Result<(), ApplyError> {
         let address = make_proposal_address(record_id, agent_id);
-        let serialized = match proposals.write_to_bytes() {
+        let serialized = match proposals.into_bytes() {
             Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize proposal container",
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize proposal list: {:?}",
+                    err
                 )));
             }
         };
@@ -436,5 +399,303 @@ impl<'a> SupplyChainState<'a> {
             .set_state_entry(address, serialized)
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
+    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
+    use grid_sdk::protocol::schema::state::{
+        DataType, PropertyDefinition, PropertyDefinitionBuilder, PropertyValue,
+        PropertyValueBuilder,
+    };
+
+    use grid_sdk::protocol::track_and_trace::state::{
+        AssociatedAgentBuilder, PropertyBuilder, PropertyPageBuilder, ProposalBuilder,
+        ProposalListBuilder, RecordBuilder, ReportedValueBuilder, ReporterBuilder, Role, Status,
+    };
+
+    use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    const RECORD_ID: &str = "test_record";
+    const PROPERTY_NAME: &str = "test_property_name";
+
+    #[derive(Default, Debug)]
+    /// A MockTransactionContext that can be used to test TrackAndTraceState
+    struct MockTransactionContext {
+        state: RefCell<HashMap<String, Vec<u8>>>,
+    }
+
+    impl TransactionContext for MockTransactionContext {
+        fn get_state_entries(
+            &self,
+            addresses: &[String],
+        ) -> Result<Vec<(String, Vec<u8>)>, ContextError> {
+            let mut results = Vec::new();
+            for addr in addresses {
+                let data = match self.state.borrow().get(addr) {
+                    Some(data) => data.clone(),
+                    None => Vec::new(),
+                };
+                results.push((addr.to_string(), data));
+            }
+            Ok(results)
+        }
+
+        fn set_state_entries(&self, entries: Vec<(String, Vec<u8>)>) -> Result<(), ContextError> {
+            for (addr, data) in entries {
+                self.state.borrow_mut().insert(addr, data);
+            }
+            Ok(())
+        }
+
+        /// this is not needed for these tests
+        fn delete_state_entries(&self, _addresses: &[String]) -> Result<Vec<String>, ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_receipt_data(&self, _data: &[u8]) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_event(
+            &self,
+            _event_type: String,
+            _attributes: Vec<(String, String)>,
+            _data: &[u8],
+        ) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+    }
+
+    impl MockTransactionContext {
+        fn add_agent(&self, public_key: &str) {
+            let agent_list = AgentListBuilder::new()
+                .with_agents(vec![make_agent(public_key)])
+                .build()
+                .unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = make_agent_address(public_key);
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+    }
+
+    #[test]
+    // Test that if an agent does not exist in state, None is returned
+    fn test_get_agent_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        let result = state.get_agent("agent_public_key").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that if an agent exist in state, Some(agent) is returned
+    fn test_get_agent_some() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent("agent_public_key");
+        let state = TrackAndTraceState::new(&mut transaction_context);
+        let result = state.get_agent("agent_public_key").unwrap();
+        assert_eq!(result, Some(make_agent("agent_public_key")))
+    }
+
+    #[test]
+    // Test that if a record does not exist in state, None is returned
+    fn test_get_record_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        let result = state.get_record("not_an_record").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that if an schema does not exist in state, None is returned
+    fn test_get_schema_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        let result = state.get_schema("not_an_schema").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that if an property does not exist in state, None is returned
+    fn test_get_property_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        let result = state.get_property("record_id", "not_a_property").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that if an property page does not exist in state, None is returned
+    fn test_get_property_page_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        let result = state
+            .get_property_page("record_id", "property_name", 1)
+            .unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that a record can be added to state
+    fn test_set_record() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        assert!(state.set_record(RECORD_ID, make_record()).is_ok());
+        let result = state.get_record(RECORD_ID).unwrap();
+        assert_eq!(result, Some(make_record()));
+    }
+
+    #[test]
+    // Test that an property can be added to state
+    fn test_set_property() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+
+        assert!(state
+            .set_property(RECORD_ID, PROPERTY_NAME, make_property())
+            .is_ok());
+        let result = state.get_property(RECORD_ID, PROPERTY_NAME).unwrap();
+        assert_eq!(result, Some(make_property()));
+    }
+
+    #[test]
+    // Test that an property page can be added to state
+    fn test_set_property_page() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+        assert!(state
+            .set_property_page(RECORD_ID, PROPERTY_NAME, 1, make_property_page())
+            .is_ok());
+        let result = state
+            .get_property_page(RECORD_ID, PROPERTY_NAME, 1)
+            .unwrap();
+        assert_eq!(result, Some(make_property_page()));
+    }
+
+    #[test]
+    // Test that an property page can be added to state
+    fn test_set_proposal_list() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = TrackAndTraceState::new(&mut transaction_context);
+        assert!(state
+            .set_proposal_list(RECORD_ID, "agent_key", make_proposal_list())
+            .is_ok());
+        let result = state.get_proposal_list(RECORD_ID, "agent_key").unwrap();
+        assert_eq!(result, Some(make_proposal_list()));
+    }
+
+    fn make_property_value() -> PropertyValue {
+        PropertyValueBuilder::new()
+            .with_name(PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_string_value("required_field".to_string())
+            .build()
+            .expect("Failed to build property value")
+    }
+
+    fn make_property_definition() -> PropertyDefinition {
+        PropertyDefinitionBuilder::new()
+            .with_name(PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_description("Required".to_string())
+            .with_required(true)
+            .build()
+            .expect("Failed to build property definition")
+    }
+
+    fn make_record() -> Record {
+        let associated_agent = AssociatedAgentBuilder::new()
+            .with_agent_id("agent_key".to_string())
+            .with_timestamp(1)
+            .build()
+            .expect("Failed to build AssociatedAgent");
+
+        RecordBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_schema("schema_name".to_string())
+            .with_owners(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent.clone()])
+            .with_field_final(false)
+            .build()
+            .expect("Failed to build new_record")
+    }
+
+    fn make_property() -> Property {
+        let reporter = ReporterBuilder::new()
+            .with_public_key("agent_key".to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .expect("Failed to build Reporter");
+
+        PropertyBuilder::new()
+            .with_name(PROPERTY_NAME.to_string())
+            .with_record_id(RECORD_ID.to_string())
+            .with_property_definition(make_property_definition())
+            .with_reporters(vec![reporter.clone()])
+            .with_current_page(1)
+            .with_wrapped(false)
+            .build()
+            .expect("Failed to build property")
+    }
+
+    fn make_property_page() -> PropertyPage {
+        let reported_value = ReportedValueBuilder::new()
+            .with_reporter_index(0)
+            .with_timestamp(1)
+            .with_value(make_property_value())
+            .build()
+            .expect("Failed to build ReportedValue");
+
+        PropertyPageBuilder::new()
+            .with_name(PROPERTY_NAME.to_string())
+            .with_record_id(RECORD_ID.to_string())
+            .with_reported_values(vec![reported_value])
+            .build()
+            .expect("Failed to build PropertyPage")
+    }
+
+    fn make_proposal_list() -> ProposalList {
+        let proposal = ProposalBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_timestamp(1)
+            .with_issuing_agent("issuing_agent".to_string())
+            .with_receiving_agent("receiving_agent_key".to_string())
+            .with_role(Role::Owner)
+            .with_properties(vec![PROPERTY_NAME.to_string()])
+            .with_status(Status::Open)
+            .with_terms("empty string NEED TO CHANGE".to_string())
+            .build()
+            .expect("Failed to build proposal");
+
+        ProposalListBuilder::new()
+            .with_proposals(vec![proposal])
+            .build()
+            .expect("Failed to build proposal list")
+    }
+
+    fn make_agent(public_key: &str) -> Agent {
+        AgentBuilder::new()
+            .with_org_id("test_org".to_string())
+            .with_public_key(public_key.to_string())
+            .with_active(true)
+            .with_roles(vec![])
+            .build()
+            .expect("Failed to build agent")
     }
 }
