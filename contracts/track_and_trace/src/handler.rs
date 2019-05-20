@@ -65,19 +65,23 @@ use crate::state::SupplyChainState;
 
 const PROPERTY_PAGE_MAX_LENGTH: usize = 256;
 
-pub struct SupplyChainTransactionHandler {
+pub struct TrackAndTraceTransactionHandler {
     family_name: String,
     family_versions: Vec<String>,
     namespaces: Vec<String>,
 }
 
-impl SupplyChainTransactionHandler {
+impl TrackAndTraceTransactionHandler {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> SupplyChainTransactionHandler {
-        SupplyChainTransactionHandler {
+    pub fn new() -> TrackAndTraceTransactionHandler {
+        TrackAndTraceTransactionHandler {
             family_name: "grid_track_and_trace".to_string(),
             family_versions: vec!["1.0".to_string()],
-            namespaces: vec![get_supply_chain_prefix().to_string()],
+            namespaces: vec![
+                get_track_and_trace_prefix(),
+                get_pike_prefix(),
+                get_grid_prefix(),
+            ],
         }
     }
 
@@ -1093,7 +1097,7 @@ impl SupplyChainTransactionHandler {
     }
 }
 
-impl TransactionHandler for SupplyChainTransactionHandler {
+impl TransactionHandler for TrackAndTraceTransactionHandler {
     fn family_name(&self) -> String {
         self.family_name.clone()
     }
@@ -1176,7 +1180,7 @@ impl TransactionHandler for SupplyChainTransactionHandler {
 #[cfg(target_arch = "wasm32")]
 // Sabre apply must return a bool
 fn apply(request: &TpProcessRequest, context: &mut TransactionContext) -> Result<bool, ApplyError> {
-    let handler = SupplyChainTransactionHandler::new();
+    let handler = TrackAndTraceTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
         Err(err) => Err(err),
