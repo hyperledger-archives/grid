@@ -1097,3 +1097,441 @@ fn apply(request: &TpProcessRequest, context: &mut TransactionContext) -> Result
 pub unsafe fn entrypoint(payload: WasmPtr, signer: WasmPtr, signature: WasmPtr) -> i32 {
     execute_entrypoint(payload, signer, signature, apply)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
+    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
+    use grid_sdk::protocol::schema::state::{
+        DataType, PropertyDefinitionBuilder, PropertyValueBuilder, SchemaBuilder, SchemaListBuilder,
+    };
+    use grid_sdk::protocol::track_and_trace::payload::{
+        AnswerProposalActionBuilder, CreateProposalActionBuilder, CreateRecordActionBuilder,
+        FinalizeRecordActionBuilder, RevokeReporterActionBuilder, UpdatePropertiesAction,
+        UpdatePropertiesActionBuilder,
+    };
+    use grid_sdk::protocol::track_and_trace::state::{
+        Property, PropertyListBuilder, PropertyPage, PropertyPageListBuilder, Proposal, Record,
+        RecordListBuilder, Role, Status,
+    };
+    use grid_sdk::protos::IntoBytes;
+    use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    const TIMESTAMP: u64 = 1;
+    const RECORD_ID: &str = "test_record_action";
+    const PUBLIC_KEY: &str = "agent_public_key";
+    const OPTIONAL_PROPERTY_NAME: &str = "test_optional";
+    const REQUIRED_PROPERTY_NAME: &str = "test_required";
+    const SCHEMA_NAME: &str = "test_schema";
+
+    #[derive(Default, Debug)]
+    /// A MockTransactionContext that can be used to test TrackAndTraceState
+    struct MockTransactionContext {
+        state: RefCell<HashMap<String, Vec<u8>>>,
+    }
+
+    impl TransactionContext for MockTransactionContext {
+        fn get_state_entries(
+            &self,
+            addresses: &[String],
+        ) -> Result<Vec<(String, Vec<u8>)>, ContextError> {
+            let mut results = Vec::new();
+            for addr in addresses {
+                let data = match self.state.borrow().get(addr) {
+                    Some(data) => data.clone(),
+                    None => Vec::new(),
+                };
+                results.push((addr.to_string(), data));
+            }
+            Ok(results)
+        }
+
+        fn set_state_entries(&self, entries: Vec<(String, Vec<u8>)>) -> Result<(), ContextError> {
+            for (addr, data) in entries {
+                self.state.borrow_mut().insert(addr, data);
+            }
+            Ok(())
+        }
+
+        /// this is not needed for these tests
+        fn delete_state_entries(&self, _addresses: &[String]) -> Result<Vec<String>, ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_receipt_data(&self, _data: &[u8]) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_event(
+            &self,
+            _event_type: String,
+            _attributes: Vec<(String, String)>,
+            _data: &[u8],
+        ) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+    }
+
+    impl MockTransactionContext {
+        fn add_agent(&self, public_key: &str) {
+            let builder = AgentBuilder::new();
+            let agent = builder
+                .with_org_id("test_org".to_string())
+                .with_public_key(public_key.to_string())
+                .with_active(true)
+                .with_roles(vec![])
+                .build()
+                .unwrap();
+
+            let builder = AgentListBuilder::new();
+            let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = make_agent_address(public_key);
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+
+        fn add_schema(&self) {
+            let builder = SchemaBuilder::new();
+            let schema = builder
+                .with_name(SCHEMA_NAME.to_string())
+                .with_description("Test Schema".to_string())
+                .with_owner("test_org".to_string())
+                .with_properties(vec![
+                    optional_property_definition(),
+                    required_property_definition(),
+                ])
+                .build()
+                .unwrap();
+
+            let builder = SchemaListBuilder::new();
+            let schema_list = builder.with_schemas(vec![schema]).build().unwrap();
+            let schema_bytes = schema_list.into_bytes().unwrap();
+            let schema_address = make_schema_address(SCHEMA_NAME);
+            self.set_state_entry(schema_address, schema_bytes).unwrap();
+        }
+
+        fn add_record(&self) {
+            let record_list = RecordListBuilder::new()
+                .with_records(vec![make_record()])
+                .build()
+                .unwrap();
+            let record_bytes = record_list.into_bytes().unwrap();
+            let record_address = make_record_address(RECORD_ID);
+            self.set_state_entry(record_address, record_bytes).unwrap();
+        }
+
+        fn add_property(&self, property_name: &str, property_definition: PropertyDefinition) {
+            let property_list = PropertyListBuilder::new()
+                .with_properties(vec![make_property(property_name, property_definition)])
+                .build()
+                .unwrap();
+
+            let property_list_bytes = property_list.into_bytes().unwrap();
+            let property_list_address = make_property_address(RECORD_ID, property_name, 0);
+            self.set_state_entry(property_list_address, property_list_bytes)
+                .unwrap();
+        }
+
+        fn add_property_page(&self, property_name: &str, property_value: PropertyValue) {
+            let property_page_list = PropertyPageListBuilder::new()
+                .with_property_pages(vec![make_property_page(property_name, property_value)])
+                .build()
+                .expect("Failed to build property page list");
+
+            let property_page_list_bytes = property_page_list
+                .into_bytes()
+                .expect("Failed to write page list to bytes");
+            let address = make_property_address(RECORD_ID, property_name, 1);
+            self.set_state_entry(address, property_page_list_bytes)
+                .expect("Failed to set state");
+        }
+
+        fn add_finalized_record(&self) {
+            let associated_agent = AssociatedAgentBuilder::new()
+                .with_agent_id(PUBLIC_KEY.to_string())
+                .with_timestamp(TIMESTAMP)
+                .build()
+                .expect("Failed to build associated agent");
+
+            let record = RecordBuilder::new()
+                .with_record_id(RECORD_ID.to_string())
+                .with_schema(SCHEMA_NAME.to_string())
+                .with_owners(vec![associated_agent.clone()])
+                .with_custodians(vec![associated_agent.clone()])
+                .with_field_final(true)
+                .build()
+                .expect("Failed to build new_record");
+
+            let record_list = RecordListBuilder::new()
+                .with_records(vec![record])
+                .build()
+                .unwrap();
+            let record_bytes = record_list.into_bytes().unwrap();
+            let record_address = make_record_address(RECORD_ID);
+            self.set_state_entry(record_address, record_bytes).unwrap();
+        }
+
+        fn add_proposal(
+            &self,
+            issuing_agent: &str,
+            receiving_agent_key: &str,
+            role: Role,
+            status: Status,
+        ) {
+            let proposal_list = ProposalListBuilder::new()
+                .with_proposals(vec![make_proposal(
+                    issuing_agent,
+                    receiving_agent_key,
+                    role,
+                    status,
+                )])
+                .build()
+                .unwrap();
+            let proposal_list_bytes = proposal_list.into_bytes().unwrap();
+            let proposal_list_address = make_proposal_address(RECORD_ID, receiving_agent_key);
+            self.set_state_entry(proposal_list_address, proposal_list_bytes)
+                .unwrap();
+        }
+
+        fn add_property_with_reporter(
+            &self,
+            property_name: &str,
+            reporter_key: &str,
+            authorized: bool,
+            property_definition: PropertyDefinition,
+        ) {
+            let property = make_property_with_reporter(
+                property_name,
+                reporter_key,
+                authorized,
+                property_definition,
+            );
+            let property_list = PropertyListBuilder::new()
+                .with_properties(vec![property])
+                .build()
+                .unwrap();
+
+            let property_list_bytes = property_list.into_bytes().unwrap();
+            let property_list_address = make_property_address(RECORD_ID, property_name, 0);
+            self.set_state_entry(property_list_address, property_list_bytes)
+                .unwrap();
+        }
+    }
+
+
+    fn optional_property_value() -> PropertyValue {
+        PropertyValueBuilder::new()
+            .with_name(OPTIONAL_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::Enum)
+            .with_enum_value(1)
+            .build()
+            .expect("Failed to build property value")
+    }
+
+    fn required_property_value() -> PropertyValue {
+        PropertyValueBuilder::new()
+            .with_name(REQUIRED_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_string_value("required_field".to_string())
+            .build()
+            .expect("Failed to build property value")
+    }
+
+    fn create_record_action_with_properties(properties: Vec<PropertyValue>) -> CreateRecordAction {
+        CreateRecordActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_schema(SCHEMA_NAME.to_string())
+            .with_properties(properties)
+            .build()
+            .expect("Failed to build CreateRecordAction")
+    }
+
+    fn create_finalize_record() -> FinalizeRecordAction {
+        FinalizeRecordActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .build()
+            .expect("Failed to build FinalizeRecordAction")
+    }
+
+    fn updated_property_value() -> PropertyValue {
+        PropertyValueBuilder::new()
+            .with_name(REQUIRED_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_string_value("updated_required_field".to_string())
+            .build()
+            .expect("Failed to build property value")
+    }
+
+    fn update_property_action(properties: Vec<PropertyValue>) -> UpdatePropertiesAction {
+        UpdatePropertiesActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_properties(properties)
+            .build()
+            .expect("Failed to build UpdatePropertiesAction")
+    }
+
+    fn create_proposal_action(role: Role, receiving_agent_key: &str) -> CreateProposalAction {
+        CreateProposalActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_properties(vec![
+                OPTIONAL_PROPERTY_NAME.to_string(),
+                REQUIRED_PROPERTY_NAME.to_string(),
+            ])
+            .with_receiving_agent(receiving_agent_key.to_string())
+            .with_role(role)
+            .with_terms("".to_string())
+            .build()
+            .expect("Failed to build CreateProposalAction")
+    }
+
+    fn answer_proposal_action(
+        role: Role,
+        receiving_agent_key: &str,
+        response: Response,
+    ) -> AnswerProposalAction {
+        AnswerProposalActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_receiving_agent(receiving_agent_key.to_string())
+            .with_role(role)
+            .with_response(response)
+            .build()
+            .expect("Failed to build AnswerProposalAction")
+    }
+
+    fn revoke_reporter_action(reporter_id: &str, properties: Vec<String>) -> RevokeReporterAction {
+        RevokeReporterActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_reporter_id(reporter_id.to_string())
+            .with_properties(properties)
+            .build()
+            .expect("Failed to build RevokeReporterAction")
+    }
+
+    fn optional_property_definition() -> PropertyDefinition {
+        PropertyDefinitionBuilder::new()
+            .with_name(OPTIONAL_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::Enum)
+            .with_description("Optional".to_string())
+            .with_enum_options(vec![
+                "One".to_string(),
+                "Two".to_string(),
+                "Three".to_string(),
+            ])
+            .build()
+            .expect("Failed to build property definition")
+    }
+
+    fn required_property_definition() -> PropertyDefinition {
+        PropertyDefinitionBuilder::new()
+            .with_name(REQUIRED_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::String)
+            .with_description("Required".to_string())
+            .with_required(true)
+            .build()
+            .expect("Failed to build property definition")
+    }
+
+    fn make_record() -> Record {
+        let associated_agent = AssociatedAgentBuilder::new()
+            .with_agent_id(PUBLIC_KEY.to_string())
+            .with_timestamp(TIMESTAMP)
+            .build()
+            .expect("Failed to build AssociatedAgent");
+
+        RecordBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_schema(SCHEMA_NAME.to_string())
+            .with_owners(vec![associated_agent.clone()])
+            .with_custodians(vec![associated_agent.clone()])
+            .with_field_final(false)
+            .build()
+            .expect("Failed to build new_record")
+    }
+
+    fn make_property(property_name: &str, property_definition: PropertyDefinition) -> Property {
+        let reporter = ReporterBuilder::new()
+            .with_public_key(PUBLIC_KEY.to_string())
+            .with_authorized(true)
+            .with_index(0)
+            .build()
+            .expect("Failed to build Reporter");
+
+        PropertyBuilder::new()
+            .with_name(property_name.to_string())
+            .with_record_id(RECORD_ID.to_string())
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter.clone()])
+            .with_current_page(1)
+            .with_wrapped(false)
+            .build()
+            .expect("Failed to build property")
+    }
+
+    fn make_property_with_reporter(
+        property_name: &str,
+        reporter_key: &str,
+        authorized: bool,
+        property_definition: PropertyDefinition,
+    ) -> Property {
+        let reporter = ReporterBuilder::new()
+            .with_public_key(reporter_key.to_string())
+            .with_authorized(authorized)
+            .with_index(0)
+            .build()
+            .expect("Failed to build Reporter");
+
+        PropertyBuilder::new()
+            .with_name(property_name.to_string())
+            .with_record_id(RECORD_ID.to_string())
+            .with_property_definition(property_definition)
+            .with_reporters(vec![reporter.clone()])
+            .with_current_page(1)
+            .with_wrapped(false)
+            .build()
+            .expect("Failed to build property")
+    }
+
+    fn make_property_page(property_name: &str, property_value: PropertyValue) -> PropertyPage {
+        let reported_value = ReportedValueBuilder::new()
+            .with_reporter_index(0)
+            .with_timestamp(TIMESTAMP)
+            .with_value(property_value)
+            .build()
+            .expect("Failed to build ReportedValue");
+
+        PropertyPageBuilder::new()
+            .with_name(property_name.to_string())
+            .with_record_id(RECORD_ID.to_string())
+            .with_reported_values(vec![reported_value])
+            .build()
+            .expect("Failed to build PropertyPage")
+    }
+
+    fn make_proposal(
+        issuing_agent: &str,
+        receiving_agent_key: &str,
+        role: Role,
+        status: Status,
+    ) -> Proposal {
+        ProposalBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_timestamp(TIMESTAMP)
+            .with_issuing_agent(issuing_agent.to_string())
+            .with_receiving_agent(receiving_agent_key.to_string())
+            .with_role(role)
+            .with_properties(vec![
+                OPTIONAL_PROPERTY_NAME.to_string(),
+                REQUIRED_PROPERTY_NAME.to_string(),
+            ])
+            .with_status(status)
+            .with_terms("".to_string())
+            .build()
+            .expect("Failed to build proposal")
+    }
+}
