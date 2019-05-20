@@ -32,36 +32,22 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::deprecated_track_and_trace_payload::DeprecatedCreateTrackAndTraceAgentAction as CreateAgentAction;
-use grid_sdk::protos::deprecated_track_and_trace_payload::{
-    DeprecatedAnswerProposalAction as AnswerProposalAction,
-    DeprecatedAnswerProposalAction_Response as AnswerProposalAction_Response,
-    DeprecatedCreateProposalAction as CreateProposalAction,
-    DeprecatedCreateRecordAction as CreateRecordAction,
-    DeprecatedCreateRecordTypeAction as CreateRecordTypeAction,
-    DeprecatedFinalizeRecordAction as FinalizeRecordAction,
-    DeprecatedRevokeReporterAction as RevokeReporterAction,
-    DeprecatedUpdatePropertiesAction as UpdatePropertiesAction,
+use grid_sdk::protocol::errors::BuilderError;
+use grid_sdk::protocol::schema::state::{PropertyDefinition, PropertyValue};
+use grid_sdk::protocol::track_and_trace::payload::{
+    Action, AnswerProposalAction, CreateProposalAction, CreateRecordAction, FinalizeRecordAction,
+    Response, RevokeReporterAction, TrackAndTracePayload, UpdatePropertiesAction,
 };
-use grid_sdk::protos::track_and_trace_agent::TrackAndTraceAgent as Agent;
-use grid_sdk::protos::track_and_trace_property::{
-    DeprecatedProperty as Property, DeprecatedPropertyPage as PropertyPage,
-    DeprecatedPropertyPage_ReportedValue as PropertyPage_ReportedValue,
-    DeprecatedProperty_Reporter as Property_Reporter, PropertySchema, PropertySchema_DataType,
-    TrackAndTracePropertyValue,
-};
-use grid_sdk::protos::track_and_trace_proposal::{
-    DeprecatedProposal as Proposal, DeprecatedProposalContainer as ProposalContainer,
-    DeprecatedProposal_Role as Proposal_Role, DeprecatedProposal_Status as Proposal_Status,
-};
-use grid_sdk::protos::track_and_trace_record::{
-    DeprecatedRecord as Record, DeprecatedRecord_AssociatedAgent as Record_AssociatedAgent,
-    RecordType,
+use grid_sdk::protocol::track_and_trace::state::{
+    AssociatedAgentBuilder, PropertyBuilder, PropertyPageBuilder, ProposalBuilder,
+    ProposalListBuilder, RecordBuilder, ReportedValueBuilder, ReporterBuilder, Role, Status,
 };
 
+use grid_sdk::protos::FromBytes;
+
 use crate::addressing::*;
-use crate::payload::{Action, SupplyChainPayload};
-use crate::state::SupplyChainState;
+use crate::payload::validate_payload;
+use crate::state::TrackAndTraceState;
 
 const PROPERTY_PAGE_MAX_LENGTH: usize = 256;
 
@@ -83,34 +69,6 @@ impl TrackAndTraceTransactionHandler {
                 get_grid_prefix(),
             ],
         }
-    }
-
-    fn _create_agent(
-        &self,
-        payload: CreateAgentAction,
-        mut state: SupplyChainState,
-        signer: &str,
-        timestamp: u64,
-    ) -> Result<(), ApplyError> {
-        let name = payload.get_name();
-        match state.get_agent(signer) {
-            Ok(Some(_)) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Agent already exists: {}",
-                    name
-                )));
-            }
-            Ok(None) => (),
-            Err(err) => return Err(err),
-        }
-
-        let mut new_agent = Agent::new();
-        new_agent.set_public_key(signer.to_string());
-        new_agent.set_name(name.to_string());
-        new_agent.set_timestamp(timestamp);
-
-        state.set_agent(signer, new_agent)?;
-        Ok(())
     }
 
     fn _create_record(
@@ -317,46 +275,6 @@ impl TrackAndTraceTransactionHandler {
         let mut record_clone = final_record.clone();
         record_clone.set_field_final(true);
         state.set_record(record_id, record_clone)?;
-
-        Ok(())
-    }
-
-    fn _create_record_type(
-        &self,
-        payload: CreateRecordTypeAction,
-        mut state: SupplyChainState,
-        signer: &str,
-    ) -> Result<(), ApplyError> {
-        match state.get_agent(signer) {
-            Ok(Some(_)) => (),
-            Ok(None) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Agent is not register: {}",
-                    signer
-                )));
-            }
-            Err(err) => return Err(err),
-        }
-        let name = payload.get_name();
-        let mut provided_properties: HashMap<&str, PropertySchema> = HashMap::new();
-        for property in payload.get_properties() {
-            provided_properties.insert(property.get_name(), property.clone());
-        }
-        match state.get_record_type(name) {
-            Ok(Some(_)) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Record type already exists: {}",
-                    signer
-                )));
-            }
-            Ok(None) => (),
-            Err(err) => return Err(err),
-        }
-        let mut record_type = RecordType::new();
-        record_type.set_name(name.to_string());
-        record_type.set_properties(RepeatedField::from_vec(payload.get_properties().to_vec()));
-
-        state.set_record_type(name, record_type)?;
 
         Ok(())
     }
@@ -1115,45 +1033,32 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
         request: &TpProcessRequest,
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
-        let payload = SupplyChainPayload::new(request.get_payload());
-        let payload = match payload {
-            Err(e) => return Err(e),
-            Ok(payload) => payload,
-        };
-        let payload = match payload {
-            Some(x) => x,
-            None => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Request must contain a payload",
-                )));
-            }
-        };
+        let payload = TrackAndTracePayload::from_bytes(request.get_payload()).map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build track and trace payload: {}", err))
+        })?;
+
+        validate_payload(&payload)?;
 
         let signer = request.get_header().get_signer_public_key();
-        let state = SupplyChainState::new(context);
+        let mut state = TrackAndTraceState::new(context);
 
         #[cfg(not(target_arch = "wasm32"))]
         info!(
             "payload: {:?} {} {} {}",
-            payload.get_action(),
-            payload.get_timestamp(),
+            payload.action(),
+            payload.timestamp(),
             request.get_header().get_inputs()[0],
             request.get_header().get_outputs()[0]
         );
 
-        match payload.get_action() {
-            Action::CreateAgent(agent_payload) => {
-                self._create_agent(agent_payload, state, signer, payload.get_timestamp())?
-            }
+        match payload.action() {
             Action::CreateRecord(record_payload) => {
                 self._create_record(record_payload, state, signer, payload.get_timestamp())?
             }
             Action::FinalizeRecord(finalize_payload) => {
                 self._finalize_record(finalize_payload, state, signer)?
             }
-            Action::CreateRecordType(record_type_payload) => {
-                self._create_record_type(record_type_payload, state, signer)?
-            }
+
             Action::UpdateProperties(update_properties_payload) => self._update_properties(
                 update_properties_payload,
                 state,
