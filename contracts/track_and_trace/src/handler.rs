@@ -270,53 +270,51 @@ impl TrackAndTraceTransactionHandler {
 
     fn _update_properties(
         &self,
-        payload: UpdatePropertiesAction,
-        mut state: SupplyChainState,
+        payload: &UpdatePropertiesAction,
+        state: &mut TrackAndTraceState,
         signer: &str,
         timestamp: u64,
     ) -> Result<(), ApplyError> {
-        let record_id = payload.get_record_id();
-        let update_record = match state.get_record(record_id) {
-            Ok(Some(update_record)) => update_record,
-            Ok(None) => {
+        let record_id = payload.record_id();
+        let update_record = match state.get_record(record_id)? {
+            Some(update_record) => update_record,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        if update_record.get_field_final() {
+        if *update_record.field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Record is final: {}",
                 record_id
             )));
         }
 
-        let updates = payload.get_properties();
+        let updates = payload.properties();
 
         for update in updates {
-            let name = update.get_name();
-            let data_type = update.get_data_type();
+            let name = update.name();
+            let data_type = update.data_type();
 
-            let mut prop = match state.get_property(record_id, name) {
-                Ok(Some(prop)) => prop,
-                Ok(None) => {
+            let prop = match state.get_property(record_id, name)? {
+                Some(prop) => prop,
+                None => {
                     return Err(ApplyError::InvalidTransaction(format!(
-                        "Record does not have provided poperty: {}",
+                        "Record does not have provided property: {}",
                         name
                     )));
                 }
-                Err(err) => return Err(err),
             };
 
             let mut allowed = false;
             let mut reporter_index = 0;
-            for reporter in prop.get_reporters() {
-                if reporter.get_public_key() == signer && reporter.get_authorized() {
+            for reporter in prop.reporters() {
+                if reporter.public_key() == signer && *reporter.authorized() {
                     allowed = true;
-                    reporter_index = reporter.get_index();
+                    reporter_index = *reporter.index();
                     break;
                 }
             }
@@ -327,67 +325,82 @@ impl TrackAndTraceTransactionHandler {
                 )));
             }
 
-            if prop.fixed {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Property is fixed and cannot be updated: {}",
-                    prop.name
-                )));
-            }
-
-            if data_type != prop.data_type {
+            if data_type != prop.property_definition().data_type() {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Update has wrong type: {:?} != {:?}",
-                    data_type, prop.data_type
+                    data_type,
+                    prop.property_definition().data_type()
                 )));
             }
 
-            let page_number = prop.get_current_page();
-            let mut page = match state.get_property_page(record_id, name, page_number) {
-                Ok(Some(page)) => page,
-                Ok(None) => {
+            let page_number = prop.current_page();
+            let page = match state.get_property_page(record_id, name, *page_number)? {
+                Some(page) => page,
+                None => {
                     return Err(ApplyError::InvalidTransaction(String::from(
                         "Property page does not exist",
                     )));
                 }
-                Err(err) => return Err(err),
             };
 
-            let reported_value =
-                match self._make_new_reported_value(reporter_index, timestamp, update, &prop) {
-                    Ok(reported_value) => reported_value,
-                    Err(err) => return Err(err),
-                };
-            page.reported_values.push(reported_value);
-            page.reported_values
-                .sort_by_key(|rv| (rv.clone().timestamp, rv.clone().reporter_index));
-            state.set_property_page(record_id, name, page_number, page.clone())?;
-            if page.reported_values.len() >= PROPERTY_PAGE_MAX_LENGTH {
-                let new_page_number = if page_number < PROPERTY_PAGE_MAX_LENGTH as u32 {
+            let reported_value = ReportedValueBuilder::new()
+                .with_reporter_index(reporter_index)
+                .with_timestamp(timestamp)
+                .with_value(update.clone())
+                .build()
+                .map_err(|err| map_builder_error_to_apply_error(err, "ReportedValue"))?;
+
+            let mut updated_reported_values = page.reported_values().to_vec();
+            updated_reported_values.push(reported_value);
+            updated_reported_values.sort_by_key(|rv| (*rv.timestamp(), *rv.reporter_index()));
+
+            let updated_property_page = page
+                .clone()
+                .into_builder()
+                .with_reported_values(updated_reported_values)
+                .build()
+                .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?;
+
+            state.set_property_page(
+                record_id,
+                name,
+                *page_number,
+                updated_property_page.clone(),
+            )?;
+
+            if updated_property_page.reported_values().len() >= PROPERTY_PAGE_MAX_LENGTH {
+                let new_page_number = if *page_number > PROPERTY_PAGE_MAX_LENGTH as u32 {
                     1
                 } else {
                     page_number + 1
                 };
 
-                let new_page = match state.get_property_page(record_id, name, new_page_number) {
-                    Ok(Some(mut new_page)) => {
-                        new_page.set_reported_values(RepeatedField::from_vec(Vec::new()));
-                        new_page
-                    }
-                    Ok(None) => {
-                        let mut new_page = PropertyPage::new();
-                        new_page.set_name(name.to_string());
-                        new_page.set_record_id(record_id.to_string());
-                        new_page
-                    }
-                    Err(err) => return Err(err),
+                let new_page = match state.get_property_page(record_id, name, new_page_number)? {
+                    Some(new_page) => new_page
+                        .into_builder()
+                        .with_reported_values(vec![])
+                        .build()
+                        .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
+                    None => PropertyPageBuilder::new()
+                        .with_name(name.to_string())
+                        .with_record_id(record_id.to_string())
+                        .with_reported_values(vec![])
+                        .build()
+                        .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
                 };
+
                 state.set_property_page(record_id, name, new_page_number, new_page)?;
 
-                prop.set_current_page(new_page_number);
-                if new_page_number == 1 && !prop.get_wrapped() {
-                    prop.set_wrapped(true);
-                }
-                state.set_property(record_id, name, prop)?;
+                let wrapped = new_page_number == 1 && !prop.wrapped();
+                let new_property = prop
+                    .clone()
+                    .into_builder()
+                    .with_current_page(new_page_number)
+                    .with_wrapped(wrapped)
+                    .build()
+                    .map_err(|err| map_builder_error_to_apply_error(err, "Property"))?;
+
+                state.set_property(record_id, name, new_property)?;
             }
         }
 
@@ -1053,14 +1066,9 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
             Action::FinalizeRecord(action_payload) => {
                 self._finalize_record(action_payload, &mut state, signer)?
             }
+            Action::UpdateProperties(action_payload) => {
+                self._update_properties(action_payload, &mut state, signer, *payload.timestamp())?
             }
-
-            Action::UpdateProperties(update_properties_payload) => self._update_properties(
-                update_properties_payload,
-                state,
-                signer,
-                payload.get_timestamp(),
-            )?,
             Action::CreateProposal(proposal_payload) => {
                 self._create_proposal(proposal_payload, state, signer, payload.get_timestamp())?
             }
@@ -1690,6 +1698,224 @@ mod tests {
             }
             Err(err) => panic!("Should have gotten invalid error but got {}", err),
         }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction is valid an OK is returned and new value is added
+    /// to the record's PropertyPage
+    fn test_update_properties_valid() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+        transaction_context.add_property(REQUIRED_PROPERTY_NAME, required_property_definition());
+        transaction_context.add_property_page(REQUIRED_PROPERTY_NAME, required_property_value());
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![updated_property_value()]);
+
+        assert!(transaction_handler
+            ._update_properties(&update_property_action, &mut state, PUBLIC_KEY, TIMESTAMP,)
+            .is_ok());
+
+        let page = state
+            .get_property_page(RECORD_ID, REQUIRED_PROPERTY_NAME, 1)
+            .expect("Failed to get property page from state")
+            .expect("Property page is none, it should be some");
+
+        assert_eq!(page.reported_values().len(), 2);
+        assert_eq!(page.reported_values()[1].value(), &updated_property_value());
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction fails if the record does not exist
+    fn test_update_properties_record_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_finalized_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![updated_property_value()]);
+
+        match transaction_handler._update_properties(
+            &update_property_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record is final: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction fails if the record is set to final
+    fn test_update_properties_record_is_final() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_finalized_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![updated_property_value()]);
+
+        match transaction_handler._update_properties(
+            &update_property_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record is final: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction fails if the property to be updated is not part of
+    /// the record
+    fn test_update_properties_record_missing_property() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![updated_property_value()]);
+
+        match transaction_handler._update_properties(
+            &update_property_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Record does not have provided property: {}",
+                    REQUIRED_PROPERTY_NAME
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction fails if the signer is not an authorized reporter
+    fn test_update_properties_signer_not_authorized() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+        transaction_context.add_property(REQUIRED_PROPERTY_NAME, required_property_definition());
+        transaction_context.add_property_page(REQUIRED_PROPERTY_NAME, required_property_value());
+
+        let signer = "not_authorized";
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![updated_property_value()]);
+
+        match transaction_handler._update_properties(
+            &update_property_action,
+            &mut state,
+            signer.clone(),
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Reporter is not authorized: {}", signer)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction fails if the property to be updated is set to
+    /// a data type that does not match the property definition.
+    fn test_update_properties_property_value_wrong_type() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+        transaction_context.add_property(REQUIRED_PROPERTY_NAME, required_property_definition());
+        transaction_context.add_property_page(REQUIRED_PROPERTY_NAME, required_property_value());
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let property_value_wrong = PropertyValueBuilder::new()
+            .with_name(REQUIRED_PROPERTY_NAME.to_string())
+            .with_data_type(DataType::Number)
+            .with_number_value(123)
+            .build()
+            .expect("Failed to build property value");
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let update_property_action = update_property_action(vec![property_value_wrong]);
+
+        match transaction_handler._update_properties(
+            &update_property_action,
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Update has wrong type: {:?} != {:?}",
+                    DataType::Number,
+                    DataType::String
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the UpdatedPropertiesAction start new PropertyPage when needed.
+    fn test_update_properties_new_page() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_schema();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_record();
+        transaction_context.add_property(REQUIRED_PROPERTY_NAME, required_property_definition());
+        transaction_context.add_property_page(REQUIRED_PROPERTY_NAME, required_property_value());
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+        let property_value = updated_property_value();
+
+        // Generate enough value updates that would required the start of a new PropertyPage.
+        let updates = std::iter::repeat(property_value)
+            .take(PROPERTY_PAGE_MAX_LENGTH)
+            .collect::<Vec<_>>();
+
+        let update_property_action = update_property_action(updates);
+
+        assert!(transaction_handler
+            ._update_properties(&update_property_action, &mut state, PUBLIC_KEY, TIMESTAMP,)
+            .is_ok());
+
+        let new_page = state
+            .get_property_page(RECORD_ID, REQUIRED_PROPERTY_NAME, 2)
+            .expect("Failed to get property page from state");
+
+        assert!(new_page.is_some());
     }
 
     fn optional_property_value() -> PropertyValue {
