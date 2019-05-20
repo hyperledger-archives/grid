@@ -409,55 +409,51 @@ impl TrackAndTraceTransactionHandler {
 
     fn _create_proposal(
         &self,
-        payload: CreateProposalAction,
-        mut state: SupplyChainState,
+        payload: &CreateProposalAction,
+        state: &mut TrackAndTraceState,
         signer: &str,
         timestamp: u64,
     ) -> Result<(), ApplyError> {
-        let record_id = payload.record_id;
-        let receiving_agent = payload.receiving_agent;
-        let role = payload.role;
-        let properties = payload.properties;
+        let record_id = payload.record_id();
+        let receiving_agent = payload.receiving_agent();
+        let role = payload.role();
+        let properties = payload.properties();
+        let terms = payload.terms();
 
-        match state.get_agent(signer) {
-            Ok(Some(agent)) => agent,
-            Ok(None) => {
+        match state.get_agent(signer)? {
+            Some(agent) => agent,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Issuing agent does not exist: {}",
                     signer
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        match state.get_agent(&receiving_agent) {
-            Ok(Some(agent)) => agent,
-            Ok(None) => {
+        match state.get_agent(&receiving_agent)? {
+            Some(agent) => agent,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Receiving agent does not exist: {}",
                     receiving_agent
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        let mut proposals = match state.get_proposal_container(&record_id, &receiving_agent) {
-            Ok(Some(proposals)) => proposals,
-            Ok(None) => ProposalContainer::new(),
-            Err(err) => return Err(err),
+        let mut proposals = match state.get_proposal_list(&record_id, &receiving_agent)? {
+            Some(proposals) => proposals.proposals().to_vec(),
+            None => vec![],
         };
 
-        let mut open_proposals = Vec::<Proposal>::new();
-        for prop in proposals.get_entries() {
-            if prop.status == Proposal_Status::OPEN {
-                open_proposals.push(prop.clone());
-            }
-        }
+        let open_proposals = proposals
+            .iter()
+            .filter(|proposal| proposal.status() == &Status::Open)
+            .collect::<Vec<_>>();
 
         for prop in open_proposals {
-            if prop.get_receiving_agent() == receiving_agent
-                && prop.get_role() == role
-                && prop.get_record_id() == record_id
+            if prop.receiving_agent() == receiving_agent
+                && prop.role() == role
+                && prop.record_id() == record_id
             {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Proposal already exists",
@@ -465,26 +461,25 @@ impl TrackAndTraceTransactionHandler {
             }
         }
 
-        let proposal_record = match state.get_record(&record_id) {
-            Ok(Some(record)) => record,
-            Ok(None) => {
+        let proposal_record = match state.get_record(&record_id)? {
+            Some(record) => record,
+            None => {
                 return Err(ApplyError::InvalidTransaction(format!(
                     "Record does not exist: {}",
                     record_id
                 )));
             }
-            Err(err) => return Err(err),
         };
 
-        if proposal_record.get_field_final() {
+        if *proposal_record.field_final() {
             return Err(ApplyError::InvalidTransaction(format!(
                 "Record is final: {}",
                 record_id
             )));
         }
 
-        if role == Proposal_Role::OWNER || role == Proposal_Role::REPORTER {
-            let owner = match proposal_record.owners.last() {
+        if role == &Role::Owner || role == &Role::Reporter {
+            let owner = match proposal_record.owners().last() {
                 Some(owner) => owner,
                 None => {
                     return Err(ApplyError::InvalidTransaction(String::from(
@@ -492,15 +487,15 @@ impl TrackAndTraceTransactionHandler {
                     )));
                 }
             };
-            if owner.get_agent_id() != signer {
+            if owner.agent_id() != signer {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Only the owner can create a proposal to change ownership",
                 )));
             }
         }
 
-        if role == Proposal_Role::CUSTODIAN {
-            let custodian = match proposal_record.custodians.last() {
+        if role == &Role::Custodian {
+            let custodian = match proposal_record.custodians().last() {
                 Some(custodian) => custodian,
                 None => {
                     return Err(ApplyError::InvalidTransaction(String::from(
@@ -509,31 +504,39 @@ impl TrackAndTraceTransactionHandler {
                 }
             };
 
-            if custodian.get_agent_id() != signer {
+            if custodian.agent_id() != signer {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Only the custodian can create a proposal to change custodianship",
                 )));
             }
         }
 
-        let mut new_proposal = Proposal::new();
-        new_proposal.set_record_id(record_id.to_string());
-        new_proposal.set_timestamp(timestamp);
-        new_proposal.set_issuing_agent(signer.to_string());
-        new_proposal.set_receiving_agent(receiving_agent.to_string());
-        new_proposal.set_role(role);
-        new_proposal.set_properties(properties);
-        new_proposal.set_status(Proposal_Status::OPEN);
+        let new_proposal = ProposalBuilder::new()
+            .with_record_id(record_id.to_string())
+            .with_timestamp(timestamp)
+            .with_issuing_agent(signer.to_string())
+            .with_receiving_agent(receiving_agent.to_string())
+            .with_role(role.clone())
+            .with_properties(properties.to_vec())
+            .with_status(Status::Open)
+            .with_terms(terms.to_string())
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "Proposal"))?;
 
-        proposals.entries.push(new_proposal);
-        proposals.entries.sort_by_key(|p| {
+        proposals.push(new_proposal);
+        proposals.sort_by_key(|p| {
             (
-                p.clone().record_id,
-                p.clone().receiving_agent,
-                p.clone().timestamp,
+                p.record_id().to_string(),
+                p.receiving_agent().to_string(),
+                *p.timestamp(),
             )
         });
-        state.set_proposal_container(&record_id, &receiving_agent, proposals)?;
+        let proposal_list = ProposalListBuilder::new()
+            .with_proposals(proposals)
+            .build()
+            .map_err(|err| map_builder_error_to_apply_error(err, "ProposalList"))?;
+
+        state.set_proposal_list(&record_id, &receiving_agent, proposal_list)?;
 
         Ok(())
     }
@@ -1069,8 +1072,9 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
             Action::UpdateProperties(action_payload) => {
                 self._update_properties(action_payload, &mut state, signer, *payload.timestamp())?
             }
-            Action::CreateProposal(proposal_payload) => {
-                self._create_proposal(proposal_payload, state, signer, payload.get_timestamp())?
+            Action::CreateProposal(action_payload) => {
+                self._create_proposal(action_payload, &mut state, signer, *payload.timestamp())?
+            }
             }
             Action::AnswerProposal(answer_proposal_payload) => self._answer_proposal(
                 answer_proposal_payload,
@@ -1916,6 +1920,280 @@ mod tests {
             .expect("Failed to get property page from state");
 
         assert!(new_page.is_some());
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction, with role set to Owner, is valid an OK is returned
+    /// and new proposal is added state
+    fn test_create_proposal_valid_owner() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        assert!(transaction_handler
+            ._create_proposal(
+                &create_proposal_action(Role::Owner, receiving_agent_key),
+                &mut state,
+                PUBLIC_KEY,
+                TIMESTAMP,
+            )
+            .is_ok());
+
+        let proposal_list = state
+            .get_proposal_list(RECORD_ID, receiving_agent_key)
+            .expect("Failed to get ProposalList from state")
+            .expect("ProposalList not found");
+
+        assert_eq!(proposal_list.proposals().len(), 1);
+        assert_eq!(
+            proposal_list.proposals()[0],
+            make_proposal(PUBLIC_KEY, receiving_agent_key, Role::Owner, Status::Open)
+        );
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction, with role set to Custodian, is valid an OK is returned
+    /// and new proposal is added state
+    fn test_create_proposal_valid_custodian() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        assert!(transaction_handler
+            ._create_proposal(
+                &create_proposal_action(Role::Custodian, receiving_agent_key),
+                &mut state,
+                PUBLIC_KEY,
+                TIMESTAMP,
+            )
+            .is_ok());
+
+        let proposal_list = state
+            .get_proposal_list(RECORD_ID, receiving_agent_key)
+            .expect("Failed to get ProposalList from state")
+            .expect("ProposalList not found");
+
+        assert_eq!(proposal_list.proposals().len(), 1);
+        assert_eq!(
+            proposal_list.proposals()[0],
+            make_proposal(
+                PUBLIC_KEY,
+                receiving_agent_key,
+                Role::Custodian,
+                Status::Open
+            )
+        );
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the signer is not an agent
+    fn test_create_proposal_agent_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(receiving_agent_key);
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Signer is not an Agent, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Issuing agent does not exist: {}", PUBLIC_KEY,)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the receiving agent key is not a valid agent
+    fn test_create_proposal_receiving_agent_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!(
+                "Receiving agent key is not a valid Agent, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "Receiving agent does not exist: {}",
+                    receiving_agent_key,
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the a similar proposal already exists
+    fn test_create_proposal_already_exists() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_proposal(
+            PUBLIC_KEY,
+            receiving_agent_key,
+            Role::Owner,
+            Status::Open,
+        );
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Proposal already exists, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Proposal already exists"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the record does not exist
+    fn test_create_proposal_record_does_not_exist() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record does not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record does not exist: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the record is already final
+    fn test_create_proposal_record_is_final() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_finalized_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Record is final, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Record is final: {}", RECORD_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the signer is not owner and tries to
+    /// transfer owenership
+    fn test_create_proposal_signer_not_owner() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        let signer_public_key = "not_owner_agent_key";
+        transaction_context.add_agent(signer_public_key);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Owner, receiving_agent_key),
+            &mut state,
+            signer_public_key,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Signer is not owner, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("Only the owner can create a proposal to change ownership"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if the CreateProposalAction fails when the signer is not custodian and tries to
+    /// transfer custodianship
+    fn test_create_proposal_signer_not_custodian() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        let signer_public_key = "not_custodian_agent_key";
+        transaction_context.add_agent(signer_public_key);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_action(Role::Custodian, receiving_agent_key),
+            &mut state,
+            signer_public_key,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("Signer is not custodian, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err
+                    .contains("Only the custodian can create a proposal to change custodianship"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
     }
 
     fn optional_property_value() -> PropertyValue {
