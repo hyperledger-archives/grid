@@ -177,6 +177,7 @@ table! {
         start_block_num -> Int8,
         end_block_num -> Int8,
         property_name -> Text,
+        record_id -> Text,
         public_key -> Text,
         authorized -> Bool,
         reporter_index -> Int4,

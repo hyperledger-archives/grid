@@ -182,7 +182,13 @@ pub fn update_reported_value_end_block_num(
 
 pub fn insert_reporters(conn: &PgConnection, reporters: &[NewReporter]) -> QueryResult<()> {
     for reporter in reporters {
-        update_reporter_end_block_num(conn, reporter.reporter_index, reporter.start_block_num)?;
+        update_reporter_end_block_num(
+            conn,
+            &reporter.property_name,
+            &reporter.record_id,
+            &reporter.public_key,
+            reporter.start_block_num,
+        )?;
     }
 
     insert_into(reporter::table)
@@ -193,13 +199,17 @@ pub fn insert_reporters(conn: &PgConnection, reporters: &[NewReporter]) -> Query
 
 pub fn update_reporter_end_block_num(
     conn: &PgConnection,
-    reporter_index: i32,
+    property_name: &str,
+    record_id: &str,
+    public_key: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(reporter::table)
         .filter(
-            reporter::reporter_index
-                .eq(reporter_index)
+            reporter::record_id
+                .eq(record_id)
+                .and(reporter::property_name.eq(property_name))
+                .and(reporter::public_key.eq(public_key))
                 .and(reporter::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(reporter::end_block_num.eq(current_block_num))

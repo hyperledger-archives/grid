@@ -16,6 +16,7 @@
 CREATE TABLE IF NOT EXISTS reporter (
     id BIGSERIAL PRIMARY KEY,
     property_name TEXT NOT NULL,
+    record_id TEXT NOT NULL,
     public_key TEXT NOT NULL,
     authorized BOOLEAN NOT NULL,
     reporter_index INTEGER
@@ -83,4 +84,4 @@ CREATE TABLE IF NOT EXISTS record (
 ) INHERITS (chain_record);
 
 CREATE INDEX IF NOT EXISTS record_idx
-    ON record(record_id); 
+    ON record(record_id);
