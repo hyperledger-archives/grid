@@ -246,7 +246,7 @@ pub struct Property {
     pub name: String,
     pub record_id: String,
     pub property_definition: String,
-    pub current_page: i64,
+    pub current_page: i32,
     pub wrapped: bool,
 }
 
@@ -267,7 +267,7 @@ pub struct NewProposal {
 
 #[allow(dead_code)]
 #[derive(Queryable, Debug)]
-pub struct Propsal {
+pub struct Proposal {
     pub id: i64,
     pub start_block_num: i64,
     pub end_block_num: i64,
