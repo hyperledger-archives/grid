@@ -67,7 +67,12 @@ pub fn update_associated_agent_end_block_num(
 
 pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> QueryResult<()> {
     for property in properties {
-        update_property_end_block_num(conn, &property.name, property.start_block_num)?;
+        update_property_end_block_num(
+            conn,
+            &property.name,
+            &property.record_id,
+            property.start_block_num,
+        )?;
     }
 
     insert_into(property::table)
@@ -79,12 +84,14 @@ pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> Que
 pub fn update_property_end_block_num(
     conn: &PgConnection,
     name: &str,
+    record_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(property::table)
         .filter(
             property::name
                 .eq(name)
+                .and(property::record_id.eq(record_id))
                 .and(property::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(property::end_block_num.eq(current_block_num))
