@@ -490,7 +490,7 @@ mod test {
         assert!(body.is_empty());
 
         // Adds a single Agent to the test database
-        populate_agent_table(&test_pool.get().unwrap());
+        populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
         // Making another request to the database
         let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
@@ -677,7 +677,7 @@ mod test {
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         //Adds an agent to the test database
-        populate_agent_table(&test_pool.get().unwrap());
+        populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
         let request = srv
             .client(http::Method::GET, &format!("/agent/{}", KEY1))
@@ -849,8 +849,9 @@ mod test {
             .expect("Failed to write batch statuses to bytes")
     }
 
-    fn populate_agent_table(conn: &PgConnection) {
-        let agent = NewAgent {
+
+    fn get_agent() -> Vec<NewAgent> {
+        vec![NewAgent {
             public_key: KEY1.to_string(),
             org_id: KEY2.to_string(),
             active: true,
@@ -858,9 +859,12 @@ mod test {
             metadata: vec![],
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
-        };
+        }]
+    }
+
+    fn populate_agent_table(conn: &PgConnection, agents: &[NewAgent]) {
         clear_agents_table(conn);
-        database::helpers::insert_agents(conn, &[agent]).unwrap();
+        database::helpers::insert_agents(conn, agents).unwrap();
     }
 
     fn clear_agents_table(conn: &PgConnection) {
