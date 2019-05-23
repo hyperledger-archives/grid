@@ -264,6 +264,7 @@ fn state_change_to_db_operation(
                         .iter()
                         .map(|reporter| NewReporter {
                             property_name: prop.name().to_string(),
+                            record_id: prop.record_id().to_string(),
                             public_key: reporter.public_key().to_string(),
                             authorized: *reporter.authorized(),
                             reporter_index: *reporter.index() as i32,
