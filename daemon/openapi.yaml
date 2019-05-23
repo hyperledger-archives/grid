@@ -327,6 +327,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  "/record/{record_id}":
+    get:
+      tags:
+        - Track and Trace
+      summary: Fetch a particular record
+      description: Fetches a single record with the given record ID.
+      operationId: fetch_record
+      parameters:
+        - name: record_id
+          in: path
+          description: ID of the record to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Record"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
 components:
   parameters:
     batch_id:
@@ -591,3 +622,132 @@ components:
         value:
           type: string
           example: eletronics
+    AssociatedAgent:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
+        timestamp:
+          type: integer
+          example: 1557949075
+    LatLong:
+      type: object
+      properties:
+        latitude:
+          type: integer
+          example: 46786299
+        longitude:
+          type: integer
+          example: -92051336
+    Record:
+      type: object
+      properties:
+        record_id:
+          type: string
+          example: 7h15-45537-15-br173
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        custodian:
+          type: string
+          example: 02fb5b3a093e20e420ecf9c5839215e74c97f49eb51889069eb87bc6f62ceca8dd
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/Property"
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Proposal"
+        owner_updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociatedAgent"
+        custodian_updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociatedAgent"
+        final:
+          type: boolean
+    ReportedValue:
+      type: object
+      properties:
+        timestamp:
+          type: integer
+          example: 1557949075
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+            - type: number
+            - type: object
+            - $ref: '#/components/schemas/LatLong'
+          example: -35014970
+        reporter:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Nobuo
+            public_key:
+              type: string
+              example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+    Property:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        record_id:
+          type: string
+          example: 7h15-45537-15-br173
+        data_type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        authorized_reporters:
+          type: array
+          items:
+            type: string
+            example:
+              - 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+              - 0364edd42bd9b2dea1315e2da820b569665f96e36c44b267ceeac488cfdc03bf61
+        value:
+          $ref: "#/components/schemas/ReportedValue"
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportedValue"
+    ProposalRoleEnum:
+      type: string
+      enum:
+        - OWNER
+        - CUSTODIAN
+        - REPORTER
+    ProposalStatusEnum:
+      description: Status of a proposal
+      type: string
+      enum:
+        - OPEN
+        - ACCEPTED
+        - REJECTED
+        - CANCELED
+    Proposal:
+      type: object
+      properties:
+        receiving_agent:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        issuing_agent:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        role:
+          $ref: "#/components/schemas/ProposalRoleEnum"
+        properties:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: "#/components/schemas/ProposalStatusEnum"
+        timestamp:
+          type: integer
+          example: 1557949075

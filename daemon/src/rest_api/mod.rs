@@ -21,8 +21,8 @@ use std::thread;
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::routes::{
-    fetch_agent, fetch_grid_schema, fetch_organization, get_batch_statuses, list_agents,
-    list_grid_schemas, list_organizations, submit_batches,
+    fetch_agent, fetch_grid_schema, fetch_organization, fetch_record, get_batch_statuses,
+    list_agents, list_grid_schemas, list_organizations, submit_batches,
 };
 use crate::rest_api::routes::{DbExecutor, SawtoothMessageSender};
 use actix::{Actor, Addr, Context, SyncArbiter};
@@ -74,6 +74,9 @@ fn create_app(
     })
     .resource("/schema/{name}", |r| {
         r.method(Method::GET).with_async(fetch_grid_schema)
+    })
+    .resource("/record/{record_id}", |r| {
+        r.method(Method::GET).with_async(fetch_record)
     })
 }
 

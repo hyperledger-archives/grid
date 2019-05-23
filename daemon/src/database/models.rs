@@ -267,7 +267,6 @@ pub struct NewProposal {
     pub terms: String,
 }
 
-#[allow(dead_code)]
 #[derive(Queryable, Debug)]
 pub struct Proposal {
     pub id: i64,
