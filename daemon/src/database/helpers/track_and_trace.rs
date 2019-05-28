@@ -36,6 +36,7 @@ pub fn insert_associated_agents(
         update_associated_agent_end_block_num(
             conn,
             &agent.record_id,
+            &agent.role,
             &agent.agent_id,
             agent.start_block_num,
         )?;
@@ -50,6 +51,7 @@ pub fn insert_associated_agents(
 pub fn update_associated_agent_end_block_num(
     conn: &PgConnection,
     record_id: &str,
+    role: &str,
     agent_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
@@ -57,6 +59,7 @@ pub fn update_associated_agent_end_block_num(
         .filter(
             associated_agent::record_id
                 .eq(record_id)
+                .and(associated_agent::role.eq(role))
                 .and(associated_agent::agent_id.eq(agent_id))
                 .and(associated_agent::end_block_num.eq(MAX_BLOCK_NUM)),
         )

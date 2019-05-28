@@ -34,6 +34,7 @@ table! {
     associated_agent (id) {
         id -> Int8,
         record_id -> Text,
+        role -> Text,
         start_block_num -> Int8,
         end_block_num -> Int8,
         agent_id -> Text,

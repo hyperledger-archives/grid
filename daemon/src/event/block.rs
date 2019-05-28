@@ -379,22 +379,38 @@ fn state_change_to_db_operation(
                 })
                 .collect::<Vec<NewRecord>>();
 
-            let associated_agents = record_list
+            let mut associated_agents = record_list
                 .iter()
                 .flat_map(|record| {
-                    record
-                        .owners()
-                        .iter()
-                        .chain(record.custodians().iter())
-                        .map(move |agent| NewAssociatedAgent {
-                            agent_id: agent.agent_id().to_string(),
-                            record_id: record.record_id().to_string(),
-                            timestamp: *agent.timestamp() as i64,
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
-                        })
+                    record.owners().iter().map(move |agent| NewAssociatedAgent {
+                        agent_id: agent.agent_id().to_string(),
+                        record_id: record.record_id().to_string(),
+                        role: "OWNER".to_string(),
+                        timestamp: *agent.timestamp() as i64,
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                    })
                 })
                 .collect::<Vec<NewAssociatedAgent>>();
+
+            associated_agents.append(
+                &mut record_list
+                    .iter()
+                    .flat_map(|record| {
+                        record
+                            .custodians()
+                            .iter()
+                            .map(move |agent| NewAssociatedAgent {
+                                agent_id: agent.agent_id().to_string(),
+                                role: "CUSTODIAN".to_string(),
+                                record_id: record.record_id().to_string(),
+                                timestamp: *agent.timestamp() as i64,
+                                start_block_num: block_num,
+                                end_block_num: db::MAX_BLOCK_NUM,
+                            })
+                    })
+                    .collect::<Vec<NewAssociatedAgent>>(),
+            );
 
             Ok(DbInsertOperation::Records(records, associated_agents))
         }
