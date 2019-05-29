@@ -147,7 +147,7 @@ pub struct GridPropertyDefinition {
 #[postgres(type_name = "latlong")]
 pub struct LatLong;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Clone)]
 #[sql_type = "LatLong"]
 pub struct LatLongValue(pub i64, pub i64);
 
@@ -274,7 +274,7 @@ pub struct Record {
     pub custodians: Vec<String>,
 }
 
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, Debug, Clone, Default)]
 #[table_name = "reported_value"]
 pub struct NewReportedValue {
     pub start_block_num: i64,
@@ -283,7 +283,14 @@ pub struct NewReportedValue {
     pub record_id: String,
     pub reporter_index: i32,
     pub timestamp: i64,
-    pub value_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
 }
 
 #[allow(dead_code)]
@@ -296,7 +303,14 @@ pub struct ReportedValue {
     pub record_id: String,
     pub reporter_index: i32,
     pub timestamp: i64,
-    pub value_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
 }
 
 #[derive(Insertable, Debug, Clone)]
