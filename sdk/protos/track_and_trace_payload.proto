@@ -80,6 +80,9 @@ message CreateProposalAction {
   Proposal.Role role = 3;
 
   repeated string properties = 4;
+
+  // The human-readable terms of transfer.
+  string terms = 5;
 }
 
 

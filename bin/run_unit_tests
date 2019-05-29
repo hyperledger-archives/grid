@@ -23,6 +23,7 @@ dirs="
   $top_dir/daemon
   $top_dir/cli
   $top_dir/contracts/schema
+  $top_dir/contracts/track_and_trace
 "
 exitcode=0
 

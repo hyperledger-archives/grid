@@ -334,6 +334,7 @@ pub struct CreateProposalAction {
     receiving_agent: String,
     role: Role,
     properties: Vec<String>,
+    terms: String,
 }
 
 impl CreateProposalAction {
@@ -349,6 +350,9 @@ impl CreateProposalAction {
     pub fn properties(&self) -> &[String] {
         &self.properties
     }
+    pub fn terms(&self) -> &str {
+        &self.terms
+    }
 }
 
 #[derive(Default, Debug)]
@@ -357,6 +361,7 @@ pub struct CreateProposalActionBuilder {
     receiving_agent: Option<String>,
     role: Option<Role>,
     properties: Option<Vec<String>>,
+    terms: Option<String>,
 }
 
 impl CreateProposalActionBuilder {
@@ -379,6 +384,10 @@ impl CreateProposalActionBuilder {
         self.properties = Some(value);
         self
     }
+    pub fn with_terms(mut self, value: String) -> Self {
+        self.terms = Some(value);
+        self
+    }
     pub fn build(self) -> Result<CreateProposalAction, BuilderError> {
         let record_id = self
             .record_id
@@ -392,11 +401,15 @@ impl CreateProposalActionBuilder {
         let properties = self
             .properties
             .ok_or_else(|| BuilderError::MissingField("properties".into()))?;
+        let terms = self
+            .terms
+            .ok_or_else(|| BuilderError::MissingField("terms".into()))?;
         Ok(CreateProposalAction {
             record_id,
             receiving_agent,
             role,
             properties,
+            terms,
         })
     }
 }
@@ -415,6 +428,7 @@ impl FromProto<track_and_trace_payload::CreateProposalAction> for CreateProposal
                 .into_iter()
                 .map(String::from)
                 .collect(),
+            terms: proto.get_terms().to_string(),
         })
     }
 }
@@ -426,7 +440,7 @@ impl FromNative<CreateProposalAction> for track_and_trace_payload::CreateProposa
         proto.set_receiving_agent(native.receiving_agent().to_string());
         proto.set_role(native.role().clone().into_proto()?);
         proto.set_properties(RepeatedField::from_vec(native.properties().to_vec()));
-
+        proto.set_terms(native.terms().to_string());
         Ok(proto)
     }
 }
@@ -1004,11 +1018,13 @@ mod tests {
             .with_receiving_agent("jim".into())
             .with_role(Role::Custodian)
             .with_properties(vec!["egg".into()])
+            .with_terms("term".to_string())
             .build()
             .unwrap();
 
         assert_eq!(action.record_id(), "32");
         assert_eq!(action.receiving_agent(), "jim");
+        assert_eq!(action.terms(), "term");
         assert_eq!(*action.role(), Role::Custodian);
         assert!(action.properties().iter().any(|x| x == "egg"));
     }
@@ -1020,6 +1036,7 @@ mod tests {
             .with_receiving_agent("jim".into())
             .with_role(Role::Custodian)
             .with_properties(vec!["egg".into()])
+            .with_terms("term".to_string())
             .build()
             .unwrap();
 

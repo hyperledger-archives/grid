@@ -20,121 +20,154 @@ cfg_if! {
     }
 }
 
-use grid_sdk::protos::deprecated_track_and_trace_payload::DeprecatedCreateTrackAndTraceAgentAction as CreateAgentAction;
-use grid_sdk::protos::deprecated_track_and_trace_payload::{
-    DeprecatedAnswerProposalAction as AnswerProposalAction,
-    DeprecatedCreateProposalAction as CreateProposalAction,
-    DeprecatedCreateRecordAction as CreateRecordAction,
-    DeprecatedCreateRecordTypeAction as CreateRecordTypeAction,
-    DeprecatedFinalizeRecordAction as FinalizeRecordAction,
-    DeprecatedRevokeReporterAction as RevokeReporterAction,
-    DeprecatedUpdatePropertiesAction as UpdatePropertiesAction, SCPayload, SCPayload_Action,
+use grid_sdk::protocol::track_and_trace::payload::{
+    Action, CreateRecordAction, TrackAndTracePayload,
 };
 
-#[derive(Debug, Clone)]
-pub enum Action {
-    CreateAgent(CreateAgentAction),
-    CreateRecord(CreateRecordAction),
-    FinalizeRecord(FinalizeRecordAction),
-    CreateRecordType(CreateRecordTypeAction),
-    UpdateProperties(UpdatePropertiesAction),
-    CreateProposal(CreateProposalAction),
-    AnswerProposal(AnswerProposalAction),
-    RevokeReporter(RevokeReporterAction),
+pub fn validate_payload(payload: &TrackAndTracePayload) -> Result<(), ApplyError> {
+    validate_timestamp(*payload.timestamp())?;
+    match payload.action() {
+        Action::CreateRecord(action_payload) => validate_record_create_action(action_payload),
+        _ => Ok(()),
+    }
 }
 
-pub struct SupplyChainPayload {
-    action: Action,
-    timestamp: u64,
+fn validate_record_create_action(
+    create_record_action: &CreateRecordAction,
+) -> Result<(), ApplyError> {
+    if create_record_action.record_id() == "" {
+        return Err(ApplyError::InvalidTransaction(String::from(
+            "Record id cannot be empty string",
+        )));
+    }
+
+    if create_record_action.schema() == "" {
+        return Err(ApplyError::InvalidTransaction(String::from(
+            "Schema name cannot be empty string",
+        )));
+    }
+    Ok(())
 }
 
-impl SupplyChainPayload {
-    pub fn new(payload: &[u8]) -> Result<Option<SupplyChainPayload>, ApplyError> {
-        let payload: SCPayload = match protobuf::parse_from_bytes(payload) {
-            Ok(payload) => payload,
-            Err(_) => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Cannot deserialize payload",
-                )));
-            }
-        };
+fn validate_timestamp(timestamp: u64) -> Result<(), ApplyError> {
+    match timestamp {
+        0 => Err(ApplyError::InvalidTransaction(String::from(
+            "Timestamp is not set",
+        ))),
+        _ => Ok(()),
+    }
+}
 
-        let supply_chain_action = payload.get_action();
-        let action = match supply_chain_action {
-            SCPayload_Action::CREATE_AGENT => {
-                let create_agent = payload.get_create_agent();
-                if create_agent.get_name() == "" {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Agent name cannot be an empty string",
-                    )));
-                }
-                Action::CreateAgent(create_agent.clone())
-            }
-            SCPayload_Action::CREATE_RECORD => {
-                let create_record = payload.get_create_record();
-                if create_record.get_record_id() == "" {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Record id cannot be empty string",
-                    )));
-                }
-                Action::CreateRecord(create_record.clone())
-            }
-            SCPayload_Action::FINALIZE_RECORD => {
-                Action::FinalizeRecord(payload.get_finalize_record().clone())
-            }
-            SCPayload_Action::CREATE_RECORD_TYPE => {
-                let create_record_type = payload.get_create_record_type();
-                if create_record_type.get_name() == "" {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Record type name cannot be an empty string",
-                    )));
-                };
-                let properties = create_record_type.get_properties();
-                if properties.is_empty() {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Record type must have at least one property",
-                    )));
-                }
-                for prop in properties {
-                    if prop.name == "" {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Property name cannot be an empty string",
-                        )));
-                    }
-                }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-                Action::CreateRecordType(create_record_type.clone())
-            }
-            SCPayload_Action::UPDATE_PROPERTIES => {
-                Action::UpdateProperties(payload.get_update_properties().clone())
-            }
-            SCPayload_Action::CREATE_PROPOSAL => {
-                Action::CreateProposal(payload.get_create_proposal().clone())
-            }
-            SCPayload_Action::ANSWER_PROPOSAL => {
-                Action::AnswerProposal(payload.get_answer_proposal().clone())
-            }
-            SCPayload_Action::REVOKE_REPORTER => {
-                Action::RevokeReporter(payload.get_revoke_reporter().clone())
-            }
-        };
-        let timestamp = match payload.get_timestamp() {
-            0 => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Timestamp is not set",
-                )));
-            }
-            x => x,
-        };
+    use grid_sdk::protos::track_and_trace_payload::{
+        CreateRecordAction as CreateRecordActionProto,
+        TrackAndTracePayload as TrackAndTracePayloadProto,
+        TrackAndTracePayload_Action as ActionProto,
+    };
+    use grid_sdk::protos::IntoNative;
 
-        Ok(Some(SupplyChainPayload { action, timestamp }))
+    #[test]
+    /// Test that an error is returned if the payload is missing the timestamp. This test needs
+    /// to use the proto directly originally to be able to mimic the scenarios possbile from
+    /// creating a CreateRecordAction from bytes. This is because the CreateRecordActionBuilder
+    /// protects from building certain invalid payloads.
+    fn test_validate_payload_timestamp_missing() {
+        let mut payload_proto = TrackAndTracePayloadProto::new();
+
+        payload_proto.set_action(ActionProto::CREATE_RECORD);
+        let payload = payload_proto.clone().into_native().unwrap();
+        match validate_payload(&payload) {
+            Ok(_) => panic!("Payload missing timestamp, should return error"),
+            Err(err) => assert!(err.to_string().contains("Timestamp is not set")),
+        }
     }
 
-    pub fn get_action(&self) -> Action {
-        self.action.clone()
+    #[test]
+    /// Test that an error is returned if the payload is missing the action. This test needs
+    /// to use the proto directly originally to be able to mimic the scenarios possbile from
+    /// creating a CreateRecordAction from bytes. This is because the CreateRecordActionBuilder
+    /// protects from building certain invalid payloads.
+    fn test_validate_payload_action_missing() {
+        let mut payload_proto = TrackAndTracePayloadProto::new();
+
+        payload_proto.set_action(ActionProto::CREATE_RECORD);
+        payload_proto.set_timestamp(2);
+        let payload = payload_proto.clone().into_native().unwrap();
+        assert!(
+            validate_payload(&payload).is_err(),
+            "Empty CreateRecordAction should not be valid"
+        );
     }
 
-    pub fn get_timestamp(&self) -> u64 {
-        self.timestamp
+    #[test]
+    /// Test that an error is returned if the payload with CreateRecordAction is missing the
+    /// record_id. This test needs to use the proto directly originally to be able to mimic the
+    /// scenarios possbile from creating a CreateRecordAction from bytes. This is because the
+    /// CreateRecordActionBuilder protects from building certain invalid payloads.
+    fn test_validate_payload_record_id_missing() {
+        let mut payload_proto = TrackAndTracePayloadProto::new();
+
+        payload_proto.set_action(ActionProto::CREATE_RECORD);
+        payload_proto.set_timestamp(2);
+        let action = CreateRecordActionProto::new();
+        payload_proto.set_create_record(action.clone());
+        let payload = payload_proto.clone().into_native().unwrap();
+        match validate_payload(&payload) {
+            Ok(_) => panic!("Payload missing record_id, should return error"),
+            Err(err) => {
+                println!("err {:?}", err);
+                assert!(err.to_string().contains("Record id cannot be empty string"));
+            }
+        }
     }
+
+    #[test]
+    /// Test that an error is returned if the payload with CreateRecordAction is missing the
+    /// schema. This test needs to use the proto directly originally to be able to mimic the
+    /// scenarios possbile from creating a CreateRecordAction from bytes. This is because the
+    /// CreateRecordActionBuilder protects from building certain invalid payloads.
+    fn test_validate_payload_schema_missing() {
+        let mut payload_proto = TrackAndTracePayloadProto::new();
+
+        payload_proto.set_action(ActionProto::CREATE_RECORD);
+        payload_proto.set_timestamp(2);
+        let mut action = CreateRecordActionProto::new();
+        action.set_record_id("my_record".to_string());
+        payload_proto.set_create_record(action.clone());
+        let payload = payload_proto.clone().into_native().unwrap();
+        match validate_payload(&payload) {
+            Ok(_) => panic!("Payload missing schema, should return error"),
+            Err(err) => {
+                println!("err {:?}", err);
+                assert!(err
+                    .to_string()
+                    .contains("Schema name cannot be empty string"));
+            }
+        }
+    }
+
+    #[test]
+    /// Test that an ok is returned if the payload with CreateRecordAction is valid. This test
+    /// needs to use the proto directly originally to be able to mimic the scenarios possbile
+    /// from creating a CreateRecordAction from bytes. This is because the
+    /// CreateRecordActionBuilder protects from building certain invalid payloads.
+    fn test_validate_payload_valid() {
+        let mut payload_proto = TrackAndTracePayloadProto::new();
+
+        payload_proto.set_action(ActionProto::CREATE_RECORD);
+        payload_proto.set_timestamp(2);
+        let mut action = CreateRecordActionProto::new();
+        action.set_record_id("my_record".to_string());
+        action.set_schema("my_schema".to_string());
+        payload_proto.set_create_record(action.clone());
+        let payload = payload_proto.clone().into_native().unwrap();
+        assert!(
+            validate_payload(&payload).is_ok(),
+            "Payload should be valid"
+        );
+    }
+
 }
