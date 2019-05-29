@@ -101,7 +101,13 @@ pub fn update_property_end_block_num(
 
 pub fn insert_proposals(conn: &PgConnection, proposals: &[NewProposal]) -> QueryResult<()> {
     for proposal in proposals {
-        update_proposal_end_block_num(conn, &proposal.record_id, proposal.start_block_num)?;
+        update_proposal_end_block_num(
+            conn,
+            &proposal.record_id,
+            &proposal.receiving_agent,
+            &proposal.role,
+            proposal.start_block_num,
+        )?;
     }
 
     insert_into(proposal::table)
@@ -113,12 +119,16 @@ pub fn insert_proposals(conn: &PgConnection, proposals: &[NewProposal]) -> Query
 pub fn update_proposal_end_block_num(
     conn: &PgConnection,
     record_id: &str,
+    receiving_agent: &str,
+    role: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(proposal::table)
         .filter(
             proposal::record_id
                 .eq(record_id)
+                .and(proposal::receiving_agent.eq(receiving_agent))
+                .and(proposal::role.eq(role))
                 .and(proposal::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(proposal::end_block_num.eq(current_block_num))
