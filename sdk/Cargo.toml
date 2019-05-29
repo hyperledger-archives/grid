@@ -24,6 +24,8 @@ description = """\
 """
 homepage = "https://grid.hyperledger.org"
 edition = "2018"
+license = "Apache-2.0"
+
 
 [dependencies]
 protobuf = "2"
