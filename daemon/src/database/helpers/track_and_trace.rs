@@ -16,7 +16,8 @@
  */
 
 use super::models::{
-    NewAssociatedAgent, NewProperty, NewProposal, NewRecord, NewReportedValue, NewReporter,
+    AssociatedAgent, NewAssociatedAgent, NewProperty, NewProposal, NewRecord, NewReportedValue,
+    NewReporter, Proposal, Record,
 };
 use super::schema::{associated_agent, property, proposal, record, reported_value, reporter};
 use super::MAX_BLOCK_NUM;
@@ -25,6 +26,7 @@ use diesel::{
     dsl::{insert_into, update},
     pg::PgConnection,
     prelude::*,
+    result::Error::NotFound,
     QueryResult,
 };
 
@@ -36,6 +38,7 @@ pub fn insert_associated_agents(
         update_associated_agent_end_block_num(
             conn,
             &agent.record_id,
+            &agent.role,
             &agent.agent_id,
             agent.start_block_num,
         )?;
@@ -50,6 +53,7 @@ pub fn insert_associated_agents(
 pub fn update_associated_agent_end_block_num(
     conn: &PgConnection,
     record_id: &str,
+    role: &str,
     agent_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
@@ -57,12 +61,27 @@ pub fn update_associated_agent_end_block_num(
         .filter(
             associated_agent::record_id
                 .eq(record_id)
+                .and(associated_agent::role.eq(role))
                 .and(associated_agent::agent_id.eq(agent_id))
                 .and(associated_agent::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(associated_agent::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn list_associated_agents(
+    conn: &PgConnection,
+    record_id: &str,
+) -> QueryResult<Vec<AssociatedAgent>> {
+    associated_agent::table
+        .select(associated_agent::all_columns)
+        .filter(
+            associated_agent::end_block_num
+                .eq(MAX_BLOCK_NUM)
+                .and(associated_agent::record_id.eq(record_id)),
+        )
+        .load::<AssociatedAgent>(conn)
 }
 
 pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> QueryResult<()> {
@@ -126,6 +145,17 @@ pub fn update_proposal_end_block_num(
         .map(|_| ())
 }
 
+pub fn list_proposals(conn: &PgConnection, record_id: &str) -> QueryResult<Vec<Proposal>> {
+    proposal::table
+        .select(proposal::all_columns)
+        .filter(
+            proposal::end_block_num
+                .eq(MAX_BLOCK_NUM)
+                .and(proposal::record_id.eq(record_id)),
+        )
+        .load::<Proposal>(conn)
+}
+
 pub fn insert_records(conn: &PgConnection, records: &[NewRecord]) -> QueryResult<()> {
     for record in records {
         update_record_end_block_num(conn, &record.record_id, record.start_block_num)?;
@@ -151,6 +181,19 @@ pub fn update_record_end_block_num(
         .set(record::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn fetch_record(conn: &PgConnection, record_id: &str) -> QueryResult<Option<Record>> {
+    record::table
+        .select(record::all_columns)
+        .filter(
+            record::record_id
+                .eq(record_id)
+                .and(record::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
 pub fn insert_reported_values(conn: &PgConnection, values: &[NewReportedValue]) -> QueryResult<()> {

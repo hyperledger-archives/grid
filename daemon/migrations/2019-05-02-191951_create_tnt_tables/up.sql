@@ -67,6 +67,7 @@ CREATE INDEX IF NOT EXISTS proposal_idx
 CREATE TABLE IF NOT EXISTS associated_agent (
     id BIGSERIAL PRIMARY KEY,
     record_id TEXT NOT NULL,
+    role TEXT NOT NULL,
     agent_id TEXT NOT NULL,
     timestamp BIGINT NOT NULL
 ) INHERITS (chain_record);

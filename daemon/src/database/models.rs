@@ -208,6 +208,7 @@ impl FromSql<LatLong, Pg> for LatLongValue {
 #[table_name = "associated_agent"]
 pub struct NewAssociatedAgent {
     pub record_id: String,
+    pub role: String,
     pub start_block_num: i64,
     pub end_block_num: i64,
     pub agent_id: String,
@@ -219,6 +220,7 @@ pub struct NewAssociatedAgent {
 pub struct AssociatedAgent {
     pub id: i64,
     pub record_id: String,
+    pub role: String,
     pub start_block_num: i64,
     pub end_block_num: i64,
     pub agent_id: String,
@@ -265,7 +267,6 @@ pub struct NewProposal {
     pub terms: String,
 }
 
-#[allow(dead_code)]
 #[derive(Queryable, Debug)]
 pub struct Proposal {
     pub id: i64,

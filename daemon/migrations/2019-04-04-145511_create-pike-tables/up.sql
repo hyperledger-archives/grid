@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS agent (
     public_key VARCHAR(70) NOT NULL,
     org_id VARCHAR(256) NOT NULL,
     active BOOLEAN NOT NULL,
-    roles VARCHAR(256) [] NOT NULL,
+    roles TEXT [] NOT NULL,
     metadata JSON [] NOT NULL
 ) INHERITS (chain_record);
 

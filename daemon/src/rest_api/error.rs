@@ -86,7 +86,7 @@ impl fmt::Display for RestApiResponseError {
                 write!(f, "Sawtooth Validator Response Error: {}", s)
             }
             RestApiResponseError::RequestHandlerError(ref s) => {
-                write!(f, "Sawtooth Validator Response Error: {}", s)
+                write!(f, "Request Handler Error Error: {}", s)
             }
             RestApiResponseError::NotFoundError(ref s) => write!(f, "Not Found Error: {}", s),
             RestApiResponseError::DatabaseError(ref s) => write!(f, "Database Error: {}", s),
