@@ -16,6 +16,7 @@ use grid_sdk::protos;
 use log;
 use protobuf;
 use reqwest;
+use sabre_sdk;
 use sawtooth_sdk::signing;
 use serde_yaml;
 use std;
@@ -33,6 +34,7 @@ pub enum CliError {
     ProtobufError(protobuf::ProtobufError),
     ReqwestError(reqwest::Error),
     GridProtoError(protos::ProtoConversionError),
+    SabreProtoError(sabre_sdk::protos::ProtoConversionError),
 }
 
 impl StdError for CliError {
@@ -47,6 +49,7 @@ impl StdError for CliError {
             CliError::SigningError(err) => Some(err),
             CliError::ReqwestError(err) => Some(err),
             CliError::GridProtoError(err) => Some(err),
+            CliError::SabreProtoError(err) => Some(err),
         }
     }
 }
@@ -65,6 +68,7 @@ impl std::fmt::Display for CliError {
             }
             CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
+            CliError::SabreProtoError(ref err) => write!(f, "Sabre Proto Error: {}", err),
         }
     }
 }
@@ -107,5 +111,11 @@ impl From<reqwest::Error> for CliError {
 impl From<protos::ProtoConversionError> for CliError {
     fn from(err: protos::ProtoConversionError) -> Self {
         CliError::GridProtoError(err)
+    }
+}
+
+impl From<sabre_sdk::protos::ProtoConversionError> for CliError {
+    fn from(err: sabre_sdk::protos::ProtoConversionError) -> Self {
+        CliError::SabreProtoError(err)
     }
 }
