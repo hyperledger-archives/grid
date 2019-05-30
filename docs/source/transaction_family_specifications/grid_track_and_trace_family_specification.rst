@@ -8,22 +8,28 @@ Overview
 The Grid Track and Trace transaction family allows users to track
 goods as they move through a supply chain. Records for goods include a
 history of ownership and custodianship, as well as histories for a
-variety of properties such as temperature and location. These
-properties are managed through a user-specifiable system of record
-types.
+variety of properties such as temperature and location. These properties are
+managed using Grid Schemas.
 
 
 State
 =====
 
 All Grid Track and Trace objects are serialized using Protocol Buffers before
-being stored in state. These objects include: Agents, Properties
-(accompanied by their auxiliary PropertyPage objects), Proposals,
-Records, and RecordTypes. As described in the Addressing_ section
-below, these objects are stored in separate sub-namespaces under the
-Grid Track and Trace namespace. To handle hash collisions, all objects are
-stored in lists within protobuf "Container" objects.
+being stored in state. These objects include: Records, Proposals, and
+Properties (accompanied by their auxiliary PropertyPage objects). As described
+in the Addressing_ section below, these objects are stored in separate
+sub-namespaces under the Grid Track and Trace namespace. To handle hash
+collisions, all objects are stored in lists within protobuf "List" objects.
 
+.. note:: In addition to the messages defined in Grid Track and Trace, this
+    transaction family also makes use of Agents (as defined in the :doc:`Pike
+    Transaction Family<pike_transaction_family>`), as well as Schemas,
+    PropertyDefinitions, and PropertyValues (as defined in the :doc:`Grid
+    Schema Transaction Family<grid_schema_family_specification>`). Clients
+    and contracts that implement this specification will need to orchestrate
+    these transaction families together in order to create a working
+    application.
 
 Records
 -------
@@ -31,7 +37,7 @@ Records
 Records represent the goods being tracked by Grid Track and Trace. Almost
 every transaction references some Record.
 
-A Record contains a unique identifier, the name of a RecordType, and
+A Record contains a unique identifier, the name of a Schema, and
 lists containing the history of its owners and custodians. It also
 contains a ``final`` flag indicating whether further updates can be
 made to the Record and its Properties. If this flag is set to true,
@@ -40,44 +46,44 @@ its ``final`` flag.
 
 .. code-block:: protobuf
 
-   message Record {
-       message AssociatedAgent {
-           // The Agent's public key
-           string agent_id = 1;
+    message Record {
+        message AssociatedAgent {
+            // Agent's public key.
+            string agent_id = 1;
 
-           // Approximately when this agent was associated, as a Unix UTC timestamp
-           uint64 timestamp = 2;
-       }
+            // The approximate time this agent was associated, as a Unix UTC timestamp.
+            uint64 timestamp = 2;
+        }
 
-       // The unique user-defined natural key which identifies the
-       // object in the real world (for example, a serial number)
-       string identifier = 1;
+        // User-defined natural key which identifies the object in the real world
+        // (for example a serial number).
+        string record_id = 1;
 
-       string record_type = 2;
+        // Name of the Schema used by the record.
+        string schema = 2;
 
-       // Ordered oldest to newest by timestamp
-       repeated AssociatedAgent owners = 3;
-       repeated AssociatedAgent custodians = 4;
+        // Ordered oldest to newest by timestamp.
+        repeated AssociatedAgent owners = 3;
+        repeated AssociatedAgent custodians = 4;
 
-       // Flag indicating whether the Record can be updated. If it is set
-       // to true, then the record has been finalized and no further
-       // changes can be made to it or its Properties.
-       bool final = 5;
-   }
+        // Flag indicating whether the Record can be updated. If it is set
+        // to true, then the record has been finalized and no further
+        // changes can be made to it or its Properties.
+        bool final = 5;
+    }
 
 
 Note that while information about a Record's owners and custodians are
 included in the object, information about its Properties are stored
 separately (see the Properties_ section below).
 
-Records whose addresses collide are stored in a list alphabetically by
-identifier.
+Records whose addresses collide are stored in a list, sorted by record ID.
 
 .. code-block:: protobuf
 
-   message RecordContainer {
-       repeated Record entries = 1;
-   }
+    message RecordList {
+        repeated Record entries = 1;
+    }
 
 .. _Properties:
 
@@ -106,10 +112,10 @@ reporters, and paging information) is stored at the namespace ending
 in ``0000``. The namespaces ending in ``0001`` to ``ffff`` will each
 store a PropertyPage containing up to 256 reported values (which
 include timestamps and their reporter's identity). Any Transaction
-updating the value of a Property first reads out the PropertyContainer
+updating the value of a Property first reads out the PropertyList
 object at ``0000`` and then reads out the appropriate
-PropertyPageContainer before adding the update and writing the new
-PropertyPageContainer back to state.
+PropertyPageList before adding the update and writing the new
+PropertyPageList back to state.
 
 The Transaction Processor treats these pages as a ring buffer, so that
 when page ``ffff`` is filled, the next update will erase the entries
@@ -119,85 +125,79 @@ ever runs out of space for new updates. Under this scheme, 16^2 *
 (16^4 - 1) = 16776960 entries can be stored before older updates are
 overwritten.
 
-Updates to Properties can have one of the following protobuf types:
-``bytes``, ``string``, ``sint64``, ``float``, or ``Location`` (see the
-section on RecordTypes_ below). The type of an update is indicated by
-a tag belonging to the PropertySchema object.
+Updates to Properties are in the format of PropertyValue (defined in the Grid
+Schema Transaction Family). The type of update is indicated by a tag belonging
+to the PropertyDefinition object. For more information about PropertyValues and
+PropertyDefinitions, please see the :doc:`grid_schema_family_specification`.
 
 .. code-block:: protobuf
 
-   message Property {
-       message Reporter {
-           // The public key of the Agent authorized to report updates.
-	   string public_key = 1;
+    message Property {
+        message Reporter {
+            // The public key of the Agent authorized to report updates.
+            string public_key = 1;
 
-	   // A flag indicating whether the reporter is authorized to
-	   // send updates. When a reporter is added, this is set to
-	   // true, and a `RevokeReporter` transaction sets it to false.
-	   bool authorized = 2;
+            // A flag indicating whether the reporter is authorized to send updates.
+            // When a reporter is added, this is set to true, and a `RevokeReporter`
+            // transaction sets it to false.
+            bool authorized = 2;
 
-	   // An update must be stored with some way of identifying which
-	   // Agent sent it. Storing a full public key for each update would
-	   // be wasteful, so instead Reporters are identified by their index
-	   // in the `reporters` field.
-	   uint32 index = 3;
-       }
+            // An update must be stored with some way of identifying which
+            // Agent sent it. Storing a full public key for each update would
+            // be wasteful, so instead Reporters are identified by their index
+            // in the `reporters` field.
+            uint32 index = 3;
+        }
 
-       // The name of the Property, e.g. "temperature". This must be unique
-       // among Properties.
-       string name = 1;
+        // The name of the Property, e.g. "temperature". This must be unique among
+        // Properties.
+        string name = 1;
 
-       // The natural key of the Property's associated Record.
-       string record_id = 2;
+        // The natural key of the Property's associated Record.
+        string record_id = 2;
 
-       // The Property's type (int, string, etc.)
-       PropertySchema.DataType data_type = 3;
+        // The name of the PropertyDefinition that defines this record.
+        PropertyDefinition property_definition = 3;
 
-       // The Reporters authorized to send updates, sorted by index. New
-       // Reporters should be given an index equal to the number of
-       // Reporters already authorized.
-       repeated Reporter reporters = 4;
+        // The Reporters authorized to send updates, sorted by index. New
+        // Reporters should be given an index equal to the number of
+        // Reporters already authorized.
+        repeated Reporter reporters = 4;
 
-       // The page to which new updates are added. This number represents
-       // the last 4 hex characters of the page's address. Consequently,
-       // it should not exceed 16^4 = 65536.
-       uint32 current_page = 5;
+        // The page to which new updates are added. This number represents
+        // the last 4 hex characters of the page's address. Consequently,
+        // it should not exceed 16^4 = 65536.
+        uint32 current_page = 5;
 
-       // A flag indicating whether the first 16^4 pages have been filled.
-       // This is used to calculate the last four hex characters of the
-       // address of the page containing the earliest updates. When it is
-       // false, the earliest page's address will end in "0001". When it is
-       // true, the earliest page's address will be one more than the
-       // current_page, or "0001" if the current_page is "ffff".
-       bool wrapped = 6;
-   }
+        // A flag indicating whether the first 16^4 pages have been filled.
+        // This is used to calculate the last four hex characters of the
+        // address of the page containing the earliest updates. When it is
+        // false, the earliest page's address will end in "0001". When it is
+        // true, the earliest page's address will be one more than the
+        // current_page, or "0001" if the current_page is "ffff".
+        bool wrapped = 6;
+    }
 
-   message PropertyPage {
-       message ReportedValue {
-           // The index of the reporter id in reporters field
-           uint32 reporter_index = 1;
-           // Approximately when this value was reported, as a Unix UTC timestamp
-           uint64 timestamp = 2;
+    message PropertyPage {
+        message ReportedValue {
+            // The index of the reporter id in reporters field.
+            uint32 reporter_index = 1;
 
-           // The type-specific value of the update. Only one of these
-           // fields should be used, and it should match the type
-           // specified for this Property in the RecordType.
-           bytes bytes_value = 11;
-           string string_value = 12;
-           sint64 int_value = 13;
-           float float_value = 14;
-           Location location_value = 15;
-       }
+            // The approximate time this value was reported, as a Unix UTC timestamp.
+            uint64 timestamp = 2;
 
-       // The name of the page's associated Property and the record_id of
-       // its associated Record. These are required to distinguish pages
-       // with colliding addresses.
-       string name = 1;
-       string record_id = 2;
+            PropertyValue value = 3;
+        }
 
-       // ReportedValues are sorted first by timestamp, then by reporter_index.
-       repeated ReportedValue reported_values = 4;
-   }
+        // The name of the page's associated Property and the record_id of
+        // its associated Record. These are required to distinguish pages
+        // with colliding addresses.
+        string name = 1;
+        string record_id = 2;
+
+        // ReportedValues are sorted first by timestamp, then by reporter_index.
+        repeated ReportedValue reported_values = 3;
+    }
 
 
 Properties and PropertyPages whose addresses collide are stored in
@@ -205,119 +205,13 @@ lists alphabetized by Property name.
 
 .. code-block:: protobuf
 
-   message PropertyContainer {
-       repeated Property entries = 1;
-   }
-
-   message PropertyPageContainer {
-       repeated PropertyPage entries = 1;
-   }
-
-.. _RecordTypes:
-
-Record Types
-------------
-
-In order to validate incoming tracking data, Records are assigned a
-RecordType at creation. A RecordType is a user-defined list of
-PropertySchemas, each of which has a name and data type.
-PropertySchemas may be designated as ``required``. A required Property
-must be initialized with a value at the time of a Record's creation.
-For example, a ``Fish`` type might list ``species`` as required, but
-not ``temperature``, since temperature wouldn't be known until
-measurements were taken. Properties not specified at Record creation
-are initialized as empty lists.
-
-.. code-block:: protobuf
-
-   message PropertySchema {
-       enum DataType {
-           BYTES = 0;
-	   STRING = 1;
-	   INT = 2;
-	   FLOAT = 3;
-	   LOCATION = 4;
-       }
-
-       // The name of the property, e.g. "temperature"
-       string name = 1;
-
-       // The Property's type (int, string, etc.)
-       DataType data_type = 2;
-
-       // A flag indicating whether initial values must be provided for the
-       // Property when a Record is created.
-       bool required = 3;
-   }
-
-
-   message RecordType {
-       // A unique human-readable designation for the RecordType
-       string name = 1;
-
-       repeated PropertySchema properties = 2;
-   }
-
-
-Each Record will have exactly the Properties listed in its type. New
-Records cannot be created without a type; consequently, a
-type-creation transaction must be executed before any Records can be
-created.
-
-RecordTypes whose addresses collide are stored in a list alphabetized
-by name.
-
-.. code-block:: protobuf
-
-   message RecordTypeContainer {
-       repeated RecordType entries = 1;
-   }
-
-
-Because it is expected to be used for many RecordTypes, a dedicated
-Location protobuf message is used, the values of which are latitude
-and longitude.
-
-.. code-block:: protobuf
-
-  message Location {
-        // Coordinates are expected to be in millionths of a degree
-        sint64 latitude = 1;
-        sint64 longitude = 2;
-  }
-
-
-Agents
-------
-
-Agents are entities that can send transactions affecting Records. This
-could include not only humans and companies that act as owners and
-custodians of objects being tracked, but also autonomous sensors
-sending transactions that update Records' data. All Agents must be
-created (registered on-chain) before interacting with Records.
-
-.. code-block:: protobuf
-
-    message Agent {
-        // The Agent's public key. This must be unique.
-        string public_key = 1;
-
-        // A human-readable name identifying the Agent.
-        string name = 2;
-
-        // Approximately when the Agent was registered, as a Unix UTC timestamp
-        uint64 timestamp = 3;
+    message PropertyList {
+        repeated Property entries = 1;
     }
 
-Agents whose keys have the same hash are stored in a list alphabetized
-by public key.
-
-.. code-block:: protobuf
-
-    message AgentContainer {
-        repeated Agent entries = 1;
+    message PropertyPageList {
+        repeated PropertyPage entries = 1;
     }
-
 
 Proposals
 ---------
@@ -333,49 +227,50 @@ issuing Agent.
 
 .. code-block:: protobuf
 
-   message Proposal {
-       enum Role {
-           OWNER = 1;
-           CUSTODIAN = 2;
-           REPORTER = 3;
-       }
+    message Proposal {
+        enum Role {
+            OWNER = 0;
+            CUSTODIAN = 1;
+            REPORTER = 2;
+        }
 
-       enum Status {
-           OPEN = 1;
-           ACCEPTED = 2;
-           REJECTED = 3;
-           CANCELED = 4;
-       }
+        enum Status {
+            OPEN = 0;
+            ACCEPTED = 1;
+            REJECTED = 2;
+            CANCELED = 3;
+        }
 
-       // The id of the Record with which this Proposal deals
-       string record_id = 1;
+        // The Record that this proposal applies to.
+        string record_id = 1;
 
-       // Approximately when this proposal was created, as a Unix UTC timestamp
-       uint64 timestamp = 2;
+        // The approximate time this proposal was created, as a Unix UTC timestamp.
+        uint64 timestamp = 2;
 
-       // The public key of the Agent that created the Proposal
-       string issuing_agent = 3;
+        // The public key of the Agent sending the Proposal. This Agent must
+        // be the owner of the Record (or the custodian, if the Proposal is
+        // to transfer custodianship).
+        string issuing_agent = 3;
 
-       // The public key of the Agent to which the Proposal is addressed
-       string receiving_agent = 4;
+        // The public key of the Agent to whom the Proposal is sent.
+        string receiving_agent = 4;
 
-       // Whether the Proposal is for transfer of ownership or
-       // custodianship or reporter authorization
-       Role role = 5;
+        // What the Proposal is for -- transferring ownership, transferring
+        // custodianship, or authorizing a reporter.
+        Role role = 5;
 
-       // The names of properties for which the reporter is being authorized
-       // (empty for owner or custodian transfers)
-       repeated string properties = 6;
+        // The names of properties for which the reporter is being authorized
+        // (empty for owner or custodian transfers).
+        repeated string properties = 6;
 
-       // Whether the Proposal is open, accepted, rejected, or canceled.
-       // For a given Record and receiving Agent, there can be only one
-       // open Proposal at a time for each role.
-       Status status = 7;
+        // The status of the Proposal. For a given Record and receiving
+        // Agent, there can be only one open Proposal at a time for each
+        // role.
+        Status status = 7;
 
-       // human-readable terms of transfer
-       string terms = 8;
-   }
-
+        // The human-readable terms of transfer.
+        string terms = 8;
+    }
 
 Proposals with the same address are stored in a list sorted
 alphabetically first by ``record_id``, then by ``receiving_agent``,
@@ -383,9 +278,9 @@ then by ``timestamp`` (earliest to latest).
 
 .. code-block:: protobuf
 
-   message ProposalContainer {
-       repeated Proposal entries = 1;
-   }
+    message ProposalList {
+        repeated Proposal entries = 1;
+    }
 
 .. _Addressing:
 
@@ -407,16 +302,13 @@ the first six characters of the SHA-512 hash of the string
 After its namespace prefix, the next two characters of a Grid Track and Trace
 object's address are a string based on the object's type:
 
-- Agent: ``ae``
 - Property / PropertyPage: ``ea``
 - Proposal: ``aa``
 - Record: ``ec``
-- Record Type: ``ee``
 
 The remaining 62 characters of an object's address are determined by
 its type:
 
-- Agent: the first 62 characters of the hash of its public key.
 - Property: the concatenation of the following:
 
   - The first 36 characters of the hash of the identifier of its
@@ -441,8 +333,6 @@ its type:
   - The first 4 characters of the hash of its ``timestamp``.
 
 - Record: the first 62 characters of the hash of its identifier.
-- Record Type: the first 62 characters of the hash of the name of the
-  type.
 
 For example, if ``fish-456`` is a Record with a ``temperature``
 Property and a ``current_page`` of 28, the address for that
@@ -465,55 +355,34 @@ allow for the transaction to be dispatched to appropriate handling logic.
 
 .. code-block:: protobuf
 
-   message SCPayload {
-       enum Action {
-           CREATE_AGENT = 1;
-           CREATE_RECORD = 2;
-           FINALIZE_RECORD = 3;
-           CREATE_RECORD_TYPE = 4;
-           UPDATE_PROPERTIES = 5;
-           CREATE_PROPOSAL = 6;
-           ANSWER_PROPOSAL = 7;
-           REVOKE_REPORTER = 8;
-       }
+    message TrackAndTracePayload {
+        enum Action {
+            UNSET_ACTION = 0;
+            CREATE_RECORD = 1;
+            FINALIZE_RECORD = 2;
+            UPDATE_PROPERTIES = 3;
+            CREATE_PROPOSAL = 4;
+            ANSWER_PROPOSAL = 5;
+            REVOKE_REPORTER = 6;
+        }
 
-       Action action = 1;
+        Action action = 1;
 
-       // Approximately when transaction was submitted, as a Unix UTC timestamp
-       uint64 timestamp = 2;
+        // The approximate time this payload was submitted, as a Unix UTC timestamp.
+        uint64 timestamp = 2;
 
-       CreateAgentAction create_agent = 3;
-       CreateRecordAction create_record = 4;
-       FinalizeRecordAction finalize_record = 5;
-       CreateRecordTypeAction create_record_type = 6;
-       UpdatePropertiesAction update_properties = 7;
-       CreateProposalAction create_proposal = 8;
-       AnswerProposalAction answer_proposal = 9;
-       RevokeReporterAction revoke_reporter = 10;
-   }
-
+        // The transaction handler will read from just one of these fields
+        // according to the Action.
+        CreateRecordAction create_record = 3;
+        FinalizeRecordAction finalize_record = 4;
+        UpdatePropertiesAction update_properties = 6;
+        CreateProposalAction create_proposal = 7;
+        AnswerProposalAction answer_proposal = 8;
+        RevokeReporterAction revoke_reporter = 9;
+    }
 
 Any transaction is invalid if its timestamp is greater than the
 validator's system time.
-
-
-Create Agent
-------------
-
-Create an Agent that can interact with Records. The ``signer_pubkey``
-in the transaction header is used as the Agent's public key.
-
-.. code-block:: protobuf
-
-   message CreateAgentAction {
-      // The human-readable name of the Agent, not necessarily unique
-      string name = 1;
-   }
-
-
-A CreateAgent transaction is invalid if there is already an Agent with
-the signer's public key or if the name is the empty string.
-
 
 .. _CreateRecord:
 
@@ -522,45 +391,30 @@ Create Record
 
 When an Agent creates a Record, the Record is initialized with that
 Agent as both owner and custodian. Any Properties required of the
-Record by its RecordType must have initial values provided.
+Record by its Schema must have initial values provided.
 
 .. code-block:: protobuf
 
-   message PropertyValue {
-       // The name of the property being set
-       string name = 1;
-       PropertySchema.DataType data_type = 2;
+    message CreateRecordAction {
+        // The natural key of the Record
+        string record_id = 1;
 
-       // The type-specific value to initialize or update a Property. Only
-       // one of these fields should be used, and it should match the type
-       // specified for this Property in the RecordType.
-       bytes bytes_value = 11;
-       string string_value = 12;
-       sint64 int_value = 13;
-       float float_value = 14;
-       Location location_value = 15;
-   }
+        // The name of the Schema this Record belongs to
+        string schema = 2;
 
-   message CreateRecordAction {
-       // The natural key of the Record
-       string record_id = 1;
-
-       // The name of the RecordType this Record belongs to
-       string record_type = 2;
-
-       repeated PropertyValue properties = 3;
-   }
+        repeated PropertyValue properties = 3;
+    }
 
 
 A CreateRecord transaction is invalid if one of the following
 conditions occurs:
 
-- The signer is not registered as an Agent.
+- The signer is not registered as a Pike Agent.
 - The identifier is the empty string.
 - The identifier belongs to an existing Record.
-- A valid RecordType is not specified.
+- A valid Schema is not specified.
 - Initial values are not provided for all of the Properties specified
-  as required by the RecordType.
+  as required by the Schema.
 - Initial values of the wrong type are provided.
 
 
@@ -574,9 +428,10 @@ and custodian are not the same.
 
 .. code-block:: protobuf
 
-   message FinalizeRecordAction {
-       string record_id = 1;
-   }
+    message FinalizeRecordAction {
+        // The natural key of the Record
+        string record_id = 1;
+    }
 
 
 A FinalizeRecord transaction is invalid if one of the following
@@ -585,30 +440,6 @@ conditions occurs:
 - The Record it targets does not exist.
 - The Record it targets is already final.
 - The signer is not both the Record's owner and custodian.
-
-
-Create Record Type
-------------------
-
-The payload of the Transaction that creates RecordTypes is the same as
-the RecordType object itself: it has a name and a list of Properties.
-
-.. code-block:: protobuf
-
-   message CreateRecordTypeAction {
-       string name = 1;
-
-       repeated PropertySchema properties = 2;
-   }
-
-
-A CreateRecordType transaction is invalid if one of the following
-conditions occurs:
-
-- The signer is not registered as an Agent.
-- Its list of Properties is empty.
-- The name of the RecordType is the empty string.
-- A RecordType with its name already exists.
 
 
 Update Properties
@@ -620,12 +451,12 @@ sent by an Agent authorized to report on the Property.
 
 .. code-block:: protobuf
 
-   message UpdatePropertiesAction {
-       // The natural key of the Record
-       string record_id = 1;
+    message UpdatePropertiesAction {
+        // The natural key of the Record
+        string record_id = 1;
 
-       repeated PropertyValue properties = 2;
-   }
+        repeated PropertyValue properties = 2;
+    }
 
 
 An UpdateProperties transaction is invalid if one of the following
@@ -633,9 +464,11 @@ conditions occurs:
 
 - The Record does not exist.
 - The Record is final.
-- Its signer is not authorized to report on that Record.
-- None of the provided PropertyValues match the types specified in the
-  Record's RecordType.
+- Its signer is not authorized to report on any of the provided properties.
+- Any of the provided PropertyValues do not match the types specified in the
+  Record's Schema.
+- Any of the provided PropertyValue's data types do not match the data type
+  specified in the PropertyDefinition.
 
 
 Create Proposal
@@ -649,37 +482,36 @@ of Property names must be included.
 
 .. code-block:: protobuf
 
-   message CreateProposalPayload {
-       enum Role {
-           OWNER = 1;
-           CUSTODIAN = 2;
-           REPORTER = 3;
-       }
+    message CreateProposalAction {
+        // The natural key of the Record
+        string record_id = 1;
 
-       string record_id = 1;
+        // the public key of the Agent to whom the Proposal is sent
+        // (must be different from the Agent creating the Proposal)
+        string receiving_agent = 2;
 
-       // The public key of the Agent to whom the Proposal is sent
-       // (must be different from the Agent sending the Proposal).
-       string receiving_agent = 3;
+        Proposal.Role role = 3;
 
-       repeated string properties = 4;
+        repeated string properties = 4;
 
-       Role role = 5;
-   }
+        // The human-readable terms of transfer.
+        string terms = 5;
+    }
 
 
 A CreateProposal transaction is invalid if one of the following
 conditions occurs:
 
+- The issuing Agent is not registered.
+- The receiving Agent is not registered.
+- There is already an open Proposal for the Record and receiving Agent
+  for the specified role.
+- The Record does not exist.
+- The Record is final.
 - The signer is not the owner and the Proposal is for transfer of
   ownership or reporter authorization.
 - The signer is not the custodian and the Proposal is for transfer of
   custodianship.
-- The receiving Agent is not registered (the signer must be registered
-  as well, but this is implied by the previous two conditions).
-- There is already an open Proposal for the Record and receiving Agent
-  for the specified role.
-- The Record is final.
 - The Proposal is for reporter authorization and the list of Property
   names is empty.
 
@@ -695,24 +527,25 @@ status as ``canceled`` rather than ``rejected``.
 
 .. code-block:: protobuf
 
-   message AnswerProposalPayload {
-       enum Role {
-           OWNER = 1;
-           CUSTODIAN = 2;
-           REPORTER = 3;
-       }
+    message AnswerProposalAction {
+        enum Response {
+            ACCEPT = 0;
+            REJECT = 1;
+            CANCEL = 2;
+        }
 
-       enum Response {
-           ACCEPT = 1;
-           REJECT = 2;
-           CANCEL = 3;
-       }
+        // The natural key of the Record
+        string record_id = 1;
 
-       string record_id = 1;
-       string receiving_agent = 2;
-       Role role = 3;
-       Response response = 4;
-   }
+        // The public key of the Agent to whom the proposal is sent
+        string receiving_agent = 2;
+
+        // The role being proposed (owner, custodian, or reporter)
+        Proposal.Role role = 3;
+
+        // The respose to the Proposal (accept, reject, or cancel)
+        Response response = 4;
+    }
 
 
 Proposals can conflict, in the sense that a Record's owner might have
@@ -731,6 +564,7 @@ conditions occurs:
   ``cancel``.
 - The response is ``accept``, but the issuing Agent is no longer the
   owner or custodian (as appropriate to the role) of the Record.
+- The referenced record is no longer valid.
 
 
 Revoke Reporter
@@ -738,18 +572,21 @@ Revoke Reporter
 
 The owner of a Record can send a RevokeReporter transaction to remove
 a reporter's authorization to report on one or more Properties for
-that Record. This creates a Proposal which is immediately closed and
-marked as accepted.
+that Record.
 
 .. code-block:: protobuf
 
-   message RevokeReporterPayload {
-       string record_id = 1;
-       string reporter_id = 2;
+    message RevokeReporterAction {
+        // The natural key of the Record
+        string record_id = 1;
 
-       // the Properties for which the reporter's authorization is revoked
-       repeated string properties = 3;
-   }
+        // The reporter's public key
+        string reporter_id = 2;
+
+        // The names of the Properties for which the reporter's
+        // authorization is revoked
+        repeated string properties = 3;
+    }
 
 A RevokeReporter transaction is invalid if one of the following
 conditions occurs:
@@ -759,6 +596,7 @@ conditions occurs:
 - The signer is not the Record's owner.
 - The reporter whose authorization is to be revoked is not an
   authorized reporter for the Record.
+- Any of the provided properties do not exist.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
 .. https://creativecommons.org/licenses/by/4.0/
