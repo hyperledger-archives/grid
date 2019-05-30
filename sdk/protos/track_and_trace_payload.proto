@@ -31,8 +31,7 @@ message TrackAndTracePayload {
 
   Action action = 1;
 
-  // Approximately when transaction was submitted, as a Unix UTC
-  // timestamp
+  // The approximate time this payload was submitted, as a Unix UTC timestamp.
   uint64 timestamp = 2;
 
   // The transaction handler will read from just one of these fields
