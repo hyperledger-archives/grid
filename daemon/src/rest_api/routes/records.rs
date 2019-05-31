@@ -131,10 +131,11 @@ impl Handler<FetchRecord> for DbExecutor {
             }
         };
 
-        let proposals = db::list_proposals(&*self.connection_pool.get()?, &msg.record_id)?;
+        let proposals =
+            db::list_proposals(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
 
         let associated_agents =
-            db::list_associated_agents(&*self.connection_pool.get()?, &msg.record_id)?;
+            db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
 
         Ok(RecordSlice::from_models(
             &record,
