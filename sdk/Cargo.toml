@@ -16,16 +16,23 @@
 name = "grid-sdk"
 version = "0.1.0"
 authors = ["Cargill Incorporated"]
-description = "Grid SDK"
+description = """\
+    Hyperledger Grid is a platform for building supply chain solutions \
+    that include distributed ledger components. It provides a growing \
+    set of tools that accelerate development for supply chain smart contracts\
+    and client interfaces.
+"""
 homepage = "https://grid.hyperledger.org"
 edition = "2018"
+license = "Apache-2.0"
+
 
 [dependencies]
 protobuf = "2"
 cfg-if = "0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
+rust-crypto-wasm = "0.3"
 sabre-sdk = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
