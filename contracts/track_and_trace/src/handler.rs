@@ -478,7 +478,7 @@ impl TrackAndTraceTransactionHandler {
             )));
         }
 
-        if role == &Role::Owner || role == &Role::Reporter {
+        if role == &Role::Owner {
             let owner = match proposal_record.owners().last() {
                 Some(owner) => owner,
                 None => {
@@ -507,6 +507,27 @@ impl TrackAndTraceTransactionHandler {
             if custodian.agent_id() != signer {
                 return Err(ApplyError::InvalidTransaction(String::from(
                     "Only the custodian can create a proposal to change custodianship",
+                )));
+            }
+        }
+
+        if role == &Role::Reporter {
+            let owner = match proposal_record.owners().last() {
+                Some(owner) => owner,
+                None => {
+                    return Err(ApplyError::InvalidTransaction(String::from(
+                        "Owner not found",
+                    )));
+                }
+            };
+            if owner.agent_id() != signer {
+                return Err(ApplyError::InvalidTransaction(String::from(
+                    "Only the owner can create a proposal to authorize a reporter",
+                )));
+            }
+            if properties.is_empty() {
+                return Err(ApplyError::InvalidTransaction(String::from(
+                    "No properties were specified for authorization",
                 )));
             }
         }
@@ -2131,6 +2152,34 @@ mod tests {
     }
 
     #[test]
+    /// Test that the CreateProposalAction fails when a reporter authorization is proposed but no
+    /// properties are specified
+    fn test_create_proposal_reporter_with_no_properties() {
+        let mut transaction_context = MockTransactionContext::default();
+        let receiving_agent_key = "receiving_agent_key";
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_agent(receiving_agent_key);
+        transaction_context.add_record();
+
+        let mut state = TrackAndTraceState::new(&mut transaction_context);
+
+        let transaction_handler = TrackAndTraceTransactionHandler::new();
+
+        match transaction_handler._create_proposal(
+            &create_proposal_no_props_action(Role::Reporter, receiving_agent_key),
+            &mut state,
+            PUBLIC_KEY,
+            TIMESTAMP,
+        ) {
+            Ok(()) => panic!("No properties specified, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("No properties were specified for authorization"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but got {}", err),
+        }
+    }
+
+    #[test]
     /// Test that if the AnswerProposalAction, with Reponse set to Cancel, is valid an OK is returned
     /// and the proposal is updated to have status Canceled
     fn test_answer_proposal_cancel_ok() {
@@ -3151,6 +3200,20 @@ mod tests {
                 OPTIONAL_PROPERTY_NAME.to_string(),
                 REQUIRED_PROPERTY_NAME.to_string(),
             ])
+            .with_receiving_agent(receiving_agent_key.to_string())
+            .with_role(role)
+            .with_terms("".to_string())
+            .build()
+            .expect("Failed to build CreateProposalAction")
+    }
+
+    fn create_proposal_no_props_action(
+        role: Role,
+        receiving_agent_key: &str,
+    ) -> CreateProposalAction {
+        CreateProposalActionBuilder::new()
+            .with_record_id(RECORD_ID.to_string())
+            .with_properties(vec![])
             .with_receiving_agent(receiving_agent_key.to_string())
             .with_role(role)
             .with_terms("".to_string())
