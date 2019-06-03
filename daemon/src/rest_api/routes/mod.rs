@@ -228,6 +228,9 @@ mod test {
             .resource("/schema/{name}", |r| {
                 r.method(Method::GET).with_async(fetch_grid_schema)
             })
+            .resource("/record", |r| {
+                r.method(Method::GET).with_async(list_records)
+            })
             .resource("/record/{record_id}", |r| {
                 r.method(Method::GET).with_async(fetch_record)
             });
@@ -795,6 +798,102 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /record responds with an Ok response
+    ///     with a list containing one record
+    ///
+    #[test]
+    fn test_list_records() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
+        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
+        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
+        populate_record_table(&test_pool.get().unwrap(), &get_record());
+        let request = srv
+            .client(http::Method::GET, &format!("/record"))
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<RecordSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let test_record = body.first().unwrap();
+        assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.owner, KEY1.to_string());
+        assert_eq!(test_record.custodian, KEY2.to_string());
+        assert_eq!(test_record.r#final, false);
+
+        assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
+        assert_eq!(test_record.owner_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.custodian_updates[0].agent_id, KEY2.to_string());
+        assert_eq!(test_record.custodian_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.proposals[0].timestamp, 1);
+        assert_eq!(test_record.proposals[0].role, "OWNER");
+        assert_eq!(
+            test_record.proposals[0].properties,
+            vec!["location".to_string()]
+        );
+        assert_eq!(test_record.proposals[0].status, "OPEN");
+        assert_eq!(test_record.proposals[0].terms, "Proposal Terms".to_string());
+    }
+
+    ///
+    /// Verifies a GET /record responds with an Ok response
+    /// with a list containing one record, when there's two records for the same
+    /// record_id. The rest-api should return a list with a single record with the
+    /// record that contains the most recent information for that record
+    /// (end_block_num == MAX_BLOCK_NUM)
+    ///
+    #[test]
+    fn test_list_records_updated() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds two instances of record with the same org_id to the test database
+        populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
+
+        // Making another request to the database
+        let request = srv.client(http::Method::GET, "/record").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<RecordSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let test_record = body.first().unwrap();
+        assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.r#final, true);
+    }
+
+    ///
+    /// Verifies a GET /record responds with an Ok response
+    /// with a list containing two records, when there's two records with differing
+    /// record_ids, one of which has been updated.
+    ///
+    #[test]
+    fn test_list_records_multiple() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds two instances of record with the same org_id to the test database
+        populate_record_table(&test_pool.get().unwrap(), &get_multuple_records());
+
+        // Making another request to the database
+        let request = srv.client(http::Method::GET, "/record").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<RecordSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        print!("{:?}", body);
+        assert_eq!(body.len(), 2);
+    }
+
+    ///
     /// Verifies a GET /record/{record_id} responds with an OK response
     ///     and the Record with the specified record ID.
     ///
@@ -849,12 +948,12 @@ mod test {
         database::run_migrations(&DATABASE_URL).unwrap();
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_record_table(&test_pool.get().unwrap(), &get_record_updated());
+        populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
         populate_associated_agent_table(
             &test_pool.get().unwrap(),
             &get_associated_agents_updated(),
         );
-        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal_updated());
+        populate_proposal_table(&test_pool.get().unwrap(), &get_updated_proposal());
         let request = srv
             .client(
                 http::Method::GET,
@@ -870,7 +969,7 @@ mod test {
         assert_eq!(test_record.record_id, "Test Record".to_string());
         assert_eq!(test_record.owner, KEY2.to_string());
         assert_eq!(test_record.custodian, KEY1.to_string());
-        assert_eq!(test_record.r#final, false);
+        assert_eq!(test_record.r#final, true);
 
         assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
         assert_eq!(test_record.owner_updates[0].timestamp, 1);
@@ -1138,7 +1237,7 @@ mod test {
         }]
     }
 
-    fn get_proposal_updated() -> Vec<NewProposal> {
+    fn get_updated_proposal() -> Vec<NewProposal> {
         vec![
             NewProposal {
                 start_block_num: 0,
@@ -1179,7 +1278,7 @@ mod test {
         }]
     }
 
-    fn get_record_updated() -> Vec<NewRecord> {
+    fn get_updated_record() -> Vec<NewRecord> {
         vec![
             NewRecord {
                 start_block_num: 0,
@@ -1195,9 +1294,41 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 record_id: "Test Record".to_string(),
                 schema: "Test Grid Schema".to_string(),
-                final_: false,
+                final_: true,
                 owners: vec![KEY2.to_string(), KEY1.to_string()],
                 custodians: vec![KEY1.to_string(), KEY2.to_string()],
+            },
+        ]
+    }
+
+    fn get_multuple_records() -> Vec<NewRecord> {
+        vec![
+            NewRecord {
+                start_block_num: 0,
+                end_block_num: 1,
+                record_id: "Test Record".to_string(),
+                schema: "Test Grid Schema".to_string(),
+                final_: false,
+                owners: vec![KEY1.to_string()],
+                custodians: vec![KEY2.to_string()],
+            },
+            NewRecord {
+                start_block_num: 1,
+                end_block_num: MAX_BLOCK_NUM,
+                record_id: "Test Record".to_string(),
+                schema: "Test Grid Schema".to_string(),
+                final_: true,
+                owners: vec![KEY2.to_string(), KEY1.to_string()],
+                custodians: vec![KEY1.to_string(), KEY2.to_string()],
+            },
+            NewRecord {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                record_id: "Test Record 2".to_string(),
+                schema: "Test Grid Schema".to_string(),
+                final_: false,
+                owners: vec![KEY1.to_string()],
+                custodians: vec![KEY2.to_string()],
             },
         ]
     }

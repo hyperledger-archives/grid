@@ -109,6 +109,60 @@ impl RecordSlice {
     }
 }
 
+struct ListRecords;
+
+impl Message for ListRecords {
+    type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
+}
+
+impl Handler<ListRecords> for DbExecutor {
+    type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
+
+    fn handle(&mut self, _msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
+        let records = db::list_records(&*self.connection_pool.get()?)?;
+
+        let record_ids: Vec<String> = records
+            .iter()
+            .map(|record| record.record_id.to_string())
+            .collect();
+
+        let proposals = db::list_proposals(&*self.connection_pool.get()?, &record_ids)?;
+        let associated_agents =
+            db::list_associated_agents(&*self.connection_pool.get()?, &record_ids)?;
+
+        Ok(records
+            .iter()
+            .map(|record| {
+                let props: Vec<Proposal> = proposals
+                    .iter()
+                    .filter(|proposal| proposal.record_id.eq(&record.record_id))
+                    .cloned()
+                    .collect();
+                let agents: Vec<AssociatedAgent> = associated_agents
+                    .iter()
+                    .filter(|agent| agent.record_id.eq(&record.record_id))
+                    .cloned()
+                    .collect();
+
+                RecordSlice::from_models(record, &props, &agents)
+            })
+            .collect())
+    }
+}
+
+pub fn list_records(
+    req: HttpRequest<AppState>,
+) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+    req.state()
+        .database_connection
+        .send(ListRecords)
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(records) => Ok(HttpResponse::Ok().json(records)),
+            Err(err) => Err(err),
+        })
+}
+
 struct FetchRecord {
     record_id: String,
 }
