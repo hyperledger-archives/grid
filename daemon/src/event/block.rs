@@ -20,8 +20,10 @@ use diesel::result::Error;
 use grid_sdk::{
     protocol::{
         pike::state::{AgentList, OrganizationList},
-        schema::state::{DataType, PropertyDefinition, PropertyValue, SchemaList},
-        track_and_trace::state::{PropertyList, PropertyPageList, ProposalList, RecordList},
+        schema::state::{DataType, PropertyDefinition, SchemaList},
+        track_and_trace::state::{
+            PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
+        },
     },
     protos::FromBytes,
 };
@@ -38,8 +40,8 @@ use crate::database::{
     helpers as db,
     models::{
         Block, LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition,
-        NewGridPropertyValue, NewGridSchema, NewOrganization, NewProperty, NewProposal, NewRecord,
-        NewReportedValue, NewReporter,
+        NewGridSchema, NewOrganization, NewProperty, NewProposal, NewRecord, NewReportedValue,
+        NewReporter,
     },
     ConnectionPool,
 };
@@ -293,43 +295,21 @@ fn state_change_to_db_operation(
                 .property_pages()
                 .to_vec();
 
-            let property_values = make_property_values(
-                block_num,
-                &property_pages
-                    .clone()
-                    .into_iter()
-                    .flat_map(|page| {
-                        page.reported_values()
-                            .to_vec()
-                            .into_iter()
-                            .map(|r| r.value().clone())
-                    })
-                    .collect::<Vec<PropertyValue>>(),
-            );
+            let mut reported_values: Vec<NewReportedValue> = vec![];
+            for page in property_pages {
+                page.reported_values().to_vec().iter().try_fold(
+                    &mut reported_values,
+                    |acc, value| match make_reported_values(block_num, page.record_id(), value) {
+                        Ok(mut vals) => {
+                            acc.append(&mut vals);
+                            Ok(acc)
+                        }
+                        Err(err) => Err(err),
+                    },
+                )?;
+            }
 
-            let reported_values = property_pages
-                .clone()
-                .into_iter()
-                .flat_map(|page| {
-                    page.reported_values()
-                        .to_vec()
-                        .into_iter()
-                        .map(move |value| NewReportedValue {
-                            property_name: page.name().to_string(),
-                            record_id: page.record_id().to_string(),
-                            reporter_index: *value.reporter_index() as i32,
-                            timestamp: *value.timestamp() as i64,
-                            value_name: value.value().name().to_string(),
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
-                        })
-                })
-                .collect::<Vec<NewReportedValue>>();
-
-            Ok(DbInsertOperation::ReportedValues(
-                reported_values,
-                property_values,
-            ))
+            Ok(DbInsertOperation::ReportedValues(reported_values))
         }
         TRACK_AND_TRACE_PROPOSAL => {
             let proposals = ProposalList::from_bytes(&state_change.value)
@@ -427,7 +407,7 @@ enum DbInsertOperation {
     Organizations(Vec<NewOrganization>),
     GridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
     Properties(Vec<NewProperty>, Vec<NewReporter>),
-    ReportedValues(Vec<NewReportedValue>, Vec<NewGridPropertyValue>),
+    ReportedValues(Vec<NewReportedValue>),
     Proposals(Vec<NewProposal>),
     Records(Vec<NewRecord>, Vec<NewAssociatedAgent>),
 }
@@ -445,9 +425,8 @@ impl DbInsertOperation {
                 db::insert_properties(conn, properties)?;
                 db::insert_reporters(conn, reporters)
             }
-            DbInsertOperation::ReportedValues(ref reported_values, ref values) => {
-                db::insert_reported_values(conn, reported_values)?;
-                db::insert_grid_property_values(conn, values)
+            DbInsertOperation::ReportedValues(ref reported_values) => {
+                db::insert_reported_values(conn, reported_values)
             }
             DbInsertOperation::Proposals(ref proposals) => db::insert_proposals(conn, proposals),
             DbInsertOperation::Records(ref records, ref associated_agents) => {
@@ -458,56 +437,81 @@ impl DbInsertOperation {
     }
 }
 
-fn make_property_values(
+fn make_reported_values(
     start_block_num: i64,
-    values: &[PropertyValue],
-) -> Vec<NewGridPropertyValue> {
+    record_id: &str,
+    reported_value: &ReportedValue,
+) -> Result<Vec<NewReportedValue>, EventError> {
     let mut new_values = Vec::new();
 
-    for value in values {
-        let mut new_value = NewGridPropertyValue {
-            name: value.name().to_string(),
-            data_type: format!("{:?}", value.data_type()),
-            start_block_num,
-            end_block_num: db::MAX_BLOCK_NUM,
-            ..NewGridPropertyValue::default()
-        };
+    let mut new_value = NewReportedValue {
+        property_name: reported_value.value().name().to_string(),
+        record_id: record_id.to_string(),
+        reporter_index: *reported_value.reporter_index() as i32,
+        timestamp: *reported_value.timestamp() as i64,
+        start_block_num,
+        end_block_num: db::MAX_BLOCK_NUM,
+        data_type: format!("{:?}", reported_value.value().data_type()),
+        ..NewReportedValue::default()
+    };
 
-        match value.data_type() {
-            DataType::Bytes => new_value.bytes_value = Some(value.bytes_value().to_vec()),
-            DataType::Boolean => new_value.boolean_value = Some(*value.boolean_value()),
-            DataType::Number => new_value.number_value = Some(*value.number_value()),
-            DataType::String => new_value.string_value = Some(value.string_value().to_string()),
-            DataType::Enum => new_value.enum_value = Some(*value.enum_value() as i32),
-            DataType::Struct => {
-                new_value.struct_values = Some(
-                    value
-                        .struct_values()
-                        .iter()
-                        .map(|x| x.name().to_string())
-                        .collect(),
-                )
-            }
-            DataType::LatLong => {
-                let lat_long_value = LatLongValue(
-                    *value.lat_long_value().latitude(),
-                    *value.lat_long_value().longitude(),
-                );
-                new_value.lat_long_value = Some(lat_long_value);
-            }
-        };
-
-        new_values.push(new_value);
-
-        if !value.struct_values().is_empty() {
-            new_values.append(&mut make_property_values(
-                start_block_num,
-                value.struct_values(),
-            ));
+    match reported_value.value().data_type() {
+        DataType::Bytes => {
+            new_value.bytes_value = Some(reported_value.value().bytes_value().to_vec())
         }
-    }
+        DataType::Boolean => {
+            new_value.boolean_value = Some(*reported_value.value().boolean_value())
+        }
+        DataType::Number => new_value.number_value = Some(*reported_value.value().number_value()),
+        DataType::String => {
+            new_value.string_value = Some(reported_value.value().string_value().to_string())
+        }
+        DataType::Enum => new_value.enum_value = Some(*reported_value.value().enum_value() as i32),
+        DataType::Struct => {
+            new_value.struct_values = Some(
+                reported_value
+                    .value()
+                    .struct_values()
+                    .iter()
+                    .map(|x| x.name().to_string())
+                    .collect(),
+            )
+        }
+        DataType::LatLong => {
+            let lat_long_value = LatLongValue(
+                *reported_value.value().lat_long_value().latitude(),
+                *reported_value.value().lat_long_value().longitude(),
+            );
+            new_value.lat_long_value = Some(lat_long_value);
+        }
+    };
 
-    new_values
+    new_values.push(new_value);
+
+    reported_value
+        .value()
+        .struct_values()
+        .iter()
+        .try_fold(&mut new_values, |acc, val| {
+            match reported_value
+                .clone()
+                .into_builder()
+                .with_value(val.clone())
+                .build()
+                .map_err(|err| EventError(format!("Failed to build ReportedValue: {:?}", err)))
+            {
+                Ok(temp_val) => match make_reported_values(start_block_num, record_id, &temp_val) {
+                    Ok(mut vals) => {
+                        acc.append(&mut vals);
+                        Ok(acc)
+                    }
+                    Err(err) => Err(err),
+                },
+                Err(err) => Err(err),
+            }
+        })?;
+
+    Ok(new_values)
 }
 
 fn make_property_definitions(

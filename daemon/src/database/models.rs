@@ -24,8 +24,8 @@ use serde_json::Value as JsonValue;
 use std::io::Write;
 
 use super::schema::{
-    agent, associated_agent, block, grid_property_definition, grid_property_value, grid_schema,
-    organization, property, proposal, record, reported_value, reporter,
+    agent, associated_agent, block, grid_property_definition, grid_schema, organization, property,
+    proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -143,43 +143,11 @@ pub struct GridPropertyDefinition {
     pub struct_properties: Vec<String>,
 }
 
-#[derive(Insertable, Debug, Default)]
-#[table_name = "grid_property_value"]
-pub struct NewGridPropertyValue {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
-    pub name: String,
-    pub data_type: String,
-    pub bytes_value: Option<Vec<u8>>,
-    pub boolean_value: Option<bool>,
-    pub number_value: Option<i64>,
-    pub string_value: Option<String>,
-    pub enum_value: Option<i32>,
-    pub struct_values: Option<Vec<String>>,
-    pub lat_long_value: Option<LatLongValue>,
-}
-
-#[derive(Queryable, Default, Debug)]
-pub struct GridPropertyValue {
-    pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
-    pub name: String,
-    pub data_type: String,
-    pub bytes_value: Option<Vec<u8>>,
-    pub boolean_value: Option<bool>,
-    pub number_value: Option<i64>,
-    pub string_value: Option<String>,
-    pub enum_value: Option<i32>,
-    pub struct_values: Option<Vec<String>>,
-    pub lat_long_value: Option<LatLongValue>,
-}
-
 #[derive(SqlType, QueryId, Debug, Clone, Copy)]
 #[postgres(type_name = "latlong")]
 pub struct LatLong;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Clone)]
 #[sql_type = "LatLong"]
 pub struct LatLongValue(pub i64, pub i64);
 
@@ -307,7 +275,7 @@ pub struct Record {
     pub custodians: Vec<String>,
 }
 
-#[derive(Insertable, Debug, Clone)]
+#[derive(Insertable, Debug, Clone, Default)]
 #[table_name = "reported_value"]
 pub struct NewReportedValue {
     pub start_block_num: i64,
@@ -316,7 +284,14 @@ pub struct NewReportedValue {
     pub record_id: String,
     pub reporter_index: i32,
     pub timestamp: i64,
-    pub value_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
 }
 
 #[allow(dead_code)]
@@ -329,7 +304,14 @@ pub struct ReportedValue {
     pub record_id: String,
     pub reporter_index: i32,
     pub timestamp: i64,
-    pub value_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
 }
 
 #[derive(Insertable, Debug, Clone)]

@@ -75,25 +75,6 @@ table! {
 }
 
 table! {
-    use diesel::sql_types::*;
-    use super::LatLong;
-    grid_property_value (id) {
-        id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
-        name -> Text,
-        data_type -> Text,
-        bytes_value -> Nullable<Bytea>,
-        boolean_value -> Nullable<Bool>,
-        number_value -> Nullable<Int8>,
-        string_value -> Nullable<Text>,
-        enum_value -> Nullable<Int4>,
-        struct_values -> Nullable<Array<Text>>,
-        lat_long_value -> Nullable<LatLong>,
-    }
-}
-
-table! {
     grid_schema (id) {
         id -> Int8,
         start_block_num -> Int8,
@@ -160,6 +141,8 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use super::LatLong;
     reported_value (id) {
         id -> Int8,
         start_block_num -> Int8,
@@ -168,7 +151,14 @@ table! {
         record_id -> Text,
         reporter_index -> Int4,
         timestamp -> Int8,
-        value_name -> Text,
+        data_type -> Text,
+        bytes_value -> Nullable<Bytea>,
+        boolean_value -> Nullable<Bool>,
+        number_value -> Nullable<Int8>,
+        string_value -> Nullable<Text>,
+        enum_value -> Nullable<Int4>,
+        struct_values -> Nullable<Array<Text>>,
+        lat_long_value -> Nullable<LatLong>,
     }
 }
 
@@ -191,7 +181,6 @@ allow_tables_to_appear_in_same_query!(
     block,
     chain_record,
     grid_property_definition,
-    grid_property_value,
     grid_schema,
     organization,
     property,

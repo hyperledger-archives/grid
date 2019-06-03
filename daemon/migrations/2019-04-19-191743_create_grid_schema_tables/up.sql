@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS grid_property_definition (
 CREATE INDEX IF NOT EXISTS grid_property_definition_name_block_num_idx
     ON grid_property_definition (name, end_block_num);
 
-
 -- Create the latlong type if it does not already exists;
 DO $$
 BEGIN
@@ -49,19 +48,3 @@ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
-
-CREATE TABLE IF NOT EXISTS grid_property_value (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    data_type TEXT NOT NULL,
-    bytes_value BYTEA,
-    boolean_value BOOLEAN,
-    number_value BIGINT,
-    string_value TEXT,
-    enum_value INTEGER,
-    struct_values TEXT [],
-    lat_long_value latlong
-) INHERITS (chain_record);
-
-CREATE INDEX IF NOT EXISTS grid_property_value_name_block_num_idx
-    ON grid_property_value (name, end_block_num);

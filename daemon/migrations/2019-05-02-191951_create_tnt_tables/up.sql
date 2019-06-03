@@ -43,7 +43,14 @@ CREATE TABLE IF NOT EXISTS reported_value (
     record_id TEXT NOT NULL,
     reporter_index INTEGER NOT NULL,
     timestamp BIGINT NOT NULL,
-    value_name TEXT NOT NULL
+    data_type TEXT NOT NULL,
+    bytes_value BYTEA,
+    boolean_value BOOLEAN,
+    number_value BIGINT,
+    string_value TEXT,
+    enum_value INTEGER,
+    struct_values TEXT [],
+    lat_long_value latlong
 ) INHERITS (chain_record);
 
 CREATE INDEX IF NOT EXISTS reported_value_idx
