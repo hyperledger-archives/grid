@@ -21,7 +21,12 @@ message Property {
   message Reporter {
     // The public key of the Agent authorized to report updates.
     string public_key = 1;
+
+    // A flag indicating whether the reporter is authorized to send updates.
+    // When a reporter is added, this is set to true, and a `RevokeReporter`
+    // transaction sets it to false.
     bool authorized = 2;
+
     // An update must be stored with some way of identifying which
     // Agent sent it. Storing a full public key for each update would
     // be wasteful, so instead Reporters are identified by their index
@@ -29,13 +34,14 @@ message Property {
     uint32 index = 3;
   }
 
-  // The name of the Property, e.g. "temperature". This must be unique
-  // among Properties.
+  // The name of the Property, e.g. "temperature". This must be unique among
+  // Properties.
   string name = 1;
 
   // The natural key of the Property's associated Record.
   string record_id = 2;
 
+  // The name of the PropertyDefinition that defines this record.
   PropertyDefinition property_definition = 3;
 
   // The Reporters authorized to send updates, sorted by index. New
@@ -63,10 +69,10 @@ message PropertyList {
 
 message PropertyPage {
   message ReportedValue {
-    // The index of the reporter id in reporters field
+    // The index of the reporter id in reporters field.
     uint32 reporter_index = 1;
-    // Approximately when this value was reported, as a Unix UTC
-    // timestamp
+
+    // The approximate time this value was reported, as a Unix UTC timestamp.
     uint64 timestamp = 2;
 
     PropertyValue value = 3;
@@ -78,8 +84,7 @@ message PropertyPage {
   string name = 1;
   string record_id = 2;
 
-  // ReportedValues are sorted first by timestamp, then by
-  // reporter_index
+  // ReportedValues are sorted first by timestamp, then by reporter_index.
   repeated ReportedValue reported_values = 3;
 }
 
@@ -102,9 +107,10 @@ message Proposal {
     CANCELED = 3;
   }
 
+  // The Record that this proposal applies to.
   string record_id = 1;
 
-  // The time at which the Proposal was created
+  // The approximate time this proposal was created, as a Unix UTC timestamp.
   uint64 timestamp = 2;
 
   // The public key of the Agent sending the Proposal. This Agent must
@@ -120,7 +126,7 @@ message Proposal {
   Role role = 5;
 
   // The names of properties for which the reporter is being authorized
-  // (empty for owner or custodian transfers)
+  // (empty for owner or custodian transfers).
   repeated string properties = 6;
 
   // The status of the Proposal. For a given Record and receiving
@@ -139,18 +145,21 @@ message ProposalList {
 
 message Record {
   message AssociatedAgent {
+    // Agent's public key.
     string agent_id = 1;
+
+    // The approximate time this agent was associated, as a Unix UTC timestamp.
     uint64 timestamp = 2;
   }
 
-  // The user-defined natural key which identifies the object in the
-  // real world (for example a serial number)
+  // User-defined natural key which identifies the object in the real world
+  // (for example a serial number).
   string record_id = 1;
 
-  // Name of the schema used by the record
+  // Name of the schema used by the record.
   string schema = 2;
 
-  // Ordered oldest to newest by timestamp
+  // Ordered oldest to newest by timestamp.
   repeated AssociatedAgent owners = 3;
   repeated AssociatedAgent custodians = 4;
 
