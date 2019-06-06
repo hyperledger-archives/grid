@@ -17,9 +17,12 @@
 
 use super::models::{
     AssociatedAgent, NewAssociatedAgent, NewProperty, NewProposal, NewRecord, NewReportedValue,
-    NewReporter, Proposal, Record,
+    NewReporter, Property, Proposal, Record, ReportedValueReporterToAgentMetadata, Reporter,
 };
-use super::schema::{associated_agent, property, proposal, record, reported_value, reporter};
+use super::schema::{
+    associated_agent, property, proposal, record, reported_value,
+    reported_value_reporter_to_agent_metadata, reporter,
+};
 use super::MAX_BLOCK_NUM;
 
 use diesel::{
@@ -282,4 +285,76 @@ pub fn update_reporter_end_block_num(
         .set(reporter::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn fetch_property(
+    conn: &PgConnection,
+    record_id: &str,
+    property_name: &str,
+) -> QueryResult<Option<Property>> {
+    property::table
+        .filter(
+            property::name
+                .eq(property_name)
+                .and(property::record_id.eq(record_id))
+                .and(property::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn fetch_reported_value_reporter_to_agent_metadata(
+    conn: &PgConnection,
+    record_id: &str,
+    property_name: &str,
+    block_height: Option<i64>,
+) -> QueryResult<Option<ReportedValueReporterToAgentMetadata>> {
+    let block_height = block_height.unwrap_or(MAX_BLOCK_NUM);
+    reported_value_reporter_to_agent_metadata::table
+        .filter(
+            reported_value_reporter_to_agent_metadata::property_name
+                .eq(property_name)
+                .and(reported_value_reporter_to_agent_metadata::record_id.eq(record_id))
+                .and(
+                    reported_value_reporter_to_agent_metadata::reported_value_end_block_num
+                        .eq(block_height),
+                ),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn list_reporters(
+    conn: &PgConnection,
+    record_id: &str,
+    property_name: &str,
+) -> QueryResult<Vec<Reporter>> {
+    reporter::table
+        .filter(
+            reporter::property_name
+                .eq(property_name)
+                .and(reporter::record_id.eq(record_id))
+                .and(reporter::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .load::<Reporter>(conn)
+}
+
+pub fn list_reported_value_reporter_to_agent_metadata(
+    conn: &PgConnection,
+    record_id: &str,
+    property_name: &str,
+) -> QueryResult<Vec<ReportedValueReporterToAgentMetadata>> {
+    reported_value_reporter_to_agent_metadata::table
+        .filter(
+            reported_value_reporter_to_agent_metadata::property_name
+                .eq(property_name)
+                .and(reported_value_reporter_to_agent_metadata::record_id.eq(record_id))
+                .and(
+                    reported_value_reporter_to_agent_metadata::reported_value_end_block_num
+                        .le(MAX_BLOCK_NUM),
+                ),
+        )
+        .load::<ReportedValueReporterToAgentMetadata>(conn)
 }
