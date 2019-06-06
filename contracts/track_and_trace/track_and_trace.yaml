@@ -12,27 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[package]
-name = "grid-cli"
-version = "0.1.0"
-authors = ["Contributors to Hyperledger Grid"]
-edition = "2018"
-
-[dependencies]
-clap = "2"
-log = "0.4"
-simple_logger = "1.0"
-sawtooth-sdk = "0.3"
-sabre-sdk = "0.3"
-grid-sdk = { path = "../sdk" }
-rust-crypto = "0.2"
-protobuf = "2"
-users = "0.9"
-reqwest = "0.9"
-dirs = "1"
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.8"
-
-[[bin]]
-name = "grid"
-path = "src/main.rs"
+name: grid_track_and_trace
+version: '1.0'
+wasm: target/wasm32-unknown-unknown/release/grid-track-and-trace-tp.wasm
+inputs:
+  - 'a43b46'
+outputs:
+  - 'a43b46'
