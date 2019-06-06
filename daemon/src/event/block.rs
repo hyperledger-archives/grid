@@ -34,6 +34,7 @@ use sawtooth_sdk::messages::{
     transaction_receipt::{StateChange, StateChangeList},
 };
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 use std::i64;
 
 use crate::database::{
@@ -170,15 +171,10 @@ fn state_change_to_db_operation(
                     org_id: agent.org_id().to_string(),
                     active: *agent.active(),
                     roles: agent.roles().to_vec(),
-                    metadata: agent
-                        .metadata()
-                        .iter()
-                        .map(|md| {
-                            json!({
-                                md.key(): md.value()
-                            })
-                        })
-                        .collect::<Vec<JsonValue>>(),
+                    metadata: json!(agent.metadata().iter().fold(HashMap::new(), |mut acc, md| {
+                        acc.insert(md.key().to_string(), md.value().to_string());
+                        acc
+                    })),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
                 })

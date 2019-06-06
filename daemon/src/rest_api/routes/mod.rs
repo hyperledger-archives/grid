@@ -89,6 +89,7 @@ mod test {
     use sawtooth_sdk::messages::validator::{Message, Message_MessageType};
 
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
+    use serde_json::{Map, Value as JsonValue};
     use std::sync::mpsc::channel;
 
     static DATABASE_URL: &str = "postgres://grid_test:grid_test@test_server:5432/grid_test";
@@ -1073,7 +1074,7 @@ mod test {
             org_id: KEY2.to_string(),
             active: true,
             roles: vec![],
-            metadata: vec![],
+            metadata: JsonValue::Object(Map::new()),
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
         }]
@@ -1086,7 +1087,7 @@ mod test {
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["OWNER".to_string()],
-                metadata: vec![],
+                metadata: JsonValue::Object(Map::new()),
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
             },
@@ -1095,7 +1096,7 @@ mod test {
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["CUSTODIAN".to_string()],
-                metadata: vec![],
+                metadata: JsonValue::Object(Map::new()),
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
             },

@@ -43,7 +43,7 @@ pub struct NewAgent {
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
@@ -61,7 +61,7 @@ pub struct Agent {
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
 }
 
 #[derive(Insertable, Debug)]

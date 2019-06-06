@@ -26,7 +26,7 @@ table! {
         org_id -> Varchar,
         active -> Bool,
         roles -> Array<Text>,
-        metadata -> Array<Json>,
+        metadata -> Json,
     }
 }
 

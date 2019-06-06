@@ -27,7 +27,7 @@ pub struct AgentSlice {
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
 }
 
 impl AgentSlice {
