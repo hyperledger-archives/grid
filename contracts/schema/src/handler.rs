@@ -42,7 +42,10 @@ pub const PIKE_NAMESPACE: &str = "cad11d";
 
 #[cfg(target_arch = "wasm32")]
 // Sabre apply must return a bool
-fn apply(request: &TpProcessRequest, context: &mut TransactionContext) -> Result<bool, ApplyError> {
+fn apply(
+    request: &TpProcessRequest,
+    context: &mut dyn TransactionContext,
+) -> Result<bool, ApplyError> {
     let handler = GridSchemaTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
@@ -89,7 +92,7 @@ impl TransactionHandler for GridSchemaTransactionHandler {
     fn apply(
         &self,
         request: &TpProcessRequest,
-        context: &mut TransactionContext,
+        context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let payload = SchemaPayload::from_bytes(request.get_payload()).map_err(|err| {
             ApplyError::InvalidTransaction(format!("Cannot build schema payload: {}", err))

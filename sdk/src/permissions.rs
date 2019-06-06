@@ -62,7 +62,7 @@ impl fmt::Display for PermissionCheckerError {
 }
 
 impl Error for PermissionCheckerError {
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
             PermissionCheckerError::Context(_) => None,
             PermissionCheckerError::InvalidPublicKey(_) => None,
@@ -87,7 +87,7 @@ impl From<ProtoConversionError> for PermissionCheckerError {
 pub struct PermissionChecker<'a> {
     /// A PermissionChecker is tied to a version of state, so it has a
     /// reference to a TransactionContext.
-    context: &'a TransactionContext,
+    context: &'a dyn TransactionContext,
 }
 
 impl<'a> PermissionChecker<'a> {
@@ -97,7 +97,7 @@ impl<'a> PermissionChecker<'a> {
     ///
     /// * `context` - A reference to the transaction context.
     ///
-    pub fn new(context: &'a TransactionContext) -> PermissionChecker {
+    pub fn new(context: &'a dyn TransactionContext) -> PermissionChecker {
         PermissionChecker { context }
     }
 

@@ -34,11 +34,11 @@ use grid_sdk::protos::{FromBytes, IntoBytes};
 use crate::addressing::*;
 
 pub struct TrackAndTraceState<'a> {
-    context: &'a mut TransactionContext,
+    context: &'a mut dyn TransactionContext,
 }
 
 impl<'a> TrackAndTraceState<'a> {
-    pub fn new(context: &'a mut TransactionContext) -> TrackAndTraceState {
+    pub fn new(context: &'a mut dyn TransactionContext) -> TrackAndTraceState {
         TrackAndTraceState { context }
     }
 
