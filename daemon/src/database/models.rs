@@ -339,6 +339,28 @@ pub struct Reporter {
     pub reporter_index: i32,
 }
 
+#[derive(Queryable, Debug)]
+pub struct ReportedValueReporterToAgentMetadata {
+    pub id: i64,
+    pub property_name: String,
+    pub record_id: String,
+    pub reporter_index: i32,
+    pub timestamp: i64,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
+    pub public_key: Option<String>,
+    pub authorized: Option<bool>,
+    pub metadata: Option<JsonValue>,
+    pub reported_value_end_block_num: i64,
+    pub reporter_end_block_num: Option<i64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
