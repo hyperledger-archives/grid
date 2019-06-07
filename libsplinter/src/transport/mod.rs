@@ -179,6 +179,7 @@ impl_from_io_error!(ConnectError);
 #[derive(Debug)]
 pub enum ListenError {
     IoError(io::Error),
+    ProtocolError(String),
 }
 
 impl_from_io_error!(ListenError);
