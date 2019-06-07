@@ -15,6 +15,8 @@
 pub mod inproc;
 pub mod raw;
 pub mod tls;
+#[cfg(feature = "zmq-transport")]
+pub mod zmq;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
