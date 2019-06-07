@@ -327,6 +327,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /record:
+    get:
+      tags:
+        - Track and Trace
+      summary: Fetch a list of records
+      description: |
+        Fetches a list of records, including lists of all updates made to the
+        owner and custodian.
+      operationId: list_records
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Record"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
   "/record/{record_id}":
     get:
       tags:

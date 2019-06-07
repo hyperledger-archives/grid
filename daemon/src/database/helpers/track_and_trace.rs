@@ -72,14 +72,14 @@ pub fn update_associated_agent_end_block_num(
 
 pub fn list_associated_agents(
     conn: &PgConnection,
-    record_id: &str,
+    record_ids: &[String],
 ) -> QueryResult<Vec<AssociatedAgent>> {
     associated_agent::table
         .select(associated_agent::all_columns)
         .filter(
             associated_agent::end_block_num
                 .eq(MAX_BLOCK_NUM)
-                .and(associated_agent::record_id.eq(record_id)),
+                .and(associated_agent::record_id.eq_any(record_ids)),
         )
         .load::<AssociatedAgent>(conn)
 }
@@ -155,13 +155,13 @@ pub fn update_proposal_end_block_num(
         .map(|_| ())
 }
 
-pub fn list_proposals(conn: &PgConnection, record_id: &str) -> QueryResult<Vec<Proposal>> {
+pub fn list_proposals(conn: &PgConnection, record_ids: &[String]) -> QueryResult<Vec<Proposal>> {
     proposal::table
         .select(proposal::all_columns)
         .filter(
             proposal::end_block_num
                 .eq(MAX_BLOCK_NUM)
-                .and(proposal::record_id.eq(record_id)),
+                .and(proposal::record_id.eq_any(record_ids)),
         )
         .load::<Proposal>(conn)
 }
@@ -204,6 +204,13 @@ pub fn fetch_record(conn: &PgConnection, record_id: &str) -> QueryResult<Option<
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn list_records(conn: &PgConnection) -> QueryResult<Vec<Record>> {
+    record::table
+        .select(record::all_columns)
+        .filter(record::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<Record>(conn)
 }
 
 pub fn insert_reported_values(conn: &PgConnection, values: &[NewReportedValue]) -> QueryResult<()> {

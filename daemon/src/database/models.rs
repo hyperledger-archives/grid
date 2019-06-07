@@ -184,7 +184,7 @@ pub struct NewAssociatedAgent {
 }
 
 #[allow(dead_code)]
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Clone)]
 pub struct AssociatedAgent {
     pub id: i64,
     pub record_id: String,
@@ -235,7 +235,7 @@ pub struct NewProposal {
     pub terms: String,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Clone)]
 pub struct Proposal {
     pub id: i64,
     pub start_block_num: i64,
