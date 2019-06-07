@@ -419,7 +419,11 @@ pub(crate) mod tests {
     #[test]
     fn test_poll() {
         let transport = create_test_tls_transport(true);
-        tests::test_poll(transport, "127.0.0.1:0");
+        tests::test_poll(
+            transport,
+            "127.0.0.1:0",
+            Ready::readable() | Ready::writable(),
+        );
     }
 
     #[test]
@@ -432,6 +436,10 @@ pub(crate) mod tests {
     #[test]
     fn test_poll_no_verify() {
         let transport = create_test_tls_transport(false);
-        tests::test_poll(transport, "127.0.0.1:0");
+        tests::test_poll(
+            transport,
+            "127.0.0.1:0",
+            Ready::readable() | Ready::writable(),
+        );
     }
 }

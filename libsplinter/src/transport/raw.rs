@@ -93,6 +93,7 @@ impl Connection for RawConnection {
 mod tests {
     use super::*;
     use crate::transport::tests;
+    use mio::Ready;
 
     #[test]
     fn test_transport() {
@@ -104,6 +105,10 @@ mod tests {
     #[test]
     fn test_poll() {
         let transport = RawTransport::default();
-        tests::test_poll(transport, "127.0.0.1:0");
+        tests::test_poll(
+            transport,
+            "127.0.0.1:0",
+            Ready::readable() | Ready::writable(),
+        );
     }
 }

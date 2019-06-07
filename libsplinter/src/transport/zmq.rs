@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
 use std::collections::HashMap;
 use std::convert::Into;
@@ -263,15 +264,15 @@ impl Connection for ZmqConnection {
                 MessageType::RequestData.into(),
             ];
 
-            if self
+            let poll_result = self
                 .socket
                 .inner()
                 .poll(zmq::POLLOUT, POLL_TIMEOUT)
                 .map_err(|err| {
                     RecvError::ProtocolError(format!("Failed to poll socket {:?}", err))
-                })?
-                > 0
-            {
+                })?;
+
+            if poll_result > 0 {
                 self.socket
                     .inner()
                     .send_multipart(payload, 0)
@@ -433,7 +434,7 @@ impl ZmqListener {
                                     &frontend,
                                     &payload.socket_id,
                                     &worker_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::ConnectionAccepted,
                                 )?;
 
@@ -441,7 +442,7 @@ impl ZmqListener {
                                     &backend,
                                     &worker_id,
                                     &payload.socket_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::ConnectionAccepted,
                                 )?;
                             }
@@ -461,7 +462,7 @@ impl ZmqListener {
                                         &frontend,
                                         &payload.socket_id,
                                         &payload.partner_id,
-                                        &vec![],
+                                        &[],
                                         MessageType::NoDataAvailable,
                                     )?;
                                 }
@@ -470,7 +471,7 @@ impl ZmqListener {
                                     &frontend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::NoDataAvailable,
                                 )?;
                             }
@@ -485,7 +486,7 @@ impl ZmqListener {
                                     &frontend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::MessageReceived,
                                 )?;
                             } else {
@@ -497,7 +498,7 @@ impl ZmqListener {
                                     &frontend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::MessageReceived,
                                 )?;
                             }
@@ -531,7 +532,7 @@ impl ZmqListener {
                                     &frontend,
                                     &client_id,
                                     &payload.socket_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::ConnectionAccepted,
                                 )?;
 
@@ -539,7 +540,7 @@ impl ZmqListener {
                                     &backend,
                                     &payload.socket_id,
                                     &client_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::ConnectionAccepted,
                                 )?;
                             }
@@ -559,7 +560,7 @@ impl ZmqListener {
                                         &backend,
                                         &payload.socket_id,
                                         &payload.partner_id,
-                                        &vec![],
+                                        &[],
                                         MessageType::NoDataAvailable,
                                     )?;
                                 }
@@ -568,7 +569,7 @@ impl ZmqListener {
                                     &backend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::NoDataAvailable,
                                 )?;
                             }
@@ -583,7 +584,7 @@ impl ZmqListener {
                                     &backend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::MessageReceived,
                                 )?;
                             } else {
@@ -595,7 +596,7 @@ impl ZmqListener {
                                     &backend,
                                     &payload.socket_id,
                                     &payload.partner_id,
-                                    &vec![],
+                                    &[],
                                     MessageType::MessageReceived,
                                 )?;
                             }
