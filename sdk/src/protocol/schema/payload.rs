@@ -142,7 +142,7 @@ impl StdError for SchemaPayloadBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             SchemaPayloadBuildError::MissingField(_) => None,
         }
@@ -316,7 +316,7 @@ impl StdError for SchemaCreateBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             SchemaCreateBuildError::MissingField(_) => None,
         }
@@ -471,7 +471,7 @@ impl StdError for SchemaUpdateBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             SchemaUpdateBuildError::MissingField(_) => None,
         }

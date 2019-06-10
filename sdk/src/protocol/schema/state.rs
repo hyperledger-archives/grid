@@ -235,7 +235,7 @@ impl StdError for PropertyDefinitionBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             PropertyDefinitionBuildError::MissingField(_) => None,
             PropertyDefinitionBuildError::EmptyVec(_) => None,
@@ -469,7 +469,7 @@ impl StdError for SchemaBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             SchemaBuildError::MissingField(_) => None,
         }
@@ -630,7 +630,7 @@ impl StdError for SchemaListBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             SchemaListBuildError::MissingField(_) => None,
         }
@@ -815,7 +815,7 @@ impl StdError for PropertyValueBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             PropertyValueBuildError::MissingField(_) => None,
         }

@@ -28,7 +28,7 @@ impl StdError for ProtoConversionError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             ProtoConversionError::SerializationError(_) => None,
             ProtoConversionError::InvalidTypeError(_) => None,

@@ -185,7 +185,7 @@ impl StdError for CreateAgentActionBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             CreateAgentActionBuildError::MissingField(_) => None,
         }
@@ -376,7 +376,7 @@ impl StdError for UpdateAgentActionBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             UpdateAgentActionBuildError::MissingField(_) => None,
         }
@@ -559,7 +559,7 @@ impl StdError for CreateOrganizationActionBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             CreateOrganizationActionBuildError::MissingField(_) => None,
         }
@@ -746,7 +746,7 @@ impl StdError for UpdateOrganizationActionBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             UpdateOrganizationActionBuildError::MissingField(_) => None,
         }
@@ -925,7 +925,7 @@ impl StdError for PikePayloadBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             PikePayloadBuildError::MissingField(_) => None,
         }

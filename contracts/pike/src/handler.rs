@@ -54,11 +54,11 @@ fn compute_address(name: &str, resource: Resource) -> String {
 }
 
 pub struct PikeState<'a> {
-    context: &'a mut TransactionContext,
+    context: &'a mut dyn TransactionContext,
 }
 
 impl<'a> PikeState<'a> {
-    pub fn new(context: &'a mut TransactionContext) -> PikeState {
+    pub fn new(context: &'a mut dyn TransactionContext) -> PikeState {
         PikeState { context }
     }
 

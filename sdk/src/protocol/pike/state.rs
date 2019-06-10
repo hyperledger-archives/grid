@@ -100,7 +100,7 @@ impl StdError for KeyValueEntryBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             KeyValueEntryBuildError::MissingField(_) => None,
         }
@@ -256,7 +256,7 @@ impl StdError for AgentBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             AgentBuildError::MissingField(_) => None,
         }
@@ -415,7 +415,7 @@ impl StdError for AgentListBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             AgentListBuildError::MissingField(_) => None,
         }
@@ -563,7 +563,7 @@ impl StdError for OrganizationBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             OrganizationBuildError::MissingField(_) => None,
         }
@@ -719,7 +719,7 @@ impl StdError for OrganizationListBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             OrganizationListBuildError::MissingField(_) => None,
         }

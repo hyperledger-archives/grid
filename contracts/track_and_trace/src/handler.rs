@@ -1047,7 +1047,10 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
 
 #[cfg(target_arch = "wasm32")]
 // Sabre apply must return a bool
-fn apply(request: &TpProcessRequest, context: &mut TransactionContext) -> Result<bool, ApplyError> {
+fn apply(
+    request: &TpProcessRequest,
+    context: &mut dyn TransactionContext,
+) -> Result<bool, ApplyError> {
     let handler = TrackAndTraceTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
