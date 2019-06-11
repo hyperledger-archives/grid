@@ -74,6 +74,7 @@ pub struct RecordSlice {
     pub record_id: String,
     pub owner: String,
     pub custodian: String,
+    pub properties: Vec<PropertySlice>,
     pub r#final: bool,
     pub proposals: Vec<ProposalSlice>,
     pub owner_updates: Vec<AssociatedAgentSlice>,
@@ -85,6 +86,7 @@ impl RecordSlice {
         record: &Record,
         proposals: &[Proposal],
         associated_agents: &[AssociatedAgent],
+        properties: &[PropertySlice],
     ) -> Self {
         let mut owner_updates: Vec<AssociatedAgentSlice> = associated_agents
             .iter()
@@ -110,6 +112,7 @@ impl RecordSlice {
                 Some(custodian) => custodian.agent_id.clone(),
                 None => "".to_string(),
             },
+            properties: properties.to_vec(),
             r#final: record.final_,
             proposals: proposals.iter().map(ProposalSlice::from_model).collect(),
             owner_updates,
@@ -139,6 +142,11 @@ impl Handler<ListRecords> for DbExecutor {
         let associated_agents =
             db::list_associated_agents(&*self.connection_pool.get()?, &record_ids)?;
 
+        let properties = db::list_properties(&*self.connection_pool.get()?, &record_ids)?
+            .iter()
+            .map(|property| parse_property_slice(&self.connection_pool, property))
+            .collect::<Result<Vec<PropertySlice>, _>>()?;
+
         Ok(records
             .iter()
             .map(|record| {
@@ -153,7 +161,13 @@ impl Handler<ListRecords> for DbExecutor {
                     .cloned()
                     .collect();
 
-                RecordSlice::from_models(record, &props, &agents)
+                let record_properties: Vec<PropertySlice> = properties
+                    .iter()
+                    .filter(|property| property.record_id.eq(&record.record_id))
+                    .cloned()
+                    .collect();
+
+                RecordSlice::from_models(record, &props, &agents, &record_properties)
             })
             .collect())
     }
@@ -197,6 +211,12 @@ impl Handler<FetchRecord> for DbExecutor {
         let proposals =
             db::list_proposals(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
 
+        let properties =
+            db::list_properties(&*self.connection_pool.get()?, &[msg.record_id.clone()])?
+                .iter()
+                .map(|property| parse_property_slice(&self.connection_pool, property))
+                .collect::<Result<Vec<PropertySlice>, _>>()?;
+
         let associated_agents =
             db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
 
@@ -204,6 +224,7 @@ impl Handler<FetchRecord> for DbExecutor {
             &record,
             &proposals,
             &associated_agents,
+            &properties,
         ))
     }
 }
@@ -458,60 +479,63 @@ impl Handler<FetchRecordProperty> for DbExecutor {
             ))
         })?;
 
-        let reporters = db::list_reporters(
-            &*self.connection_pool.get()?,
-            &msg.record_id,
-            &msg.property_name,
-        )?;
-
-        let reported_value = db::fetch_reported_value_reporter_to_agent_metadata(
-            &*self.connection_pool.get()?,
-            &msg.record_id,
-            &msg.property_name,
-            None,
-        )?
-        .ok_or_else(|| {
-            RestApiResponseError::NotFoundError(format!(
-                "Could not find values for property {} for record {}",
-                msg.property_name, msg.record_id
-            ))
-        })?;
-
-        let active_reporters = reporters
-            .iter()
-            .filter_map(|reporter| {
-                if reporter.authorized {
-                    Some(reporter.public_key.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<String>>();
-
-        let property_value_slice = parse_reported_values(&self.connection_pool, &reported_value)?;
-
-        let mut updates = db::list_reported_value_reporter_to_agent_metadata(
-            &*self.connection_pool.get()?,
-            &msg.record_id,
-            &msg.property_name,
-        )?
-        .iter()
-        .map(|reported_value| parse_reported_values(&self.connection_pool, reported_value))
-        .collect::<Result<Vec<PropertyValueSlice>, _>>()?;
-
-        // Sort updates from oldest to newest.
-        updates.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-
-        let property_info = PropertySlice::from_model(
-            &property,
-            &active_reporters,
-            &reported_value.data_type,
-            &updates,
-            property_value_slice.clone(),
-        );
-
-        Ok(property_info)
+        parse_property_slice(&self.connection_pool, &property)
     }
+}
+
+fn parse_property_slice(
+    conn: &ConnectionPool,
+    property: &Property,
+) -> Result<PropertySlice, RestApiResponseError> {
+    let reporters = db::list_reporters(&*conn.get()?, &property.record_id, &property.name)?;
+
+    let reported_value = db::fetch_reported_value_reporter_to_agent_metadata(
+        &*conn.get()?,
+        &property.record_id,
+        &property.name,
+        None,
+    )?
+    .ok_or_else(|| {
+        RestApiResponseError::NotFoundError(format!(
+            "Could not find values for property {} for record {}",
+            property.name, property.record_id
+        ))
+    })?;
+
+    let active_reporters = reporters
+        .iter()
+        .filter_map(|reporter| {
+            if reporter.authorized {
+                Some(reporter.public_key.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<String>>();
+
+    let property_value_slice = parse_reported_values(&conn, &reported_value)?;
+
+    let mut updates = db::list_reported_value_reporter_to_agent_metadata(
+        &*conn.get()?,
+        &property.record_id,
+        &property.name,
+    )?
+    .iter()
+    .map(|reported_value| parse_reported_values(&conn, reported_value))
+    .collect::<Result<Vec<PropertyValueSlice>, _>>()?;
+
+    // Sort updates from oldest to newest.
+    updates.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+    let property_info = PropertySlice::from_model(
+        &property,
+        &active_reporters,
+        &reported_value.data_type,
+        &updates,
+        property_value_slice.clone(),
+    );
+
+    Ok(property_info)
 }
 
 fn parse_reported_values(
