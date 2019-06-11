@@ -353,6 +353,17 @@ fn update_agent(
     };
 
     if !payload.get_roles().is_empty() {
+        // verify that an admin is not removing the role admin from themselves.
+        if signer == payload.get_public_key()
+            && !payload.get_roles().iter().any(|role| role == "admin")
+        {
+            return Err(ApplyError::InvalidTransaction(
+                "An admin cannot remove themselves as admin. 'admin' role must be included
+                    in the roles list."
+                    .to_string(),
+            ));
+        }
+
         agent.set_roles(protobuf::RepeatedField::from_vec(
             payload.get_roles().to_vec(),
         ));

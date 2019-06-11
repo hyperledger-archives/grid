@@ -197,7 +197,8 @@ CREATE_AGENT
 UPDATE_AGENT
     This operation updates the roles, metadata, and active status of an
     existing agent stored in Global State. Only another agent that holds an
-    admin role for the included organization may update an agent.
+    admin role for the included organization may update an agent. An agent
+    cannot remove the admin role from themselves. 
 
     .. code-block:: protobuf
 
