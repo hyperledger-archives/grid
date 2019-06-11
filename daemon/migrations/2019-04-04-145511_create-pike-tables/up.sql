@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS agent (
     org_id VARCHAR(256) NOT NULL,
     active BOOLEAN NOT NULL,
     roles TEXT [] NOT NULL,
-    metadata JSON [] NOT NULL
+    metadata JSON NOT NULL
 ) INHERITS (chain_record);
 
 CREATE INDEX IF NOT EXISTS agent_pub_key_block_num_idx

@@ -26,7 +26,7 @@ table! {
         org_id -> Varchar,
         active -> Bool,
         roles -> Array<Text>,
-        metadata -> Array<Json>,
+        metadata -> Json,
     }
 }
 
@@ -172,6 +172,44 @@ table! {
         public_key -> Text,
         authorized -> Bool,
         reporter_index -> Int4,
+    }
+}
+
+table! {
+    use diesel::sql_types::*;
+    use super::LatLong;
+    reported_value_reporter_to_agent_metadata (id) {
+        id -> Int8,
+        property_name -> Text,
+        record_id -> Text,
+        reporter_index -> Int4,
+        timestamp -> Int8,
+        data_type -> Text,
+        bytes_value ->  Nullable<Bytea>,
+        boolean_value ->  Nullable<Bool>,
+        number_value ->  Nullable<Int8>,
+        string_value ->  Nullable<Text>,
+        enum_value ->  Nullable<Int4>,
+        struct_values ->  Nullable<Array<Text>>,
+        lat_long_value -> Nullable<LatLong>,
+        public_key ->  Nullable<Text>,
+        authorized ->  Nullable<Bool>,
+        metadata ->  Nullable<Json>,
+        reported_value_end_block_num -> Int8,
+        reporter_end_block_num ->  Nullable<Int8>,
+    }
+}
+
+table! {
+    reporter_to_agent_metadata (id) {
+        id -> Int8,
+        property_name -> Text,
+        record_id -> Text,
+        public_key -> Text,
+        authorized -> Bool,
+        reporter_index -> Int4,
+        metadata -> Nullable<Json>,
+        reporter_end_block_num -> Int8,
     }
 }
 

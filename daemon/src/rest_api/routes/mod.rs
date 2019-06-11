@@ -64,10 +64,13 @@ mod test {
     use crate::database::{
         helpers::MAX_BLOCK_NUM,
         models::{
-            NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
-            NewOrganization, NewProposal, NewRecord,
+            LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
+            NewOrganization, NewProperty, NewProposal, NewRecord, NewReportedValue, NewReporter,
         },
-        schema::{associated_agent, grid_property_definition, grid_schema, proposal, record},
+        schema::{
+            associated_agent, grid_property_definition, grid_schema, property, proposal, record,
+            reported_value, reporter,
+        },
     };
     use crate::rest_api::{
         routes::{AgentSlice, BatchStatusResponse, OrganizationSlice},
@@ -89,6 +92,7 @@ mod test {
     use sawtooth_sdk::messages::validator::{Message, Message_MessageType};
 
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
+    use serde_json::{Map, Value as JsonValue};
     use std::sync::mpsc::channel;
 
     static DATABASE_URL: &str = "postgres://grid_test:grid_test@test_server:5432/grid_test";
@@ -233,6 +237,9 @@ mod test {
             })
             .resource("/record/{record_id}", |r| {
                 r.method(Method::GET).with_async(fetch_record)
+            })
+            .resource("/record/{record_id}/property/{property_name}", |r| {
+                r.method(Method::GET).with_async(fetch_record_property)
             });
         })
     }
@@ -1004,6 +1011,215 @@ mod test {
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
+    ///
+    /// Verifies a GET /record/{record_id}/property/{property_name} responds with an OK response
+    ///     and the infomation on the Property requested
+    ///
+    #[test]
+    fn test_fetch_record_property_ok() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_tnt_property_table(&test_pool.get().unwrap(), &get_property());
+        let request = srv
+            .client(http::Method::GET, "/record/record_01/property/TestProperty")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        assert!(response.status().is_success());
+
+        let property_info: PropertySlice =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+
+        assert_eq!(property_info.data_type, "Struct".to_string());
+
+        assert_eq!(property_info.name, "TestProperty".to_string());
+
+        assert_eq!(property_info.record_id, "record_01".to_string());
+
+        assert_eq!(
+            property_info.reporters,
+            vec![KEY1.to_string(), KEY2.to_string()]
+        );
+
+        validate_current_value(&property_info.value);
+
+        assert_eq!(property_info.updates.len(), 2);
+
+        let first_update = &property_info.updates[0];
+
+        validate_reporter(&first_update.reporter, KEY2, "Jon Snow");
+
+        assert_eq!(first_update.timestamp, 3);
+
+        match &first_update.value {
+            Value::Struct(struct_values) => {
+                assert_eq!(struct_values.len(), 5);
+                validate_struct_value(&struct_values[0], "value_1", false);
+                validate_location_value(
+                    &struct_values[1],
+                    LatLong {
+                        latitude: 1,
+                        longitude: 1,
+                    },
+                );
+                validate_number_value(&struct_values[2], 1);
+                validate_enum_value(&struct_values[3], 1);
+                validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+            }
+            _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
+        }
+
+        let second_update = &property_info.updates[1];
+        validate_current_value(second_update);
+    }
+
+    fn validate_current_value(property_value: &PropertyValueSlice) {
+        validate_reporter(&property_value.reporter, KEY1, "Arya Stark");
+
+        assert_eq!(property_value.timestamp, 5);
+
+        match &property_value.value {
+            Value::Struct(struct_values) => {
+                assert_eq!(struct_values.len(), 5);
+                validate_struct_value(&struct_values[0], "value_updated", true);
+                validate_location_value(
+                    &struct_values[1],
+                    LatLong {
+                        latitude: 2,
+                        longitude: 2,
+                    },
+                );
+                validate_number_value(&struct_values[2], 2);
+                validate_enum_value(&struct_values[3], 2);
+                validate_bytes_value(&struct_values[4], &vec![0x05, 0x06, 0x07, 0x08]);
+            }
+            _ => panic!(
+                "Expected enum type Struct found: {:?}",
+                property_value.value
+            ),
+        }
+    }
+
+    fn validate_reporter(reporter: &ReporterSlice, public_key: &str, name: &str) {
+        assert_eq!(
+            reporter.metadata.get("agent_name"),
+            Some(&JsonValue::String(name.to_string()))
+        );
+        assert_eq!(reporter.public_key, public_key.to_string());
+    }
+
+    fn validate_struct_value(
+        struct_value: &StructPropertyValue,
+        expected_string_value: &str,
+        expected_bool_value: bool,
+    ) {
+        assert_eq!(struct_value.data_type, "Struct".to_string());
+
+        assert_eq!(struct_value.name, "StructProperty".to_string());
+
+        match &struct_value.value {
+            Value::Struct(inner_values) => {
+                assert_eq!(inner_values.len(), 2);
+                validate_string_value(&inner_values[0], expected_string_value);
+                validate_boolean_value(&inner_values[1], expected_bool_value);
+            }
+            _ => panic!("Expected enum type Struct found: {:?}", struct_value.value),
+        }
+    }
+
+    fn validate_string_value(string_value: &StructPropertyValue, expected_value: &str) {
+        assert_eq!(string_value.data_type, "String".to_string());
+        assert_eq!(string_value.name, "StringProperty".to_string());
+        assert_eq!(
+            string_value.value,
+            Value::String(expected_value.to_string())
+        );
+    }
+
+    fn validate_boolean_value(boolean_value: &StructPropertyValue, expected_value: bool) {
+        assert_eq!(boolean_value.data_type, "Boolean".to_string());
+        assert_eq!(boolean_value.name, "BoolProperty".to_string());
+        assert_eq!(boolean_value.value, Value::Bool(expected_value));
+    }
+
+    fn validate_location_value(location_value: &StructPropertyValue, expected_value: LatLong) {
+        assert_eq!(location_value.data_type, "LatLong".to_string());
+        assert_eq!(location_value.name, "LatLongProperty".to_string());
+        assert_eq!(location_value.value, Value::LatLong(expected_value));
+    }
+
+    fn validate_number_value(number_value: &StructPropertyValue, expected_value: i64) {
+        assert_eq!(number_value.data_type, "Number".to_string());
+        assert_eq!(number_value.name, "NumberProperty".to_string());
+        assert_eq!(number_value.value, Value::Number(expected_value));
+    }
+
+    fn validate_enum_value(enum_value: &StructPropertyValue, expected_value: i32) {
+        assert_eq!(enum_value.data_type, "Enum".to_string());
+        assert_eq!(enum_value.name, "EnumProperty".to_string());
+        match enum_value.value {
+            Value::Enum(val) => assert_eq!(val, expected_value),
+            Value::Number(val) => assert_eq!(val as i32, expected_value),
+            _ => panic!("Expected enum value, found {:?}", enum_value.value),
+        }
+    }
+
+    fn validate_bytes_value(bytes_value: &StructPropertyValue, expected_value: &[u8]) {
+        assert_eq!(bytes_value.data_type, "Bytes".to_string());
+        assert_eq!(bytes_value.name, "BytesProperty".to_string());
+        match &bytes_value.value {
+            Value::String(val) => assert_eq!(val, &base64::encode(expected_value)),
+            Value::Bytes(val) => assert_eq!(val, &base64::encode(expected_value)),
+            _ => panic!("Expected bytes value, found {:?}", bytes_value.value),
+        }
+    }
+
+    ///
+    /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
+    /// error when there is no property with the specified property_name.
+    ///
+    #[test]
+    fn test_fetch_property_name_not_found() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        clear_tnt_property_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(
+                http::Method::GET,
+                "/record/record_01/property/not_in_database",
+            )
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
+    /// error when there is no record with the specified record_id.
+    ///
+    #[test]
+    fn test_fetch_property_record_id_not_found() {
+        database::run_migrations(&DATABASE_URL).unwrap();
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_tnt_property_table(&test_pool.get().unwrap(), &get_property());
+        let request = srv
+            .client(
+                http::Method::GET,
+                "/record/not_in_database/property/TestProperty",
+            )
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
     fn get_batch_statuses_response_one_id() -> Vec<u8> {
         let mut batch_status_response = ClientBatchStatusResponse::new();
         batch_status_response.set_status(ClientBatchStatusResponse_Status::OK);
@@ -1073,7 +1289,7 @@ mod test {
             org_id: KEY2.to_string(),
             active: true,
             roles: vec![],
-            metadata: vec![],
+            metadata: JsonValue::Object(Map::new()),
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
         }]
@@ -1086,7 +1302,7 @@ mod test {
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["OWNER".to_string()],
-                metadata: vec![],
+                metadata: JsonValue::Object(Map::new()),
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
             },
@@ -1095,7 +1311,7 @@ mod test {
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["CUSTODIAN".to_string()],
-                metadata: vec![],
+                metadata: JsonValue::Object(Map::new()),
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
             },
@@ -1343,9 +1559,122 @@ mod test {
             .unwrap();
     }
 
+    fn get_property() -> Vec<NewProperty> {
+        vec![NewProperty {
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+            name: "TestProperty".to_string(),
+            record_id: "record_01".to_string(),
+            property_definition: "property_definition_1".to_string(),
+            current_page: 1,
+            wrapped: false,
+        }]
+    }
+
+    fn get_reporter() -> Vec<NewReporter> {
+        vec![
+            NewReporter {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty".to_string(),
+                record_id: "record_01".to_string(),
+                public_key: KEY1.to_string(),
+                authorized: true,
+                reporter_index: 0,
+            },
+            NewReporter {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty".to_string(),
+                record_id: "record_01".to_string(),
+                public_key: KEY2.to_string(),
+                authorized: true,
+                reporter_index: 1,
+            },
+        ]
+    }
+
+    fn get_agent_with_metadata() -> Vec<NewAgent> {
+        let value = JsonValue::String("Arya Stark".to_string());
+        let mut metadata = Map::new();
+        metadata.insert("agent_name".to_string(), value);
+
+        let agent = NewAgent {
+            public_key: KEY1.to_string(),
+            org_id: "org1".to_string(),
+            active: true,
+            roles: vec![],
+            metadata: JsonValue::Object(metadata.clone()),
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+        };
+
+        let value2 = JsonValue::String("Jon Snow".to_string());
+        metadata.insert("agent_name".to_string(), value2);
+
+        let agent2 = NewAgent {
+            public_key: KEY2.to_string(),
+            org_id: "org1".to_string(),
+            active: true,
+            roles: vec![],
+            metadata: JsonValue::Object(metadata),
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+        };
+
+        vec![agent, agent2]
+    }
+
+    fn populate_tnt_property_table(conn: &PgConnection, properties: &[NewProperty]) {
+        clear_tnt_property_table(conn);
+        populate_reported_values_table(conn, &get_reported_value());
+        populate_reporters_table(conn, &get_reporter());
+        insert_into(property::table)
+            .values(properties)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn populate_reported_values_table(conn: &PgConnection, reported_values: &[NewReportedValue]) {
+        clear_tnt_reported_value_table(conn);
+        insert_into(reported_value::table)
+            .values(reported_values)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn populate_reporters_table(conn: &PgConnection, reporter: &[NewReporter]) {
+        clear_tnt_reporter_table(conn);
+        populate_agent_table(conn, &get_agent_with_metadata());
+        insert_into(reporter::table)
+            .values(reporter)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
     fn clear_grid_schema_table(conn: &PgConnection) {
         use crate::database::schema::grid_schema::dsl::*;
         diesel::delete(grid_schema).execute(conn).unwrap();
+    }
+
+    fn clear_tnt_reported_value_table(conn: &PgConnection) {
+        use crate::database::schema::reported_value::dsl::*;
+        diesel::delete(reported_value).execute(conn).unwrap();
+    }
+
+    fn clear_tnt_reporter_table(conn: &PgConnection) {
+        use crate::database::schema::reporter::dsl::*;
+        diesel::delete(reporter).execute(conn).unwrap();
+    }
+
+    fn clear_tnt_property_table(conn: &PgConnection) {
+        use crate::database::schema::property::dsl::*;
+        clear_tnt_reporter_table(conn);
+        clear_tnt_reported_value_table(conn);
+        diesel::delete(property).execute(conn).unwrap();
     }
 
     fn get_property_definition() -> Vec<NewGridPropertyDefinition> {
@@ -1439,5 +1768,284 @@ mod test {
     fn clear_record_table(conn: &PgConnection) {
         use crate::database::schema::record::dsl::*;
         diesel::delete(record).execute(conn).unwrap();
+    }
+
+    fn get_reported_value() -> Vec<NewReportedValue> {
+        vec![
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_StructProperty_StringProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "String".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: Some("value_updated".to_string()),
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_StructProperty_StringProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "String".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: Some("value_1".to_string()),
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_StructProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Struct".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: Some(vec![
+                    "StringProperty".to_string(),
+                    "BoolProperty".to_string(),
+                ]),
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_StructProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Struct".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: Some(vec![
+                    "StringProperty".to_string(),
+                    "BoolProperty".to_string(),
+                ]),
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Boolean".to_string(),
+                bytes_value: None,
+                boolean_value: Some(true),
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Boolean".to_string(),
+                bytes_value: None,
+                boolean_value: Some(false),
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Struct".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: Some(vec![
+                    "StructProperty".to_string(),
+                    "LatLongProperty".to_string(),
+                    "NumberProperty".to_string(),
+                    "EnumProperty".to_string(),
+                    "BytesProperty".to_string(),
+                ]),
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Struct".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: Some(vec![
+                    "StructProperty".to_string(),
+                    "LatLongProperty".to_string(),
+                    "NumberProperty".to_string(),
+                    "EnumProperty".to_string(),
+                    "BytesProperty".to_string(),
+                ]),
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_LatLongProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "LatLong".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: Some(LatLongValue(2, 2)),
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_LatLongProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "LatLong".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: Some(LatLongValue(1, 1)),
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_NumberProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Number".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(2),
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_NumberProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Number".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(1),
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_EnumProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Enum".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: Some(2),
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_EnumProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Enum".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: Some(1),
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 2,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty_BytesProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Bytes".to_string(),
+                bytes_value: Some(vec![0x05, 0x06, 0x07, 0x08]),
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: 2,
+                property_name: "TestProperty_BytesProperty".to_string(),
+                record_id: "record_01".to_string(),
+                reporter_index: 1,
+                timestamp: 3,
+                data_type: "Bytes".to_string(),
+                bytes_value: Some(vec![0x01, 0x02, 0x03, 0x04]),
+                boolean_value: None,
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+        ]
     }
 }

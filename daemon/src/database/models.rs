@@ -43,7 +43,7 @@ pub struct NewAgent {
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
@@ -61,7 +61,7 @@ pub struct Agent {
     pub org_id: String,
     pub active: bool,
     pub roles: Vec<String>,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
 }
 
 #[derive(Insertable, Debug)]
@@ -337,6 +337,28 @@ pub struct Reporter {
     pub public_key: String,
     pub authorized: bool,
     pub reporter_index: i32,
+}
+
+#[derive(Queryable, Debug)]
+pub struct ReportedValueReporterToAgentMetadata {
+    pub id: i64,
+    pub property_name: String,
+    pub record_id: String,
+    pub reporter_index: i32,
+    pub timestamp: i64,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
+    pub public_key: Option<String>,
+    pub authorized: Option<bool>,
+    pub metadata: Option<JsonValue>,
+    pub reported_value_end_block_num: i64,
+    pub reporter_end_block_num: Option<i64>,
 }
 
 #[cfg(test)]

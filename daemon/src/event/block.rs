@@ -34,6 +34,7 @@ use sawtooth_sdk::messages::{
     transaction_receipt::{StateChange, StateChangeList},
 };
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 use std::i64;
 
 use crate::database::{
@@ -170,15 +171,10 @@ fn state_change_to_db_operation(
                     org_id: agent.org_id().to_string(),
                     active: *agent.active(),
                     roles: agent.roles().to_vec(),
-                    metadata: agent
-                        .metadata()
-                        .iter()
-                        .map(|md| {
-                            json!({
-                                md.key(): md.value()
-                            })
-                        })
-                        .collect::<Vec<JsonValue>>(),
+                    metadata: json!(agent.metadata().iter().fold(HashMap::new(), |mut acc, md| {
+                        acc.insert(md.key().to_string(), md.value().to_string());
+                        acc
+                    })),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
                 })
@@ -299,7 +295,12 @@ fn state_change_to_db_operation(
             for page in property_pages {
                 page.reported_values().to_vec().iter().try_fold(
                     &mut reported_values,
-                    |acc, value| match make_reported_values(block_num, page.record_id(), value) {
+                    |acc, value| match make_reported_values(
+                        block_num,
+                        page.record_id(),
+                        value.value().name(),
+                        value,
+                    ) {
                         Ok(mut vals) => {
                             acc.append(&mut vals);
                             Ok(acc)
@@ -440,12 +441,13 @@ impl DbInsertOperation {
 fn make_reported_values(
     start_block_num: i64,
     record_id: &str,
+    property_name: &str,
     reported_value: &ReportedValue,
 ) -> Result<Vec<NewReportedValue>, EventError> {
     let mut new_values = Vec::new();
 
     let mut new_value = NewReportedValue {
-        property_name: reported_value.value().name().to_string(),
+        property_name: property_name.to_string(),
         record_id: record_id.to_string(),
         reporter_index: *reported_value.reporter_index() as i32,
         timestamp: *reported_value.timestamp() as i64,
@@ -493,6 +495,7 @@ fn make_reported_values(
         .struct_values()
         .iter()
         .try_fold(&mut new_values, |acc, val| {
+            let property_name = format!("{}_{}", reported_value.value().name(), val.name());
             match reported_value
                 .clone()
                 .into_builder()
@@ -500,7 +503,12 @@ fn make_reported_values(
                 .build()
                 .map_err(|err| EventError(format!("Failed to build ReportedValue: {:?}", err)))
             {
-                Ok(temp_val) => match make_reported_values(start_block_num, record_id, &temp_val) {
+                Ok(temp_val) => match make_reported_values(
+                    start_block_num,
+                    record_id,
+                    &property_name,
+                    &temp_val,
+                ) {
                     Ok(mut vals) => {
                         acc.append(&mut vals);
                         Ok(acc)
