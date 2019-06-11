@@ -384,6 +384,44 @@ paths:
           $ref: "#/components/responses/500ServerError"
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
+  "/record/{record_id}/property/{property_name}":
+      get:
+        tags:
+          - Track and Trace
+        summary: Fetch a particular property
+        description: |
+          Fetches a single property with the given record ID and property name.
+        operationId: fetch_property
+        parameters:
+          - name: record_id
+            in: path
+            description: ID of the record to fetch a property from.
+            required: true
+            schema:
+              type: string
+          - name: property_name
+            in: path
+            description: Name of the property to fetch.
+            required: true
+            schema:
+              type: string
+        responses:
+          "200":
+            description: Successful operation
+            content:
+              application/json:
+                schema:
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Property"
+          "400":
+            $ref: "#/components/responses/400BadRequest"
+          "404":
+            $ref: "#/components/responses/404NotFound"
+          "500":
+            $ref: "#/components/responses/500ServerError"
+          "503":
+            $ref: "#/components/responses/503ServiceUnavailable"
 components:
   parameters:
     batch_id:
@@ -707,15 +745,19 @@ components:
             - type: string
             - type: boolean
             - type: number
-            - type: object
+              format: int64
+            - type: integer
+              format: int32
+            - $ref: '#/components/schemas/StructValue'
             - $ref: '#/components/schemas/LatLong'
-          example: -35014970
+            - $ref: '#/components/schemas/BytesValue'
+          example: "AQIDBA=="
         reporter:
           type: object
           properties:
-            name:
-              type: string
-              example: Nobuo
+            metadata:
+              type: object
+              example: {agent_name: "Smith"}
             public_key:
               type: string
               example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
@@ -738,7 +780,7 @@ components:
               - 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
               - 0364edd42bd9b2dea1315e2da820b569665f96e36c44b267ceeac488cfdc03bf61
         value:
-          $ref: "#/components/schemas/ReportedValue"
+            $ref: "#/components/schemas/ReportedValue"
         updates:
           type: array
           items:
@@ -777,3 +819,31 @@ components:
         timestamp:
           type: integer
           example: 1557949075
+    StructPropertyValue:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        type:
+          $ref: "#/components/schemas/DataTypeEnum"
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+            - type: number
+              format: int64
+            - type: integer
+              format: int32
+            - $ref: '#/components/schemas/StructValue'
+            - $ref: '#/components/schemas/LatLong'
+            - $ref: '#/components/schemas/BytesValue'
+          example: "AQIDBA=="
+    StructValue:
+      type: array
+      items:
+        $ref: '#/components/schemas/StructPropertyValue'
+    BytesValue:
+      type: string
+      format: byte
+      example: "AQIDBA=="
