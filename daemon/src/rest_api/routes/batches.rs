@@ -15,7 +15,7 @@
 use crate::rest_api::{error::RestApiResponseError, routes::SawtoothMessageSender, AppState};
 
 use actix::{Context, Handler, Message};
-use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
+use actix_web::{web, HttpRequest, HttpResponse};
 use futures::future;
 use futures::future::Future;
 use sawtooth_sdk::messages::batch::{Batch, BatchList};
@@ -159,9 +159,9 @@ impl Handler<BatchStatuses> for SawtoothMessageSender {
 }
 
 pub fn submit_batches(
-    (req, state): (HttpRequest<AppState>, State<AppState>),
+    (req, state, body): (HttpRequest, web::Data<AppState>, web::Bytes),
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.body().from_err().and_then(
+    body.from_err().and_then(
         move |body| -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
             let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
                 Ok(batch_list) => batch_list,
@@ -200,9 +200,9 @@ struct Params {
 
 pub fn get_batch_statuses(
     (state, query, req): (
-        State<AppState>,
-        Query<HashMap<String, String>>,
-        HttpRequest<AppState>,
+        web::Data<AppState>,
+        web::Query<HashMap<String, String>>,
+        HttpRequest,
     ),
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     let batch_ids = match query.get("id") {

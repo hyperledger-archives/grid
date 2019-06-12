@@ -27,7 +27,7 @@ use crate::rest_api::routes::{
 };
 use crate::rest_api::routes::{DbExecutor, SawtoothMessageSender};
 use actix::{Actor, Addr, Context, SyncArbiter};
-use actix_web::{http::Method, server, App};
+use actix_web::{http::Method, HttpServer, App, body};
 use sawtooth_sdk::messaging::stream::MessageSender;
 
 pub struct AppState {
@@ -48,8 +48,8 @@ impl RestApiShutdownHandle {
 fn create_app(
     sawtooth_connection: Addr<SawtoothMessageSender>,
     database_connection: Addr<DbExecutor>,
-) -> App<AppState> {
-    App::with_state(AppState {
+) -> App<AppState, body::Body> {
+    App::new().data(AppState {
         sawtooth_connection,
         database_connection,
     })
@@ -111,7 +111,7 @@ pub fn run(
             let db_executor_addr =
                 SyncArbiter::start(2, move || DbExecutor::new(connection_pool.clone()));
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(move || {
+            let addr = HttpServer::new(move || {
                 create_app(zmq_connection_addr.clone(), db_executor_addr.clone())
             })
             .bind(bind_url)?
@@ -136,7 +136,7 @@ pub fn run(
 
     let do_shutdown = Box::new(move || {
         debug!("Shutting down Rest API");
-        addr.do_send(server::StopServer { graceful: true });
+        addr.do_send(HttpServer::StopServer { graceful: true });
         debug!("Graceful signal sent to Rest API");
 
         Ok(())

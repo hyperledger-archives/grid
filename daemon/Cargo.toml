@@ -19,7 +19,7 @@ authors = ["Contributors to Hyperledger Grid"]
 edition = "2018"
 
 [dependencies]
-actix = "0.8.3"
+actix = "0.7"
 actix-web = "1.0.0"
 clap = "2"
 ctrlc = "3.0"

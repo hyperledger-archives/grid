@@ -13,10 +13,10 @@
 // limitations under the License.
 
 use crate::database::{helpers as db, models::Agent};
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpRequest, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -62,9 +62,10 @@ impl Handler<ListAgents> for DbExecutor {
 }
 
 pub fn list_agents(
-    req: HttpRequest<AppState>,
+    req: HttpRequest,
+    state: web::Data<AppState>
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    req.state()
+    state
         .database_connection
         .send(ListAgents)
         .from_err()
@@ -102,10 +103,11 @@ impl Handler<FetchAgent> for DbExecutor {
 }
 
 pub fn fetch_agent(
-    req: HttpRequest<AppState>,
-    public_key: Path<String>,
+    req: HttpRequest,
+    public_key: web::Path<String>,
+    state: web::Data<AppState>
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchAgent {
             public_key: public_key.into_inner(),

@@ -16,10 +16,10 @@ use crate::database::{
     helpers as db,
     models::{GridPropertyDefinition, GridSchema},
 };
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpRequest, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -106,9 +106,10 @@ impl Handler<ListGridSchemas> for DbExecutor {
 }
 
 pub fn list_grid_schemas(
-    req: HttpRequest<AppState>,
+    req: HttpRequest,
+    state: web::Data<AppState>
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    req.state()
+    state
         .database_connection
         .send(ListGridSchemas)
         .from_err()
@@ -151,10 +152,11 @@ impl Handler<FetchGridSchema> for DbExecutor {
 }
 
 pub fn fetch_grid_schema(
-    req: HttpRequest<AppState>,
-    schema_name: Path<String>,
+    req: HttpRequest,
+    schema_name: web::Path<String>,
+    state: web::Data<AppState>
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchGridSchema {
             name: schema_name.into_inner(),

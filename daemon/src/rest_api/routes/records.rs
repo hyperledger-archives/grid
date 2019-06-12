@@ -21,10 +21,10 @@ use crate::database::{
     ConnectionPool,
 };
 
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpRequest, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as JsonValue};
@@ -160,9 +160,10 @@ impl Handler<ListRecords> for DbExecutor {
 }
 
 pub fn list_records(
-    req: HttpRequest<AppState>,
+    req: HttpRequest,
+    state: web::Data<AppState>
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(ListRecords)
         .from_err()
@@ -209,10 +210,11 @@ impl Handler<FetchRecord> for DbExecutor {
 }
 
 pub fn fetch_record(
-    req: HttpRequest<AppState>,
-    record_id: Path<String>,
+    req: HttpRequest,
+    record_id: web::Path<String>,
+    state: web::Data<AppState>
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchRecord {
             record_id: record_id.into_inner(),
@@ -426,10 +428,11 @@ impl Message for FetchRecordProperty {
 }
 
 pub fn fetch_record_property(
-    req: HttpRequest<AppState>,
-    params: Path<(String, String)>,
+    req: HttpRequest,
+    params: web::Path<(String, String)>,
+    state: web::Data<AppState>
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchRecordProperty {
             record_id: params.0.clone(),
