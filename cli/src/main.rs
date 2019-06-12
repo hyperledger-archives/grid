@@ -16,6 +16,9 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate diesel_migrations;
+extern crate diesel;
 
 mod actions;
 mod error;
@@ -35,7 +38,7 @@ use simple_logger;
 
 use crate::error::CliError;
 
-use actions::{agents, keygen, organizations as orgs, schemas};
+use actions::{agents, database, keygen, organizations as orgs, schemas};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -109,6 +112,15 @@ fn run() -> Result<(), CliError> {
             (@subcommand show =>
                 (about: "Show schema specified by name argument")
                 (@arg name: +takes_value +required "Name of schema")
+            )
+        )
+        (@subcommand database =>
+            (about: "Manage Grid Daemon database")
+            (@setting SubcommandRequiredElseHelp)
+            (@subcommand migrate =>
+                (about: "Run database migrations")
+                (@arg database_url: --("database-url") +takes_value
+                    "URL for database")
             )
         )
         (@subcommand keygen =>
@@ -204,6 +216,13 @@ fn run() -> Result<(), CliError> {
             }
             ("list", Some(_)) => schemas::do_list_schemas(&url)?,
             ("show", Some(m)) => schemas::do_show_schema(&url, m.value_of("name").unwrap())?,
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
+        ("database", Some(m)) => match m.subcommand() {
+            ("migrate", Some(m)) => database::run_migrations(
+                m.value_of("database_url")
+                    .unwrap_or("postgres://grid:grid_example@localhost/grid"),
+            )?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("keygen", Some(m)) => keygen::generate_keys(
