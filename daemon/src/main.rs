@@ -133,7 +133,7 @@ fn run() -> Result<(), DaemonError> {
 
 fn main() {
     if let Err(e) = run() {
-        error!("{:?}", e);
+        error!("{}", e);
         std::process::exit(1);
     }
 }
