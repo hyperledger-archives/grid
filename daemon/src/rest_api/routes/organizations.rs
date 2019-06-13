@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::database::{helpers as db, models::Organization};
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -60,7 +60,7 @@ impl Handler<ListOrganizations> for DbExecutor {
 
 pub fn list_organizations(
     req: HttpRequest,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
@@ -102,7 +102,7 @@ impl Handler<FetchOrganization> for DbExecutor {
 pub fn fetch_organization(
     req: HttpRequest,
     organization_id: web::Path<String>,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::database::{helpers as db, models::Agent};
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -63,7 +63,7 @@ impl Handler<ListAgents> for DbExecutor {
 
 pub fn list_agents(
     req: HttpRequest,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     state
         .database_connection
@@ -105,7 +105,7 @@ impl Handler<FetchAgent> for DbExecutor {
 pub fn fetch_agent(
     req: HttpRequest,
     public_key: web::Path<String>,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection

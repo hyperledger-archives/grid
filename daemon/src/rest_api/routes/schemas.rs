@@ -16,7 +16,7 @@ use crate::database::{
     helpers as db,
     models::{GridPropertyDefinition, GridSchema},
 };
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -107,7 +107,7 @@ impl Handler<ListGridSchemas> for DbExecutor {
 
 pub fn list_grid_schemas(
     req: HttpRequest,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
     state
         .database_connection
@@ -154,7 +154,7 @@ impl Handler<FetchGridSchema> for DbExecutor {
 pub fn fetch_grid_schema(
     req: HttpRequest,
     schema_name: web::Path<String>,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection

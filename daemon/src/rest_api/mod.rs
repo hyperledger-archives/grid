@@ -27,7 +27,7 @@ use crate::rest_api::routes::{
 };
 use crate::rest_api::routes::{DbExecutor, SawtoothMessageSender};
 use actix::{Actor, Addr, Context, SyncArbiter};
-use actix_web::{http::Method, HttpServer, App, body};
+use actix_web::{body, http::Method, App, HttpServer};
 use sawtooth_sdk::messaging::stream::MessageSender;
 
 pub struct AppState {
@@ -49,42 +49,43 @@ fn create_app(
     sawtooth_connection: Addr<SawtoothMessageSender>,
     database_connection: Addr<DbExecutor>,
 ) -> App<AppState, body::Body> {
-    App::new().data(AppState {
-        sawtooth_connection,
-        database_connection,
-    })
-    .resource("/batches", |r| {
-        r.method(Method::POST).with_async(submit_batches)
-    })
-    .resource("/batch_statuses", |r| {
-        r.name("batch_statuses");
-        r.method(Method::GET).with_async(get_batch_statuses)
-    })
-    .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
-    .resource("/agent/{public_key}", |r| {
-        r.method(Method::GET).with_async(fetch_agent)
-    })
-    .resource("/organization", |r| {
-        r.method(Method::GET).with_async(list_organizations)
-    })
-    .resource("/organization/{id}", |r| {
-        r.method(Method::GET).with_async(fetch_organization)
-    })
-    .resource("/schema", |r| {
-        r.method(Method::GET).with_async(list_grid_schemas)
-    })
-    .resource("/schema/{name}", |r| {
-        r.method(Method::GET).with_async(fetch_grid_schema)
-    })
-    .resource("/record", |r| {
-        r.method(Method::GET).with_async(list_records)
-    })
-    .resource("/record/{record_id}", |r| {
-        r.method(Method::GET).with_async(fetch_record)
-    })
-    .resource("/record/{record_id}/property/{property_name}", |r| {
-        r.method(Method::GET).with_async(fetch_record_property)
-    })
+    App::new()
+        .data(AppState {
+            sawtooth_connection,
+            database_connection,
+        })
+        .resource("/batches", |r| {
+            r.method(Method::POST).with_async(submit_batches)
+        })
+        .resource("/batch_statuses", |r| {
+            r.name("batch_statuses");
+            r.method(Method::GET).with_async(get_batch_statuses)
+        })
+        .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
+        .resource("/agent/{public_key}", |r| {
+            r.method(Method::GET).with_async(fetch_agent)
+        })
+        .resource("/organization", |r| {
+            r.method(Method::GET).with_async(list_organizations)
+        })
+        .resource("/organization/{id}", |r| {
+            r.method(Method::GET).with_async(fetch_organization)
+        })
+        .resource("/schema", |r| {
+            r.method(Method::GET).with_async(list_grid_schemas)
+        })
+        .resource("/schema/{name}", |r| {
+            r.method(Method::GET).with_async(fetch_grid_schema)
+        })
+        .resource("/record", |r| {
+            r.method(Method::GET).with_async(list_records)
+        })
+        .resource("/record/{record_id}", |r| {
+            r.method(Method::GET).with_async(fetch_record)
+        })
+        .resource("/record/{record_id}/property/{property_name}", |r| {
+            r.method(Method::GET).with_async(fetch_record_property)
+        })
 }
 
 pub fn run(

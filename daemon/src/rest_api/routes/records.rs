@@ -21,7 +21,7 @@ use crate::database::{
     ConnectionPool,
 };
 
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor};
+use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -161,7 +161,7 @@ impl Handler<ListRecords> for DbExecutor {
 
 pub fn list_records(
     req: HttpRequest,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
@@ -212,7 +212,7 @@ impl Handler<FetchRecord> for DbExecutor {
 pub fn fetch_record(
     req: HttpRequest,
     record_id: web::Path<String>,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
@@ -430,7 +430,7 @@ impl Message for FetchRecordProperty {
 pub fn fetch_record_property(
     req: HttpRequest,
     params: web::Path<(String, String)>,
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
