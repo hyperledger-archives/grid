@@ -326,6 +326,16 @@ pub fn fetch_reported_value_reporter_to_agent_metadata(
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
+pub fn list_properties(conn: &PgConnection, record_ids: &[String]) -> QueryResult<Vec<Property>> {
+    property::table
+        .filter(
+            property::record_id
+                .eq_any(record_ids)
+                .and(property::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .load::<Property>(conn)
+}
+
 pub fn list_reporters(
     conn: &PgConnection,
     record_id: &str,

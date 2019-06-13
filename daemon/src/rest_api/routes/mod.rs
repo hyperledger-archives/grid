@@ -817,6 +817,12 @@ mod test {
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
         populate_record_table(&test_pool.get().unwrap(), &get_record());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(),
+            &get_reported_value_for_property_record(),
+            &get_reporter_for_property_record(),
+        );
         let request = srv
             .client(http::Method::GET, &format!("/record"))
             .finish()
@@ -830,6 +836,52 @@ mod test {
         assert_eq!(test_record.record_id, "Test Record".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
+        assert_eq!(test_record.properties.len(), 2);
+        assert_eq!(test_record.properties[0].name, "TestProperty1");
+        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].data_type, "String");
+        assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
+        assert_eq!(test_record.properties[0].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[0].updates[0].value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].updates[0].reporter,
+            KEY1,
+            "Arya Stark",
+        );
+        assert_eq!(
+            test_record.properties[0].value.value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].value.reporter,
+            KEY1,
+            "Arya Stark",
+        );
+
+        assert_eq!(test_record.properties[1].name, "TestProperty2");
+        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].data_type, "Boolean");
+        assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
+        assert_eq!(test_record.properties[1].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[1].updates[0].value,
+            Value::Bool(true)
+        );
+        assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[1].updates[0].reporter,
+            KEY2,
+            "Jon Snow",
+        );
+        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
+        assert_eq!(test_record.properties[1].value.timestamp, 5);
+        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+
         assert_eq!(test_record.r#final, false);
 
         assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
@@ -889,6 +941,12 @@ mod test {
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(&test_pool.get().unwrap(), &get_multuple_records());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(),
+            &get_reported_value_for_property_record(),
+            &get_reporter_for_property_record(),
+        );
 
         // Making another request to the database
         let request = srv.client(http::Method::GET, "/record").finish().unwrap();
@@ -896,8 +954,13 @@ mod test {
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
-        print!("{:?}", body);
+
         assert_eq!(body.len(), 2);
+        let record_1 = &body[0];
+        assert_eq!(record_1.properties.len(), 2);
+
+        let record_2 = &body[1];
+        assert!(record_2.properties.is_empty());
     }
 
     ///
@@ -913,6 +976,12 @@ mod test {
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
         populate_record_table(&test_pool.get().unwrap(), &get_record());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(),
+            &get_reported_value_for_property_record(),
+            &get_reporter_for_property_record(),
+        );
         let request = srv
             .client(
                 http::Method::GET,
@@ -927,6 +996,53 @@ mod test {
         assert_eq!(test_record.record_id, "Test Record".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
+
+        assert_eq!(test_record.properties.len(), 2);
+        assert_eq!(test_record.properties[0].name, "TestProperty1");
+        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].data_type, "String");
+        assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
+        assert_eq!(test_record.properties[0].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[0].updates[0].value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].updates[0].reporter,
+            KEY1,
+            "Arya Stark",
+        );
+        assert_eq!(
+            test_record.properties[0].value.value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].value.reporter,
+            KEY1,
+            "Arya Stark",
+        );
+
+        assert_eq!(test_record.properties[1].name, "TestProperty2");
+        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].data_type, "Boolean");
+        assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
+        assert_eq!(test_record.properties[1].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[1].updates[0].value,
+            Value::Bool(true)
+        );
+        assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[1].updates[0].reporter,
+            KEY2,
+            "Jon Snow",
+        );
+        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
+        assert_eq!(test_record.properties[1].value.timestamp, 5);
+        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+
         assert_eq!(test_record.r#final, false);
 
         assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
@@ -956,6 +1072,12 @@ mod test {
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(),
+            &get_reported_value_for_property_record(),
+            &get_reporter_for_property_record(),
+        );
         populate_associated_agent_table(
             &test_pool.get().unwrap(),
             &get_associated_agents_updated(),
@@ -976,6 +1098,53 @@ mod test {
         assert_eq!(test_record.record_id, "Test Record".to_string());
         assert_eq!(test_record.owner, KEY2.to_string());
         assert_eq!(test_record.custodian, KEY1.to_string());
+
+        assert_eq!(test_record.properties.len(), 2);
+        assert_eq!(test_record.properties[0].name, "TestProperty1");
+        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].data_type, "String");
+        assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
+        assert_eq!(test_record.properties[0].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[0].updates[0].value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].updates[0].reporter,
+            KEY1,
+            "Arya Stark",
+        );
+        assert_eq!(
+            test_record.properties[0].value.value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].value.reporter,
+            KEY1,
+            "Arya Stark",
+        );
+
+        assert_eq!(test_record.properties[1].name, "TestProperty2");
+        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].data_type, "Boolean");
+        assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
+        assert_eq!(test_record.properties[1].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[1].updates[0].value,
+            Value::Bool(true)
+        );
+        assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[1].updates[0].reporter,
+            KEY2,
+            "Jon Snow",
+        );
+        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
+        assert_eq!(test_record.properties[1].value.timestamp, 5);
+        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+
         assert_eq!(test_record.r#final, true);
 
         assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
@@ -1020,7 +1189,12 @@ mod test {
         database::run_migrations(&DATABASE_URL).unwrap();
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_tnt_property_table(&test_pool.get().unwrap(), &get_property());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property(),
+            &get_reported_value(),
+            &get_reporter(),
+        );
         let request = srv
             .client(http::Method::GET, "/record/record_01/property/TestProperty")
             .finish()
@@ -1207,7 +1381,12 @@ mod test {
         database::run_migrations(&DATABASE_URL).unwrap();
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_tnt_property_table(&test_pool.get().unwrap(), &get_property());
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property(),
+            &get_reported_value(),
+            &get_reporter(),
+        );
         let request = srv
             .client(
                 http::Method::GET,
@@ -1559,6 +1738,88 @@ mod test {
             .unwrap();
     }
 
+    fn get_property_for_record() -> Vec<NewProperty> {
+        vec![
+            NewProperty {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "TestProperty1".to_string(),
+                record_id: "Test Record".to_string(),
+                property_definition: "property_definition_1".to_string(),
+                current_page: 1,
+                wrapped: false,
+            },
+            NewProperty {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "TestProperty2".to_string(),
+                record_id: "Test Record".to_string(),
+                property_definition: "property_definition_2".to_string(),
+                current_page: 1,
+                wrapped: false,
+            },
+        ]
+    }
+
+    fn get_reporter_for_property_record() -> Vec<NewReporter> {
+        vec![
+            NewReporter {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty1".to_string(),
+                record_id: "Test Record".to_string(),
+                public_key: KEY1.to_string(),
+                authorized: true,
+                reporter_index: 0,
+            },
+            NewReporter {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty2".to_string(),
+                record_id: "Test Record".to_string(),
+                public_key: KEY2.to_string(),
+                authorized: true,
+                reporter_index: 0,
+            },
+        ]
+    }
+
+    fn get_reported_value_for_property_record() -> Vec<NewReportedValue> {
+        vec![
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty1".to_string(),
+                record_id: "Test Record".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "String".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: None,
+                string_value: Some("value_1".to_string()),
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewReportedValue {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                property_name: "TestProperty2".to_string(),
+                record_id: "Test Record".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
+                data_type: "Boolean".to_string(),
+                bytes_value: None,
+                boolean_value: Some(true),
+                number_value: None,
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+        ]
+    }
     fn get_property() -> Vec<NewProperty> {
         vec![NewProperty {
             start_block_num: 0,
@@ -1625,10 +1886,15 @@ mod test {
         vec![agent, agent2]
     }
 
-    fn populate_tnt_property_table(conn: &PgConnection, properties: &[NewProperty]) {
+    fn populate_tnt_property_table(
+        conn: &PgConnection,
+        properties: &[NewProperty],
+        reported_values: &[NewReportedValue],
+        reporter: &[NewReporter],
+    ) {
         clear_tnt_property_table(conn);
-        populate_reported_values_table(conn, &get_reported_value());
-        populate_reporters_table(conn, &get_reporter());
+        populate_reported_values_table(conn, &reported_values);
+        populate_reporters_table(conn, &reporter);
         insert_into(property::table)
             .values(properties)
             .execute(conn)
