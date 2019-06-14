@@ -16,5 +16,6 @@
  */
 
 pub mod agents;
+pub mod keygen;
 pub mod organizations;
 pub mod schemas;
