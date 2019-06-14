@@ -249,7 +249,7 @@ fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> 
 
 fn main() {
     if let Err(e) = run() {
-        error!("{:?}", e);
+        error!("{}", e);
         std::process::exit(1);
     }
 }
