@@ -28,6 +28,7 @@ services:
         bash -c "
             cargo test && \
             echo \"Running private_xo tests...\" && \
-            (cd examples/private_xo && cargo +nightly test)
+            (cd examples/private_xo && cargo +nightly test) &&
+            cd libsplinter && cargo test --features zmq-transport
         "
     stop_signal: SIGKILL

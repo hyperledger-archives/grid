@@ -15,6 +15,8 @@
 pub mod inproc;
 pub mod raw;
 pub mod tls;
+#[cfg(feature = "zmq-transport")]
+pub mod zmq;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
@@ -179,6 +181,7 @@ impl_from_io_error!(ConnectError);
 #[derive(Debug)]
 pub enum ListenError {
     IoError(io::Error),
+    ProtocolError(String),
 }
 
 impl_from_io_error!(ListenError);
@@ -275,7 +278,11 @@ pub mod tests {
         );
     }
 
-    pub fn test_poll<T: Transport + Send + 'static>(mut transport: T, bind: &str) {
+    pub fn test_poll<T: Transport + Send + 'static>(
+        mut transport: T,
+        bind: &str,
+        expected_readiness: Ready,
+    ) {
         // Create aconnections and register them with the poller
         const CONNECTIONS: usize = 16;
 
@@ -296,7 +303,7 @@ pub mod tests {
                 assert_ok(poll.register(
                     conn.evented(),
                     *token,
-                    Ready::readable() | Ready::writable(),
+                    expected_readiness,
                     PollOpt::level(),
                 ));
             }
@@ -307,7 +314,7 @@ pub mod tests {
             let mut events = Events::with_capacity(CONNECTIONS * 2);
             assert_ok(poll.poll(&mut events, None));
             for (mut conn, token) in connections {
-                assert_ready(&events, token, Ready::readable() | Ready::writable());
+                assert_ready(&events, token, expected_readiness);
                 assert_eq!(b"hello".to_vec(), assert_ok(conn.recv()));
                 assert_ok(conn.send(b"world"));
             }

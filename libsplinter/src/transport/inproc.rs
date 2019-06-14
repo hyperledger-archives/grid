@@ -237,6 +237,6 @@ pub mod tests {
     #[test]
     fn test_poll() {
         let transport = InprocTransport::default();
-        tests::test_poll(transport, "test");
+        tests::test_poll(transport, "test", Ready::readable() | Ready::writable());
     }
 }
