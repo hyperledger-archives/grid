@@ -35,6 +35,8 @@ services:
         sabre upload --filename track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create a43b46 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm a43b46 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee01 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm cad11d grid_track_and_trace --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= track and trace contract is loaded =========---------'
       "
 
@@ -96,7 +98,7 @@ services:
             -k /root/.sawtooth/keys/my_key.priv \
             sawtooth.consensus.algorithm.name=Devmode \
             sawtooth.consensus.algorithm.version=0.1 \
-            -o config.batch && 
+            -o config.batch &&
           sawset proposal create \
             -k /root/.sawtooth/keys/my_key.priv \
             sawtooth.swa.administrators=$$(cat /grid-shared/my_key.pub) \

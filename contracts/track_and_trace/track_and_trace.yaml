@@ -17,5 +17,7 @@ version: '1.0'
 wasm: target/wasm32-unknown-unknown/release/grid-track-and-trace-tp.wasm
 inputs:
   - 'a43b46'
+  - '621dee01'
+  - 'cad11d'
 outputs:
   - 'a43b46'
