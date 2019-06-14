@@ -34,7 +34,7 @@ use crate::error::CliError;
 /// The directory containing the keys is determined using the HOME
 /// environment variable:
 ///
-///   $HOME/.sawtooth/keys/
+///   $HOME/.grid/keys/
 ///
 /// # Arguments
 ///
@@ -68,7 +68,7 @@ pub fn load_signing_key(name: Option<String>) -> Result<Secp256k1PrivateKey, Cli
             ))
         })
         .and_then(|mut p| {
-            p.push(".sawtooth");
+            p.push(".grid");
             p.push("keys");
             p.push(format!("{}.priv", &username));
             Ok(p)
