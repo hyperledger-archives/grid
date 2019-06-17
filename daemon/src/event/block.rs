@@ -49,7 +49,8 @@ use crate::database::{
 
 use super::{
     error::EventError, EventHandler, GRID_NAMESPACE, GRID_SCHEMA, PIKE_AGENT, PIKE_NAMESPACE,
-    PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
+    PIKE_ORG, TRACK_AND_TRACE_NAMESPACE, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
+    TRACK_AND_TRACE_RECORD,
 };
 
 pub struct BlockEventHandler {
@@ -151,6 +152,7 @@ fn get_db_operations(
         .filter(|state_change| {
             &state_change.address[0..6] == PIKE_NAMESPACE
                 || &state_change.address[0..6] == GRID_NAMESPACE
+                || &state_change.address[0..6] == TRACK_AND_TRACE_NAMESPACE
         })
         .map(|state_change| state_change_to_db_operation(&state_change, block_num))
         .collect::<Result<Vec<DbInsertOperation>, EventError>>()
