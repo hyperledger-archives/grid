@@ -821,6 +821,7 @@ mod test {
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
         assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
         assert_eq!(test_record.r#final, false);
@@ -866,6 +867,7 @@ mod test {
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
         assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
         assert_eq!(test_record.r#final, true);
     }
 
@@ -918,6 +920,7 @@ mod test {
         let test_record: RecordSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
         assert_eq!(test_record.r#final, false);
@@ -967,6 +970,7 @@ mod test {
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
 
         assert_eq!(test_record.record_id, "Test Record".to_string());
+        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
         assert_eq!(test_record.owner, KEY2.to_string());
         assert_eq!(test_record.custodian, KEY1.to_string());
         assert_eq!(test_record.r#final, true);
