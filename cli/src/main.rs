@@ -35,7 +35,7 @@ use simple_logger;
 
 use crate::error::CliError;
 
-use actions::{agents, organizations as orgs, schemas};
+use actions::{agents, keygen, organizations as orgs, schemas};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -110,6 +110,12 @@ fn run() -> Result<(), CliError> {
                 (about: "Show schema specified by name argument")
                 (@arg name: +takes_value +required "Name of schema")
             )
+        )
+        (@subcommand keygen =>
+           (about: "Generates keys with which the user can sign transactions and batches.")
+           (@arg key_name: +takes_value "Name of the key to create")
+           (@arg force: --force "Overwrite files if they exist")
+           (@arg key_dir: -d --key_dir +takes_value "Specify the directory for the key files")
         )
     )
     .get_matches();
@@ -200,6 +206,11 @@ fn run() -> Result<(), CliError> {
             ("show", Some(m)) => schemas::do_show_schema(&url, m.value_of("name").unwrap())?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
+        ("keygen", Some(m)) => keygen::generate_keys(
+            m.value_of("key_name"),
+            m.is_present("force"),
+            m.value_of("key_dir"),
+        )?,
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
     }
 
@@ -238,7 +249,7 @@ fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> 
 
 fn main() {
     if let Err(e) = run() {
-        error!("{:?}", e);
+        error!("{}", e);
         std::process::exit(1);
     }
 }
