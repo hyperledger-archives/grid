@@ -72,6 +72,7 @@ impl ProposalSlice {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecordSlice {
     pub record_id: String,
+    pub schema: String,
     pub owner: String,
     pub custodian: String,
     pub properties: Vec<PropertySlice>,
@@ -104,6 +105,7 @@ impl RecordSlice {
 
         Self {
             record_id: record.record_id.clone(),
+            schema: record.schema.clone(),
             owner: match owner_updates.last() {
                 Some(owner) => owner.agent_id.clone(),
                 None => "".to_string(),
