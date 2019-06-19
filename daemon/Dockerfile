@@ -55,8 +55,23 @@ RUN cargo build --release
 RUN rm src/*.rs
 COPY ./daemon/src ./src
 COPY ./daemon/migrations ./migrations
+COPY ./daemon/migrations ../daemon/migrations
+
 
 RUN rm ./target/release/gridd* ./target/release/deps/gridd*
+RUN cargo build --release
+
+WORKDIR ..
+RUN USER=root cargo new --bin cli
+WORKDIR /cli
+
+COPY ./cli/Cargo.toml ./Cargo.toml
+RUN cargo build --release
+
+RUN rm src/*.rs
+COPY ./cli/src ./src
+
+RUN rm ./target/release/grid* ./target/release/deps/grid*
 RUN cargo build --release
 
 # create the standalone image
@@ -68,5 +83,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=BUILDER /daemon/target/release/gridd /
+COPY --from=BUILDER /cli/target/release/grid /
+
 
 CMD ["/gridd"]
