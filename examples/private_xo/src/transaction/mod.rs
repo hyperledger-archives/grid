@@ -20,13 +20,13 @@ use transact::context::manager::sync::ContextManager;
 use transact::database::{btree::BTreeDatabase, Database};
 use transact::execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor};
 use transact::protocol::batch::Batch;
+use transact::sawtooth::SawtoothToTransactHandlerAdapter;
 use transact::scheduler::{serial::SerialScheduler, Scheduler, TransactionExecutionResult};
 use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, StateDatabaseError, INDEXES},
     StateChange, Write,
 };
 
-use crate::transaction::adapter::SawtoothToTransactHandlerAdapter;
 
 mod adapter;
 
