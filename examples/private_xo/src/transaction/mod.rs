@@ -27,9 +27,6 @@ use transact::state::{
     StateChange, Write,
 };
 
-
-mod adapter;
-
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
 
 struct XoShared {
