@@ -56,7 +56,8 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/proto
 
 COPY ./sdk /sdk
 
-RUN USER=root cargo new --bin contracts/schema
+RUN mkdir contracts \
+ && USER=root cargo new --bin contracts/schema
 WORKDIR /contracts/schema
 
 # Build TP with dummy source in order to cache dependencies in Docker image.

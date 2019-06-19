@@ -50,7 +50,8 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/proto
 
 COPY ./sdk /sdk
 
-RUN USER=root cargo new --bin contracts/pike
+RUN mkdir contracts \
+ && USER=root cargo new --bin contracts/pike
 WORKDIR /contracts/pike
 
 # Build TP with dummy source in order to cache dependencies in Docker image.

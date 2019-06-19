@@ -50,7 +50,8 @@ RUN rustup update \
 
 COPY ./sdk /sdk
 
-RUN USER=root cargo new --bin contracts/schema
+RUN mkdir contracts \
+ && USER=root cargo new --bin contracts/schema
 WORKDIR /contracts/schema
 
 #Build modules with dummy source in order to cache dependencies in Docker image.
