@@ -363,7 +363,7 @@ pub fn list_reported_value_reporter_to_agent_metadata(
                 .and(reported_value_reporter_to_agent_metadata::record_id.eq(record_id))
                 .and(
                     reported_value_reporter_to_agent_metadata::reported_value_end_block_num
-                        .le(MAX_BLOCK_NUM),
+                        .eq(MAX_BLOCK_NUM),
                 ),
         )
         .load::<ReportedValueReporterToAgentMetadata>(conn)
