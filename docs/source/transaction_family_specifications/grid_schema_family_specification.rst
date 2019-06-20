@@ -481,7 +481,7 @@ Addressing
 
 Grid Schemas are stored under the Grid namespace ``621dee``. For each schemas,
 the address is formed by concatenating the namespace, the special policy
-namespace of ``01``, and the first 62 characters of the SHA-256 hash of the
+namespace of ``01``, and the first 62 characters of the SHA-512 hash of the
 schema name.
 
 For example, the address of the ``Lightbulb`` schema defined in the example
