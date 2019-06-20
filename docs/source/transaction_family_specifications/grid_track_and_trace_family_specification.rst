@@ -329,8 +329,7 @@ its type:
 
   - The first 36 characters of the hash of the identifier of
     its associated Record.
-  - The first 22 characters of its ``receiving_agent``.
-  - The first 4 characters of the hash of its ``timestamp``.
+  - The first 26 characters of its ``receiving_agent``.
 
 - Record: the first 62 characters of the hash of its identifier.
 
