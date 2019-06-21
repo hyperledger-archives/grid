@@ -50,7 +50,8 @@ RUN rustup update \
 
 COPY ./sdk /sdk
 
-RUN USER=root cargo new --bin contracts/schema
+RUN mkdir contracts \
+ && USER=root cargo new --bin contracts/schema
 WORKDIR /contracts/schema
 
 #Build modules with dummy source in order to cache dependencies in Docker image.
@@ -58,19 +59,19 @@ COPY ./contracts/schema/Cargo.toml ./Cargo.toml
 RUN cargo check
 
 WORKDIR /
-RUN USER=root cargo new --bin daemon
+RUN USER=root cargo new --bin daemon --vcs none
 WORKDIR /daemon
 COPY ./daemon/Cargo.toml ./Cargo.toml
 RUN cargo check
 
 WORKDIR /
-RUN USER=root cargo new --bin cli
+RUN USER=root cargo new --bin cli --vcs none
 WORKDIR /cli
 COPY ./cli/Cargo.toml ./Cargo.toml
 RUN cargo check
 
 WORKDIR /
-RUN USER=root cargo new --bin contracts/track_and_trace
+RUN USER=root cargo new --bin contracts/track_and_trace --vcs none
 WORKDIR /contracts/track_and_trace
 
 COPY ./contracts/track_and_trace/Cargo.toml ./Cargo.toml
