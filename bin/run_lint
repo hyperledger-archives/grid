@@ -21,6 +21,7 @@ dirs="
     $top_dir/cli
     $top_dir/contracts/schema
     $top_dir/contracts/pike
+    $top_dir/contracts/product
     $top_dir/contracts/track_and_trace
     $top_dir/daemon
 "
