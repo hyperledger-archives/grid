@@ -20,15 +20,12 @@ use transact::context::manager::sync::ContextManager;
 use transact::database::{btree::BTreeDatabase, Database};
 use transact::execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor};
 use transact::protocol::batch::Batch;
+use transact::sawtooth::SawtoothToTransactHandlerAdapter;
 use transact::scheduler::{serial::SerialScheduler, Scheduler, TransactionExecutionResult};
 use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, StateDatabaseError, INDEXES},
     StateChange, Write,
 };
-
-use crate::transaction::adapter::SawtoothToTransactHandlerAdapter;
-
-mod adapter;
 
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
 
@@ -117,7 +114,8 @@ impl XoState {
         let state_root = XoState::unlocked_current_state_root(&self.db, &mut shared);
 
         let mut scheduler =
-            SerialScheduler::new(Box::new(self.context_manager.clone()), state_root.clone());
+            SerialScheduler::new(Box::new(self.context_manager.clone()), state_root.clone())
+                .map_err(|err| XoStateError(format!("Unable to create scheduler")))?;
 
         let (result_tx, result_rx) = std::sync::mpsc::channel();
         scheduler.set_result_callback(Box::new(move |batch_result| {
@@ -132,9 +130,12 @@ impl XoState {
         scheduler.add_batch(batch_pair);
         scheduler.finalize();
 
+        let task_iter = scheduler
+            .take_task_iterator()
+            .expect("Should have only taken this once");
         shared
             .executor
-            .execute(scheduler.take_task_iterator(), scheduler.new_notifier())
+            .execute(task_iter, scheduler.new_notifier())
             .map_err(|err| XoStateError(format!("Unable to execute schedule: {}", err)))?;
 
         let batch_result = result_rx
