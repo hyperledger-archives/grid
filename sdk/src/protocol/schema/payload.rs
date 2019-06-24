@@ -26,57 +26,19 @@ use crate::protos::{
 /// Native implementation for SchemaPayload_Action
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
-    SchemaCreate,
-    SchemaUpdate,
+    SchemaCreate(SchemaCreateAction),
+    SchemaUpdate(SchemaUpdateAction),
 }
-
-impl FromProto<protos::schema_payload::SchemaPayload_Action> for Action {
-    fn from_proto(
-        actions: protos::schema_payload::SchemaPayload_Action,
-    ) -> Result<Self, ProtoConversionError> {
-        match actions {
-            protos::schema_payload::SchemaPayload_Action::SCHEMA_CREATE => Ok(Action::SchemaCreate),
-            protos::schema_payload::SchemaPayload_Action::SCHEMA_UPDATE => Ok(Action::SchemaUpdate),
-            protos::schema_payload::SchemaPayload_Action::UNSET_ACTION => {
-                Err(ProtoConversionError::InvalidTypeError(
-                    "Cannot convert SchemaPayload_Action with type unset.".to_string(),
-                ))
-            }
-        }
-    }
-}
-
-impl FromNative<Action> for protos::schema_payload::SchemaPayload_Action {
-    fn from_native(action: Action) -> Result<Self, ProtoConversionError> {
-        match action {
-            Action::SchemaCreate => Ok(protos::schema_payload::SchemaPayload_Action::SCHEMA_CREATE),
-            Action::SchemaUpdate => Ok(protos::schema_payload::SchemaPayload_Action::SCHEMA_UPDATE),
-        }
-    }
-}
-
-impl IntoProto<protos::schema_payload::SchemaPayload_Action> for Action {}
-impl IntoNative<Action> for protos::schema_payload::SchemaPayload_Action {}
 
 /// Native implementation for SchemaPayload
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemaPayload {
     action: Action,
-    schema_create: SchemaCreateAction,
-    schema_update: SchemaUpdateAction,
 }
 
 impl SchemaPayload {
     pub fn action(&self) -> &Action {
         &self.action
-    }
-
-    pub fn schema_create(&self) -> &SchemaCreateAction {
-        &self.schema_create
-    }
-
-    pub fn schema_update(&self) -> &SchemaUpdateAction {
-        &self.schema_update
     }
 }
 
@@ -84,21 +46,38 @@ impl FromProto<protos::schema_payload::SchemaPayload> for SchemaPayload {
     fn from_proto(
         payload: protos::schema_payload::SchemaPayload,
     ) -> Result<Self, ProtoConversionError> {
-        Ok(SchemaPayload {
-            action: Action::from_proto(payload.get_action())?,
-            schema_create: SchemaCreateAction::from_proto(payload.get_schema_create().clone())?,
-            schema_update: SchemaUpdateAction::from_proto(payload.get_schema_update().clone())?,
-        })
+        let action = match payload.get_action() {
+            protos::schema_payload::SchemaPayload_Action::SCHEMA_CREATE => Action::SchemaCreate(
+                SchemaCreateAction::from_proto(payload.get_schema_create().clone())?,
+            ),
+            protos::schema_payload::SchemaPayload_Action::SCHEMA_UPDATE => Action::SchemaUpdate(
+                SchemaUpdateAction::from_proto(payload.get_schema_update().clone())?,
+            ),
+            protos::schema_payload::SchemaPayload_Action::UNSET_ACTION => {
+                return Err(ProtoConversionError::InvalidTypeError(
+                    "Cannot convert SchemaPayload_Action with type unset.".to_string(),
+                ));
+            }
+        };
+        Ok(SchemaPayload { action })
     }
 }
 
 impl FromNative<SchemaPayload> for protos::schema_payload::SchemaPayload {
     fn from_native(payload: SchemaPayload) -> Result<Self, ProtoConversionError> {
         let mut proto_payload = protos::schema_payload::SchemaPayload::new();
-
-        proto_payload.set_action(payload.action().clone().into_proto()?);
-        proto_payload.set_schema_create(payload.schema_create().clone().into_proto()?);
-        proto_payload.set_schema_update(payload.schema_update().clone().into_proto()?);
+        match payload.action() {
+            Action::SchemaCreate(payload) => {
+                proto_payload
+                    .set_action(protos::schema_payload::SchemaPayload_Action::SCHEMA_CREATE);
+                proto_payload.set_schema_create(payload.clone().into_proto()?);
+            }
+            Action::SchemaUpdate(payload) => {
+                proto_payload
+                    .set_action(protos::schema_payload::SchemaPayload_Action::SCHEMA_UPDATE);
+                proto_payload.set_schema_update(payload.clone().into_proto()?);
+            }
+        }
         Ok(proto_payload)
     }
 }
@@ -161,8 +140,6 @@ impl std::fmt::Display for SchemaPayloadBuildError {
 #[derive(Default, Clone)]
 pub struct SchemaPayloadBuilder {
     action: Option<Action>,
-    schema_create: Option<SchemaCreateAction>,
-    schema_update: Option<SchemaUpdateAction>,
 }
 
 impl SchemaPayloadBuilder {
@@ -175,50 +152,11 @@ impl SchemaPayloadBuilder {
         self
     }
 
-    pub fn with_schema_create(mut self, create: SchemaCreateAction) -> SchemaPayloadBuilder {
-        self.schema_create = Some(create);
-        self
-    }
-
-    pub fn with_schema_update(mut self, update: SchemaUpdateAction) -> SchemaPayloadBuilder {
-        self.schema_update = Some(update);
-        self
-    }
-
     pub fn build(self) -> Result<SchemaPayload, SchemaPayloadBuildError> {
         let action = self.action.ok_or_else(|| {
             SchemaPayloadBuildError::MissingField("'action' field is required".to_string())
         })?;
-
-        let schema_create = {
-            if action == Action::SchemaCreate {
-                self.schema_create.ok_or_else(|| {
-                    SchemaPayloadBuildError::MissingField(
-                        "'schema_create' field is required".to_string(),
-                    )
-                })?
-            } else {
-                SchemaCreateAction::default()
-            }
-        };
-
-        let schema_update = {
-            if action == Action::SchemaUpdate {
-                self.schema_update.ok_or_else(|| {
-                    SchemaPayloadBuildError::MissingField(
-                        "'schema_update' field is required".to_string(),
-                    )
-                })?
-            } else {
-                SchemaUpdateAction::default()
-            }
-        };
-
-        Ok(SchemaPayload {
-            action,
-            schema_create,
-            schema_update,
-        })
+        Ok(SchemaPayload { action })
     }
 }
 
@@ -652,14 +590,11 @@ mod tests {
 
         let builder = SchemaPayloadBuilder::new();
         let payload = builder
-            .with_action(Action::SchemaCreate)
-            .with_schema_create(action.clone())
+            .with_action(Action::SchemaCreate(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::SchemaCreate);
-        assert_eq!(payload.schema_create, action);
-        assert_eq!(payload.schema_update, SchemaUpdateAction::default());
+        assert_eq!(payload.action, Action::SchemaCreate(action));
     }
 
     #[test]
@@ -682,14 +617,11 @@ mod tests {
 
         let builder = SchemaPayloadBuilder::new();
         let payload = builder
-            .with_action(Action::SchemaUpdate)
-            .with_schema_update(action.clone())
+            .with_action(Action::SchemaUpdate(action.clone()))
             .build()
             .unwrap();
 
-        assert_eq!(payload.action, Action::SchemaUpdate);
-        assert_eq!(payload.schema_create, SchemaCreateAction::default());
-        assert_eq!(payload.schema_update, action);
+        assert_eq!(payload.action, Action::SchemaUpdate(action));
     }
 
     #[test]
@@ -712,8 +644,7 @@ mod tests {
 
         let builder = SchemaPayloadBuilder::new();
         let original = builder
-            .with_action(Action::SchemaUpdate)
-            .with_schema_update(action.clone())
+            .with_action(Action::SchemaUpdate(action))
             .build()
             .unwrap();
 

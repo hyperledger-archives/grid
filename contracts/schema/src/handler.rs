@@ -113,11 +113,11 @@ impl TransactionHandler for GridSchemaTransactionHandler {
         );
 
         match payload.action() {
-            Action::SchemaCreate => {
-                schema_create(payload.schema_create(), signer, &state, &perm_checker)
+            Action::SchemaCreate(schema_create_payload) => {
+                schema_create(schema_create_payload, signer, &state, &perm_checker)
             }
-            Action::SchemaUpdate => {
-                schema_update(payload.schema_update(), signer, &state, &perm_checker)
+            Action::SchemaUpdate(schema_update_payload) => {
+                schema_update(schema_update_payload, signer, &state, &perm_checker)
             }
         }
     }

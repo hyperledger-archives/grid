@@ -26,8 +26,8 @@ use grid_sdk::protocol::schema::payload::{
 
 pub fn validate_payload(payload: &SchemaPayload) -> Result<(), ApplyError> {
     match payload.action() {
-        Action::SchemaCreate => validate_schema_create_action(payload.schema_create()),
-        Action::SchemaUpdate => validate_schema_update_action(payload.schema_update()),
+        Action::SchemaCreate(payload) => validate_schema_create_action(payload),
+        Action::SchemaUpdate(payload) => validate_schema_update_action(payload),
     }
 }
 
@@ -129,8 +129,7 @@ mod tests {
 
         let builder = SchemaPayloadBuilder::new();
         let payload = builder
-            .with_action(Action::SchemaCreate)
-            .with_schema_create(action.clone())
+            .with_action(Action::SchemaCreate(action))
             .build()
             .unwrap();
 
@@ -197,8 +196,7 @@ mod tests {
 
         let builder = SchemaPayloadBuilder::new();
         let payload = builder
-            .with_action(Action::SchemaUpdate)
-            .with_schema_update(action.clone())
+            .with_action(Action::SchemaUpdate(action))
             .build()
             .unwrap();
 
