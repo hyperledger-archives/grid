@@ -49,7 +49,10 @@ fn apply(
     let handler = GridSchemaTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err),
+        Err(err) => {
+            info!("{} received {}", handler.family_name(), err);
+            Err(err)
+        }
     }
 }
 
@@ -104,13 +107,7 @@ impl TransactionHandler for GridSchemaTransactionHandler {
         let state = GridSchemaState::new(context);
         let perm_checker = PermissionChecker::new(context);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        info!(
-            "{:?} {:?} {:?}",
-            payload.action(),
-            request.get_header().get_inputs(),
-            request.get_header().get_outputs()
-        );
+        info!("Grid Schema Payload {:?}", payload.action(),);
 
         match payload.action() {
             Action::SchemaCreate(schema_create_payload) => {
