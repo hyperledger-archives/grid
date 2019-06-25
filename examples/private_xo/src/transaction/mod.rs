@@ -115,27 +115,43 @@ impl XoState {
 
         let mut scheduler =
             SerialScheduler::new(Box::new(self.context_manager.clone()), state_root.clone())
-                .map_err(|err| XoStateError(format!("Unable to create scheduler")))?;
+                .map_err(|err| XoStateError(format!("Unable to create scheduler: {}", err)))?;
 
         let (result_tx, result_rx) = std::sync::mpsc::channel();
-        scheduler.set_result_callback(Box::new(move |batch_result| {
-            result_tx
-                .send(batch_result)
-                .expect("Unable to send batch result")
-        }));
+        scheduler
+            .set_result_callback(Box::new(move |batch_result| {
+                result_tx
+                    .send(batch_result)
+                    .expect("Unable to send batch result")
+            }))
+            .map_err(|err| {
+                XoStateError(format!(
+                    "Unable to set result callback on scheduler: {}",
+                    err
+                ))
+            })?;
 
         let batch_pair = batch
             .into_pair()
             .map_err(|err| XoStateError(format!("Unable to create batch pair: {}", err)))?;
-        scheduler.add_batch(batch_pair);
-        scheduler.finalize();
+        scheduler
+            .add_batch(batch_pair)
+            .map_err(|err| XoStateError(format!("Unable to add batch to schedule: {}", err)))?;
+        scheduler
+            .finalize()
+            .map_err(|err| XoStateError(format!("Unable to finalize schedule: {}", err)))?;
 
         let task_iter = scheduler
             .take_task_iterator()
             .expect("Should have only taken this once");
+
+        let notifier = scheduler
+            .new_notifier()
+            .map_err(|err| XoStateError(format!("Unable to create schedule notifier: {}", err)))?;
+
         shared
             .executor
-            .execute(task_iter, scheduler.new_notifier())
+            .execute(task_iter, notifier)
             .map_err(|err| XoStateError(format!("Unable to execute schedule: {}", err)))?;
 
         let batch_result = result_rx
