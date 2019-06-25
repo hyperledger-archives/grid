@@ -20,7 +20,7 @@ use super::models::{
     NewReporter, Property, Proposal, Record, ReportedValueReporterToAgentMetadata, Reporter,
 };
 use super::schema::{
-    associated_agent, property, proposal, record, reported_value,
+    associated_agent, grid_property_definition, property, proposal, record, reported_value,
     reported_value_reporter_to_agent_metadata, reporter,
 };
 use super::MAX_BLOCK_NUM;
@@ -287,19 +287,34 @@ pub fn update_reporter_end_block_num(
         .map(|_| ())
 }
 
-pub fn fetch_property(
+pub fn fetch_property_with_data_type(
     conn: &PgConnection,
     record_id: &str,
     property_name: &str,
-) -> QueryResult<Option<Property>> {
+) -> QueryResult<Option<(Property, Option<String>)>> {
     property::table
+        .left_join(
+            record::table.on(property::record_id
+                .eq(record::record_id)
+                .and(property::end_block_num.eq(record::end_block_num))),
+        )
+        .left_join(
+            grid_property_definition::table.on(record::schema
+                .eq(grid_property_definition::schema_name)
+                .and(property::name.eq(grid_property_definition::name))
+                .and(property::end_block_num.eq(record::end_block_num))),
+        )
         .filter(
             property::name
                 .eq(property_name)
                 .and(property::record_id.eq(record_id))
                 .and(property::end_block_num.eq(MAX_BLOCK_NUM)),
         )
-        .first(conn)
+        .select((
+            property::all_columns,
+            grid_property_definition::data_type.nullable(),
+        ))
+        .first::<(Property, Option<String>)>(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
@@ -326,14 +341,32 @@ pub fn fetch_reported_value_reporter_to_agent_metadata(
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
-pub fn list_properties(conn: &PgConnection, record_ids: &[String]) -> QueryResult<Vec<Property>> {
+pub fn list_properties_with_data_type(
+    conn: &PgConnection,
+    record_ids: &[String],
+) -> QueryResult<Vec<(Property, Option<String>)>> {
     property::table
+        .left_join(
+            record::table.on(property::record_id
+                .eq(record::record_id)
+                .and(property::end_block_num.eq(record::end_block_num))),
+        )
+        .left_join(
+            grid_property_definition::table.on(record::schema
+                .eq(grid_property_definition::schema_name)
+                .and(property::name.eq(grid_property_definition::name))
+                .and(property::end_block_num.eq(record::end_block_num))),
+        )
         .filter(
             property::record_id
                 .eq_any(record_ids)
                 .and(property::end_block_num.eq(MAX_BLOCK_NUM)),
         )
-        .load::<Property>(conn)
+        .select((
+            property::all_columns,
+            grid_property_definition::data_type.nullable(),
+        ))
+        .load::<(Property, Option<String>)>(conn)
 }
 
 pub fn list_reporters(
