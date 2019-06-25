@@ -182,11 +182,11 @@ impl TrackAndTraceTransactionHandler {
 
             state.set_property(record_id, property_name, new_property.clone())?;
 
-            let mut new_property_page = PropertyPageBuilder::new()
-                .with_name(property_name.to_string())
-                .with_record_id(record_id.to_string());
-
             if provided_properties.contains_key(property_name) {
+                let mut new_property_page = PropertyPageBuilder::new()
+                    .with_name(property_name.to_string())
+                    .with_record_id(record_id.to_string());
+
                 let provided_property = provided_properties[property_name].clone();
                 let reported_value = ReportedValueBuilder::new()
                     .with_reporter_index(0)
@@ -196,16 +196,15 @@ impl TrackAndTraceTransactionHandler {
                     .map_err(|err| map_builder_error_to_apply_error(err, "ReportedValue"))?;
 
                 new_property_page = new_property_page.with_reported_values(vec![reported_value]);
+                state.set_property_page(
+                    record_id,
+                    property_name,
+                    1,
+                    new_property_page
+                        .build()
+                        .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
+                )?;
             }
-
-            state.set_property_page(
-                record_id,
-                property_name,
-                1,
-                new_property_page
-                    .build()
-                    .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
-            )?;
         }
 
         Ok(())
@@ -336,11 +335,12 @@ impl TrackAndTraceTransactionHandler {
             let page_number = prop.current_page();
             let page = match state.get_property_page(record_id, name, *page_number)? {
                 Some(page) => page,
-                None => {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Property page does not exist",
-                    )));
-                }
+                None => PropertyPageBuilder::new()
+                    .with_name(prop.name().to_string())
+                    .with_record_id(record_id.to_string())
+                    .with_reported_values(vec![])
+                    .build()
+                    .map_err(|err| map_builder_error_to_apply_error(err, "PropertyPage"))?,
             };
 
             let reported_value = ReportedValueBuilder::new()
