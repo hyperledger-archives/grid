@@ -816,7 +816,11 @@ mod test {
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
-        populate_record_table(&test_pool.get().unwrap(), &get_record());
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_for_record(),
+        );
+        populate_record_table(&test_pool.get().unwrap(), &get_record("Test Record"));
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
             &get_property_for_record(),
@@ -854,12 +858,27 @@ mod test {
             "Arya Stark",
         );
         assert_eq!(
-            test_record.properties[0].value.value,
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
             Value::String("value_1".to_string())
         );
-        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
         validate_reporter(
-            &test_record.properties[0].value.reporter,
+            &test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
             KEY1,
             "Arya Stark",
         );
@@ -879,9 +898,31 @@ mod test {
             KEY2,
             "Jon Snow",
         );
-        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
-        assert_eq!(test_record.properties[1].value.timestamp, 5);
-        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::Bool(true)
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        validate_reporter(
+            &test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY2,
+            "Jon Snow",
+        );
 
         assert_eq!(test_record.r#final, false);
 
@@ -977,7 +1018,11 @@ mod test {
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
-        populate_record_table(&test_pool.get().unwrap(), &get_record());
+        populate_record_table(&test_pool.get().unwrap(), &get_record("Test Record"));
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_for_record(),
+        );
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
             &get_property_for_record(),
@@ -1017,12 +1062,27 @@ mod test {
             "Arya Stark",
         );
         assert_eq!(
-            test_record.properties[0].value.value,
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
             Value::String("value_1".to_string())
         );
-        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
         validate_reporter(
-            &test_record.properties[0].value.reporter,
+            &test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
             KEY1,
             "Arya Stark",
         );
@@ -1042,9 +1102,31 @@ mod test {
             KEY2,
             "Jon Snow",
         );
-        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
-        assert_eq!(test_record.properties[1].value.timestamp, 5);
-        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::Bool(true)
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        validate_reporter(
+            &test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY2,
+            "Jon Snow",
+        );
 
         assert_eq!(test_record.r#final, false);
 
@@ -1074,6 +1156,10 @@ mod test {
         database::run_migrations(&DATABASE_URL).unwrap();
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_for_record(),
+        );
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
@@ -1120,12 +1206,27 @@ mod test {
             "Arya Stark",
         );
         assert_eq!(
-            test_record.properties[0].value.value,
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
             Value::String("value_1".to_string())
         );
-        assert_eq!(test_record.properties[0].value.timestamp, 5);
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
         validate_reporter(
-            &test_record.properties[0].value.reporter,
+            &test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
             KEY1,
             "Arya Stark",
         );
@@ -1145,9 +1246,31 @@ mod test {
             KEY2,
             "Jon Snow",
         );
-        assert_eq!(test_record.properties[1].value.value, Value::Bool(true));
-        assert_eq!(test_record.properties[1].value.timestamp, 5);
-        validate_reporter(&test_record.properties[1].value.reporter, KEY2, "Jon Snow");
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::Bool(true)
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        validate_reporter(
+            &test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY2,
+            "Jon Snow",
+        );
 
         assert_eq!(test_record.r#final, true);
 
@@ -1193,6 +1316,11 @@ mod test {
         database::run_migrations(&DATABASE_URL).unwrap();
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_struct_for_record(),
+        );
+        populate_record_table(&test_pool.get().unwrap(), &get_record("record_01"));
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
             &get_property(),
@@ -1221,7 +1349,12 @@ mod test {
             vec![KEY1.to_string(), KEY2.to_string()]
         );
 
-        validate_current_value(&property_info.value);
+        validate_current_value(
+            &property_info
+                .value
+                .clone()
+                .expect("Property value not returned"),
+        );
 
         assert_eq!(property_info.updates.len(), 2);
 
@@ -1665,11 +1798,11 @@ mod test {
         ]
     }
 
-    fn get_record() -> Vec<NewRecord> {
+    fn get_record(record_id: &str) -> Vec<NewRecord> {
         vec![NewRecord {
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
-            record_id: "Test Record".to_string(),
+            record_id: record_id.to_string(),
             schema: "Test Grid Schema".to_string(),
             final_: false,
             owners: vec![KEY1.to_string()],
@@ -1967,6 +2100,50 @@ mod test {
                 name: "Other Definition Name".to_string(),
                 schema_name: "Test Grid Schema".to_string(),
                 data_type: "New Lightbulb".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+            },
+        ]
+    }
+
+    fn get_grid_property_definition_struct_for_record() -> Vec<NewGridPropertyDefinition> {
+        vec![NewGridPropertyDefinition {
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+            name: "TestProperty".to_string(),
+            schema_name: "Test Grid Schema".to_string(),
+            data_type: "Struct".to_string(),
+            required: false,
+            description: "Definition Description".to_string(),
+            number_exponent: 0,
+            enum_options: vec![],
+            struct_properties: vec![],
+        }]
+    }
+
+    fn get_grid_property_definition_for_record() -> Vec<NewGridPropertyDefinition> {
+        vec![
+            NewGridPropertyDefinition {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "TestProperty1".to_string(),
+                schema_name: "Test Grid Schema".to_string(),
+                data_type: "String".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+            },
+            NewGridPropertyDefinition {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                name: "TestProperty2".to_string(),
+                schema_name: "Test Grid Schema".to_string(),
+                data_type: "Boolean".to_string(),
                 required: false,
                 description: "Definition Description".to_string(),
                 number_exponent: 0,

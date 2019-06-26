@@ -144,10 +144,13 @@ impl Handler<ListRecords> for DbExecutor {
         let associated_agents =
             db::list_associated_agents(&*self.connection_pool.get()?, &record_ids)?;
 
-        let properties = db::list_properties(&*self.connection_pool.get()?, &record_ids)?
-            .iter()
-            .map(|property| parse_property_slice(&self.connection_pool, property))
-            .collect::<Result<Vec<PropertySlice>, _>>()?;
+        let properties =
+            db::list_properties_with_data_type(&*self.connection_pool.get()?, &record_ids)?
+                .iter()
+                .map(|(property, data_type)| {
+                    parse_property_slice(&self.connection_pool, property, data_type)
+                })
+                .collect::<Result<Vec<PropertySlice>, _>>()?;
 
         Ok(records
             .iter()
@@ -213,11 +216,15 @@ impl Handler<FetchRecord> for DbExecutor {
         let proposals =
             db::list_proposals(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
 
-        let properties =
-            db::list_properties(&*self.connection_pool.get()?, &[msg.record_id.clone()])?
-                .iter()
-                .map(|property| parse_property_slice(&self.connection_pool, property))
-                .collect::<Result<Vec<PropertySlice>, _>>()?;
+        let properties = db::list_properties_with_data_type(
+            &*self.connection_pool.get()?,
+            &[msg.record_id.clone()],
+        )?
+        .iter()
+        .map(|(property, data_type)| {
+            parse_property_slice(&self.connection_pool, property, data_type)
+        })
+        .collect::<Result<Vec<PropertySlice>, _>>()?;
 
         let associated_agents =
             db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
@@ -254,7 +261,7 @@ pub struct PropertySlice {
     pub data_type: String,
     pub reporters: Vec<String>,
     pub updates: Vec<PropertyValueSlice>,
-    pub value: PropertyValueSlice,
+    pub value: Option<PropertyValueSlice>,
 }
 impl PropertySlice {
     pub fn from_model(
@@ -262,7 +269,7 @@ impl PropertySlice {
         reporters: &[String],
         data_type: &str,
         updates: &[PropertyValueSlice],
-        value: PropertyValueSlice,
+        value: Option<PropertyValueSlice>,
     ) -> PropertySlice {
         PropertySlice {
             name: property.name.clone(),
@@ -469,7 +476,7 @@ impl Handler<FetchRecordProperty> for DbExecutor {
     type Result = Result<PropertySlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchRecordProperty, _: &mut SyncContext<Self>) -> Self::Result {
-        let property = db::fetch_property(
+        let (property, data_type) = db::fetch_property_with_data_type(
             &*self.connection_pool.get()?,
             &msg.record_id,
             &msg.property_name,
@@ -481,13 +488,14 @@ impl Handler<FetchRecordProperty> for DbExecutor {
             ))
         })?;
 
-        parse_property_slice(&self.connection_pool, &property)
+        parse_property_slice(&self.connection_pool, &property, &data_type)
     }
 }
 
 fn parse_property_slice(
     conn: &ConnectionPool,
     property: &Property,
+    data_type: &Option<String>,
 ) -> Result<PropertySlice, RestApiResponseError> {
     let reporters = db::list_reporters(&*conn.get()?, &property.record_id, &property.name)?;
 
@@ -496,13 +504,12 @@ fn parse_property_slice(
         &property.record_id,
         &property.name,
         None,
-    )?
-    .ok_or_else(|| {
-        RestApiResponseError::NotFoundError(format!(
-            "Could not find values for property {} for record {}",
-            property.name, property.record_id
-        ))
-    })?;
+    )?;
+
+    let property_value_slice = match reported_value {
+        Some(value) => Some(parse_reported_values(&conn, &value)?),
+        None => None,
+    };
 
     let active_reporters = reporters
         .iter()
@@ -514,8 +521,6 @@ fn parse_property_slice(
             }
         })
         .collect::<Vec<String>>();
-
-    let property_value_slice = parse_reported_values(&conn, &reported_value)?;
 
     let mut updates = db::list_reported_value_reporter_to_agent_metadata(
         &*conn.get()?,
@@ -532,7 +537,7 @@ fn parse_property_slice(
     let property_info = PropertySlice::from_model(
         &property,
         &active_reporters,
-        &reported_value.data_type,
+        &data_type.clone().unwrap_or_else(|| "Unknown".to_string()),
         &updates,
         property_value_slice.clone(),
     );

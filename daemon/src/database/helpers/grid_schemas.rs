@@ -43,7 +43,12 @@ pub fn insert_grid_property_definitions(
     definitions: &[NewGridPropertyDefinition],
 ) -> QueryResult<()> {
     for definition in definitions {
-        update_definition_end_block_num(conn, &definition.name, definition.start_block_num)?;
+        update_definition_end_block_num(
+            conn,
+            &definition.name,
+            &definition.schema_name,
+            definition.start_block_num,
+        )?;
     }
 
     insert_into(grid_property_definition::table)
@@ -71,12 +76,14 @@ pub fn update_grid_schema_end_block_num(
 pub fn update_definition_end_block_num(
     conn: &PgConnection,
     name: &str,
+    schema_name: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(grid_property_definition::table)
         .filter(
-            grid_property_definition::name
-                .eq(name)
+            grid_property_definition::schema_name
+                .eq(schema_name)
+                .and(grid_property_definition::name.eq(name))
                 .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(grid_property_definition::end_block_num.eq(current_block_num))
