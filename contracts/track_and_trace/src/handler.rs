@@ -664,7 +664,6 @@ impl TrackAndTraceTransactionHandler {
                 match role {
                     Role::Owner => {
                         if owner.agent_id() != current_proposal.issuing_agent() {
-                            #[cfg(not(target_arch = "wasm32"))]
                             info!("Record owner does not match the issuing agent of the proposal");
 
                             updated_proposal_builder =
@@ -775,7 +774,6 @@ impl TrackAndTraceTransactionHandler {
                     }
                     Role::Custodian => {
                         if custodian.agent_id() != current_proposal.issuing_agent() {
-                            #[cfg(not(target_arch = "wasm32"))]
                             info!(
                                 "Record custodian does not match the issuing agent of the proposal"
                             );
@@ -807,7 +805,6 @@ impl TrackAndTraceTransactionHandler {
                     }
                     Role::Reporter => {
                         if owner.agent_id() != current_proposal.issuing_agent() {
-                            #[cfg(not(target_arch = "wasm32"))]
                             info!("Record owner does not match the issuing agent of the proposal");
 
                             updated_proposal_builder =
@@ -1012,13 +1009,10 @@ impl TransactionHandler for TrackAndTraceTransactionHandler {
         let signer = request.get_header().get_signer_public_key();
         let mut state = TrackAndTraceState::new(context);
 
-        #[cfg(not(target_arch = "wasm32"))]
         info!(
-            "payload: {:?} {} {} {}",
+            "Track and Trace payload: {:?} {}",
             payload.action(),
             payload.timestamp(),
-            request.get_header().get_inputs()[0],
-            request.get_header().get_outputs()[0]
         );
 
         match payload.action() {
@@ -1054,7 +1048,10 @@ fn apply(
     let handler = TrackAndTraceTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err),
+        Err(err) => {
+            info!("{} received {}", handler.family_name(), err);
+            Err(err)
+        }
     }
 }
 
