@@ -36,6 +36,6 @@ ENV PATH=$PATH:/protoc3/bin:/project/splinter/bin:/root/.cargo/bin
 
 RUN rustup install nightly
 RUN rustup component add rustfmt clippy
-RUN rustup component add rustfmt clippy --toolchain nightly
+RUN rustup component add rustfmt --toolchain nightly
 
 WORKDIR /project/splinter
