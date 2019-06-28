@@ -132,27 +132,7 @@ pub struct BatchStatusesResponse {
 #[derive(Debug, Serialize)]
 #[serde(tag = "status")]
 pub enum BatchStatus {
-    COMMITTED {
-        id: String,
-    },
-    INVALID {
-        id: String,
-        invalid_transactions: Vec<InvalidTransaction>,
-    },
-    PENDING {
-        id: String,
-    },
-    UNKNOWN {
-        id: String,
-    },
-}
-
-#[derive(Debug, Serialize)]
-pub struct InvalidTransaction {
-    id: String,
-    message: String,
-    /// This is an Base64-encoded string of bytes
-    extended_data: String,
+    PENDING { id: String },
 }
 
 /// The handler function for the `/batch_statuses` endpoint
