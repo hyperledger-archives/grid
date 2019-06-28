@@ -19,7 +19,6 @@ top_dir=$(cd $(dirname $(dirname $0)) && pwd)
 
 dirs="
     $top_dir
-    $top_dir/examples/private_xo
 "
 
 exitcode=0
