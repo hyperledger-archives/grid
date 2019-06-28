@@ -63,11 +63,7 @@ pub fn get_state_by_address(req: &mut Request) -> IronResult<Response> {
         })?;
     Ok(Response::with((
         status::Ok,
-        Json(DataEnvelope {
-            data: base64::encode(&data),
-            head: state_root,
-            link,
-        }),
+        Json(DataEnvelope::new(base64::encode(&data), link, state_root)),
     )))
 }
 
@@ -162,6 +158,7 @@ fn into_map(list_params: ListStateRequest) -> HashMap<String, String> {
     params
 }
 
+#[allow(clippy::ptr_arg)]
 fn as_base64<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

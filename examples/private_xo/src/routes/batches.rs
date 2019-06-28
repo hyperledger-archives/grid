@@ -143,7 +143,7 @@ pub fn batch_statuses(req: &mut Request) -> IronResult<Response> {
     let wait: Option<u32> = query_param(req, "wait").map_err(|err| {
         BatchStatusesError::InvalidParameter(format!("wait must be an integer: {}", err))
     })?;
-    let ids = id.split(",").collect::<Vec<_>>();
+    let ids = id.split(',').collect::<Vec<_>>();
     let wait_time = wait.unwrap_or(0);
 
     log::debug!("Checking status for batches {:?}", &ids);

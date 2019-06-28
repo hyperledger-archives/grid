@@ -64,6 +64,9 @@ impl XoShared {
     }
 }
 
+type StateDbIterator = Box<dyn Iterator<Item = Result<(String, Vec<u8>), StateDatabaseError>>>;
+type XoStateIterator = Box<dyn Iterator<Item = Result<(String, Vec<u8>), XoStateError>>>;
+
 #[derive(Clone)]
 pub struct XoState {
     db: Box<dyn Database>,
@@ -90,15 +93,15 @@ impl XoState {
             .lock()
             .expect("Current state root lock poisoned");
 
-        XoState::unlocked_current_state_root(&self.db, &mut shared)
+        XoState::unlocked_current_state_root(&*self.db, &mut shared)
     }
 
-    fn unlocked_current_state_root(db: &Box<dyn Database>, shared: &mut XoShared) -> String {
+    fn unlocked_current_state_root(db: &dyn Database, shared: &mut XoShared) -> String {
         if shared.current_state_root.is_some() {
             shared.current_state_root.clone().unwrap()
         } else {
-            let merkle_db =
-                MerkleRadixTree::new(db.clone(), None).expect("Cannot initialize merkle database");
+            let merkle_db = MerkleRadixTree::new(db.clone_box(), None)
+                .expect("Cannot initialize merkle database");
 
             shared.current_state_root = Some(merkle_db.get_merkle_root());
 
@@ -111,7 +114,7 @@ impl XoState {
             .shared
             .lock()
             .expect("Current state root lock poisoned");
-        let state_root = XoState::unlocked_current_state_root(&self.db, &mut shared);
+        let state_root = XoState::unlocked_current_state_root(&*self.db, &mut shared);
 
         let mut scheduler =
             SerialScheduler::new(Box::new(self.context_manager.clone()), state_root.clone())
@@ -211,19 +214,17 @@ impl XoState {
         &self,
         state_root: &str,
         prefix: Option<&str>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(String, Vec<u8>), XoStateError>>>, XoStateError>
-    {
+    ) -> Result<XoStateIterator, XoStateError> {
         let merkle_db = MerkleRadixTree::new(self.db.clone(), Some(state_root))?;
 
-        let iter: Box<dyn Iterator<Item = Result<(String, Vec<u8>), StateDatabaseError>>> =
-            match merkle_db.leaves(prefix) {
-                Ok(iter) => iter,
-                Err(StateDatabaseError::NotFound(_)) => {
-                    let empty_vec: Vec<Result<(String, Vec<u8>), StateDatabaseError>> = vec![];
-                    Box::new(empty_vec.into_iter())
-                }
-                Err(err) => return Err(XoStateError::from(err)),
-            };
+        let iter: StateDbIterator = match merkle_db.leaves(prefix) {
+            Ok(iter) => iter,
+            Err(StateDatabaseError::NotFound(_)) => {
+                let empty_vec: Vec<Result<(String, Vec<u8>), StateDatabaseError>> = vec![];
+                Box::new(empty_vec.into_iter())
+            }
+            Err(err) => return Err(XoStateError::from(err)),
+        };
 
         Ok(Box::new(
             iter.map(|entry_res| entry_res.map_err(XoStateError::from)),
@@ -236,7 +237,7 @@ impl XoState {
             .lock()
             .expect("Current state root lock poisoned");
 
-        let state_root = XoState::unlocked_current_state_root(&self.db, &mut shared);
+        let state_root = XoState::unlocked_current_state_root(&*self.db, &mut shared);
         if let Some(state_changes) = shared.pending_changes.take() {
             let merkle_state = MerkleState::new(self.db.clone());
             let new_state_root = merkle_state

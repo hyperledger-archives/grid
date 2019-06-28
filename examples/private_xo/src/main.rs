@@ -57,7 +57,7 @@ fn main() -> Result<(), CliError> {
 
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(
-        &mut transport,
+        &mut *transport,
         matches
             .value_of("connect")
             .expect("Connect was not marked as a required attribute"),
@@ -177,7 +177,7 @@ fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>
 }
 
 fn create_network_and_connect(
-    transport: &mut Box<dyn Transport + Send>,
+    transport: &mut (dyn Transport + Send),
     connect_endpoint: &str,
 ) -> Result<Network, CliError> {
     let mesh = Mesh::new(512, 128);
@@ -314,7 +314,7 @@ fn split_endpoint<S: AsRef<str>>(s: S) -> Result<(String, u16), CliError> {
     if s.is_empty() {
         return Err(CliError("Bind string must not be empty".into()));
     }
-    let mut parts = s.split(":");
+    let mut parts = s.split(':');
 
     let address = parts.next().unwrap();
 
