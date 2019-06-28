@@ -11,60 +11,73 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::collections::HashMap;
 
-use rocket::http::uri::{Ignorable, Query};
-use rocket::request::Form;
-use rocket::State;
-use rocket_contrib::json::Json;
+use iron::prelude::*;
+use iron::status;
+use router::url_for;
 use serde::Serializer;
 
-use crate::routes::error::StateError;
-use crate::routes::{DataEnvelope, PagedDataEnvelope};
 use crate::transaction::{XoState, XoStateError};
 
-#[get("/state/<address>")]
-pub fn get_state_by_address(
-    xo_state: State<XoState>,
-    address: String,
-) -> Result<Json<DataEnvelope<String>>, StateError> {
+use super::{error::StateError, query_param, DataEnvelope, Json, PagedDataEnvelope, State};
+
+/// The handler function for the `/state/:address` endpoint.
+pub fn get_state_by_address(req: &mut Request) -> IronResult<Response> {
+    let xo_state = req
+        .extensions
+        .get::<State<XoState>>()
+        .expect("Expected xo state, but none was set on the request");
+
+    let address = req
+        .extensions
+        .get::<router::Router>()
+        .expect("Expected router but none was set on the request")
+        .find("address")
+        .ok_or_else(|| StateError::BadRequest("Missing state address".into()))?;
+
     if address.len() != 70 {
-        return Err(StateError::BadRequest(format!(
+        return Err(IronError::from(StateError::BadRequest(format!(
             "\"{}\" is not a valid address",
             address
-        )));
+        ))));
     }
 
     let state_root = xo_state.current_state_root();
     log::debug!(
         "Getting state at {}, from state root {}",
-        &address,
+        address,
         &state_root
     );
 
-    xo_state
+    let mut params = HashMap::new();
+    params.insert("address".to_string(), address.to_string());
+
+    let link = url_for(&req, "get_state", params).to_string();
+
+    let data = xo_state
         .get_state(&state_root, &address)
         .map_err(StateError::from)
         .and_then(|value| {
             value.ok_or_else(|| StateError::NotFound(format!("\"{}\" could not be found", address)))
-        })
-        .map(|data| {
-            Json(DataEnvelope {
-                data: base64::encode(&data),
-                head: state_root,
-                link: uri!(get_state_by_address: address = address).to_string(),
-            })
-        })
+        })?;
+    Ok(Response::with((
+        status::Ok,
+        Json(DataEnvelope {
+            data: base64::encode(&data),
+            head: state_root,
+            link,
+        }),
+    )))
 }
 
-#[derive(Debug, Default, FromForm, UriDisplayQuery)]
+#[derive(Debug, Default)]
 pub struct ListStateRequest {
     address: Option<String>,
     head: Option<String>,
     start: Option<usize>,
     limit: Option<usize>,
 }
-
-impl Ignorable<Query> for ListStateRequest {}
 
 #[derive(Debug, Serialize)]
 pub struct StateEntry {
@@ -74,12 +87,13 @@ pub struct StateEntry {
     data: Vec<u8>,
 }
 
-#[get("/state?<parameters..>")]
-pub fn list_state_with_params(
-    xo_state: State<XoState>,
-    parameters: Form<ListStateRequest>,
-) -> Result<Json<PagedDataEnvelope<StateEntry>>, StateError> {
-    let request = parameters.into_inner();
+/// The handler function for the `/state` endpoint.
+pub fn list_state_with_params(req: &mut Request) -> IronResult<Response> {
+    let request: ListStateRequest = get_list_params(req)?;
+    let xo_state = req
+        .extensions
+        .get::<State<XoState>>()
+        .expect("Expected xo state, but none was set on the request");
 
     let state_root = request
         .head
@@ -97,19 +111,55 @@ pub fn list_state_with_params(
         .list_state(&state_root, request.address.as_ref().map(|s| &**s))
         .map_err(|e| {
             log::error!("Unable to list state: {}", &e);
-            e
+            StateError::from(e)
         })?
         .map(|entry| entry.map(|(address, data)| StateEntry { address, data }))
         .skip(request.start.unwrap_or(0))
         .take(request.limit.unwrap_or(100))
         .collect();
 
-    Ok(Json(PagedDataEnvelope::new(
-        results.map_err(StateError::from)?,
-        state_root,
-        uri!(list_state_with_params: parameters = request).to_string(),
-        None,
+    let link = url_for(&req, "list_state", into_map(request)).to_string();
+
+    Ok(Response::with((
+        status::Ok,
+        Json(PagedDataEnvelope::new(
+            results.map_err(StateError::from)?,
+            state_root,
+            link,
+            None,
+        )),
     )))
+}
+
+fn get_list_params(req: &mut Request) -> Result<ListStateRequest, StateError> {
+    Ok(ListStateRequest {
+        address: query_param(req, "address").unwrap(),
+        head: query_param(req, "head").unwrap(),
+        start: query_param(req, "start")
+            .map_err(|err| StateError::BadRequest(format!("start must be an integer: {}", err)))?,
+        limit: query_param(req, "limit")
+            .map_err(|err| StateError::BadRequest(format!("limit must be an integer: {}", err)))?,
+    })
+}
+
+fn into_map(list_params: ListStateRequest) -> HashMap<String, String> {
+    let mut list_params = list_params;
+    let mut params = HashMap::new();
+
+    if let Some(address) = list_params.address.take() {
+        params.insert("address".into(), address);
+    }
+    if let Some(head) = list_params.head.take() {
+        params.insert("head".into(), head);
+    }
+    if let Some(start) = list_params.start.take() {
+        params.insert("start".into(), start.to_string());
+    }
+    if let Some(limit) = list_params.limit.take() {
+        params.insert("limit".into(), limit.to_string());
+    }
+
+    params
 }
 
 fn as_base64<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>

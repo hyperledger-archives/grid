@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use crossbeam_channel::Sender;
+use iron::prelude::*;
+use iron::status;
 use protobuf::{parse_from_reader, Message};
-use rocket::data::Data;
-use rocket::State;
-use rocket_contrib::json::Json;
+use router::url_for;
 use transact::protos::batch::BatchList;
 
 use libsplinter::network::sender::SendRequest;
@@ -24,25 +26,33 @@ use libsplinter::protos::n_phase::{
     NPhaseTransactionMessage, NPhaseTransactionMessage_Type, TransactionVerificationRequest,
 };
 
-use crate::routes::error::{BatchStatusesError, BatchSubmitError};
 use crate::service::{create_circuit_direct_msg, ServiceConfig};
 use crate::transaction::XoState;
+
+use super::error::{BatchStatusesError, BatchSubmitError};
+use super::{query_param, Json, State};
 
 #[derive(Debug, Serialize)]
 pub struct BatchesResponse {
     link: String,
 }
 
-#[post("/batches", format = "application/octet-stream", data = "<data>")]
-pub fn batches(
-    service_config: State<ServiceConfig>,
-    xo_state: State<XoState>,
-    sender: State<Sender<SendRequest>>,
-    data: Data,
-) -> Result<Json<BatchesResponse>, BatchSubmitError> {
-    let mut data_stream = data.open();
+/// The handler function for the `/batches` endpoint
+pub fn batches(req: &mut Request) -> IronResult<Response> {
+    let xo_state = req
+        .extensions
+        .get::<State<XoState>>()
+        .expect("Expected xo state, but none was set on the request");
+    let service_config = req
+        .extensions
+        .get::<State<ServiceConfig>>()
+        .expect("Expected service config, but none was set on the request");
+    let sender = req
+        .extensions
+        .get::<State<Sender<SendRequest>>>()
+        .expect("Expected sender but none was set on the request");
 
-    let batch_list: BatchList = parse_from_reader(&mut data_stream)?;
+    let batch_list: BatchList = parse_from_reader(&mut req.body).map_err(BatchSubmitError::from)?;
 
     log::debug!("Submitted {:?}", &batch_list);
 
@@ -102,9 +112,15 @@ pub fn batches(
             })?;
     }
 
-    Ok(Json(BatchesResponse {
-        link: uri!(batch_statuses: id = batch_ids, wait = _).to_string(),
-    }))
+    let mut params = HashMap::new();
+    params.insert("id".into(), batch_ids);
+
+    let link = url_for(&req, "batch_statuses", params).to_string();
+
+    Ok(Response::with((
+        status::Accepted,
+        Json(BatchesResponse { link }),
+    )))
 }
 
 #[derive(Debug, Serialize)]
@@ -139,23 +155,34 @@ pub struct InvalidTransaction {
     extended_data: String,
 }
 
-#[get("/batch_statuses?<id>&<wait>")]
-pub fn batch_statuses(
-    id: String,
-    wait: Option<u32>,
-) -> Result<Json<BatchStatusesResponse>, BatchStatusesError> {
+/// The handler function for the `/batch_statuses` endpoint
+pub fn batch_statuses(req: &mut Request) -> IronResult<Response> {
+    let id: String = query_param(req, "id")
+        .unwrap()
+        .ok_or_else(|| BatchStatusesError::MissingParameter("id".into()))?;
+    let wait: Option<u32> = query_param(req, "wait").map_err(|err| {
+        BatchStatusesError::InvalidParameter(format!("wait must be an integer: {}", err))
+    })?;
     let ids = id.split(",").collect::<Vec<_>>();
     let wait_time = wait.unwrap_or(0);
 
     log::debug!("Checking status for batches {:?}", &ids);
+    let mut params = HashMap::new();
+    params.insert("id".into(), id.clone());
+    params.insert("wait".into(), wait_time.to_string());
 
-    Ok(Json(BatchStatusesResponse {
-        data: ids
-            .iter()
-            .map(|batch_id| BatchStatus::PENDING {
-                id: batch_id.to_string(),
-            })
-            .collect(),
-        link: uri!(batch_statuses: id = id, wait = wait_time).to_string(),
-    }))
+    let link = url_for(&req, "batch_statuses", params).to_string();
+
+    Ok(Response::with((
+        status::Ok,
+        Json(BatchStatusesResponse {
+            data: ids
+                .iter()
+                .map(|batch_id| BatchStatus::PENDING {
+                    id: batch_id.to_string(),
+                })
+                .collect(),
+            link,
+        }),
+    )))
 }

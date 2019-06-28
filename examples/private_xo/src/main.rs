@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![feature(proc_macro_hygiene, decl_macro)]
-
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate rocket;
 #[macro_use]
 extern crate serde_derive;
 
@@ -30,20 +26,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use clap::{App, Arg};
-use rocket::config::{Config, Environment};
+use iron::prelude::*;
+use iron::status;
+use router::Router;
 
 use libsplinter::mesh::Mesh;
 use libsplinter::network::Network;
 use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::CliError;
-use crate::routes::{batches, state};
+use crate::routes::{batches, state, State};
 use crate::service::{start_service_loop, ServiceConfig, ServiceError};
 use crate::transaction::{XoState, XoStateError};
 
-#[get("/")]
-fn index() -> &'static str {
-    "Private XO Server"
+fn index(_: &mut Request) -> IronResult<Response> {
+    Ok(Response::with((status::Ok, "Private XO Server")))
 }
 
 fn main() -> Result<(), CliError> {
@@ -86,27 +83,31 @@ fn main() -> Result<(), CliError> {
 
     let (address, port) = split_endpoint(bind_value)?;
 
-    rocket::custom(
-        Config::build(Environment::Production)
-            .address(address)
-            .port(port)
-            .finalize()
-            .map_err(|err| CliError(format!("Invalid configuration: {:?}", err)))?,
-    )
-    .manage(service_config)
-    .manage(xo_state)
-    .manage(send)
-    .mount(
-        "/",
-        routes![
-            index,
-            batches::batches,
-            batches::batch_statuses,
-            state::get_state_by_address,
-            state::list_state_with_params
-        ],
-    )
-    .launch();
+    let mut router = Router::new();
+    router.get("/", index, "index");
+    router.get("/batch_statuses", batches::batch_statuses, "batch_statuses");
+    router.post("/batches", batches::batches, "batches");
+    router.get("/state", state::list_state_with_params, "list_state");
+    router.get("/state/:address", state::get_state_by_address, "get_state");
+
+    let mut chain = Chain::new(router);
+
+    chain.link_before(move |req: &mut Request| {
+        req.set_mut(State::new(service_config.clone()));
+        req.set_mut(State::new(xo_state.clone()));
+        req.set_mut(State::new(send.clone()));
+
+        Ok(())
+    });
+
+    Iron::new(chain)
+        .http(&format!("{}:{}", address, port))
+        .map_err(|err| {
+            CliError(format!(
+                "Unable to start REST API on {}: {}",
+                bind_value, err
+            ))
+        })?;
 
     Ok(())
 }
