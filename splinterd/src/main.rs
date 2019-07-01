@@ -20,11 +20,11 @@ extern crate serde_derive;
 mod certs;
 mod config;
 mod daemon;
+mod rest_api;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
 use crate::daemon::SplinterDaemon;
-
 use clap::{clap_app, crate_version};
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::{TlsInitError, TlsTransport};
@@ -71,6 +71,8 @@ fn main() {
           "if set tls should accept all peer certificates")
         (@arg generate_certs:  --("generate-certs")
           "if set, the certs will be generated and insecure will be false, only use for development")
+        (@arg bind: --("bind") +takes_value
+            "connection endpoint for REST API")
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity"))
     .get_matches();
@@ -167,6 +169,13 @@ fn main() {
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
 
+    let rest_api_endpoint = matches
+        .value_of("bind")
+        .map(String::from)
+        .or_else(|| config.bind())
+        .or_else(|| Some("127.0.0.1:8080".to_string()))
+        .expect("Must provide a url for REST API endpoint");
+
     let mut node = match SplinterDaemon::new(
         storage_location,
         transport,
@@ -174,6 +183,7 @@ fn main() {
         service_endpoint,
         initial_peers,
         node_id,
+        rest_api_endpoint,
     ) {
         Ok(node) => node,
         Err(err) => {
