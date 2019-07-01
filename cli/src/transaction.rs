@@ -45,7 +45,7 @@ const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
 const GRID_SCHEMA_FAMILY_VERSION: &str = "1.0";
 
 const SABRE_FAMILY_NAME: &str = "sabre";
-const SABRE_FAMILY_VERSION: &str = "0.3";
+const SABRE_FAMILY_VERSION: &str = "0.4";
 const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
 const SABRE_CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const SABRE_CONTRACT_PREFIX: &str = "00ec02";

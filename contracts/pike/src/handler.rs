@@ -245,13 +245,7 @@ impl TransactionHandler for PikeTransactionHandler {
         let signer = request.get_header().get_signer_public_key();
         let mut state = PikeState::new(context);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        info!(
-            "{:?} {:?} {:?}",
-            payload.get_action(),
-            request.get_header().get_inputs(),
-            request.get_header().get_outputs()
-        );
+        info!("Pike Payload {:?}", payload.get_action(),);
 
         match payload.action {
             Action::CREATE_AGENT => create_agent(payload.get_create_agent(), signer, &mut state),
@@ -557,7 +551,10 @@ fn apply(
     let handler = PikeTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err),
+        Err(err) => {
+            info!("{} received {}", handler.family_name(), err);
+            Err(err)
+        }
     }
 }
 

@@ -15,7 +15,8 @@
 use crate::http::submit_batches;
 use crate::transaction::{schema_batch_builder, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE};
 use grid_sdk::protocol::schema::payload::{
-    Action, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder, SchemaUpdateBuilder,
+    Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
+    SchemaUpdateAction, SchemaUpdateBuilder,
 };
 use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDefinitionBuilder};
 use grid_sdk::protos::IntoProto;
@@ -95,7 +96,7 @@ pub fn do_create_schemas(
     wait: u64,
     path: &str,
 ) -> Result<(), CliError> {
-    let payloads = parse_yaml(path, Action::SchemaCreate)?;
+    let payloads = parse_yaml(path, Action::SchemaCreate(SchemaCreateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(key);
     for payload in payloads {
         batch_list_builder = batch_list_builder.add_transaction(
@@ -119,7 +120,7 @@ pub fn do_update_schemas(
     wait: u64,
     path: &str,
 ) -> Result<(), CliError> {
-    let payloads = parse_yaml(path, Action::SchemaUpdate)?;
+    let payloads = parse_yaml(path, Action::SchemaUpdate(SchemaUpdateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(key);
     for payload in payloads {
         batch_list_builder = batch_list_builder.add_transaction(
@@ -142,7 +143,7 @@ fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError
     let schemas_yaml: Vec<Mapping> = serde_yaml::from_reader(file)?;
 
     match action {
-        Action::SchemaCreate => schemas_yaml
+        Action::SchemaCreate(_) => schemas_yaml
             .iter()
             .map(|schema_yaml| {
                 let properties =
@@ -165,7 +166,7 @@ fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError
             })
             .collect::<Result<Vec<SchemaPayload>, _>>(),
 
-        Action::SchemaUpdate => schemas_yaml
+        Action::SchemaUpdate(_) => schemas_yaml
             .iter()
             .map(|schema_yaml| {
                 let properties =
@@ -191,7 +192,6 @@ fn generate_create_schema_payload(
     description: Option<String>,
 ) -> Result<SchemaPayload, CliError> {
     let mut schema_paylod = SchemaPayloadBuilder::new();
-    schema_paylod = schema_paylod.with_action(Action::SchemaCreate);
 
     let mut schema_create_action_builder = SchemaCreateBuilder::new()
         .with_schema_name(name.to_string())
@@ -206,7 +206,7 @@ fn generate_create_schema_payload(
         CliError::PayloadError(format!("Failed to build schema payload: {}", err))
     })?;
 
-    schema_paylod = schema_paylod.with_schema_create(schema_create_action);
+    schema_paylod = schema_paylod.with_action(Action::SchemaCreate(schema_create_action));
     schema_paylod
         .build()
         .map_err(|err| CliError::PayloadError(format!("Failed to build schema payload: {}", err)))
@@ -217,7 +217,6 @@ fn generate_update_schema_payload(
     properties: &[PropertyDefinition],
 ) -> Result<SchemaPayload, CliError> {
     let mut schema_paylod = SchemaPayloadBuilder::new();
-    schema_paylod = schema_paylod.with_action(Action::SchemaUpdate);
 
     let schema_update_action_builder = SchemaUpdateBuilder::new()
         .with_schema_name(name.to_string())
@@ -227,7 +226,7 @@ fn generate_update_schema_payload(
         CliError::PayloadError(format!("Failed to build schema payload: {}", err))
     })?;
 
-    schema_paylod = schema_paylod.with_schema_update(schema_update_action);
+    schema_paylod = schema_paylod.with_action(Action::SchemaUpdate(schema_update_action));
     schema_paylod
         .build()
         .map_err(|err| CliError::PayloadError(format!("Failed to build schema payload: {}", err)))
@@ -483,8 +482,11 @@ mod test {
             file.write_all(LIGHTBULB_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
-            let payload =
-                parse_yaml(test_yaml_file_path, Action::SchemaCreate).expect("Error parsing yaml");
+            let payload = parse_yaml(
+                test_yaml_file_path,
+                Action::SchemaCreate(SchemaCreateAction::default()),
+            )
+            .expect("Error parsing yaml");
 
             assert_eq!(make_create_schema_payload_1(), payload[0]);
         })
@@ -504,8 +506,11 @@ mod test {
             file.write(PHONE_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
-            let payload =
-                parse_yaml(test_yaml_file_path, Action::SchemaCreate).expect("Error parsing yaml");
+            let payload = parse_yaml(
+                test_yaml_file_path,
+                Action::SchemaCreate(SchemaCreateAction::default()),
+            )
+            .expect("Error parsing yaml");
 
             assert_eq!(make_create_schema_payload_1(), payload[0]);
             assert_eq!(make_create_schema_payload_2(), payload[1]);
@@ -525,8 +530,11 @@ mod test {
             file.write_all(LIGHTBULB_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
-            let payload =
-                parse_yaml(test_yaml_file_path, Action::SchemaUpdate).expect("Error parsing yaml");
+            let payload = parse_yaml(
+                test_yaml_file_path,
+                Action::SchemaUpdate(SchemaUpdateAction::default()),
+            )
+            .expect("Error parsing yaml");
 
             assert_eq!(make_update_schema_payload_1(), payload[0]);
         })
@@ -546,8 +554,11 @@ mod test {
             file.write(PHONE_YAML_EXAMPLE)
                 .expect("Error writting example schema.");
 
-            let payload =
-                parse_yaml(test_yaml_file_path, Action::SchemaUpdate).expect("Error parsing yaml");
+            let payload = parse_yaml(
+                test_yaml_file_path,
+                Action::SchemaUpdate(SchemaUpdateAction::default()),
+            )
+            .expect("Error parsing yaml");
 
             assert_eq!(make_update_schema_payload_1(), payload[0]);
             assert_eq!(make_update_schema_payload_2(), payload[1]);

@@ -26,6 +26,9 @@ cfg_if! {
         use log4rs::encode::pattern::PatternEncoder;
         use sawtooth_sdk::processor::TransactionProcessor;
         use crate::handler::ProductTransactionHandler;
+    } else {
+        #[macro_use]
+        extern crate sabre_sdk;
     }
 }
 

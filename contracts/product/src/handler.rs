@@ -45,7 +45,10 @@ fn apply(
     let handler = ProductTransactionHandler::new();
     match handler.apply(request, context) {
         Ok(_) => Ok(true),
-        Err(err) => Err(err),
+        Err(err) => {
+            info!("{} received {}", handler.family_name(), err);
+            Err(err)
+        }
     }
 }
 
@@ -331,6 +334,12 @@ impl TransactionHandler for ProductTransactionHandler {
                 "Timestamp is not set",
             )));
         }
+
+        info!(
+            "Grid Product Payload {:?} {}",
+            payload.get_action(),
+            payload.get_timestamp()
+        );
 
         let signer = request.get_header().get_signer_public_key();
         let state = ProductState::new(context);
