@@ -30,6 +30,7 @@ pub enum CliError {
     PayloadError(String),
     UserError(String),
     SigningError(signing::Error),
+    DatabaseError(String),
     IoError(io::Error),
     ProtobufError(protobuf::ProtobufError),
     ReqwestError(reqwest::Error),
@@ -44,6 +45,7 @@ impl StdError for CliError {
             CliError::InvalidYamlError(_) => None,
             CliError::PayloadError(_) => None,
             CliError::UserError(_) => None,
+            CliError::DatabaseError(_) => None,
             CliError::IoError(err) => Some(err),
             CliError::ProtobufError(err) => Some(err),
             CliError::SigningError(err) => Some(err),
@@ -61,6 +63,7 @@ impl std::fmt::Display for CliError {
             CliError::InvalidYamlError(ref err) => write!(f, "InvalidYamlError: {}", err),
             CliError::PayloadError(ref err) => write!(f, "PayloadError: {}", err),
             CliError::IoError(ref err) => write!(f, "IoError: {}", err),
+            CliError::DatabaseError(ref err) => write!(f, "DatabaseError: {}", err),
             CliError::SigningError(ref err) => write!(f, "SigningError: {}", err.description()),
             CliError::ProtobufError(ref err) => write!(f, "ProtobufError: {}", err.description()),
             CliError::LoggingInitializationError(ref err) => {

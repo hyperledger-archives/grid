@@ -79,9 +79,7 @@ mod test {
 
     use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
-    use diesel::dsl::insert_into;
-    use diesel::pg::PgConnection;
-    use diesel::RunQueryDsl;
+    use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
@@ -495,7 +493,7 @@ mod test {
     ///         - body containing a list of Agents
     #[test]
     fn test_list_agents() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
@@ -529,7 +527,7 @@ mod test {
     ///
     #[test]
     fn test_list_organizations_empty() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
@@ -551,7 +549,7 @@ mod test {
     ///
     #[test]
     fn test_list_organizations() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -583,7 +581,7 @@ mod test {
     ///
     #[test]
     fn test_list_organizations_updated() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -613,7 +611,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_organization_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
@@ -632,7 +630,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_organization_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -662,7 +660,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_organization_updated_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -690,7 +688,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_agent_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -714,7 +712,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_agent_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clear the agents table in the test database
@@ -734,7 +732,7 @@ mod test {
     ///         then will respond with an Ok status and a list of Grid Schemas.
     #[test]
     fn test_list_schemas() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
@@ -766,7 +764,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_schema_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
@@ -792,7 +790,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_schema_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_grid_schema_table(&test_pool.get().unwrap());
@@ -810,7 +808,7 @@ mod test {
     ///
     #[test]
     fn test_list_records() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
@@ -951,7 +949,7 @@ mod test {
     ///
     #[test]
     fn test_list_records_updated() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -978,7 +976,7 @@ mod test {
     ///
     #[test]
     fn test_list_records_multiple() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
@@ -1012,7 +1010,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_record_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
@@ -1153,7 +1151,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_record_updated_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
@@ -1295,7 +1293,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_record_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_record_table(&test_pool.get().unwrap());
@@ -1313,7 +1311,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_record_property_ok() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
@@ -1493,7 +1491,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_property_name_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_tnt_property_table(&test_pool.get().unwrap());
@@ -1515,7 +1513,7 @@ mod test {
     ///
     #[test]
     fn test_fetch_property_record_id_not_found() {
-        database::run_migrations(&DATABASE_URL).unwrap();
+        run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_tnt_property_table(
@@ -2215,6 +2213,12 @@ mod test {
     fn clear_record_table(conn: &PgConnection) {
         use crate::database::schema::record::dsl::*;
         diesel::delete(record).execute(conn).unwrap();
+    }
+
+    fn run_migrations(database_url: &str) {
+        let connection = PgConnection::establish(database_url)
+            .expect("Failed to stablish connection with database");
+        diesel_migrations::run_pending_migrations(&connection).expect("Failed to run migrations");
     }
 
     fn get_reported_value() -> Vec<NewReportedValue> {

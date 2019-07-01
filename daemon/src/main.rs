@@ -74,8 +74,6 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    database::run_migrations(config.database_url())?;
-
     let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
 
     let connection_pool = database::create_connection_pool(config.database_url())?;
@@ -135,7 +133,7 @@ fn run() -> Result<(), DaemonError> {
 
 fn main() {
     if let Err(e) = run() {
-        error!("{:?}", e);
+        error!("{}", e);
         std::process::exit(1);
     }
 }
