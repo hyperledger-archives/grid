@@ -31,9 +31,6 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/proto
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
-RUN rustup install nightly && \
-    rustup default nightly
-
 # Copy over libsplinter, protos and create the example folder, for the
 # relative dependencies
 COPY ./protos /protos

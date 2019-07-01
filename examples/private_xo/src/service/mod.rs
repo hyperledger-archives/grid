@@ -142,6 +142,7 @@ pub fn start_service_loop(
     Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn run_service_loop(
     network: Network,
     reply_sender: &crossbeam_channel::Sender<SendRequest>,

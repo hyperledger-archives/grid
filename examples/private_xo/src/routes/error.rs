@@ -15,13 +15,13 @@
 use std::error::Error;
 use std::fmt;
 
+use iron::prelude::*;
+use iron::status;
 use protobuf::error::ProtobufError;
 
-#[derive(Responder, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum BatchSubmitError {
-    #[response(status = 400)]
     InvalidBatchListFormat(String),
-    #[response(status = 500)]
     Internal(String),
 }
 
@@ -55,27 +55,38 @@ impl From<ProtobufError> for BatchSubmitError {
     }
 }
 
-#[derive(Responder, Clone, Debug)]
-pub enum BatchStatusesError {
-    #[response(status = 500)]
-    Internal(String),
-}
-
-impl Error for BatchStatusesError {
-    fn cause(&self) -> Option<&dyn Error> {
-        None
-    }
-
-    fn description(&self) -> &str {
-        match self {
-            BatchStatusesError::Internal(_) => "Internal Server Error",
+impl From<BatchSubmitError> for IronError {
+    fn from(err: BatchSubmitError) -> Self {
+        let status = match err {
+            BatchSubmitError::InvalidBatchListFormat(_) => status::BadRequest,
+            BatchSubmitError::Internal(_) => status::InternalServerError,
+        };
+        let msg = err.to_string();
+        IronError {
+            error: Box::new(err),
+            response: Response::with((status, msg)),
         }
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum BatchStatusesError {
+    MissingParameter(String),
+    InvalidParameter(String),
+    Internal(String),
+}
+
+impl Error for BatchStatusesError {}
+
 impl fmt::Display for BatchStatusesError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            BatchStatusesError::MissingParameter(err_msg) => {
+                write!(f, "Missing paramter: {}", err_msg)
+            }
+            BatchStatusesError::InvalidParameter(err_msg) => {
+                write!(f, "Invalid parameter: {}", err_msg)
+            }
             BatchStatusesError::Internal(err_msg) => {
                 write!(f, "Internal Server Error: {}", err_msg)
             }
@@ -83,18 +94,27 @@ impl fmt::Display for BatchStatusesError {
     }
 }
 
-#[derive(Responder, Clone, Debug)]
+impl From<BatchStatusesError> for IronError {
+    fn from(err: BatchStatusesError) -> Self {
+        let status = match err {
+            BatchStatusesError::MissingParameter(_) => status::BadRequest,
+            BatchStatusesError::InvalidParameter(_) => status::BadRequest,
+            BatchStatusesError::Internal(_) => status::InternalServerError,
+        };
+        let msg = err.to_string();
+        IronError {
+            error: Box::new(err),
+            response: Response::with((status, msg)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum StateError {
-    #[response(status = 400)]
     BadRequest(String),
-    #[response(status = 404)]
     NotFound(String),
-
-    #[response(status = 500)]
     Internal(String),
-
-    #[response(status = 503)]
-    ServiceUnavaible(String),
+    ServiceUnavailable(String),
 }
 
 impl Error for StateError {
@@ -107,7 +127,7 @@ impl Error for StateError {
             StateError::BadRequest(_) => "Invalid input format",
             StateError::NotFound(_) => "The requested state could not be found",
             StateError::Internal(_) => "Internal Server Error",
-            StateError::ServiceUnavaible(_) => "The system is not ready",
+            StateError::ServiceUnavailable(_) => "The system is not ready",
         }
     }
 }
@@ -118,7 +138,23 @@ impl fmt::Display for StateError {
             StateError::BadRequest(msg) => write!(f, "Invalid input: {}", msg),
             StateError::NotFound(msg) => write!(f, "Not Found: {}", msg),
             StateError::Internal(err_msg) => write!(f, "Internal Server Error: {}", err_msg),
-            StateError::ServiceUnavaible(msg) => write!(f, "Service Unavailable: {}", msg),
+            StateError::ServiceUnavailable(msg) => write!(f, "Service Unavailable: {}", msg),
+        }
+    }
+}
+
+impl From<StateError> for IronError {
+    fn from(err: StateError) -> Self {
+        let status = match err {
+            StateError::BadRequest(_) => status::BadRequest,
+            StateError::NotFound(_) => status::NotFound,
+            StateError::Internal(_) => status::InternalServerError,
+            StateError::ServiceUnavailable(_) => status::ServiceUnavailable,
+        };
+        let msg = err.to_string();
+        IronError {
+            error: Box::new(err),
+            response: Response::with((status, msg)),
         }
     }
 }
