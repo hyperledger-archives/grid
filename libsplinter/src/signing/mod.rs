@@ -14,6 +14,8 @@
 
 //! Simple traits for signing messages and verifing signatures.
 pub mod error;
+#[cfg(feature = "ursa-compat")]
+pub mod ursa;
 
 pub use crate::signing::error::Error;
 

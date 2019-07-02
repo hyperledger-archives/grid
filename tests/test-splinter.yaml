@@ -28,6 +28,7 @@ services:
         bash -c "
             cargo test && \
             echo \"Running optional feature tests...\" && \
-            (cd libsplinter && cargo test --features zmq-transport)
+            (cd libsplinter && cargo test --features zmq-transport) &&
+            (cargo test --features ursa-compat)
         "
     stop_signal: SIGKILL
