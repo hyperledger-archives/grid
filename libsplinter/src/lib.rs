@@ -14,6 +14,8 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
 
 #[macro_export]
 macro_rules! rwlock_read_unwrap {
@@ -51,6 +53,7 @@ pub mod collections;
 pub mod mesh;
 pub mod n_phase;
 pub mod network;
+pub mod node_registry;
 pub mod protos;
 pub mod storage;
 pub mod transport;
