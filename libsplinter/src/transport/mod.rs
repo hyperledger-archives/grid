@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod inproc;
+pub mod multi;
 pub mod raw;
 pub mod tls;
 #[cfg(feature = "zmq-transport")]
