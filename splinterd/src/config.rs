@@ -35,6 +35,7 @@ pub struct Config {
     network_endpoint: Option<String>,
     peers: Option<Vec<String>>,
     node_id: Option<String>,
+    bind: Option<String>,
 }
 
 impl Config {
@@ -87,6 +88,10 @@ impl Config {
 
     pub fn node_id(&self) -> Option<String> {
         self.node_id.clone()
+    }
+
+    pub fn bind(&self) -> Option<String> {
+        self.bind.clone()
     }
 }
 

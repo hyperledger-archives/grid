@@ -43,6 +43,7 @@ use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
 
+use crate::rest_api::{self, error::RestApiServerError};
 use crossbeam_channel;
 use protobuf::Message;
 
@@ -57,6 +58,7 @@ pub struct SplinterDaemon {
     initial_peers: Vec<String>,
     network: Network,
     node_id: String,
+    rest_api_endpoint: String,
 }
 
 impl SplinterDaemon {
@@ -67,6 +69,7 @@ impl SplinterDaemon {
         service_endpoint: String,
         initial_peers: Vec<String>,
         node_id: String,
+        rest_api_endpoint: String,
     ) -> Result<SplinterDaemon, CreateError> {
         let mesh = Mesh::new(512, 128);
         let network = Network::new(mesh.clone());
@@ -79,6 +82,7 @@ impl SplinterDaemon {
             initial_peers,
             network,
             node_id,
+            rest_api_endpoint,
         })
     }
 
@@ -86,9 +90,16 @@ impl SplinterDaemon {
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
         let r = running.clone();
+
+        let (rest_api_shutdown_handle, rest_api_join_handle) =
+            rest_api::run(&self.rest_api_endpoint)?;
+
         ctrlc::set_handler(move || {
             info!("Recieved Shutdown");
             r.store(false, Ordering::SeqCst);
+            if let Err(err) = rest_api_shutdown_handle.shutdown() {
+                error!("Unable to cleanly shutdown REST API server: {}", err);
+            }
         })
         .expect("Error setting Ctrl-C handler");
 
@@ -291,6 +302,7 @@ impl SplinterDaemon {
         let _ = circuit_dispatcher_thread.join();
         let _ = auth_dispatcher_thread.join();
         let _ = network_dispatcher_thread.join();
+        let _ = rest_api_join_handle.join();
 
         Ok(())
     }
@@ -406,6 +418,13 @@ pub enum StartError {
     NetworkError(String),
     StorageError(String),
     ProtocolError(String),
+    RestApiError(String),
+}
+
+impl From<RestApiServerError> for StartError {
+    fn from(rest_api_error: RestApiServerError) -> Self {
+        StartError::RestApiError(format!("Rest Api Server Error: {}", rest_api_error))
+    }
 }
 
 impl From<ListenError> for StartError {
