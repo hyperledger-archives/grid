@@ -14,6 +14,7 @@
 
 [features]
 zmq-transport = ["zmq"]
+ursa-compat = ["ursa"]
 
 [package]
 name = "libsplinter"
@@ -36,6 +37,7 @@ crossbeam-channel = "0.3"
 uuid = { version = "0.7", features = ["v4"]}
 protobuf = "2"
 zmq = { version = "0.9", optional = true }
+ursa = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
