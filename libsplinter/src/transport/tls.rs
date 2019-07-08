@@ -30,6 +30,8 @@ use crate::transport::{
     RecvError, SendError, Transport,
 };
 
+const PROTOCOL_PREFIX: &str = "tls://";
+
 pub struct TlsTransport {
     connector: SslConnector,
     acceptor: SslAcceptor,
@@ -99,10 +101,27 @@ fn endpoint_to_dns_name(endpoint: &str) -> Result<String, ParseError> {
 }
 
 impl Transport for TlsTransport {
-    fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
-        let dns_name = endpoint_to_dns_name(endpoint)?;
+    fn accepts(&self, address: &str) -> bool {
+        address.starts_with(PROTOCOL_PREFIX) || !address.contains("://")
+    }
 
-        let stream = TcpStream::connect(endpoint)?;
+    fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
+        if !self.accepts(endpoint) {
+            return Err(ConnectError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                endpoint
+            )));
+        }
+
+        let address = if endpoint.starts_with(PROTOCOL_PREFIX) {
+            &endpoint[PROTOCOL_PREFIX.len()..]
+        } else {
+            endpoint
+        };
+
+        let dns_name = endpoint_to_dns_name(address)?;
+
+        let stream = TcpStream::connect(address)?;
         let tls_stream = self.connector.connect(&dns_name, stream)?;
 
         tls_stream.get_ref().set_nonblocking(true)?;
@@ -111,8 +130,21 @@ impl Transport for TlsTransport {
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
+        if !self.accepts(bind) {
+            return Err(ListenError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                bind
+            )));
+        }
+
+        let address = if bind.starts_with(PROTOCOL_PREFIX) {
+            &bind[PROTOCOL_PREFIX.len()..]
+        } else {
+            bind
+        };
+
         Ok(Box::new(TlsListener {
-            listener: TcpListener::bind(bind)?,
+            listener: TcpListener::bind(address)?,
             acceptor: self.acceptor.clone(),
         }))
     }
@@ -133,7 +165,7 @@ impl Listener for TlsListener {
     }
 
     fn endpoint(&self) -> String {
-        self.listener.local_addr().unwrap().to_string()
+        format!("tls://{}", self.listener.local_addr().unwrap())
     }
 }
 
@@ -151,11 +183,11 @@ impl Connection for TlsConnection {
     }
 
     fn remote_endpoint(&self) -> String {
-        self.stream.get_ref().peer_addr().unwrap().to_string()
+        format!("tls://{}", self.stream.get_ref().peer_addr().unwrap())
     }
 
     fn local_endpoint(&self) -> String {
-        self.stream.get_ref().local_addr().unwrap().to_string()
+        format!("tls://{}", self.stream.get_ref().local_addr().unwrap())
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
@@ -413,6 +445,12 @@ pub(crate) mod tests {
     fn test_transport() {
         let transport = create_test_tls_transport(true);
         tests::test_transport(transport, "127.0.0.1:0");
+    }
+
+    #[test]
+    fn test_transport_explicit_protocol() {
+        let transport = create_test_tls_transport(true);
+        tests::test_transport(transport, "tls://127.0.0.1:0");
     }
 
     #[cfg(not(unix))]
