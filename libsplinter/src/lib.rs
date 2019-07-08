@@ -52,6 +52,7 @@ pub mod mesh;
 pub mod n_phase;
 pub mod network;
 pub mod protos;
+pub mod service;
 pub mod signing;
 pub mod storage;
 pub mod transport;
