@@ -196,10 +196,40 @@ impl NodeRegistry for YamlNodeRegistry {
 
     fn update_node(
         &self,
-        _identity: &str,
-        _updates: HashMap<String, String>,
+        identity: &str,
+        updates: HashMap<String, String>,
     ) -> Result<(), NodeRegistryError> {
-        unimplemented!()
+        let mut nodes = self
+            .get_cached_nodes()
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
+        let mut index = None;
+        for (i, node) in nodes.iter().enumerate() {
+            if node.identity == identity {
+                index = Some(i);
+                break;
+            }
+        }
+        match index {
+            Some(i) => {
+                let node = &nodes[i];
+                let mut updated_metadata = node.metadata.clone();
+                updated_metadata.extend(updates);
+                let updated_node = Node {
+                    identity: node.identity.clone(),
+                    metadata: updated_metadata,
+                };
+                nodes[i] = updated_node;
+            }
+            None => {
+                return Err(NodeRegistryError::NotFoundError(format!(
+                    "Could not find node with identity: {}",
+                    identity
+                )))
+            }
+        };
+
+        self.write_nodes(&nodes)
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
 
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {
@@ -582,6 +612,60 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let result = registry.delete_node("NodeNotInRegistry");
+            match result {
+                Ok(_) => panic!("Node is not in the Registry. Error should be returned"),
+                Err(NodeRegistryError::NotFoundError(_)) => (),
+                Err(err) => panic!("Should have gotten NotFoundError but got {}", err),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that update_node with a valid ID, updates the metadata of the correct node.
+    ///
+    #[test]
+    fn test_update_node_ok() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
+
+            let mut updatated_metada = HashMap::new();
+            updatated_metada.insert("url".to_string(), "10.0.1.123".to_string());
+            updatated_metada.insert("accepting_connections".to_string(), "true".to_string());
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            registry
+                .update_node(&get_node_1().identity, updatated_metada)
+                .expect("Failed to update node");
+
+            let nodes = registry
+                .list_nodes(None, None, None)
+                .expect("Failed to retrieve nodes");
+
+            assert_eq!(nodes.len(), 2);
+            assert_eq!(nodes[1], get_node_2());
+
+            assert_eq!(nodes[0].identity, get_node_1().identity);
+
+            let mut expected_metadata = get_node_1().metadata;
+            expected_metadata.insert("url".to_string(), "10.0.1.123".to_string());
+            expected_metadata.insert("accepting_connections".to_string(), "true".to_string());
+            assert_eq!(nodes[0].metadata, expected_metadata);
+        })
+    }
+
+    ///
+    /// Verifies that update_node with an invalid ID, returns NotFoundError
+    ///
+    #[test]
+    fn test_update_node_not_found() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");;
+
+            let result = registry.update_node("NodeNotInRegistry", HashMap::new());
             match result {
                 Ok(_) => panic!("Node is not in the Registry. Error should be returned"),
                 Err(NodeRegistryError::NotFoundError(_)) => (),
