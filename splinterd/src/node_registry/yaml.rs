@@ -202,8 +202,29 @@ impl NodeRegistry for YamlNodeRegistry {
         unimplemented!()
     }
 
-    fn delete_node(&self, _identity: &str) -> Result<(), NodeRegistryError> {
-        unimplemented!()
+    fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {
+        let mut nodes = self
+            .get_cached_nodes()
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
+        let mut index = None;
+        for (i, node) in nodes.iter().enumerate() {
+            if node.identity == identity {
+                index = Some(i);
+                break;
+            }
+        }
+        match index {
+            Some(i) => nodes.remove(i),
+            None => {
+                return Err(NodeRegistryError::NotFoundError(format!(
+                    "Could not find node with identity: {}",
+                    identity
+                )))
+            }
+        };
+
+        self.write_nodes(&nodes)
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
 
     fn clone_box(&self) -> Box<NodeRegistry> {
@@ -523,6 +544,52 @@ mod test {
             }
         })
     }
+
+    ///
+    /// Verifies that delete_node with a valid identity, deletes the correct node.
+    ///
+    #[test]
+    fn test_delete_node_ok() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            registry
+                .delete_node(&get_node_1().identity)
+                .expect("Failed to delete node");
+
+            let nodes = registry
+                .list_nodes(None, None, None)
+                .expect("Failed to retrieve nodes");
+
+            assert_eq!(nodes.len(), 1);
+
+            assert_eq!(nodes[0], get_node_2());
+        })
+    }
+
+    ///
+    /// Verifies that delete_node with an invalid identity, returns NotFoundError
+    ///
+    #[test]
+    fn test_delete_node_not_found() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let result = registry.delete_node("NodeNotInRegistry");
+            match result {
+                Ok(_) => panic!("Node is not in the Registry. Error should be returned"),
+                Err(NodeRegistryError::NotFoundError(_)) => (),
+                Err(err) => panic!("Should have gotten NotFoundError but got {}", err),
+            }
+        })
+    }
+
     fn get_node_1() -> Node {
         let mut metadata = HashMap::new();
         metadata.insert("url".to_string(), "12.0.0.123:8431".to_string());
