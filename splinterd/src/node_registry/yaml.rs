@@ -16,6 +16,7 @@ use super::error::YamlNodeRegistryError;
 use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -52,15 +53,43 @@ impl YamlNodeRegistry {
             .map_err(|err| YamlNodeRegistryError::PoisonLockError(format!("{}", err)))?;
         Ok(file_backend.cached_nodes.clone())
     }
+
+    fn write_nodes(&self, data: &[Node]) -> Result<(), YamlNodeRegistryError> {
+        let mut file_backend = self
+            .file_internal
+            .lock()
+            .map_err(|err| YamlNodeRegistryError::PoisonLockError(format!("{}", err)))?;
+        let output = serde_yaml::to_string(&data)?;
+        file_backend.file.write_all(&output.into_bytes())?;
+        file_backend.cached_nodes = data.to_vec();
+        Ok(())
+    }
 }
 
 impl NodeRegistry for YamlNodeRegistry {
     fn create_node(
         &self,
-        _identity: &str,
-        _data: HashMap<String, String>,
+        identity: &str,
+        data: HashMap<String, String>,
     ) -> Result<(), NodeRegistryError> {
-        unimplemented!()
+        let mut nodes = self
+            .get_cached_nodes()
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
+        if nodes.iter().any(|node| node.identity == identity) {
+            return Err(NodeRegistryError::DuplicateNodeError(format!(
+                "Node with ID {} already exists",
+                identity
+            )));
+        }
+        let node = Node {
+            identity: identity.to_string(),
+            metadata: data,
+        };
+
+        nodes.push(node);
+
+        self.write_nodes(&nodes)
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
 
     fn list_nodes(
@@ -444,6 +473,56 @@ mod test {
         })
     }
 
+    ///
+    /// Verifies that create_node successfully adds a new node to the yaml file.
+    ///
+    #[test]
+    fn test_list_create_node_ok() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let node = get_node_1();
+
+            registry
+                .create_node(&node.identity, node.metadata.clone())
+                .expect("Failed to add not to file.");
+
+            let nodes = registry
+                .list_nodes(None, None, None)
+                .expect("Failed to retrieve nodes");
+
+            assert_eq!(nodes.len(), 1);
+
+            assert_eq!(nodes[0], node);
+        })
+    }
+
+    ///
+    /// Verifies that create_node returns DuplicateNodeError when a node with the same identity already
+    /// exists in the yaml file.
+    ///
+    #[test]
+    fn test_list_create_node_duplicate_error() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![get_node_1()], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let node = get_node_1();
+
+            let result = registry.create_node(&node.identity, node.metadata.clone());
+
+            match result {
+                Ok(_) => panic!("Duplicate node exists. Error should be returned"),
+                Err(NodeRegistryError::DuplicateNodeError(_)) => (),
+                Err(err) => panic!("Should have gotten DuplicateNodeError but got {}", err),
+            }
+        })
+    }
     fn get_node_1() -> Node {
         let mut metadata = HashMap::new();
         metadata.insert("url".to_string(), "12.0.0.123:8431".to_string());
