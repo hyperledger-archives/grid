@@ -1,0 +1,289 @@
+# Copyright 2019 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+openapi: '3.0.0'
+
+info:
+  version: 0.1.0
+  title: SplinterD API
+  description: REST API for SplinterD
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /status:
+    get:
+      tags:
+        - diagnostics
+      description: Used to check if server is successfully running
+      responses:
+        200:
+          description: Server is running correctly and accepting connections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /circuit:
+    get:
+      tags:
+        - circuits
+      description: Retrieve a list of all circuits
+      responses:
+        200:
+          description: A list of circuits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Circuit'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - circuits
+      description: Create a new circuit
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateCircuit'
+      responses:
+        200:
+          description: Creation request was accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Circuit'
+        400:
+          description: Circuit creation request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /circuit/{name}:
+    get:
+      tags:
+        - circuits
+      description: Get circuit with {name}
+      parameters:
+        - name: name
+          description: Circuit name. This name is unique.
+          in: path
+          required: true
+          schema:
+            type: string
+          x-example: circuit_xyz
+      responses:
+        200:
+          description: Circuit with specified name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Circuit'
+        404:
+          description: The circuit with {name} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /register/{type}:
+    put:
+      tags:
+        - Authorization Handler
+      description: Register the handler for a circuit management type
+      parameters:
+        - name: type
+          description: The circuit management type is the type of circuit the handler will manage
+          in: path
+          required: true
+          schema:
+            type: string
+          x-example: gameroom
+      responses:
+        200:
+          description: Registration request was successfully submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationRegistration'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /ws/proposals/subscribe:
+    post:
+      tags:
+        - proposals
+      description: WebSocket endpoint for subscribing to circuit proposal events
+      responses:
+        200:
+          description: subscription successful
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      additionalProperties: false
+      properties:
+        message:
+          description: A message describing the error that occurred
+          type: string
+          example: DatabaseError({description})
+      required:
+        - message
+
+    Status:
+      additionalProperties: false
+      properties:
+        version:
+          description: Rest API version
+          type: string
+          example: "0.1.0"
+      required:
+        - version
+
+    CreateCircuit:
+      additionalProperties: false
+      properties:
+        name:
+          description: Name of circuit
+          type: string
+          example: alpha
+        auth:
+          description: Authentication type
+          type: string
+          example: trust
+        members:
+          description: Array of nodes allowed to participate on the circuit
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        roster:
+          description: Array of services that will communicate over a circuit
+          type: array
+          items:
+            type: string
+        persistence:
+          type: string
+          example: any
+        durability:
+          type: string
+          example: none
+        routes:
+          type: string
+          example: request_direct
+
+    Node:
+      additionalProperties: false
+      properties:
+        node_id:
+          description: Unique identifier for node
+          type: string
+          example: "012"
+        endpoint:
+          description: Url for node
+          type: string
+          example: tcp://localhost:4040
+
+    Circuit:
+      additionalProperties: false
+      properties:
+        status:
+          description: Circuit status
+          type: string
+          enum:
+            - CREATED
+            - PENDING
+            - DESTROYED
+            - CREATION_ERROR
+        name:
+          description: Name of circuit
+          type: string
+          example: alpha
+        auth:
+          description: Authentication type
+          type: string
+          example: trust
+        members:
+          description: Array of nodes allowed to participate on the circuit
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        roster:
+          description: Array of services that will communicate over circuit
+          type: array
+          items:
+            type: string
+        persistence:
+          type: string
+          example: any
+        durability:
+          type: string
+          example: none
+        routes:
+          type: string
+          example: request_direct
+
+    ApplicationRegistration:
+      additionalProperties: false
+      properties:
+        status:
+          description: Registration status
+          type: string
+          enum:
+            - OK
+            - ERROR
+        circuit_management_type:
+          description: Circuit management type
+          type: string
+          example: gameroom
+        error_reason:
+          description: Error message if the registration failed
+          type: string

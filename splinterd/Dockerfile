@@ -55,6 +55,7 @@ RUN cargo build --release
 
 RUN rm src/*.rs
 COPY ./splinterd/src ./src
+COPY ./splinterd/api ./api
 
 RUN rm ./target/release/splinterd* ./target/release/deps/splinterd*
 RUN cargo build --release
