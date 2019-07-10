@@ -15,7 +15,11 @@
  * -----------------------------------------------------------------------------
  */
 
+#[macro_use]
+extern crate diesel;
+
 pub mod error;
+pub mod schema;
 
 use std::ops::Deref;
 
