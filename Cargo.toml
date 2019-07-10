@@ -8,4 +8,5 @@ members = [
     "examples/private_counter/cli",
     "examples/private_counter/service",
     "examples/private_xo",
+    "examples/gameroom/database",
 ]

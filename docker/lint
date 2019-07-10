@@ -18,6 +18,7 @@ RUN apt-get update \
  && apt-get install -y \
      curl \
      gcc \
+     g++ \
      libssl-dev \
      libzmq3-dev \
      pkg-config \

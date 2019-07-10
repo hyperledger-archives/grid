@@ -22,5 +22,8 @@
 /examples/private_xo/target
 /examples/private_xo/Cargo.lock
 
+/examples/gameroom/database/target
+/examples/gameroom/database/Cargo.lock
+
 /target
 /Cargo.lock

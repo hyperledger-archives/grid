@@ -18,10 +18,13 @@ RUN apt-get update \
  && apt-get install -y \
  curl \
  gcc \
+ libpq-dev \
  libssl-dev \
  libzmq3-dev \
  pkg-config \
- unzip
+ unzip \
+ postgresql-client
+
 
 # For Building Protobufs
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
