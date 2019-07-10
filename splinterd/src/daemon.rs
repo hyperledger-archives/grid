@@ -62,30 +62,6 @@ pub struct SplinterDaemon {
 }
 
 impl SplinterDaemon {
-    pub fn new(
-        storage_location: String,
-        transport: Box<dyn Transport + Send>,
-        network_endpoint: String,
-        service_endpoint: String,
-        initial_peers: Vec<String>,
-        node_id: String,
-        rest_api_endpoint: String,
-    ) -> Result<SplinterDaemon, CreateError> {
-        let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone());
-
-        Ok(SplinterDaemon {
-            transport,
-            storage_location,
-            service_endpoint,
-            network_endpoint,
-            initial_peers,
-            network,
-            node_id,
-            rest_api_endpoint,
-        })
-    }
-
     pub fn start(&mut self) -> Result<(), StartError> {
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
@@ -308,6 +284,102 @@ impl SplinterDaemon {
     }
 }
 
+#[derive(Default)]
+pub struct SplinterDaemonBuilder {
+    transport: Option<Box<dyn Transport + Send>>,
+    storage_location: Option<String>,
+    service_endpoint: Option<String>,
+    network_endpoint: Option<String>,
+    initial_peers: Option<Vec<String>>,
+    node_id: Option<String>,
+    rest_api_endpoint: Option<String>,
+}
+
+impl SplinterDaemonBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_transport(mut self, value: Box<dyn Transport + Send>) -> Self {
+        self.transport = Some(value);
+        self
+    }
+
+    pub fn with_storage_location(mut self, value: String) -> Self {
+        self.storage_location = Some(value);
+        self
+    }
+
+    pub fn with_service_endpoint(mut self, value: String) -> Self {
+        self.service_endpoint = Some(value);
+        self
+    }
+
+    pub fn with_network_endpoint(mut self, value: String) -> Self {
+        self.network_endpoint = Some(value);
+        self
+    }
+
+    pub fn with_initial_peers(mut self, value: Vec<String>) -> Self {
+        self.initial_peers = Some(value);
+        self
+    }
+
+    pub fn with_node_id(mut self, value: String) -> Self {
+        self.node_id = Some(value);
+        self
+    }
+
+    pub fn with_rest_api_endpoint(mut self, value: String) -> Self {
+        self.rest_api_endpoint = Some(value);
+        self
+    }
+
+    pub fn build(self) -> Result<SplinterDaemon, CreateError> {
+        let mesh = Mesh::new(512, 128);
+        let network = Network::new(mesh.clone());
+
+        let transport = self.transport.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: transport".to_string())
+        })?;
+
+        let storage_location = self.storage_location.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: storage_location".to_string())
+        })?;
+
+        let service_endpoint = self.service_endpoint.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: service_location".to_string())
+        })?;
+
+        let network_endpoint = self.network_endpoint.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: network_endpoint".to_string())
+        })?;
+
+        let initial_peers = self.initial_peers.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: initial_peers".to_string())
+        })?;
+
+        let node_id = self.node_id.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: node_id".to_string())
+        })?;
+
+        let rest_api_endpoint = self.rest_api_endpoint.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: rest_api_endpoint".to_string())
+        })?;
+
+        Ok(SplinterDaemon {
+            transport,
+            storage_location,
+            service_endpoint,
+            network_endpoint,
+            initial_peers,
+            network,
+            node_id,
+            rest_api_endpoint,
+        })
+    }
+}
+
 fn set_up_network_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
@@ -410,7 +482,9 @@ fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
 }
 
 #[derive(Debug)]
-pub enum CreateError {}
+pub enum CreateError {
+    MissingRequiredField(String),
+}
 
 #[derive(Debug)]
 pub enum StartError {

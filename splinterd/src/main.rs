@@ -26,7 +26,7 @@ mod rest_api;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
-use crate::daemon::SplinterDaemon;
+use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::{TlsInitError, TlsTransport};
@@ -178,15 +178,16 @@ fn main() {
         .or_else(|| Some("127.0.0.1:8080".to_string()))
         .expect("Must provide a url for REST API endpoint");
 
-    let mut node = match SplinterDaemon::new(
-        storage_location,
-        transport,
-        network_endpoint,
-        service_endpoint,
-        initial_peers,
-        node_id,
-        rest_api_endpoint,
-    ) {
+    let mut node = match SplinterDaemonBuilder::new()
+        .with_storage_location(storage_location)
+        .with_transport(transport)
+        .with_network_endpoint(network_endpoint)
+        .with_service_endpoint(service_endpoint)
+        .with_initial_peers(initial_peers)
+        .with_node_id(node_id)
+        .with_rest_api_endpoint(rest_api_endpoint)
+        .build()
+    {
         Ok(node) => node,
         Err(err) => {
             error!("An error occurred while creating daemon {:?}", err);
