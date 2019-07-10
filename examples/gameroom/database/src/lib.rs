@@ -14,3 +14,7 @@
  * limitations under the License.
  * -----------------------------------------------------------------------------
  */
+
+pub mod error;
+
+pub use crate::error::DatabaseError;
