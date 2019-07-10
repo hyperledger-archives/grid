@@ -19,3 +19,4 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+diesel = { version = "1.0.0", features = ["postgres", "r2d2"] }
