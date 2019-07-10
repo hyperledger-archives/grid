@@ -19,6 +19,7 @@
 extern crate diesel;
 
 pub mod error;
+pub mod models;
 pub mod schema;
 
 use std::ops::Deref;
