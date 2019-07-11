@@ -18,9 +18,9 @@ use std::time::Duration;
 
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
-    CircuitDirectMessageHandler, CircuitErrorHandler, CircuitMessageHandler,
-    ServiceConnectForwardHandler, ServiceConnectRequestHandler, ServiceDisconnectForwardHandler,
-    ServiceDisconnectRequestHandler,
+    AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
+    CircuitMessageHandler, ServiceConnectForwardHandler, ServiceConnectRequestHandler,
+    ServiceDisconnectForwardHandler, ServiceDisconnectRequestHandler,
 };
 use libsplinter::circuit::SplinterState;
 use libsplinter::mesh::Mesh;
@@ -457,10 +457,18 @@ fn set_up_circuit_dispatcher(
         Box::new(direct_message_handler),
     );
 
-    let circuit_error_handler = CircuitErrorHandler::new(node_id.to_string(), state);
+    let circuit_error_handler = CircuitErrorHandler::new(node_id.to_string(), state.clone());
     dispatcher.set_handler(
         CircuitMessageType::CIRCUIT_ERROR_MESSAGE,
         Box::new(circuit_error_handler),
+    );
+
+    // Circuit Admin handlers
+    let admin_direct_message_handler =
+        AdminDirectMessageHandler::new(node_id.to_string(), state.clone());
+    dispatcher.set_handler(
+        CircuitMessageType::ADMIN_DIRECT_MESSAGE,
+        Box::new(admin_direct_message_handler),
     );
 
     dispatcher
