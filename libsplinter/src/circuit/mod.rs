@@ -65,12 +65,12 @@ impl Circuit {
         &self.auth
     }
 
-    pub fn members(&self) -> &[String] {
-        &self.members
+    pub fn members(&self) -> Members {
+        Members { circuit: self }
     }
 
-    pub fn roster(&self) -> &[String] {
-        &self.roster
+    pub fn roster(&self) -> Roster {
+        Roster { circuit: self }
     }
 
     pub fn persistence(&self) -> &str {
@@ -83,6 +83,58 @@ impl Circuit {
 
     pub fn routes(&self) -> &str {
         &self.routes
+    }
+}
+
+pub struct Members<'c> {
+    circuit: &'c Circuit,
+}
+
+impl<'c> Members<'c> {
+    pub fn contains(&self, node_id: &str) -> bool {
+        self.circuit
+            .members
+            .iter()
+            .any(|member_id| member_id == node_id)
+    }
+
+    pub fn to_vec(&self) -> Vec<String> {
+        self.circuit.members.to_vec()
+    }
+}
+
+impl<'c> IntoIterator for Members<'c> {
+    type Item = &'c String;
+    type IntoIter = std::slice::Iter<'c, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.circuit.members.iter()
+    }
+}
+
+pub struct Roster<'c> {
+    circuit: &'c Circuit,
+}
+
+impl<'c> Roster<'c> {
+    pub fn contains(&self, service_name: &str) -> bool {
+        self.circuit
+            .roster
+            .iter()
+            .any(|roster_name| roster_name == service_name)
+    }
+
+    pub fn to_vec(&self) -> Vec<String> {
+        self.circuit.roster.to_vec()
+    }
+}
+
+impl<'c> IntoIterator for Roster<'c> {
+    type Item = &'c String;
+    type IntoIter = std::slice::Iter<'c, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.circuit.roster.iter()
     }
 }
 
