@@ -4,18 +4,19 @@ mod circuit_message;
 mod direct_message;
 mod service_handlers;
 
-pub use crate::circuit::handlers::admin_message::AdminDirectMessageHandler;
-pub use crate::circuit::handlers::circuit_error::CircuitErrorHandler;
-pub use crate::circuit::handlers::circuit_message::CircuitMessageHandler;
-pub use crate::circuit::handlers::direct_message::CircuitDirectMessageHandler;
-pub use crate::circuit::handlers::service_handlers::ServiceConnectForwardHandler;
-pub use crate::circuit::handlers::service_handlers::ServiceConnectRequestHandler;
-pub use crate::circuit::handlers::service_handlers::ServiceDisconnectForwardHandler;
-pub use crate::circuit::handlers::service_handlers::ServiceDisconnectRequestHandler;
+use protobuf::Message;
+
 use crate::protos::circuit::{CircuitMessage, CircuitMessageType};
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
 
-use protobuf::Message;
+pub use self::admin_message::AdminDirectMessageHandler;
+pub use self::circuit_error::CircuitErrorHandler;
+pub use self::circuit_message::CircuitMessageHandler;
+pub use self::direct_message::CircuitDirectMessageHandler;
+pub use self::service_handlers::ServiceConnectForwardHandler;
+pub use self::service_handlers::ServiceConnectRequestHandler;
+pub use self::service_handlers::ServiceDisconnectForwardHandler;
+pub use self::service_handlers::ServiceDisconnectRequestHandler;
 
 fn create_message(
     payload: Vec<u8>,
