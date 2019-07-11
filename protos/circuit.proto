@@ -35,6 +35,8 @@ enum CircuitMessageType {
     SERVICE_DISCONNECT_REQUEST = 7;
     SERVICE_DISCONNECT_RESPONSE = 8;
     SERVICE_DISCONNECT_FORWARD = 9;
+
+    ADMIN_DIRECT_MESSAGE = 100;
 }
 
 message CircuitError {
@@ -81,6 +83,23 @@ message NetworkError {
 }
 
 message CircuitDirectMessage {
+    // the name of the circuit the message is meant for
+    string circuit = 1;
+
+    // id of the sender of the message
+    string sender = 2;
+
+    // id of recipient of the message
+    string recipient = 3;
+
+    // the request
+    bytes payload = 4;
+
+    // id used to correlate the response with this request
+    string correlation_id = 5;
+}
+
+message AdminDirectMessage {
     // the name of the circuit the message is meant for
     string circuit = 1;
 
