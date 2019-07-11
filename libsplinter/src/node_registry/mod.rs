@@ -48,9 +48,14 @@ pub trait NodeRegistry: Send {
     /// against. If the filters map has more than one key-value pair, this function should return
     /// only nodes that match all the provided filters.
     ///
+    /// * `limit` - The maximum number of items to return
+    ///
+    /// * `offset` - The index of the resource to start the resulting array
     fn list_nodes(
         &self,
         filters: Option<HashMap<String, (String, String)>>,
+        limit: Option<usize>,
+        offset: Option<usize>,
     ) -> Result<Vec<Node>, NodeRegistryError>;
 
     /// Returns a node with the given identity.
