@@ -59,10 +59,35 @@ use crate::error::{HandleError, ServiceError};
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
 
-#[derive(Default, Debug)]
-struct ServiceState {
+#[derive(Debug)]
+pub struct ServiceState {
+    peer_id: String,
+    service_id: String,
+    circuit: String,
+    verifiers: Vec<String>,
+    service_sender: crossbeam_channel::Sender<SendRequest>,
     counter: u32,
     proposed_increment: Option<u32>,
+}
+
+impl ServiceState {
+    fn new(
+        peer_id: String,
+        service_id: String,
+        circuit: String,
+        verifiers: Vec<String>,
+        service_sender: crossbeam_channel::Sender<SendRequest>,
+    ) -> Self {
+        ServiceState {
+            peer_id,
+            service_id,
+            circuit,
+            verifiers,
+            service_sender,
+            counter: Default::default(),
+            proposed_increment: Default::default(),
+        }
+    }
 }
 
 fn main() -> Result<(), ServiceError> {
@@ -83,17 +108,23 @@ fn main() -> Result<(), ServiceError> {
 
     configure_logging(&matches);
 
-    let state: Arc<Mutex<ServiceState>> = Default::default();
-    let circuit = matches.value_of("circuit").unwrap().to_string();
-    let service_id = matches.value_of("service_id").unwrap().to_string();
-
     let mut transport = get_transport(&matches)?;
     let network =
         create_network_and_connect(&mut *transport, matches.value_of("connect").unwrap())?;
     let (send, recv) = crossbeam_channel::bounded(5);
+
+    let state = Arc::new(Mutex::new(ServiceState::new(
+        network.peer_ids()[0].clone(),
+        matches.value_of("service_id").unwrap().to_string(),
+        matches.value_of("circuit").unwrap().to_string(),
+        matches
+            .values_of("verifier")
+            .unwrap()
+            .map(ToString::to_string)
+            .collect(),
+        send.clone(),
+    )));
     let (sender_thread, receiver_thread) = start_service_loop(
-        circuit.clone(),
-        service_id.clone(),
         format!("private-counter-{}", Uuid::new_v4()),
         (send.clone(), recv),
         network.clone(),
@@ -103,11 +134,6 @@ fn main() -> Result<(), ServiceError> {
 
     let workers: usize = matches.value_of("workers").unwrap().parse().unwrap();
     let pool = ThreadPool::new(workers);
-    let verifiers: Vec<String> = matches
-        .values_of("verifier")
-        .unwrap()
-        .map(ToString::to_string)
-        .collect();
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -119,24 +145,9 @@ fn main() -> Result<(), ServiceError> {
         }
 
         let stream_state = state.clone();
-        let peer_id = network.peer_ids()[0].clone();
-        let stream_circuit = circuit.clone();
-        let stream_service_id = service_id.clone();
-        let stream_verifiers = verifiers.clone();
-        let stream_sender = send.clone();
-        pool.execute(move || {
-            match handle_connection(
-                stream,
-                stream_state,
-                peer_id,
-                stream_circuit,
-                stream_service_id,
-                stream_verifiers,
-                stream_sender,
-            ) {
-                Ok(_) => (),
-                Err(err) => error!("Error encountered in handling connection: {}", err),
-            }
+        pool.execute(move || match handle_connection(stream, stream_state) {
+            Ok(_) => (),
+            Err(err) => error!("Error encountered in handling connection: {}", err),
         });
     }
 
@@ -184,8 +195,6 @@ type StartServiceJoinHandle = (
 );
 
 fn start_service_loop(
-    circuit: String,
-    service_id: String,
     auth_identity: String,
     channel: (
         crossbeam_channel::Sender<SendRequest>,
@@ -218,17 +227,7 @@ fn start_service_loop(
     let reply_sender = send.clone();
     let receiver_thread = Builder::new()
         .name("NetworkReceiver".into())
-        .spawn(move || {
-            run_service_loop(
-                recv_network,
-                &reply_sender,
-                circuit,
-                service_id,
-                auth_identity,
-                state,
-                running,
-            )
-        })
+        .spawn(move || run_service_loop(recv_network, &reply_sender, auth_identity, state, running))
         .map_err(|err| ServiceError(format!("Unable to start network receiver thread: {}", err)))?;
 
     let connect_request_msg_bytes = create_connect_request()
@@ -246,8 +245,6 @@ fn start_service_loop(
 fn run_service_loop(
     network: Network,
     reply_sender: &crossbeam_channel::Sender<SendRequest>,
-    circuit: String,
-    service_id: String,
     auth_identity: String,
     state: Arc<Mutex<ServiceState>>,
     running: Arc<AtomicBool>,
@@ -270,12 +267,13 @@ fn run_service_loop(
                             &reply_sender
                         )) {
                             info!("Successfully authorized with peer {}", message.peer_id());
+                            let state = state.lock().expect("State lock poisoned");
 
                             unwrap_or_break!(network.send(
                                 message.peer_id(),
                                 &unwrap_or_break!(create_circuit_service_connect_request(
-                                    &circuit,
-                                    &service_id
+                                    &state.circuit,
+                                    &state.service_id
                                 ))
                             ));
                         }
@@ -286,7 +284,6 @@ fn run_service_loop(
                         unwrap_or_break!(handle_circuit_msg(
                             message.peer_id(),
                             circuit_msg,
-                            &reply_sender,
                             &state
                         ));
                     }
@@ -306,13 +303,15 @@ fn run_service_loop(
         }
     }
 
-    stop_service_loop(network, circuit, service_id);
+    stop_service_loop(network, state);
 }
 
-fn stop_service_loop(network: Network, circuit: String, service_id: String) {
+fn stop_service_loop(network: Network, state: Arc<Mutex<ServiceState>>) {
     info!("Sending disconnect request");
-    let disconnect_msg = create_circuit_service_disconnect_request(&circuit, &service_id)
-        .expect("Unable to create disconnect message");
+    let state = state.lock().expect("State lock poisoned");
+    let disconnect_msg =
+        create_circuit_service_disconnect_request(&state.circuit, &state.service_id)
+            .expect("Unable to create disconnect message");
     for peer_id in network.peer_ids() {
         match network.send(&peer_id, &disconnect_msg) {
             Ok(_) => (),
@@ -361,7 +360,6 @@ fn handle_authorized_msg(
 fn handle_circuit_msg(
     source_peer_id: &str,
     circuit_msg: CircuitMessage,
-    sender: &crossbeam_channel::Sender<SendRequest>,
     state: &Arc<Mutex<ServiceState>>,
 ) -> Result<(), ServiceError> {
     match circuit_msg.get_message_type() {
@@ -388,7 +386,7 @@ fn handle_circuit_msg(
         CircuitMessageType::CIRCUIT_DIRECT_MESSAGE => {
             let mut msg: CircuitDirectMessage =
                 protobuf::parse_from_bytes(circuit_msg.get_payload())?;
-            handle_direct_msg(source_peer_id, &mut msg, sender, state)?;
+            handle_direct_msg(source_peer_id, &mut msg, state)?;
         }
         _ => debug!("Received message {:?}", circuit_msg),
     }
@@ -400,7 +398,6 @@ fn handle_circuit_msg(
 fn handle_direct_msg(
     source_peer_id: &str,
     circuit_msg: &mut CircuitDirectMessage,
-    reply_sender: &crossbeam_channel::Sender<SendRequest>,
     state: &Arc<Mutex<ServiceState>>,
 ) -> Result<(), ServiceError> {
     let mut nphase_transaction_msg: NPhaseTransactionMessage =
@@ -450,7 +447,7 @@ fn handle_direct_msg(
                 .set_message_type(NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_RESPONSE);
             nphase_msg.set_transaction_verification_response(response);
 
-            reply_sender.send(SendRequest::new(
+            state.service_sender.send(SendRequest::new(
                 source_peer_id.to_string(),
                 create_circuit_direct_msg(
                     circuit_msg.take_circuit(),
@@ -670,11 +667,6 @@ fn valid_endpoint<S: AsRef<str>>(s: S) -> Result<(), String> {
 fn handle_connection(
     mut stream: TcpStream,
     state: Arc<Mutex<ServiceState>>,
-    peer_id: String,
-    circuit: String,
-    service_id: String,
-    verifiers: Vec<String>,
-    sender: crossbeam_channel::Sender<SendRequest>,
 ) -> Result<(), HandleError> {
     let mut buffer = [0; 512];
 
@@ -716,14 +708,15 @@ fn handle_connection(
                     );
                     nphase_msg.set_transaction_verification_request(request);
 
-                    for verifier in verifiers {
-                        sender
+                    for verifier in &state.verifiers {
+                        state
+                            .service_sender
                             .send(SendRequest::new(
-                                peer_id.clone(),
+                                state.peer_id.clone(),
                                 create_circuit_direct_msg(
-                                    circuit.clone(),
-                                    service_id.clone(),
-                                    verifier.clone(),
+                                    state.circuit.clone(),
+                                    state.service_id.clone(),
+                                    state.verifier.clone(),
                                     nphase_msg.write_to_bytes().map_err(ServiceError::from)?,
                                     correlation_id.clone(),
                                 )?,
