@@ -15,9 +15,8 @@
 pub mod error;
 pub mod routes;
 
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, App, HttpServer};
 use error::RestApiServerError;
-use routes::get_status;
 use std::sync::mpsc;
 use std::thread;
 
@@ -46,10 +45,11 @@ pub fn run(
         .name("SplinterDRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("SplinterD-Rest-API");
-            let addr = HttpServer::new(|| {
+            let addr = HttpServer::new(move || {
                 App::new()
                     .wrap(middleware::Logger::default())
-                    .service(web::resource("/status").to(get_status))
+                    .service(routes::get_status)
+                    .service(routes::get_openapi)
             })
             .bind(bind_url)?
             .disable_signals()

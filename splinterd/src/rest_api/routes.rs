@@ -20,7 +20,8 @@ struct Status {
     version: String,
 }
 
-pub fn get_status(_req: HttpRequest) -> HttpResponse {
+#[get("/status")]
+pub fn get_status(_: HttpRequest) -> HttpResponse {
     let status = Status {
         version: get_version(),
     };
