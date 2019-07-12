@@ -16,9 +16,53 @@ version: "2.2"
 
 services:
 
-  private-counter:
+  splinter-node-0:
+    image: splinterd:latest
+    build:
+        context: ../..
+        dockerfile: ./splinterd/Dockerfile
+    expose:
+      - 8043
+      - 8044
+    volumes:
+      - ./demo_state:/splinter_state
+    command: >
+      bash -c "
+        /splinterd -vv \
+                --transport raw \
+                --storage yaml \
+                --service-endpoint 0.0.0.0:8043 \
+                --network-endpoint 0.0.0.0:8044 \
+                --node-id 012
+      "
+    environment:
+      SPLINTER_STATE_DIR: /splinter_state
+
+  splinter-node-1:
+    image: splinterd:latest
+    build:
+        context: ../..
+        dockerfile: ./splinterd/Dockerfile
+    expose:
+      - 8045
+      - 8046
+    volumes:
+      - ./demo_state:/splinter_state
+    command: >
+      bash -c "
+        /splinterd -vv \
+                --transport raw \
+                --storage yaml \
+                --service-endpoint 0.0.0.0:8045 \
+                --network-endpoint 0.0.0.0:8046 \
+                --node-id 345
+      "
+    environment:
+      SPLINTER_STATE_DIR: /splinter_state
+
+  private-counter-service-a:
     image: private-counter:latest
-    container_name: private-counter-local
+    container_name: private-counter-service-a
     build:
         context: ../..
         dockerfile: ./examples/private_counter/service/Dockerfile
@@ -26,9 +70,37 @@ services:
         - 8000
     ports:
         - "8008:8000"
-    init: true
-    command: /private-counter -B 0.0.0.0:8000 -vvv
-    stop_signal: SIGKILL
+    command: >
+        bash -c "
+          sleep 2;
+          /private-counter -vv \
+                      --bind 0.0.0.0:8000 \
+                      --circuit alpha \
+                      --service-id service_a \
+                      --verifier service_b \
+                      --connect splinter-node-0:8043
+        "
+
+  private-counter-service-b:
+    image: private-counter:latest
+    container_name: private-counter-service-b
+    build:
+        context: ../..
+        dockerfile: ./examples/private_counter/service/Dockerfile
+    expose:
+        - 8000
+    ports:
+        - "8009:8000"
+    command: >
+        bash -c "
+          sleep 2;
+          /private-counter -vv \
+                      --bind 0.0.0.0:8000 \
+                      --circuit alpha \
+                      --service-id service_b \
+                      --verifier service_a \
+                      --connect splinter-node-1:8045
+        "
 
   pcounter:
     image: pcounter:latest
