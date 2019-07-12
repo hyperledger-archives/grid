@@ -19,6 +19,8 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+actix = "0.8"
+actix-web = "1.0"
 
 [[bin]]
 name = "gameroomd"
