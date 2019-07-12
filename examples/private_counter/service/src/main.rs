@@ -87,8 +87,6 @@ fn main() -> Result<(), ServiceError> {
     let circuit = matches.value_of("circuit").unwrap().to_string();
     let service_id = matches.value_of("service_id").unwrap().to_string();
 
-    let peer_id = format!("private-counter-{}", Uuid::new_v4());
-
     let mut transport = get_transport(&matches)?;
     let network =
         create_network_and_connect(&mut *transport, matches.value_of("connect").unwrap())?;
@@ -96,7 +94,7 @@ fn main() -> Result<(), ServiceError> {
     let (sender_thread, receiver_thread) = start_service_loop(
         circuit.clone(),
         service_id.clone(),
-        peer_id,
+        format!("private-counter-{}", Uuid::new_v4()),
         (send.clone(), recv),
         network.clone(),
         state.clone(),
@@ -188,7 +186,7 @@ type StartServiceJoinHandle = (
 fn start_service_loop(
     circuit: String,
     service_id: String,
-    peer_id: String,
+    auth_identity: String,
     channel: (
         crossbeam_channel::Sender<SendRequest>,
         crossbeam_channel::Receiver<SendRequest>,
@@ -226,7 +224,7 @@ fn start_service_loop(
                 &reply_sender,
                 circuit,
                 service_id,
-                peer_id,
+                auth_identity,
                 state,
                 running,
             )
@@ -250,7 +248,7 @@ fn run_service_loop(
     reply_sender: &crossbeam_channel::Sender<SendRequest>,
     circuit: String,
     service_id: String,
-    peer_id: String,
+    auth_identity: String,
     state: Arc<Mutex<ServiceState>>,
     running: Arc<AtomicBool>,
 ) {
@@ -268,7 +266,7 @@ fn run_service_loop(
                         if unwrap_or_break!(handle_authorized_msg(
                             auth_msg,
                             message.peer_id(),
-                            &peer_id,
+                            &auth_identity,
                             &reply_sender
                         )) {
                             info!("Successfully authorized with peer {}", message.peer_id());
@@ -330,7 +328,7 @@ fn stop_service_loop(network: Network, circuit: String, service_id: String) {
 fn handle_authorized_msg(
     auth_msg: AuthorizationMessage,
     source_peer_id: &str,
-    identity: &str,
+    auth_identity: &str,
     sender: &crossbeam_channel::Sender<SendRequest>,
 ) -> Result<bool, ServiceError> {
     match auth_msg.get_message_type() {
@@ -343,7 +341,7 @@ fn handle_authorized_msg(
                 .any(|t| t == &ConnectResponse_AuthorizationType::TRUST)
             {
                 let mut trust_request = TrustRequest::new();
-                trust_request.set_identity(identity.to_string());
+                trust_request.set_identity(auth_identity.to_string());
                 sender.send(SendRequest::new(
                     source_peer_id.to_string(),
                     wrap_in_network_auth_envelopes(
