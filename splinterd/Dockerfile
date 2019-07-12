@@ -72,4 +72,5 @@ COPY --from=BUILDER /splinterd/target/release/splinterd /
 
 EXPOSE 8043
 EXPOSE 8945
+EXPOSE 8080
 CMD ["splinterd"]
