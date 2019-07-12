@@ -15,6 +15,7 @@
 //! The API that defines interactions between consensus and a Splinter service.
 
 pub mod error;
+pub mod two_phase;
 
 use std::convert::{TryFrom, TryInto};
 use std::sync::mpsc::Receiver;
@@ -272,4 +273,184 @@ pub struct StartupState {
     pub peer_ids: Vec<PeerId>,
     /// The last `Proposal` that was accepted
     pub last_proposal: Option<Proposal>,
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+    use std::sync::mpsc::Sender;
+    use std::sync::{Arc, Mutex, MutexGuard};
+
+    pub struct MockProposalManager {
+        update_sender: Sender<ProposalUpdate>,
+        last_proposal_height: AtomicU8,
+        last_proposal_id: RefCell<ProposalId>,
+        accepted_proposals: Arc<Mutex<Vec<(ProposalId, Vec<u8>)>>>,
+        rejected_proposals: Arc<Mutex<Vec<ProposalId>>>,
+        next_proposal_valid: Arc<AtomicBool>,
+        return_proposal: Arc<AtomicBool>,
+    }
+
+    impl Clone for MockProposalManager {
+        fn clone(&self) -> Self {
+            MockProposalManager {
+                update_sender: self.update_sender.clone(),
+                last_proposal_height: AtomicU8::new(
+                    self.last_proposal_height.load(Ordering::Relaxed),
+                ),
+                last_proposal_id: self.last_proposal_id.clone(),
+                accepted_proposals: self.accepted_proposals.clone(),
+                rejected_proposals: self.rejected_proposals.clone(),
+                next_proposal_valid: self.next_proposal_valid.clone(),
+                return_proposal: self.return_proposal.clone(),
+            }
+        }
+    }
+
+    impl MockProposalManager {
+        pub fn new(update_sender: Sender<ProposalUpdate>) -> Self {
+            MockProposalManager {
+                update_sender,
+                last_proposal_height: AtomicU8::new(0),
+                last_proposal_id: RefCell::new(ProposalId::default()),
+                accepted_proposals: Arc::new(Mutex::new(vec![])),
+                rejected_proposals: Arc::new(Mutex::new(vec![])),
+                next_proposal_valid: Arc::new(AtomicBool::new(true)),
+                return_proposal: Arc::new(AtomicBool::new(true)),
+            }
+        }
+
+        pub fn set_next_proposal_valid(&self, valid: bool) {
+            self.next_proposal_valid.store(valid, Ordering::Relaxed);
+        }
+
+        pub fn set_return_proposal(&self, return_proposal: bool) {
+            self.return_proposal
+                .store(return_proposal, Ordering::Relaxed);
+        }
+
+        pub fn accepted_proposals(&self) -> MutexGuard<Vec<(ProposalId, Vec<u8>)>> {
+            self.accepted_proposals
+                .lock()
+                .expect("failed to get accepted proposals")
+        }
+
+        pub fn rejected_proposals(&self) -> MutexGuard<Vec<ProposalId>> {
+            self.rejected_proposals
+                .lock()
+                .expect("failed to get rejected proposals")
+        }
+    }
+
+    impl ProposalManager for MockProposalManager {
+        fn create_proposal(
+            &self,
+            previous_proposal_id: Option<ProposalId>,
+            consensus_data: Vec<u8>,
+        ) -> Result<(), ProposalManagerError> {
+            if self.return_proposal.load(Ordering::Relaxed) {
+                let height = self.last_proposal_height.load(Ordering::Relaxed) + 1;
+                let id = vec![height];
+
+                let mut proposal = Proposal::default();
+                proposal.id = id.clone().into();
+                proposal.previous_id =
+                    previous_proposal_id.unwrap_or((*self.last_proposal_id.borrow_mut()).clone());
+                proposal.proposal_height = height as u64;
+                proposal.summary = id.clone();
+                proposal.consensus_data = consensus_data;
+
+                self.last_proposal_id.replace(id.into());
+                self.last_proposal_height.store(height, Ordering::Relaxed);
+
+                self.update_sender
+                    .send(ProposalUpdate::ProposalCreated(Some(proposal)))
+                    .expect("failed to send proposal");
+            }
+
+            Ok(())
+        }
+
+        fn check_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
+            if self.next_proposal_valid.load(Ordering::Relaxed) {
+                self.update_sender
+                    .send(ProposalUpdate::ProposalValid(id.clone()))
+                    .expect("failed to send valid message");
+            } else {
+                self.update_sender
+                    .send(ProposalUpdate::ProposalInvalid(id.clone()))
+                    .expect("failed to send invalid message");
+            }
+
+            Ok(())
+        }
+
+        fn accept_proposal(
+            &self,
+            id: &ProposalId,
+            consensus_data: Option<Vec<u8>>,
+        ) -> Result<(), ProposalManagerError> {
+            self.accepted_proposals
+                .lock()
+                .expect("failed to get accepted proposals lock")
+                .push((id.clone(), consensus_data.unwrap_or(vec![])));
+            Ok(())
+        }
+
+        fn reject_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
+            self.rejected_proposals
+                .lock()
+                .expect("failed to get rejected proposals lock")
+                .push(id.clone());
+            Ok(())
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct MockConsensusNetworkSender {
+        sent_messages: Arc<Mutex<Vec<(Vec<u8>, PeerId)>>>,
+        broadcast_messages: Arc<Mutex<Vec<Vec<u8>>>>,
+    }
+
+    impl MockConsensusNetworkSender {
+        pub fn new() -> Self {
+            MockConsensusNetworkSender {
+                sent_messages: Arc::new(Mutex::new(vec![])),
+                broadcast_messages: Arc::new(Mutex::new(vec![])),
+            }
+        }
+
+        pub fn sent_messages(&self) -> MutexGuard<Vec<(Vec<u8>, PeerId)>> {
+            self.sent_messages
+                .lock()
+                .expect("failed to get sent messages")
+        }
+
+        pub fn broadcast_messages(&self) -> MutexGuard<Vec<Vec<u8>>> {
+            self.broadcast_messages
+                .lock()
+                .expect("failed to get broadcast messages")
+        }
+    }
+
+    impl ConsensusNetworkSender for MockConsensusNetworkSender {
+        fn send_to(&self, peer_id: &PeerId, message: Vec<u8>) -> Result<(), ConsensusSendError> {
+            self.sent_messages
+                .lock()
+                .expect("failed to get sent messages")
+                .push((message, peer_id.clone()));
+            Ok(())
+        }
+
+        fn broadcast(&self, message: Vec<u8>) -> Result<(), ConsensusSendError> {
+            self.broadcast_messages
+                .lock()
+                .expect("failed to get broadcast messages")
+                .push(message);
+            Ok(())
+        }
+    }
 }
