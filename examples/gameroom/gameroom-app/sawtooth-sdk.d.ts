@@ -12,24 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path')
-
-module.exports = {
-  css: {
-    loaderOptions: {
-      sass: {
-        data: `
-          @import "@/scss/_variables.scss";
-        `
-      }
-    }
-  },
-  transpileDependencies: ['vuex-module-decorators'],
-  configureWebpack: {
-    resolve: {
-      alias: {
-        zeromq$: path.resolve(__dirname, './src/mock_zmq.js')
-      }
-    }
-  }
-};
+declare module 'sawtooth-sdk' {
+  var sawtoothSDK: any;
+  export = sawtoothSDK;
+}
