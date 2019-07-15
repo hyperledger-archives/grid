@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::rest_api::error::RestApiServerError;
 use actix_web::{HttpRequest, HttpResponse};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -19,11 +20,17 @@ struct Status {
     version: String,
 }
 
-pub fn get_status(_req: HttpRequest) -> HttpResponse {
+#[get("/status")]
+pub fn get_status(_: HttpRequest) -> HttpResponse {
     let status = Status {
         version: get_version(),
     };
     HttpResponse::Ok().json(status)
+}
+
+#[get("/openapi.yml")]
+pub fn get_openapi(_: HttpRequest) -> Result<HttpResponse, RestApiServerError> {
+    Ok(HttpResponse::Ok().body(include_str!("../../api/static/openapi.yml")))
 }
 
 fn get_version() -> String {
