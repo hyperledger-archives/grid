@@ -80,6 +80,8 @@ impl Incoming for dyn Listener {
 
 /// Factory-pattern based type for creating connections
 pub trait Transport {
+    /// Indicates whether or not a given address can be used to create a conneciton or listener.
+    fn accepts(&self, address: &str) -> bool;
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError>;
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError>;
 }
