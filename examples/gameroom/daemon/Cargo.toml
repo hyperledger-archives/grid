@@ -21,6 +21,11 @@ edition = "2018"
 [dependencies]
 actix = "0.8"
 actix-web = "1.0"
+clap = "2"
+ctrlc = "3.0"
+log = "0.4"
+log4rs = "0.8"
+simple_logger = "1.0"
 
 [[bin]]
 name = "gameroomd"
