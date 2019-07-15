@@ -15,11 +15,60 @@ limitations under the License.
 -->
 
 <template>
-  <div class="container">
-    <h1>Log In</h1>
+  <div class="auth-container">
+    <div class="auth-wrapper">
+      <form class="auth-form" @submit.prevent="login">
+        <label class= "form-label">
+          Email
+          <input
+            class="form-input"
+            type="email"
+            v-model="email"
+          />
+        </label>
+        <label class="form-label">
+          Password
+          <input
+            class="form-input"
+            type="password"
+            v-model="password"
+          />
+        </label>
+        <button class="form-button" type="submit" :disabled="!canSubmit">Log In</button>
+        <span class="form-link">
+          Don't have an account yet?
+          <router-link to="/register">
+            Click here to register.
+          </router-link>
+        </span>
+      </form>
+    </div>
   </div>
 </template>
 
-<script>
-export default {};
+<script lang="ts">
+import { Vue, Component } from 'vue-property-decorator';
+import user from '@/store/modules/user';
+import * as crypto from '@/utils/crypto';
+
+@Component
+export default class Login extends Vue {
+  email = '';
+  password = '';
+
+  get canSubmit() {
+    if (this.email !== '' &&
+        this.password !== '') {
+      return true;
+    }
+    return false;
+  }
+
+  login() {
+    user.authenticate({
+      email: this.email,
+      hashedPassword: crypto.hashSHA256(this.email, this.password),
+    });
+  }
+}
 </script>
