@@ -16,35 +16,52 @@ limitations under the License.
 
 <template>
   <nav class="navbar">
-    <ul class="nav-links">
+    <ul>
       <li class="nav-item">
         <router-link to="/">
           Home
         </router-link>
       </li>
-      <li class="nav-item">
+      <li v-if="isLoggedIn" class="nav-item">
         <router-link to="/gamerooms">
-          View Gamerooms
+          Gamerooms
         </router-link>
       </li>
     </ul>
-    <ul class="signin-links">
-      <li class="nav-item">
+    <ul>
+      <li v-if="!isLoggedIn" class="nav-item">
         <router-link to="/login">
-          Log in
+          Log In
         </router-link>
       </li>
-      <li class="nav-item">
+      <li v-if="!isLoggedIn" class="nav-item">
         <router-link to="/register">
           Register
+        </router-link>
+      </li>
+      <li v-if="isLoggedIn" class="nav-item">
+        <router-link to='/'>
+          <span v-on:click="logout">Log out</span>
         </router-link>
       </li>
     </ul>
   </nav>
 </template>
 
-<script>
-export default {};
+<script lang='ts'>
+import { Vue, Component } from 'vue-property-decorator';
+import user from '@/store/modules/user';
+
+@Component
+export default class AppNavbar extends Vue {
+  get isLoggedIn() {
+    return user.isLoggedIn;
+  }
+
+  logout() {
+    user.clearUser();
+  }
+}
 </script>
 
 <style lang="scss" scoped>
