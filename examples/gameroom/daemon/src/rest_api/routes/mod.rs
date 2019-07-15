@@ -12,26 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod error;
-mod routes;
-
-use actix_web::{web, App, HttpServer, Result};
-use gameroom_database::ConnectionPool;
-
-pub use error::RestApiServerError;
-use routes::index;
-
-pub fn run(bind_url: &str, database_connection: ConnectionPool) -> Result<(), RestApiServerError> {
-    let bind_url = bind_url.to_owned();
-    let sys = actix::System::new("Gameroom-Rest-API");
-
-    HttpServer::new(move || {
-        App::new()
-            .data(database_connection.clone())
-            .service(web::resource("/").to(index))
-    })
-    .bind(bind_url)?
-    .start();
-
-    Ok(sys.run()?)
+pub fn index() -> &'static str {
+    "Hello world!"
 }

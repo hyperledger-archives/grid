@@ -21,9 +21,11 @@ mod config;
 mod error;
 mod rest_api;
 
+use gameroom_database::ConnectionPool;
+use simple_logger;
+
 use crate::config::GameroomConfigBuilder;
 use crate::error::GameroomDaemonError;
-use simple_logger;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -35,6 +37,8 @@ fn run() -> Result<(), GameroomDaemonError> {
         (author: "Cargill Incorporated")
         (about: "Daemon Package for Gameroom")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg database_url: --("database-url") +takes_value "Database connection for Gameroom rest API")
+        (@arg bind: -b --bind +takes_value "connection endpoint for Gameroom rest API")
     )
     .get_matches();
 
@@ -47,6 +51,11 @@ fn run() -> Result<(), GameroomDaemonError> {
     let config = GameroomConfigBuilder::default()
         .with_cli_args(&matches)
         .build()?;
+
+    let connection_pool: ConnectionPool =
+        gameroom_database::create_connection_pool(config.database_url())?;
+
+    rest_api::run(config.rest_api_endpoint(), connection_pool.clone())?;
 
     Ok(())
 }
