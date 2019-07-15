@@ -15,11 +15,77 @@ limitations under the License.
 -->
 
 <template>
-  <div class="container">
-    <h1>Register</h1>
+  <div class="auth-container">
+    <div class="auth-wrapper">
+      <form class="auth-form" @submit.prevent="register">
+        <label class= "form-label">
+          Email
+          <input
+            class="form-input"
+            type="email"
+            v-model="email"
+          />
+        </label>
+        <label class="form-label">
+          Password
+          <input
+            class="form-input"
+            type="password"
+            v-model="password"
+          />
+        </label>
+        <label class="form-label">
+          Confirm Password
+          <input
+            class="form-input"
+            type="password"
+            v-model="confirmPassword"
+          />
+        </label>
+        <button class="form-button" type="submit" :disabled="!canSubmit">Register</button>
+        <span class="form-link">
+          Already have an account?
+          <router-link to="/login">
+            Click here to log in.
+          </router-link>
+        </span>
+      </form>
+    </div>
   </div>
 </template>
 
-<script>
-export default {};
+<script lang="ts">
+import { Vue, Component } from 'vue-property-decorator';
+import user from '@/store/modules/user';
+import * as crypto from '@/utils/crypto';
+
+@Component
+export default class Register extends Vue {
+  email = '';
+  password = '';
+  confirmPassword = '';
+
+  get canSubmit() {
+    if (this.email !== '' &&
+        this.password !== '' &&
+        this.confirmPassword !== '') {
+      return true;
+    }
+    return false;
+  }
+
+  register() {
+    if (this.password !== this.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    const keys = crypto.createKeyPair(this.password);
+    user.register({
+      email: this.email,
+      hashedPassword: crypto.hashSHA256(this.email, this.password),
+      publicKey: keys.publicKey,
+      encryptedPrivateKey: keys.encryptedPrivateKey,
+    });
+  }
+}
 </script>

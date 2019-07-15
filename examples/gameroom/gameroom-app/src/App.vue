@@ -39,11 +39,19 @@ export default class App extends Vue {
 
 <style lang="scss">
 
-body {
-  margin: 0;
-  background-color: $color-background;
+*, *:before, *:after {
+  box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  background-color: $color-background;
+  height: 100%;
+}
+
+form, button {
+  font-family: inherit;
+}
 #{$a-tags} {
   color: $color-text-secondary;
   text-decoration: none;
@@ -58,11 +66,86 @@ body {
   padding-left: 1em;
 }
 
+.auth-container {
+  height: 100%;
+  display: flex;
+  flex: center;
+  justify-content: center;
+  align-items: center;
+  align-self: center;
+}
+
+.auth-wrapper {
+  max-width: 500px;
+  width: 100%
+}
+
+.auth-form {
+  background: $color-base;
+  padding: 2em 1em;
+  @include rounded-border;
+
+  .form-error {
+    margin: 0 3%;
+    color: red;
+
+    .error-text {
+      list-style-type: none;
+    }
+  };
+
+  .form-label {
+    color: $color-white;
+    margin: 0 3%;
+
+    .form-input {
+      width: 94%;
+      margin: .25em 3% 1em;
+      padding: .5em .25em;
+      font-size: 1.2em;
+      border: 2px solid $color-white;
+      outline: none;
+      @include rounded-border;
+    }
+
+    .form-input:focus {
+      border: 2px solid $color-secondary;
+    }
+  }
+
+  .form-button {
+    width: 94%;
+    margin: .5em 3% .5em;
+    border: none;
+    background: $color-primary;
+    padding: 1em 0;
+    font-size: 1.25em;
+    font-weight: 600;
+    clear: both;
+    @include rounded-border;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .form-button:disabled {
+    background: $color-gray;
+    color: black;
+  }
+
+  .form-link {
+    margin: 1em 3%;
+    padding: 1em 0;
+  }
+}
+
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: 'Raleway', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: $color-text;
   background-color: $color-background;
+  display: flex;
+  flex-flow: column;
+  height: 100%;
 }
 </style>
