@@ -26,6 +26,7 @@
     "node-sass": "^4.12.0",
     "sass-loader": "^7.1.0",
     "typescript": "^3.4.3",
-    "vue-template-compiler": "^2.6.10"
+    "vue-template-compiler": "^2.6.10",
+    "vuex-module-decorators": "^0.9.9"
   }
 }
