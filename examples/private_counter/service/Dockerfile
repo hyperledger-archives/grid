@@ -46,6 +46,8 @@ RUN cargo build --release
 
 # Copy over the source and build the app
 RUN rm ./src/*.rs
+COPY ./examples/private_counter/protos ../protos
+COPY ./examples/private_counter/service/build.rs ./build.rs
 COPY ./examples/private_counter/service/src ./src
 RUN rm ./target/release/private-counter* ./target/release/deps/private_counter*
 RUN cargo build --release
