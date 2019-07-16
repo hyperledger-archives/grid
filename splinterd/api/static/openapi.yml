@@ -166,6 +166,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /node:
+    get:
+      tags:
+          - Node Registry
+      description: List nodes in the Node Registry
+      parameters:
+        - name: offset
+          in: query
+          description: paging offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: maximum number of items to return (max 100)
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: filter
+          in: query
+          description: |
+            url-encodeded stringified JSON containing property filters in the format
+              {NODE_PROPERTY:[{"operator":OPERATOR,"value":VALUE}]}
+          required: false
+          schema:
+            type: string
+          example: "%7B%22company%22%3A%5B%22%3D%22%2C%22Cargill%22%5D%7D"
+      responses:
+        200:
+          description: list of nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RegisteredNode'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+                    
+  /node/{identity}:
+      get:
+        tags:
+          - Node Registry
+        description: Fetch a nodes in the Node Registry by their identity
+        parameters:
+          - name: identity
+            in: path
+            description: identity of node to fetch
+            required: true
+            schema:
+              type: string
+        responses:
+          200:
+            description: Node
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/RegisteredNode"
+          404:
+            description: The node with {identity} was not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
 
 components:
   schemas:
@@ -287,3 +367,44 @@ components:
         error_reason:
           description: Error message if the registration failed
           type: string
+    
+    RegisteredNode:
+      type: object
+      properties:
+        identity:
+          type: string
+      additionalProperties: true
+      example:
+        identity: node-123123-asdf
+        company: Cargill
+        status: Up
+
+    
+    Paging:
+      type: object
+      properties:
+        current:
+          type: string
+        offset: 
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        first:
+          type: string
+        prev:
+          type: string
+        next:
+          type: string
+        last:
+          type: string
+      example:
+        current: /nodes?offset=10&limit=10
+        offset: 10
+        limit: 10
+        total: 50
+        first: /nodes?offset=0&limit=10
+        prev: /nodes?offset=0&limit=10
+        next: /nodes?offset=20&limit=10
+        last: /nodes?offset=40&limit=10
