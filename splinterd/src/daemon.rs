@@ -16,6 +16,9 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
+use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
+use crate::rest_api::{self, error::RestApiServerError};
+use crossbeam_channel;
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
     CircuitDirectMessageHandler, CircuitErrorHandler, CircuitMessageHandler,
@@ -42,9 +45,6 @@ use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
-
-use crate::rest_api::{self, error::RestApiServerError};
-use crossbeam_channel;
 use protobuf::Message;
 
 // Recv timeout in secs
@@ -59,6 +59,7 @@ pub struct SplinterDaemon {
     network: Network,
     node_id: String,
     rest_api_endpoint: String,
+    registry_config: RegistryConfig,
 }
 
 impl SplinterDaemon {
@@ -68,7 +69,7 @@ impl SplinterDaemon {
         let r = running.clone();
 
         let (rest_api_shutdown_handle, rest_api_join_handle) =
-            rest_api::run(&self.rest_api_endpoint)?;
+            rest_api::run(&self.rest_api_endpoint, &self.registry_config)?;
 
         ctrlc::set_handler(move || {
             info!("Recieved Shutdown");
@@ -293,6 +294,8 @@ pub struct SplinterDaemonBuilder {
     initial_peers: Option<Vec<String>>,
     node_id: Option<String>,
     rest_api_endpoint: Option<String>,
+    registry_backend: Option<String>,
+    registry_file: Option<String>,
 }
 
 impl SplinterDaemonBuilder {
@@ -335,6 +338,16 @@ impl SplinterDaemonBuilder {
         self
     }
 
+    pub fn with_registry_backend(mut self, value: String) -> Self {
+        self.registry_backend = Some(value);
+        self
+    }
+
+    pub fn with_registry_file(mut self, value: String) -> Self {
+        self.registry_file = Some(value);
+        self
+    }
+
     pub fn build(self) -> Result<SplinterDaemon, CreateError> {
         let mesh = Mesh::new(512, 128);
         let network = Network::new(mesh.clone());
@@ -367,6 +380,17 @@ impl SplinterDaemonBuilder {
             CreateError::MissingRequiredField("Missing field: rest_api_endpoint".to_string())
         })?;
 
+        let mut registry_config_builder = RegistryConfigBuilder::default();
+        if let Some(value) = self.registry_backend {
+            registry_config_builder = registry_config_builder.with_registry_backend(value);
+        }
+
+        if let Some(value) = self.registry_file {
+            registry_config_builder = registry_config_builder.with_registry_file(value);
+        }
+
+        let registry_config = registry_config_builder.build()?;
+
         Ok(SplinterDaemon {
             transport,
             storage_location,
@@ -376,6 +400,7 @@ impl SplinterDaemonBuilder {
             network,
             node_id,
             rest_api_endpoint,
+            registry_config,
         })
     }
 }
@@ -484,6 +509,13 @@ fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
 #[derive(Debug)]
 pub enum CreateError {
     MissingRequiredField(String),
+    NodeRegistryError(String),
+}
+
+impl From<RegistryConfigError> for CreateError {
+    fn from(err: RegistryConfigError) -> Self {
+        CreateError::NodeRegistryError(format!("Error configuring Node Registry: {}", err))
+    }
 }
 
 #[derive(Debug)]

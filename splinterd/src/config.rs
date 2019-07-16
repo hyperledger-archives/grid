@@ -36,6 +36,8 @@ pub struct Config {
     peers: Option<Vec<String>>,
     node_id: Option<String>,
     bind: Option<String>,
+    registry_backend: Option<String>,
+    registry_file: Option<String>,
 }
 
 impl Config {
@@ -92,6 +94,14 @@ impl Config {
 
     pub fn bind(&self) -> Option<String> {
         self.bind.clone()
+    }
+
+    pub fn registry_backend(&self) -> Option<String> {
+        self.registry_backend.clone()
+    }
+
+    pub fn registry_file(&self) -> Option<String> {
+        self.registry_file.clone()
     }
 }
 

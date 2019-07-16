@@ -30,7 +30,6 @@ pub struct FileInternal {
 }
 
 impl YamlNodeRegistry {
-    #[allow(dead_code)]
     pub fn new(file_path: &str) -> Result<YamlNodeRegistry, YamlNodeRegistryError> {
         let file = OpenOptions::new().read(true).write(true).open(file_path)?;
 
