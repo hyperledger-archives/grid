@@ -17,7 +17,7 @@ pub mod routes;
 
 use crate::node_registry::yaml::YamlNodeRegistry;
 use crate::registry_config::RegistryConfig;
-use actix_web::{middleware, App, HttpServer};
+use actix_web::{middleware, web, App, HttpServer};
 use error::RestApiServerError;
 use libsplinter::node_registry::NodeRegistry;
 use std::sync::mpsc;
@@ -57,6 +57,10 @@ pub fn run(
                     .wrap(middleware::Logger::default())
                     .service(routes::get_status)
                     .service(routes::get_openapi)
+                    .service(
+                        web::resource("/node/{identity}")
+                            .route(web::get().to_async(routes::fetch_node)),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()
