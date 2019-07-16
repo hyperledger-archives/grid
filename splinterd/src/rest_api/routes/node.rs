@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{error::BlockingError, web, Error, HttpResponse};
-use futures::Future;
-use libsplinter::node_registry::error::NodeRegistryError;
-use libsplinter::node_registry::NodeRegistry;
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use futures::{future::IntoFuture, Future};
+use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use std::collections::HashMap;
+use url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
+
+type Filter = HashMap<String, (String, String)>;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct ListNodesResponse {
+    data: Vec<Node>,
+    paging: Paging,
+}
 
 pub fn fetch_node(
     identity: web::Path<String>,
@@ -33,6 +43,117 @@ pub fn fetch_node(
     })
 }
 
+pub fn list_nodes(
+    req: HttpRequest,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+    query: web::Query<HashMap<String, String>>,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let offset = match query.get("offset") {
+        Some(value) => match value.parse::<usize>() {
+            Ok(val) => val,
+            Err(err) => {
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(format!(
+                            "Invalid offset value passed: {}. Error: {}",
+                            value, err
+                        ))
+                        .into_future(),
+                )
+            }
+        },
+        None => DEFAULT_OFFSET,
+    };
+
+    let limit = match query.get("limit") {
+        Some(value) => match value.parse::<usize>() {
+            Ok(val) => val,
+            Err(err) => {
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(format!(
+                            "Invalid limit value passed: {}. Error: {}",
+                            value, err
+                        ))
+                        .into_future(),
+                )
+            }
+        },
+        None => DEFAULT_LIMIT,
+    };
+
+    let mut link = format!("{}?", req.uri().path());
+
+    let filters = match query.get("filter") {
+        Some(value) => match serde_json::from_str(value) {
+            Ok(val) => {
+                link.push_str(&format!(
+                    "filter={}&",
+                    utf8_percent_encode(value, QUERY_ENCODE_SET).to_string()
+                ));
+                Some(val)
+            }
+            Err(err) => {
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(format!(
+                            "Invalid filter value passed: {}. Error: {}",
+                            value, err
+                        ))
+                        .into_future(),
+                )
+            }
+        },
+        None => None,
+    };
+
+    Box::new(query_list_nodes(
+        registry,
+        link,
+        filters,
+        Some(offset),
+        Some(limit),
+    ))
+}
+
+fn query_list_nodes(
+    registry: web::Data<Box<dyn NodeRegistry>>,
+    link: String,
+    filters: Option<Filter>,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    web::block(
+        move || match registry.list_nodes(filters.clone(), None, None) {
+            Ok(nodes) => Ok((registry, filters, nodes.len(), link, limit, offset)),
+            Err(err) => Err(err),
+        },
+    )
+    .and_then(|(registry, filters, total_count, link, limit, offset)| {
+        web::block(move || match registry.list_nodes(filters, limit, offset) {
+            Ok(nodes) => Ok((nodes, link, limit, offset, total_count)),
+            Err(err) => Err(err),
+        })
+    })
+    .then(|res| match res {
+        Ok((nodes, link, limit, offset, total_count)) => {
+            Ok(HttpResponse::Ok().json(ListNodesResponse {
+                data: nodes,
+                paging: get_response_paging_info(limit, offset, &link, total_count),
+            }))
+        }
+        Err(err) => match err {
+            BlockingError::Error(err) => match err {
+                NodeRegistryError::InvalidFilterError(err) => {
+                    Ok(HttpResponse::BadRequest().json(err))
+                }
+                _ => Ok(HttpResponse::InternalServerError().into()),
+            },
+            _ => Ok(HttpResponse::InternalServerError().into()),
+        },
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -44,7 +165,10 @@ mod tests {
     use std::panic;
     use std::thread;
 
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{
+        http::{header, StatusCode},
+        test, web, App,
+    };
 
     #[test]
     /// Tests a GET /node/{identity} request returns the expected node.
@@ -98,6 +222,136 @@ mod tests {
 
             assert_eq!(resp.status(), StatusCode::NOT_FOUND);
         })
+    }
+
+    #[test]
+    /// Tests a GET /node request with no filters returns the expected nodes.
+    fn test_list_node_ok() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new()
+                    .data(node_registry.clone())
+                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+            );
+
+            let req = test::TestRequest::get().uri("/node").to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+            let nodes: ListNodesResponse = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+            assert_eq!(nodes.data, vec![get_node_1(), get_node_2()]);
+            assert_eq!(
+                nodes.paging,
+                create_test_paging_response(0, 100, 0, 0, 0, 2, "/node?")
+            )
+        })
+    }
+
+    #[test]
+    /// Tests a GET /node request with filters returns the expected node.
+    fn test_list_node_with_filters_ok() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new()
+                    .data(node_registry.clone())
+                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+            );
+
+            let filter =
+                utf8_percent_encode("{\"company\":[\"=\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
+                    .to_string();
+
+            let req = test::TestRequest::get()
+                .uri(&format!("/node?filter={}", filter))
+                .header(header::CONTENT_TYPE, "application/json")
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+            let nodes: ListNodesResponse = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+            assert_eq!(nodes.data, vec![get_node_1()]);
+            let link = format!("/node?filter={}&", filter);
+            assert_eq!(
+                nodes.paging,
+                create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            )
+        })
+    }
+
+    #[test]
+    /// Tests a GET /node request with invalid filter returns BadRequest response.
+    fn test_list_node_with_filters_bad_request() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new()
+                    .data(node_registry.clone())
+                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+            );
+
+            let filter =
+                utf8_percent_encode("{\"company\":[\"*\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
+                    .to_string();
+
+            let req = test::TestRequest::get()
+                .uri(&format!("/node?filter={}", filter))
+                .header(header::CONTENT_TYPE, "application/json")
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        })
+    }
+
+    fn create_test_paging_response(
+        offset: usize,
+        limit: usize,
+        next_offset: usize,
+        previous_offset: usize,
+        last_offset: usize,
+        total: usize,
+        link: &str,
+    ) -> Paging {
+        let base_link = format!("{}limit={}&", link, limit);
+        let current_link = format!("{}offset={}", base_link, offset);
+        let first_link = format!("{}offset=0", base_link);
+        let next_link = format!("{}offset={}", base_link, next_offset);
+        let previous_link = format!("{}offset={}", base_link, previous_offset);
+        let last_link = format!("{}offset={}", base_link, last_offset);
+
+        Paging {
+            current: current_link,
+            offset,
+            limit,
+            total,
+            first: first_link,
+            prev: previous_link,
+            next: next_link,
+            last: last_link,
+        }
     }
 
     fn write_to_file(file_path: &str) {

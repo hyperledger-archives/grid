@@ -61,6 +61,7 @@ pub fn run(
                         web::resource("/node/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),
                     )
+                    .service(web::resource("/node").route(web::get().to_async(routes::list_nodes)))
             })
             .bind(bind_url)?
             .disable_signals()
