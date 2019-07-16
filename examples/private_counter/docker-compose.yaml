@@ -60,6 +60,28 @@ services:
     environment:
       SPLINTER_STATE_DIR: /splinter_state
 
+  splinter-node-2:
+    image: splinterd:latest
+    build:
+        context: ../..
+        dockerfile: ./splinterd/Dockerfile
+    expose:
+      - 8047
+      - 8048
+    volumes:
+      - ./demo_state:/splinter_state
+    command: >
+      bash -c "
+        /splinterd -vv \
+                --transport raw \
+                --storage yaml \
+                --service-endpoint 0.0.0.0:8047 \
+                --network-endpoint 0.0.0.0:8048 \
+                --node-id 678
+      "
+    environment:
+      SPLINTER_STATE_DIR: /splinter_state
+
   private-counter-service-a:
     image: private-counter:latest
     container_name: private-counter-service-a
@@ -78,6 +100,7 @@ services:
                       --circuit alpha \
                       --service-id service_a \
                       --verifier service_b \
+                      --verifier service_c \
                       --connect splinter-node-0:8043
         "
 
@@ -99,7 +122,30 @@ services:
                       --circuit alpha \
                       --service-id service_b \
                       --verifier service_a \
+                      --verifier service_c \
                       --connect splinter-node-1:8045
+        "
+
+  private-counter-service-c:
+    image: private-counter:latest
+    container_name: private-counter-service-c
+    build:
+        context: ../..
+        dockerfile: ./examples/private_counter/service/Dockerfile
+    expose:
+        - 8000
+    ports:
+        - "8010:8000"
+    command: >
+        bash -c "
+          sleep 2;
+          /private-counter -vv \
+                      --bind 0.0.0.0:8000 \
+                      --circuit alpha \
+                      --service-id service_c \
+                      --verifier service_a \
+                      --verifier service_b \
+                      --connect splinter-node-2:8047
         "
 
   pcounter:

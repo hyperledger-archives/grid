@@ -19,15 +19,20 @@ nodes:
   345:
     endpoints:
       - tcp://splinter-node-1:8046
+  678:
+    endpoints:
+      - tcp://splinter-node-2:8048
 circuits:
   alpha:
     auth: trust
     members:
       - 012
       - 345
+      - 678
     roster:
       - service_a
       - service_b
+      - service_c
     persistence: any
     durability: none
     routes: require_direct
