@@ -24,7 +24,7 @@ pub struct Node {
     pub metadata: HashMap<String, String>,
 }
 
-pub trait NodeRegistry: Send {
+pub trait NodeRegistry: Send + Sync {
     /// Registers a new node.
     ///
     /// # Arguments
