@@ -21,20 +21,51 @@ use crate::transport::{
     RecvError, SendError, Transport,
 };
 
+const PROTOCOL_PREFIX: &str = "tcp://";
+
 #[derive(Default)]
 pub struct RawTransport {}
 
 impl Transport for RawTransport {
+    fn accepts(&self, address: &str) -> bool {
+        address.starts_with(PROTOCOL_PREFIX) || !address.contains("://")
+    }
+
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
+        if !self.accepts(endpoint) {
+            return Err(ConnectError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                endpoint
+            )));
+        }
+
+        let address = if endpoint.starts_with(PROTOCOL_PREFIX) {
+            &endpoint[PROTOCOL_PREFIX.len()..]
+        } else {
+            endpoint
+        };
         // Connect a std::net::TcpStream to make sure connect() block
-        let stream = TcpStream::connect(endpoint)?;
+        let stream = TcpStream::connect(address)?;
         let mio_stream = MioTcpStream::from_stream(stream)?;
         Ok(Box::new(RawConnection { stream: mio_stream }))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
+        if !self.accepts(bind) {
+            return Err(ListenError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                bind
+            )));
+        }
+
+        let address = if bind.starts_with(PROTOCOL_PREFIX) {
+            &bind[PROTOCOL_PREFIX.len()..]
+        } else {
+            bind
+        };
+
         Ok(Box::new(RawListener {
-            listener: TcpListener::bind(bind)?,
+            listener: TcpListener::bind(address)?,
         }))
     }
 }
@@ -53,7 +84,7 @@ impl Listener for RawListener {
     }
 
     fn endpoint(&self) -> String {
-        self.listener.local_addr().unwrap().to_string()
+        format!("tcp://{}", self.listener.local_addr().unwrap())
     }
 }
 
@@ -71,11 +102,11 @@ impl Connection for RawConnection {
     }
 
     fn remote_endpoint(&self) -> String {
-        self.stream.peer_addr().unwrap().to_string()
+        format!("tcp://{}", self.stream.peer_addr().unwrap())
     }
 
     fn local_endpoint(&self) -> String {
-        self.stream.local_addr().unwrap().to_string()
+        format!("tcp://{}", self.stream.local_addr().unwrap())
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
@@ -96,10 +127,27 @@ mod tests {
     use mio::Ready;
 
     #[test]
+    fn test_accepts() {
+        let transport = RawTransport::default();
+        assert!(transport.accepts("127.0.0.1:0"));
+        assert!(transport.accepts("tcp://127.0.0.1:0"));
+        assert!(transport.accepts("tcp://somewhere.example.com:4000"));
+
+        assert!(!transport.accepts("tls://somewhere.example.com:4000"));
+    }
+
+    #[test]
     fn test_transport() {
         let transport = RawTransport::default();
 
         tests::test_transport(transport, "127.0.0.1:0");
+    }
+
+    #[test]
+    fn test_transport_explicit_protocol() {
+        let transport = RawTransport::default();
+
+        tests::test_transport(transport, "tcp://127.0.0.1:0");
     }
 
     #[test]

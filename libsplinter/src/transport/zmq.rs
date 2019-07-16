@@ -21,7 +21,6 @@ use std::io;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-use ::log::{debug, log};
 use mio::{unix::EventedFd, Evented, Poll, PollOpt, Ready, Token};
 use zmq::{Context, Socket};
 
@@ -172,15 +171,42 @@ impl Default for ZmqTransport {
 }
 
 impl Transport for ZmqTransport {
+    fn accepts(&self, address: &str) -> bool {
+        address.starts_with("zmq:")
+    }
+
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
-        Ok(Box::new(ZmqConnection::connect(&self.context, endpoint)?))
+        if !self.accepts(endpoint) {
+            return Err(ConnectError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                endpoint
+            )));
+        }
+
+        let subprotocol = &endpoint[4..];
+        let address = if subprotocol.contains("://") {
+            subprotocol.to_string()
+        } else {
+            format!("tcp://{}", subprotocol)
+        };
+        Ok(Box::new(ZmqConnection::connect(&self.context, &address)?))
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
-        Ok(Box::new(ZmqListener::start(
-            self.context.clone(),
-            bind.to_string(),
-        )?))
+        if !self.accepts(bind) {
+            return Err(ListenError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                bind
+            )));
+        }
+
+        let subprotocol = &bind[4..];
+        let address = if subprotocol.contains("://") {
+            subprotocol.to_string()
+        } else {
+            format!("tcp://{}", subprotocol)
+        };
+        Ok(Box::new(ZmqListener::start(self.context.clone(), address)?))
     }
 }
 
@@ -295,11 +321,11 @@ impl Connection for ZmqConnection {
     }
 
     fn remote_endpoint(&self) -> String {
-        self.endpoint.clone()
+        format!("zmq:{}", self.endpoint)
     }
 
     fn local_endpoint(&self) -> String {
-        self.endpoint.clone()
+        format!("zmq:{}", self.endpoint)
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
@@ -693,7 +719,7 @@ impl Listener for ZmqListener {
     }
 
     fn endpoint(&self) -> String {
-        self.endpoint.clone()
+        format!("zmq:{}", self.endpoint)
     }
 }
 
@@ -704,16 +730,26 @@ mod tests {
     use mio::Ready;
 
     #[test]
+    fn test_accepts() {
+        let transport = ZmqTransport::default();
+
+        assert!(transport.accepts("zmq:127.0.0.1:8080"));
+        assert!(transport.accepts("zmq:tcp://127.0.0.1:8080"));
+        assert!(transport.accepts("zmq:udp://127.0.0.1:8080"));
+        assert!(!transport.accepts("127.0.0.1:8080"));
+    }
+
+    #[test]
     fn test_transport() {
         let transport = ZmqTransport::default();
 
-        tests::test_transport(transport, "tcp://127.0.0.1:8080");
+        tests::test_transport(transport, "zmq:127.0.0.1:8080");
     }
 
     #[test]
     fn test_poll() {
         let transport = ZmqTransport::default();
 
-        tests::test_poll(transport, "tcp://127.0.0.1:8081", Ready::writable());
+        tests::test_poll(transport, "zmq:tcp://127.0.0.1:8081", Ready::writable());
     }
 }

@@ -29,18 +29,36 @@ use crate::transport::{
 
 type Incoming = Arc<Mutex<HashMap<String, Sender<Pair<Vec<u8>>>>>>;
 
+const PROTOCOL_PREFIX: &str = "inproc://";
+
 #[derive(Clone, Default)]
 pub struct InprocTransport {
     incoming: Incoming,
 }
 
 impl Transport for InprocTransport {
+    fn accepts(&self, address: &str) -> bool {
+        address.starts_with(PROTOCOL_PREFIX) || !address.contains("://")
+    }
+
     fn connect(&mut self, endpoint: &str) -> Result<Box<dyn Connection>, ConnectError> {
-        match self.incoming.lock().unwrap().get(endpoint) {
+        if !self.accepts(endpoint) {
+            return Err(ConnectError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                endpoint
+            )));
+        }
+        let address = if endpoint.starts_with(PROTOCOL_PREFIX) {
+            &endpoint[PROTOCOL_PREFIX.len()..]
+        } else {
+            endpoint
+        };
+
+        match self.incoming.lock().unwrap().get(address) {
             Some(sender) => {
                 let (p0, p1) = Pair::new();
                 sender.send(p0).unwrap();
-                Ok(Box::new(InprocConnection::new(endpoint.into(), p1)))
+                Ok(Box::new(InprocConnection::new(address.into(), p1)))
             }
             None => Err(ConnectError::IoError(io::Error::new(
                 ErrorKind::ConnectionRefused,
@@ -50,9 +68,21 @@ impl Transport for InprocTransport {
     }
 
     fn listen(&mut self, bind: &str) -> Result<Box<dyn Listener>, ListenError> {
+        if !self.accepts(bind) {
+            return Err(ListenError::ProtocolError(format!(
+                "Invalid protocol \"{}\"",
+                bind
+            )));
+        }
+        let address = if bind.starts_with(PROTOCOL_PREFIX) {
+            &bind[PROTOCOL_PREFIX.len()..]
+        } else {
+            bind
+        };
+
         let (tx, rx) = channel();
-        self.incoming.lock().unwrap().insert(bind.into(), tx);
-        Ok(Box::new(InprocListener::new(bind.into(), rx)))
+        self.incoming.lock().unwrap().insert(address.into(), tx);
+        Ok(Box::new(InprocListener::new(address.into(), rx)))
     }
 }
 
@@ -76,7 +106,9 @@ impl Listener for InprocListener {
     }
 
     fn endpoint(&self) -> String {
-        self.endpoint.clone()
+        let mut buf = String::from(PROTOCOL_PREFIX);
+        buf.push_str(&self.endpoint);
+        buf
     }
 }
 
@@ -105,11 +137,15 @@ impl Connection for InprocConnection {
     }
 
     fn remote_endpoint(&self) -> String {
-        self.endpoint.clone()
+        let mut buf = String::from(PROTOCOL_PREFIX);
+        buf.push_str(&self.endpoint);
+        buf
     }
 
     fn local_endpoint(&self) -> String {
-        self.endpoint.clone()
+        let mut buf = String::from(PROTOCOL_PREFIX);
+        buf.push_str(&self.endpoint);
+        buf
     }
 
     fn disconnect(&mut self) -> Result<(), DisconnectError> {
