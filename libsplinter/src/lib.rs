@@ -50,6 +50,7 @@ macro_rules! mutex_lock_unwrap {
 pub mod channel;
 pub mod circuit;
 pub mod collections;
+pub mod consensus;
 pub mod mesh;
 pub mod n_phase;
 pub mod network;
