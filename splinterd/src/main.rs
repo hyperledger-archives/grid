@@ -22,6 +22,7 @@ extern crate serde_derive;
 mod certs;
 mod config;
 mod daemon;
+mod node_registry;
 mod rest_api;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
