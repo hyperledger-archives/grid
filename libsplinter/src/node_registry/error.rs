@@ -25,8 +25,8 @@ pub enum NodeRegistryError {
     /// This error is returned when the user attempts to filter the nodes list using an invalid
     /// filter.
     InvalidFilterError(String),
-    /// This error is returned when an internal error occurred.
-    InternalError(Box<dyn Error>),
+    /// This error is returned when an internal error occurred
+    InternalError(Box<dyn Error + Send>),
 }
 
 impl Error for NodeRegistryError {
