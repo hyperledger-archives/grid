@@ -18,24 +18,30 @@ extern crate log;
 extern crate serde_derive;
 
 mod error;
+mod protos;
 mod routes;
 mod service;
 mod transaction;
 
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::thread::Builder;
 
 use clap::{App, Arg};
 use iron::prelude::*;
 use iron::status;
 use router::Router;
 
+use libsplinter::consensus::two_phase::TwoPhaseEngine;
+use libsplinter::consensus::{ConsensusEngine, StartupState};
 use libsplinter::mesh::Mesh;
 use libsplinter::network::Network;
 use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::CliError;
 use crate::routes::{batches, state, State};
+use crate::service::consensus::{PrivateXoNetworkSender, PrivateXoProposalManager};
 use crate::service::{start_service_loop, ServiceConfig, ServiceError};
 use crate::transaction::{XoState, XoStateError};
 
@@ -54,6 +60,8 @@ fn main() -> Result<(), CliError> {
     configure_shutdown_handler(Arc::clone(&running))?;
 
     let xo_state = XoState::new()?;
+    let pending_batches = Arc::new(Mutex::new(VecDeque::new()));
+    let pending_proposal = Arc::new(Mutex::new(None));
 
     let mut transport = get_transport(&matches)?;
     let network = create_network_and_connect(
@@ -73,11 +81,55 @@ fn main() -> Result<(), CliError> {
     );
 
     let (send, recv) = crossbeam_channel::bounded(5);
+
+    let (consensus_msg_tx, consensus_msg_rx) = std::sync::mpsc::channel();
+    let (proposal_update_tx, proposal_update_rx) = std::sync::mpsc::channel();
+
+    let proposal_manager = PrivateXoProposalManager::new(
+        service_config.clone(),
+        xo_state.clone(),
+        pending_batches.clone(),
+        pending_proposal.clone(),
+        proposal_update_tx.clone(),
+        send.clone(),
+    );
+    let consensus_network_sender =
+        PrivateXoNetworkSender::new(service_config.clone(), send.clone());
+    let startup_state = StartupState {
+        id: service_config.peer_id().as_bytes().into(),
+        peer_ids: service_config
+            .verifiers()
+            .iter()
+            .map(|id| id.as_bytes().into())
+            .collect(),
+        last_proposal: None,
+    };
+
+    let _ = Builder::new()
+        .name("TwoPhaseConsensus".into())
+        .spawn(move || {
+            let mut two_phase_engine = TwoPhaseEngine::new();
+            two_phase_engine
+                .run(
+                    consensus_msg_rx,
+                    proposal_update_rx,
+                    Box::new(consensus_network_sender),
+                    Box::new(proposal_manager),
+                    startup_state,
+                )
+                .unwrap_or_else(|err| {
+                    error!("Error while running two phase consensus: {}", err);
+                })
+        })
+        .map_err(|err| ServiceError(format!("Unable to start consensus thread: {}", err)))?;
+
     start_service_loop(
         service_config.clone(),
         (send.clone(), recv),
+        consensus_msg_tx,
+        proposal_update_tx,
+        pending_proposal,
         network.clone(),
-        xo_state.clone(),
         running,
     )?;
 
@@ -95,6 +147,7 @@ fn main() -> Result<(), CliError> {
     chain.link_before(move |req: &mut Request| {
         req.set_mut(State::new(service_config.clone()));
         req.set_mut(State::new(xo_state.clone()));
+        req.set_mut(State::new(pending_batches.clone()));
         req.set_mut(State::new(send.clone()));
 
         Ok(())

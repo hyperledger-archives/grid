@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod consensus;
 mod error;
 
+use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 use std::time::Duration;
 
 use crossbeam_channel;
 use protobuf::Message;
 
+use libsplinter::consensus::{ConsensusMessage, Proposal, ProposalUpdate};
 use libsplinter::network::{
     sender::{NetworkMessageSender, SendRequest},
     Network, RecvTimeoutError,
@@ -34,15 +38,11 @@ use libsplinter::protos::circuit::{
     CircuitDirectMessage, CircuitMessage, CircuitMessageType, ServiceConnectRequest,
     ServiceConnectResponse, ServiceConnectResponse_Status, ServiceDisconnectRequest,
 };
-use libsplinter::protos::n_phase::{
-    NPhaseTransactionMessage, NPhaseTransactionMessage_Type, TransactionVerificationResponse,
-    TransactionVerificationResponse_Result,
-};
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use transact::protos::batch::Batch;
 
+use crate::protos::private_xo::{PrivateXoMessage, PrivateXoMessage_Type};
 pub use crate::service::error::ServiceError;
-use crate::transaction::XoState;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -105,8 +105,10 @@ pub fn start_service_loop(
         crossbeam_channel::Sender<SendRequest>,
         crossbeam_channel::Receiver<SendRequest>,
     ),
+    consensus_msg_sender: Sender<ConsensusMessage>,
+    proposal_update_sender: Sender<ProposalUpdate>,
+    pending_proposal: Arc<Mutex<Option<(Proposal, Batch)>>>,
     network: Network,
-    state: XoState,
     running: Arc<AtomicBool>,
 ) -> Result<(), ServiceError> {
     info!("Starting Private Counter Service");
@@ -127,7 +129,15 @@ pub fn start_service_loop(
     let _ = Builder::new()
         .name("NetworkReceiver".into())
         .spawn(move || {
-            run_service_loop(recv_network, &reply_sender, service_config, state, running)
+            run_service_loop(
+                recv_network,
+                &reply_sender,
+                consensus_msg_sender,
+                proposal_update_sender,
+                pending_proposal,
+                service_config,
+                running,
+            )
         });
 
     let connect_request_msg_bytes = create_connect_request()
@@ -146,8 +156,10 @@ pub fn start_service_loop(
 fn run_service_loop(
     network: Network,
     reply_sender: &crossbeam_channel::Sender<SendRequest>,
+    consensus_msg_sender: Sender<ConsensusMessage>,
+    proposal_update_sender: Sender<ProposalUpdate>,
+    pending_proposal: Arc<Mutex<Option<(Proposal, Batch)>>>,
     service_config: ServiceConfig,
-    state: XoState,
     running: Arc<AtomicBool>,
 ) {
     let timeout = Duration::from_secs(TIMEOUT_SEC);
@@ -184,8 +196,9 @@ fn run_service_loop(
                         unwrap_or_break!(handle_circuit_msg(
                             message.peer_id(),
                             circuit_msg,
-                            &reply_sender,
-                            &state
+                            &consensus_msg_sender,
+                            &proposal_update_sender,
+                            &pending_proposal,
                         ));
                     }
                     _ => {
@@ -261,8 +274,9 @@ fn handle_authorized_msg(
 fn handle_circuit_msg(
     source_peer_id: &str,
     circuit_msg: CircuitMessage,
-    sender: &crossbeam_channel::Sender<SendRequest>,
-    state: &XoState,
+    consensus_msg_sender: &Sender<ConsensusMessage>,
+    proposal_update_sender: &Sender<ProposalUpdate>,
+    pending_proposal: &Arc<Mutex<Option<(Proposal, Batch)>>>,
 ) -> Result<(), ServiceError> {
     match circuit_msg.get_message_type() {
         CircuitMessageType::SERVICE_CONNECT_RESPONSE => {
@@ -288,7 +302,13 @@ fn handle_circuit_msg(
         CircuitMessageType::CIRCUIT_DIRECT_MESSAGE => {
             let mut msg: CircuitDirectMessage =
                 protobuf::parse_from_bytes(circuit_msg.get_payload())?;
-            handle_direct_msg(source_peer_id, &mut msg, sender, state)?;
+            handle_direct_msg(
+                source_peer_id,
+                &mut msg,
+                consensus_msg_sender,
+                proposal_update_sender,
+                pending_proposal,
+            )?;
         }
         _ => debug!("Received message {:?}", circuit_msg),
     }
@@ -299,100 +319,40 @@ fn handle_circuit_msg(
 fn handle_direct_msg(
     source_peer_id: &str,
     circuit_msg: &mut CircuitDirectMessage,
-    reply_sender: &crossbeam_channel::Sender<SendRequest>,
-    xo_state: &XoState,
+    consensus_msg_sender: &Sender<ConsensusMessage>,
+    proposal_update_sender: &Sender<ProposalUpdate>,
+    pending_proposal: &Arc<Mutex<Option<(Proposal, Batch)>>>,
 ) -> Result<(), ServiceError> {
-    let mut nphase_transaction_msg: NPhaseTransactionMessage =
+    let private_xo_message: PrivateXoMessage =
         protobuf::parse_from_bytes(circuit_msg.get_payload())?;
 
-    match nphase_transaction_msg.get_message_type() {
-        NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_REQUEST => {
-            let mut verification_request =
-                nphase_transaction_msg.take_transaction_verification_request();
+    match private_xo_message.get_message_type() {
+        PrivateXoMessage_Type::CONSENSUS_MESSAGE => {
+            consensus_msg_sender.send(ConsensusMessage::try_from(
+                private_xo_message.get_consensus_message(),
+            )?)?;
+        }
+        PrivateXoMessage_Type::PROPOSED_BATCH => {
+            let proposed_batch = private_xo_message.get_proposed_batch();
 
-            debug!(
-                "received verification request from {}/{}",
-                circuit_msg.get_circuit(),
-                circuit_msg.get_sender()
-            );
+            let expected_hash = proposed_batch.get_expected_hash().to_vec();
+            let batch: Batch = protobuf::parse_from_bytes(proposed_batch.get_batch())?;
 
-            let correlation_id = verification_request.take_correlation_id();
-            let batch: Batch =
-                protobuf::parse_from_bytes(verification_request.get_transaction_payload())?;
+            let mut proposal = Proposal::default();
+            proposal.id = expected_hash.into();
 
-            let output_hash = xo_state
-                .propose_change(transact::protocol::batch::Batch::from(batch.clone()))
-                .map_err(|err| ServiceError(format!("Unable to compute change: {}", err)))?;
+            *pending_proposal
+                .lock()
+                .expect("pending proposal lock poisoned") = Some((proposal.clone(), batch));
 
-            let expected_output_hash = std::str::from_utf8(
-                verification_request.get_expected_output_hash(),
-            )
-            .map_err(|err| ServiceError(format!("Hash received was not utf8 bytes: {}", err)))?;
-
-            let mut response = TransactionVerificationResponse::new();
-            response.set_correlation_id(correlation_id);
-
-            if output_hash != expected_output_hash {
-                debug!(
-                    "Hash mismatch: expected {} but was {}",
-                    &expected_output_hash, &output_hash
-                );
-
-                response.set_result(TransactionVerificationResponse_Result::MISMATCHED_OUTPUT);
-                response.set_output_hash(output_hash.into_bytes());
-                xo_state
-                    .rollback()
-                    .map_err(|err| ServiceError(format!("Unable to rollback: {}", err)))?;
-            } else {
-                response.set_result(TransactionVerificationResponse_Result::VERIFIED);
-                xo_state
-                    .commit()
-                    .map_err(|err| ServiceError(format!("Unable to commit: {}", err)))?;
-            }
-
-            let mut nphase_msg = NPhaseTransactionMessage::new();
-            nphase_msg
-                .set_message_type(NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_RESPONSE);
-            nphase_msg.set_transaction_verification_response(response);
-
-            reply_sender.send(SendRequest::new(
-                source_peer_id.to_string(),
-                create_circuit_direct_msg(
-                    circuit_msg.take_circuit(),
-                    // The recipient was us, so set it as the sender
-                    circuit_msg.take_recipient(),
-                    // and vice-versa on the recipient of this message
-                    circuit_msg.take_sender(),
-                    &nphase_msg,
-                    circuit_msg.take_correlation_id(),
-                )?,
+            proposal_update_sender.send(ProposalUpdate::ProposalReceived(
+                proposal,
+                circuit_msg.get_sender().as_bytes().into(),
             ))?;
         }
-        NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_RESPONSE => {
-            let verification_response =
-                nphase_transaction_msg.take_transaction_verification_response();
-
-            debug!(
-                "received verification response from {}/{}",
-                circuit_msg.get_circuit(),
-                circuit_msg.get_sender()
-            );
-
-            if verification_response.get_result()
-                == TransactionVerificationResponse_Result::VERIFIED
-            {
-                xo_state
-                    .commit()
-                    .map_err(|err| ServiceError(format!("Unable to commit: {}", err)))?;
-            } else {
-                xo_state
-                    .rollback()
-                    .map_err(|err| ServiceError(format!("Unable to rollback: {}", err)))?;
-            }
-        }
-        NPhaseTransactionMessage_Type::UNSET_NPHASE_TRANSACTION_MESSAGE_TYPE => warn!(
-            "Ignoring improperly specified n-phase message from {}",
-            circuit_msg.get_sender()
+        PrivateXoMessage_Type::UNSET => warn!(
+            "ignoring improperly specified private xo message from {:?}",
+            source_peer_id,
         ),
     }
 

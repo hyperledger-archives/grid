@@ -12,22 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
 
-use crossbeam_channel::Sender;
 use iron::prelude::*;
 use iron::status;
-use protobuf::{parse_from_reader, Message};
+use protobuf::parse_from_reader;
 use router::url_for;
-use transact::protos::batch::BatchList;
-
-use libsplinter::network::sender::SendRequest;
-use libsplinter::protos::n_phase::{
-    NPhaseTransactionMessage, NPhaseTransactionMessage_Type, TransactionVerificationRequest,
-};
-
-use crate::service::{create_circuit_direct_msg, ServiceConfig};
-use crate::transaction::XoState;
+use transact::protos::batch::{Batch, BatchList};
 
 use super::error::{BatchStatusesError, BatchSubmitError};
 use super::{query_param, Json, State};
@@ -39,18 +31,10 @@ pub struct BatchesResponse {
 
 /// The handler function for the `/batches` endpoint
 pub fn batches(req: &mut Request) -> IronResult<Response> {
-    let xo_state = req
+    let pending_batches = req
         .extensions
-        .get::<State<XoState>>()
-        .expect("Expected xo state, but none was set on the request");
-    let service_config = req
-        .extensions
-        .get::<State<ServiceConfig>>()
-        .expect("Expected service config, but none was set on the request");
-    let sender = req
-        .extensions
-        .get::<State<Sender<SendRequest>>>()
-        .expect("Expected sender but none was set on the request");
+        .get::<State<Arc<Mutex<VecDeque<Batch>>>>>()
+        .expect("Expected pending batches, but none was set on the request");
 
     let batch_list: BatchList = parse_from_reader(&mut req.body).map_err(BatchSubmitError::from)?;
 
@@ -68,49 +52,10 @@ pub fn batches(req: &mut Request) -> IronResult<Response> {
             BatchSubmitError::InvalidBatchListFormat("No batches provided".into())
         })?;
 
-    let expected_output_hash = xo_state
-        .propose_change(transact::protocol::batch::Batch::from(batch.clone()))
-        .map_err(|err| {
-            error!("Unable to propose change: {}", &err);
-            BatchSubmitError::Internal(format!("Unable to propose change: {}", err))
-        })?;
-
-    let correlation_id = uuid::Uuid::new_v4().to_string();
-
-    let mut request = TransactionVerificationRequest::new();
-    request.set_correlation_id(correlation_id.clone());
-    request.set_transaction_payload(
-        batch
-            .write_to_bytes()
-            .expect("Unable to reserialize a deserialized batch list"),
-    );
-    request.set_expected_output_hash(expected_output_hash.into_bytes());
-
-    let mut nphase_msg = NPhaseTransactionMessage::new();
-    nphase_msg.set_message_type(NPhaseTransactionMessage_Type::TRANSACTION_VERIFICATION_REQUEST);
-    nphase_msg.set_transaction_verification_request(request);
-
-    for verifier in service_config.verifiers() {
-        sender
-            .send(SendRequest::new(
-                service_config.peer_id().to_owned(),
-                create_circuit_direct_msg(
-                    service_config.circuit().to_owned(),
-                    service_config.service_id().to_owned(),
-                    verifier.clone(),
-                    &nphase_msg,
-                    correlation_id.clone(),
-                )
-                .map_err(|err| {
-                    error!("unable to create circuit direct message: {}", &err);
-                    BatchSubmitError::Internal(err.to_string())
-                })?,
-            ))
-            .map_err(|err| {
-                error!("Unable to send verification request: {}", &err);
-                BatchSubmitError::Internal(err.to_string())
-            })?;
-    }
+    pending_batches
+        .lock()
+        .expect("pending batches lock poisoned")
+        .push_back(batch);
 
     let mut params = HashMap::new();
     params.insert("id".into(), batch_ids);
