@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+use gameroom_database::DatabaseError;
+
 #[derive(Debug)]
 pub enum RestApiServerError {
     StdError(std::io::Error),
@@ -39,5 +41,32 @@ impl fmt::Display for RestApiServerError {
 impl From<std::io::Error> for RestApiServerError {
     fn from(err: std::io::Error) -> RestApiServerError {
         RestApiServerError::StdError(err)
+    }
+}
+
+#[derive(Debug)]
+pub enum RestApiResponseError {
+    DatabaseError(Box<dyn Error>),
+}
+
+impl Error for RestApiResponseError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            RestApiResponseError::DatabaseError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for RestApiResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RestApiResponseError::DatabaseError(e) => write!(f, "Database error: {}", e),
+        }
+    }
+}
+
+impl From<DatabaseError> for RestApiResponseError {
+    fn from(err: DatabaseError) -> RestApiResponseError {
+        RestApiResponseError::DatabaseError(Box::new(err))
     }
 }
