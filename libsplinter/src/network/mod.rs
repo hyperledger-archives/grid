@@ -54,6 +54,7 @@ impl NetworkMessage {
 struct PeerMap {
     peers: BiHashMap<String, usize>,
     redirects: HashMap<String, String>,
+    endpoints: HashMap<String, String>,
 }
 
 /// A map of Peer IDs to mesh IDs, which also maintains a redirect table for updated peer ids.
@@ -62,6 +63,7 @@ impl PeerMap {
         PeerMap {
             peers: BiHashMap::new(),
             redirects: HashMap::new(),
+            endpoints: HashMap::new(),
         }
     }
 
@@ -76,14 +78,16 @@ impl PeerMap {
     }
 
     /// Insert a new peer id for a given mesh id
-    fn insert(&mut self, peer_id: String, mesh_id: usize) {
-        self.peers.insert(peer_id, mesh_id);
+    fn insert(&mut self, peer_id: String, mesh_id: usize, endpoint: String) {
+        self.peers.insert(peer_id.clone(), mesh_id);
+        self.endpoints.insert(peer_id, endpoint);
     }
 
-    /// Remove a peer id and all of its redirects
+    /// Remove a peer id, its endpoint and all of its redirects
     fn remove(&mut self, peer_id: &str) -> Option<usize> {
         self.redirects
             .retain(|_, target_peer_id| target_peer_id != peer_id);
+        self.endpoints.remove(&peer_id.to_string());
         self.peers
             .remove_by_key(&peer_id.to_string())
             .map(|(_, mesh_id)| mesh_id)
@@ -96,6 +100,9 @@ impl PeerMap {
         if let Some((_, mesh_id)) = self.peers.remove_by_key(&old_peer_id) {
             self.peers.insert(new_peer_id.clone(), mesh_id);
 
+            if let Some(endpoint) = self.endpoints.remove(&old_peer_id) {
+                self.endpoints.insert(new_peer_id.clone(), endpoint);
+            }
             // update the old forwards
             for (_, v) in self
                 .redirects
@@ -125,6 +132,18 @@ impl PeerMap {
     fn get_peer_id(&self, mesh_id: usize) -> Option<&String> {
         self.peers.get_by_value(&mesh_id)
     }
+
+    /// Returns the endpoint for the given peer id
+    fn get_peer_endpoint(&self, peer_id: &str) -> Option<String> {
+        let endpoint_opt = self
+            .redirects
+            .get(peer_id)
+            .and_then(|target_peer_id| self.endpoints.get(target_peer_id))
+            .or_else(|| self.endpoints.get(&peer_id.to_string()));
+
+        endpoint_opt.cloned()
+
+    }
 }
 
 #[derive(Clone)]
@@ -146,15 +165,20 @@ impl Network {
         rwlock_read_unwrap!(self.peers).peer_ids()
     }
 
+    pub fn get_peer_endpoint(&self, peer_id: &str) -> Option<String> {
+        rwlock_read_unwrap!(self.peers).get_peer_endpoint(peer_id)
+    }
+
     pub fn add_connection(
         &self,
         connection: Box<dyn Connection>,
     ) -> Result<String, ConnectionError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
+        let endpoint = connection.remote_endpoint();
         let mesh_id = self.mesh.add(connection)?;
         // Temp peer id until the connection has completed authorization
         let peer_id = format!("temp-{}", Uuid::new_v4());
-        peers.insert(peer_id.clone(), mesh_id);
+        peers.insert(peer_id.clone(), mesh_id, endpoint);
         Ok(peer_id)
     }
 
@@ -173,8 +197,9 @@ impl Network {
     ) -> Result<(), ConnectionError> {
         // we already know the peers unique id
         let mut peers = rwlock_write_unwrap!(self.peers);
+        let endpoint = connection.remote_endpoint();
         let mesh_id = self.mesh.add(connection)?;
-        peers.insert(peer_id, mesh_id);
+        peers.insert(peer_id, mesh_id, endpoint);
         Ok(())
     }
 
