@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod error;
+mod sender;
 
 use crate::service::error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
