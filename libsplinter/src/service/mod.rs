@@ -13,8 +13,11 @@
 // limitations under the License.
 
 pub mod error;
+mod processor;
 mod registry;
 mod sender;
+
+pub use processor::ServiceProcessor;
 
 use crate::service::error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
