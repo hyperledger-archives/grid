@@ -19,17 +19,24 @@ use crate::service::error::{
     ServiceSendError, ServiceStartError, ServiceStopError,
 };
 
+/// The ServiceMessageContext is a struct that provides information about the incoming message
+#[derive(Debug)]
 pub struct ServiceMessageContext {
     pub sender: String,
     pub circuit: String,
     pub correlation_id: String,
 }
 
+/// The ServiceNetworkRegistry trait provides functions to register and unregister the service on
+/// the network.  It does not expose the circuit membership information directly.
 pub trait ServiceNetworkRegistry {
     fn connect(&self, service_id: &str) -> Result<(), ServiceConnectionError>;
     fn disconnect(&self, service_id: &str) -> Result<(), ServiceDisconnectionError>;
 }
 
+/// The ServiceNetworkSender trait allows a service to send its own messages, such as replies to
+/// the original message or forwarding the message to other services on the same circuit.  It does
+/// not expose the circuit information directly.
 pub trait ServiceNetworkSender {
     /// Send the message bytes to the given recipient (another service)
     fn send(&self, recipient: &str, message: &[u8]) -> Result<(), ServiceSendError>;
