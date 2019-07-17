@@ -142,7 +142,6 @@ impl PeerMap {
             .or_else(|| self.endpoints.get(&peer_id.to_string()));
 
         endpoint_opt.cloned()
-
     }
 }
 
