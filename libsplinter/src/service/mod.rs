@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod error;
+mod registry;
 mod sender;
 
 use crate::service::error::{
