@@ -154,7 +154,6 @@ impl Mesh {
     }
 
     /// Receive a new envelope from the mesh.
-
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
         self.incoming
             .recv_timeout(timeout)
