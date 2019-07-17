@@ -219,6 +219,7 @@ impl Handler<AuthorizationMessageType, ConnectRequest> for ConnectRequestHandler
                     )?,
                 ))?;
             }
+            Ok(AuthorizationState::Internal) => (),
             Ok(next_state) => panic!("Should not have been able to transition to {}", next_state),
         }
 

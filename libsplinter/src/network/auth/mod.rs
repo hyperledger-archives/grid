@@ -27,6 +27,7 @@ enum AuthorizationState {
     Connecting,
     Authorized,
     Unauthorized,
+    Internal,
 }
 
 impl fmt::Display for AuthorizationState {
@@ -36,6 +37,7 @@ impl fmt::Display for AuthorizationState {
             AuthorizationState::Connecting => "Connecting",
             AuthorizationState::Authorized => "Authorized",
             AuthorizationState::Unauthorized => "Unauthorized",
+            AuthorizationState::Internal => "Internal",
         })
     }
 }
@@ -106,7 +108,7 @@ impl AuthorizationManager {
     pub fn is_authorized(&self, peer_id: &str) -> bool {
         let states = rwlock_read_unwrap!(self.states);
         if let Some(state) = states.get(peer_id) {
-            state == &AuthorizationState::Authorized
+            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
         } else {
             false
         }
@@ -128,6 +130,14 @@ impl AuthorizationManager {
         match *cur_state {
             AuthorizationState::Unknown => match action {
                 AuthorizationAction::Connecting => {
+                    if let Some(endpoint) = self.network.get_peer_endpoint(peer_id) {
+                        if endpoint.contains("inproc") {
+                            // Automatically authorize inproc connections
+                            debug!("Authorize inproc connection: {}", peer_id);
+                            states.insert(peer_id.to_string(), AuthorizationState::Internal);
+                            return Ok(AuthorizationState::Internal);
+                        }
+                    }
                     // Here the decision for Challenges will be made.
                     states.insert(peer_id.to_string(), AuthorizationState::Connecting);
                     Ok(AuthorizationState::Connecting)
