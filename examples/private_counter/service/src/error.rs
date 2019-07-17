@@ -16,6 +16,8 @@ use std::error::Error;
 use std::fmt;
 use std::io::Error as IoError;
 
+use libsplinter::consensus::error::ProposalManagerError;
+
 #[derive(Clone, Debug)]
 pub enum HandleError {
     IoError(String),
@@ -92,5 +94,17 @@ impl From<String> for ServiceError {
 impl<T> From<crossbeam_channel::SendError<T>> for ServiceError {
     fn from(err: crossbeam_channel::SendError<T>) -> Self {
         ServiceError(format!("Unable to send: {}", err))
+    }
+}
+
+impl<T> From<std::sync::mpsc::SendError<T>> for ServiceError {
+    fn from(err: std::sync::mpsc::SendError<T>) -> Self {
+        ServiceError(format!("Unable to send: {}", err))
+    }
+}
+
+impl From<ServiceError> for ProposalManagerError {
+    fn from(err: ServiceError) -> Self {
+        ProposalManagerError::Internal(Box::new(err))
     }
 }

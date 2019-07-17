@@ -47,6 +47,8 @@ RUN cargo build --release
 
 # Copy over the source and build the app
 RUN rm src/*.rs
+COPY ./examples/private_xo/protos ./protos
+COPY ./examples/private_xo/build.rs ./build.rs
 COPY ./examples/private_xo/src ./src
 
 RUN rm ./target/release/private-xo* ./target/release/deps/private_xo*

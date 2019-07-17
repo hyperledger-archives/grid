@@ -11,28 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-[package]
-name = "private-counter"
-version = "0.1.0"
-authors = ["Cargill Incorporated"]
-edition = "2018"
-
-[dependencies]
-libsplinter = { path = "../../../libsplinter" }
-clap = "2.32"
-crossbeam-channel = "0.3"
-ctrlc = "3.0"
-log = "0.3.0"
-protobuf = "2"
-sha2 = "0.8"
-simple_logger = "0.4.0"
-serde_derive = "1.0.80"
-serde = "1.0.80"
-threadpool = "1.0"
-toml = "0.4.8"
-uuid = { version = "0.7", features = ["v4"] }
-
-[build-dependencies]
-protoc-rust = "2"
-glob = "0.2"
+---
+nodes:
+  012:
+    endpoints:
+      - tcp://splinter-node-0:8044
+  345:
+    endpoints:
+      - tcp://splinter-node-1:8046
+  678:
+    endpoints:
+      - tcp://splinter-node-2:8048
+circuits:
+  alpha:
+    auth: trust
+    members:
+      - 012
+      - 345
+      - 678
+    roster:
+      - service_a
+      - service_b
+      - service_c
+    persistence: any
+    durability: none
+    routes: require_direct

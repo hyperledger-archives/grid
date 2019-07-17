@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+use libsplinter::consensus::error::ProposalManagerError;
+
 #[derive(Debug)]
 pub struct ServiceError(pub String);
 
@@ -30,5 +32,17 @@ impl Error for ServiceError {
 impl fmt::Display for ServiceError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&self.0)
+    }
+}
+
+impl<T> From<std::sync::mpsc::SendError<T>> for ServiceError {
+    fn from(err: std::sync::mpsc::SendError<T>) -> Self {
+        ServiceError(format!("Unable to send: {}", err))
+    }
+}
+
+impl From<ServiceError> for ProposalManagerError {
+    fn from(err: ServiceError) -> Self {
+        ProposalManagerError::Internal(Box::new(err))
     }
 }

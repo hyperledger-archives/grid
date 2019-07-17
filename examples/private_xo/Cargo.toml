@@ -37,3 +37,7 @@ simple_logger = "1.0"
 transact = { git = "https://github.com/bitwiseio/transact", features = [ "sawtooth-compat" ] }
 urlencoded = "0.6"
 uuid = { version = "0.7", features = ["v4"] }
+
+[build-dependencies]
+protoc-rust = "2"
+glob = "0.2"
