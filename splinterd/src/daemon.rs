@@ -30,6 +30,7 @@ use libsplinter::network::auth::handlers::{
 use libsplinter::network::auth::AuthorizationManager;
 use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use libsplinter::network::handlers::NetworkEchoHandler;
+use libsplinter::network::peer::PeerConnector;
 use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{
     ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
@@ -190,18 +191,13 @@ impl SplinterDaemon {
             Ok(())
         });
 
+        let peer_connector = PeerConnector::new(self.network.clone(), transport);
+
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
-            let connection_result = transport.connect(&peer);
-            match connection_result {
-                Ok(connection) => {
-                    debug!("Successfully connected to {}", connection.remote_endpoint());
-                    self.network.add_connection(connection)?;
-                }
-                Err(err) => {
-                    error!("Connect Error: {:?}", err);
-                }
-            };
+            if let Err(err) = peer_connector.connect_unidentified_peer(&peer) {
+                error!("Connect Error: {}", err);
+            }
         }
 
         // For each node in the circuit_directory, try to connect and add them to the network
@@ -216,23 +212,12 @@ impl SplinterDaemon {
                     }
                 };
                 if node_endpoint != self.network_endpoint {
-                    let connection_result = transport.connect(&node_endpoint);
-                    let connection = match connection_result {
-                        Ok(connection) => connection,
-                        Err(err) => {
-                            debug!("Unable to connect to node: {} Error: {:?}", node_id, err);
-                            continue;
-                        }
-                    };
-                    debug!(
-                        "Successfully connected to node {}: {}",
-                        node_id,
-                        connection.remote_endpoint()
-                    );
-                    self.network.add_peer(node_id.to_string(), connection)?;
+                    if let Err(err) = peer_connector.connect_peer(node_id, &node_endpoint) {
+                        debug!("Unable to connect to node: {} Error: {:?}", node_id, err);
+                    }
                 }
             } else {
-                debug!("Unable to connect to node: {}", node_id);
+                debug!("node {} has no known endpoints", node_id);
             }
         }
 
