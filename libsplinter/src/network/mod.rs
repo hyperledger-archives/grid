@@ -274,6 +274,17 @@ pub enum ConnectionError {
     RemoveError(String),
 }
 
+impl std::error::Error for ConnectionError {}
+
+impl std::fmt::Display for ConnectionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ConnectionError::AddError(msg) => write!(f, "unable to add connection: {}", msg),
+            ConnectionError::RemoveError(msg) => write!(f, "unable to remove connection: {}", msg),
+        }
+    }
+}
+
 impl From<AddError> for ConnectionError {
     fn from(add_error: AddError) -> Self {
         ConnectionError::AddError(format!("Add Error: {:?}", add_error))
