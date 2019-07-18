@@ -181,7 +181,6 @@ fn main() {
 
     let mut node = match SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
-        .with_transport(transport)
         .with_network_endpoint(network_endpoint)
         .with_service_endpoint(service_endpoint)
         .with_initial_peers(initial_peers)
@@ -196,7 +195,7 @@ fn main() {
         }
     };
 
-    if let Err(err) = node.start() {
+    if let Err(err) = node.start(transport) {
         error!("Failed to start daemon {:?}", err);
         std::process::exit(1);
     }

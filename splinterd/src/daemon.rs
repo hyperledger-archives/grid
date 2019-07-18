@@ -51,7 +51,6 @@ use protobuf::Message;
 const TIMEOUT_SEC: u64 = 2;
 
 pub struct SplinterDaemon {
-    transport: Box<dyn Transport + Send>,
     storage_location: String,
     service_endpoint: String,
     network_endpoint: String,
@@ -62,7 +61,8 @@ pub struct SplinterDaemon {
 }
 
 impl SplinterDaemon {
-    pub fn start(&mut self) -> Result<(), StartError> {
+    pub fn start(&mut self, transport: Box<dyn Transport>) -> Result<(), StartError> {
+        let mut transport = transport;
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
         let r = running.clone();
@@ -144,7 +144,7 @@ impl SplinterDaemon {
         let network_dispatcher_thread = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
-        let mut network_listener = self.transport.listen(&self.network_endpoint)?;
+        let mut network_listener = transport.listen(&self.network_endpoint)?;
         let network_clone = self.network.clone();
 
         // this thread will just be dropped on shutdown
@@ -166,7 +166,7 @@ impl SplinterDaemon {
         });
 
         // setup a thread to listen on the service port and add incoming connection to the network
-        let mut service_listener = self.transport.listen(&self.service_endpoint)?;
+        let mut service_listener = transport.listen(&self.service_endpoint)?;
         let service_clone = self.network.clone();
 
         // this thread will just be dropped on shutdown
@@ -192,7 +192,7 @@ impl SplinterDaemon {
 
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
-            let connection_result = self.transport.connect(&peer);
+            let connection_result = transport.connect(&peer);
             match connection_result {
                 Ok(connection) => {
                     debug!("Successfully connected to {}", connection.remote_endpoint());
@@ -216,7 +216,7 @@ impl SplinterDaemon {
                     }
                 };
                 if node_endpoint != self.network_endpoint {
-                    let connection_result = self.transport.connect(&node_endpoint);
+                    let connection_result = transport.connect(&node_endpoint);
                     let connection = match connection_result {
                         Ok(connection) => connection,
                         Err(err) => {
@@ -286,7 +286,6 @@ impl SplinterDaemon {
 
 #[derive(Default)]
 pub struct SplinterDaemonBuilder {
-    transport: Option<Box<dyn Transport + Send>>,
     storage_location: Option<String>,
     service_endpoint: Option<String>,
     network_endpoint: Option<String>,
@@ -298,11 +297,6 @@ pub struct SplinterDaemonBuilder {
 impl SplinterDaemonBuilder {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn with_transport(mut self, value: Box<dyn Transport + Send>) -> Self {
-        self.transport = Some(value);
-        self
     }
 
     pub fn with_storage_location(mut self, value: String) -> Self {
@@ -339,10 +333,6 @@ impl SplinterDaemonBuilder {
         let mesh = Mesh::new(512, 128);
         let network = Network::new(mesh.clone());
 
-        let transport = self.transport.ok_or_else(|| {
-            CreateError::MissingRequiredField("Missing field: transport".to_string())
-        })?;
-
         let storage_location = self.storage_location.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_location".to_string())
         })?;
@@ -368,7 +358,6 @@ impl SplinterDaemonBuilder {
         })?;
 
         Ok(SplinterDaemon {
-            transport,
             storage_location,
             service_endpoint,
             network_endpoint,
