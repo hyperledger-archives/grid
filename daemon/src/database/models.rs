@@ -24,8 +24,8 @@ use serde_json::Value as JsonValue;
 use std::io::Write;
 
 use super::schema::{
-    agent, associated_agent, block, grid_property_definition, grid_schema, organization, property,
-    proposal, record, reported_value, reporter,
+    agent, associated_agent, block, grid_property_definition, grid_schema, organization, product,
+    property, proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -84,6 +84,33 @@ pub struct Organization {
     pub org_id: String,
     pub name: String,
     pub address: String,
+    pub metadata: Vec<JsonValue>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "product"]
+pub struct NewProduct {
+    pub prod_id: String,
+    pub prod_type: Vec<String>,
+    pub owner: String,
+    pub metadata: Vec<JsonValue>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+}
+
+#[derive(Queryable, Debug)]
+pub struct Product {
+    ///  This is the record id for the slowly-changing-dimensions table.
+    pub id: i64,
+    pub prod_id: String,
+    pub prod_type: Vec<String>,
+    pub owner: String,
     pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.

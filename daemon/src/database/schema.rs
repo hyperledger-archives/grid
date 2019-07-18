@@ -98,6 +98,18 @@ table! {
 }
 
 table! {
+    product (id) {
+        id -> Int8,
+        prod_id -> Varchar,
+        prod_type -> Array<Text>,
+        owner -> Varchar,
+        metadata -> Array<Json>,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+    }
+}
+
+table! {
     property (id) {
         id -> Int8,
         start_block_num -> Int8,
