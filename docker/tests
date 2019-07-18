@@ -45,8 +45,7 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 ENV PATH=$PATH:/root/.cargo/bin:/project/grid/bin
 
 RUN rustup update \
- && rustup default nightly \
- && rustup target add wasm32-unknown-unknown --toolchain nightly
+ && rustup target add wasm32-unknown-unknown
 
 COPY ./sdk /sdk
 

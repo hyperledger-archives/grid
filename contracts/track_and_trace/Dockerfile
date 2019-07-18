@@ -46,8 +46,7 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && rustup-init -y
 
 RUN rustup update \
- && rustup default nightly \
- && rustup target add wasm32-unknown-unknown --toolchain nightly
+ && rustup target add wasm32-unknown-unknown
 
 # For Building Protobufs
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
