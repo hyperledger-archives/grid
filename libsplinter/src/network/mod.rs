@@ -15,6 +15,7 @@ pub mod auth;
 pub mod dispatch;
 mod dispatch_proto;
 pub mod handlers;
+pub mod peer;
 pub mod sender;
 
 use uuid::Uuid;
