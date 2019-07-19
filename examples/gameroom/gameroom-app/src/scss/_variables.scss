@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+$color-primary: #ee8202;
+$color-secondary: #026cee;
 $color-base: #212121;
 $color-background: #303030;
-$color-dialog: #424242;
+$color-gray: #424242;
+$color-white: #FFFFFF;
 $color-text: #FFFFFF;
 $color-text-secondary: darken($color-text, 30%);
 $color-text-tertiary: darken($color-text, 50%);

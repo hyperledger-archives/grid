@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path')
+export interface ApiError {
+  status: number;
+  message: string;
+}
 
-module.exports = {
-  css: {
-    loaderOptions: {
-      sass: {
-        data: `
-          @import "@/scss/_variables.scss";
-          @import "@/scss/_mixins.scss";
-        `
-      }
-    }
-  },
-  transpileDependencies: ['vuex-module-decorators'],
-  configureWebpack: {
-    resolve: {
-      alias: {
-        zeromq$: path.resolve(__dirname, './src/mock_zmq.js')
-      }
-    }
-  }
-};
+export interface User {
+  email: string;
+  hashedPassword: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+}
+
+export interface UserCredentials {
+  email: string;
+  hashedPassword: string;
+}
+
+export interface UserAuthResponse {
+  email: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+}

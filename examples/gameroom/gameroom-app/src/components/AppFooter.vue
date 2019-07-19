@@ -15,17 +15,13 @@ limitations under the License.
 -->
 
 <template>
-  <div class="container">
-    <footer>
-      <span>
-        <a href="/">Gameroom</a>
-        - An example application built on Splinter. Copyright 2019 Cargill Incorporated. Licensed
-        under the Apache License, Version 2.0.
-      </span>
-
-
-    </footer>
-  </div>
+  <footer>
+    <span>
+      <a href="/">Gameroom</a>
+      - An example application built on Splinter. Copyright 2019 Cargill Incorporated. Licensed
+      under the Apache License, Version 2.0.
+    </span>
+  </footer>
 </template>
 
 <script>

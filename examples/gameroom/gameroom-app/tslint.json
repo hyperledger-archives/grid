@@ -15,6 +15,7 @@
     "ordered-imports": false,
     "object-literal-sort-keys": false,
     "no-consecutive-blank-lines": false,
-    "semicolon": [true, "always"]
+    "semicolon": [true, "always"],
+    "member-access": [true, "no-public"]
   }
 }
