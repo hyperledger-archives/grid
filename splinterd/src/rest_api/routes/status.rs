@@ -30,7 +30,7 @@ pub fn get_status(_: HttpRequest) -> HttpResponse {
 
 #[get("/openapi.yml")]
 pub fn get_openapi(_: HttpRequest) -> Result<HttpResponse, RestApiServerError> {
-    Ok(HttpResponse::Ok().body(include_str!("../../api/static/openapi.yml")))
+    Ok(HttpResponse::Ok().body(include_str!("../../../api/static/openapi.yml")))
 }
 
 fn get_version() -> String {
