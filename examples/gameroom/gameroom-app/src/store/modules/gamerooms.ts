@@ -12,38 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export interface ApiError {
-  status: number;
-  message: string;
-}
+import { VuexModule, Module, getModule, Action } from 'vuex-module-decorators';
+import store from '@/store';
+import { GameroomProposal } from '@/store/models';
+import { gameroomPropose } from '@/store/api';
 
-export interface User {
-  email: string;
-  hashedPassword: string;
-  publicKey: string;
-  encryptedPrivateKey: string;
+@Module({
+  namespaced: true,
+  name: 'gamerooms',
+  store,
+  dynamic: true,
+})
+class GameroomsModule extends VuexModule {
+  @Action
+  async proposeGameroom(proposal: GameroomProposal) {
+    const response = await gameroomPropose(proposal);
+    return response;
+  }
 }
-
-export interface UserCredentials {
-  email: string;
-  hashedPassword: string;
-}
-
-export interface UserAuthResponse {
-  email: string;
-  publicKey: string;
-  encryptedPrivateKey: string;
-}
-
-export interface Node {
-  identity: string;
-  metadata: {
-    organization: string;
-    endpoint: string;
-  };
-}
-
-export interface GameroomProposal {
-  alias: string;
-  member: string;
-}
+export default getModule(GameroomsModule);
