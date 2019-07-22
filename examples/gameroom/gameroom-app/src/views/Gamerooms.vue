@@ -15,11 +15,164 @@ limitations under the License.
 -->
 
 <template>
-  <div class="container">
-    <h1>Gamerooms</h1>
+  <div class="gamerooms-container">
+    <modal v-if="displayModal" @close="closeNewGameroomModal">
+      <h3 slot="title">New Gameroom</h3>
+      <div slot="body">
+        <div class=form-wrapper>
+          <form class="new-gameroom-form" @submit.prevent="createGameroom">
+            <label class="form-label">
+              Alias
+              <input class="form-input" type="text" v-model="newGameroom.alias" />
+            </label>
+            <label class="form-label">
+              <div class="multiselect-label">Member</div>
+              <multiselect
+                v-model="newGameroom.member"
+                track-by="identity"
+                label="metadata"
+                placeholder=""
+                deselect-label=""
+                open-direction="bottom"
+                :close-on-select="true"
+                :clear-on-select="false"
+                :custom-label="getMemberLabel"
+                :options="nodes"
+                :allow-empty="false"
+              >
+                <template slot="singleLabel" slot-scope="{ option }">
+                  <strong>{{ option.metadata.organization }}</strong>
+                </template>
+              </multiselect>
+            </label>
+            <div class="button-container">
+              <button class="form-button outline-button" @click.prevent="closeNewGameroomModal">
+                Cancel
+              </button>
+              <button class="form-button" type="submit" :disabled="!canSubmitNewGameroom">
+                Submit
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </modal>
+    <div class="new-gameroom-button-container">
+      <button class="icon-button" @click="showNewGameroomModal">
+        <div class="button-content">
+        <i class="material-icons" style="font-size:1.5em;">add</i>
+        <span class="button-text">
+          New gameroom
+        </span>
+        </div>
+      </button>
+    </div>
   </div>
 </template>
 
-<script>
-export default {};
+<script lang="ts">
+import { Vue, Component } from 'vue-property-decorator';
+import Modal from '@/components/Modal.vue';
+import Multiselect from 'vue-multiselect';
+import gamerooms from '@/store/modules/gamerooms';
+import nodes from '@/store/modules/nodes';
+import { Node } from '@/store/models';
+
+interface MemberMetadata {
+  organization: string;
+  endpoint: string;
+}
+
+@Component({
+  components: { Modal, Multiselect },
+})
+export default class Gamerooms extends Vue {
+  displayModal = false;
+
+  newGameroom = {
+    alias: '',
+    member: '',
+  };
+
+  mounted() {
+    nodes.listNodesMock();
+  }
+
+  get nodes() {
+    return nodes.nodeList;
+  }
+
+  get canSubmitNewGameroom() {
+    if (this.newGameroom.alias !== '' &&
+        this.newGameroom.member !== '') {
+      return true;
+    }
+    return false;
+  }
+
+  createGameroom() {
+    gamerooms.proposeGameroom(this.newGameroom);
+  }
+
+  getMemberLabel(node: Node) {
+    return node.metadata.organization;
+  }
+
+  showNewGameroomModal() {
+    this.displayModal = true;
+  }
+
+  closeNewGameroomModal() {
+    this.displayModal = false;
+    this.newGameroom.alias = '';
+    this.newGameroom.member = '';
+  }
+}
+
+
 </script>
+
+<style lang="scss" scoped>
+.form-wrapper {
+  .new-gameroom-form {
+    display: flex;
+    flex-direction: column;
+
+    .form-label {
+      color: $color-white;
+
+      .multiselect-label {
+        margin-bottom: .25em;
+      }
+
+      .form-input {
+        width: 100%;
+        margin: .25em 0 1em;
+        padding: .5em;
+        font-size: 1em;
+        border: 2px solid $color-white;
+        outline: none;
+        @include rounded-border;
+      }
+
+      .form-input:focus {
+        border: 2px solid $color-secondary;
+      }
+    }
+
+    .button-container {
+      margin-top: 1em;
+      margin-left: auto;
+    }
+  }
+}
+
+.gamerooms-container {
+  margin: 1em;
+  display: flex;
+
+  .new-gameroom-button-container {
+    margin-left: auto;
+  }
+}
+</style>
