@@ -30,14 +30,17 @@ pub struct ServiceMessageContext {
 /// The ServiceNetworkRegistry trait provides functions to register and unregister the service on
 /// the network.  It does not expose the circuit membership information directly.
 pub trait ServiceNetworkRegistry {
-    fn connect(&self, service_id: &str) -> Result<(), ServiceConnectionError>;
+    fn connect(
+        &self,
+        service_id: &str,
+    ) -> Result<Box<dyn ServiceNetworkSender>, ServiceConnectionError>;
     fn disconnect(&self, service_id: &str) -> Result<(), ServiceDisconnectionError>;
 }
 
 /// The ServiceNetworkSender trait allows a service to send its own messages, such as replies to
 /// the original message or forwarding the message to other services on the same circuit.  It does
 /// not expose the circuit information directly.
-pub trait ServiceNetworkSender {
+pub trait ServiceNetworkSender: Send {
     /// Send the message bytes to the given recipient (another service)
     fn send(&self, recipient: &str, message: &[u8]) -> Result<(), ServiceSendError>;
 
@@ -66,8 +69,10 @@ pub trait Service: Send {
     fn family_versions(&self) -> &[String];
 
     /// Starts the service
-    fn start(&self, service_registry: &dyn ServiceNetworkRegistry)
-        -> Result<(), ServiceStartError>;
+    fn start(
+        &mut self,
+        service_registry: &dyn ServiceNetworkRegistry,
+    ) -> Result<(), ServiceStartError>;
 
     /// Stops Starts the service
     fn stop(&self, service_registry: &dyn ServiceNetworkRegistry) -> Result<(), ServiceStopError>;
@@ -81,6 +86,5 @@ pub trait Service: Send {
         &self,
         message_bytes: &[u8],
         message_context: &ServiceMessageContext,
-        network_sender: &dyn ServiceNetworkSender,
     ) -> Result<(), ServiceError>;
 }
