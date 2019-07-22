@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,28 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: '3'
+[package]
+name = "gameroom-database"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+edition = "2018"
 
-services:
-  gameroom-app:
-    build: ./gameroom-app
-    image: gameroom-app
-    container_name: gameroom-app
-    expose:
-      - 80
-    ports:
-      - '8080:80'
-
-  postgres:
-    image: postgres:alpine
-    restart: always
-    expose:
-      - 5432
-    ports:
-        - "5432:5432"
-    environment:
-      POSTGRES_USER: gameroom
-      POSTGRES_PASSWORD: gameroom_example
-      POSTGRES_DB: gameroom
-    volumes:
-      - "./database/tables:/docker-entrypoint-initdb.d"
+[dependencies]
+diesel = { version = "1.0.0", features = ["postgres", "r2d2"] }
