@@ -56,7 +56,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
             if let Some(circuit) = state.circuit(circuit_name) {
                 // Check if the message sender is allowed on the circuit
                 // if the sender is not allowed on the circuit
-                if !circuit.roster().contains(&msg_sender.to_string()) {
+                if !circuit.roster().contains(&msg_sender) {
                     let mut error_message = CircuitError::new();
                     error_message.set_correlation_id(msg.get_correlation_id().to_string());
                     error_message.set_service_id(msg_sender.into());
@@ -88,7 +88,7 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                     let network_msg_bytes =
                         create_message(msg_bytes, CircuitMessageType::CIRCUIT_ERROR_MESSAGE)?;
                     (network_msg_bytes, context.source_peer_id())
-                } else if circuit.roster().contains(&recipient.to_string()) {
+                } else if circuit.roster().contains(&recipient) {
                     // check if the recipient service is allowed on the circuit and registered
                     if let Some(service) = state.service_directory().get(&recipient_id) {
                         let node_id = service.node().id();

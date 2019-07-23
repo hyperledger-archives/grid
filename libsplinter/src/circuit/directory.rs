@@ -20,10 +20,20 @@ use crate::circuit::Circuit;
 
 // State represents the persistant state of circuits that are connected to a node
 // Includes the list of circuits and correlates the node id with their endpoints
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct CircuitDirectory {
     nodes: BTreeMap<String, SplinterNode>,
     circuits: BTreeMap<String, Circuit>,
+
+    #[serde(skip_serializing)]
+    #[serde(default = "make_admin_circuit")]
+    admin_circuit: Circuit,
+}
+
+impl Default for CircuitDirectory {
+    fn default() -> Self {
+        CircuitDirectory::new()
+    }
 }
 
 impl CircuitDirectory {
@@ -31,6 +41,7 @@ impl CircuitDirectory {
         CircuitDirectory {
             nodes: BTreeMap::new(),
             circuits: BTreeMap::new(),
+            admin_circuit: make_admin_circuit(),
         }
     }
 
@@ -63,6 +74,22 @@ impl CircuitDirectory {
     }
 
     pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
-        self.circuits.get(circuit_name)
+        if circuit_name == "admin" {
+            Some(&self.admin_circuit)
+        } else {
+            self.circuits.get(circuit_name)
+        }
     }
+}
+
+fn make_admin_circuit() -> Circuit {
+    Circuit::new(
+        "admin".into(),
+        "".into(),
+        vec![],
+        vec![],
+        "any".into(),
+        "none".into(),
+        "require_direct".into(),
+    )
 }
