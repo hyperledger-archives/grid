@@ -388,8 +388,9 @@ mod tests {
         TrustRequest,
     };
     use crate::protos::network::{NetworkMessage, NetworkMessageType};
-    use crate::transport::inproc::InprocTransport;
-    use crate::transport::Transport;
+    use crate::transport::{
+        ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
+    };
 
     #[test]
     fn connect_request_dispatch() {
@@ -608,11 +609,8 @@ mod tests {
     fn create_network_with_initial_temp_peer() -> (Network, String) {
         let network = Network::new(Mesh::new(5, 5));
 
-        let mut transport = InprocTransport::default();
+        let mut transport = MockConnectingTransport;
 
-        let mut _listener = transport
-            .listen("local")
-            .expect("Unable to create the listener");
         let connection = transport
             .connect("local")
             .expect("Unable to create the connection");
@@ -625,5 +623,80 @@ mod tests {
         let peer_id = network.peer_ids()[0].clone();
 
         (network, peer_id)
+    }
+
+    struct MockConnectingTransport;
+
+    impl Transport for MockConnectingTransport {
+        fn accepts(&self, _: &str) -> bool {
+            true
+        }
+
+        fn connect(&mut self, _: &str) -> Result<Box<dyn Connection>, ConnectError> {
+            Ok(Box::new(MockConnection))
+        }
+
+        fn listen(
+            &mut self,
+            _: &str,
+        ) -> Result<Box<dyn crate::transport::Listener>, crate::transport::ListenError> {
+            unimplemented!()
+        }
+    }
+
+    struct MockConnection;
+
+    impl Connection for MockConnection {
+        fn send(&mut self, _message: &[u8]) -> Result<(), SendError> {
+            Ok(())
+        }
+
+        fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
+            unimplemented!()
+        }
+
+        fn remote_endpoint(&self) -> String {
+            String::from("MockConnection")
+        }
+
+        fn local_endpoint(&self) -> String {
+            String::from("MockConnection")
+        }
+
+        fn disconnect(&mut self) -> Result<(), DisconnectError> {
+            Ok(())
+        }
+
+        fn evented(&self) -> &dyn mio::Evented {
+            &MockEvented
+        }
+    }
+
+    struct MockEvented;
+
+    impl mio::Evented for MockEvented {
+        fn register(
+            &self,
+            _poll: &mio::Poll,
+            _token: mio::Token,
+            _interest: mio::Ready,
+            _opts: mio::PollOpt,
+        ) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        fn reregister(
+            &self,
+            _poll: &mio::Poll,
+            _token: mio::Token,
+            _interest: mio::Ready,
+            _opts: mio::PollOpt,
+        ) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        fn deregister(&self, _poll: &mio::Poll) -> std::io::Result<()> {
+            Ok(())
+        }
     }
 }
