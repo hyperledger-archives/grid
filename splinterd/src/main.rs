@@ -45,9 +45,9 @@ const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
 fn main() {
-    let matches = clap_app!(splinter =>
+    let matches = clap_app!(splinterd =>
         (version: crate_version!())
-        (about: "Splinter Node")
+        (about: "Splinter Daemon")
         (@arg config: -c --config +takes_value)
         (@arg node_id: --("node-id") +takes_value
           "unique id for the node ")
