@@ -15,6 +15,7 @@ pub mod auth;
 pub mod dispatch;
 mod dispatch_proto;
 pub mod handlers;
+pub mod peer;
 pub mod sender;
 
 use uuid::Uuid;
@@ -272,6 +273,17 @@ impl From<MeshSendError> for SendError {
 pub enum ConnectionError {
     AddError(String),
     RemoveError(String),
+}
+
+impl std::error::Error for ConnectionError {}
+
+impl std::fmt::Display for ConnectionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ConnectionError::AddError(msg) => write!(f, "unable to add connection: {}", msg),
+            ConnectionError::RemoveError(msg) => write!(f, "unable to remove connection: {}", msg),
+        }
+    }
 }
 
 impl From<AddError> for ConnectionError {
