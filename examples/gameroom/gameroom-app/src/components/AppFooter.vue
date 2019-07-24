@@ -33,6 +33,7 @@ footer {
   display: flex;
   background-color: $color-base;
   color: $color-text-tertiary;
+  border-top: 1px solid $color-border;
   position: absolute;
   bottom: 0;
   left: 0;

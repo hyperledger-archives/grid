@@ -139,24 +139,23 @@ export default class Gamerooms extends Vue {
     flex-direction: column;
 
     .form-label {
-      color: $color-white;
-
       .multiselect-label {
         margin-bottom: .25em;
       }
 
       .form-input {
+        min-height: 3em;
         width: 100%;
         margin: .25em 0 1em;
         padding: .5em;
         font-size: 1em;
-        border: 2px solid $color-white;
+        border: 1px solid $color-border;
         outline: none;
         @include rounded-border;
       }
 
       .form-input:focus {
-        border: 2px solid $color-secondary;
+        border: 1px solid $color-primary-light;
       }
     }
 

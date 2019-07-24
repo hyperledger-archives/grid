@@ -58,17 +58,17 @@ export default class Modal extends Vue {}
   display: flex;
   flex-direction: column;
   width: 500px;
-  background-color: $color-background;
   transition: all .3s ease;
-  @include rounded-border;
 }
 
 .m-modal-header {
+  background-color: $color-background;
+  @include rounded-border-top;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
-  border-bottom: 1px solid $color-white;
+  border-bottom: 1px solid $color-border;
   h3 {
     color: $color-text;
     line-height: 1.4;
@@ -79,9 +79,6 @@ export default class Modal extends Vue {}
 }
 
 .m-modal-close {
-  color: #c8ccd1;
-  text-transform: uppercase;
-  text-decoration: none;
   i {
     color: inherit;
     font-size: 1.5em;
@@ -89,6 +86,8 @@ export default class Modal extends Vue {}
 }
 
 .m-modal-body {
+  background-color: $color-background;
+  @include rounded-border-bottom;
   flex: 1;
   font-size: 14px;
   padding: 20px;

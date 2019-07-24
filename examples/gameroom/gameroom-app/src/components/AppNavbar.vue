@@ -16,12 +16,10 @@ limitations under the License.
 
 <template>
   <nav class="navbar">
+    <router-link class="navbar-brand" to="/">
+      <img src="~brandAssets/logo_wide.png" height="60px">
+    </router-link>
     <ul>
-      <li class="nav-item">
-        <router-link to="/">
-          Home
-        </router-link>
-      </li>
       <li v-if="isLoggedIn" class="nav-item">
         <router-link to="/gamerooms">
           Gamerooms
@@ -67,6 +65,7 @@ export default class AppNavbar extends Vue {
 <style lang="scss" scoped>
 .navbar {
   background-color: $color-base;
+  border-bottom: 1px solid $color-border;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -79,6 +78,15 @@ export default class AppNavbar extends Vue {
       padding-left: 1em;
       padding-right: 1em;
     }
+  }
+}
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5em;
+  .brand-text {
+    font-size: 2em;
   }
 }
 

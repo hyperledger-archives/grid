@@ -38,10 +38,6 @@ export default class App extends Vue {
 </script>
 
 <style lang="scss">
-  @import '@/scss/multiselect.scss';
-</style>
-
-<style lang="scss">
 
 *, *:before, *:after {
   box-sizing: border-box;
@@ -58,6 +54,7 @@ form, button, input {
 }
 
 button {
+  color: $color-white;
   border: none;
   background: $color-primary;
   padding: .5em .5em .5em;
@@ -69,7 +66,7 @@ button {
   cursor: pointer;
   margin-left: 1em;
   width: auto;
-  border: 2px solid $color-primary;
+  border: 1px solid $color-primary;
 
   .button-content {
     display: inline-flex;
@@ -81,17 +78,29 @@ button {
   }
 }
 
+button:hover {
+  background: $color-primary-dark;
+  border: 1px solid $color-primary-dark;
+}
+
 button:disabled {
-  background: $color-gray;
-  border: 2px solid $color-gray;
-  color: $color-text-dark;
+  background: $color-disabled;
+  border: 1px solid $color-border;
+  color: $color-disabled-text;
+  cursor: default;
 }
 
 .outline-button {
   color: $color-primary;
-  border: 2px solid $color-primary;
+  border: 1px solid $color-primary;
   background-color: $color-transparent;
   @include rounded-border;
+}
+
+.outline-button:hover {
+  color: $color-primary-dark;
+  background-color: $color-transparent;
+  border: 1px solid $color-primary-dark;
 }
 
 .form-button {
@@ -104,7 +113,7 @@ button:disabled {
 }
 
 #{$a-tags-hover} {
-  color: $color-text;
+  color: $color-primary;
 }
 
 .container {
@@ -130,9 +139,10 @@ button:disabled {
   background: $color-base;
   padding: 2em 1em;
   @include rounded-border;
+  border: 1px solid $color-border;
 
   .form-label {
-    color: $color-white;
+    color: $color-text;
     margin: 0 3%;
 
     .form-input {
@@ -140,13 +150,13 @@ button:disabled {
       margin: .25em 3% 1em;
       padding: .5em .25em;
       font-size: 1.2em;
-      border: 2px solid $color-white;
+      border: 1px solid $color-border;
       outline: none;
       @include rounded-border;
     }
 
     .form-input:focus {
-      border: 2px solid $color-secondary;
+      border: 1px solid $color-primary-light;
     }
   }
 
