@@ -15,6 +15,7 @@
 # build stage
 FROM node:lts-alpine as build-stage
 
+RUN apk update && apk add python g++ make && rm -rf /var/cache/apk/*
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
