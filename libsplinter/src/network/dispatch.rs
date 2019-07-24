@@ -172,6 +172,31 @@ pub enum DispatchError {
     HandleError(String),
 }
 
+impl std::error::Error for DispatchError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            DispatchError::NetworkSendError(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for DispatchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            DispatchError::DeserializationError(msg) => {
+                write!(f, "unable to deserialize message: {}", msg)
+            }
+            DispatchError::SerializationError(msg) => {
+                write!(f, "unable to serialize message: {}", msg)
+            }
+            DispatchError::UnknownMessageType(msg) => write!(f, "unknown message type: {}", msg),
+            DispatchError::NetworkSendError(e) => write!(f, "unable to send message: {}", e),
+            DispatchError::HandleError(msg) => write!(f, "unable to handle message: {}", msg),
+        }
+    }
+}
+
 impl From<SendError> for DispatchError {
     fn from(e: SendError) -> Self {
         DispatchError::NetworkSendError(e)
