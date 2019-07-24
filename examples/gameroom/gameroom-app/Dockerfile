@@ -20,7 +20,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+ARG VUE_APP_BRAND
+RUN npm run build-${VUE_APP_BRAND}
 
 # prod stage
 FROM httpd:2.4 as prod-stage
