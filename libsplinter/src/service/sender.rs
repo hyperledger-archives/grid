@@ -96,7 +96,7 @@ impl ServiceNetworkSender for AdminServiceNetworkSender {
         Ok(())
     }
 
-    /// Send the message bytes to the given recipient (another service)
+    /// Send the message bytes to the given recipient (another admin service)
     /// and await the reply. This function blocks until the reply is
     /// returned.
     fn send_and_await(

@@ -182,9 +182,9 @@ impl std::fmt::Display for ServiceError {
 pub enum ServiceProcessorError {
     /// Returned if an error is detected adding a new service
     AddServiceError(String),
-    /// Returned  if an error is detected while processing requests
+    /// Returned if an error is detected while processing requests
     ProcessError(Box<dyn Error + Send>),
-    /// Returned  if an error is detected while processing requests
+    /// Returned if an IO error is detected while processing requests
     IOError(IOError),
     /// Returned if an error is detected when trying to shutdown
     ShutdownError(String),

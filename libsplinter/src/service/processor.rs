@@ -98,7 +98,7 @@ impl ServiceProcessor {
         })
     }
 
-    /// add_service takes a Service and setups the thread that the service will run in.
+    /// add_service takes a Service and sets up the thread that the service will run in.
     /// The service will be started, including registration and then messages are routed to the
     /// the services using a channel.
     pub fn add_service(
@@ -193,7 +193,7 @@ impl ServiceProcessor {
     /// Once the service processor is started it will handle incoming messages from the splinter
     /// node and route it to a running service.
     ///
-    /// Returns a ShutdownHandle and join_handles so the service can be properly shutdown .
+    /// Returns a ShutdownHandle and join_handles so the service can be properly shutdown.
     pub fn start(self) -> Result<ShutdownHandle, ServiceProcessorError> {
         // Starts the authorization process with the splinter node
         // If running over inproc connection, this is the only authroization message required
