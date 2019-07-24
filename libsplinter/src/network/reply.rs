@@ -104,7 +104,23 @@ impl std::fmt::Display for RouteError {
 }
 
 #[derive(Debug, Clone)]
-pub struct FutureError {}
+pub enum FutureError {
+    UnableToParseMessage(String),
+    UnableToReceive,
+}
+
+impl std::error::Error for FutureError {}
+
+impl std::fmt::Display for FutureError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FutureError::UnableToParseMessage(msg) => {
+                write!(f, "unable to parse envelope: {}", msg)
+            }
+            FutureError::UnableToReceive => f.write_str("unable to receive future result"),
+        }
+    }
+}
 
 /// MessageFuture is a promise for the reply to a sent message.
 pub struct MessageFuture<T>
@@ -128,24 +144,25 @@ where
 
     pub fn get<M: FromMessageBytes + Clone>(&mut self) -> Result<M, FutureError> {
         if let Some(result) = self.result.as_ref() {
-            return result
-                .as_ref()
-                .map_err(|_recv_err| FutureError {})
-                .and_then(|env| {
-                    FromMessageBytes::from_message_bytes(env.payload())
-                        .map_err(|_from_err| FutureError {})
-                });
+            return match result {
+                Ok(env) => FromMessageBytes::from_message_bytes(env.payload())
+                    .map_err(|e| FutureError::UnableToParseMessage(e.to_string())),
+                Err(_) => Err(FutureError::UnableToReceive),
+            };
         }
 
-        let result: MessageResult<T> = self.inner.recv().map_err(|_recv_err| FutureError {})?;
+        let result: MessageResult<T> = self
+            .inner
+            .recv()
+            .map_err(|_| FutureError::UnableToReceive)?;
 
         self.result = Some(result);
 
         // This is safe because we just wrapped it in Some
         match self.result.as_ref().unwrap() {
             Ok(env) => FromMessageBytes::from_message_bytes(env.payload())
-                .map_err(|_from_err| FutureError {}),
-            Err(_err) => Err(FutureError {}),
+                .map_err(|e| FutureError::UnableToParseMessage(e.to_string())),
+            Err(_) => Err(FutureError::UnableToReceive),
         }
     }
 }
