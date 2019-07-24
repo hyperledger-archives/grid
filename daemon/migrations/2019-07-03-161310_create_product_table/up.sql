@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS product (
     prod_id VARCHAR(256) NOT NULL,
     prod_type TEXT NOT NULL,
     owner VARCHAR(256) NOT NULL,
-    metadata JSON [] NOT NULL
+    properties TEXT []
 ) INHERITS (chain_record);
 
 CREATE INDEX IF NOT EXISTS prod_id_block_num_idx

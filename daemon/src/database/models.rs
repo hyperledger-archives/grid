@@ -97,7 +97,7 @@ pub struct NewProduct {
     pub prod_id: String,
     pub prod_type: Vec<String>,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
+    pub properties: Vec<String>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
@@ -111,7 +111,7 @@ pub struct Product {
     pub prod_id: String,
     pub prod_type: Vec<String>,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
+    pub properties: Vec<String>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,

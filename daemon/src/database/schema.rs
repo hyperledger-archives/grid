@@ -103,7 +103,7 @@ table! {
         prod_id -> Varchar,
         prod_type -> Array<Text>,
         owner -> Varchar,
-        metadata -> Array<Json>,
+        properties -> Array<Text>,
         start_block_num -> Int8,
         end_block_num -> Int8,
     }
