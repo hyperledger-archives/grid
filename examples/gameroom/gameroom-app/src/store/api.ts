@@ -13,12 +13,19 @@
 // limitations under the License.
 
 import axios from 'axios';
-import { User, UserCredentials, UserAuthResponse } from './models';
+import {
+  User,
+  UserCredentials,
+  UserAuthResponse,
+  GameroomProposal,
+  Node,
+} from './models';
 
 export const gameroomAPI = axios.create({
   baseURL: '/api',
 });
 
+// Users
 export async function userCreate(
   user: User,
 ): Promise<UserAuthResponse|undefined> {
@@ -39,4 +46,27 @@ export async function userAuthenticate(
   } catch (e) {
     alert(e);
   }
+}
+
+// Gamerooms
+export async function gameroomPropose(
+  gameroomProposal: GameroomProposal,
+): Promise<number|undefined> {
+  try {
+    const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
+    return response.status;
+  } catch (e) {
+    alert(e);
+  }
+}
+
+// Nodes
+export async function listNodes(): Promise<Node[]> {
+  try {
+    const response = await gameroomAPI.get('/nodes');
+    return response.data as Node[];
+  } catch (e) {
+    alert(e);
+  }
+  return [];
 }

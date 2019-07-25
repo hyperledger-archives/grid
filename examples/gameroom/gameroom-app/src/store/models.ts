@@ -34,3 +34,16 @@ export interface UserAuthResponse {
   publicKey: string;
   encryptedPrivateKey: string;
 }
+
+export interface Node {
+  identity: string;
+  metadata: {
+    organization: string;
+    endpoint: string;
+  };
+}
+
+export interface GameroomProposal {
+  alias: string;
+  member: string;
+}

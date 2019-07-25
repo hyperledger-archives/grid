@@ -12,15 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-$color-primary: #ee8202;
-$color-secondary: #026cee;
+$color-primary: #ef6c00;
+$color-primary-light: #ff9d3f;
+$color-primary-dark: #b53d00;
+$color-secondary: #1976d2;
+$color-secondary-light: #63a4ff;
+$color-secondary-dark: #004ba0;
 $color-base: #212121;
 $color-background: #303030;
-$color-gray: #424242;
-$color-white: #FFFFFF;
-$color-text: #FFFFFF;
-$color-text-secondary: darken($color-text, 30%);
-$color-text-tertiary: darken($color-text, 50%);
+$color-white: #ffffff;
+$color-light-gray: #eeeeee;
+$color-gray: #6d6d6d;
+$color-black: #000000;
+$color-text: #ffffff;
+$color-text-secondary: #bbbbbb;
+$color-text-tertiary: #888888;
+$color-text-dark: #212121;
+$color-transparent: rgba(0, 0, 0, 0);
 
 $a-tags: 'a, a:active, a:hover, a:visited';
 $a-tags-hover: 'a:active, a:hover';

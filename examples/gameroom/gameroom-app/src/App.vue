@@ -38,6 +38,10 @@ export default class App extends Vue {
 </script>
 
 <style lang="scss">
+  @import '@/scss/multiselect.scss';
+</style>
+
+<style lang="scss">
 
 *, *:before, *:after {
   box-sizing: border-box;
@@ -49,9 +53,51 @@ html, body {
   height: 100%;
 }
 
-form, button {
+form, button, input {
   font-family: inherit;
 }
+
+button {
+  border: none;
+  background: $color-primary;
+  padding: .5em .5em .5em;
+  font-size: 1em;
+  font-weight: 600;
+  clear: both;
+  @include rounded-border;
+  outline: none;
+  cursor: pointer;
+  margin-left: 1em;
+  width: auto;
+  border: 2px solid $color-primary;
+
+  .button-content {
+    display: inline-flex;
+    align-items: center;
+
+    .button-text {
+      padding: 0 .25em 0;
+    }
+  }
+}
+
+button:disabled {
+  background: $color-gray;
+  border: 2px solid $color-gray;
+  color: $color-text-dark;
+}
+
+.outline-button {
+  color: $color-primary;
+  border: 2px solid $color-primary;
+  background-color: $color-transparent;
+  @include rounded-border;
+}
+
+.form-button {
+  width: 6em;
+}
+
 #{$a-tags} {
   color: $color-text-secondary;
   text-decoration: none;
@@ -85,15 +131,6 @@ form, button {
   padding: 2em 1em;
   @include rounded-border;
 
-  .form-error {
-    margin: 0 3%;
-    color: red;
-
-    .error-text {
-      list-style-type: none;
-    }
-  };
-
   .form-label {
     color: $color-white;
     margin: 0 3%;
@@ -116,20 +153,12 @@ form, button {
   .form-button {
     width: 94%;
     margin: .5em 3% .5em;
-    border: none;
-    background: $color-primary;
     padding: 1em 0;
     font-size: 1.25em;
-    font-weight: 600;
     clear: both;
     @include rounded-border;
     outline: none;
     cursor: pointer;
-  }
-
-  .form-button:disabled {
-    background: $color-gray;
-    color: black;
   }
 
   .form-link {

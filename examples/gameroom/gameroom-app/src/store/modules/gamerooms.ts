@@ -12,26 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path')
+import { VuexModule, Module, getModule, Action } from 'vuex-module-decorators';
+import store from '@/store';
+import { GameroomProposal } from '@/store/models';
+import { gameroomPropose } from '@/store/api';
 
-module.exports = {
-  css: {
-    loaderOptions: {
-      sass: {
-        data: `
-          @import "@/scss/_variables.scss";
-          @import "@/scss/_mixins.scss";
-          @import "@/scss/multiselect.scss";
-        `
-      }
-    }
-  },
-  transpileDependencies: ['vuex-module-decorators'],
-  configureWebpack: {
-    resolve: {
-      alias: {
-        zeromq$: path.resolve(__dirname, './src/mock_zmq.js')
-      }
-    }
+@Module({
+  namespaced: true,
+  name: 'gamerooms',
+  store,
+  dynamic: true,
+})
+class GameroomsModule extends VuexModule {
+  @Action
+  async proposeGameroom(proposal: GameroomProposal) {
+    const response = await gameroomPropose(proposal);
+    return response;
   }
-};
+}
+export default getModule(GameroomsModule);
