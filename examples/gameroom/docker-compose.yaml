@@ -14,6 +14,9 @@
 
 version: '3'
 
+volumes:
+  cargo-registry:
+
 services:
   gameroom-app-acme:
     build:
@@ -52,3 +55,26 @@ services:
       POSTGRES_DB: gameroom
     volumes:
       - "./database/tables:/docker-entrypoint-initdb.d"
+
+  gameroomd:
+      image: gameroomd
+      build:
+        context: .
+        dockerfile: ./daemon/Dockerfile
+      volumes:
+        - cargo-registry:/root/.cargo/registry
+      expose:
+        - 8000
+      ports:
+        - "8000:8000"
+      command: |
+        bash -c "
+          # we need to wait for the db to have started.
+          until PGPASSWORD=gameroom_example psql -h postgres -U gameroom -c '\q'; do
+              >&2 echo \"Database is unavailable - sleeping\"
+              sleep 1
+          done
+
+          target/debug/gameroomd -vv --database_url postgres://gameroom:gameroom_example@postgres:5432/gameroom \
+            -b gameroomd:8000
+        "
