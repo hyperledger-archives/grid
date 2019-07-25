@@ -17,9 +17,11 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 
+mod config;
 mod error;
 mod rest_api;
 
+use crate::config::GameroomConfigBuilder;
 use crate::error::GameroomDaemonError;
 use simple_logger;
 
@@ -41,6 +43,10 @@ fn run() -> Result<(), GameroomDaemonError> {
         1 => simple_logger::init_with_level(log::Level::Info),
         _ => simple_logger::init_with_level(log::Level::Debug),
     }?;
+
+    let config = GameroomConfigBuilder::default()
+        .with_cli_args(&matches)
+        .build()?;
 
     Ok(())
 }
