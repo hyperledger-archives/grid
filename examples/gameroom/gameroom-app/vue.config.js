@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var path = require('path')
+const path = require('path')
+const whitelabelConfig = require('./whitelabel.config')
 
 module.exports = {
   css: {
@@ -22,6 +23,7 @@ module.exports = {
           @import "@/scss/_variables.scss";
           @import "@/scss/_mixins.scss";
           @import "@/scss/multiselect.scss";
+          @import "~brandVariables/variables.scss";
         `
       }
     }
@@ -30,7 +32,11 @@ module.exports = {
   configureWebpack: {
     resolve: {
       alias: {
-        zeromq$: path.resolve(__dirname, './src/mock_zmq.js')
+        zeromq$: path.resolve(__dirname, './src/mock_zmq.js'),
+        'brandVariables': path.resolve(
+          __dirname, whitelabelConfig[process.env.VUE_APP_BRAND].scssVariables),
+        'brandAssets': path.resolve(
+          __dirname, whitelabelConfig[process.env.VUE_APP_BRAND].assets)
       }
     }
   }

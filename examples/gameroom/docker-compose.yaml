@@ -15,14 +15,29 @@
 version: '3'
 
 services:
-  gameroom-app:
-    build: ./gameroom-app
-    image: gameroom-app
-    container_name: gameroom-app
+  gameroom-app-acme:
+    build:
+      context: ./gameroom-app
+      args:
+        VUE_APP_BRAND: "acme"
+    image: gameroom-app-acme
+    container_name: gameroom-app-acme
     expose:
       - 80
     ports:
       - '8080:80'
+
+  gameroom-app-bubba:
+    build:
+      context: ./gameroom-app
+      args:
+        VUE_APP_BRAND: "bubba"
+    image: gameroom-app-bubba
+    container_name: gameroom-app-bubba
+    expose:
+      - 80
+    ports:
+      - '8081:80'
 
   postgres:
     image: postgres:alpine
