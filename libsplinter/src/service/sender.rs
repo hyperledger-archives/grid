@@ -86,8 +86,18 @@ impl AdminServiceNetworkSender {
 impl ServiceNetworkSender for AdminServiceNetworkSender {
     /// the service will create the admin direct message themselves so it can set which circuit
     /// this message should be sent over.
-    fn send(&self, _recipient: &str, message: &[u8]) -> Result<(), ServiceSendError> {
-        let msg = create_message(message.to_vec(), CircuitMessageType::ADMIN_DIRECT_MESSAGE)
+    fn send(&self, recipient: &str, message: &[u8]) -> Result<(), ServiceSendError> {
+        let mut admin_direct_message = AdminDirectMessage::new();
+        admin_direct_message.set_circuit("admin".into());
+        admin_direct_message.set_sender(self.message_sender.to_string());
+        admin_direct_message.set_recipient(recipient.into());
+        admin_direct_message.set_payload(message.to_vec());
+
+        let bytes = admin_direct_message
+            .write_to_bytes()
+            .map_err(|err| ServiceSendError(Box::new(err)))?;
+
+        let msg = create_message(bytes, CircuitMessageType::ADMIN_DIRECT_MESSAGE)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
 
         self.outgoing_sender
@@ -99,14 +109,12 @@ impl ServiceNetworkSender for AdminServiceNetworkSender {
     /// Send the message bytes to the given recipient (another admin service)
     /// and await the reply. This function blocks until the reply is
     /// returned.
-    fn send_and_await(
-        &self,
-        _recipient: &str,
-        message: &[u8],
-    ) -> Result<Vec<u8>, ServiceSendError> {
-        let mut admin_direct_message: AdminDirectMessage =
-            protobuf::parse_from_bytes(&message).map_err(|err| ServiceSendError(Box::new(err)))?;
-
+    fn send_and_await(&self, recipient: &str, message: &[u8]) -> Result<Vec<u8>, ServiceSendError> {
+        let mut admin_direct_message = AdminDirectMessage::new();
+        admin_direct_message.set_circuit("admin".into());
+        admin_direct_message.set_sender(self.message_sender.to_string());
+        admin_direct_message.set_recipient(recipient.into());
+        admin_direct_message.set_payload(message.to_vec());
         let correlation_id = Uuid::new_v4().to_string();
         admin_direct_message.set_correlation_id(correlation_id.to_string());
 
@@ -451,21 +459,14 @@ pub mod tests {
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = AdminServiceNetworkSender::new(
             outgoing_sender,
-            "service_a".to_string(),
+            "service_b".to_string(),
             inbound_router,
         );
 
         thread::Builder::new()
             .name("test_admin_send".to_string())
             .spawn(move || {
-                let mut admin_direct_message = AdminDirectMessage::new();
-                admin_direct_message.set_recipient("service_a".to_string());
-                admin_direct_message.set_sender("service_b".to_string());
-                admin_direct_message.set_circuit("other_circuit".to_string());
-                admin_direct_message.set_payload(b"test_admin".to_vec());
-                let msg_bytes = admin_direct_message.write_to_bytes().unwrap();
-
-                network_sender.send("service_b", &msg_bytes).unwrap();
+                network_sender.send("service_a", b"test_admin").unwrap();
             })
             .unwrap();;
 
@@ -482,7 +483,7 @@ pub mod tests {
 
         assert_eq!(direct_message.get_recipient(), "service_a");
         assert_eq!(direct_message.get_sender(), "service_b");
-        assert_eq!(direct_message.get_circuit(), "other_circuit".to_string());
+        assert_eq!(direct_message.get_circuit(), "admin");
         assert_eq!(direct_message.get_payload(), b"test_admin");
     }
 
@@ -496,22 +497,15 @@ pub mod tests {
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = AdminServiceNetworkSender::new(
             outgoing_sender,
-            "service_a".to_string(),
+            "service_b".to_string(),
             inbound_router.clone(),
         );
 
         thread::Builder::new()
             .name("test_admin_send_and_await_send".to_string())
             .spawn(move || {
-                let mut admin_direct_message = AdminDirectMessage::new();
-                admin_direct_message.set_recipient("service_a".to_string());
-                admin_direct_message.set_sender("service_b".to_string());
-                admin_direct_message.set_circuit("other_circuit".to_string());
-                admin_direct_message.set_payload(b"test_admin".to_vec());
-                let msg_bytes = admin_direct_message.write_to_bytes().unwrap();
-
                 let response = network_sender
-                    .send_and_await("service_b", &msg_bytes)
+                    .send_and_await("service_a", b"test_admin")
                     .unwrap();
                 assert_eq!(&response, b"test_response");
 
@@ -533,7 +527,7 @@ pub mod tests {
 
         assert_eq!(direct_message.get_recipient(), "service_a");
         assert_eq!(direct_message.get_sender(), "service_b");
-        assert_eq!(direct_message.get_circuit(), "other_circuit".to_string());
+        assert_eq!(direct_message.get_circuit(), "admin");
         assert_eq!(direct_message.get_payload(), b"test_admin");
 
         let correlation_id = direct_message.take_correlation_id();

@@ -826,15 +826,6 @@ pub mod tests {
                 network_sender: None,
             }
         }
-
-        fn create_admin_msg(&self, payload: Vec<u8>) -> Vec<u8> {
-            let mut direct_response = AdminDirectMessage::new();
-            direct_response.set_recipient("service_a".to_string());
-            direct_response.set_sender(self.service_id().to_string());
-            direct_response.set_circuit("admin".to_string());
-            direct_response.set_payload(payload);
-            direct_response.write_to_bytes().unwrap()
-        }
     }
 
     impl Service for MockAdminService {
@@ -892,16 +883,14 @@ pub mod tests {
         ) -> Result<(), ServiceError> {
             if message_bytes == b"send" {
                 if let Some(network_sender) = &self.network_sender {
-                    let payload = self.create_admin_msg(b"send_response".to_vec());
                     network_sender
-                        .send(&message_context.sender, &payload)
+                        .send(&message_context.sender, b"send_response")
                         .unwrap();;
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {
-                    let payload = self.create_admin_msg(b"waiting for response".to_vec());
                     let response = network_sender
-                        .send_and_await(&message_context.sender, &payload)
+                        .send_and_await(&message_context.sender, b"waiting for response")
                         .unwrap();
                     assert_eq!(response, b"respond to waiting");
                 }
