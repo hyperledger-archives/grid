@@ -13,3 +13,5 @@
 // limitations under the License.
 
 mod error;
+
+pub use error::RestApiServerError;

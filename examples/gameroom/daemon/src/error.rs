@@ -15,10 +15,15 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::rest_api::RestApiServerError;
+use gameroom_database::DatabaseError;
+
 #[derive(Debug)]
 pub enum GameroomDaemonError {
     LoggingInitializationError(log::SetLoggerError),
     ConfigurationError(Box<ConfigurationError>),
+    DatabaseError(Box<DatabaseError>),
+    RestApiError(RestApiServerError),
 }
 
 impl Error for GameroomDaemonError {
@@ -26,6 +31,8 @@ impl Error for GameroomDaemonError {
         match self {
             GameroomDaemonError::LoggingInitializationError(err) => Some(err),
             GameroomDaemonError::ConfigurationError(err) => Some(err),
+            GameroomDaemonError::DatabaseError(err) => Some(&**err),
+            GameroomDaemonError::RestApiError(err) => Some(err),
         }
     }
 }
@@ -37,6 +44,8 @@ impl fmt::Display for GameroomDaemonError {
                 write!(f, "Logging initialization error: {}", e)
             }
             GameroomDaemonError::ConfigurationError(e) => write!(f, "Coniguration error: {}", e),
+            GameroomDaemonError::DatabaseError(e) => write!(f, "Database error: {}", e),
+            GameroomDaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
         }
     }
 }
@@ -44,6 +53,18 @@ impl fmt::Display for GameroomDaemonError {
 impl From<log::SetLoggerError> for GameroomDaemonError {
     fn from(err: log::SetLoggerError) -> GameroomDaemonError {
         GameroomDaemonError::LoggingInitializationError(err)
+    }
+}
+
+impl From<DatabaseError> for GameroomDaemonError {
+    fn from(err: DatabaseError) -> GameroomDaemonError {
+        GameroomDaemonError::DatabaseError(Box::new(err))
+    }
+}
+
+impl From<RestApiServerError> for GameroomDaemonError {
+    fn from(err: RestApiServerError) -> GameroomDaemonError {
+        GameroomDaemonError::RestApiError(err)
     }
 }
 
