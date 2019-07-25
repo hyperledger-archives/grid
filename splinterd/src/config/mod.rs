@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::error::Error;
-use std::fmt;
+mod error;
+
+pub use error::ConfigError;
+
 use std::fs::File;
-use std::io;
 use std::io::Read;
 
 use serde_derive::Deserialize;
 use toml;
-use toml::de;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct Config {
@@ -102,41 +102,5 @@ impl Config {
 
     pub fn registry_file(&self) -> Option<String> {
         self.registry_file.clone()
-    }
-}
-
-#[derive(Debug)]
-pub enum ConfigError {
-    ReadError(io::Error),
-    TomlParseError(de::Error),
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(e: io::Error) -> Self {
-        ConfigError::ReadError(e)
-    }
-}
-
-impl From<de::Error> for ConfigError {
-    fn from(e: de::Error) -> Self {
-        ConfigError::TomlParseError(e)
-    }
-}
-
-impl Error for ConfigError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            ConfigError::ReadError(source) => Some(source),
-            ConfigError::TomlParseError(source) => Some(source),
-        }
-    }
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ConfigError::ReadError(source) => source.fmt(f),
-            ConfigError::TomlParseError(source) => write!(f, "Invalid File Format: {}", source),
-        }
     }
 }
