@@ -12,24 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::borrow::Borrow;
 use std::error::Error;
 use std::sync::mpsc::SendError;
 
 use protobuf::error::ProtobufError;
 
-use super::ProposalUpdate;
+use super::{PeerId, ProposalId, ProposalUpdate};
 
 #[derive(Debug)]
 pub enum ProposalManagerError {
-    Internal(Box<dyn Error>),
+    /// `ProposalManager` encountered an internal error while attempting to fulfill a request.
+    Internal(Box<dyn Error + Send>),
+    /// `ProposalManager` is not yet ready to process requests.
+    NotReady,
+    /// `ProposalManager` does not know about the specified proposal.
+    UnknownProposal(ProposalId),
+    /// `ProposalManager` failed to send send an update back to consensus.
     UpdateSendFailed(SendError<ProposalUpdate>),
 }
 
 impl Error for ProposalManagerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ProposalManagerError::Internal(err) => Some(err.borrow()),
+            ProposalManagerError::Internal(err) => Some(&**err),
+            ProposalManagerError::NotReady => None,
+            ProposalManagerError::UnknownProposal(_) => None,
             ProposalManagerError::UpdateSendFailed(err) => Some(err),
         }
     }
@@ -39,6 +46,10 @@ impl std::fmt::Display for ProposalManagerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg = match self {
             ProposalManagerError::Internal(err) => err.to_string(),
+            ProposalManagerError::NotReady => "not ready to process requests".to_string(),
+            ProposalManagerError::UnknownProposal(id) => {
+                format!("unknown proposal was specified: {}", id)
+            }
             ProposalManagerError::UpdateSendFailed(err) => err.to_string(),
         };
         write!(f, "proposal manager error occurred: {}", msg)
@@ -52,32 +63,51 @@ impl From<SendError<ProposalUpdate>> for ProposalManagerError {
 }
 
 #[derive(Debug)]
-pub struct ConsensusSendError(pub Box<dyn Error>);
+pub enum ConsensusSendError {
+    /// `ConsensusNetworkSender` encountered an internal error while attempting to send a message.
+    Internal(Box<dyn Error + Send>),
+    /// `ConsensusNetworkSender` is not yet ready to send messages.
+    NotReady,
+    /// `ConsensusNetworkSender` doesn't know about the peer the message was directed to.
+    UnknownPeer(PeerId),
+}
 
 impl Error for ConsensusSendError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self.0.borrow())
+        match self {
+            ConsensusSendError::Internal(err) => Some(&**err),
+            ConsensusSendError::NotReady => None,
+            ConsensusSendError::UnknownPeer(_) => None,
+        }
     }
 }
 
 impl std::fmt::Display for ConsensusSendError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to send consensus message: {}", self.0)
+        match self {
+            ConsensusSendError::Internal(err) => {
+                write!(f, "internal error while sending consensus message: {}", err)
+            }
+            ConsensusSendError::NotReady => write!(f, "not ready to send messages"),
+            ConsensusSendError::UnknownPeer(peer_id) => {
+                write!(f, "attempted to send message to unknown peer: {}", peer_id)
+            }
+        }
     }
 }
 
 impl From<ProtobufError> for ConsensusSendError {
     fn from(err: ProtobufError) -> Self {
-        ConsensusSendError(Box::new(err))
+        ConsensusSendError::Internal(Box::new(err))
     }
 }
 
 #[derive(Debug)]
-pub struct ConsensusEngineError(pub Box<dyn Error>);
+pub struct ConsensusEngineError(pub Box<dyn Error + Send>);
 
 impl Error for ConsensusEngineError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self.0.borrow())
+        Some(&*self.0)
     }
 }
 
