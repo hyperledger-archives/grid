@@ -75,6 +75,6 @@ services:
               sleep 1
           done
 
-          target/debug/gameroomd -vv --database_url postgres://gameroom:gameroom_example@postgres:5432/gameroom \
+          target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@postgres:5432/gameroom \
             -b gameroomd:8000
         "
