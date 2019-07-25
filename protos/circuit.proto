@@ -122,6 +122,9 @@ message ServiceConnectRequest {
 
     // the unique id of the service that is connecting to the circuit
     string service_id = 2;
+
+    // id used to correlate the response with this request
+    string correlation_id = 3;
 }
 
 message ServiceConnectResponse {
@@ -143,6 +146,9 @@ message ServiceConnectResponse {
     Status status = 3;
     // explanation of the error (optional)
     string error_message = 4;
+
+    // id used to correlate this response with the request
+    string correlation_id = 5;
 }
 
 // To be forwarded to other nodes on the circuit
@@ -166,6 +172,9 @@ message ServiceDisconnectRequest {
 
     // the unique id of the service that is connecting to the circuit
     string service_id = 2;
+
+    // id used to correlate the response with this request
+    string correlation_id = 3;
 }
 
 message ServiceDisconnectResponse {
@@ -188,6 +197,9 @@ message ServiceDisconnectResponse {
 
     // explanation of the error (optional)
     string error_message = 4;
+
+    // id used to correlate this response with the request
+    string correlation_id = 5;
 }
 
 // To be forwarded to other nodes on the circuit

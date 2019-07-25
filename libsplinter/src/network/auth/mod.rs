@@ -27,6 +27,7 @@ enum AuthorizationState {
     Connecting,
     Authorized,
     Unauthorized,
+    Internal,
 }
 
 impl fmt::Display for AuthorizationState {
@@ -36,6 +37,7 @@ impl fmt::Display for AuthorizationState {
             AuthorizationState::Connecting => "Connecting",
             AuthorizationState::Authorized => "Authorized",
             AuthorizationState::Unauthorized => "Unauthorized",
+            AuthorizationState::Internal => "Internal",
         })
     }
 }
@@ -106,7 +108,7 @@ impl AuthorizationManager {
     pub fn is_authorized(&self, peer_id: &str) -> bool {
         let states = rwlock_read_unwrap!(self.states);
         if let Some(state) = states.get(peer_id) {
-            state == &AuthorizationState::Authorized
+            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
         } else {
             false
         }
@@ -128,6 +130,14 @@ impl AuthorizationManager {
         match *cur_state {
             AuthorizationState::Unknown => match action {
                 AuthorizationAction::Connecting => {
+                    if let Some(endpoint) = self.network.get_peer_endpoint(peer_id) {
+                        if endpoint.contains("inproc") {
+                            // Automatically authorize inproc connections
+                            debug!("Authorize inproc connection: {}", peer_id);
+                            states.insert(peer_id.to_string(), AuthorizationState::Internal);
+                            return Ok(AuthorizationState::Internal);
+                        }
+                    }
                     // Here the decision for Challenges will be made.
                     states.insert(peer_id.to_string(), AuthorizationState::Connecting);
                     Ok(AuthorizationState::Connecting)
@@ -189,8 +199,9 @@ mod tests {
 
     use crate::mesh::Mesh;
     use crate::network::Network;
-    use crate::transport::inproc::InprocTransport;
-    use crate::transport::Transport;
+    use crate::transport::{
+        ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
+    };
 
     /// This test runs through the trust authorization state machine happy path. It traverses
     /// through each state, Unknown -> Connecting -> Authorized and verifies that the response
@@ -295,11 +306,7 @@ mod tests {
     fn create_network_with_initial_temp_peer() -> (Network, String) {
         let network = Network::new(Mesh::new(5, 5));
 
-        let mut transport = InprocTransport::default();
-
-        let mut _listener = transport
-            .listen("local")
-            .expect("Unable to create the listener");
+        let mut transport = MockConnectingTransport;
         let connection = transport
             .connect("local")
             .expect("Unable to create the connection");
@@ -312,5 +319,80 @@ mod tests {
         let peer_id = network.peer_ids()[0].clone();
 
         (network, peer_id)
+    }
+
+    struct MockConnectingTransport;
+
+    impl Transport for MockConnectingTransport {
+        fn accepts(&self, _: &str) -> bool {
+            true
+        }
+
+        fn connect(&mut self, _: &str) -> Result<Box<dyn Connection>, ConnectError> {
+            Ok(Box::new(MockConnection))
+        }
+
+        fn listen(
+            &mut self,
+            _: &str,
+        ) -> Result<Box<dyn crate::transport::Listener>, crate::transport::ListenError> {
+            unimplemented!()
+        }
+    }
+
+    struct MockConnection;
+
+    impl Connection for MockConnection {
+        fn send(&mut self, _message: &[u8]) -> Result<(), SendError> {
+            Ok(())
+        }
+
+        fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
+            unimplemented!()
+        }
+
+        fn remote_endpoint(&self) -> String {
+            String::from("MockConnection")
+        }
+
+        fn local_endpoint(&self) -> String {
+            String::from("MockConnection")
+        }
+
+        fn disconnect(&mut self) -> Result<(), DisconnectError> {
+            Ok(())
+        }
+
+        fn evented(&self) -> &dyn mio::Evented {
+            &MockEvented
+        }
+    }
+
+    struct MockEvented;
+
+    impl mio::Evented for MockEvented {
+        fn register(
+            &self,
+            _poll: &mio::Poll,
+            _token: mio::Token,
+            _interest: mio::Ready,
+            _opts: mio::PollOpt,
+        ) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        fn reregister(
+            &self,
+            _poll: &mio::Poll,
+            _token: mio::Token,
+            _interest: mio::Ready,
+            _opts: mio::PollOpt,
+        ) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        fn deregister(&self, _poll: &mio::Poll) -> std::io::Result<()> {
+            Ok(())
+        }
     }
 }

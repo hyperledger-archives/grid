@@ -56,6 +56,7 @@ mod pool;
 mod reactor;
 
 use std::collections::HashMap;
+use std::error::Error;
 use std::io;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -153,7 +154,6 @@ impl Mesh {
     }
 
     /// Receive a new envelope from the mesh.
-
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
         self.incoming
             .recv_timeout(timeout)
@@ -184,6 +184,32 @@ pub enum SendError {
     Disconnected(Envelope),
 }
 
+impl Error for SendError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            SendError::NotFound => None,
+            SendError::IoError(err) => Some(err),
+            SendError::Full(_) => None,
+            SendError::Disconnected(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for SendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            SendError::NotFound => write!(f, "requested connection cannot be found"),
+            SendError::IoError(ref err) => write!(f, "io error processing message {}", err),
+            SendError::Full(ref envelope) => {
+                write!(f, "connection {} send queue is full", envelope.id)
+            }
+            SendError::Disconnected(ref envelope) => {
+                write!(f, "connection disconnected {}", envelope.id)
+            }
+        }
+    }
+}
+
 impl SendError {
     fn from_outgoing_send_error(err: outgoing::SendError, id: usize) -> Self {
         match err {
@@ -199,10 +225,31 @@ impl SendError {
 #[derive(Debug)]
 pub struct RecvError;
 
+impl Error for RecvError {}
+
+impl std::fmt::Display for RecvError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Receive Error")
+    }
+}
+
 #[derive(Debug)]
 pub enum RecvTimeoutError {
     Timeout,
     Disconnected,
+}
+
+impl Error for RecvTimeoutError {}
+
+impl std::fmt::Display for RecvTimeoutError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            RecvTimeoutError::Timeout => f.write_str("Unable to receive: Timeout"),
+            RecvTimeoutError::Disconnected => {
+                f.write_str("Unable to receive: channel has disconnected")
+            }
+        }
+    }
 }
 
 impl From<incoming::RecvTimeoutError> for RecvTimeoutError {

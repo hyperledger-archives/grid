@@ -15,6 +15,7 @@
 use crossbeam_channel;
 use mio_extras::channel as mio_channel;
 
+use std::error::Error;
 use std::fmt;
 use std::io;
 
@@ -73,6 +74,30 @@ pub enum AddError {
     Io(io::Error),
     SenderDisconnected(Box<dyn Connection>),
     ReceiverDisconnected,
+}
+
+impl Error for AddError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            AddError::Io(err) => Some(err),
+            AddError::SenderDisconnected(_) => None,
+            AddError::ReceiverDisconnected => None,
+        }
+    }
+}
+
+impl fmt::Display for AddError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AddError::Io(ref err) => write!(f, "io error while trying to add connection {}", err),
+            AddError::SenderDisconnected(_) => {
+                write!(f, "unable to add connection, sender disconnected")
+            }
+            AddError::ReceiverDisconnected => {
+                write!(f, "unable to add connection, receiver disconnected")
+            }
+        }
+    }
 }
 
 impl fmt::Debug for AddError {
