@@ -41,6 +41,11 @@ pub fn run(
                 web::resource("/gamerooms/propose")
                     .route(web::post().to_async(routes::propose_gameroom)),
             )
+            .service(
+                web::scope("/users").service(
+                    web::resource("/authenticate").route(web::post().to_async(routes::login)),
+                ),
+            )
     })
     .bind(bind_url)?
     .start();

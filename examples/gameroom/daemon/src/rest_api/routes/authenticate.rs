@@ -12,17 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::web;
+use actix_web::{error, web, Error, HttpResponse};
 use bcrypt::verify;
+use futures::Future;
 use gameroom_database::{helpers, ConnectionPool};
 use serde::Deserialize;
 
 use crate::rest_api::RestApiResponseError;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AuthData {
     pub email: String,
     pub hashed_password: String,
+}
+
+pub fn login(
+    auth_data: web::Json<AuthData>,
+    pool: web::Data<ConnectionPool>,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || authenticate_user(pool, auth_data.into_inner())).then(|res| match res {
+            Ok(()) => Ok(HttpResponse::Ok().finish()),
+            Err(err) => match err {
+                error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized().into()),
+                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+            },
+        }),
+    )
 }
 
 fn authenticate_user(
