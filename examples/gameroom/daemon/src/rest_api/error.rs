@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use diesel;
 use std::error::Error;
 use std::fmt;
 
@@ -46,13 +47,13 @@ impl From<std::io::Error> for RestApiServerError {
 
 #[derive(Debug)]
 pub enum RestApiResponseError {
-    DatabaseError(Box<dyn Error>),
+    DatabaseError(String),
 }
 
 impl Error for RestApiResponseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            RestApiResponseError::DatabaseError(err) => Some(&**err),
+            RestApiResponseError::DatabaseError(_) => None,
         }
     }
 }
@@ -67,6 +68,12 @@ impl fmt::Display for RestApiResponseError {
 
 impl From<DatabaseError> for RestApiResponseError {
     fn from(err: DatabaseError) -> RestApiResponseError {
-        RestApiResponseError::DatabaseError(Box::new(err))
+        RestApiResponseError::DatabaseError(err.to_string())
+    }
+}
+
+impl From<diesel::result::Error> for RestApiResponseError {
+    fn from(err: diesel::result::Error) -> Self {
+        RestApiResponseError::DatabaseError(err.to_string())
     }
 }

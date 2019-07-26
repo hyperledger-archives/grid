@@ -18,7 +18,7 @@ mod routes;
 use actix_web::{client::Client, web, App, HttpServer, Result};
 use gameroom_database::ConnectionPool;
 
-pub use error::RestApiServerError;
+pub use error::{RestApiResponseError, RestApiServerError};
 use routes::index;
 
 pub fn run(
