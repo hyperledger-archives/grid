@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod authenticate;
 mod gameroom;
 mod node;
 
+pub use authenticate::*;
 pub use gameroom::*;
 pub use node::*;
 
@@ -36,7 +38,3 @@ const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b']')
     .add(b':')
     .add(b',');
-
-pub fn index() -> &'static str {
-    "Hello world!"
-}

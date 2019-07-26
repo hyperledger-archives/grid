@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use bcrypt::BcryptError;
 use diesel;
 use std::error::Error;
 use std::fmt;
@@ -84,5 +85,11 @@ impl From<DatabaseError> for RestApiResponseError {
 impl From<diesel::result::Error> for RestApiResponseError {
     fn from(err: diesel::result::Error) -> Self {
         RestApiResponseError::DatabaseError(err.to_string())
+    }
+}
+
+impl From<BcryptError> for RestApiResponseError {
+    fn from(err: BcryptError) -> Self {
+        RestApiResponseError::InternalError(err.to_string())
     }
 }
