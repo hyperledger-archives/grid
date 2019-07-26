@@ -1,6 +1,7 @@
 # Exclude IDE and Editor files
 /.idea/
 *.sublime*
+*.vscode*
 
 # Rust
 cli/Cargo.lock
