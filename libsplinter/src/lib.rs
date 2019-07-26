@@ -56,6 +56,7 @@ pub mod mesh;
 pub mod network;
 pub mod node_registry;
 pub mod protos;
+pub mod rest_api;
 pub mod service;
 pub mod signing;
 pub mod storage;

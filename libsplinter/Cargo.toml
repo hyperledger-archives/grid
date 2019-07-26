@@ -23,6 +23,11 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
+actix = "0.8"
+actix-web = "1.0"
+actix-service = "0.4"
+actix-http = "0.2"
+futures = "0.1"
 atomicwrites = "0.2"
 log = "0.3.0"
 byteorder = "1"
