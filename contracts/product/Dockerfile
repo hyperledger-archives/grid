@@ -22,21 +22,21 @@ RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/ap
  && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
  || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
  && apt-get update \
-    && apt-get install -y -q \
-        build-essential \
-        curl \
-        gcc \
-        g++ \
-        libpq-dev \
-        libssl-dev \
-        libsasl2-dev \
-        libzmq3-dev \
-        openssl \
-        pkg-config \
-        sabre-cli \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y -q \
+    build-essential \
+    curl \
+    gcc \
+    g++ \
+    libpq-dev \
+    libssl-dev \
+    libsasl2-dev \
+    libzmq3-dev \
+    openssl \
+    pkg-config \
+    sabre-cli \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
@@ -46,33 +46,41 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && rustup-init -y
 
 RUN rustup update \
- && rustup default \
- && rustup target add wasm32-unknown-unknown --toolchain stable
+ && rustup target add wasm32-unknown-unknown
 
 # Install protoc
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
  && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
  && rm protoc-3.7.1-linux-x86_64.zip
 
-COPY ./sdk /sdk
+RUN mkdir /build
 
+# Copy grid sdk dependency
+COPY sdk/ /build/sdk/
+
+# Create empty cargo project
+WORKDIR /build
 RUN mkdir contracts \
    && USER=root cargo new --bin contracts/product
-WORKDIR /contracts/product
 
-# Build TP with dummy source in order to cache dependencies in Docker image.
-COPY ./contracts/product/Cargo.toml ./Cargo.toml
+# Copy over Cargo.toml file
+COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/contracts/product
 RUN cargo build --release
 
-COPY contracts/product/Cargo.toml contracts/product/Cargo.lock* ./
-RUN cargo build
-
+# Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-COPY ./contracts/product/src ./src
-
 RUN rm ./target/release/grid-product-tp* ./target/release/deps/grid_product*
+
+# Copy over source files
+COPY contracts/product/src /build/contracts/product/src
+
+# Build the contract
 RUN cargo build --target wasm32-unknown-unknown --release
 
-COPY ./contracts/product/product.yaml ./product.yaml
+# Copy the contract definition
+COPY contracts/product/product.yaml /build/contracts/product/product.yaml
 
 ENTRYPOINT []
