@@ -49,10 +49,10 @@ RUN rustup update \
  && rustup default \
  && rustup target add wasm32-unknown-unknown --toolchain stable
 
-# For Building Protobufs
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
-    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.5.1-linux-x86_64.zip
+# Install protoc
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+ && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+ && rm protoc-3.7.1-linux-x86_64.zip
 
 COPY ./sdk /sdk
 
