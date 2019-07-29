@@ -150,6 +150,9 @@ pub enum ServiceError {
     UnableToHandleMessage(Box<dyn Error + Send>),
     /// Returned if an error occurs during the sending of an outbound message
     UnableToSendMessage(Box<ServiceSendError>),
+
+    /// Returned handle is called when not yet registered.
+    NotStarted,
 }
 
 impl Error for ServiceError {
@@ -158,6 +161,7 @@ impl Error for ServiceError {
             ServiceError::InvalidMessageFormat(err) => Some(&**err),
             ServiceError::UnableToHandleMessage(err) => Some(&**err),
             ServiceError::UnableToSendMessage(err) => Some(err),
+            ServiceError::NotStarted => None,
         }
     }
 }
@@ -174,6 +178,7 @@ impl std::fmt::Display for ServiceError {
             ServiceError::UnableToSendMessage(ref err) => {
                 write!(f, "unable to send message: {}", err)
             }
+            ServiceError::NotStarted => f.write_str("service not started"),
         }
     }
 }
