@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
-use url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
 
 type Filter = HashMap<String, (String, String)>;
 

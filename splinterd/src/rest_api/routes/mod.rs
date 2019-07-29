@@ -17,10 +17,25 @@ mod node;
 mod status;
 
 pub use node::*;
+use percent_encoding::{AsciiSet, CONTROLS};
 pub use status::*;
 
 pub const DEFAULT_LIMIT: usize = 100;
 pub const DEFAULT_OFFSET: usize = 0;
+const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'<')
+    .add(b'>')
+    .add(b'`')
+    .add(b'=')
+    .add(b'!')
+    .add(b'{')
+    .add(b'}')
+    .add(b'[')
+    .add(b']')
+    .add(b':')
+    .add(b',');
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Paging {
