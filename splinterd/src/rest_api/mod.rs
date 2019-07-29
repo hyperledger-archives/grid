@@ -58,10 +58,10 @@ pub fn run(
                     .service(routes::get_status)
                     .service(routes::get_openapi)
                     .service(
-                        web::resource("/node/{identity}")
+                        web::resource("/nodes/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),
                     )
-                    .service(web::resource("/node").route(web::get().to_async(routes::list_nodes)))
+                    .service(web::resource("/nodes").route(web::get().to_async(routes::list_nodes)))
             })
             .bind(bind_url)?
             .disable_signals()
