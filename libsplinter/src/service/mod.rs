@@ -17,7 +17,9 @@ mod processor;
 mod registry;
 mod sender;
 
+pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
+pub use processor::ShutdownHandle;
 
 use crate::service::error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
