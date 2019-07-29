@@ -718,8 +718,7 @@ pub mod tests {
     // Service that can be used for testing a standard service's functionality
     struct MockService {
         service_id: String,
-        family_name: String,
-        family_versions: Vec<String>,
+        service_type: String,
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
     }
 
@@ -727,8 +726,7 @@ pub mod tests {
         pub fn new() -> Self {
             MockService {
                 service_id: "mock_service".to_string(),
-                family_name: "mock".to_string(),
-                family_versions: vec!["0.1".to_string()],
+                service_type: "mock".to_string(),
                 network_sender: None,
             }
         }
@@ -741,13 +739,8 @@ pub mod tests {
         }
 
         /// This service's message family
-        fn family_name(&self) -> &str {
-            &self.family_name
-        }
-
-        /// This service's supported message versions
-        fn family_versions(&self) -> &[String] {
-            &self.family_versions
+        fn service_type(&self) -> &str {
+            &self.service_type
         }
 
         /// Starts the service
@@ -812,8 +805,7 @@ pub mod tests {
     // Service that can be used for testing a Admin service's functionality
     struct MockAdminService {
         service_id: String,
-        family_name: String,
-        family_versions: Vec<String>,
+        service_type: String,
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
     }
 
@@ -821,8 +813,7 @@ pub mod tests {
         pub fn new() -> Self {
             MockAdminService {
                 service_id: "mock_service".to_string(),
-                family_name: "mock".to_string(),
-                family_versions: vec!["0.1".to_string()],
+                service_type: "mock".to_string(),
                 network_sender: None,
             }
         }
@@ -835,13 +826,8 @@ pub mod tests {
         }
 
         /// This service's message family
-        fn family_name(&self) -> &str {
-            &self.family_name
-        }
-
-        /// This service's supported message versions
-        fn family_versions(&self) -> &[String] {
-            &self.family_versions
+        fn service_type(&self) -> &str {
+            &self.service_type
         }
 
         /// Starts the service

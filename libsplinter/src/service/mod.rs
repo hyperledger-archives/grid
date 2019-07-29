@@ -67,11 +67,8 @@ pub trait Service: Send {
     /// This service's id
     fn service_id(&self) -> &str;
 
-    /// This service's message family
-    fn family_name(&self) -> &str;
-
-    /// This service's supported message versions
-    fn family_versions(&self) -> &[String];
+    /// This service's type
+    fn service_type(&self) -> &str;
 
     /// Starts the service
     fn start(
