@@ -21,6 +21,7 @@ use crate::error::ConfigurationError;
 pub struct GameroomConfig {
     rest_api_endpoint: String,
     database_url: String,
+    splinterd_url: String,
 }
 
 impl GameroomConfig {
@@ -30,11 +31,16 @@ impl GameroomConfig {
     pub fn database_url(&self) -> &str {
         &self.database_url
     }
+
+    pub fn splinterd_url(&self) -> &str {
+        &self.splinterd_url
+    }
 }
 
 pub struct GameroomConfigBuilder {
     rest_api_endpoint: Option<String>,
     database_url: Option<String>,
+    splinterd_url: Option<String>,
 }
 
 impl Default for GameroomConfigBuilder {
@@ -44,6 +50,7 @@ impl Default for GameroomConfigBuilder {
             database_url: Some(
                 "postgres://gameroom:gameroom_example@postgres:5432/gameroom".to_owned(),
             ),
+            splinterd_url: Some("http://127.0.0.1:8080".to_owned()),
         }
     }
 }
@@ -60,6 +67,11 @@ impl GameroomConfigBuilder {
                 .value_of("database_url")
                 .map(ToOwned::to_owned)
                 .or_else(|| self.database_url.take()),
+
+            splinterd_url: matches
+                .value_of("splinterd_url")
+                .map(ToOwned::to_owned)
+                .or_else(|| self.splinterd_url.take()),
         }
     }
 
@@ -73,6 +85,10 @@ impl GameroomConfigBuilder {
                 .database_url
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("database_url".to_owned()))?,
+            splinterd_url: self
+                .splinterd_url
+                .take()
+                .ok_or_else(|| ConfigurationError::MissingValue("splinterd_url".to_owned()))?,
         })
     }
 }

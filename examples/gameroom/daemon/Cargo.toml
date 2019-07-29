@@ -27,6 +27,15 @@ gameroom-database = { path = "../database" }
 log = "0.4"
 log4rs = "0.8"
 simple_logger = "1.0"
+libsplinter = { path = "../../../libsplinter" }
+futures = "0.1"
+serde_json = "1.0"
+serde = "1.0"
+serde_derive = "1.0"
+percent-encoding = "2.0"
+
+[features]
+test-node-endpoint = []
 
 [[bin]]
 name = "gameroomd"

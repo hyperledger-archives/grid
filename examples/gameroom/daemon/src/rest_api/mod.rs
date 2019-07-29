@@ -15,20 +15,30 @@
 mod error;
 mod routes;
 
-use actix_web::{web, App, HttpServer, Result};
+use actix_web::{client::Client, web, App, HttpServer, Result};
 use gameroom_database::ConnectionPool;
 
 pub use error::RestApiServerError;
 use routes::index;
 
-pub fn run(bind_url: &str, database_connection: ConnectionPool) -> Result<(), RestApiServerError> {
+pub fn run(
+    bind_url: &str,
+    splinterd_url: &str,
+    database_connection: ConnectionPool,
+) -> Result<(), RestApiServerError> {
     let bind_url = bind_url.to_owned();
+    let splinterd_url = splinterd_url.to_owned();
+
     let sys = actix::System::new("Gameroom-Rest-API");
 
     HttpServer::new(move || {
         App::new()
             .data(database_connection.clone())
+            .data((Client::new(), splinterd_url.to_owned()))
             .service(web::resource("/").to(index))
+            .service(
+                web::resource("/nodes/{identity}").route(web::get().to_async(routes::fetch_node)),
+            )
     })
     .bind(bind_url)?
     .start();

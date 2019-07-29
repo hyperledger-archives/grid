@@ -22,6 +22,9 @@ RUN apt-get update \
     libpq-dev \
     libssl-dev \
     libzmq3-dev \
+    openssl \
+    pkg-config \
+    unzip \
     postgresql-client \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
@@ -29,7 +32,17 @@ RUN apt-get update \
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
-COPY . /examples/gameroom
+# For Building Protobufs
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
+    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.5.1-linux-x86_64.zip
+
+# Copy over libsplinter, protos and create the example folder, for the
+# relative dependencies
+COPY ./protos /protos
+COPY ./libsplinter /libsplinter
+
+COPY /examples/gameroom /examples/gameroom
 
 WORKDIR /examples/gameroom/daemon
 RUN cargo build
