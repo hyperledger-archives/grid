@@ -757,7 +757,7 @@ pub mod tests {
 
         /// Stops the service
         fn stop(
-            &self,
+            &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
             service_registry
@@ -844,7 +844,7 @@ pub mod tests {
 
         /// Stops the service
         fn stop(
-            &self,
+            &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
             service_registry

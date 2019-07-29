@@ -77,7 +77,10 @@ pub trait Service: Send {
     ) -> Result<(), ServiceStartError>;
 
     /// Stops Starts the service
-    fn stop(&self, service_registry: &dyn ServiceNetworkRegistry) -> Result<(), ServiceStopError>;
+    fn stop(
+        &mut self,
+        service_registry: &dyn ServiceNetworkRegistry,
+    ) -> Result<(), ServiceStopError>;
 
     /// Clean-up any resources before the service is removed.
     /// Consumes the service (which, given the use of dyn traits,
