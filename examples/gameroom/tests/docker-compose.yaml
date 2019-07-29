@@ -1,0 +1,55 @@
+# Copyright 2019 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless uired by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: '3'
+
+services:
+
+  gameroomd-integration-test:
+      image: gameroomd-integration-test
+      build:
+        context: ../../..
+        dockerfile: examples/gameroom/tests/Dockerfile
+      volumes:
+          - ../../..:/project/splinter
+      expose:
+        - 8002
+      ports:
+        - "8002:8002"
+      command: |
+        bash -c "
+           cd examples/gameroom/daemon
+           cargo test --features test-node-endpoint
+        "
+
+  splinterd-node:
+    image: spliterd-node
+    expose:
+      - 8080
+      - 8043
+      - 8945
+      - 8085
+    ports:
+      - 8090:8085
+    volumes:
+      - .:/project/tests
+    build:
+      context: ../../..
+      dockerfile: splinterd/Dockerfile
+    entrypoint: |
+      bash -c "
+      pwd
+      ls project/splinter/examples/gameroom/tests
+        ./splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
+      "
