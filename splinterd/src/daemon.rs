@@ -16,9 +16,9 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
-use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
-use crate::rest_api::{self, error::RestApiServerError};
 use crossbeam_channel;
+use protobuf::Message;
+
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
@@ -46,7 +46,9 @@ use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{AcceptError, ConnectError, Incoming, ListenError, Transport};
-use protobuf::Message;
+
+use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
+use crate::rest_api::{self, error::RestApiServerError};
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
