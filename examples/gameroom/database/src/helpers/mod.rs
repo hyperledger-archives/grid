@@ -14,4 +14,4 @@
 
 mod gameroom_user;
 
-pub use gameroom_user::fetch_user_by_email;
+pub use gameroom_user::{fetch_user_by_email, insert_user};
