@@ -15,6 +15,26 @@
 mod node;
 
 pub use node::*;
+
+use percent_encoding::{AsciiSet, CONTROLS};
+
+pub const DEFAULT_LIMIT: usize = 100;
+pub const DEFAULT_OFFSET: usize = 0;
+const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'<')
+    .add(b'>')
+    .add(b'`')
+    .add(b'=')
+    .add(b'!')
+    .add(b'{')
+    .add(b'}')
+    .add(b'[')
+    .add(b']')
+    .add(b':')
+    .add(b',');
+
 pub fn index() -> &'static str {
     "Hello world!"
 }
