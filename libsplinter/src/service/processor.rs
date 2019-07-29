@@ -18,8 +18,7 @@ use protobuf::Message;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
-use std::thread;
-use std::thread::JoinHandle;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use crate::channel;
@@ -194,7 +193,15 @@ impl ServiceProcessor {
     /// node and route it to a running service.
     ///
     /// Returns a ShutdownHandle and join_handles so the service can be properly shutdown.
-    pub fn start(self) -> Result<ShutdownHandle, ServiceProcessorError> {
+    pub fn start(
+        self,
+    ) -> Result<
+        (
+            ShutdownHandle,
+            JoinHandles<Result<(), ServiceProcessorError>>,
+        ),
+        ServiceProcessorError,
+    > {
         // Starts the authorization process with the splinter node
         // If running over inproc connection, this is the only authroization message required
         let connect_request = create_connect_request()
@@ -402,44 +409,44 @@ impl ServiceProcessor {
             Ok(())
         });
 
-        Ok(ShutdownHandle {
-            do_shutdown,
-            incoming_join_handle,
-            outgoing_join_handle,
-            inbound_join_handle,
-        })
+        Ok((
+            ShutdownHandle { do_shutdown },
+            JoinHandles::new(vec![
+                incoming_join_handle,
+                outgoing_join_handle,
+                inbound_join_handle,
+            ]),
+        ))
     }
 }
 
 pub struct ShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), ServiceProcessorError>>,
-    incoming_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
-    outgoing_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
-    inbound_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
+    do_shutdown: Box<dyn Fn() -> Result<(), ServiceProcessorError> + Send>,
+}
+
+pub struct JoinHandles<T> {
+    join_handles: Vec<JoinHandle<T>>,
+}
+
+impl<T> JoinHandles<T> {
+    fn new(join_handles: Vec<JoinHandle<T>>) -> Self {
+        Self { join_handles }
+    }
+
+    pub fn join_all(self) -> thread::Result<Vec<T>> {
+        let mut res = Vec::with_capacity(self.join_handles.len());
+
+        for jh in self.join_handles.into_iter() {
+            res.push(jh.join()?);
+        }
+
+        Ok(res)
+    }
 }
 
 impl ShutdownHandle {
     pub fn shutdown(self) -> Result<(), ServiceProcessorError> {
         (*self.do_shutdown)()?;
-
-        self.incoming_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown incoming thread: {:?}",
-                err
-            ))
-        })??;
-        self.outgoing_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown outgoing thread: {:?}",
-                err
-            ))
-        })??;
-        self.inbound_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown inbound thread: {:?}",
-                err
-            ))
-        })??;
 
         Ok(())
     }
