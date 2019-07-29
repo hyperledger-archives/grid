@@ -47,6 +47,7 @@ macro_rules! mutex_lock_unwrap {
     };
 }
 
+pub mod admin;
 pub mod channel;
 pub mod circuit;
 pub mod collections;
