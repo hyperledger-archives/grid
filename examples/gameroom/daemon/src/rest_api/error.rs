@@ -50,6 +50,7 @@ pub enum RestApiResponseError {
     DatabaseError(String),
     InternalError(String),
     Unauthorized,
+    BadRequest(String),
 }
 
 impl Error for RestApiResponseError {
@@ -58,6 +59,7 @@ impl Error for RestApiResponseError {
             RestApiResponseError::DatabaseError(_) => None,
             RestApiResponseError::InternalError(_) => None,
             RestApiResponseError::Unauthorized => None,
+            RestApiResponseError::BadRequest(_) => None,
         }
     }
 }
@@ -68,6 +70,7 @@ impl fmt::Display for RestApiResponseError {
             RestApiResponseError::DatabaseError(e) => write!(f, "Database error: {}", e),
             RestApiResponseError::InternalError(e) => write!(f, "Internal error occurred: {}", e),
             RestApiResponseError::Unauthorized => write!(f, "Unauthorized"),
+            RestApiResponseError::BadRequest(e) => write!(f, "Bad Request: {}", e),
         }
     }
 }
