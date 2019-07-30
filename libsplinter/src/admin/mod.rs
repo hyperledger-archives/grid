@@ -35,7 +35,7 @@ use serde_json;
 pub struct AdminService {
     service_id: String,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    proposal_store: Arc<Mutex<CircuitProposalStore>>,
+    admin_service_state: Arc<Mutex<AdminServiceState>>,
 }
 
 impl AdminService {
@@ -43,7 +43,7 @@ impl AdminService {
         Self {
             service_id: format!("admin::{}", node_id),
             network_sender: None,
-            proposal_store: Default::default(),
+            admin_service_state: Default::default(),
         }
     }
 }
@@ -104,12 +104,12 @@ impl Service for AdminService {
                 let mut create_request = envelope.take_circuit_create_request();
 
                 let proposed_circuit = create_request.take_circuit();
-                let mut proposal_store = self
-                    .proposal_store
+                let mut admin_service_state = self
+                    .admin_service_state
                     .lock()
                     .expect("the admin state lock was poisoned");
 
-                if proposal_store.has_proposal(proposed_circuit.get_circuit_id()) {
+                if admin_service_state.has_proposal(proposed_circuit.get_circuit_id()) {
                     info!(
                         "Ignoring duplicate create proposal of circuit {}",
                         proposed_circuit.get_circuit_id()
@@ -123,7 +123,7 @@ impl Service for AdminService {
                     proposal.set_circuit_hash(sha256(&proposed_circuit)?);
                     proposal.set_circuit_proposal(proposed_circuit);
 
-                    proposal_store.add_proposal(proposal);
+                    admin_service_state.add_proposal(proposal);
                 }
             }
             unknown_action => {
@@ -262,11 +262,11 @@ fn to_hex(bytes: &[u8]) -> String {
 }
 
 #[derive(Default)]
-struct CircuitProposalStore {
+struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
 }
 
-impl CircuitProposalStore {
+impl AdminServiceState {
     fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
         let circuit_id = circuit_proposal.get_circuit_id().to_string();
 
