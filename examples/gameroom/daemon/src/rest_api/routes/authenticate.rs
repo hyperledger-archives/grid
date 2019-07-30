@@ -13,9 +13,9 @@
 // limitations under the License.
 
 use actix_web::{error, web, Error, HttpResponse};
-use bcrypt::verify;
+use bcrypt::{hash, verify, DEFAULT_COST};
 use futures::Future;
-use gameroom_database::{helpers, ConnectionPool};
+use gameroom_database::{helpers, models::GameroomUser, ConnectionPool};
 use serde::Deserialize;
 
 use crate::rest_api::RestApiResponseError;
@@ -40,6 +40,38 @@ pub fn login(
             },
         }),
     )
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserCreate {
+    pub email: String,
+    pub hashed_password: String,
+    pub encrypted_private_key: String,
+    pub public_key: String,
+}
+
+fn create_user(
+    pool: web::Data<ConnectionPool>,
+    new_user: UserCreate,
+) -> Result<(), RestApiResponseError> {
+    if helpers::fetch_user_by_email(&*pool.get()?, &new_user.email)?.is_some() {
+        return Err(RestApiResponseError::BadRequest(
+            "User already exists".to_string(),
+        ));
+    } else {
+        let gameroom_user = GameroomUser {
+            public_key: new_user.public_key,
+            encrypted_private_key: new_user.encrypted_private_key,
+            email: new_user.email,
+            hashed_password: hash_password(&new_user.hashed_password)?,
+        };
+        helpers::insert_user(&*pool.get()?, gameroom_user)?
+    }
+    Ok(())
+}
+
+fn hash_password(password: &str) -> Result<String, RestApiResponseError> {
+    hash(password, DEFAULT_COST).map_err(RestApiResponseError::from)
 }
 
 fn authenticate_user(
