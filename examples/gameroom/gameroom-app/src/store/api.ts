@@ -64,7 +64,7 @@ export async function gameroomPropose(
 export async function listNodes(): Promise<Node[]> {
   try {
     const response = await gameroomAPI.get('/nodes');
-    return response.data as Node[];
+    return response.data.data as Node[];
   } catch (e) {
     alert(e);
   }
