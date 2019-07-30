@@ -16,20 +16,20 @@ FROM ubuntu:bionic as BUILDER
 
 # Install base dependencies
 RUN apt-get update \
-    && apt-get install -y -q \
-        build-essential \
-        curl \
-        gcc \
-        g++ \
-        libpq-dev \
-        libssl-dev \
-        libsasl2-dev \
-        libzmq3-dev \
-        openssl \
-        pkg-config \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y -q \
+    build-essential \
+    curl \
+    gcc \
+    g++ \
+    libpq-dev \
+    libssl-dev \
+    libsasl2-dev \
+    libzmq3-dev \
+    openssl \
+    pkg-config \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
@@ -38,40 +38,47 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
 
 # Install protoc
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
+ && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+ && rm protoc-3.7.1-linux-x86_64.zip
 
 ENV PATH=$PATH:/root/.cargo/bin
 
+RUN mkdir /build
+
 # Copy grid sdk dependency
-COPY ./sdk/ ../sdk/
+COPY sdk/ /build/sdk/
 
+# Create empty cargo projects
+WORKDIR /build
 RUN USER=root cargo new --bin daemon
-WORKDIR /daemon
-
-COPY ./daemon/Cargo.toml ./Cargo.toml
-RUN cargo build --release
-
-RUN rm src/*.rs
-COPY ./daemon/src ./src
-COPY ./daemon/migrations ./migrations
-COPY ./daemon/migrations ../daemon/migrations
-
-
-RUN rm ./target/release/gridd* ./target/release/deps/gridd*
-RUN cargo build --release
-
-WORKDIR ..
 RUN USER=root cargo new --bin cli
-WORKDIR /cli
 
-COPY ./cli/Cargo.toml ./Cargo.toml
+# Copy over Cargo.toml files
+COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY cli/Cargo.toml /build/cli/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/daemon
+RUN cargo build --release
+WORKDIR /build/cli
 RUN cargo build --release
 
-RUN rm src/*.rs
-COPY ./cli/src ./src
+# Remove the auto-generated .rs files and the built files
+WORKDIR /build
+RUN rm */src/*.rs
+RUN rm daemon/target/release/gridd* daemon/target/release/deps/gridd*
+RUN rm cli/target/release/grid* cli/target/release/deps/grid*
 
-RUN rm ./target/release/grid* ./target/release/deps/grid*
+# Copy over source files
+COPY sdk/src /build/sdk/src
+COPY daemon/src /build/daemon/src
+COPY daemon/migrations /build/daemon/migrations
+COPY cli/src /build/cli/src
+
+# Build the projects
+WORKDIR /build/daemon
+RUN cargo build --release
+WORKDIR /build/cli
 RUN cargo build --release
 
 # create the standalone image
@@ -82,8 +89,7 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /daemon/target/release/gridd /
-COPY --from=BUILDER /cli/target/release/grid /
+COPY --from=BUILDER /build/daemon/target/release/gridd /usr/sbin/gridd
+COPY --from=BUILDER /build/cli/target/release/grid /usr/bin/grid
 
-
-CMD ["/gridd"]
+CMD ["gridd"]
