@@ -48,12 +48,14 @@ impl From<std::io::Error> for RestApiServerError {
 #[derive(Debug)]
 pub enum RestApiResponseError {
     DatabaseError(String),
+    InternalError(String),
 }
 
 impl Error for RestApiResponseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             RestApiResponseError::DatabaseError(_) => None,
+            RestApiResponseError::InternalError(_) => None,
         }
     }
 }
@@ -62,6 +64,7 @@ impl fmt::Display for RestApiResponseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RestApiResponseError::DatabaseError(e) => write!(f, "Database error: {}", e),
+            RestApiResponseError::InternalError(e) => write!(f, "Internal error occurred: {}", e),
         }
     }
 }
