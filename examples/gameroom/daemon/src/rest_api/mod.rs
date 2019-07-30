@@ -42,9 +42,11 @@ pub fn run(
                     .route(web::post().to_async(routes::propose_gameroom)),
             )
             .service(
-                web::scope("/users").service(
-                    web::resource("/authenticate").route(web::post().to_async(routes::login)),
-                ),
+                web::scope("/users")
+                    .service(web::resource("").route(web::post().to_async(routes::register)))
+                    .service(
+                        web::resource("/authenticate").route(web::post().to_async(routes::login)),
+                    ),
             )
     })
     .bind(bind_url)?

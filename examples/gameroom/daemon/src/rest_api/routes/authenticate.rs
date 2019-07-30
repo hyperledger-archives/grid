@@ -43,11 +43,29 @@ pub fn login(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserCreate {
     pub email: String,
     pub hashed_password: String,
     pub encrypted_private_key: String,
     pub public_key: String,
+}
+
+pub fn register(
+    new_user: web::Json<UserCreate>,
+    pool: web::Data<ConnectionPool>,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || create_user(pool, new_user.into_inner())).then(|res| match res {
+            Ok(()) => Ok(HttpResponse::Ok().finish()),
+            Err(err) => match err {
+                error::BlockingError::Error(err) => {
+                    Ok(HttpResponse::BadRequest().json(err.to_string()))
+                }
+                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+            },
+        }),
+    )
 }
 
 fn create_user(
