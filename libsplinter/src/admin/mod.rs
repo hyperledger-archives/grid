@@ -14,11 +14,13 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Write;
 
-use protobuf;
+use openssl::hash::{hash, MessageDigest};
+use protobuf::{self, Message};
 
 use crate::protos::admin::{
-    CircuitManagementPayload, CircuitManagementPayload_Action, CircuitProposal,
+    Circuit, CircuitManagementPayload, CircuitManagementPayload_Action, CircuitProposal,
     CircuitProposal_ProposalType,
 };
 use crate::service::{
@@ -111,6 +113,7 @@ impl Service for AdminService {
                     let mut proposal = CircuitProposal::new();
                     proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
                     proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
+                    proposal.set_circuit_hash(sha256(&proposed_circuit)?);
                     proposal.set_circuit_proposal(proposed_circuit);
 
                     proposal_store.add_proposal(proposal);
@@ -123,6 +126,24 @@ impl Service for AdminService {
 
         Ok(())
     }
+}
+
+fn sha256(circuit: &Circuit) -> Result<String, ServiceError> {
+    let bytes = circuit
+        .write_to_bytes()
+        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+    hash(MessageDigest::sha256(), &bytes)
+        .map(|digest| to_hex(&*digest))
+        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    let mut buf = String::new();
+    for b in bytes {
+        write!(&mut buf, "{:0x}", b).expect("Unable to write to string");
+    }
+
+    buf
 }
 
 #[derive(Default)]
