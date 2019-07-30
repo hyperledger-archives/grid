@@ -21,6 +21,7 @@ edition = "2018"
 [dependencies]
 actix = "0.8"
 actix-web = "1.0"
+bcrypt = "0.5"
 clap = "2"
 ctrlc = "3.0"
 diesel = { version = "1.0.0", features = ["serde_json"] }
