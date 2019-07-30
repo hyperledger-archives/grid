@@ -57,7 +57,7 @@ services:
         expose:
           - 8000
         ports:
-          - "8001:8000"
+          - "8000:8000"
         command: |
           bash -c "
             # we need to wait for the db to have started.
@@ -128,7 +128,7 @@ services:
         expose:
           - 8000
         ports:
-          - "8000:8000"
+          - "8001:8000"
         command: |
           bash -c "
             # we need to wait for the db to have started.

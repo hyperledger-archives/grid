@@ -28,6 +28,16 @@ module.exports = {
       }
     }
   },
+  devServer: {
+    proxy: {
+      '^/api': {
+        target: 'http://localhost:8000',
+        pathRewrite: {'^/api': ''},
+        ws: true,
+        changeOrigin: true
+      },
+    },
+  },
   transpileDependencies: ['vuex-module-decorators'],
   configureWebpack: {
     resolve: {
