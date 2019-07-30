@@ -16,6 +16,8 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
 
 mod config;
 mod error;
@@ -39,6 +41,7 @@ fn run() -> Result<(), GameroomDaemonError> {
         (@arg verbose: -v +multiple "Log verbosely")
         (@arg database_url: --("database-url") +takes_value "Database connection for Gameroom rest API")
         (@arg bind: -b --bind +takes_value "connection endpoint for Gameroom rest API")
+        (@arg splinterd_url: --("splinterd-url") +takes_value "connection endpoint to SplinterD rest API")
     )
     .get_matches();
 
@@ -55,7 +58,11 @@ fn run() -> Result<(), GameroomDaemonError> {
     let connection_pool: ConnectionPool =
         gameroom_database::create_connection_pool(config.database_url())?;
 
-    rest_api::run(config.rest_api_endpoint(), connection_pool.clone())?;
+    rest_api::run(
+        config.rest_api_endpoint(),
+        config.splinterd_url(),
+        connection_pool.clone(),
+    )?;
 
     Ok(())
 }

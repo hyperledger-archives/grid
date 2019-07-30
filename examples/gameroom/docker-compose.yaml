@@ -18,63 +18,146 @@ volumes:
   cargo-registry:
 
 services:
-  gameroom-app-acme:
-    build:
-      context: ./gameroom-app
-      args:
-        VUE_APP_BRAND: "acme"
-    image: gameroom-app-acme
-    container_name: gameroom-app-acme
-    expose:
-      - 80
-    ports:
-      - '8080:80'
 
-  gameroom-app-bubba:
-    build:
-      context: ./gameroom-app
-      args:
-        VUE_APP_BRAND: "bubba"
-    image: gameroom-app-bubba
-    container_name: gameroom-app-bubba
-    expose:
-      - 80
-    ports:
-      - '8081:80'
-
-  postgres:
-    image: postgres:alpine
-    restart: always
-    expose:
-      - 5432
-    ports:
-        - "5432:5432"
-    environment:
-      POSTGRES_USER: gameroom
-      POSTGRES_PASSWORD: gameroom_example
-      POSTGRES_DB: gameroom
-    volumes:
-      - "./database/tables:/docker-entrypoint-initdb.d"
-
-  gameroomd:
-      image: gameroomd
-      build:
-        context: .
-        dockerfile: ./daemon/Dockerfile
-      volumes:
-        - cargo-registry:/root/.cargo/registry
+    db-acme:
+      image: postgres:alpine
+      container_name: db-acme
+      restart: always
       expose:
-        - 8000
+        - 5432
       ports:
-        - "8000:8000"
-      command: |
-        bash -c "
-          # we need to wait for the db to have started.
-          until PGPASSWORD=gameroom_example psql -h postgres -U gameroom -c '\q'; do
-              >&2 echo \"Database is unavailable - sleeping\"
-              sleep 1
-          done
+          - "5432:5432"
+      environment:
+        POSTGRES_USER: gameroom
+        POSTGRES_PASSWORD: gameroom_example
+        POSTGRES_DB: gameroom
+      volumes:
+        - "./database/tables:/docker-entrypoint-initdb.d"
 
-          target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@postgres:5432/gameroom \
-            -b gameroomd:8000
+    gameroom-app-acme:
+      build:
+        context: ./gameroom-app
+        args:
+          VUE_APP_BRAND: "acme"
+      image: gameroom-app-acme
+      container_name: gameroom-app-acme
+      expose:
+        - 80
+      ports:
+        - '8080:80'
+
+    gameroomd-acme:
+        image: gameroomd
+        container_name: gameroomd-acme
+        build:
+          context: ../..
+          dockerfile: ./examples/gameroom/daemon/Dockerfile
+        volumes:
+          - cargo-registry:/root/.cargo/registry
+        expose:
+          - 8000
+        ports:
+          - "8001:8000"
+        command: |
+          bash -c "
+            # we need to wait for the db to have started.
+            until PGPASSWORD=gameroom_example psql -h db-acme -U gameroom -c '\q'; do
+                >&2 echo \"Database is unavailable - sleeping\"
+                sleep 1
+            done
+
+           ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-acme:5432/gameroom \
+              -b gameroomd-acme:8000 --splinterd-url http://splinterd-node-acme:8085
+          "
+    splinterd-node-acme:
+      image: spliterd-node
+      container_name: splinterd-node-acme
+      expose:
+        - 8080
+        - 8043
+        - 8945
+        - 8085
+      ports:
+        - 8088:8085
+      build:
+        context: ../..
+        dockerfile: splinterd/Dockerfile
+      volumes:
+        - ./splinterd-config:/configs
+        - ./node_registry:/node_registry
+      entrypoint: |
+        bash -c "
+          ./splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv
+        "
+
+    db-bubba:
+      image: postgres:alpine
+      container_name: db-bubba
+      restart: always
+      expose:
+        - 5432
+      ports:
+          - "5433:5432"
+      environment:
+        POSTGRES_USER: gameroom
+        POSTGRES_PASSWORD: gameroom_example
+        POSTGRES_DB: gameroom
+      volumes:
+        - "./database/tables:/docker-entrypoint-initdb.d"
+
+    gameroom-app-bubba:
+      build:
+        context: ./gameroom-app
+        args:
+          VUE_APP_BRAND: "bubba"
+      image: gameroom-app-bubba
+      container_name: gameroom-app-bubba
+      expose:
+        - 80
+      ports:
+        - '8081:80'
+
+    gameroomd-bubba:
+        image: gameroomd
+        container_name: gameroomd-bubba
+        build:
+          context: ../..
+          dockerfile: ./examples/gameroom/daemon/Dockerfile
+        volumes:
+          - cargo-registry:/root/.cargo/registry
+        expose:
+          - 8000
+        ports:
+          - "8000:8000"
+        command: |
+          bash -c "
+            # we need to wait for the db to have started.
+            until PGPASSWORD=gameroom_example psql -h db-bubba -U gameroom -c '\q'; do
+                >&2 echo \"Database is unavailable - sleeping\"
+                sleep 1
+            done
+
+           ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-bubba:5432/gameroom \
+              -b gameroomd-bubba:8000 --splinterd-url http://splinterd-node-bubba:8085
+          "
+
+    splinterd-node-bubba:
+      image: spliterd-node
+      container_name: splinterd-node-bubba
+      expose:
+        - 8080
+        - 8043
+        - 8945
+        - 8085
+      ports:
+        - 8089:8085
+      build:
+        context: ../..
+        dockerfile: splinterd/Dockerfile
+      volumes:
+        - ./splinterd-config:/configs
+        - ./node_registry:/node_registry
+      entrypoint: |
+        bash -c "
+          ./splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv
         "

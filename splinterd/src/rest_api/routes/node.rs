@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
-use url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
 
 type Filter = HashMap<String, (String, String)>;
 
@@ -171,7 +171,7 @@ mod tests {
     };
 
     #[test]
-    /// Tests a GET /node/{identity} request returns the expected node.
+    /// Tests a GET /nodes/{identity} request returns the expected node.
     fn test_fetch_node_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path);
@@ -181,13 +181,12 @@ mod tests {
                     .expect("Error creating YamlNodeRegistry"),
             );
 
-            let mut app =
-                test::init_service(App::new().data(node_registry.clone()).service(
-                    web::resource("/node/{identity}").route(web::get().to_async(fetch_node)),
-                ));
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node)),
+            ));
 
             let req = test::TestRequest::get()
-                .uri(&format!("/node/{}", get_node_1().identity))
+                .uri(&format!("/nodes/{}", get_node_1().identity))
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
@@ -199,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /node/{identity} request returns NotFound when an invalid identity is passed
+    /// Tests a GET /nodes/{identity} request returns NotFound when an invalid identity is passed
     fn test_fetch_node_not_found() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path);
@@ -209,13 +208,12 @@ mod tests {
                     .expect("Error creating YamlNodeRegistry"),
             );
 
-            let mut app =
-                test::init_service(App::new().data(node_registry.clone()).service(
-                    web::resource("/node/{identity}").route(web::get().to_async(fetch_node)),
-                ));
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node)),
+            ));
 
             let req = test::TestRequest::get()
-                .uri("/node/Node-not-valid")
+                .uri("/nodes/Node-not-valid")
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
@@ -225,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /node request with no filters returns the expected nodes.
+    /// Tests a GET /nodes request with no filters returns the expected nodes.
     fn test_list_node_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path);
@@ -238,10 +236,10 @@ mod tests {
             let mut app = test::init_service(
                 App::new()
                     .data(node_registry.clone())
-                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
             );
 
-            let req = test::TestRequest::get().uri("/node").to_request();
+            let req = test::TestRequest::get().uri("/nodes").to_request();
 
             let resp = test::call_service(&mut app, req);
 
@@ -250,13 +248,13 @@ mod tests {
             assert_eq!(nodes.data, vec![get_node_1(), get_node_2()]);
             assert_eq!(
                 nodes.paging,
-                create_test_paging_response(0, 100, 0, 0, 0, 2, "/node?")
+                create_test_paging_response(0, 100, 0, 0, 0, 2, "/nodes?")
             )
         })
     }
 
     #[test]
-    /// Tests a GET /node request with filters returns the expected node.
+    /// Tests a GET /nodes request with filters returns the expected node.
     fn test_list_node_with_filters_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path);
@@ -269,7 +267,7 @@ mod tests {
             let mut app = test::init_service(
                 App::new()
                     .data(node_registry.clone())
-                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
             );
 
             let filter =
@@ -277,7 +275,7 @@ mod tests {
                     .to_string();
 
             let req = test::TestRequest::get()
-                .uri(&format!("/node?filter={}", filter))
+                .uri(&format!("/nodes?filter={}", filter))
                 .header(header::CONTENT_TYPE, "application/json")
                 .to_request();
 
@@ -286,7 +284,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             let nodes: ListNodesResponse = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
             assert_eq!(nodes.data, vec![get_node_1()]);
-            let link = format!("/node?filter={}&", filter);
+            let link = format!("/nodes?filter={}&", filter);
             assert_eq!(
                 nodes.paging,
                 create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
@@ -295,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /node request with invalid filter returns BadRequest response.
+    /// Tests a GET /nodes request with invalid filter returns BadRequest response.
     fn test_list_node_with_filters_bad_request() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path);
@@ -308,7 +306,7 @@ mod tests {
             let mut app = test::init_service(
                 App::new()
                     .data(node_registry.clone())
-                    .service(web::resource("/node").route(web::get().to_async(list_nodes))),
+                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
             );
 
             let filter =
@@ -316,7 +314,7 @@ mod tests {
                     .to_string();
 
             let req = test::TestRequest::get()
-                .uri(&format!("/node?filter={}", filter))
+                .uri(&format!("/nodes?filter={}", filter))
                 .header(header::CONTENT_TYPE, "application/json")
                 .to_request();
 

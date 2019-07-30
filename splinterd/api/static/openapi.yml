@@ -166,7 +166,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /node:
+  /nodes:
     get:
       tags:
           - Node Registry
@@ -216,8 +216,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-                    
-  /node/{identity}:
+
+  /nodes/{identity}:
       get:
         tags:
           - Node Registry
