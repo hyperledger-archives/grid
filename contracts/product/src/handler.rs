@@ -384,3 +384,693 @@ fn check_permission(
         Err(e) => Err(ApplyError::InvalidTransaction(format!("{}", e))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
+    use grid_sdk::protocol::pike::state::{
+        AgentBuilder, AgentListBuilder, KeyValueEntryBuilder, OrganizationBuilder,
+        OrganizationListBuilder,
+    };
+    use grid_sdk::protocol::product::payload::{
+        ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
+        ProductDeleteActionBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
+    };
+    use grid_sdk::protocol::product::state::{
+        Product, ProductBuilder, ProductListBuilder, ProductType,
+    };
+    use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
+    use grid_sdk::protos::IntoBytes;
+
+    use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    const AGENT_ORG_ID: &str = "test_org";
+    const PUBLIC_KEY: &str = "test_public_key";
+    const PRODUCT_ID: &str = "688955434684";
+    const PRODUCT_2_ID: &str = "9781981855728";
+
+    #[derive(Default, Debug)]
+    /// A MockTransactionContext that can be used to test ProductState
+    struct MockTransactionContext {
+        state: RefCell<HashMap<String, Vec<u8>>>,
+    }
+
+    impl TransactionContext for MockTransactionContext {
+        fn get_state_entries(
+            &self,
+            addresses: &[String],
+        ) -> Result<Vec<(String, Vec<u8>)>, ContextError> {
+            let mut results = Vec::new();
+            for addr in addresses {
+                let data = match self.state.borrow().get(addr) {
+                    Some(data) => data.clone(),
+                    None => Vec::new(),
+                };
+                results.push((addr.to_string(), data));
+            }
+            Ok(results)
+        }
+
+        fn set_state_entries(&self, entries: Vec<(String, Vec<u8>)>) -> Result<(), ContextError> {
+            for (addr, data) in entries {
+                self.state.borrow_mut().insert(addr, data);
+            }
+            Ok(())
+        }
+
+        /// this is not needed for these tests
+        fn delete_state_entries(&self, _addresses: &[String]) -> Result<Vec<String>, ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_receipt_data(&self, _data: &[u8]) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_event(
+            &self,
+            _event_type: String,
+            _attributes: Vec<(String, String)>,
+            _data: &[u8],
+        ) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+    }
+
+    impl MockTransactionContext {
+        fn add_agent(&self, public_key: &str) {
+            let builder = AgentBuilder::new();
+            let agent = builder
+                .with_org_id(AGENT_ORG_ID.to_string())
+                .with_public_key(public_key.to_string())
+                .with_active(true)
+                .with_roles(vec![
+                    "can_create_product".to_string(),
+                    "can_update_product".to_string(),
+                    "can_delete_product".to_string(),
+                ])
+                .build()
+                .unwrap();
+
+            let builder = AgentListBuilder::new();
+            let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = compute_agent_address(public_key);
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+
+        fn add_agent_without_roles(&self, public_key: &str) {
+            let builder = AgentBuilder::new();
+            let agent = builder
+                .with_org_id(AGENT_ORG_ID.to_string())
+                .with_public_key(public_key.to_string())
+                .with_active(true)
+                .with_roles(vec![])
+                .build()
+                .unwrap();
+
+            let builder = AgentListBuilder::new();
+            let agent_list = builder.with_agents(vec![agent.clone()]).build().unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = compute_agent_address(public_key);
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+
+        fn add_org(&self, org_id: &str) {
+            // Products can only be created when there is a gs1 prefix
+            // within the product organization's metadata
+            let builder = KeyValueEntryBuilder::new();
+            let key_value = builder
+                .with_key("gs1_company_prefixes".to_string())
+                .with_value("test_value".to_string())
+                .build()
+                .unwrap();
+
+            let builder = OrganizationBuilder::new();
+            let org = builder
+                .with_org_id(org_id.to_string())
+                .with_name("test_org_name".to_string())
+                .with_address("test_org_address".to_string())
+                .with_metadata(vec![key_value.clone()])
+                .build()
+                .unwrap();
+
+            let builder = OrganizationListBuilder::new();
+            let org_list = builder
+                .with_organizations(vec![org.clone()])
+                .build()
+                .unwrap();
+            let org_bytes = org_list.into_bytes().unwrap();
+            let org_address = compute_org_address(org_id);
+            self.set_state_entry(org_address, org_bytes).unwrap();
+        }
+
+        fn add_org_without_gs1_prefix(&self, org_id: &str) {
+            let builder = OrganizationBuilder::new();
+            let org = builder
+                .with_org_id(org_id.to_string())
+                .with_name("test_org_name".to_string())
+                .with_address("test_org_address".to_string())
+                .build()
+                .unwrap();
+
+            let builder = OrganizationListBuilder::new();
+            let org_list = builder
+                .with_organizations(vec![org.clone()])
+                .build()
+                .unwrap();
+            let org_bytes = org_list.into_bytes().unwrap();
+            let org_address = compute_org_address(org_id);
+            self.set_state_entry(org_address, org_bytes).unwrap();
+        }
+
+        fn add_product(&self, prod_id: &str) {
+            let product_list = ProductListBuilder::new()
+                .with_products(vec![make_product()])
+                .build()
+                .unwrap();
+            let product_bytes = product_list.into_bytes().unwrap();
+            let product_address = make_product_address(prod_id);
+            self.set_state_entry(product_address, product_bytes)
+                .unwrap();
+        }
+
+        fn add_products(&self, product_ids: &[&str]) {
+            let product_list = ProductListBuilder::new()
+                .with_products(make_products(product_ids))
+                .build()
+                .unwrap();
+            let product_list_bytes = product_list.into_bytes().unwrap();
+            let product_list_bytes_copy = product_list_bytes.clone();
+            let product_1_address = make_product_address(PRODUCT_ID);
+            let product_2_address = make_product_address(PRODUCT_2_ID);
+            self.set_state_entries(vec![
+                (product_1_address, product_list_bytes),
+                (product_2_address, product_list_bytes_copy),
+            ])
+            .unwrap();
+        }
+    }
+
+    #[test]
+    /// Test that if ProductCreationAction is valid an OK is returned and a new Product is added to state
+    fn test_create_product_handler_valid() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        assert!(transaction_handler
+            .create_product(
+                &product_create_action,
+                &mut state,
+                PUBLIC_KEY,
+                &perm_checker
+            )
+            .is_ok());
+
+        let product = state
+            .get_product(PRODUCT_ID)
+            .expect("Failed to fetch product")
+            .expect("No product found");
+
+        assert_eq!(product, make_product());
+    }
+
+    #[test]
+    /// Test that ProductCreationAction is invalid if the signer is not an Agent.
+    fn test_create_product_agent_does_not_exist() {
+        let transaction_context = MockTransactionContext::default();
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductCreationAction is invalid if the agent does not have can_create_product role
+    fn test_create_product_agent_without_roles() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent_without_roles(PUBLIC_KEY);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!(
+                "Agent should not have can_create_product role, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "The signer does not have the can_create_product permission: {}",
+                    PUBLIC_KEY
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductCreationAction is invalid if the agent's org does not exist.
+    fn test_create_product_org_does_not_exist() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!(
+                "Agent's organization should not exist, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "The Agent's organization does not exist: {}",
+                    PUBLIC_KEY
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductCreationAction is invalid if the agent's org does not contain the gs1 prefix.
+    fn test_create_product_org_without_gs1_prefix() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org_without_gs1_prefix(AGENT_ORG_ID);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker
+        ) {
+            Ok(()) => panic!("Agent's organization should not have a gs1 prefix key, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("The agents organization does not have the gs1_company_prefixes key in its metadata: []"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductCreationAction is invalid if the a product with the same id
+    /// already exists.
+    fn test_create_product_already_exist() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_product(PRODUCT_ID);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_create_action = make_product_create_action();
+
+        match transaction_handler.create_product(
+            &product_create_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!("Product should not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("Product already exists: {}", PRODUCT_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if ProductUpdateAction is valid an OK is returned and a Product is updated in state
+    fn test_update_product_handler_valid() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_product(PRODUCT_ID);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_update_action = make_product_update_action();
+
+        assert!(transaction_handler
+            .update_product(
+                &product_update_action,
+                &mut state,
+                PUBLIC_KEY,
+                &perm_checker,
+            )
+            .is_ok());
+
+        let product = state
+            .get_product(PRODUCT_ID)
+            .expect("Failed to fetch product")
+            .expect("No product found");
+
+        assert_eq!(product, make_updated_product());
+    }
+
+    #[test]
+    /// Test that ProductUpdateAction is invalid if the signer is not an Agent.
+    fn test_update_product_agent_does_not_exist() {
+        let transaction_context = MockTransactionContext::default();
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_update_action = make_product_update_action();
+
+        match transaction_handler.update_product(
+            &product_update_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!("Agent should not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("The signing Agent does not exist: {}", PUBLIC_KEY)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductUpdateAction is invalid if the agent does not have can_update_product role
+    fn test_update_product_agent_without_roles() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent_without_roles(PUBLIC_KEY);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_update_action = make_product_update_action();
+
+        match transaction_handler.update_product(
+            &product_update_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!(
+                "Agent should not have can_update_product role, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "The signer does not have the can_update_product permission: {}",
+                    PUBLIC_KEY
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductUpdateAction is invalid if there is no product to update
+    fn test_update_product_that_does_not_exist() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_update_action = make_product_update_action();
+
+        match transaction_handler.update_product(
+            &product_update_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!("Product should not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!("No product exists: {}", PRODUCT_ID)));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that if ProductDeleteAction is valid an OK is returned and a Product is deleted from state
+    fn test_delete_product_handler_valid() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_delete_action = make_product_delete_action(PRODUCT_ID);
+
+        assert!(transaction_handler
+            .delete_product(
+                &product_delete_action,
+                &mut state,
+                PUBLIC_KEY,
+                &perm_checker
+            )
+            .is_ok());
+
+        let product = state.get_product(PRODUCT_ID).expect("No product found");
+
+        assert_eq!(product, None);
+    }
+
+    #[test]
+    /// Test that if ProductDeleteAction is valid an OK is returned and a
+    /// second product is deleted from state
+    fn test_delete_second_product_handler_valid() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_delete_action = make_product_delete_action(PRODUCT_2_ID);
+
+        assert!(transaction_handler
+            .delete_product(
+                &product_delete_action,
+                &mut state,
+                PUBLIC_KEY,
+                &perm_checker,
+            )
+            .is_ok());
+
+        let product = state.get_product(PRODUCT_2_ID).expect("No product found");
+
+        assert_eq!(product, None);
+    }
+
+    #[test]
+    /// Test that ProductDeleteAction is invalid if the agent does not have can_delete_product role
+    fn test_delete_product_agent_without_roles() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent_without_roles(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_delete_action = make_product_delete_action(PRODUCT_ID);
+
+        match transaction_handler.delete_product(
+            &product_delete_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!(
+                "Agent should not have can_delete_product role, InvalidTransaction should be returned"
+            ),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains(&format!(
+                    "The signer does not have the can_delete_product permission: {}",
+                    PUBLIC_KEY
+                )));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    #[test]
+    /// Test that ProductDeleteAction is invalid when deleting a non existant product
+    fn test_delete_product_not_exists() {
+        let transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent(PUBLIC_KEY);
+        transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_products(&vec![PRODUCT_ID, PRODUCT_2_ID]);
+        let perm_checker = PermissionChecker::new(&transaction_context);
+        let mut state = ProductState::new(&transaction_context);
+
+        let transaction_handler = ProductTransactionHandler::new();
+        let product_delete_action = make_product_delete_action("13491387613");
+
+        match transaction_handler.delete_product(
+            &product_delete_action,
+            &mut state,
+            PUBLIC_KEY,
+            &perm_checker,
+        ) {
+            Ok(()) => panic!("Product should not exist, InvalidTransaction should be returned"),
+            Err(ApplyError::InvalidTransaction(err)) => {
+                assert!(err.contains("No product exists: 13491387613"));
+            }
+            Err(err) => panic!("Should have gotten invalid error but go {}", err),
+        }
+    }
+
+    fn make_product() -> Product {
+        ProductBuilder::new()
+            .with_product_id(PRODUCT_ID.to_string())
+            .with_owner(AGENT_ORG_ID.to_string())
+            .with_product_type(ProductType::GS1)
+            .with_properties(make_properties())
+            .build()
+            .expect("Failed to build new_product")
+    }
+
+    fn make_products(product_ids: &[&str]) -> Vec<Product> {
+        vec![
+            ProductBuilder::new()
+                .with_product_id(product_ids[0].to_string())
+                .with_owner(AGENT_ORG_ID.to_string())
+                .with_product_type(ProductType::GS1)
+                .with_properties(make_properties())
+                .build()
+                .expect("Failed to build new_product"),
+            ProductBuilder::new()
+                .with_product_id(product_ids[1].to_string())
+                .with_owner(AGENT_ORG_ID.to_string())
+                .with_product_type(ProductType::GS1)
+                .with_properties(make_properties())
+                .build()
+                .expect("Failed to build new_product"),
+        ]
+    }
+
+    fn make_updated_product() -> Product {
+        ProductBuilder::new()
+            .with_product_id(PRODUCT_ID.to_string())
+            .with_owner(AGENT_ORG_ID.to_string())
+            .with_product_type(ProductType::GS1)
+            .with_properties(make_updated_properties())
+            .build()
+            .expect("Failed to build new_product")
+    }
+
+    fn make_properties() -> Vec<PropertyValue> {
+        let property_value_description = PropertyValueBuilder::new()
+            .with_name("description".into())
+            .with_data_type(DataType::String)
+            .with_string_value("This is a product description".into())
+            .build()
+            .unwrap();
+        let property_value_price = PropertyValueBuilder::new()
+            .with_name("price".into())
+            .with_data_type(DataType::Number)
+            .with_number_value(3)
+            .build()
+            .unwrap();
+
+        vec![
+            property_value_description.clone(),
+            property_value_price.clone(),
+        ]
+    }
+
+    fn make_updated_properties() -> Vec<PropertyValue> {
+        let property_value_description = PropertyValueBuilder::new()
+            .with_name("description".into())
+            .with_data_type(DataType::String)
+            .with_string_value("This is a new product description".into())
+            .build()
+            .unwrap();
+        let property_value_price = PropertyValueBuilder::new()
+            .with_name("price".into())
+            .with_data_type(DataType::Number)
+            .with_number_value(4)
+            .build()
+            .unwrap();
+
+        vec![
+            property_value_description.clone(),
+            property_value_price.clone(),
+        ]
+    }
+
+    fn make_product_create_action() -> ProductCreateAction {
+        ProductCreateActionBuilder::new()
+            .with_product_id(PRODUCT_ID.to_string())
+            .with_owner(AGENT_ORG_ID.to_string())
+            .with_product_type(ProductType::GS1)
+            .with_properties(make_properties())
+            .build()
+            .expect("Failed to build ProductCreateAction")
+    }
+
+    fn make_product_update_action() -> ProductUpdateAction {
+        ProductUpdateActionBuilder::new()
+            .with_product_id(PRODUCT_ID.to_string())
+            .with_product_type(ProductType::GS1)
+            .with_properties(make_updated_properties())
+            .build()
+            .expect("Failed to build ProductUpdateAction")
+    }
+
+    fn make_product_delete_action(product_id: &str) -> ProductDeleteAction {
+        ProductDeleteActionBuilder::new()
+            .with_product_id(product_id.to_string())
+            .with_product_type(ProductType::GS1)
+            .build()
+            .expect("Failed to build ProductDeleteAction")
+    }
+}
