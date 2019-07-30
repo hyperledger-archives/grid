@@ -41,6 +41,8 @@ services:
           VUE_APP_BRAND: "acme"
       image: gameroom-app-acme
       container_name: gameroom-app-acme
+      environment:
+        - VUE_APP_BRAND=acme
       expose:
         - 80
       ports:
@@ -112,6 +114,8 @@ services:
           VUE_APP_BRAND: "bubba"
       image: gameroom-app-bubba
       container_name: gameroom-app-bubba
+      environment:
+        - VUE_APP_BRAND=bubba
       expose:
         - 80
       ports:
