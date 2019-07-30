@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::sync::{Arc, Mutex};
 
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
@@ -35,7 +35,7 @@ use serde_json;
 pub struct AdminService {
     service_id: String,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    proposal_store: RefCell<CircuitProposalStore>,
+    proposal_store: Arc<Mutex<CircuitProposalStore>>,
 }
 
 impl AdminService {
@@ -43,7 +43,7 @@ impl AdminService {
         Self {
             service_id: format!("admin::{}", node_id),
             network_sender: None,
-            proposal_store: RefCell::new(CircuitProposalStore::default()),
+            proposal_store: Default::default(),
         }
     }
 }
@@ -104,7 +104,10 @@ impl Service for AdminService {
                 let mut create_request = envelope.take_circuit_create_request();
 
                 let proposed_circuit = create_request.take_circuit();
-                let mut proposal_store = self.proposal_store.borrow_mut();
+                let mut proposal_store = self
+                    .proposal_store
+                    .lock()
+                    .expect("the admin state lock was poisoned");
 
                 if proposal_store.has_proposal(proposed_circuit.get_circuit_id()) {
                     info!(
