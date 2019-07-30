@@ -63,6 +63,7 @@ pub enum ProcessorMessage {
 /// An implementation of a ServiceNetworkSender that should be used for AdminDirectMessage.
 /// AdminDirectMessage needs special handling since this message can be sent over the admin circuit
 /// or over any other circuit that exists.
+#[derive(Clone)]
 pub struct AdminServiceNetworkSender {
     outgoing_sender: Sender<Vec<u8>>,
     message_sender: String,
@@ -167,10 +168,15 @@ impl ServiceNetworkSender for AdminServiceNetworkSender {
             .map_err(|err| ServiceSendError(Box::new(err)))?;
         Ok(())
     }
+
+    fn clone_box(&self) -> Box<dyn ServiceNetworkSender> {
+        Box::new(self.clone())
+    }
 }
 
 /// This implementation of ServiceNetworkSender can be used by any service that does not require
 /// any special handling.
+#[derive(Clone)]
 pub struct StandardServiceNetworkSender {
     outgoing_sender: Sender<Vec<u8>>,
     circuit: String,
@@ -277,6 +283,10 @@ impl ServiceNetworkSender for StandardServiceNetworkSender {
             .send(message)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
         Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn ServiceNetworkSender> {
+        Box::new(self.clone())
     }
 }
 

@@ -63,6 +63,14 @@ pub trait ServiceNetworkSender: Send {
         message_origin: &ServiceMessageContext,
         message: &[u8],
     ) -> Result<(), ServiceSendError>;
+
+    fn clone_box(&self) -> Box<dyn ServiceNetworkSender>;
+}
+
+impl Clone for Box<dyn ServiceNetworkSender> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 pub trait Service: Send {
