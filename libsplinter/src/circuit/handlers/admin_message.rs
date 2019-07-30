@@ -365,7 +365,7 @@ mod tests {
         let sender = Box::new(MockNetworkSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let mut circuit_directory = CircuitDirectory::new();
+        let circuit_directory = CircuitDirectory::new();
 
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
@@ -416,7 +416,7 @@ mod tests {
         let sender = Box::new(MockNetworkSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let mut circuit_directory = CircuitDirectory::new();
+        let circuit_directory = CircuitDirectory::new();
 
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),

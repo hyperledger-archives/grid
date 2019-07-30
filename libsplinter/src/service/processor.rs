@@ -18,8 +18,7 @@ use protobuf::Message;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
-use std::thread;
-use std::thread::JoinHandle;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use crate::channel;
@@ -194,7 +193,15 @@ impl ServiceProcessor {
     /// node and route it to a running service.
     ///
     /// Returns a ShutdownHandle and join_handles so the service can be properly shutdown.
-    pub fn start(self) -> Result<ShutdownHandle, ServiceProcessorError> {
+    pub fn start(
+        self,
+    ) -> Result<
+        (
+            ShutdownHandle,
+            JoinHandles<Result<(), ServiceProcessorError>>,
+        ),
+        ServiceProcessorError,
+    > {
         // Starts the authorization process with the splinter node
         // If running over inproc connection, this is the only authroization message required
         let connect_request = create_connect_request()
@@ -402,44 +409,44 @@ impl ServiceProcessor {
             Ok(())
         });
 
-        Ok(ShutdownHandle {
-            do_shutdown,
-            incoming_join_handle,
-            outgoing_join_handle,
-            inbound_join_handle,
-        })
+        Ok((
+            ShutdownHandle { do_shutdown },
+            JoinHandles::new(vec![
+                incoming_join_handle,
+                outgoing_join_handle,
+                inbound_join_handle,
+            ]),
+        ))
     }
 }
 
 pub struct ShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), ServiceProcessorError>>,
-    incoming_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
-    outgoing_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
-    inbound_join_handle: JoinHandle<Result<(), ServiceProcessorError>>,
+    do_shutdown: Box<dyn Fn() -> Result<(), ServiceProcessorError> + Send>,
+}
+
+pub struct JoinHandles<T> {
+    join_handles: Vec<JoinHandle<T>>,
+}
+
+impl<T> JoinHandles<T> {
+    fn new(join_handles: Vec<JoinHandle<T>>) -> Self {
+        Self { join_handles }
+    }
+
+    pub fn join_all(self) -> thread::Result<Vec<T>> {
+        let mut res = Vec::with_capacity(self.join_handles.len());
+
+        for jh in self.join_handles.into_iter() {
+            res.push(jh.join()?);
+        }
+
+        Ok(res)
+    }
 }
 
 impl ShutdownHandle {
     pub fn shutdown(self) -> Result<(), ServiceProcessorError> {
         (*self.do_shutdown)()?;
-
-        self.incoming_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown incoming thread: {:?}",
-                err
-            ))
-        })??;
-        self.outgoing_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown outgoing thread: {:?}",
-                err
-            ))
-        })??;
-        self.inbound_join_handle.join().map_err(|err| {
-            ServiceProcessorError::ShutdownError(format!(
-                "unable to shutdown inbound thread: {:?}",
-                err
-            ))
-        })??;
 
         Ok(())
     }
@@ -718,8 +725,7 @@ pub mod tests {
     // Service that can be used for testing a standard service's functionality
     struct MockService {
         service_id: String,
-        family_name: String,
-        family_versions: Vec<String>,
+        service_type: String,
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
     }
 
@@ -727,8 +733,7 @@ pub mod tests {
         pub fn new() -> Self {
             MockService {
                 service_id: "mock_service".to_string(),
-                family_name: "mock".to_string(),
-                family_versions: vec!["0.1".to_string()],
+                service_type: "mock".to_string(),
                 network_sender: None,
             }
         }
@@ -741,13 +746,8 @@ pub mod tests {
         }
 
         /// This service's message family
-        fn family_name(&self) -> &str {
-            &self.family_name
-        }
-
-        /// This service's supported message versions
-        fn family_versions(&self) -> &[String] {
-            &self.family_versions
+        fn service_type(&self) -> &str {
+            &self.service_type
         }
 
         /// Starts the service
@@ -764,7 +764,7 @@ pub mod tests {
 
         /// Stops the service
         fn stop(
-            &self,
+            &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
             service_registry
@@ -812,8 +812,7 @@ pub mod tests {
     // Service that can be used for testing a Admin service's functionality
     struct MockAdminService {
         service_id: String,
-        family_name: String,
-        family_versions: Vec<String>,
+        service_type: String,
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
     }
 
@@ -821,19 +820,9 @@ pub mod tests {
         pub fn new() -> Self {
             MockAdminService {
                 service_id: "mock_service".to_string(),
-                family_name: "mock".to_string(),
-                family_versions: vec!["0.1".to_string()],
+                service_type: "mock".to_string(),
                 network_sender: None,
             }
-        }
-
-        fn create_admin_msg(&self, payload: Vec<u8>) -> Vec<u8> {
-            let mut direct_response = AdminDirectMessage::new();
-            direct_response.set_recipient("service_a".to_string());
-            direct_response.set_sender(self.service_id().to_string());
-            direct_response.set_circuit("admin".to_string());
-            direct_response.set_payload(payload);
-            direct_response.write_to_bytes().unwrap()
         }
     }
 
@@ -844,13 +833,8 @@ pub mod tests {
         }
 
         /// This service's message family
-        fn family_name(&self) -> &str {
-            &self.family_name
-        }
-
-        /// This service's supported message versions
-        fn family_versions(&self) -> &[String] {
-            &self.family_versions
+        fn service_type(&self) -> &str {
+            &self.service_type
         }
 
         /// Starts the service
@@ -867,7 +851,7 @@ pub mod tests {
 
         /// Stops the service
         fn stop(
-            &self,
+            &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
             service_registry
@@ -892,16 +876,14 @@ pub mod tests {
         ) -> Result<(), ServiceError> {
             if message_bytes == b"send" {
                 if let Some(network_sender) = &self.network_sender {
-                    let payload = self.create_admin_msg(b"send_response".to_vec());
                     network_sender
-                        .send(&message_context.sender, &payload)
+                        .send(&message_context.sender, b"send_response")
                         .unwrap();;
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {
-                    let payload = self.create_admin_msg(b"waiting for response".to_vec());
                     let response = network_sender
-                        .send_and_await(&message_context.sender, &payload)
+                        .send_and_await(&message_context.sender, b"waiting for response")
                         .unwrap();
                     assert_eq!(response, b"respond to waiting");
                 }

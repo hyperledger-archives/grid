@@ -17,7 +17,9 @@ mod processor;
 mod registry;
 mod sender;
 
+pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
+pub use processor::ShutdownHandle;
 
 use crate::service::error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
@@ -67,11 +69,8 @@ pub trait Service: Send {
     /// This service's id
     fn service_id(&self) -> &str;
 
-    /// This service's message family
-    fn family_name(&self) -> &str;
-
-    /// This service's supported message versions
-    fn family_versions(&self) -> &[String];
+    /// This service's type
+    fn service_type(&self) -> &str;
 
     /// Starts the service
     fn start(
@@ -80,7 +79,10 @@ pub trait Service: Send {
     ) -> Result<(), ServiceStartError>;
 
     /// Stops Starts the service
-    fn stop(&self, service_registry: &dyn ServiceNetworkRegistry) -> Result<(), ServiceStopError>;
+    fn stop(
+        &mut self,
+        service_registry: &dyn ServiceNetworkRegistry,
+    ) -> Result<(), ServiceStopError>;
 
     /// Clean-up any resources before the service is removed.
     /// Consumes the service (which, given the use of dyn traits,
