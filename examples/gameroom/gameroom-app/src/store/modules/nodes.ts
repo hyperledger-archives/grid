@@ -31,26 +31,6 @@ class NodesModule extends VuexModule {
   setNodes(nodes: Node[]) { this.nodes = nodes; }
 
   @Action({ commit: 'setNodes' })
-  listNodesMock() {
-    return ([
-      {
-        identity: '123asdf',
-        metadata: {
-          organization: 'bubba_bakery',
-          endpoint: 'tcp://127.0.0.1:8046',
-        },
-      },
-      {
-        identity: '2456qwerty',
-        metadata: {
-          organization: 'anotherorg',
-          endpoint: 'tcp://127.0.0.1:8049',
-        },
-      },
-    ]);
-  }
-
-  @Action({ commit: 'setNodes' })
   async listNodes() {
     const nodes = await listNodes();
     return nodes;

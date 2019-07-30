@@ -95,7 +95,7 @@ export default class Gamerooms extends Vue {
   };
 
   mounted() {
-    nodes.listNodesMock();
+    nodes.listNodes();
   }
 
   get nodes() {
