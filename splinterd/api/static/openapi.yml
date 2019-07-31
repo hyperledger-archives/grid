@@ -20,7 +20,7 @@ info:
   description: REST API for SplinterD
 
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:9000/api
 
 paths:
   /status:
@@ -73,12 +73,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateCircuit'
       responses:
-        200:
+        202:
           description: Creation request was accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Circuit'
         400:
           description: Circuit creation request was malformed
           content:
@@ -92,7 +88,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /circuit/{name}:
+  /auth/circuit/{name}:
     get:
       tags:
         - circuits
@@ -125,7 +121,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /register/{type}:
+  /auth/register/{type}:
     put:
       tags:
         - Authorization Handler
@@ -272,35 +268,43 @@ components:
     CreateCircuit:
       additionalProperties: false
       properties:
-        name:
+        circuit_id:
           description: Name of circuit
           type: string
           example: alpha
-        auth:
+        authorization_type:
           description: Authentication type
           type: string
-          example: trust
+          enum:
+            - TRUST_AUTHORIZATION
         members:
           description: Array of nodes allowed to participate on the circuit
           type: array
           items:
-            $ref: '#/components/schemas/Node'
+            $ref: '#/components/schemas/SplinterNode'
         roster:
           description: Array of services that will communicate over a circuit
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/SplinterService'
         persistence:
           type: string
-          example: any
-        durability:
+          enum:
+            - ANY_PERSISTENCE
+        circuit_management_type:
           type: string
-          example: none
+          example: gameroom
         routes:
           type: string
-          example: request_direct
+          enum:
+            - ANY_ROUTE
+        application_metadata:
+          description: serialized bytes of metadata
+          type: array 
+          items:
+            type: integer
 
-    Node:
+    SplinterNode:
       additionalProperties: false
       properties:
         node_id:
@@ -311,6 +315,19 @@ components:
           description: Url for node
           type: string
           example: tcp://localhost:4040
+    SplinterService:
+      additionalProperties: false
+      properties:
+        service_id:
+          type: string
+          example: service-123
+        service_type:
+          type: string
+          example: gameroom
+        allowed_nodes:
+          type: array
+          items:
+            type: string
 
     Circuit:
       additionalProperties: false
@@ -335,7 +352,7 @@ components:
           description: Array of nodes allowed to participate on the circuit
           type: array
           items:
-            $ref: '#/components/schemas/Node'
+            $ref: '#/components/schemas/SplinterNode'
         roster:
           description: Array of services that will communicate over circuit
           type: array
