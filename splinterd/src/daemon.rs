@@ -19,6 +19,7 @@ use std::time::Duration;
 use crossbeam_channel;
 use protobuf::Message;
 
+use crate::node_registry::yaml::YamlNodeRegistry;
 use libsplinter::admin::AdminService;
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
@@ -39,11 +40,15 @@ use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
 use libsplinter::network::{
     ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
 };
+use libsplinter::node_registry::NodeRegistry;
 use libsplinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
+use libsplinter::rest_api::{
+    Method, Resource, RestApiBuilder, RestApiServerError, RestResourceProvider,
+};
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::service::{self, Service, ServiceProcessor};
 use libsplinter::storage::get_storage;
@@ -53,7 +58,7 @@ use libsplinter::transport::{
 };
 
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
-use crate::rest_api::{self, error::RestApiServerError};
+use crate::routes;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -79,8 +84,22 @@ impl SplinterDaemon {
         let running = Arc::new(AtomicBool::new(true));
         let r = running.clone();
 
-        let (rest_api_shutdown_handle, rest_api_join_handle) =
-            rest_api::run(&self.rest_api_endpoint, &self.registry_config)?;
+        let registry = create_node_registry(&self.registry_config)?;
+
+        let node_registry_manager =
+            routes::NodeRegistryManager::new(self.node_id.clone(), registry);
+
+        let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
+            .with_bind(&self.rest_api_endpoint)
+            .add_resource(Resource::new(
+                Method::Get,
+                "/openapi.yml",
+                routes::get_openapi,
+            ))
+            .add_resource(Resource::new(Method::Get, "/status", routes::get_status))
+            .add_resources(node_registry_manager.resources())
+            .build()?
+            .run()?;
 
         ctrlc::set_handler(move || {
             info!("Recieved Shutdown");
@@ -577,6 +596,24 @@ fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
     network_msg.set_payload(auth_msg_env.write_to_bytes()?);
 
     network_msg.write_to_bytes()
+}
+
+fn create_node_registry(
+    registry_config: &RegistryConfig,
+) -> Result<Box<dyn NodeRegistry>, RestApiServerError> {
+    match &registry_config.registry_backend() as &str {
+        "FILE" => Ok(Box::new(
+            YamlNodeRegistry::new(&registry_config.registry_file()).map_err(|err| {
+                RestApiServerError::StartUpError(format!(
+                    "Failed to initialize YamlNodeRegistry: {}",
+                    err
+                ))
+            })?,
+        )),
+        _ => Err(RestApiServerError::StartUpError(
+            "NodeRegistry type is not supported".to_string(),
+        )),
+    }
 }
 
 #[derive(Debug)]

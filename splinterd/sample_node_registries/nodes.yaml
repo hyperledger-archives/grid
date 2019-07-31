@@ -1,0 +1,9 @@
+- identity: "Node-123"
+  metadata:
+    company: "Bitwise IO"
+    url: "123.0.0.123:8080"
+- identity: "Node-456"
+  metadata:
+    company: "Cargill"
+    url: "456.0.0.456:8080"
+

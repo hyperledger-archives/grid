@@ -25,12 +25,17 @@ services:
       - 8080:8080
     volumes:
       - ./splinterd/sample_configs:/configs
+      - ./splinterd/sample_node_registries:/node_registries
     build:
       context: .
       dockerfile: splinterd/Dockerfile
     entrypoint: |
       bash -c "
-        ./splinterd --generate-certs -c ./configs/splinterd-node-0-docker.toml -vv
+        ./splinterd \
+            --generate-certs \
+            -c ./configs/splinterd-node-0-docker.toml \
+            --registry-file ./node_registries/nodes.yaml \
+            -vv
       "
 
   openapi-client:

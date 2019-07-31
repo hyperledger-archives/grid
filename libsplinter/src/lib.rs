@@ -56,7 +56,12 @@ pub mod mesh;
 pub mod network;
 pub mod node_registry;
 pub mod protos;
+pub mod rest_api;
 pub mod service;
 pub mod signing;
 pub mod storage;
 pub mod transport;
+
+pub use actix_http;
+pub use actix_web;
+pub use futures;

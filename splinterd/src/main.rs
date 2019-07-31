@@ -13,18 +13,18 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate actix_web;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 
 mod certs;
 mod config;
 mod daemon;
 mod node_registry;
 mod registry_config;
-mod rest_api;
+mod routes;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};

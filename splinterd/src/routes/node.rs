@@ -13,9 +13,12 @@
 // limitations under the License.
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
-use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use futures::{future::IntoFuture, Future};
-use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use libsplinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use libsplinter::futures::{future::IntoFuture, Future};
+use libsplinter::{
+    node_registry::{error::NodeRegistryError, Node, NodeRegistry},
+    rest_api::{Method, Resource, RestResourceProvider},
+};
 use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
 
@@ -27,27 +30,79 @@ pub struct ListNodesResponse {
     paging: Paging,
 }
 
+#[derive(Clone)]
+pub struct NodeRegistryManager {
+    node_id: String,
+    registry: Box<dyn NodeRegistry>,
+}
+
+impl NodeRegistryManager {
+    pub fn new(node_id: String, registry: Box<dyn NodeRegistry>) -> Self {
+        Self { node_id, registry }
+    }
+}
+
+impl RestResourceProvider for NodeRegistryManager {
+    fn resources(&self) -> Vec<Resource> {
+        vec![
+            make_fetch_node_resource(self.registry.clone()),
+            make_list_nodes_resource(self.registry.clone()),
+        ]
+    }
+}
+
+fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Get, "/nodes/{identity}", move |r, _| {
+        fetch_node(r, web::Data::new(registry.clone()))
+    })
+}
+
+fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Get, "/nodes", move |r, _| {
+        list_nodes(r, web::Data::new(registry.clone()))
+    })
+}
+
 pub fn fetch_node(
-    identity: web::Path<String>,
+    request: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    web::block(move || registry.fetch_node(&identity.into_inner())).then(|res| match res {
-        Ok(node) => Ok(HttpResponse::Ok().json(node)),
-        Err(err) => match err {
-            BlockingError::Error(err) => match err {
-                NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        web::block(move || registry.fetch_node(&identity)).then(|res| match res {
+            Ok(node) => Ok(HttpResponse::Ok().json(node)),
+            Err(err) => match err {
+                BlockingError::Error(err) => match err {
+                    NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+                    _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+                },
                 _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
             },
-            _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
-        },
-    })
+        }),
+    )
 }
 
 pub fn list_nodes(
     req: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let query: web::Query<HashMap<String, String>> =
+        if let Ok(q) = web::Query::from_query(req.query_string()) {
+            q
+        } else {
+            return Box::new(
+                HttpResponse::BadRequest()
+                    .json(json!({
+                        "message": "Invalid query"
+                    }))
+                    .into_future(),
+            );
+        };
+
     let offset = match query.get("offset") {
         Some(value) => match value.parse::<usize>() {
             Ok(val) => val,
@@ -165,7 +220,7 @@ mod tests {
     use std::panic;
     use std::thread;
 
-    use actix_web::{
+    use libsplinter::actix_web::{
         http::{header, StatusCode},
         test, web, App,
     };

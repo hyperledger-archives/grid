@@ -1,4 +1,3 @@
-// Copyright 2019 Bitwise IO, Inc.
 // Copyright 2019 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use actix_web::{error::ResponseError, HttpResponse};
 use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
 pub enum RestApiServerError {
     StartUpError(String),
+    MissingField(String),
     StdError(std::io::Error),
 }
 
@@ -34,6 +33,7 @@ impl Error for RestApiServerError {
         match self {
             RestApiServerError::StartUpError(_) => None,
             RestApiServerError::StdError(err) => Some(err),
+            RestApiServerError::MissingField(_) => None,
         }
     }
 }
@@ -43,16 +43,8 @@ impl fmt::Display for RestApiServerError {
         match self {
             RestApiServerError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
             RestApiServerError::StdError(e) => write!(f, "Std Error: {}", e),
-        }
-    }
-}
-
-impl ResponseError for RestApiServerError {
-    fn error_response(&self) -> HttpResponse {
-        match *self {
-            RestApiServerError::StartUpError(_) | RestApiServerError::StdError(_) => {
-                debug!("{}", self.to_string());
-                HttpResponse::InternalServerError().finish()
+            RestApiServerError::MissingField(field) => {
+                write!(f, "Missing required field: {}", field)
             }
         }
     }
