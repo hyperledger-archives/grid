@@ -183,6 +183,12 @@ impl std::fmt::Display for ServiceError {
     }
 }
 
+impl From<ServiceSendError> for ServiceError {
+    fn from(err: ServiceSendError) -> Self {
+        ServiceError::UnableToSendMessage(Box::new(err))
+    }
+}
+
 #[derive(Debug)]
 pub enum ServiceProcessorError {
     /// Returned if an error is detected adding a new service
