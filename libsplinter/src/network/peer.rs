@@ -31,12 +31,12 @@ impl fmt::Display for PeerConnectorError {
 
 #[derive(Clone)]
 pub struct PeerConnector {
-    transport: Arc<Mutex<Box<dyn Transport>>>,
+    transport: Arc<Mutex<Box<dyn Transport + Send>>>,
     network: Network,
 }
 
 impl PeerConnector {
-    pub fn new(network: Network, transport: Box<dyn Transport>) -> PeerConnector {
+    pub fn new(network: Network, transport: Box<dyn Transport + Send>) -> PeerConnector {
         Self {
             network,
             transport: Arc::new(Mutex::new(transport)),
