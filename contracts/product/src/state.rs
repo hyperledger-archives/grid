@@ -24,11 +24,8 @@ cfg_if! {
 
 use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::pike::state::{Organization, OrganizationList};
-use grid_sdk::protos::product_state::Product;
-use grid_sdk::protos::product_state::ProductList;
-use grid_sdk::protos::FromBytes;
-
-use protobuf::Message;
+use grid_sdk::protocol::product::state::{Product, ProductList, ProductListBuilder};
+use grid_sdk::protos::{FromBytes, IntoBytes};
 
 use crate::addressing::*;
 
@@ -41,12 +38,12 @@ impl<'a> ProductState<'a> {
         ProductState { context }
     }
 
-    pub fn get_product(&mut self, product_id: &str) -> Result<Option<Product>, ApplyError> {
+    pub fn get_product(&self, product_id: &str) -> Result<Option<Product>, ApplyError> {
         let address = make_product_address(product_id); //product id = gtin
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let products: ProductList = match protobuf::parse_from_bytes(packed.as_slice()) {
+                let products = match ProductList::from_bytes(packed.as_slice()) {
                     Ok(products) => products,
                     Err(_) => {
                         return Err(ApplyError::InternalError(String::from(
@@ -55,45 +52,59 @@ impl<'a> ProductState<'a> {
                     }
                 };
 
+                // find the product with the correct id
                 Ok(products
-                    .get_entries()
+                    .products()
                     .iter()
-                    .find(|p| p.get_identifier() == product_id)
+                    .find(|p| p.product_id() == product_id)
                     .cloned())
             }
             None => Ok(None),
         }
     }
 
-    pub fn set_product(&mut self, product_id: &str, product: Product) -> Result<(), ApplyError> {
+    pub fn set_product(&self, product_id: &str, product: Product) -> Result<(), ApplyError> {
         let address = make_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
-        let mut product_container = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(products) => products,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize product list",
+        let mut products = match d {
+            Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
+                Ok(product_list) => product_list.products().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize product list: {:?}",
+                        err
                     )));
                 }
             },
-            None => ProductList::new(),
+            None => vec![],
         };
 
-        let mut products = product_container
-            .take_entries()
-            .into_iter()
-            .filter(|p| p.get_identifier() != product_id)
-            .collect::<Vec<_>>();
-        products.push(product);
-        products.sort_by(|p1, p2| p1.get_identifier().cmp(p2.get_identifier()));
-        product_container.set_entries(protobuf::RepeatedField::from_vec(products));
+        let mut index = None;
+        for (i, product) in products.iter().enumerate() {
+            if product.product_id() == product_id {
+                index = Some(i);
+                break;
+            }
+        }
 
-        let serialized = match product_container.write_to_bytes() {
+        if let Some(i) = index {
+            products.remove(i);
+        }
+        products.push(product);
+        products.sort_by_key(|r| r.product_id().to_string());
+        let product_list = ProductListBuilder::new()
+            .with_products(products)
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build product list: {:?}", err))
+            })?;
+
+        let serialized = match product_list.into_bytes() {
             Ok(serialized) => serialized,
-            Err(_) => {
-                return Err(ApplyError::InternalError(String::from(
-                    "Cannot serialize product list",
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(format!(
+                    "Cannot serialize product list: {:?}",
+                    err
                 )));
             }
         };
@@ -104,32 +115,36 @@ impl<'a> ProductState<'a> {
     }
 
     // Currently product_id = gtin
-    pub fn remove_product(&mut self, product_id: &str) -> Result<(), ApplyError> {
+    pub fn remove_product(&self, product_id: &str) -> Result<(), ApplyError> {
         let address = make_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
-        let mut product_container = match d {
-            Some(packed) => match protobuf::parse_from_bytes(packed.as_slice()) {
-                Ok(products) => products,
-                Err(_) => {
-                    return Err(ApplyError::InternalError(String::from(
-                        "Cannot deserialize product list",
+        let products = match d {
+            Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
+                Ok(product_list) => product_list.products().to_vec(),
+                Err(err) => {
+                    return Err(ApplyError::InternalError(format!(
+                        "Cannot deserialize product list: {:?}",
+                        err
                     )));
                 }
             },
-            None => ProductList::new(),
+            None => vec![],
         };
 
         // Collect a new vector of products without the removed item
-        let products = product_container
-            .take_entries()
-            .into_iter()
-            .filter(|p| p.get_identifier() != product_id)
-            .collect::<Vec<_>>();
+        let product_list = ProductListBuilder::new()
+            .with_products(
+                products
+                    .into_iter()
+                    .filter(|p| p.product_id() != product_id)
+                    .collect::<Vec<_>>(),
+            )
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build product list: {:?}", err))
+            })?;
 
-        // Reset product list to the new vector
-        product_container.set_entries(protobuf::RepeatedField::from_vec(products));
-
-        let serialized = match product_container.write_to_bytes() {
+        let serialized = match product_list.into_bytes() {
             Ok(serialized) => serialized,
             Err(_) => {
                 return Err(ApplyError::InternalError(String::from(
@@ -171,7 +186,7 @@ impl<'a> ProductState<'a> {
         }
     }
 
-    pub fn get_organization(&mut self, id: &str) -> Result<Option<Organization>, ApplyError> {
+    pub fn get_organization(&self, id: &str) -> Result<Option<Organization>, ApplyError> {
         let address = compute_org_address(id);
         let d = self.context.get_state_entry(&address)?;
         match d {

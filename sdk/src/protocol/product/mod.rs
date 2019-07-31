@@ -11,30 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// -----------------------------------------------------------------------------
 
-syntax = "proto3";
-import "schema_state.proto";
+use super::errors;
 
-message Product {
-  enum ProductType {
-      UNSET_TYPE = 0;
-      GS1 = 1;
-  }
-
-  // product_id for products (gtin)
-  string product_id = 1;
-
-  // What type of product is this (GS1)
-  ProductType product_type = 2;
-
-  // Who owns this product (pike organization id)
-  string owner = 3;
-
-  // Addition attributes for custom configurations 
-  repeated PropertyValue properties = 4;
-}
-
-message ProductList {
-  repeated Product entries = 1;
-}
+pub mod payload;
+pub mod state;

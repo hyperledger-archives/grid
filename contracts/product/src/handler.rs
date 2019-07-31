@@ -28,11 +28,15 @@ cfg_if! {
 }
 
 use grid_sdk::permissions::PermissionChecker;
-use grid_sdk::protos::product_payload::*;
-use grid_sdk::protos::product_state::Product;
+use grid_sdk::protocol::product::payload::{
+    Action, ProductCreateAction, ProductDeleteAction, ProductPayload, ProductUpdateAction,
+};
+use grid_sdk::protocol::product::state::{ProductBuilder, ProductType};
+
+use grid_sdk::protos::FromBytes;
 
 use crate::addressing::*;
-use crate::payload::{Action, ProductPayload};
+use crate::payload::validate_payload;
 use crate::state::ProductState;
 use crate::validation::validate_gtin;
 
@@ -76,11 +80,16 @@ impl ProductTransactionHandler {
 
     fn create_product(
         &self,
-        payload: ProductCreateAction,
-        mut state: ProductState,
+        payload: &ProductCreateAction,
+        state: &mut ProductState,
         signer: &str,
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
+        let product_id = payload.product_id();
+        let owner = payload.owner();
+        let product_type = payload.product_type();
+        let properties = payload.properties();
+
         // Check that the agent submitting the transactions exists in state
         let agent = match state.get_agent(signer)? {
             Some(agent) => agent,
@@ -92,6 +101,9 @@ impl ProductTransactionHandler {
             }
         };
 
+        // Check signing agent's permission
+        check_permission(perm_checker, signer, "can_create_product")?;
+
         // Check that the agent has an organization associated with it
         if agent.org_id().is_empty() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -100,49 +112,39 @@ impl ProductTransactionHandler {
             )));
         }
 
-        // Check that the agent has the pike permission "can_create_product" for the organization
-        check_permission(perm_checker, signer, "can_create_product")?;
+        // Check if product exists in state
+        if state.get_product(product_id)?.is_some() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "Product already exists: {}",
+                product_id,
+            )));
+        }
 
         // Check if the product type is a GS1 product
-        if payload.get_product_type() != ProductCreateAction_ProductType::GS1 {
+        if product_type != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
         }
-        // Use this varible to pass in the type correct enum (product_state) on product create
-        let product_type = grid_sdk::protos::product_state::Product_ProductType::GS1;
 
-        // Check if product identifier is a valid gtin
-        let product_id = payload.get_identifier();
+        // Check if product product_id is a valid gtin
         if let Err(e) = validate_gtin(product_id) {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
-        // Check that the org owns the GS1 company prefix in the identifier
-        let org = match state.get_organization(payload.get_owner())? {
+        // Check that the org owns the GS1 company prefix in the product_id
+        let org = match state.get_organization(payload.owner())? {
             Some(org) => org,
             None => {
                 return Err(ApplyError::InvalidTransaction(format!(
-                    "The Agents organization does not exist: {}",
-                    signer
+                    "The Agent's organization does not exist: {}",
+                    signer,
                 )));
             }
         };
 
-        // Check if product exists in state
-        match state.get_product(product_id) {
-            Ok(Some(_)) => {
-                return Err(ApplyError::InvalidTransaction(format!(
-                    "Product already exists: {}",
-                    product_id
-                )));
-            }
-            Ok(None) => (),
-            Err(err) => return Err(err),
-        }
-
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
-        (gs1_company_prefixes), and the prefix must match the company prefix in the identifier */
+        (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
         let gs1_company_prefix_vec = org.metadata().to_vec();
         let gs1_company_prefix_kv = match gs1_company_prefix_vec
             .iter()
@@ -161,31 +163,38 @@ impl ProductTransactionHandler {
             // If the gtin identifer does not contain the organizations gs1 prefix
             if !product_id.contains(gs1_company_prefix_kv.value()) {
                 return Err(ApplyError::InvalidTransaction(format!(
-                    "The agents organization does not own the GS1 company prefix in the GTIN identifier: {:?}",
+                    "The agents organization does not own the GS1 company prefix in the GTIN product_id: {:?}",
                     org.metadata()
                 )));
             }
         }
 
-        let mut new_product = Product::new();
-        new_product.set_identifier(product_id.to_string());
-        new_product.set_owner(payload.get_owner().to_string());
-        new_product.set_field_type(product_type);
-        new_product.set_product_values(protobuf::RepeatedField::from_vec(
-            payload.get_properties().to_vec(),
-        ));
+        let new_product = ProductBuilder::new()
+            .with_product_id(product_id.to_string())
+            .with_owner(owner.to_string())
+            .with_product_type(product_type.clone())
+            .with_properties(properties.to_vec())
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build product: {}", err))
+            })?;
 
-        state.set_product(signer, new_product)?;
+        state.set_product(product_id, new_product)?;
+
         Ok(())
     }
 
     fn update_product(
         &self,
-        payload: ProductUpdateAction,
-        mut state: ProductState,
+        payload: &ProductUpdateAction,
+        state: &mut ProductState,
         signer: &str,
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
+        let product_id = payload.product_id();
+        let product_type = payload.product_type();
+        let properties = payload.properties();
+
         // Check that the agent submitting the transactions exists in state
         let agent = match state.get_agent(signer)? {
             Some(agent) => agent,
@@ -197,22 +206,26 @@ impl ProductTransactionHandler {
             }
         };
 
+        // Check signing agent's permission
+        check_permission(perm_checker, signer, "can_update_product")?;
+
+        // Check that the agent has an organization associated with it
+        if agent.org_id().is_empty() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signing Agent does not have an associated organization: {}",
+                signer
+            )));
+        }
+
         // Check if the product type is a GS1 product
-        let product_type = payload.get_product_type();
-        if product_type != ProductUpdateAction_ProductType::GS1 {
+        if product_type != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
         }
-        let product_id = payload.get_identifier();
-
-        // Check if product identifier is a valid gtin
-        if let Err(e) = validate_gtin(product_id) {
-            return Err(ApplyError::InvalidTransaction(e.to_string()));
-        }
 
         // Check if product exists
-        let mut product = match state.get_product(product_id) {
+        let product = match state.get_product(product_id) {
             Ok(Some(product)) => Ok(product),
             Ok(None) => Err(ApplyError::InvalidTransaction(format!(
                 "No product exists: {}",
@@ -222,31 +235,44 @@ impl ProductTransactionHandler {
         }?;
 
         // Check if the agent updating the product is part of the organization associated with the product
-        if product.get_owner() != agent.org_id() {
+        if product.owner() != agent.org_id() {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid organization for the agent submitting this transaction".to_string(),
             ));
         }
 
-        // Check that the agent has the pike permission "can_update_product" for the organization
-        check_permission(perm_checker, signer, "can_update_product")?;
+        // Check if product product_id is a valid gtin
+        if let Err(e) = validate_gtin(product_id) {
+            return Err(ApplyError::InvalidTransaction(e.to_string()));
+        }
 
         // Handle updating the product
-        let updated_product_values = payload.properties.clone();
-        product.set_product_values(updated_product_values);
+        let updated_product = ProductBuilder::new()
+            .with_product_id(product_id.to_string())
+            .with_owner(product.owner().to_string())
+            .with_product_type(product_type.clone())
+            .with_properties(properties.to_vec())
+            .build()
+            .map_err(|err| {
+                ApplyError::InvalidTransaction(format!("Cannot build product: {}", err))
+            })?;
 
-        state.set_product(product_id, product)?;
+        state.set_product(product_id, updated_product)?;
+
         Ok(())
     }
 
     fn delete_product(
         &self,
-        payload: ProductDeleteAction,
-        mut state: ProductState,
+        payload: &ProductDeleteAction,
+        state: &mut ProductState,
         signer: &str,
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
-        // Check that the agent (signer) submitting the transactions exists in state
+        let product_id = payload.product_id();
+        let product_type = payload.product_type();
+
+        // Check that the agent submitting the transactions exists in state
         let agent = match state.get_agent(signer)? {
             Some(agent) => agent,
             None => {
@@ -257,18 +283,14 @@ impl ProductTransactionHandler {
             }
         };
 
+        // Check signing agent's permission
+        check_permission(perm_checker, signer, "can_delete_product")?;
+
         // Check if the product type is a GS1 product
-        let product_type = payload.get_product_type();
-        if product_type != ProductDeleteAction_ProductType::GS1 {
+        if product_type != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
-        }
-        let product_id = payload.get_identifier();
-
-        // Check if product identifier is a valid gtin
-        if let Err(e) = validate_gtin(product_id) {
-            return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
         // Check if product exists in state
@@ -281,15 +303,17 @@ impl ProductTransactionHandler {
             Err(err) => Err(err),
         }?;
 
+        // Check if product product_id is a valid gtin
+        if let Err(e) = validate_gtin(product_id) {
+            return Err(ApplyError::InvalidTransaction(e.to_string()));
+        }
+
         // Check that the owner of the products organization is the same as the agent trying to delete the product
-        if product.get_owner() != agent.org_id() {
+        if product.owner() != agent.org_id() {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid organization for the agent submitting this transaction".to_string(),
             ));
         }
-
-        // Check that the agent deleting the product has the "can_delete_product" permission for the organization
-        check_permission(perm_checker, signer, "can_delete_product")?;
 
         // Delete the product
         state.remove_product(product_id)?;
@@ -315,45 +339,31 @@ impl TransactionHandler for ProductTransactionHandler {
         request: &TpProcessRequest,
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
-        let payload = ProductPayload::new(request.get_payload());
-        let payload = match payload {
-            Err(e) => return Err(e),
-            Ok(payload) => payload,
-        };
-        let payload = match payload {
-            Some(x) => x,
-            None => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Request must contain a payload",
-                )));
-            }
-        };
+        let payload = ProductPayload::from_bytes(request.get_payload()).map_err(|err| {
+            ApplyError::InvalidTransaction(format!("Cannot build product payload: {}", err))
+        })?;
 
-        if payload.get_timestamp().to_string().is_empty() {
-            return Err(ApplyError::InvalidTransaction(String::from(
-                "Timestamp is not set",
-            )));
-        }
+        validate_payload(&payload)?;
 
         info!(
             "Grid Product Payload {:?} {}",
-            payload.get_action(),
-            payload.get_timestamp()
+            payload.action(),
+            payload.timestamp(),
         );
 
         let signer = request.get_header().get_signer_public_key();
-        let state = ProductState::new(context);
+        let mut state = ProductState::new(context);
         let perm_checker = PermissionChecker::new(context);
 
-        match payload.get_action() {
-            Action::CreateProduct(create_product_payload) => {
-                self.create_product(create_product_payload, state, signer, &perm_checker)?
+        match payload.action() {
+            Action::ProductCreate(create_product_payload) => {
+                self.create_product(create_product_payload, &mut state, signer, &perm_checker)?
             }
-            Action::UpdateProduct(update_product_payload) => {
-                self.update_product(update_product_payload, state, signer, &perm_checker)?
+            Action::ProductUpdate(update_product_payload) => {
+                self.update_product(update_product_payload, &mut state, signer, &perm_checker)?
             }
-            Action::DeleteProduct(delete_product_payload) => {
-                self.delete_product(delete_product_payload, state, signer, &perm_checker)?
+            Action::ProductDelete(delete_product_payload) => {
+                self.delete_product(delete_product_payload, &mut state, signer, &perm_checker)?
             }
         }
         Ok(())
