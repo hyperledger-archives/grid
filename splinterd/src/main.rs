@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate actix_web;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
