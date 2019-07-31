@@ -27,19 +27,3 @@ limitations under the License.
 <script>
 export default {};
 </script>
-
-<style lang="scss" scoped>
-footer {
-  display: flex;
-  background-color: $color-base;
-  color: $color-text-tertiary;
-  border-top: 1px solid $color-border;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  font-size: .75em;
-  align-items: center;
-  padding: .5em
-}
-</style>

@@ -19,42 +19,40 @@ limitations under the License.
     <modal v-if="displayModal" @close="closeNewGameroomModal">
       <h3 slot="title">New Gameroom</h3>
       <div slot="body">
-        <div class=form-wrapper>
-          <form class="new-gameroom-form" @submit.prevent="createGameroom">
-            <label class="form-label">
-              Alias
-              <input class="form-input" type="text" v-model="newGameroom.alias" />
-            </label>
-            <label class="form-label">
-              <div class="multiselect-label">Member</div>
-              <multiselect
-                v-model="newGameroom.member"
-                track-by="identity"
-                label="metadata"
-                placeholder=""
-                deselect-label=""
-                open-direction="bottom"
-                :close-on-select="true"
-                :clear-on-select="false"
-                :custom-label="getMemberLabel"
-                :options="nodes"
-                :allow-empty="false"
-              >
-                <template slot="singleLabel" slot-scope="{ option }">
-                  <strong>{{ option.metadata.organization }}</strong>
-                </template>
-              </multiselect>
-            </label>
-            <div class="button-container">
-              <button class="form-button outline-button" @click.prevent="closeNewGameroomModal">
-                Cancel
-              </button>
-              <button class="form-button" type="submit" :disabled="!canSubmitNewGameroom">
-                Submit
-              </button>
-            </div>
-          </form>
-        </div>
+        <form class="modal-form" @submit.prevent="createGameroom">
+          <label class="form-label">
+            Alias
+            <input class="form-input" type="text" v-model="newGameroom.alias" />
+          </label>
+          <label class="form-label">
+            <div class="multiselect-label">Member</div>
+            <multiselect
+              v-model="newGameroom.member"
+              track-by="identity"
+              label="metadata"
+              placeholder=""
+              deselect-label=""
+              open-direction="bottom"
+              :close-on-select="true"
+              :clear-on-select="false"
+              :custom-label="getMemberLabel"
+              :options="nodes"
+              :allow-empty="false"
+            >
+              <template slot="singleLabel" slot-scope="{ option }">
+                <strong>{{ option.metadata.organization }}</strong>
+              </template>
+            </multiselect>
+          </label>
+          <div class="button-container">
+            <button class="form-button outline-button" @click.prevent="closeNewGameroomModal">
+              Cancel
+            </button>
+            <button class="form-button" type="submit" :disabled="!canSubmitNewGameroom">
+              Submit
+            </button>
+          </div>
+        </form>
       </div>
     </modal>
     <div class="new-gameroom-button-container">
@@ -128,44 +126,9 @@ export default class Gamerooms extends Vue {
     this.newGameroom.member = '';
   }
 }
-
-
 </script>
 
 <style lang="scss" scoped>
-.form-wrapper {
-  .new-gameroom-form {
-    display: flex;
-    flex-direction: column;
-
-    .form-label {
-      .multiselect-label {
-        margin-bottom: .25em;
-      }
-
-      .form-input {
-        min-height: 3em;
-        width: 100%;
-        margin: .25em 0 1em;
-        padding: .5em;
-        font-size: 1em;
-        border: 1px solid $color-border;
-        outline: none;
-        @include rounded-border;
-      }
-
-      .form-input:focus {
-        border: 1px solid $color-primary-light;
-      }
-    }
-
-    .button-container {
-      margin-top: 1em;
-      margin-left: auto;
-    }
-  }
-}
-
 .gamerooms-container {
   margin: 1em;
   display: flex;

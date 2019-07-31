@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 <template>
-  <div class="container">
+  <div>
     <h1>Welcome to Gameroom</h1>
   </div>
 </template>

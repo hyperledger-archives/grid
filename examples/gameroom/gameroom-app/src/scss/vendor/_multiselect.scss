@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@import "./mixins";
-@import "./variables";
-@import '~brandVariables/variables.scss';
-
 $vue-multiselect-padding-x: 0.5em !default;
 $vue-multiselect-padding-y: 0.5em !default;
 $vue-multiselect-min-height: 3em !default;

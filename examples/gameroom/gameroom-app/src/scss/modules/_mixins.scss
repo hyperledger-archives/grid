@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const whitelabelConfig = {
-  'bubba': {
-    'brand': 'Bubba Bakery',
-    'scssVariables': './src/scss/modules/themes/bubba',
-    'assets': './src/assets/bubba',
-  },
-  'acme': {
-    'brand': 'Acme Corporation',
-    'scssVariables': './src/scss/modules/themes/acme',
-    'assets': './src/assets/acme',
-  },
+@mixin rounded-border {
+  border-radius: 5px;
 }
 
-module.exports = whitelabelConfig;
+@mixin rounded-border-top {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+
+@mixin rounded-border-bottom {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}

@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const whitelabelConfig = {
-  'bubba': {
-    'brand': 'Bubba Bakery',
-    'scssVariables': './src/scss/modules/themes/bubba',
-    'assets': './src/assets/bubba',
-  },
-  'acme': {
-    'brand': 'Acme Corporation',
-    'scssVariables': './src/scss/modules/themes/acme',
-    'assets': './src/assets/acme',
-  },
-}
+@import 'modules/colors';
+@import 'modules/mixins';
+@import 'modules/typography';
 
-module.exports = whitelabelConfig;
+@import 'partials/base';
+@import 'partials/buttons';
+@import 'partials/forms';
+@import 'partials/links';
+
+@import 'vendor/normalize';
+@import 'vendor/multiselect';

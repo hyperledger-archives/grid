@@ -63,31 +63,5 @@ export default class AppNavbar extends Vue {
 </script>
 
 <style lang="scss" scoped>
-.navbar {
-  background-color: $color-base;
-  border-bottom: 1px solid $color-border;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap-reverse;
-  ul {
-    padding-left: 0;
-    display: flex;
-    list-style-type: none;
-    li {
-      padding-left: 1em;
-      padding-right: 1em;
-    }
-  }
-}
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: .5em;
-  .brand-text {
-    font-size: 2em;
-  }
-}
-
+  @import '@/scss/components/_app-navbar.scss';
 </style>
