@@ -19,27 +19,27 @@ limitations under the License.
     <router-link class="navbar-brand" to="/">
       <img src="~brandAssets/logo_wide.png" height="60px">
     </router-link>
-    <ul>
-      <li v-if="isLoggedIn" class="nav-item">
+    <ul v-if="isLoggedIn">
+      <li>
         <router-link to="/gamerooms">
           Gamerooms
         </router-link>
       </li>
+      <li>
+        <router-link to='/'>
+          <span v-on:click="logout">Log out</span>
+        </router-link>
+      </li>
     </ul>
-    <ul>
-      <li v-if="!isLoggedIn" class="nav-item">
+    <ul v-if="!isLoggedIn">
+      <li>
         <router-link to="/login">
           Log In
         </router-link>
       </li>
-      <li v-if="!isLoggedIn" class="nav-item">
+      <li>
         <router-link to="/register">
           Register
-        </router-link>
-      </li>
-      <li v-if="isLoggedIn" class="nav-item">
-        <router-link to='/'>
-          <span v-on:click="logout">Log out</span>
         </router-link>
       </li>
     </ul>
