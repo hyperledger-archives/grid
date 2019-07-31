@@ -25,6 +25,7 @@ use crate::protos::admin::{
     Circuit, CircuitManagementPayload, CircuitManagementPayload_Action, CircuitProposal,
     CircuitProposal_ProposalType,
 };
+use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
@@ -199,6 +200,26 @@ struct SplinterService {
     service_id: String,
     service_type: String,
     allowed_nodes: Vec<String>,
+}
+
+impl RestResourceProvider for AdminService {
+    fn resources(&self) -> Vec<Resource> {
+        vec![make_create_circuit_route()]
+    }
+}
+
+fn make_create_circuit_route() -> Resource {
+    Resource::new(Method::Post, "/auth/circuit", move |r, p| create_circuit(r, p))
+}
+
+fn create_circuit(
+    req: HttpRequest,
+    payload: web::Payload,
+) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
+    Box::new(CreateCircuit::from_payload(payload).and_then(|circuit| {
+        debug!("Circuit: {:#?}", circuit);
+        Ok(HttpResponse::Accepted().finish())
+    }))
 }
 
 fn sha256(circuit: &Circuit) -> Result<String, ServiceError> {
