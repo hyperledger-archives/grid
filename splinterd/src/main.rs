@@ -24,7 +24,7 @@ mod config;
 mod daemon;
 mod node_registry;
 mod registry_config;
-mod rest_api;
+mod routes;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};

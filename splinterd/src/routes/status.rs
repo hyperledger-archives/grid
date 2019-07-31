@@ -37,7 +37,7 @@ pub fn get_openapi(
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         HttpResponse::Ok()
-            .body(include_str!("../../../api/static/openapi.yml"))
+            .body(include_str!("../../api/static/openapi.yml"))
             .into_future(),
     )
 }

@@ -58,7 +58,7 @@ use libsplinter::transport::{
 };
 
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
-use crate::rest_api;
+use crate::routes;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -87,20 +87,16 @@ impl SplinterDaemon {
         let registry = create_node_registry(&self.registry_config)?;
 
         let node_registry_manager =
-            rest_api::routes::NodeRegistryManager::new(self.node_id.clone(), registry);
+            routes::NodeRegistryManager::new(self.node_id.clone(), registry);
 
         let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
             .add_resource(Resource::new(
                 Method::Get,
                 "/openapi.yml",
-                rest_api::routes::get_openapi,
+                routes::get_openapi,
             ))
-            .add_resource(Resource::new(
-                Method::Get,
-                "/status",
-                rest_api::routes::get_status,
-            ))
+            .add_resource(Resource::new(Method::Get, "/status", routes::get_status))
             .add_resources(node_registry_manager.resources())
             .build()?
             .run()?;

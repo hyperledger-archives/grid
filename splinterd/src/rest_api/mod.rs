@@ -13,7 +13,6 @@
 // limitations under the License.
 
 pub mod error;
-pub mod routes;
 
 use crate::node_registry::yaml::YamlNodeRegistry;
 use crate::registry_config::RegistryConfig;
