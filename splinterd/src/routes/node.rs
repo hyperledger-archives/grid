@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
-use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use futures::{future::IntoFuture, Future};
+use libsplinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use libsplinter::futures::{future::IntoFuture, Future};
 use libsplinter::{
     node_registry::{error::NodeRegistryError, Node, NodeRegistry},
     rest_api::{Method, Resource, RestResourceProvider},
@@ -220,7 +220,7 @@ mod tests {
     use std::panic;
     use std::thread;
 
-    use actix_web::{
+    use libsplinter::actix_web::{
         http::{header, StatusCode},
         test, web, App,
     };
