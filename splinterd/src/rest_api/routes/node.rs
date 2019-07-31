@@ -15,7 +15,10 @@
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
-use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use libsplinter::{
+    node_registry::{error::NodeRegistryError, Node, NodeRegistry},
+    rest_api::{Method, Resource, RestResourceProvider},
+};
 use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
 
@@ -25,6 +28,39 @@ type Filter = HashMap<String, (String, String)>;
 pub struct ListNodesResponse {
     data: Vec<Node>,
     paging: Paging,
+}
+
+#[derive(Clone)]
+pub struct NodeRegistryManager {
+    node_id: String,
+    registry: Box<dyn NodeRegistry>,
+}
+
+impl NodeRegistryManager {
+    pub fn new(node_id: String, registry: Box<dyn NodeRegistry>) -> Self {
+        Self { node_id, registry }
+    }
+}
+
+impl RestResourceProvider for NodeRegistryManager {
+    fn resources(&self) -> Vec<Resource> {
+        vec![
+            make_fetch_node_resource(self.registry.clone()),
+            make_list_nodes_resource(self.registry.clone()),
+        ]
+    }
+}
+
+fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Get, "/nodes/{identity}", move |r, _| {
+        fetch_node(r, web::Data::new(registry.clone()))
+    })
+}
+
+fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Get, "/nodes", move |r, _| {
+        list_nodes(r, web::Data::new(registry.clone()))
+    })
 }
 
 pub fn fetch_node(
