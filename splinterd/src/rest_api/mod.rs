@@ -55,8 +55,13 @@ pub fn run(
                 App::new()
                     .data(node_registry.clone())
                     .wrap(middleware::Logger::default())
-                    .service(routes::get_status)
-                    .service(routes::get_openapi)
+                    .service(
+                        web::resource("/status").route(web::get().to_async(routes::get_status)),
+                    )
+                    .service(
+                        web::resource("/openapi.yml")
+                            .route(web::get().to_async(routes::get_openapi)),
+                    )
                     .service(
                         web::resource("/nodes/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),

@@ -28,26 +28,45 @@ pub struct ListNodesResponse {
 }
 
 pub fn fetch_node(
-    identity: web::Path<String>,
+    request: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    web::block(move || registry.fetch_node(&identity.into_inner())).then(|res| match res {
-        Ok(node) => Ok(HttpResponse::Ok().json(node)),
-        Err(err) => match err {
-            BlockingError::Error(err) => match err {
-                NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        web::block(move || registry.fetch_node(&identity)).then(|res| match res {
+            Ok(node) => Ok(HttpResponse::Ok().json(node)),
+            Err(err) => match err {
+                BlockingError::Error(err) => match err {
+                    NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+                    _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+                },
                 _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
             },
-            _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
-        },
-    })
+        }),
+    )
 }
 
 pub fn list_nodes(
     req: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let query: web::Query<HashMap<String, String>> =
+        if let Ok(q) = web::Query::from_query(req.query_string()) {
+            q
+        } else {
+            return Box::new(
+                HttpResponse::BadRequest()
+                    .json(json!({
+                        "message": "Invalid query"
+                    }))
+                    .into_future(),
+            );
+        };
+
     let offset = match query.get("offset") {
         Some(value) => match value.parse::<usize>() {
             Ok(val) => val,

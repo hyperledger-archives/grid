@@ -12,25 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::rest_api::error::RestApiServerError;
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
+use futures::{Future, IntoFuture};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Status {
     version: String,
 }
 
-#[get("/status")]
-pub fn get_status(_: HttpRequest) -> HttpResponse {
+pub fn get_status(
+    _: HttpRequest,
+    _: web::Payload,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
     let status = Status {
         version: get_version(),
     };
-    HttpResponse::Ok().json(status)
+
+    Box::new(HttpResponse::Ok().json(status).into_future())
 }
 
-#[get("/openapi.yml")]
-pub fn get_openapi(_: HttpRequest) -> Result<HttpResponse, RestApiServerError> {
-    Ok(HttpResponse::Ok().body(include_str!("../../../api/static/openapi.yml")))
+pub fn get_openapi(
+    _: HttpRequest,
+    _: web::Payload,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        HttpResponse::Ok()
+            .body(include_str!("../../../api/static/openapi.yml"))
+            .into_future(),
+    )
 }
 
 fn get_version() -> String {
