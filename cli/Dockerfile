@@ -47,7 +47,6 @@ RUN apt-get update && apt-get install -y protobuf-compiler
 
 # Pull in deps
 COPY protos/ /project/protos/
-COPY messaging/ /project/messaging/
 COPY client/ /project/client/
 COPY libsplinter/ /project/libsplinter/
 
