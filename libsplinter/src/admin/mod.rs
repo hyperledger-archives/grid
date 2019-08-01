@@ -394,15 +394,15 @@ impl SplinterService {
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(),
+            make_create_circuit_route(self.clone()),
             make_application_handler_registration_route(),
         ]
     }
 }
 
-fn make_create_circuit_route() -> Resource {
+fn make_create_circuit_route(admin_service: AdminService) -> Resource {
     Resource::new(Method::Post, "/auth/circuit", move |r, p| {
-        create_circuit(r, p)
+        create_circuit(r, p, admin_service.clone())
     })
 }
 
@@ -420,13 +420,27 @@ fn make_application_handler_registration_route() -> Resource {
 }
 
 fn create_circuit(
-    req: HttpRequest,
+    _req: HttpRequest,
     payload: web::Payload,
+    admin_service: AdminService,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
-    Box::new(CreateCircuit::from_payload(payload).and_then(|circuit| {
-        debug!("Circuit: {:#?}", circuit);
-        Ok(HttpResponse::Accepted().finish())
-    }))
+    Box::new(
+        CreateCircuit::from_payload(payload).and_then(move |create_circuit| {
+            let mut circuit_create_request = match create_circuit.into_proto() {
+                Ok(request) => request,
+                Err(_) => return Ok(HttpResponse::BadRequest().finish()),
+            };
+            let circuit = circuit_create_request.take_circuit();
+            let circuit_id = circuit.circuit_id.clone();
+            if let Err(err) = admin_service.propose_circuit(circuit) {
+                error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
+                Ok(HttpResponse::BadRequest().finish())
+            } else {
+                debug!("Circuit {} proposed", circuit_id);
+                Ok(HttpResponse::Accepted().finish())
+            }
+        }),
+    )
 }
 
 #[cfg(test)]
