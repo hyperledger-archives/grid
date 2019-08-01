@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod gameroom;
 mod node;
 
+pub use gameroom::*;
 pub use node::*;
 
 use percent_encoding::{AsciiSet, CONTROLS};
