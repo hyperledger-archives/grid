@@ -17,13 +17,13 @@ use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 
 use openssl::hash::{hash, MessageDigest};
-use protobuf::{self, Message};
+use protobuf::{self, Message, RepeatedField};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
-    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
+    self, Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType,
 };
 use crate::rest_api::{Method, Resource, RestResourceProvider};
@@ -266,6 +266,52 @@ impl CreateCircuit {
             })
             .into_future()
     }
+
+    fn into_proto(self) -> Result<CircuitCreateRequest, ProposalMarshallingError> {
+        let mut circuit = Circuit::new();
+
+        circuit.set_circuit_id(self.circuit_id);
+        circuit.set_roster(RepeatedField::from_vec(
+            self.roster
+                .into_iter()
+                .map(SplinterService::into_proto)
+                .collect(),
+        ));
+        circuit.set_members(RepeatedField::from_vec(
+            self.members
+                .into_iter()
+                .map(SplinterNode::into_proto)
+                .collect(),
+        ));
+
+        circuit.set_circuit_management_type(self.circuit_management_type);
+        circuit.set_application_metadata(self.application_metadata);
+
+        match self.authorization_type {
+            AuthorizationType::Trust => {
+                circuit
+                    .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
+            }
+            _ => return Err(ProposalMarshallingError::InvalidAuthorizationType),
+        };
+
+        match self.persistence {
+            PersistenceType::Any => {
+                circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
+            }
+            _ => return Err(ProposalMarshallingError::InvalidPersistenceType),
+        };
+
+        match self.routes {
+            RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
+            _ => return Err(ProposalMarshallingError::InvalidRouteType),
+        };
+
+        let mut create_request = CircuitCreateRequest::new();
+        create_request.set_circuit(circuit);
+
+        Ok(create_request)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -303,11 +349,33 @@ struct SplinterNode {
     endpoint: String,
 }
 
+impl SplinterNode {
+    fn into_proto(self) -> admin::SplinterNode {
+        let mut proto = admin::SplinterNode::new();
+
+        proto.set_node_id(self.node_id);
+        proto.set_endpoint(self.endpoint);
+
+        proto
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct SplinterService {
     service_id: String,
     service_type: String,
     allowed_nodes: Vec<String>,
+}
+
+impl SplinterService {
+    fn into_proto(self) -> admin::SplinterService {
+        let mut proto = admin::SplinterService::new();
+        proto.set_service_id(self.service_id);
+        proto.set_service_type(self.service_type);
+        proto.set_allowed_nodes(RepeatedField::from_vec(self.allowed_nodes));
+
+        proto
+    }
 }
 
 impl RestResourceProvider for AdminService {
