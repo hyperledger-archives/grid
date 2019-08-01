@@ -104,6 +104,7 @@ pub enum ServiceStartError {
     AlreadyStarted,
     UnableToConnect(ServiceConnectionError),
     Internal(Box<dyn Error + Send>),
+    PoisonedLock(String),
 }
 
 impl Error for ServiceStartError {
@@ -112,6 +113,7 @@ impl Error for ServiceStartError {
             ServiceStartError::AlreadyStarted => None,
             ServiceStartError::UnableToConnect(err) => Some(err),
             ServiceStartError::Internal(err) => Some(&**err),
+            ServiceStartError::PoisonedLock(_) => None,
         }
     }
 }
@@ -124,6 +126,7 @@ impl std::fmt::Display for ServiceStartError {
                 write!(f, "unable to connect on start: {}", err)
             }
             ServiceStartError::Internal(err) => write!(f, "unable to start service: {}", err),
+            ServiceStartError::PoisonedLock(msg) => write!(f, "a lock was poisoned: {}", msg),
         }
     }
 }
@@ -139,6 +142,7 @@ pub enum ServiceStopError {
     NotStarted,
     UnableToDisconnect(ServiceDisconnectionError),
     Internal(Box<dyn Error + Send>),
+    PoisonedLock(String),
 }
 
 impl Error for ServiceStopError {
@@ -147,6 +151,7 @@ impl Error for ServiceStopError {
             ServiceStopError::NotStarted => None,
             ServiceStopError::UnableToDisconnect(err) => Some(err),
             ServiceStopError::Internal(err) => Some(&**err),
+            ServiceStopError::PoisonedLock(_) => None,
         }
     }
 }
@@ -159,6 +164,7 @@ impl std::fmt::Display for ServiceStopError {
                 write!(f, "unable to disconnect on stop: {}", err)
             }
             ServiceStopError::Internal(err) => write!(f, "unable to stop service: {}", err),
+            ServiceStopError::PoisonedLock(msg) => write!(f, "a lock was poisoned: {}", msg),
         }
     }
 }
