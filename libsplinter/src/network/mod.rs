@@ -54,7 +54,7 @@ impl NetworkMessage {
 struct PeerMap {
     peers: BiHashMap<String, usize>,
     redirects: HashMap<String, String>,
-    endpoints: HashMap<String, String>,
+    endpoints: BiHashMap<String, String>,
 }
 
 /// A map of Peer IDs to mesh IDs, which also maintains a redirect table for updated peer ids.
@@ -63,7 +63,7 @@ impl PeerMap {
         PeerMap {
             peers: BiHashMap::new(),
             redirects: HashMap::new(),
-            endpoints: HashMap::new(),
+            endpoints: BiHashMap::new(),
         }
     }
 
@@ -85,11 +85,12 @@ impl PeerMap {
 
     /// Remove a peer id, its endpoint and all of its redirects
     fn remove(&mut self, peer_id: &str) -> Option<usize> {
+        let peer_id_key = peer_id.to_string();
         self.redirects
             .retain(|_, target_peer_id| target_peer_id != peer_id);
-        self.endpoints.remove(&peer_id.to_string());
+        self.endpoints.remove_by_key(&peer_id_key);
         self.peers
-            .remove_by_key(&peer_id.to_string())
+            .remove_by_key(&peer_id_key)
             .map(|(_, mesh_id)| mesh_id)
     }
 
@@ -100,7 +101,7 @@ impl PeerMap {
         if let Some((_, mesh_id)) = self.peers.remove_by_key(&old_peer_id) {
             self.peers.insert(new_peer_id.clone(), mesh_id);
 
-            if let Some(endpoint) = self.endpoints.remove(&old_peer_id) {
+            if let Some((_, endpoint)) = self.endpoints.remove_by_key(&old_peer_id) {
                 self.endpoints.insert(new_peer_id.clone(), endpoint);
             }
             // update the old forwards
@@ -138,10 +139,14 @@ impl PeerMap {
         let endpoint_opt = self
             .redirects
             .get(peer_id)
-            .and_then(|target_peer_id| self.endpoints.get(target_peer_id))
-            .or_else(|| self.endpoints.get(&peer_id.to_string()));
+            .and_then(|target_peer_id| self.endpoints.get_by_key(target_peer_id))
+            .or_else(|| self.endpoints.get_by_key(&peer_id.to_string()));
 
         endpoint_opt.cloned()
+    }
+
+    fn get_peer_by_endpoint(&self, endpoint: &str) -> Option<String> {
+        self.endpoints.get_by_value(&endpoint.to_string()).cloned()
     }
 }
 
@@ -166,6 +171,10 @@ impl Network {
 
     pub fn get_peer_endpoint(&self, peer_id: &str) -> Option<String> {
         rwlock_read_unwrap!(self.peers).get_peer_endpoint(peer_id)
+    }
+
+    pub fn get_peer_by_endpoint(&self, endpoint: &str) -> Option<String> {
+        rwlock_read_unwrap!(self.peers).get_peer_by_endpoint(endpoint)
     }
 
     pub fn add_connection(
@@ -377,9 +386,14 @@ pub mod tests {
 
         // accept connection
         let connection = assert_ok(listener.accept());
+        let remote_endpoint = connection.remote_endpoint();
 
         // add peer with peer id 123
         assert_ok(network_one.add_peer("123".into(), connection));
+        assert_eq!(
+            Some("123".into()),
+            network_one.get_peer_by_endpoint(&remote_endpoint)
+        );
         // send 123 a peer id
         assert_ok(network_one.send("123".into(), b"345"));
 

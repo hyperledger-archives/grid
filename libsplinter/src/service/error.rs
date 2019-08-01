@@ -151,6 +151,9 @@ pub enum ServiceError {
     /// Returned if an error occurs during the sending of an outbound message
     UnableToSendMessage(Box<ServiceSendError>),
 
+    /// Returned if a service encounters a poisoned lock and is unable to recover
+    PoisonedLock(String),
+
     /// Returned handle is called when not yet registered.
     NotStarted,
 }
@@ -161,6 +164,7 @@ impl Error for ServiceError {
             ServiceError::InvalidMessageFormat(err) => Some(&**err),
             ServiceError::UnableToHandleMessage(err) => Some(&**err),
             ServiceError::UnableToSendMessage(err) => Some(err),
+            ServiceError::PoisonedLock(_) => None,
             ServiceError::NotStarted => None,
         }
     }
@@ -178,8 +182,15 @@ impl std::fmt::Display for ServiceError {
             ServiceError::UnableToSendMessage(ref err) => {
                 write!(f, "unable to send message: {}", err)
             }
+            ServiceError::PoisonedLock(ref msg) => write!(f, "a lock was poisoned: {}", msg),
             ServiceError::NotStarted => f.write_str("service not started"),
         }
+    }
+}
+
+impl From<ServiceSendError> for ServiceError {
+    fn from(err: ServiceSendError) -> Self {
+        ServiceError::UnableToSendMessage(Box::new(err))
     }
 }
 
