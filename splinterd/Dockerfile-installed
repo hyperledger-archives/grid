@@ -61,6 +61,7 @@ WORKDIR /project/splinterd
 COPY splinterd/Cargo.toml splinterd/Cargo.lock* splinterd/src ./
 RUN cargo build
 
+COPY protos/ /project/protos
 COPY splinterd/ /project/splinterd/
 COPY libsplinter/ /project/libsplinter
 RUN cargo deb
