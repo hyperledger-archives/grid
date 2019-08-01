@@ -88,6 +88,7 @@ impl SplinterDaemon {
 
         let node_registry_manager =
             routes::NodeRegistryManager::new(self.node_id.clone(), registry);
+        let admin_service = AdminService::new(&self.node_id);
 
         let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
@@ -98,6 +99,7 @@ impl SplinterDaemon {
             ))
             .add_resource(Resource::new(Method::Get, "/status", routes::get_status))
             .add_resources(node_registry_manager.resources())
+            .add_resources(admin_service.resources())
             .build()?
             .run()?;
 
@@ -202,7 +204,6 @@ impl SplinterDaemon {
         let service_clone = self.network.clone();
 
         // this thread will just be dropped on shutdown
-        let admin_service = AdminService::new(&self.node_id);
 
         let admin_service_peer_id = admin_service.service_id().to_string();
         let _ = thread::spawn(move || {

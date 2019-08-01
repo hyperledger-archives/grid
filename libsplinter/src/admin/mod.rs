@@ -19,14 +19,18 @@ use std::fmt::Write;
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
+use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::protos::admin::{
     Circuit, CircuitManagementPayload, CircuitManagementPayload_Action, CircuitProposal,
     CircuitProposal_ProposalType,
 };
+use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
+use serde_json;
 
 pub struct AdminService {
     service_id: String,
@@ -126,6 +130,114 @@ impl Service for AdminService {
 
         Ok(())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CreateCircuit {
+    circuit_id: String,
+    roster: Vec<SplinterService>,
+    members: Vec<SplinterNode>,
+    authorization_type: AuthorizationType,
+    persistence: PersistenceType,
+    routes: RouteType,
+    circuit_management_type: String,
+    application_metadata: Vec<u8>,
+}
+
+impl CreateCircuit {
+    fn from_payload(payload: web::Payload) -> impl Future<Item = Self, Error = ActixError> {
+        payload
+            .from_err()
+            .fold(web::BytesMut::new(), move |mut body, chunk| {
+                body.extend_from_slice(&chunk);
+                Ok::<_, ActixError>(body)
+            })
+            .and_then(|body| {
+                let proposal = serde_json::from_slice::<CreateCircuit>(&body).unwrap();
+                Ok(proposal)
+            })
+            .into_future()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum AuthorizationType {
+    TRUST_AUTHORIZATION,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum PersistenceType {
+    ANY_PERSISTENCE,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum RouteType {
+    ANY_ROUTE,
+}
+
+enum ProposalMarshallingError {
+    InvalidAuthorizationType,
+    InvalidRouteType,
+    InvalidPersistenceType,
+    InvalidDurabilityType,
+    ServiceError(ServiceError),
+}
+
+impl From<ServiceError> for ProposalMarshallingError {
+    fn from(err: ServiceError) -> Self {
+        ProposalMarshallingError::ServiceError(err)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SplinterNode {
+    node_id: String,
+    endpoint: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SplinterService {
+    service_id: String,
+    service_type: String,
+    allowed_nodes: Vec<String>,
+}
+
+impl RestResourceProvider for AdminService {
+    fn resources(&self) -> Vec<Resource> {
+        vec![
+            make_create_circuit_route(),
+            make_application_handler_registration_route(),
+        ]
+    }
+}
+
+fn make_create_circuit_route() -> Resource {
+    Resource::new(Method::Post, "/auth/circuit", move |r, p| {
+        create_circuit(r, p)
+    })
+}
+
+fn make_application_handler_registration_route() -> Resource {
+    Resource::new(Method::Put, "/auth/register/{type}", move |r, _| {
+        let circuit_management_type = if let Some(t) = r.match_info().get("type") {
+            t
+        } else {
+            return Box::new(HttpResponse::BadRequest().finish().into_future());
+        };
+
+        debug!("circuit management type {}", circuit_management_type);
+        Box::new(HttpResponse::Ok().finish().into_future())
+    })
+}
+
+fn create_circuit(
+    req: HttpRequest,
+    payload: web::Payload,
+) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
+    Box::new(CreateCircuit::from_payload(payload).and_then(|circuit| {
+        debug!("Circuit: {:#?}", circuit);
+        Ok(HttpResponse::Accepted().finish())
+    }))
 }
 
 fn sha256(circuit: &Circuit) -> Result<String, ServiceError> {
