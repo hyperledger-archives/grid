@@ -37,7 +37,6 @@ use serde_json;
 pub struct AdminService {
     node_id: String,
     service_id: String,
-    network_sender: Option<Box<dyn ServiceNetworkSender>>,
     admin_service_state: Arc<Mutex<AdminServiceState>>,
 }
 
@@ -46,8 +45,8 @@ impl AdminService {
         Self {
             node_id: node_id.to_string(),
             service_id: admin_service_id(node_id),
-            network_sender: None,
             admin_service_state: Arc::new(Mutex::new(AdminServiceState {
+                network_sender: None,
                 open_proposals: Default::default(),
                 peer_connector,
             })),
@@ -68,9 +67,13 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
+        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
+            ServiceStartError::PoisonedLock("the admin state lock was poisoned".into())
+        })?;
+
         let network_sender = service_registry.connect(&self.service_id)?;
 
-        self.network_sender = Some(network_sender);
+        admin_service_state.network_sender = Some(network_sender);
 
         Ok(())
     }
@@ -79,9 +82,13 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStopError> {
+        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
+            ServiceStopError::PoisonedLock("the admin state lock was poisoned".into())
+        })?;
+
         service_registry.disconnect(&self.service_id)?;
 
-        self.network_sender = None;
+        admin_service_state.network_sender = None;
 
         Ok(())
     }
@@ -95,10 +102,6 @@ impl Service for AdminService {
         message_bytes: &[u8],
         _message_context: &ServiceMessageContext,
     ) -> Result<(), ServiceError> {
-        if self.network_sender.is_none() {
-            return Err(ServiceError::NotStarted);
-        }
-
         let mut envelope: CircuitManagementPayload = protobuf::parse_from_bytes(message_bytes)
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
@@ -143,14 +146,14 @@ impl AdminService {
     /// This operation will propose a new circuit to all the member nodes of the circuit.  If there
     /// is no peer connection, a connection to the peer will also be established.
     pub fn propose_circuit(&self, proposed_circuit: Circuit) -> Result<(), ServiceError> {
-        if self.network_sender.is_none() {
-            return Err(ServiceError::NotStarted);
-        }
-
         let mut admin_service_state = self
             .admin_service_state
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
+
+        if admin_service_state.network_sender.is_none() {
+            return Err(ServiceError::NotStarted);
+        }
 
         let mut member_node_ids = vec![];
         for node in proposed_circuit.get_members() {
@@ -186,7 +189,8 @@ impl AdminService {
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
         for member_id in member_node_ids {
-            self.network_sender
+            admin_service_state
+                .network_sender
                 .as_ref()
                 .unwrap()
                 .send(&admin_service_id(&member_id), &envelope_bytes)?;
@@ -221,6 +225,7 @@ fn to_hex(bytes: &[u8]) -> String {
 struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
     peer_connector: PeerConnector,
+    network_sender: Option<Box<dyn ServiceNetworkSender>>,
 }
 
 impl AdminServiceState {
