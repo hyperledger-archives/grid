@@ -14,6 +14,7 @@
 
 use std::error::Error;
 
+use transact::database::error::DatabaseError;
 use transact::execution::adapter::ExecutionAdapterError;
 use transact::execution::executor::ExecutorError;
 use transact::protocol::batch::BatchBuildError;
@@ -92,6 +93,12 @@ impl std::fmt::Display for ScabbardStateError {
 
 impl From<BatchBuildError> for ScabbardStateError {
     fn from(err: BatchBuildError) -> Self {
+        ScabbardStateError(err.to_string())
+    }
+}
+
+impl From<DatabaseError> for ScabbardStateError {
+    fn from(err: DatabaseError) -> Self {
         ScabbardStateError(err.to_string())
     }
 }

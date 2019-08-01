@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::path::Path;
+
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use transact::context::manager::sync::ContextManager;
-use transact::database::{btree::BTreeDatabase, Database};
+use transact::database::{
+    lmdb::{LmdbContext, LmdbDatabase},
+    Database,
+};
 use transact::execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor};
 use transact::protocol::batch::BatchPair;
 use transact::sawtooth::SawtoothToTransactHandlerAdapter;
@@ -37,8 +42,11 @@ pub struct ScabbardState {
 }
 
 impl ScabbardState {
-    pub fn new() -> Result<Self, ScabbardStateError> {
-        let db = Box::new(BTreeDatabase::new(&INDEXES));
+    pub fn new(db_path: &Path, db_size: usize) -> Result<Self, ScabbardStateError> {
+        let db = Box::new(LmdbDatabase::new(
+            LmdbContext::new(db_path, INDEXES.len(), Some(db_size))?,
+            &INDEXES,
+        )?);
         let context_manager = ContextManager::new(Box::new(MerkleState::new(db.clone())));
         let executor = Executor::new(vec![Box::new(StaticExecutionAdapter::new_adapter(
             vec![Box::new(SawtoothToTransactHandlerAdapter::new(
