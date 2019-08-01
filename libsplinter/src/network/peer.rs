@@ -104,7 +104,7 @@ mod tests {
 
     /// Add a connection without an existing node (peer) id.
     #[test]
-    fn test_connect_undentified_peer() {
+    fn test_connect_unidentified_peer() {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
         let transport =
@@ -126,7 +126,7 @@ mod tests {
     /// Add a connection without an existing node (peer) id, and add the same peer a second time to
     /// determine that it is not being added more than once.
     #[test]
-    fn test_connect_undentified_peer_idempotent() {
+    fn test_connect_unidentified_peer_idempotent() {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
         let transport =
