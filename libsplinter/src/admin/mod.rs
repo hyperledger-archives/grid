@@ -391,15 +391,18 @@ fn make_create_circuit_route(admin_service: AdminService) -> Resource {
 }
 
 fn make_application_handler_registration_route() -> Resource {
-    Resource::new(Method::Put, "/auth/register/{type}", move |r, _| {
+    Resource::new(Method::Get, "/ws/auth/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
         } else {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
 
+        let res = ws::start(AdminServiceWebSocket::new(), &r, p);
+
         debug!("circuit management type {}", circuit_management_type);
-        Box::new(HttpResponse::Ok().finish().into_future())
+        debug!("Websocket response: {:?}", res);
+        Box::new(res.into_future())
     })
 }
 
