@@ -329,17 +329,30 @@ enum RouteType {
     Any,
 }
 
+#[derive(Debug)]
 enum ProposalMarshallingError {
     InvalidAuthorizationType,
     InvalidRouteType,
     InvalidPersistenceType,
     InvalidDurabilityType,
-    ServiceError(ServiceError),
 }
 
-impl From<ServiceError> for ProposalMarshallingError {
-    fn from(err: ServiceError) -> Self {
-        ProposalMarshallingError::ServiceError(err)
+impl std::error::Error for ProposalMarshallingError {}
+
+impl std::fmt::Display for ProposalMarshallingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ProposalMarshallingError::InvalidAuthorizationType => {
+                f.write_str("invalid authorization type")
+            }
+            ProposalMarshallingError::InvalidRouteType => f.write_str("invalid route type"),
+            ProposalMarshallingError::InvalidPersistenceType => {
+                f.write_str("invalid persistence type")
+            }
+            ProposalMarshallingError::InvalidDurabilityType => {
+                f.write_str("invalid durability type")
+            }
+        }
     }
 }
 
