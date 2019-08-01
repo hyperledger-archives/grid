@@ -21,7 +21,7 @@ pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;
 
-use crate::service::error::{
+pub use error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
     ServiceSendError, ServiceStartError, ServiceStopError,
 };
