@@ -48,6 +48,10 @@ impl PeerConnector {
             PeerConnectorError(format!("Unable to acquire transport lock: {}", err))
         })?;
 
+        if self.network.get_peer_by_endpoint(endpoint).is_some() {
+            return Ok(());
+        }
+
         let connection = transport.connect(&endpoint).map_err(|err| {
             PeerConnectorError(format!("Unable to connect to node {}: {:?}", node_id, err))
         })?;
@@ -69,6 +73,10 @@ impl PeerConnector {
         let mut transport = self.transport.lock().map_err(|err| {
             PeerConnectorError(format!("Unable to acquire transport lock: {}", err))
         })?;
+
+        if self.network.get_peer_by_endpoint(endpoint).is_some() {
+            return Ok(());
+        }
 
         let connection = transport.connect(&endpoint).map_err(|err| {
             PeerConnectorError(format!("Unable to connect to {}: {:?}", endpoint, err))
@@ -113,6 +121,37 @@ mod tests {
 
         assert!(!network.peer_ids().is_empty());
         assert!(network.peer_ids()[0].starts_with("temp-"));
+    }
+
+    /// Add a connection without an existing node (peer) id, and add the same peer a second time to
+    /// determine that it is not being added more than once.
+    #[test]
+    fn test_connect_undentified_peer_idempotent() {
+        let mesh = Mesh::new(4, 16);
+        let network = Network::new(mesh.clone());
+        let transport =
+            MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
+
+        let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
+
+        assert!(network.peer_ids().is_empty());
+
+        assert_eq!(
+            Ok(()),
+            peer_connector.connect_unidentified_peer("MockConnection")
+        );
+
+        assert_eq!(1, network.peer_ids().len());
+        let peer_id = network.peer_ids()[0].to_string();
+        assert!(peer_id.starts_with("temp-"));
+
+        assert_eq!(
+            Ok(()),
+            peer_connector.connect_unidentified_peer("MockConnection")
+        );
+
+        assert_eq!(1, network.peer_ids().len());
+        assert_eq!(peer_id, network.peer_ids()[0]);
     }
 
     /// Add a connection with a known node id (e.g. a node that was connected and known in the
