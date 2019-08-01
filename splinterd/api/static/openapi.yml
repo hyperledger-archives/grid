@@ -121,8 +121,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /auth/register/{type}:
-    put:
+  /ws/auth/register/{type}:
+    get:
       tags:
         - Authorization Handler
       description: Register the handler for a circuit management type
@@ -141,6 +141,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationRegistration'
+        400:
+          description: The circuit management type was invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
         500:
           description: Internal server error
           content:
@@ -148,20 +155,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
                 
-  /ws/proposals/subscribe:
-    post:
-      tags:
-        - proposals
-      description: WebSocket endpoint for subscribing to circuit proposal events
-      responses:
-        200:
-          description: subscription successful
-        500:
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /nodes:
     get:
       tags:
