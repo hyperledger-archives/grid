@@ -262,6 +262,13 @@ components:
           description: Rest API version
           type: string
           example: "0.1.0"
+        node_id:
+          description: Node id
+          type: string
+          example: node-009 
+        endpoint:
+          description: The node's service endpoint
+          example: tcp://foo.bar.biz
       required:
         - version
 
