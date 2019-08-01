@@ -204,12 +204,30 @@ struct SplinterService {
 
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
-        vec![make_create_circuit_route()]
+        vec![
+            make_create_circuit_route(),
+            make_application_handler_registration_route(),
+        ]
     }
 }
 
 fn make_create_circuit_route() -> Resource {
-    Resource::new(Method::Post, "/auth/circuit", move |r, p| create_circuit(r, p))
+    Resource::new(Method::Post, "/auth/circuit", move |r, p| {
+        create_circuit(r, p)
+    })
+}
+
+fn make_application_handler_registration_route() -> Resource {
+    Resource::new(Method::Put, "/auth/register/{type}", move |r, _| {
+        let circuit_management_type = if let Some(t) = r.match_info().get("type") {
+            t
+        } else {
+            return Box::new(HttpResponse::BadRequest().finish().into_future());
+        };
+
+        debug!("circuit management type {}", circuit_management_type);
+        Box::new(HttpResponse::Ok().finish().into_future())
+    })
 }
 
 fn create_circuit(
