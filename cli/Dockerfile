@@ -40,9 +40,9 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
 ENV PATH=$PATH:/root/.cargo/bin
 
 # For Building Protobufs
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
-    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.5.1-linux-x86_64.zip
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
 RUN apt-get update && apt-get install -y protobuf-compiler
 
 # Pull in deps

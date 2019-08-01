@@ -23,9 +23,9 @@ RUN apt-get update \
  unzip
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
-    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /protoc3 \
-    && rm protoc-3.5.1-linux-x86_64.zip
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /protoc3 \
+    && rm protoc-3.7.1-linux-x86_64.zip
 
 ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
 
