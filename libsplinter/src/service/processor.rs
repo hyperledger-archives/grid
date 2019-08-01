@@ -755,9 +755,7 @@ pub mod tests {
             &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStartError> {
-            let network_sender = service_registry
-                .connect(self.service_id())
-                .map_err(|err| ServiceStartError(Box::new(err)))?;
+            let network_sender = service_registry.connect(self.service_id())?;
             self.network_sender = Some(network_sender);
             Ok(())
         }
@@ -767,9 +765,7 @@ pub mod tests {
             &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
-            service_registry
-                .disconnect(self.service_id())
-                .map_err(|err| ServiceStopError(Box::new(err)))?;
+            service_registry.disconnect(self.service_id())?;
             Ok(())
         }
 
@@ -842,9 +838,7 @@ pub mod tests {
             &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStartError> {
-            let network_sender = service_registry
-                .connect(self.service_id())
-                .map_err(|err| ServiceStartError(Box::new(err)))?;
+            let network_sender = service_registry.connect(self.service_id())?;
             self.network_sender = Some(network_sender);
             Ok(())
         }
@@ -854,9 +848,7 @@ pub mod tests {
             &mut self,
             service_registry: &dyn ServiceNetworkRegistry,
         ) -> Result<(), ServiceStopError> {
-            service_registry
-                .disconnect(self.service_id())
-                .map_err(|err| ServiceStopError(Box::new(err)))?;
+            service_registry.disconnect(self.service_id())?;
             Ok(())
         }
 

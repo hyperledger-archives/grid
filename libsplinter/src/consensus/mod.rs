@@ -78,7 +78,7 @@ macro_rules! id_type {
 id_type!(PeerId);
 id_type!(ProposalId);
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Proposal {
     pub id: ProposalId,
     pub previous_id: ProposalId,

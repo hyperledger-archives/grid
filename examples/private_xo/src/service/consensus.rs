@@ -255,13 +255,13 @@ impl ConsensusNetworkSender for PrivateXoNetworkSender {
                     self.config.circuit().into(),
                     self.config.service_id().into(),
                     String::from_utf8(peer_id.clone().into())
-                        .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                        .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                     &msg,
                     Uuid::new_v4().to_string(),
                 )
-                .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
             ))
-            .map_err(|err| ConsensusSendError(Box::new(ServiceError::from(err))))?;
+            .map_err(|err| ConsensusSendError::Internal(Box::new(ServiceError::from(err))))?;
 
         Ok(())
     }
@@ -284,9 +284,9 @@ impl ConsensusNetworkSender for PrivateXoNetworkSender {
                         &msg,
                         Uuid::new_v4().to_string(),
                     )
-                    .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                    .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                 ))
-                .map_err(|err| ConsensusSendError(Box::new(ServiceError::from(err))))?;
+                .map_err(|err| ConsensusSendError::Internal(Box::new(ServiceError::from(err))))?;
         }
 
         Ok(())

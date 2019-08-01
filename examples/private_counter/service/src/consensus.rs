@@ -214,14 +214,14 @@ impl ConsensusNetworkSender for PrivateCounterNetworkSender {
                     state.circuit.clone(),
                     state.service_id.clone(),
                     String::from_utf8(peer_id.clone().into())
-                        .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                        .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                     msg.write_to_bytes()
-                        .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                        .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                     Uuid::new_v4().to_string(),
                 )
-                .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
             ))
-            .map_err(|err| ConsensusSendError(Box::new(ServiceError::from(err))))?;
+            .map_err(|err| ConsensusSendError::Internal(Box::new(ServiceError::from(err))))?;
 
         Ok(())
     }
@@ -244,12 +244,12 @@ impl ConsensusNetworkSender for PrivateCounterNetworkSender {
                         state.service_id.clone(),
                         verifier.clone(),
                         msg.write_to_bytes()
-                            .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                            .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                         Uuid::new_v4().to_string(),
                     )
-                    .map_err(|err| ConsensusSendError(Box::new(err)))?,
+                    .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?,
                 ))
-                .map_err(|err| ConsensusSendError(Box::new(ServiceError::from(err))))?;
+                .map_err(|err| ConsensusSendError::Internal(Box::new(ServiceError::from(err))))?;
         }
 
         Ok(())

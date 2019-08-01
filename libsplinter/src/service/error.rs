@@ -16,6 +16,8 @@
 use std::error::Error;
 use std::io::Error as IOError;
 
+use protobuf::error::ProtobufError;
+
 #[derive(Debug)]
 pub struct ServiceSendError(pub Box<dyn Error + Send>);
 
@@ -98,47 +100,96 @@ impl std::fmt::Display for ServiceDisconnectionError {
 }
 
 #[derive(Debug)]
-pub struct ServiceStartError(pub Box<dyn Error + Send>);
+pub enum ServiceStartError {
+    AlreadyStarted,
+    UnableToConnect(ServiceConnectionError),
+    Internal(Box<dyn Error + Send>),
+}
 
 impl Error for ServiceStartError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
+        match self {
+            ServiceStartError::AlreadyStarted => None,
+            ServiceStartError::UnableToConnect(err) => Some(err),
+            ServiceStartError::Internal(err) => Some(&**err),
+        }
     }
 }
 
 impl std::fmt::Display for ServiceStartError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to start service: {}", self.0)
+        match self {
+            ServiceStartError::AlreadyStarted => write!(f, "service already started"),
+            ServiceStartError::UnableToConnect(err) => {
+                write!(f, "unable to connect on start: {}", err)
+            }
+            ServiceStartError::Internal(err) => write!(f, "unable to start service: {}", err),
+        }
+    }
+}
+
+impl From<ServiceConnectionError> for ServiceStartError {
+    fn from(err: ServiceConnectionError) -> Self {
+        ServiceStartError::UnableToConnect(err)
     }
 }
 
 #[derive(Debug)]
-pub struct ServiceStopError(pub Box<dyn Error + Send>);
+pub enum ServiceStopError {
+    NotStarted,
+    UnableToDisconnect(ServiceDisconnectionError),
+    Internal(Box<dyn Error + Send>),
+}
 
 impl Error for ServiceStopError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
+        match self {
+            ServiceStopError::NotStarted => None,
+            ServiceStopError::UnableToDisconnect(err) => Some(err),
+            ServiceStopError::Internal(err) => Some(&**err),
+        }
     }
 }
 
 impl std::fmt::Display for ServiceStopError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to stop service : {}", self.0)
+        match self {
+            ServiceStopError::NotStarted => write!(f, "service not started"),
+            ServiceStopError::UnableToDisconnect(err) => {
+                write!(f, "unable to disconnect on stop: {}", err)
+            }
+            ServiceStopError::Internal(err) => write!(f, "unable to stop service: {}", err),
+        }
+    }
+}
+
+impl From<ServiceDisconnectionError> for ServiceStopError {
+    fn from(err: ServiceDisconnectionError) -> Self {
+        ServiceStopError::UnableToDisconnect(err)
     }
 }
 
 #[derive(Debug)]
-pub struct ServiceDestroyError(pub Box<dyn Error + Send>);
+pub enum ServiceDestroyError {
+    NotStopped,
+    Internal(Box<dyn Error + Send>),
+}
 
 impl Error for ServiceDestroyError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
+        match self {
+            ServiceDestroyError::NotStopped => None,
+            ServiceDestroyError::Internal(err) => Some(&**err),
+        }
     }
 }
 
 impl std::fmt::Display for ServiceDestroyError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to destroy service: {}", self.0)
+        match self {
+            ServiceDestroyError::NotStopped => write!(f, "service not stopped"),
+            ServiceDestroyError::Internal(err) => write!(f, "unable to destroy service: {}", err),
+        }
     }
 }
 
@@ -154,7 +205,7 @@ pub enum ServiceError {
     /// Returned if a service encounters a poisoned lock and is unable to recover
     PoisonedLock(String),
 
-    /// Returned handle is called when not yet registered.
+    /// Returned if handle_message is called when not yet registered.
     NotStarted,
 }
 
@@ -185,6 +236,12 @@ impl std::fmt::Display for ServiceError {
             ServiceError::PoisonedLock(ref msg) => write!(f, "a lock was poisoned: {}", msg),
             ServiceError::NotStarted => f.write_str("service not started"),
         }
+    }
+}
+
+impl From<ProtobufError> for ServiceError {
+    fn from(err: ProtobufError) -> Self {
+        ServiceError::InvalidMessageFormat(Box::new(err))
     }
 }
 
