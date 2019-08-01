@@ -292,19 +292,16 @@ impl CreateCircuit {
                 circuit
                     .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
             }
-            _ => return Err(ProposalMarshallingError::InvalidAuthorizationType),
         };
 
         match self.persistence {
             PersistenceType::Any => {
                 circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
             }
-            _ => return Err(ProposalMarshallingError::InvalidPersistenceType),
         };
 
         match self.routes {
             RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
-            _ => return Err(ProposalMarshallingError::InvalidRouteType),
         };
 
         let mut create_request = CircuitCreateRequest::new();
@@ -330,29 +327,13 @@ enum RouteType {
 }
 
 #[derive(Debug)]
-enum ProposalMarshallingError {
-    InvalidAuthorizationType,
-    InvalidRouteType,
-    InvalidPersistenceType,
-    InvalidDurabilityType,
-}
+struct ProposalMarshallingError;
 
 impl std::error::Error for ProposalMarshallingError {}
 
 impl std::fmt::Display for ProposalMarshallingError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ProposalMarshallingError::InvalidAuthorizationType => {
-                f.write_str("invalid authorization type")
-            }
-            ProposalMarshallingError::InvalidRouteType => f.write_str("invalid route type"),
-            ProposalMarshallingError::InvalidPersistenceType => {
-                f.write_str("invalid persistence type")
-            }
-            ProposalMarshallingError::InvalidDurabilityType => {
-                f.write_str("invalid durability type")
-            }
-        }
+        f.write_str("unable to marshal object")
     }
 }
 
