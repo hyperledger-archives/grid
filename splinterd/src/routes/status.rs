@@ -17,14 +17,18 @@ use libsplinter::futures::{Future, IntoFuture};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Status {
+    node_id: String,
+    endpoint: String,
     version: String,
 }
 
 pub fn get_status(
-    _: HttpRequest,
-    _: web::Payload,
+    node_id: String,
+    endpoint: String,
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
     let status = Status {
+        node_id,
+        endpoint,
         version: get_version(),
     };
 

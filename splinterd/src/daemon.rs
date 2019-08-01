@@ -97,6 +97,8 @@ impl SplinterDaemon {
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
         let admin_service = AdminService::new(&self.node_id, peer_connector.clone());
 
+        let node_id = self.node_id.clone();
+        let service_endpoint = self.service_endpoint.clone();
         let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
             .add_resource(Resource::new(
@@ -104,7 +106,9 @@ impl SplinterDaemon {
                 "/openapi.yml",
                 routes::get_openapi,
             ))
-            .add_resource(Resource::new(Method::Get, "/status", routes::get_status))
+            .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
+                routes::get_status(node_id.clone(), service_endpoint.clone())
+            }))
             .add_resources(node_registry_manager.resources())
             .add_resources(admin_service.resources())
             .build()?
