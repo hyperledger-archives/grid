@@ -241,15 +241,15 @@ impl AdminServiceState {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct CreateCircuit {
-    circuit_id: String,
-    roster: Vec<SplinterService>,
-    members: Vec<SplinterNode>,
-    authorization_type: AuthorizationType,
-    persistence: PersistenceType,
-    routes: RouteType,
-    circuit_management_type: String,
-    application_metadata: Vec<u8>,
+pub struct CreateCircuit {
+    pub circuit_id: String,
+    pub roster: Vec<SplinterService>,
+    pub members: Vec<SplinterNode>,
+    pub authorization_type: AuthorizationType,
+    pub persistence: PersistenceType,
+    pub routes: RouteType,
+    pub circuit_management_type: String,
+    pub application_metadata: Vec<u8>,
 }
 
 impl CreateCircuit {
@@ -312,17 +312,17 @@ impl CreateCircuit {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum AuthorizationType {
+pub enum AuthorizationType {
     Trust,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum PersistenceType {
+pub enum PersistenceType {
     Any,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum RouteType {
+pub enum RouteType {
     Any,
 }
 
@@ -338,9 +338,9 @@ impl std::fmt::Display for ProposalMarshallingError {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SplinterNode {
-    node_id: String,
-    endpoint: String,
+pub struct SplinterNode {
+    pub node_id: String,
+    pub endpoint: String,
 }
 
 impl SplinterNode {
@@ -355,10 +355,10 @@ impl SplinterNode {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SplinterService {
-    service_id: String,
-    service_type: String,
-    allowed_nodes: Vec<String>,
+pub struct SplinterService {
+    pub service_id: String,
+    pub service_type: String,
+    pub allowed_nodes: Vec<String>,
 }
 
 impl SplinterService {
