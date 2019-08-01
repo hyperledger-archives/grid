@@ -153,7 +153,7 @@ fn main() -> Result<(), ServiceError> {
         let state = state.lock().expect("State lock poisoned");
 
         StartupState {
-            id: state.peer_id.as_bytes().into(),
+            id: state.service_id.as_bytes().into(),
             peer_ids: state
                 .verifiers
                 .iter()
