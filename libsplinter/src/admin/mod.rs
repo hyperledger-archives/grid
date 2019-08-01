@@ -270,17 +270,17 @@ impl CreateCircuit {
 
 #[derive(Serialize, Deserialize, Debug)]
 enum AuthorizationType {
-    TRUST_AUTHORIZATION,
+    Trust,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum PersistenceType {
-    ANY_PERSISTENCE,
+    Any,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum RouteType {
-    ANY_ROUTE,
+    Any,
 }
 
 enum ProposalMarshallingError {
