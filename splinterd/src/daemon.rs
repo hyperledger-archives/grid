@@ -88,7 +88,14 @@ impl SplinterDaemon {
 
         let node_registry_manager =
             routes::NodeRegistryManager::new(self.node_id.clone(), registry);
-        let admin_service = AdminService::new(&self.node_id);
+
+        // set up the listeners on the transport
+        let mut network_listener = transport.listen(&self.network_endpoint)?;
+        let mut service_listener = transport.listen(&self.service_endpoint)?;
+        let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
+
+        let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
+        let admin_service = AdminService::new(&self.node_id, peer_connector.clone());
 
         let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
@@ -177,7 +184,6 @@ impl SplinterDaemon {
         let network_dispatcher_thread = thread::spawn(move || network_dispatch_loop.run());
 
         // setup a thread to listen on the network port and add incoming connection to the network
-        let mut network_listener = transport.listen(&self.network_endpoint)?;
         let network_clone = self.network.clone();
 
         // this thread will just be dropped on shutdown
@@ -199,12 +205,9 @@ impl SplinterDaemon {
         });
 
         // setup a thread to listen on the service port and add incoming connection to the network
-        let mut service_listener = transport.listen(&self.service_endpoint)?;
-        let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
         let service_clone = self.network.clone();
 
         // this thread will just be dropped on shutdown
-
         let admin_service_peer_id = admin_service.service_id().to_string();
         let _ = thread::spawn(move || {
             // accept the admin service's connection
@@ -239,8 +242,6 @@ impl SplinterDaemon {
             }
             Ok(())
         });
-
-        let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
 
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {

@@ -21,6 +21,7 @@ use protobuf::{self, Message};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
     Circuit, CircuitManagementPayload, CircuitManagementPayload_Action, CircuitProposal,
     CircuitProposal_ProposalType,
@@ -32,6 +33,7 @@ use crate::service::{
 };
 use serde_json;
 
+#[derive(Clone)]
 pub struct AdminService {
     service_id: String,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
@@ -39,11 +41,14 @@ pub struct AdminService {
 }
 
 impl AdminService {
-    pub fn new(node_id: &str) -> Self {
+    pub fn new(node_id: &str, peer_connector: PeerConnector) -> Self {
         Self {
             service_id: format!("admin::{}", node_id),
             network_sender: None,
-            admin_service_state: Default::default(),
+            admin_service_state: Arc::new(Mutex::new(AdminServiceState {
+                open_proposals: Default::default(),
+                peer_connector,
+            })),
         }
     }
 }
@@ -261,9 +266,9 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-#[derive(Default)]
 struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
+    peer_connector: PeerConnector,
 }
 
 impl AdminServiceState {
