@@ -1,8 +1,8 @@
 - identity: '123asdf'
   metadata:
     organization: 'bubba_bakery'
-    endpoint: 'tcp://127.0.0.1:8046'
+    endpoint: 'tls://splinterd-node-bubba:8044'
 - identity: '2456qwerty'
   metadata:
     organization: 'ACME Corp'
-    endpoint: 'tcp://127.0.0.1:8049'
+    endpoint: 'tls://splinterd-node-acme:8044'
