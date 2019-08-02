@@ -88,7 +88,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /auth/circuit/{name}:
+  /admin/circuit/{name}:
     get:
       tags:
         - circuits
@@ -121,7 +121,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /ws/auth/register/{type}:
+  /ws/admin/register/{type}:
     get:
       tags:
         - Authorization Handler

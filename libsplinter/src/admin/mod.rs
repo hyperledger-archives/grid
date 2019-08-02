@@ -385,13 +385,13 @@ impl RestResourceProvider for AdminService {
 }
 
 fn make_create_circuit_route(admin_service: AdminService) -> Resource {
-    Resource::new(Method::Post, "/auth/circuit", move |r, p| {
+    Resource::new(Method::Post, "/admin/circuit", move |r, p| {
         create_circuit(r, p, admin_service.clone())
     })
 }
 
 fn make_application_handler_registration_route() -> Resource {
-    Resource::new(Method::Get, "/ws/auth/register/{type}", move |r, p| {
+    Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
         } else {
