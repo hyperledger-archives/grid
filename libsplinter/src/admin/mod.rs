@@ -17,13 +17,13 @@ use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 
 use openssl::hash::{hash, MessageDigest};
-use protobuf::{self, Message};
+use protobuf::{self, Message, RepeatedField};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
-    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
+    self, Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType,
 };
 use crate::rest_api::{Method, Resource, RestResourceProvider};
@@ -37,7 +37,6 @@ use serde_json;
 pub struct AdminService {
     node_id: String,
     service_id: String,
-    network_sender: Option<Box<dyn ServiceNetworkSender>>,
     admin_service_state: Arc<Mutex<AdminServiceState>>,
 }
 
@@ -46,8 +45,8 @@ impl AdminService {
         Self {
             node_id: node_id.to_string(),
             service_id: admin_service_id(node_id),
-            network_sender: None,
             admin_service_state: Arc::new(Mutex::new(AdminServiceState {
+                network_sender: None,
                 open_proposals: Default::default(),
                 peer_connector,
             })),
@@ -68,9 +67,13 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
+        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
+            ServiceStartError::PoisonedLock("the admin state lock was poisoned".into())
+        })?;
+
         let network_sender = service_registry.connect(&self.service_id)?;
 
-        self.network_sender = Some(network_sender);
+        admin_service_state.network_sender = Some(network_sender);
 
         Ok(())
     }
@@ -79,9 +82,13 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStopError> {
+        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
+            ServiceStopError::PoisonedLock("the admin state lock was poisoned".into())
+        })?;
+
         service_registry.disconnect(&self.service_id)?;
 
-        self.network_sender = None;
+        admin_service_state.network_sender = None;
 
         Ok(())
     }
@@ -95,10 +102,6 @@ impl Service for AdminService {
         message_bytes: &[u8],
         _message_context: &ServiceMessageContext,
     ) -> Result<(), ServiceError> {
-        if self.network_sender.is_none() {
-            return Err(ServiceError::NotStarted);
-        }
-
         let mut envelope: CircuitManagementPayload = protobuf::parse_from_bytes(message_bytes)
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
@@ -143,14 +146,14 @@ impl AdminService {
     /// This operation will propose a new circuit to all the member nodes of the circuit.  If there
     /// is no peer connection, a connection to the peer will also be established.
     pub fn propose_circuit(&self, proposed_circuit: Circuit) -> Result<(), ServiceError> {
-        if self.network_sender.is_none() {
-            return Err(ServiceError::NotStarted);
-        }
-
         let mut admin_service_state = self
             .admin_service_state
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
+
+        if admin_service_state.network_sender.is_none() {
+            return Err(ServiceError::NotStarted);
+        }
 
         let mut member_node_ids = vec![];
         for node in proposed_circuit.get_members() {
@@ -186,7 +189,8 @@ impl AdminService {
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
         for member_id in member_node_ids {
-            self.network_sender
+            admin_service_state
+                .network_sender
                 .as_ref()
                 .unwrap()
                 .send(&admin_service_id(&member_id), &envelope_bytes)?;
@@ -221,6 +225,7 @@ fn to_hex(bytes: &[u8]) -> String {
 struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
     peer_connector: PeerConnector,
+    network_sender: Option<Box<dyn ServiceNetworkSender>>,
 }
 
 impl AdminServiceState {
@@ -261,34 +266,74 @@ impl CreateCircuit {
             })
             .into_future()
     }
+
+    fn into_proto(self) -> Result<CircuitCreateRequest, ProposalMarshallingError> {
+        let mut circuit = Circuit::new();
+
+        circuit.set_circuit_id(self.circuit_id);
+        circuit.set_roster(RepeatedField::from_vec(
+            self.roster
+                .into_iter()
+                .map(SplinterService::into_proto)
+                .collect(),
+        ));
+        circuit.set_members(RepeatedField::from_vec(
+            self.members
+                .into_iter()
+                .map(SplinterNode::into_proto)
+                .collect(),
+        ));
+
+        circuit.set_circuit_management_type(self.circuit_management_type);
+        circuit.set_application_metadata(self.application_metadata);
+
+        match self.authorization_type {
+            AuthorizationType::Trust => {
+                circuit
+                    .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
+            }
+        };
+
+        match self.persistence {
+            PersistenceType::Any => {
+                circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
+            }
+        };
+
+        match self.routes {
+            RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
+        };
+
+        let mut create_request = CircuitCreateRequest::new();
+        create_request.set_circuit(circuit);
+
+        Ok(create_request)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum AuthorizationType {
-    TRUST_AUTHORIZATION,
+    Trust,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum PersistenceType {
-    ANY_PERSISTENCE,
+    Any,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum RouteType {
-    ANY_ROUTE,
+    Any,
 }
 
-enum ProposalMarshallingError {
-    InvalidAuthorizationType,
-    InvalidRouteType,
-    InvalidPersistenceType,
-    InvalidDurabilityType,
-    ServiceError(ServiceError),
-}
+#[derive(Debug)]
+struct ProposalMarshallingError;
 
-impl From<ServiceError> for ProposalMarshallingError {
-    fn from(err: ServiceError) -> Self {
-        ProposalMarshallingError::ServiceError(err)
+impl std::error::Error for ProposalMarshallingError {}
+
+impl std::fmt::Display for ProposalMarshallingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("unable to marshal object")
     }
 }
 
@@ -298,6 +343,17 @@ struct SplinterNode {
     endpoint: String,
 }
 
+impl SplinterNode {
+    fn into_proto(self) -> admin::SplinterNode {
+        let mut proto = admin::SplinterNode::new();
+
+        proto.set_node_id(self.node_id);
+        proto.set_endpoint(self.endpoint);
+
+        proto
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct SplinterService {
     service_id: String,
@@ -305,18 +361,29 @@ struct SplinterService {
     allowed_nodes: Vec<String>,
 }
 
+impl SplinterService {
+    fn into_proto(self) -> admin::SplinterService {
+        let mut proto = admin::SplinterService::new();
+        proto.set_service_id(self.service_id);
+        proto.set_service_type(self.service_type);
+        proto.set_allowed_nodes(RepeatedField::from_vec(self.allowed_nodes));
+
+        proto
+    }
+}
+
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(),
+            make_create_circuit_route(self.clone()),
             make_application_handler_registration_route(),
         ]
     }
 }
 
-fn make_create_circuit_route() -> Resource {
+fn make_create_circuit_route(admin_service: AdminService) -> Resource {
     Resource::new(Method::Post, "/auth/circuit", move |r, p| {
-        create_circuit(r, p)
+        create_circuit(r, p, admin_service.clone())
     })
 }
 
@@ -334,13 +401,27 @@ fn make_application_handler_registration_route() -> Resource {
 }
 
 fn create_circuit(
-    req: HttpRequest,
+    _req: HttpRequest,
     payload: web::Payload,
+    admin_service: AdminService,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
-    Box::new(CreateCircuit::from_payload(payload).and_then(|circuit| {
-        debug!("Circuit: {:#?}", circuit);
-        Ok(HttpResponse::Accepted().finish())
-    }))
+    Box::new(
+        CreateCircuit::from_payload(payload).and_then(move |create_circuit| {
+            let mut circuit_create_request = match create_circuit.into_proto() {
+                Ok(request) => request,
+                Err(_) => return Ok(HttpResponse::BadRequest().finish()),
+            };
+            let circuit = circuit_create_request.take_circuit();
+            let circuit_id = circuit.circuit_id.clone();
+            if let Err(err) = admin_service.propose_circuit(circuit) {
+                error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
+                Ok(HttpResponse::BadRequest().finish())
+            } else {
+                debug!("Circuit {} proposed", circuit_id);
+                Ok(HttpResponse::Accepted().finish())
+            }
+        }),
+    )
 }
 
 #[cfg(test)]
