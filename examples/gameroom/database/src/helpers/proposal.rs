@@ -12,8 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod gameroom_user;
-mod proposal;
+use crate::models::CircuitProposal;
+use crate::schema::circuit_proposal;
 
-pub use gameroom_user::{fetch_user_by_email, insert_user};
-pub use proposal::fetch_proposal_by_id;
+use diesel::{pg::PgConnection, prelude::*, result::Error::NotFound, QueryResult};
+
+pub fn fetch_proposal_by_id(conn: &PgConnection, id: &str) -> QueryResult<Option<CircuitProposal>> {
+    circuit_proposal::table
+        .filter(circuit_proposal::id.eq(id))
+        .first::<CircuitProposal>(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
