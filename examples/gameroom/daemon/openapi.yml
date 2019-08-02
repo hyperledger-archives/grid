@@ -104,6 +104,33 @@ paths:
                   $ref: '#/components/schemas/Error'
 
 
+  /gamerooms/propose:
+      post:
+        description: Propose a new Gameroom
+        requestBody:
+          content:
+            application/json:
+              schema:
+                properties:
+                  alias:
+                    description: Name of new Gameroom
+                  member:
+                    description: Proposed members of the Gameroom
+                required:
+                  - alias
+                  - member
+                example:
+                  alias: My_Gameroom
+                  member:
+                    $ref: '#/components/schemas/Member'
+
+        responses:
+          202:
+            description: Create Gameroom proposal has been accepted
+          500:
+            description: Internal server error occurred
+
+
 components:
   schemas:
     Error:
@@ -115,6 +142,25 @@ components:
           example: DatabaseError({description})
       required:
         - message
+
+
+    Member:
+      type: object
+      properties:
+        identity:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/MemberMetadata'
+
+
+    MemberMetadata:
+      type: object
+      properties:
+        organization:
+          type: string
+        endpoint:
+          type: string
+
 
     Node:
       type: object

@@ -40,6 +40,10 @@ pub fn run(
                 web::resource("/nodes/{identity}").route(web::get().to_async(routes::fetch_node)),
             )
             .service(web::resource("/nodes").route(web::get().to_async(routes::list_nodes)))
+            .service(
+                web::resource("/gamerooms/propose")
+                    .route(web::post().to_async(routes::propose_gameroom)),
+            )
     })
     .bind(bind_url)?
     .start();
