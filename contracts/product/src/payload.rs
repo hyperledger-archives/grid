@@ -76,7 +76,7 @@ mod tests {
         payload_proto.set_action(ActionProto::PRODUCT_CREATE);
         payload_proto.set_timestamp(2);
         let mut action = ProductCreateActionProto::new();
-        action.set_product_id("my_product_id".to_string());
+        action.set_product_id("688955434684".to_string());
         action.set_owner("my_owner".to_string());
         action.set_product_type(Product_ProductType::GS1);
         payload_proto.set_product_create(action);
@@ -85,5 +85,52 @@ mod tests {
             validate_payload(&payload).is_ok(),
             "Payload should be valid"
         );
+    }
+
+    #[test]
+    /// Test that an error is returned if the payload with ProductCreateAction is missing the
+    /// product_id. This test needs to use the proto directly originally to be able to mimic the
+    /// scenarios possbile from creating a ProductCreateAction from bytes. This is because the
+    /// ProductCreateActionBuilder protects from building certain invalid payloads.
+    fn test_validate_payload_product_id_missing() {
+        let mut payload_proto = ProductPayloadProto::new();
+
+        payload_proto.set_action(ActionProto::PRODUCT_CREATE);
+        payload_proto.set_timestamp(2);
+        let mut action = ProductCreateActionProto::new();
+        action.set_product_type(Product_ProductType::GS1);
+        payload_proto.set_product_create(action.clone());
+        let payload = payload_proto.clone().into_native().unwrap();
+        match validate_payload(&payload) {
+            Ok(_) => panic!("Payload missing product_id, should return error"),
+            Err(err) => {
+                assert!(err
+                    .to_string()
+                    .contains("product_id cannot be empty string"));
+            }
+        }
+    }
+
+    #[test]
+    /// Test that an error is returned if the payload with ProductCreateAction is missing the
+    /// owner. This test needs to use the proto directly originally to be able to mimic the
+    /// scenarios possbile from creating a ProductCreateAction from bytes. This is because the
+    /// ProductCreateActionBuilder protects from building certain invalid payloads.
+    fn test_validate_payload_owner_missing() {
+        let mut payload_proto = ProductPayloadProto::new();
+
+        payload_proto.set_action(ActionProto::PRODUCT_CREATE);
+        payload_proto.set_timestamp(2);
+        let mut action = ProductCreateActionProto::new();
+        action.set_product_type(Product_ProductType::GS1);
+        action.set_product_id("688955434684".to_string());
+        payload_proto.set_product_create(action.clone());
+        let payload = payload_proto.clone().into_native().unwrap();
+        match validate_payload(&payload) {
+            Ok(_) => panic!("Payload missing owner, should return error"),
+            Err(err) => {
+                assert!(err.to_string().contains("Owner cannot be empty string"));
+            }
+        }
     }
 }

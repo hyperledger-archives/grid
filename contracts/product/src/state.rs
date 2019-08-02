@@ -212,3 +212,162 @@ impl<'a> ProductState<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
+    use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
+    use grid_sdk::protocol::product::state::{ProductBuilder, ProductType};
+    use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
+
+    use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
+
+    const PRODUCT_ID: &str = "688955434684";
+
+    #[derive(Default, Debug)]
+    /// A MockTransactionContext that can be used to test TrackAndTraceState
+    struct MockTransactionContext {
+        state: RefCell<HashMap<String, Vec<u8>>>,
+    }
+
+    impl TransactionContext for MockTransactionContext {
+        fn get_state_entries(
+            &self,
+            addresses: &[String],
+        ) -> Result<Vec<(String, Vec<u8>)>, ContextError> {
+            let mut results = Vec::new();
+            for addr in addresses {
+                let data = match self.state.borrow().get(addr) {
+                    Some(data) => data.clone(),
+                    None => Vec::new(),
+                };
+                results.push((addr.to_string(), data));
+            }
+            Ok(results)
+        }
+
+        fn set_state_entries(&self, entries: Vec<(String, Vec<u8>)>) -> Result<(), ContextError> {
+            for (addr, data) in entries {
+                self.state.borrow_mut().insert(addr, data);
+            }
+            Ok(())
+        }
+
+        /// this is not needed for these tests
+        fn delete_state_entries(&self, _addresses: &[String]) -> Result<Vec<String>, ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_receipt_data(&self, _data: &[u8]) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+
+        /// this is not needed for these tests
+        fn add_event(
+            &self,
+            _event_type: String,
+            _attributes: Vec<(String, String)>,
+            _data: &[u8],
+        ) -> Result<(), ContextError> {
+            unimplemented!()
+        }
+    }
+
+    impl MockTransactionContext {
+        fn add_agent(&self, public_key: &str) {
+            let agent_list = AgentListBuilder::new()
+                .with_agents(vec![make_agent(public_key)])
+                .build()
+                .unwrap();
+            let agent_bytes = agent_list.into_bytes().unwrap();
+            let agent_address = compute_agent_address(public_key);
+            self.set_state_entry(agent_address, agent_bytes).unwrap();
+        }
+    }
+
+    #[test]
+    // Test that if an agent does not exist in state, None is returned
+    fn test_get_agent_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = ProductState::new(&mut transaction_context);
+
+        let result = state.get_agent("agent_public_key").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that if an agent exist in state, Some(agent) is returned
+    fn test_get_agent_some() {
+        let mut transaction_context = MockTransactionContext::default();
+        transaction_context.add_agent("agent_public_key");
+        let state = ProductState::new(&mut transaction_context);
+        let result = state.get_agent("agent_public_key").unwrap();
+        assert_eq!(result, Some(make_agent("agent_public_key")))
+    }
+
+    #[test]
+    // Test that if a product does not exist in state, None is returned
+    fn test_get_product_none() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = ProductState::new(&mut transaction_context);
+
+        let result = state.get_product("not_a_product").unwrap();
+        assert!(result.is_none())
+    }
+
+    #[test]
+    // Test that a product can be added to state
+    fn test_set_product() {
+        let mut transaction_context = MockTransactionContext::default();
+        let state = ProductState::new(&mut transaction_context);
+
+        assert!(state.set_product(PRODUCT_ID, make_product()).is_ok());
+        let result = state.get_product(PRODUCT_ID).unwrap();
+        assert_eq!(result, Some(make_product()));
+    }
+
+    fn make_agent(public_key: &str) -> Agent {
+        AgentBuilder::new()
+            .with_org_id("test_org".to_string())
+            .with_public_key(public_key.to_string())
+            .with_active(true)
+            .with_roles(vec![])
+            .build()
+            .expect("Failed to build agent")
+    }
+
+    fn make_product() -> Product {
+        ProductBuilder::new()
+            .with_product_id(PRODUCT_ID.to_string())
+            .with_owner("some_owner".to_string())
+            .with_product_type(ProductType::GS1)
+            .with_properties(make_properties())
+            .build()
+            .expect("Failed to build new_product")
+    }
+
+    fn make_properties() -> Vec<PropertyValue> {
+        let property_value_description = PropertyValueBuilder::new()
+            .with_name("description".into())
+            .with_data_type(DataType::String)
+            .with_string_value("This is a product description".into())
+            .build()
+            .unwrap();
+        let property_value_price = PropertyValueBuilder::new()
+            .with_name("price".into())
+            .with_data_type(DataType::Number)
+            .with_number_value(3)
+            .build()
+            .unwrap();
+
+        vec![
+            property_value_description.clone(),
+            property_value_price.clone(),
+        ]
+    }
+}
