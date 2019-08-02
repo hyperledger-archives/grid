@@ -140,6 +140,10 @@ paths:
         responses:
           200:
             description: Successful operation
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AuthResponseData'
           400:
             description: Invalid request was made
             content:
@@ -176,6 +180,10 @@ paths:
         responses:
           200:
             description: Successful operation
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AuthResponseData'
           401:
             description: Unauthorized request
           500:
@@ -239,6 +247,17 @@ components:
         organization:
           type: string
         endpoint:
+          type: string
+
+
+    AuthResponseData:
+      type: object
+      properties:
+        email:
+          type: string
+        public_key:
+          type: string
+        encrypted_private_key:
           type: string
 
 

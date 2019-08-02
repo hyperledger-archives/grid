@@ -16,9 +16,17 @@ use actix_web::{error, web, Error, HttpResponse};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use futures::Future;
 use gameroom_database::{helpers, models::GameroomUser, ConnectionPool};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::rest_api::RestApiResponseError;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthResponseData {
+    email: String,
+    public_key: String,
+    encrypted_private_key: String,
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +41,7 @@ pub fn login(
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || authenticate_user(pool, auth_data.into_inner())).then(|res| match res {
-            Ok(()) => Ok(HttpResponse::Ok().finish()),
+            Ok(user) => Ok(HttpResponse::Ok().json(user)),
             Err(err) => match err {
                 error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized().into()),
                 error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
@@ -57,7 +65,7 @@ pub fn register(
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || create_user(pool, new_user.into_inner())).then(|res| match res {
-            Ok(()) => Ok(HttpResponse::Ok().finish()),
+            Ok(user) => Ok(HttpResponse::Ok().json(user)),
             Err(err) => match err {
                 error::BlockingError::Error(err) => {
                     Ok(HttpResponse::BadRequest().json(err.to_string()))
@@ -71,21 +79,25 @@ pub fn register(
 fn create_user(
     pool: web::Data<ConnectionPool>,
     new_user: UserCreate,
-) -> Result<(), RestApiResponseError> {
+) -> Result<AuthResponseData, RestApiResponseError> {
     if helpers::fetch_user_by_email(&*pool.get()?, &new_user.email)?.is_some() {
         return Err(RestApiResponseError::BadRequest(
             "User already exists".to_string(),
         ));
     } else {
         let gameroom_user = GameroomUser {
-            public_key: new_user.public_key,
-            encrypted_private_key: new_user.encrypted_private_key,
-            email: new_user.email,
+            public_key: new_user.public_key.to_string(),
+            encrypted_private_key: new_user.encrypted_private_key.to_string(),
+            email: new_user.email.to_string(),
             hashed_password: hash_password(&new_user.hashed_password)?,
         };
         helpers::insert_user(&*pool.get()?, gameroom_user)?
     }
-    Ok(())
+    Ok(AuthResponseData {
+        email: new_user.email,
+        public_key: new_user.public_key,
+        encrypted_private_key: new_user.encrypted_private_key,
+    })
 }
 
 fn hash_password(password: &str) -> Result<String, RestApiResponseError> {
@@ -95,10 +107,14 @@ fn hash_password(password: &str) -> Result<String, RestApiResponseError> {
 fn authenticate_user(
     pool: web::Data<ConnectionPool>,
     auth_data: AuthData,
-) -> Result<(), RestApiResponseError> {
+) -> Result<AuthResponseData, RestApiResponseError> {
     if let Some(user) = helpers::fetch_user_by_email(&*pool.get()?, &auth_data.email)? {
         if verify(&auth_data.hashed_password, &user.hashed_password)? {
-            return Ok(());
+            return Ok(AuthResponseData {
+                email: user.email.to_string(),
+                public_key: user.public_key.to_string(),
+                encrypted_private_key: user.encrypted_private_key.to_string(),
+            });
         }
     }
     Err(RestApiResponseError::Unauthorized)
