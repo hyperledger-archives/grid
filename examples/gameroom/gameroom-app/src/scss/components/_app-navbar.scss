@@ -12,17 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const whitelabelConfig = {
-  'bubba': {
-    'brand': 'Bubba Bakery',
-    'scssVariables': './src/scss/modules/themes/bubba',
-    'assets': './src/assets/bubba',
-  },
-  'acme': {
-    'brand': 'Acme Corporation',
-    'scssVariables': './src/scss/modules/themes/acme',
-    'assets': './src/assets/acme',
-  },
+.navbar {
+  background-color: $color-base;
+  border-bottom: 1px solid $color-border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap-reverse;
+
+  ul {
+    padding-left: 0;
+    display: flex;
+    list-style-type: none;
+
+    li {
+      padding-left: 1em;
+      padding-right: 1em;
+    }
+  }
 }
 
-module.exports = whitelabelConfig;
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5em;
+
+  .brand-text {
+    font-size: 2em;
+  }
+}
+
+.left-nav-item {
+  display: flex;
+  margin-right: auto;
+}

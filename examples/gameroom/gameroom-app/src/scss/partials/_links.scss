@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const whitelabelConfig = {
-  'bubba': {
-    'brand': 'Bubba Bakery',
-    'scssVariables': './src/scss/modules/themes/bubba',
-    'assets': './src/assets/bubba',
-  },
-  'acme': {
-    'brand': 'Acme Corporation',
-    'scssVariables': './src/scss/modules/themes/acme',
-    'assets': './src/assets/acme',
-  },
+#{$a-tags} {
+  color: $color-text-secondary;
+  text-decoration: none;
 }
 
-module.exports = whitelabelConfig;
+#{$a-tags-hover} {
+  color: $color-primary;
+}

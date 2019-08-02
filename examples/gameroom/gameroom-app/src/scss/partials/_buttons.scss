@@ -1,0 +1,67 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+button {
+  font-family: inherit;
+}
+
+button {
+  color: $color-white;
+  border: none;
+  background: $color-primary;
+  padding: .5em .5em .5em;
+  font-size: 1em;
+  font-weight: 600;
+  clear: both;
+  @include rounded-border;
+  outline: none;
+  cursor: pointer;
+  margin-left: 1em;
+  width: auto;
+  border: 1px solid $color-primary;
+
+  .button-content {
+    display: inline-flex;
+    align-items: center;
+
+    .button-text {
+      padding: 0 .25em 0;
+    }
+  }
+}
+
+button:hover {
+  background: $color-primary-dark;
+  border: 1px solid $color-primary-dark;
+}
+
+button:disabled {
+  background: $color-disabled;
+  border: 1px solid $color-border;
+  color: $color-disabled-text;
+  cursor: default;
+}
+
+.outline-button {
+  color: $color-primary;
+  border: 1px solid $color-primary;
+  background-color: $color-transparent;
+  @include rounded-border;
+}
+
+.outline-button:hover {
+  color: $color-primary-dark;
+  background-color: $color-transparent;
+  border: 1px solid $color-primary-dark;
+}

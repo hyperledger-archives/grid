@@ -12,8 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-$color-white: #ffffff;
-$color-transparent: rgba(0, 0, 0, 0);
+$color-primary: #d32f2f;
+$color-primary-light: #ff6659;
+$color-primary-dark: #9a0007;
 
-$a-tags: 'a, a:active, a:hover, a:visited';
-$a-tags-hover: 'a:active, a:hover';
+$color-base: #212121;
+$color-background: #303030;
+$color-border: rgba(0, 0, 0, 0);
+
+$color-text: #ffffff;
+$color-text-secondary: #bbbbbb;
+$color-text-tertiary: #888888;
+$color-text-form: #212121;
+
+$color-disabled: #575757;
+$color-disabled-text: #303030;
