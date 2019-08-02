@@ -45,5 +45,5 @@ export interface Node {
 
 export interface GameroomProposal {
   alias: string;
-  member: string;
+  member: [Node];
 }

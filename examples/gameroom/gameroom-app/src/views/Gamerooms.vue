@@ -36,7 +36,7 @@ limitations under the License.
               :close-on-select="true"
               :clear-on-select="false"
               :custom-label="getMemberLabel"
-              :options="nodes"
+              :options="nodeList"
               :allow-empty="false"
             >
               <template slot="singleLabel" slot-scope="{ option }">
@@ -76,9 +76,9 @@ import gamerooms from '@/store/modules/gamerooms';
 import nodes from '@/store/modules/nodes';
 import { Node } from '@/store/models';
 
-interface MemberMetadata {
-  organization: string;
-  endpoint: string;
+interface NewGameroom {
+  alias: string;
+  member: Node | null;
 }
 
 @Component({
@@ -87,29 +87,32 @@ interface MemberMetadata {
 export default class Gamerooms extends Vue {
   displayModal = false;
 
-  newGameroom = {
+  newGameroom: NewGameroom = {
     alias: '',
-    member: '',
+    member: null,
   };
 
   mounted() {
     nodes.listNodes();
   }
 
-  get nodes() {
+  get nodeList() {
     return nodes.nodeList;
   }
 
   get canSubmitNewGameroom() {
     if (this.newGameroom.alias !== '' &&
-        this.newGameroom.member !== '') {
+        this.newGameroom.member !== null) {
       return true;
     }
     return false;
   }
 
   createGameroom() {
-    gamerooms.proposeGameroom(this.newGameroom);
+    gamerooms.proposeGameroom({
+      alias: this.newGameroom.alias,
+      member: [this.newGameroom.member as Node],
+    });
   }
 
   getMemberLabel(node: Node) {
@@ -123,7 +126,7 @@ export default class Gamerooms extends Vue {
   closeNewGameroomModal() {
     this.displayModal = false;
     this.newGameroom.alias = '';
-    this.newGameroom.member = '';
+    this.newGameroom.member = null;
   }
 }
 </script>
