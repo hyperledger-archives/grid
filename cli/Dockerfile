@@ -12,57 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic
+FROM ubuntu:bionic as BUILDER
 
 # Install base dependencies
 RUN apt-get update \
-    && apt-get install -y -q \
-        build-essential \
-        curl \
-        gcc \
-        g++ \
-        libpq-dev \
-        libssl-dev \
-        libsasl2-dev \
-        libzmq3-dev \
-        openssl \
-        pkg-config \
-        python \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y -q \
+    build-essential \
+    curl \
+    gcc \
+    g++ \
+    libpq-dev \
+    libssl-dev \
+    libsasl2-dev \
+    libzmq3-dev \
+    openssl \
+    pkg-config \
+    python \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV PATH=$PATH:/root/.cargo/bin
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
-ENV PATH=$PATH:/root/.cargo/bin
-
-# For Building Protobufs
+# Install protoc
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
-RUN apt-get update && apt-get install -y protobuf-compiler
 
-# Pull in deps
-COPY protos/ /project/protos/
-COPY client/ /project/client/
-COPY libsplinter/ /project/libsplinter/
+RUN mkdir /build
 
-# Build with dummy source in order to cache dependencies in Docker image
-WORKDIR /project
-RUN USER=root cargo new --bin cli --name slinter-cli
+# Copy dependencies
+COPY libsplinter/ /build/libsplinter/
+COPY protos/ /build/protos/
+COPY client/ /build/client/
 
-WORKDIR /project/cli
-COPY cli/Cargo.toml cli/Cargo.lock* ./
-RUN cargo build
+# Create empty cargo project
+WORKDIR /build
+RUN USER=root cargo new --bin cli
 
-# Build full component
-COPY cli/ ./
-RUN cargo build
+# Copy over Cargo.toml file
+COPY cli/Cargo.toml /build/cli/Cargo.toml
 
-ENV PATH=$PATH:/project/cli/target/debug/
+# Do a release build to cache dependencies
+WORKDIR /build/cli
+RUN cargo build --release
 
+# Remove the auto-generated .rs files and the built files
+WORKDIR /build
+RUN rm */src/*.rs
+RUN rm cli/target/release/splinter* cli/target/release/deps/splinter*
+
+# Copy over source files
+COPY cli/src /build/cli/src
+COPY client/src /build/client/src
+COPY libsplinter/src /build/libsplinter/src
+COPY protos/ /build/protos/
+
+# Build the project
+WORKDIR /build/cli
+RUN cargo build --release
+
+# create the standalone image
+FROM ubuntu:bionic
+
+RUN apt-get update \
+ && apt-get install -y \
+    libssl1.1 \
+    libzmq5 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=BUILDER /build/cli/target/release/splinter-cli /usr/bin/splinter-cli
 
 CMD ["splinter-cli"]
