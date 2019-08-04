@@ -95,7 +95,7 @@ services:
     command: >
         bash -c "
           sleep 2;
-          /private-counter -vv \
+          private-counter -vv \
                       --bind 0.0.0.0:8000 \
                       --circuit alpha \
                       --service-id service_a \
@@ -117,7 +117,7 @@ services:
     command: >
         bash -c "
           sleep 2;
-          /private-counter -vv \
+          private-counter -vv \
                       --bind 0.0.0.0:8000 \
                       --circuit alpha \
                       --service-id service_b \
@@ -139,7 +139,7 @@ services:
     command: >
         bash -c "
           sleep 2;
-          /private-counter -vv \
+          private-counter -vv \
                       --bind 0.0.0.0:8000 \
                       --circuit alpha \
                       --service-id service_c \
