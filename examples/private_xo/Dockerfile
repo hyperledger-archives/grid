@@ -14,55 +14,71 @@
 
 FROM ubuntu:bionic as BUILDER
 
+# Install base dependencies
 RUN apt-get update \
  && apt-get install -y \
- curl \
- gcc \
- libssl-dev \
- libzmq3-dev \
- pkg-config \
- unzip
+    curl \
+    gcc \
+    libssl-dev \
+    libzmq3-dev \
+    pkg-config \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-# For Building Protobufs
+ENV PATH=$PATH:/root/.cargo/bin
+
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
+
+# Install protoc
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
- && unzip protoc-3.7.1-linux-x86_64.zip -d protoc3 \
- && rm protoc-3.7.1-linux-x86_64.zip
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+# Copy dependencies
+COPY protos /build/protos
+COPY libsplinter /build/libsplinter
 
-# Copy over libsplinter, protos and create the example folder, for the
-# relative dependencies
-COPY ./protos /protos
-COPY ./libsplinter /libsplinter
-RUN mkdir -p /examples
+# Create empty cargo project
+WORKDIR /build/examples
+RUN USER=root cargo new --bin private_xo
 
-# Create an empty project, copy over the Cargo toml, and buld the deps first
-WORKDIR /examples
-RUN USER=root cargo new --bin private-xo
-WORKDIR /examples/private-xo
+# Copy over Cargo.toml file
+COPY examples/private_xo/Cargo.toml /build/examples/private_xo/Cargo.toml
 
-COPY ./examples/private_xo/Cargo.toml ./Cargo.toml
+# Do a release build to cache dependencies
+WORKDIR /build/examples/private_xo
 RUN cargo build --release
 
-# Copy over the source and build the app
+# Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-COPY ./examples/private_xo/protos ./protos
-COPY ./examples/private_xo/build.rs ./build.rs
-COPY ./examples/private_xo/src ./src
+RUN rm target/release/private-xo* target/release/deps/private_xo*
 
-RUN rm ./target/release/private-xo* ./target/release/deps/private_xo*
+# Copy over source files
+COPY ./examples/private_xo/protos /build/examples/private_xo/protos
+COPY ./examples/private_xo/build.rs /build/examples/private_xo/build.rs
+COPY ./examples/private_xo/src /build/examples/private_xo/src
+COPY libsplinter/src /build/libsplinter/src
+COPY protos/ /build/protos/
+
+# Build the project
 RUN cargo build --release
 
 # Create the standalone image
 FROM ubuntu:bionic
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 libzmq5 \
+ && apt-get install -y \
+    libssl1.1 \
+    libzmq5 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /examples/private-xo/target/release/private-xo /
+COPY --from=BUILDER /build/examples/private_xo/target/release/private-xo /usr/bin/private-xo
 
 EXPOSE 8000
-CMD ["/private-xo"]
+
+CMD ["private-xo"]
