@@ -19,6 +19,7 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
+mod authorization_handler;
 mod config;
 mod error;
 mod rest_api;
