@@ -438,7 +438,8 @@ impl AdminServiceWebSocket {
     }
 
     fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(3), |_, _| {
+        ctx.run_interval(Duration::from_secs(3), |_, ctx| {
+            ctx.ping("");
             debug!("Admin Service gonna send cool stuff");
         });
     }
