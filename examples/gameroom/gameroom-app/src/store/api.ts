@@ -20,6 +20,7 @@ import {
   GameroomProposal,
   Node,
 } from './models';
+import router from '@/router';
 
 export const gameroomAPI = axios.create({
   baseURL: '/api',
@@ -31,6 +32,7 @@ export async function userCreate(
 ): Promise<UserAuthResponse|undefined> {
   try {
     const response = await gameroomAPI.post('/users', user);
+    router.push('/');
     return response.data as UserAuthResponse;
   } catch (e) {
     alert(e);
@@ -42,6 +44,7 @@ export async function userAuthenticate(
 ): Promise<UserAuthResponse|undefined> {
   try {
     const response = await gameroomAPI.post('/users/authenticate', userCredentials);
+    router.push('/');
     return response.data as UserAuthResponse;
   } catch (e) {
     alert(e);

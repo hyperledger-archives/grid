@@ -42,7 +42,10 @@ limitations under the License.
             v-model="confirmPassword"
           />
         </label>
-        <button class="form-button" type="submit" :disabled="!canSubmit">Register</button>
+        <button class="form-button" type="submit" :disabled="!canSubmit">
+          <div v-if="submitting"> Registering... </div>
+          <div v-else> Register </div>
+        </button>
         <span class="form-link">
           Already have an account?
           <router-link to="/login">
@@ -64,9 +67,11 @@ export default class Register extends Vue {
   email = '';
   password = '';
   confirmPassword = '';
+  submitting = false;
 
   get canSubmit() {
-    if (this.email !== '' &&
+    if (!this.submitting &&
+        this.email !== '' &&
         this.password !== '' &&
         this.confirmPassword !== '') {
       return true;
@@ -74,18 +79,20 @@ export default class Register extends Vue {
     return false;
   }
 
-  register() {
+  async register() {
     if (this.password !== this.confirmPassword) {
       alert('Passwords do not match');
       return;
     }
     const keys = crypto.createKeyPair(this.password);
-    user.register({
+    this.submitting = true;
+    await user.register({
       email: this.email,
       hashedPassword: crypto.hashSHA256(this.email, this.password),
       publicKey: keys.publicKey,
       encryptedPrivateKey: keys.encryptedPrivateKey,
     });
+    this.submitting = false;
   }
 }
 </script>
