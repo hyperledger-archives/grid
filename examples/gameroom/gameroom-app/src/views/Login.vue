@@ -34,7 +34,7 @@ limitations under the License.
             v-model="password"
           />
         </label>
-        <button class="form-button" type="submit" :disabled="!canSubmit">
+        <button class="btn-action form-button" type="submit" :disabled="!canSubmit">
           <div v-if="submitting"> Logging in... </div>
           <div v-else> Log In </div>
         </button>

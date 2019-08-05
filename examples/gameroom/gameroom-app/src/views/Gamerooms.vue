@@ -44,11 +44,11 @@ limitations under the License.
               </template>
             </multiselect>
           </label>
-          <div class="button-container">
-            <button class="form-button outline-button" @click.prevent="closeNewGameroomModal">
+          <div class="flex-container button-container">
+            <button class="btn-action form-button btn-outline" @click.prevent="closeNewGameroomModal">
               Cancel
             </button>
-            <button class="form-button" type="submit" :disabled="!canSubmitNewGameroom">
+            <button class="btn-action form-button" type="submit" :disabled="!canSubmitNewGameroom">
               Submit
             </button>
           </div>
