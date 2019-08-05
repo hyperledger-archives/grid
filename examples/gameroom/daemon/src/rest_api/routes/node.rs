@@ -12,24 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
+use super::{Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
 use libsplinter::node_registry::Node;
 use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Paging {
-    current: String,
-    offset: usize,
-    limit: usize,
-    total: usize,
-    first: String,
-    prev: String,
-    next: String,
-    last: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ListNodesResponse {

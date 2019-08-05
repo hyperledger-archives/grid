@@ -40,3 +40,15 @@ const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b']')
     .add(b':')
     .add(b',');
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Paging {
+    current: String,
+    offset: usize,
+    limit: usize,
+    total: usize,
+    first: String,
+    prev: String,
+    next: String,
+    last: String,
+}
