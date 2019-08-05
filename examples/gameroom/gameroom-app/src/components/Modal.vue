@@ -21,7 +21,7 @@ limitations under the License.
         <div class="m-modal-header">
           <slot name="title"></slot>
           <a href="#" class="m-modal-close" @click.stop.prevent="$emit('close')">
-          	<i class="material-icons">close</i>
+            <i class="material-icons-round">close</i>
           </a>
         </div>
         <div class="m-modal-body">
