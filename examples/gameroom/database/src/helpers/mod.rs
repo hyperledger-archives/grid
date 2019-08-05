@@ -12,29 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod authenticate;
-mod gameroom;
-mod node;
+mod gameroom_user;
 
-pub use authenticate::*;
-pub use gameroom::*;
-pub use node::*;
-
-use percent_encoding::{AsciiSet, CONTROLS};
-
-pub const DEFAULT_LIMIT: usize = 100;
-pub const DEFAULT_OFFSET: usize = 0;
-const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'<')
-    .add(b'>')
-    .add(b'`')
-    .add(b'=')
-    .add(b'!')
-    .add(b'{')
-    .add(b'}')
-    .add(b'[')
-    .add(b']')
-    .add(b':')
-    .add(b',');
+pub use gameroom_user::{fetch_user_by_email, insert_user};

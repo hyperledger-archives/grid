@@ -18,8 +18,7 @@ mod routes;
 use actix_web::{client::Client, web, App, HttpServer, Result};
 use gameroom_database::ConnectionPool;
 
-pub use error::RestApiServerError;
-use routes::index;
+pub use error::{RestApiResponseError, RestApiServerError};
 
 pub fn run(
     bind_url: &str,
@@ -30,12 +29,10 @@ pub fn run(
     let splinterd_url = splinterd_url.to_owned();
 
     let sys = actix::System::new("Gameroom-Rest-API");
-
     HttpServer::new(move || {
         App::new()
             .data(database_connection.clone())
             .data((Client::new(), splinterd_url.to_owned()))
-            .service(web::resource("/").to(index))
             .service(
                 web::resource("/nodes/{identity}").route(web::get().to_async(routes::fetch_node)),
             )
@@ -43,6 +40,13 @@ pub fn run(
             .service(
                 web::resource("/gamerooms/propose")
                     .route(web::post().to_async(routes::propose_gameroom)),
+            )
+            .service(
+                web::scope("/users")
+                    .service(web::resource("").route(web::post().to_async(routes::register)))
+                    .service(
+                        web::resource("/authenticate").route(web::post().to_async(routes::login)),
+                    ),
             )
     })
     .bind(bind_url)?
