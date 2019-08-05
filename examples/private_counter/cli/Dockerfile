@@ -16,40 +16,53 @@ FROM ubuntu:bionic as BUILDER
 
 RUN apt-get update \
  && apt-get install -y \
- curl \
- gcc \
- libssl-dev \
- pkg-config \
- unzip
+    curl \
+    gcc \
+    libssl-dev \
+    pkg-config \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+ENV PATH=$PATH:/root/.cargo/bin
 
-# Create an empty project, copy over the Cargo toml, and buld the deps first
-WORKDIR /private-counter
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
 
+# Create empty cargo project
+WORKDIR /build/
 RUN USER=root cargo new --bin cli --name pcounter
 
-WORKDIR /private-counter/cli
-COPY ./cli/Cargo.toml ./Cargo.toml
+# Copy over Cargo.toml file
+COPY cli/Cargo.toml /build/cli/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/cli
 RUN cargo build --release
 
-# Copy over the source and build the app
-RUN rm ./src/*.rs
-COPY ./cli/src ./src
+# Remove the auto-generated .rs files and the built files
+RUN rm src/*.rs
+RUN rm target/release/pcounter* ./target/release/deps/pcounter*
 
-RUN rm ./target/release/pcounter* ./target/release/deps/pcounter*
+# Copy over source files
+COPY cli/src src
+
+# Build the project
 RUN cargo build --release
 
 # Create the standalone image
 FROM ubuntu:bionic
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 \
+ && apt-get install -y \
+ libssl1.1 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /private-counter/cli/target/release/pcounter /
+COPY --from=BUILDER /build/cli/target/release/pcounter /usr/bin/pcounter
 
 EXPOSE 8000
-CMD ["/pcounter"]
+
+CMD ["pcounter"]
