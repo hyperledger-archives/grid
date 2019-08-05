@@ -45,3 +45,7 @@ pub fn list_proposals_with_paging(
         .offset(offset)
         .load::<CircuitProposal>(conn)
 }
+
+pub fn get_proposal_count(conn: &PgConnection) -> QueryResult<i64> {
+    circuit_proposal::table.count().get_result(conn)
+}
