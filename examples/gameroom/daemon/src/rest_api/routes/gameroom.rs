@@ -14,7 +14,7 @@
 
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
-use libsplinter::admin::{
+use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, PersistenceType, RouteType, SplinterNode, SplinterService,
 };
 
