@@ -43,7 +43,15 @@ export interface Node {
   };
 }
 
-export interface GameroomProposal {
+export interface NewGameroomProposal {
   alias: string;
   member: [Node];
+}
+
+export interface GameroomProposal {
+  name: string;
+  members: string[];
+  requester: string;
+  created_time: number;
+  updated_time: number;
 }
