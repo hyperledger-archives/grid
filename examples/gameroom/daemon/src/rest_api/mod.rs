@@ -75,10 +75,15 @@ pub fn run(
                             ),
                     )
                     .service(
-                        web::scope("/proposals").service(
-                            web::resource("/{proposal_id}")
-                                .route(web::get().to_async(routes::fetch_proposal)),
-                        ),
+                        web::scope("/proposals")
+                            .service(
+                                web::resource("/{proposal_id}")
+                                    .route(web::get().to_async(routes::fetch_proposal)),
+                            )
+                            .service(
+                                web::resource("")
+                                    .route(web::get().to_async(routes::list_proposals)),
+                            ),
                     )
             })
             .bind(bind_url)?

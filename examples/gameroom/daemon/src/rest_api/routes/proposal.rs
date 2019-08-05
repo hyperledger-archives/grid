@@ -25,6 +25,14 @@ use gameroom_database::{
 
 use crate::rest_api::RestApiResponseError;
 
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+
+#[derive(Debug, Serialize)]
+struct ProposalListResponse {
+    data: Vec<ApiCircuitProposal>,
+    paging: Paging,
+}
+
 #[derive(Debug, Serialize)]
 struct ApiCircuitProposal {
     proposal_id: String,
@@ -98,4 +106,72 @@ fn get_proposal_from_db(
         return Ok(ApiCircuitProposal::from(proposal, members));
     }
     Err(RestApiResponseError::NotFound(format!("Proposal {}", id)))
+}
+
+pub fn list_proposals(
+    pool: web::Data<ConnectionPool>,
+    query: web::Query<HashMap<String, usize>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let offset: usize = query
+        .get("offset")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_OFFSET);
+
+    let limit: usize = query
+        .get("limit")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_LIMIT);
+
+    Box::new(
+        web::block(move || list_proposals_from_db(pool, limit, offset)).then(
+            move |res| match res {
+                Ok((proposals, query_count)) => {
+                    let paging_info = get_response_paging_info(
+                        limit,
+                        offset,
+                        "api/proposals?",
+                        query_count as usize,
+                    );
+                    Ok(HttpResponse::Ok().json(ProposalListResponse {
+                        data: proposals,
+                        paging: paging_info,
+                    }))
+                }
+                Err(err) => Ok(HttpResponse::InternalServerError().json(err.to_string())),
+            },
+        ),
+    )
+}
+
+fn list_proposals_from_db(
+    pool: web::Data<ConnectionPool>,
+    limit: usize,
+    offset: usize,
+) -> Result<(Vec<ApiCircuitProposal>, i64), RestApiResponseError> {
+    let db_limit = limit as i64;
+    let db_offset = offset as i64;
+
+    let mut proposal_members: HashMap<String, Vec<CircuitMember>> =
+        helpers::list_proposal_circuit_members(&*pool.get()?)?
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, member| {
+                acc.entry(member.proposal_id.to_string())
+                    .or_insert_with(|| vec![])
+                    .push(member);
+                acc
+            });
+    let proposals = helpers::list_proposals_with_paging(&*pool.get()?, db_limit, db_offset)?
+        .into_iter()
+        .map(|proposal| {
+            let proposal_id = proposal.id.to_string();
+            ApiCircuitProposal::from(
+                proposal,
+                proposal_members
+                    .remove(&proposal_id)
+                    .unwrap_or_else(|| vec![]),
+            )
+        })
+        .collect::<Vec<ApiCircuitProposal>>();
+
+    Ok((proposals, helpers::get_proposal_count(&*pool.get()?)?))
 }
