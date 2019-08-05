@@ -23,3 +23,50 @@ table! {
         hashed_password -> Text,
     }
 }
+
+table! {
+    circuit_proposal (id) {
+        id -> Text,
+        proposal_type -> Text,
+        circuit_id -> Text,
+        circuit_hash -> Text,
+        requester -> Text,
+        authorization_type -> Text,
+        persistence -> Text,
+        routes -> Text,
+        circuit_management_type -> Text,
+        application_metadata -> Bytea,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
+
+table! {
+    proposal_vote_record (id) {
+        id -> Int8,
+        proposal_id -> Text,
+        voter_public_key -> Text,
+        vote -> Text,
+        created_time -> Timestamp,
+    }
+}
+
+table! {
+    proposal_circuit_member (id) {
+        id -> Int8,
+        proposal_id -> Text,
+        node_id -> Text,
+        endpoint -> Text,
+    }
+}
+
+table! {
+    proposal_circuit_service (id) {
+        id -> Int8,
+        proposal_id -> Text,
+        service_id -> Text,
+        service_type -> Text,
+        allowed_nodes -> Array<Text>,
+    }
+}
