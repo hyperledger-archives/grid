@@ -74,6 +74,12 @@ pub fn run(
                                     .route(web::post().to_async(routes::login)),
                             ),
                     )
+                    .service(
+                        web::scope("/proposals").service(
+                            web::resource("/{proposal_id}")
+                                .route(web::get().to_async(routes::fetch_proposal)),
+                        ),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()

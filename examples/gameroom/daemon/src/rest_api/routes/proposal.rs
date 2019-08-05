@@ -15,7 +15,15 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
-use gameroom_database::models::{CircuitMember, CircuitProposal};
+use actix_web::{error, web, Error, HttpResponse};
+use futures::Future;
+use gameroom_database::{
+    helpers,
+    models::{CircuitMember, CircuitProposal},
+    ConnectionPool,
+};
+
+use crate::rest_api::RestApiResponseError;
 
 #[derive(Debug, Serialize)]
 struct ApiCircuitProposal {
@@ -59,4 +67,35 @@ impl ApiCircuitMember {
             endpoint: db_circuit_member.endpoint.to_string(),
         }
     }
+}
+
+pub fn fetch_proposal(
+    pool: web::Data<ConnectionPool>,
+    proposal_id: web::Path<String>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || get_proposal_from_db(pool, &proposal_id)).then(|res| match res {
+            Ok(proposal) => Ok(HttpResponse::Ok().json(proposal)),
+            Err(err) => match err {
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(err.to_string()))
+                    }
+                    _ => Ok(HttpResponse::BadRequest().json(err.to_string())),
+                },
+                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+            },
+        }),
+    )
+}
+
+fn get_proposal_from_db(
+    pool: web::Data<ConnectionPool>,
+    id: &str,
+) -> Result<ApiCircuitProposal, RestApiResponseError> {
+    if let Some(proposal) = helpers::fetch_proposal_by_id(&*pool.get()?, id)? {
+        let members = helpers::fetch_circuit_members_by_proposal_id(&*pool.get()?, id)?;
+        return Ok(ApiCircuitProposal::from(proposal, members));
+    }
+    Err(RestApiResponseError::NotFound(format!("Proposal {}", id)))
 }
