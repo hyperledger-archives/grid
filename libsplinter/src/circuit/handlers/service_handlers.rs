@@ -48,6 +48,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
         let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         let mut response = ServiceConnectResponse::new();
+        response.set_correlation_id(msg.get_correlation_id().into());
         response.set_circuit(circuit_name.into());
         response.set_service_id(service_id.into());
 
@@ -152,6 +153,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
         let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
         let mut response = ServiceDisconnectResponse::new();
+        response.set_correlation_id(msg.get_correlation_id().into());
         response.set_circuit(circuit_name.into());
         response.set_service_id(service_id.into());
 
