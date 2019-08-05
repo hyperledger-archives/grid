@@ -320,6 +320,15 @@ pub enum Vote {
     Reject,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "eventType", content = "message")]
+pub enum AdminServiceEvent {
+    ProposalSubmitted(CircuitProposal),
+    ProposalVote(CircuitProposalVote),
+    ProposalAccepted(CircuitProposal),
+    ProposalRejected(CircuitProposal),
+}
+
 #[derive(Debug)]
 pub enum MarshallingError {
     UnsetField(String),
