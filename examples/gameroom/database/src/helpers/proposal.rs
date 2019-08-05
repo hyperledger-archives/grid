@@ -33,3 +33,15 @@ pub fn fetch_circuit_members_by_proposal_id(
         .filter(proposal_circuit_member::proposal_id.eq(proposal_id))
         .load::<CircuitMember>(conn)
 }
+
+pub fn list_proposals_with_paging(
+    conn: &PgConnection,
+    limit: i64,
+    offset: i64,
+) -> QueryResult<Vec<CircuitProposal>> {
+    circuit_proposal::table
+        .select(circuit_proposal::all_columns)
+        .limit(limit)
+        .offset(offset)
+        .load::<CircuitProposal>(conn)
+}
