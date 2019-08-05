@@ -42,7 +42,7 @@ pub struct AuthData {
 pub fn login(
     auth_data: web::Json<AuthData>,
     pool: web::Data<ConnectionPool>,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || authenticate_user(pool, auth_data.into_inner())).then(|res| match res {
             Ok(user) => Ok(HttpResponse::Ok().json(user)),
@@ -66,7 +66,7 @@ pub struct UserCreate {
 pub fn register(
     new_user: web::Json<UserCreate>,
     pool: web::Data<ConnectionPool>,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || create_user(pool, new_user.into_inner())).then(|res| match res {
             Ok(user) => Ok(HttpResponse::Ok().json(user)),
