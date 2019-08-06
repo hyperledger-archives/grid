@@ -93,7 +93,7 @@ impl Service for Scabbard {
             let mut shared = self
                 .shared
                 .lock()
-                .map_err(|_| ServiceStartError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
+                .map_err(|_| ServiceStartError::PoisonedLock("shared lock poisoned".into()))?;
 
             shared.set_network_sender(service_registry.connect(self.service_id())?);
 
@@ -145,7 +145,7 @@ impl Service for Scabbard {
         let mut shared = self
             .shared
             .lock()
-            .map_err(|_| ServiceStopError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
+            .map_err(|_| ServiceStopError::PoisonedLock("shared lock poisoned".into()))?;
         let network_sender = shared
             .take_network_sender()
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
