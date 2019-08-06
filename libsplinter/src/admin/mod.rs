@@ -15,6 +15,7 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message, RepeatedField};
@@ -31,6 +32,8 @@ use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
+use actix::prelude::*;
+use actix_web_actors::ws;
 use serde_json;
 
 #[derive(Clone)]
@@ -382,21 +385,24 @@ impl RestResourceProvider for AdminService {
 }
 
 fn make_create_circuit_route(admin_service: AdminService) -> Resource {
-    Resource::new(Method::Post, "/auth/circuit", move |r, p| {
+    Resource::new(Method::Post, "/admin/circuit", move |r, p| {
         create_circuit(r, p, admin_service.clone())
     })
 }
 
 fn make_application_handler_registration_route() -> Resource {
-    Resource::new(Method::Put, "/auth/register/{type}", move |r, _| {
+    Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
         } else {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
 
+        let res = ws::start(AdminServiceWebSocket::new(), &r, p);
+
         debug!("circuit management type {}", circuit_management_type);
-        Box::new(HttpResponse::Ok().finish().into_future())
+        debug!("Websocket response: {:?}", res);
+        Box::new(res.into_future())
     })
 }
 
@@ -422,6 +428,43 @@ fn create_circuit(
             }
         }),
     )
+}
+
+pub struct AdminServiceWebSocket {}
+
+impl AdminServiceWebSocket {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
+        ctx.run_interval(Duration::from_secs(3), |_, _| {
+            debug!("Admin Service gonna send cool stuff");
+        });
+    }
+}
+
+impl Actor for AdminServiceWebSocket {
+    type Context = ws::WebsocketContext<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        debug!("Starting Admin Service");
+        self.push_updates(ctx)
+    }
+}
+
+impl StreamHandler<ws::Message, ws::ProtocolError> for AdminServiceWebSocket {
+    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+        debug!("WS: {:?}", msg);
+        match msg {
+            ws::Message::Ping(msg) => ctx.ping(&msg),
+            ws::Message::Pong(msg) => ctx.pong(&msg),
+            ws::Message::Text(text) => ctx.text(text),
+            ws::Message::Binary(bin) => ctx.binary(bin),
+            ws::Message::Close(_) => ctx.stop(),
+            ws::Message::Nop => (),
+        };
+    }
 }
 
 #[cfg(test)]
