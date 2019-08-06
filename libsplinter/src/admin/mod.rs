@@ -289,7 +289,7 @@ impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
             make_create_circuit_route(self.clone()),
-            make_application_handler_registration_route(),
+            make_application_handler_registration_route(self.clone()),
         ]
     }
 }
@@ -300,7 +300,7 @@ fn make_create_circuit_route(admin_service: AdminService) -> Resource {
     })
 }
 
-fn make_application_handler_registration_route() -> Resource {
+fn make_application_handler_registration_route(admin_service: AdminService) -> Resource {
     Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
@@ -308,11 +308,18 @@ fn make_application_handler_registration_route() -> Resource {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
 
-        let res = ws::start(AdminServiceWebSocket::new(), &r, p);
+        let (send, recv) = unbounded();
 
-        debug!("circuit management type {}", circuit_management_type);
-        debug!("Websocket response: {:?}", res);
-        Box::new(res.into_future())
+        let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
+
+        if let Err(err) = admin_service.add_socket_sender(send) {
+            debug!("Failed to add socket sender: {:?}", err);
+            Box::new(HttpResponse::InternalServerError().finish().into_future())
+        } else {
+            debug!("circuit management type {}", circuit_management_type);
+            debug!("Websocket response: {:?}", res);
+            Box::new(res.into_future())
+        }
     })
 }
 
@@ -340,11 +347,13 @@ fn create_circuit(
     )
 }
 
-pub struct AdminServiceWebSocket {}
+pub struct AdminServiceWebSocket {
+    recv: Receiver<AdminServiceEvent>,
+}
 
 impl AdminServiceWebSocket {
-    fn new() -> Self {
-        Self {}
+    fn new(recv: Receiver<AdminServiceEvent>) -> Self {
+        Self { recv }
     }
 
     fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
