@@ -60,12 +60,20 @@ services:
           - 8000
         ports:
           - "8000:8000"
+        depends_on:
+          - splinterd-node-acme
         command: |
           bash -c "
             # we need to wait for the db to have started.
             until PGPASSWORD=gameroom_example psql -h db-acme -U gameroom -c '\q'; do
                 >&2 echo \"Database is unavailable - sleeping\"
                 sleep 1
+            done
+
+            # check if splinterd-node-acme is available
+            while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-node-acme:8085/status) -ne 200 ]] ; do
+               >&2 echo \"SplinterD is unavailable - sleeping\"
+               sleep 1
             done
 
            ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-acme:5432/gameroom \
@@ -133,12 +141,20 @@ services:
           - 8000
         ports:
           - "8001:8000"
+        depends_on:
+          - splinterd-node-bubba
         command: |
           bash -c "
             # we need to wait for the db to have started.
             until PGPASSWORD=gameroom_example psql -h db-bubba -U gameroom -c '\q'; do
                 >&2 echo \"Database is unavailable - sleeping\"
                 sleep 1
+            done
+
+            # check if splinterd-node-bubba is available
+            while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-node-bubba:8085/status) -ne 200 ]] ; do
+               >&2 echo \"SplinterD is unavailable - sleeping\"
+               sleep 1
             done
 
            ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-bubba:5432/gameroom \
