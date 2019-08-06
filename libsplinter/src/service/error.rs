@@ -287,10 +287,10 @@ impl std::fmt::Display for ServiceProcessorError {
                 write!(f, "service cannot be added: {}", err)
             }
             ServiceProcessorError::ProcessError(ref err) => {
-                write!(f, "error processing message {}", err.description())
+                write!(f, "error processing message {}", err)
             }
             ServiceProcessorError::IOError(ref err) => {
-                write!(f, "io error processing message {}", err.description())
+                write!(f, "io error processing message {}", err)
             }
             ServiceProcessorError::ShutdownError(ref err) => {
                 write!(f, "error shutting down: {}", err)
