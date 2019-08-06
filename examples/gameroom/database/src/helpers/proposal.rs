@@ -49,3 +49,9 @@ pub fn list_proposals_with_paging(
 pub fn get_proposal_count(conn: &PgConnection) -> QueryResult<i64> {
     circuit_proposal::table.count().get_result(conn)
 }
+
+pub fn list_proposal_circuit_members(conn: &PgConnection) -> QueryResult<Vec<CircuitMember>> {
+    proposal_circuit_member::table
+        .select(proposal_circuit_member::all_columns)
+        .load::<CircuitMember>(conn)
+}
