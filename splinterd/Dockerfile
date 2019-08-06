@@ -16,59 +16,71 @@ FROM ubuntu:bionic as BUILDER
 
 # Install base dependencies
 RUN apt-get update \
-    && apt-get install -y -q \
-        build-essential \
-        curl \
-        gcc \
-        g++ \
-        libpq-dev \
-        libssl-dev \
-        libsasl2-dev \
-        libzmq3-dev \
-        openssl \
-        pkg-config \
-        python \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y -q \
+    build-essential \
+    curl \
+    gcc \
+    g++ \
+    libpq-dev \
+    libssl-dev \
+    libsasl2-dev \
+    libzmq3-dev \
+    openssl \
+    pkg-config \
+    python \
+    unzip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV PATH=$PATH:/root/.cargo/bin
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
-# For Building Protobufs
+# Install protoc
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
 
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+# Copy dependencies
+COPY protos /build/protos
+COPY libsplinter /build/libsplinter
 
-COPY ./protos /protos
-COPY ./libsplinter /libsplinter
-
+# Create empty cargo project
+WORKDIR /build
 RUN USER=root cargo new --bin splinterd
-WORKDIR /splinterd
 
-COPY ./splinterd/Cargo.toml ./Cargo.toml
+# Copy over Cargo.toml file
+COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/splinterd
 RUN cargo build --release
 
+# Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-COPY ./splinterd/src ./src
-COPY ./splinterd/api ./api
+RUN rm target/release/splinterd* target/release/deps/splinterd*
 
-RUN rm ./target/release/splinterd* ./target/release/deps/splinterd*
+# Copy over source files
+COPY splinterd/src ./src
+COPY splinterd/api ./api
+
+# Build the project
 RUN cargo build --release
 
 # create the standalone image
 FROM ubuntu:bionic
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 libzmq5 \
+ && apt-get install -y \
+    libssl1.1 \
+    libzmq5 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /splinterd/target/release/splinterd /
+COPY --from=BUILDER /build/splinterd/target/release/splinterd /usr/bin/splinterd
 
 EXPOSE 8043
 EXPOSE 8945

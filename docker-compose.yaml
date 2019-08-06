@@ -31,7 +31,7 @@ services:
       dockerfile: splinterd/Dockerfile
     entrypoint: |
       bash -c "
-        ./splinterd \
+        splinterd \
             --generate-certs \
             -c ./configs/splinterd-node-0-docker.toml \
             --registry-file ./node_registries/nodes.yaml \

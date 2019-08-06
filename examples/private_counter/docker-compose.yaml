@@ -28,7 +28,7 @@ services:
       - ./demo_state:/splinter_state
     command: >
       bash -c "
-        /splinterd -vv \
+        splinterd -vv \
                 --transport raw \
                 --storage yaml \
                 --service-endpoint 0.0.0.0:8043 \
@@ -50,7 +50,7 @@ services:
       - ./demo_state:/splinter_state
     command: >
       bash -c "
-        /splinterd -vv \
+        splinterd -vv \
                 --transport raw \
                 --storage yaml \
                 --service-endpoint 0.0.0.0:8045 \
@@ -72,7 +72,7 @@ services:
       - ./demo_state:/splinter_state
     command: >
       bash -c "
-        /splinterd -vv \
+        splinterd -vv \
                 --transport raw \
                 --storage yaml \
                 --service-endpoint 0.0.0.0:8047 \

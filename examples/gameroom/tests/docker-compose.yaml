@@ -51,5 +51,5 @@ services:
       bash -c "
       pwd
       ls project/splinter/examples/gameroom/tests
-        ./splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
+        splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
       "

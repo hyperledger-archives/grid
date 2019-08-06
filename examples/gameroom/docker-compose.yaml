@@ -97,7 +97,7 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
+          splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044
         "
@@ -181,7 +181,7 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
+          splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044
         "
