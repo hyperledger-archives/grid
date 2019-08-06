@@ -262,7 +262,7 @@ pub enum ServiceProcessorError {
     /// Returned if an error is detected adding a new service
     AddServiceError(String),
     /// Returned if an error is detected while processing requests
-    ProcessError(Box<dyn Error + Send>),
+    ProcessError(String, Box<dyn Error + Send>),
     /// Returned if an IO error is detected while processing requests
     IOError(IOError),
     /// Returned if an error is detected when trying to shutdown
@@ -273,7 +273,7 @@ impl Error for ServiceProcessorError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ServiceProcessorError::AddServiceError(_) => None,
-            ServiceProcessorError::ProcessError(err) => Some(&**err),
+            ServiceProcessorError::ProcessError(_, err) => Some(&**err),
             ServiceProcessorError::IOError(err) => Some(err),
             ServiceProcessorError::ShutdownError(_) => None,
         }
@@ -286,8 +286,8 @@ impl std::fmt::Display for ServiceProcessorError {
             ServiceProcessorError::AddServiceError(ref err) => {
                 write!(f, "service cannot be added: {}", err)
             }
-            ServiceProcessorError::ProcessError(ref err) => {
-                write!(f, "error processing message {}", err)
+            ServiceProcessorError::ProcessError(ref ctx, ref err) => {
+                write!(f, "error processing message: {} ({})", ctx, err)
             }
             ServiceProcessorError::IOError(ref err) => {
                 write!(f, "io error processing message {}", err)
