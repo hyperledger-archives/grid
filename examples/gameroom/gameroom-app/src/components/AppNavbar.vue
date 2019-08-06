@@ -43,16 +43,16 @@ limitations under the License.
 
 <script lang='ts'>
 import { Vue, Component } from 'vue-property-decorator';
-import user from '@/store/modules/user';
 
 @Component
 export default class AppNavbar extends Vue {
+
   get isLoggedIn() {
-    return user.isLoggedIn;
+    return this.$store.getters['user/isLoggedIn'];
   }
 
   logout() {
-    user.clearUser();
+    this.$store.commit('user/clearUser');
   }
 }
 </script>
