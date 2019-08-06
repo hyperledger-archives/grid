@@ -356,10 +356,24 @@ impl AdminServiceWebSocket {
         Self { recv }
     }
 
-    fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(3), |_, ctx| {
-            ctx.ping("");
-            debug!("Admin Service gonna send cool stuff");
+    fn push_updates(&self, recv: Receiver<AdminServiceEvent>, ctx: &mut <Self as Actor>::Context) {
+        ctx.run_interval(Duration::from_secs(3), move |_, ctx| {
+            match recv.try_recv() {
+                Ok(msg) => {
+                    debug!("Received a message: {:?}", msg);
+                    match serde_json::to_string(&msg) {
+                        Ok(text) => ctx.text(text),
+                        Err(err) => {
+                            debug!("Failed to serialize payload: {:?}", err);
+                        }
+                    }
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => {
+                    debug!("Received channel disconnect");
+                    ctx.stop();
+                }
+            };
         });
     }
 }
@@ -369,7 +383,8 @@ impl Actor for AdminServiceWebSocket {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         debug!("Starting Admin Service");
-        self.push_updates(ctx)
+        let recv = self.recv.clone();
+        self.push_updates(recv, ctx)
     }
 }
 
