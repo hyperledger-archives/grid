@@ -14,7 +14,8 @@
 
 pub mod messages;
 
-use messages::CreateCircuit;
+use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+use messages::{AdminServiceEvent, CreateCircuit};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
@@ -54,6 +55,7 @@ impl AdminService {
                 network_sender: None,
                 open_proposals: Default::default(),
                 peer_connector,
+                socket_senders: Vec::new(),
             })),
         }
     }
@@ -227,6 +229,15 @@ impl AdminService {
         debug!("Proposal complete");
         Ok(())
     }
+
+    pub fn add_socket_sender(&self, sender: Sender<AdminServiceEvent>) -> Result<(), ServiceError> {
+        self.admin_service_state
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
+            .add_socket_sender(sender);
+
+        Ok(())
+    }
 }
 
 fn admin_service_id(node_id: &str) -> String {
@@ -255,6 +266,7 @@ struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
     peer_connector: PeerConnector,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
+    socket_senders: Vec<Sender<AdminServiceEvent>>,
 }
 
 impl AdminServiceState {
@@ -268,6 +280,8 @@ impl AdminServiceState {
         self.open_proposals.contains_key(circuit_id)
     }
 
+    fn add_socket_sender(&mut self, sender: Sender<AdminServiceEvent>) {
+        self.socket_senders.push(sender);
     }
 }
 
