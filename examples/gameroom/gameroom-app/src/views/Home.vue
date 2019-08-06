@@ -15,11 +15,23 @@ limitations under the License.
 -->
 
 <template>
-  <div>
+  <gamerooms v-if="isLoggedIn" />
+  <div v-else>
     <h1>Welcome to Gameroom</h1>
   </div>
 </template>
 
 <script>
-export default {};
+import { Vue, Component } from 'vue-property-decorator';
+import user from '@/store/modules/user';
+import Gamerooms from '@/views/Gamerooms';
+
+@Component({
+  components: { Gamerooms },
+})
+export default class Home extends Vue {
+  get isLoggedIn() {
+    return user.isLoggedIn;
+  }
+}
 </script>

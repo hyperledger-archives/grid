@@ -21,17 +21,12 @@ limitations under the License.
     </router-link>
     <ul v-if="isLoggedIn">
       <li>
-        <router-link to="/gamerooms">
-          Gamerooms
-        </router-link>
-      </li>
-      <li>
         <router-link to='/'>
           <span v-on:click="logout">Log out</span>
         </router-link>
       </li>
     </ul>
-    <ul v-if="!isLoggedIn">
+    <ul v-else>
       <li>
         <router-link to="/login">
           Log In

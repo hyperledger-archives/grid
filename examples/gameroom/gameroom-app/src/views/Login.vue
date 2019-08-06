@@ -34,7 +34,10 @@ limitations under the License.
             v-model="password"
           />
         </label>
-        <button class="form-button" type="submit" :disabled="!canSubmit">Log In</button>
+        <button class="form-button" type="submit" :disabled="!canSubmit">
+          <div v-if="submitting"> Logging in... </div>
+          <div v-else> Log In </div>
+        </button>
         <span class="form-link">
           Don't have an account yet?
           <router-link to="/register">
@@ -55,20 +58,24 @@ import * as crypto from '@/utils/crypto';
 export default class Login extends Vue {
   email = '';
   password = '';
+  submitting = false;
 
   get canSubmit() {
-    if (this.email !== '' &&
+    if (!this.submitting &&
+        this.email !== '' &&
         this.password !== '') {
       return true;
     }
     return false;
   }
 
-  login() {
-    user.authenticate({
+  async login() {
+    this.submitting = true;
+    await user.authenticate({
       email: this.email,
       hashedPassword: crypto.hashSHA256(this.email, this.password),
     });
+    this.submitting = false;
   }
 }
 </script>

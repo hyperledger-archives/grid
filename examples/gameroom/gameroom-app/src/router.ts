@@ -35,10 +35,5 @@ export default new Router({
       name: 'register',
       component: () => import('@/views/Register.vue'),
     },
-    {
-      path: '/gamerooms',
-      name: 'gamerooms',
-      component: () => import('@/views/Gamerooms.vue'),
-    },
   ],
 });
