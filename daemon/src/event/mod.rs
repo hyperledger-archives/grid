@@ -44,6 +44,7 @@ const PIKE_ORG: &str = "cad11d01";
 
 const GRID_NAMESPACE: &str = "621dee";
 const GRID_SCHEMA: &str = "621dee01";
+const GRID_PRODUCT: &str = "621dee02";
 
 const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
 const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";

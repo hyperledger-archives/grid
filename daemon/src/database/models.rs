@@ -91,7 +91,7 @@ pub struct Organization {
     pub end_block_num: i64,
 }
 
-#[derive(Insertable, Debug)]
+#[derive(Clone, Insertable, Debug)]
 #[table_name = "product"]
 pub struct NewProduct {
     pub product_id: String,
