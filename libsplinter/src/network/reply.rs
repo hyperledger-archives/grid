@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{mpsc::channel, Arc, Mutex};
@@ -20,54 +19,51 @@ use std::sync::{mpsc::channel, Arc, Mutex};
 use crate::channel::{Receiver, RecvError, Sender};
 use crate::network::dispatch::FromMessageBytes;
 
-pub type MessageResult<T> = Result<T, RecvError>;
+pub type MessageResult<MessageType> = Result<(MessageType, Vec<u8>), RecvError>;
 
-pub trait HasCorrelationId {
-    fn correlation_id(&self) -> &str;
-}
-
-pub trait Envelope {
-    fn payload(&self) -> &[u8];
-}
-
-type ExpectedReplies<T> = Arc<Mutex<HashMap<String, Box<dyn Sender<MessageResult<T>>>>>>;
+type ExpectedReplies<MessageType> =
+    Arc<Mutex<HashMap<String, Box<dyn Sender<MessageResult<MessageType>>>>>>;
 
 #[derive(Clone)]
-pub struct InboundRouter<T>
+pub struct InboundRouter<MessageType>
 where
-    T: HasCorrelationId + Envelope + Send + Any,
+    MessageType: std::fmt::Debug + PartialEq + Send + 'static,
 {
-    expected_replies: ExpectedReplies<T>,
-    default_sender: Box<dyn Sender<MessageResult<T>>>,
+    expected_replies: ExpectedReplies<MessageType>,
+    default_sender: Box<dyn Sender<MessageResult<MessageType>>>,
 }
 
-impl<T> InboundRouter<T>
+impl<MessageType> InboundRouter<MessageType>
 where
-    T: HasCorrelationId + Envelope + Send + Any,
+    MessageType: std::fmt::Debug + PartialEq + Send + 'static,
 {
-    pub fn new(default_sender: Box<dyn Sender<MessageResult<T>>>) -> Self {
+    pub fn new(default_sender: Box<dyn Sender<MessageResult<MessageType>>>) -> Self {
         InboundRouter {
             expected_replies: Default::default(),
             default_sender,
         }
     }
 
-    pub fn route(&mut self, message_result: MessageResult<T>) -> Result<(), RouteError> {
+    pub fn route(
+        &mut self,
+        correlation_id: &str,
+        message_result: MessageResult<MessageType>,
+    ) -> Result<(), RouteError> {
         match message_result {
-            Ok(message) => {
-                let mut expected_replies = self.expected_replies.lock().expect("Lock was poisened");
-                if let Some(sender) = expected_replies.remove(message.correlation_id()) {
+            Ok((message_type, message)) => {
+                let mut expected_replies = self.expected_replies.lock().expect("Lock was poisoned");
+                if let Some(sender) = expected_replies.remove(correlation_id) {
                     sender
-                        .send(Ok(message))
+                        .send(Ok((message_type, message)))
                         .map_err(|err| RouteError(Box::new(err)))?;
                 } else {
                     self.default_sender
-                        .send(Ok(message))
+                        .send(Ok((message_type, message)))
                         .map_err(|err| RouteError(Box::new(err)))?;
                 }
             }
             Err(RecvError { error }) => {
-                let mut expected_replies = self.expected_replies.lock().expect("Lock was poisened");
+                let mut expected_replies = self.expected_replies.lock().expect("Lock was poisoned");
                 for (_, sender) in expected_replies.iter_mut() {
                     sender
                         .send(Err(RecvError {
@@ -80,14 +76,15 @@ where
         Ok(())
     }
 
-    pub fn expect_reply(&self, correlation_id: String) -> Box<dyn Receiver<MessageResult<T>>> {
+    pub fn expect_reply(&self, correlation_id: String) -> MessageFuture<MessageType> {
         let (expect_tx, expect_rx) = channel();
         let mut expected_replies = self.expected_replies.lock().unwrap();
         expected_replies.insert(correlation_id, Box::new(expect_tx));
 
-        Box::new(expect_rx)
+        MessageFuture::new(Box::new(expect_rx))
     }
 }
+
 #[derive(Debug)]
 pub struct RouteError(pub Box<dyn Error + Send>);
 
@@ -123,19 +120,19 @@ impl std::fmt::Display for FutureError {
 }
 
 /// MessageFuture is a promise for the reply to a sent message.
-pub struct MessageFuture<T>
+pub struct MessageFuture<MessageType>
 where
-    T: HasCorrelationId + Envelope + Send + Any,
+    MessageType: std::fmt::Debug + PartialEq,
 {
-    inner: Box<dyn Receiver<MessageResult<T>>>,
-    result: Option<MessageResult<T>>,
+    inner: Box<dyn Receiver<MessageResult<MessageType>>>,
+    result: Option<MessageResult<MessageType>>,
 }
 
-impl<T> MessageFuture<T>
+impl<MessageType> MessageFuture<MessageType>
 where
-    T: HasCorrelationId + Envelope + Send + Any,
+    MessageType: std::fmt::Debug + PartialEq,
 {
-    pub fn new(inner: Box<dyn Receiver<MessageResult<T>>>) -> Self {
+    pub fn new(inner: Box<dyn Receiver<MessageResult<MessageType>>>) -> Self {
         MessageFuture {
             inner,
             result: None,
@@ -145,25 +142,20 @@ where
     pub fn get<M: FromMessageBytes + Clone>(&mut self) -> Result<M, FutureError> {
         if let Some(result) = self.result.as_ref() {
             return match result {
-                Ok(env) => FromMessageBytes::from_message_bytes(env.payload())
+                Ok((_, msg)) => FromMessageBytes::from_message_bytes(msg)
                     .map_err(|e| FutureError::UnableToParseMessage(e.to_string())),
                 Err(_) => Err(FutureError::UnableToReceive),
             };
         }
 
-        let result: MessageResult<T> = self
+        let result: MessageResult<MessageType> = self
             .inner
             .recv()
             .map_err(|_| FutureError::UnableToReceive)?;
 
         self.result = Some(result);
 
-        // This is safe because we just wrapped it in Some
-        match self.result.as_ref().unwrap() {
-            Ok(env) => FromMessageBytes::from_message_bytes(env.payload())
-                .map_err(|e| FutureError::UnableToParseMessage(e.to_string())),
-            Err(_) => Err(FutureError::UnableToReceive),
-        }
+        self.get()
     }
 }
 
@@ -174,23 +166,21 @@ pub mod tests {
     use std::sync::mpsc::channel;
     use std::thread;
 
+    use crate::network::dispatch::RawBytes;
+
+    #[derive(PartialEq, Debug)]
+    struct TestType;
+
     #[test]
     // test that if a message is received without a matching correlation id, the message is routed
     // to the default sender
     fn test_no_correlation_id() {
         let (default_tx, default_rx) = channel();
-        let mut inbound_router: InboundRouter<TestMessage> =
-            InboundRouter::new(Box::new(default_tx));
+        let mut inbound_router: InboundRouter<TestType> = InboundRouter::new(Box::new(default_tx));
 
         thread::Builder::new()
             .name("test_no_correlation_id".to_string())
-            .spawn(move || {
-                let msg_result = Ok(TestMessage {
-                    payload: b"test_payload".to_vec(),
-                    correlation_id: "test".to_string(),
-                });
-                inbound_router.route(msg_result)
-            })
+            .spawn(move || inbound_router.route("test", Ok((TestType, b"test_payload".to_vec()))))
             .unwrap();;
 
         let msg = match default_rx.recv() {
@@ -198,7 +188,7 @@ pub mod tests {
             Err(err) => panic!("Received error: {}", err),
         };
 
-        assert_eq!(b"test_payload", msg.payload());
+        assert_eq!((TestType, b"test_payload".to_vec()), msg);
     }
 
     #[test]
@@ -206,43 +196,18 @@ pub mod tests {
     // to the receiver that is blocking on the reply
     fn test_expect_reply() {
         let (default_tx, _) = channel();
-        let mut inbound_router: InboundRouter<TestMessage> =
-            InboundRouter::new(Box::new(default_tx));
+        let mut inbound_router: InboundRouter<TestType> = InboundRouter::new(Box::new(default_tx));
 
-        let receiver = inbound_router.expect_reply("test".to_string());
+        let mut fut = inbound_router.expect_reply("test".to_string());
         thread::Builder::new()
             .name("test_expect_reply".to_string())
-            .spawn(move || {
-                let msg_result = Ok(TestMessage {
-                    payload: b"test_payload".to_vec(),
-                    correlation_id: "test".to_string(),
-                });
-                inbound_router.route(msg_result)
-            })
+            .spawn(move || inbound_router.route("test", Ok((TestType, b"test_payload".to_vec()))))
             .unwrap();;
 
-        let msg = match receiver.recv() {
-            Ok(msg_result) => msg_result.unwrap(),
-            Err(err) => panic!("Received error: {:?}", err),
-        };
+        let msg = fut
+            .get::<RawBytes>()
+            .expect("Unexpected error when resolving future");
 
-        assert_eq!(b"test_payload", msg.payload());
-    }
-
-    struct TestMessage {
-        pub payload: Vec<u8>,
-        pub correlation_id: String,
-    }
-
-    impl HasCorrelationId for TestMessage {
-        fn correlation_id(&self) -> &str {
-            &self.correlation_id
-        }
-    }
-
-    impl Envelope for TestMessage {
-        fn payload(&self) -> &[u8] {
-            &self.payload
-        }
+        assert_eq!(b"test_payload", msg.bytes());
     }
 }
