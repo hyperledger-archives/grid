@@ -70,13 +70,15 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
+        let network_sender = service_registry.connect(&self.service_id)?;
+
         let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
             ServiceStartError::PoisonedLock("the admin state lock was poisoned".into())
         })?;
 
-        let network_sender = service_registry.connect(&self.service_id)?;
-
         admin_service_state.network_sender = Some(network_sender);
+
+        info!("Admin service started and connected");
 
         Ok(())
     }
@@ -85,13 +87,15 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStopError> {
+        service_registry.disconnect(&self.service_id)?;
+
         let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
             ServiceStopError::PoisonedLock("the admin state lock was poisoned".into())
         })?;
 
-        service_registry.disconnect(&self.service_id)?;
-
         admin_service_state.network_sender = None;
+
+        info!("Admin service stopped and disconnected");
 
         Ok(())
     }
@@ -149,37 +153,60 @@ impl AdminService {
     /// This operation will propose a new circuit to all the member nodes of the circuit.  If there
     /// is no peer connection, a connection to the peer will also be established.
     pub fn propose_circuit(&self, proposed_circuit: Circuit) -> Result<(), ServiceError> {
-        let mut admin_service_state = self
+        let network_sender = self
             .admin_service_state
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
+            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
+            .network_sender
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| ServiceError::NotStarted)?;
 
-        if admin_service_state.network_sender.is_none() {
-            return Err(ServiceError::NotStarted);
+        {
+            debug!("proposing {}", proposed_circuit.get_circuit_id());
+
+            let mut proposal = CircuitProposal::new();
+            proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
+            proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
+            proposal.set_circuit_hash(sha256(&proposed_circuit)?);
+            proposal.set_circuit_proposal(proposed_circuit.clone());
+
+            self.admin_service_state
+                .lock()
+                .map_err(|_| {
+                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
+                })?
+                .add_proposal(proposal);
+
+            debug!("Proposal added");
         }
 
         let mut member_node_ids = vec![];
-        for node in proposed_circuit.get_members() {
-            if self.node_id != node.get_node_id() {
-                admin_service_state
-                    .peer_connector
-                    .connect_peer(node.get_node_id(), node.get_endpoint())
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+        {
+            debug!("Adding members as peers");
+            let peer_connector = self
+                .admin_service_state
+                .lock()
+                .map_err(|_| {
+                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
+                })?
+                .peer_connector
+                .clone();
 
-                member_node_ids.push(node.get_node_id().to_string())
+            for node in proposed_circuit.get_members() {
+                if self.node_id != node.get_node_id() {
+                    debug!("Connecting to node {:?}", node);
+                    peer_connector
+                        .connect_peer(node.get_node_id(), node.get_endpoint())
+                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+
+                    member_node_ids.push(node.get_node_id().to_string())
+                }
             }
+            debug!("Members added");
         }
 
-        debug!("proposing {}", proposed_circuit.get_circuit_id());
-
-        let mut proposal = CircuitProposal::new();
-        proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
-        proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
-        proposal.set_circuit_hash(sha256(&proposed_circuit)?);
-        proposal.set_circuit_proposal(proposed_circuit.clone());
-
-        admin_service_state.add_proposal(proposal);
-
+        debug!("Sending create request to other members.");
         let mut create_request = CircuitCreateRequest::new();
         create_request.set_circuit(proposed_circuit);
 
@@ -192,13 +219,10 @@ impl AdminService {
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
         for member_id in member_node_ids {
-            admin_service_state
-                .network_sender
-                .as_ref()
-                .unwrap()
-                .send(&admin_service_id(&member_id), &envelope_bytes)?;
+            network_sender.send(&admin_service_id(&member_id), &envelope_bytes)?;
         }
 
+        debug!("Proposal complete");
         Ok(())
     }
 }
@@ -570,6 +594,7 @@ mod tests {
         }
     }
 
+    #[derive(Clone)]
     struct MockNetworkSender {
         tx: Sender<(String, Vec<u8>)>,
     }
@@ -588,7 +613,7 @@ mod tests {
             _recipient: &str,
             _message: &[u8],
         ) -> Result<Vec<u8>, error::ServiceSendError> {
-            unimplemented!()
+            panic!("MockNetworkSender.send_and_await unexpectedly called")
         }
 
         fn reply(
@@ -596,11 +621,11 @@ mod tests {
             _message_origin: &ServiceMessageContext,
             _message: &[u8],
         ) -> Result<(), error::ServiceSendError> {
-            unimplemented!()
+            panic!("MockNetworkSender.reply unexpectedly called")
         }
 
         fn clone_box(&self) -> Box<dyn ServiceNetworkSender> {
-            unimplemented!()
+            Box::new(self.clone())
         }
     }
 
@@ -631,7 +656,7 @@ mod tests {
             &mut self,
             _: &str,
         ) -> Result<Box<dyn crate::transport::Listener>, crate::transport::ListenError> {
-            unimplemented!()
+            panic!("MockConnectingTransport.listen unexpectedly called")
         }
     }
 
@@ -643,7 +668,7 @@ mod tests {
         }
 
         fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
-            unimplemented!()
+            panic!("MockConnection.recv unexpectedly called")
         }
 
         fn remote_endpoint(&self) -> String {

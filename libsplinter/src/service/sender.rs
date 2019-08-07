@@ -15,10 +15,9 @@ use crossbeam_channel::Sender;
 use protobuf::Message;
 use uuid::Uuid;
 
-use crate::network::reply::{Envelope, HasCorrelationId, InboundRouter};
+use crate::network::reply::InboundRouter;
 use crate::protos::circuit::{
     AdminDirectMessage, CircuitDirectMessage, CircuitMessage, CircuitMessageType,
-    ServiceConnectResponse, ServiceDisconnectResponse,
 };
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
 use crate::service::error::ServiceSendError;
@@ -28,30 +27,6 @@ use crate::service::{ServiceMessageContext, ServiceNetworkSender};
 pub enum ServiceMessage {
     AdminDirectMessage(AdminDirectMessage),
     CircuitDirectMessage(CircuitDirectMessage),
-    ServiceConnectResponse(ServiceConnectResponse),
-    ServiceDisconnectResponse(ServiceDisconnectResponse),
-}
-
-impl Envelope for ServiceMessage {
-    fn payload(&self) -> &[u8] {
-        match self {
-            ServiceMessage::AdminDirectMessage(message) => message.get_payload(),
-            ServiceMessage::CircuitDirectMessage(message) => message.get_payload(),
-            ServiceMessage::ServiceConnectResponse(_) => &[],
-            ServiceMessage::ServiceDisconnectResponse(_) => &[],
-        }
-    }
-}
-
-impl HasCorrelationId for ServiceMessage {
-    fn correlation_id(&self) -> &str {
-        match self {
-            ServiceMessage::AdminDirectMessage(message) => message.get_correlation_id(),
-            ServiceMessage::CircuitDirectMessage(message) => message.get_correlation_id(),
-            ServiceMessage::ServiceConnectResponse(message) => message.get_correlation_id(),
-            ServiceMessage::ServiceDisconnectResponse(message) => message.get_correlation_id(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -67,14 +42,14 @@ pub enum ProcessorMessage {
 pub struct AdminServiceNetworkSender {
     outgoing_sender: Sender<Vec<u8>>,
     message_sender: String,
-    inbound_router: InboundRouter<ServiceMessage>,
+    inbound_router: InboundRouter<CircuitMessageType>,
 }
 
 impl AdminServiceNetworkSender {
     pub fn new(
         outgoing_sender: Sender<Vec<u8>>,
         message_sender: String,
-        inbound_router: InboundRouter<ServiceMessage>,
+        inbound_router: InboundRouter<CircuitMessageType>,
     ) -> Self {
         AdminServiceNetworkSender {
             outgoing_sender,
@@ -126,20 +101,17 @@ impl ServiceNetworkSender for AdminServiceNetworkSender {
         let message = create_message(bytes, CircuitMessageType::ADMIN_DIRECT_MESSAGE)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
 
-        let future = self.inbound_router.expect_reply(correlation_id);
+        let mut future = self.inbound_router.expect_reply(correlation_id);
 
         self.outgoing_sender
             .send(message)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
 
         // block until the response is received
-        match future.recv() {
-            Ok(msg) => match msg {
-                Ok(msg) => Ok(msg.payload().to_vec()),
-                Err(err) => Err(ServiceSendError(Box::new(err))),
-            },
-            Err(err) => Err(ServiceSendError(Box::new(err))),
-        }
+        future
+            .get::<AdminDirectMessage>()
+            .map(|mut res| res.take_payload())
+            .map_err(|err| ServiceSendError(Box::new(err)))
     }
 
     /// Send the message bytes back to the origin specified in the given
@@ -181,7 +153,7 @@ pub struct StandardServiceNetworkSender {
     outgoing_sender: Sender<Vec<u8>>,
     circuit: String,
     message_sender: String,
-    inbound_router: InboundRouter<ServiceMessage>,
+    inbound_router: InboundRouter<CircuitMessageType>,
 }
 
 impl StandardServiceNetworkSender {
@@ -189,7 +161,7 @@ impl StandardServiceNetworkSender {
         outgoing_sender: Sender<Vec<u8>>,
         circuit: String,
         message_sender: String,
-        inbound_router: InboundRouter<ServiceMessage>,
+        inbound_router: InboundRouter<CircuitMessageType>,
     ) -> Self {
         StandardServiceNetworkSender {
             outgoing_sender,
@@ -242,20 +214,17 @@ impl ServiceNetworkSender for StandardServiceNetworkSender {
         let message = create_message(bytes, CircuitMessageType::CIRCUIT_DIRECT_MESSAGE)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
 
-        let future = self.inbound_router.expect_reply(correlation_id);
+        let mut future = self.inbound_router.expect_reply(correlation_id);
 
         self.outgoing_sender
             .send(message)
             .map_err(|err| ServiceSendError(Box::new(err)))?;
 
         // block until the response is received
-        match future.recv() {
-            Ok(msg) => match msg {
-                Ok(msg) => Ok(msg.payload().to_vec()),
-                Err(err) => Err(ServiceSendError(Box::new(err))),
-            },
-            Err(err) => Err(ServiceSendError(Box::new(err))),
-        }
+        future
+            .get::<CircuitDirectMessage>()
+            .map(|mut res| res.take_payload())
+            .map_err(|err| ServiceSendError(Box::new(err)))
     }
 
     /// Send the message bytes back to the origin specified in the given
@@ -322,7 +291,7 @@ pub mod tests {
     fn test_standard_send() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let inbound_router: InboundRouter<ServiceMessage> =
+        let inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = StandardServiceNetworkSender::new(
             outgoing_sender,
@@ -361,7 +330,7 @@ pub mod tests {
     fn test_standard_send_and_await_send() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let mut inbound_router: InboundRouter<ServiceMessage> =
+        let mut inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = StandardServiceNetworkSender::new(
             outgoing_sender,
@@ -408,7 +377,15 @@ pub mod tests {
         direct_response.set_correlation_id(correlation_id);
         direct_response.set_payload(b"test_response".to_vec());
         inbound_router
-            .route(Ok(ServiceMessage::CircuitDirectMessage(direct_response)))
+            .route(
+                direct_response.get_correlation_id(),
+                Ok((
+                    CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
+                    direct_response
+                        .write_to_bytes()
+                        .expect("Failed to write bytes"),
+                )),
+            )
             .unwrap();
 
         // block until the network sender test is finished
@@ -421,7 +398,7 @@ pub mod tests {
     fn test_standard_reply() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let inbound_router: InboundRouter<ServiceMessage> =
+        let inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = StandardServiceNetworkSender::new(
             outgoing_sender,
@@ -465,7 +442,7 @@ pub mod tests {
     fn test_admin_send() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let inbound_router: InboundRouter<ServiceMessage> =
+        let inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = AdminServiceNetworkSender::new(
             outgoing_sender,
@@ -503,7 +480,7 @@ pub mod tests {
     fn test_admin_send_and_await_send() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let mut inbound_router: InboundRouter<ServiceMessage> =
+        let mut inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = AdminServiceNetworkSender::new(
             outgoing_sender,
@@ -549,7 +526,15 @@ pub mod tests {
         direct_response.set_correlation_id(correlation_id);
         direct_response.set_payload(b"test_response".to_vec());
         inbound_router
-            .route(Ok(ServiceMessage::AdminDirectMessage(direct_response)))
+            .route(
+                direct_response.get_correlation_id(),
+                Ok((
+                    CircuitMessageType::ADMIN_DIRECT_MESSAGE,
+                    direct_response
+                        .write_to_bytes()
+                        .expect("Failed to write bytes"),
+                )),
+            )
             .unwrap();
 
         // block until the network sender test is finished
@@ -562,7 +547,7 @@ pub mod tests {
     fn test_admin_reply() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let inbound_router: InboundRouter<ServiceMessage> =
+        let inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let network_sender = AdminServiceNetworkSender::new(
             outgoing_sender,

@@ -30,7 +30,7 @@ pub struct Circuit {
     id: String,
     auth: String,
     members: Vec<String>,
-    roster: Vec<String>,
+    roster: Roster,
     persistence: String,
     durability: String,
     routes: String,
@@ -50,10 +50,22 @@ impl Circuit {
             id,
             auth,
             members,
-            roster,
+            roster: Roster::Standard(roster),
             persistence,
             durability,
             routes,
+        }
+    }
+
+    pub fn new_admin() -> Self {
+        Circuit {
+            id: "admin".into(),
+            auth: "".into(),
+            members: vec![],
+            roster: Roster::Admin,
+            persistence: "".into(),
+            durability: "".into(),
+            routes: "".into(),
         }
     }
 
@@ -69,8 +81,8 @@ impl Circuit {
         Members { circuit: self }
     }
 
-    pub fn roster(&self) -> Roster {
-        Roster { circuit: self }
+    pub fn roster(&self) -> &Roster {
+        &self.roster
     }
 
     pub fn persistence(&self) -> &str {
@@ -112,29 +124,60 @@ impl<'c> IntoIterator for Members<'c> {
     }
 }
 
-pub struct Roster<'c> {
-    circuit: &'c Circuit,
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum Roster {
+    Standard(Vec<String>),
+    Admin,
 }
 
-impl<'c> Roster<'c> {
+impl Roster {
     pub fn contains(&self, service_name: &str) -> bool {
-        self.circuit
-            .roster
-            .iter()
-            .any(|roster_name| roster_name == service_name)
+        match self {
+            Roster::Standard(roster) => {
+                roster.iter().any(|roster_name| roster_name == service_name)
+            }
+            Roster::Admin => service_name.starts_with("admin::"),
+        }
     }
 
     pub fn to_vec(&self) -> Vec<String> {
-        self.circuit.roster.to_vec()
+        match self {
+            Roster::Standard(roster) => roster.to_vec(),
+            Roster::Admin => Vec::with_capacity(0),
+        }
+    }
+
+    pub fn iter(&self) -> RosterIter {
+        match self {
+            Roster::Standard(roster) => RosterIter::Standard(roster.iter()),
+            Roster::Admin => RosterIter::Admin,
+        }
     }
 }
 
-impl<'c> IntoIterator for Roster<'c> {
-    type Item = &'c String;
-    type IntoIter = std::slice::Iter<'c, String>;
+pub enum RosterIter<'r> {
+    Standard(std::slice::Iter<'r, String>),
+    Admin,
+}
+
+impl<'r> Iterator for RosterIter<'r> {
+    type Item = &'r String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            RosterIter::Standard(ref mut it) => it.next(),
+            RosterIter::Admin => None,
+        }
+    }
+}
+
+impl<'r> IntoIterator for &'r Roster {
+    type Item = &'r String;
+    type IntoIter = RosterIter<'r>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.circuit.roster.iter()
+        self.iter()
     }
 }
 

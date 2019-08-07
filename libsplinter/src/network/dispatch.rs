@@ -112,7 +112,7 @@ pub trait FromMessageBytes: Any + Sized {
 ///
 /// This is useful for handlers that don't deserialize the bytes via this process.  For example, a
 /// handler that forwards the messages may utilize this as a message type.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RawBytes {
     bytes: Vec<u8>,
 }

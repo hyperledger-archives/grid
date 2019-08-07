@@ -91,7 +91,15 @@ impl SplinterDaemon {
 
         // set up the listeners on the transport
         let mut network_listener = transport.listen(&self.network_endpoint)?;
+        debug!(
+            "Listening for peer connections on {}",
+            network_listener.endpoint()
+        );
         let mut service_listener = transport.listen(&self.service_endpoint)?;
+        debug!(
+            "Listening for service connections on {}",
+            service_listener.endpoint()
+        );
         let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));

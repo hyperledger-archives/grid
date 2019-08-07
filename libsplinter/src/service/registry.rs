@@ -17,14 +17,13 @@ use uuid::Uuid;
 
 use crate::network::reply::InboundRouter;
 use crate::protos::circuit::{
-    CircuitMessageType, ServiceConnectRequest, ServiceConnectResponse_Status,
-    ServiceDisconnectRequest, ServiceDisconnectResponse_Status,
+    CircuitMessageType, ServiceConnectRequest, ServiceConnectResponse,
+    ServiceConnectResponse_Status, ServiceDisconnectRequest, ServiceDisconnectResponse,
+    ServiceDisconnectResponse_Status,
 };
 use crate::service::error::{ServiceConnectionError, ServiceDisconnectionError};
 use crate::service::sender::create_message;
-use crate::service::sender::{
-    AdminServiceNetworkSender, ServiceMessage, StandardServiceNetworkSender,
-};
+use crate::service::sender::{AdminServiceNetworkSender, StandardServiceNetworkSender};
 use crate::service::{ServiceNetworkRegistry, ServiceNetworkSender};
 
 const ADMIN_CIRCUIT_NAME: &str = "admin";
@@ -32,7 +31,7 @@ const ADMIN_CIRCUIT_NAME: &str = "admin";
 pub struct StandardServiceNetworkRegistry {
     circuit: String,
     outgoing_sender: Sender<Vec<u8>>,
-    inbound_router: InboundRouter<ServiceMessage>,
+    inbound_router: InboundRouter<CircuitMessageType>,
 }
 
 /// This is an implementation of ServiceNetworkRegistry that can be used by a standard service
@@ -41,7 +40,7 @@ impl StandardServiceNetworkRegistry {
     pub fn new(
         circuit: String,
         outgoing_sender: Sender<Vec<u8>>,
-        inbound_router: InboundRouter<ServiceMessage>,
+        inbound_router: InboundRouter<CircuitMessageType>,
     ) -> Self {
         StandardServiceNetworkRegistry {
             circuit,
@@ -74,25 +73,15 @@ impl ServiceNetworkRegistry for StandardServiceNetworkRegistry {
         )
         .map_err(|err| ServiceConnectionError::ConnectionError(Box::new(err)))?;
 
-        let future = self.inbound_router.expect_reply(correlation_id);
+        let mut future = self.inbound_router.expect_reply(correlation_id);
 
         self.outgoing_sender
             .send(msg_bytes)
             .map_err(|err| ServiceConnectionError::ConnectionError(Box::new(err)))?;
 
-        let mut response = match future.recv() {
-            Ok(msg) => match msg {
-                Ok(ServiceMessage::ServiceConnectResponse(response)) => response,
-                Ok(msg) => {
-                    return Err(ServiceConnectionError::WrongResponse(format!(
-                        "Expected ServiceConnectResponse, recieved {:?}",
-                        msg
-                    )))
-                }
-                Err(err) => return Err(ServiceConnectionError::ConnectionError(Box::new(err))),
-            },
-            Err(err) => return Err(ServiceConnectionError::ConnectionError(Box::new(err))),
-        };
+        let mut response: ServiceConnectResponse = future
+            .get()
+            .map_err(|err| ServiceConnectionError::ConnectionError(Box::new(err)))?;
 
         if response.get_status() != ServiceConnectResponse_Status::OK {
             return Err(ServiceConnectionError::RejectedError(
@@ -137,27 +126,15 @@ impl ServiceNetworkRegistry for StandardServiceNetworkRegistry {
         )
         .map_err(|err| ServiceDisconnectionError::DisconnectionError(Box::new(err)))?;
 
-        let future = self.inbound_router.expect_reply(correlation_id);
+        let mut future = self.inbound_router.expect_reply(correlation_id);
 
         self.outgoing_sender
             .send(msg_bytes)
             .map_err(|err| ServiceDisconnectionError::DisconnectionError(Box::new(err)))?;
 
-        let mut response = match future.recv() {
-            Ok(msg) => match msg {
-                Ok(ServiceMessage::ServiceDisconnectResponse(msg)) => msg,
-                Ok(msg) => {
-                    return Err(ServiceDisconnectionError::WrongResponse(format!(
-                        "Expected ServiceDisconnectResponse, recieved {:?}",
-                        msg
-                    )))
-                }
-                Err(err) => {
-                    return Err(ServiceDisconnectionError::DisconnectionError(Box::new(err)))
-                }
-            },
-            Err(err) => return Err(ServiceDisconnectionError::DisconnectionError(Box::new(err))),
-        };
+        let mut response: ServiceDisconnectResponse = future
+            .get()
+            .map_err(|err| ServiceDisconnectionError::DisconnectionError(Box::new(err)))?;
 
         if response.get_status() != ServiceDisconnectResponse_Status::OK {
             return Err(ServiceDisconnectionError::RejectedError(
@@ -186,7 +163,7 @@ pub mod tests {
     fn test_admin_connect() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let mut inbound_router: InboundRouter<ServiceMessage> =
+        let mut inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let registry = StandardServiceNetworkRegistry::new(
             ADMIN_CIRCUIT_NAME.to_string(),
@@ -214,7 +191,13 @@ pub mod tests {
                 response.set_correlation_id(connect_request.take_correlation_id());
 
                 inbound_router
-                    .route(Ok(ServiceMessage::ServiceConnectResponse(response)))
+                    .route(
+                        response.get_correlation_id(),
+                        Ok((
+                            CircuitMessageType::SERVICE_CONNECT_RESPONSE,
+                            response.write_to_bytes().expect("Failed to write bytes"),
+                        )),
+                    )
                     .unwrap();
             })
             .unwrap();;
@@ -228,7 +211,7 @@ pub mod tests {
     fn test_standard_connect() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let mut inbound_router: InboundRouter<ServiceMessage> =
+        let mut inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let registry = StandardServiceNetworkRegistry::new(
             "test".to_string(),
@@ -256,7 +239,13 @@ pub mod tests {
                 response.set_correlation_id(connect_request.take_correlation_id());
 
                 inbound_router
-                    .route(Ok(ServiceMessage::ServiceConnectResponse(response)))
+                    .route(
+                        response.get_correlation_id(),
+                        Ok((
+                            CircuitMessageType::SERVICE_CONNECT_RESPONSE,
+                            response.write_to_bytes().expect("Failed to write bytes"),
+                        )),
+                    )
                     .unwrap();
             })
             .unwrap();;
@@ -270,7 +259,7 @@ pub mod tests {
     fn test_disconnect() {
         let (outgoing_sender, outgoing_receiver) = crossbeam_channel::bounded(3);
         let (internal_sender, _) = crossbeam_channel::bounded(3);
-        let mut inbound_router: InboundRouter<ServiceMessage> =
+        let mut inbound_router: InboundRouter<CircuitMessageType> =
             InboundRouter::new(Box::new(internal_sender));
         let registry = StandardServiceNetworkRegistry::new(
             "test".to_string(),
@@ -298,7 +287,13 @@ pub mod tests {
                 response.set_correlation_id(disconnect_request.take_correlation_id());
 
                 inbound_router
-                    .route(Ok(ServiceMessage::ServiceDisconnectResponse(response)))
+                    .route(
+                        response.get_correlation_id(),
+                        Ok((
+                            CircuitMessageType::SERVICE_DISCONNECT_RESPONSE,
+                            response.write_to_bytes().expect("Failed to write bytes"),
+                        )),
+                    )
                     .unwrap();
             })
             .unwrap();;

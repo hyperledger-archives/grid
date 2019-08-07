@@ -26,7 +26,7 @@ pub struct CircuitDirectory {
     circuits: BTreeMap<String, Circuit>,
 
     #[serde(skip_serializing)]
-    #[serde(default = "make_admin_circuit")]
+    #[serde(default = "Circuit::new_admin")]
     admin_circuit: Circuit,
 }
 
@@ -41,7 +41,7 @@ impl CircuitDirectory {
         CircuitDirectory {
             nodes: BTreeMap::new(),
             circuits: BTreeMap::new(),
-            admin_circuit: make_admin_circuit(),
+            admin_circuit: Circuit::new_admin(),
         }
     }
 
@@ -74,22 +74,10 @@ impl CircuitDirectory {
     }
 
     pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
-        if circuit_name == "admin" {
+        if circuit_name == self.admin_circuit.id() {
             Some(&self.admin_circuit)
         } else {
             self.circuits.get(circuit_name)
         }
     }
-}
-
-fn make_admin_circuit() -> Circuit {
-    Circuit::new(
-        "admin".into(),
-        "".into(),
-        vec![],
-        vec![],
-        "any".into(),
-        "none".into(),
-        "require_direct".into(),
-    )
 }
