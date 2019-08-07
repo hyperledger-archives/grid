@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::models::CircuitProposal;
-use crate::schema::circuit_proposal;
+use crate::models::{CircuitMember, CircuitProposal};
+use crate::schema::{circuit_proposal, proposal_circuit_member};
 
 use diesel::{pg::PgConnection, prelude::*, result::Error::NotFound, QueryResult};
 
@@ -23,4 +23,13 @@ pub fn fetch_proposal_by_id(conn: &PgConnection, id: &str) -> QueryResult<Option
         .first::<CircuitProposal>(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn fetch_circuit_members_by_proposal_id(
+    conn: &PgConnection,
+    proposal_id: &str,
+) -> QueryResult<Vec<CircuitMember>> {
+    proposal_circuit_member::table
+        .filter(proposal_circuit_member::proposal_id.eq(proposal_id))
+        .load::<CircuitMember>(conn)
 }
