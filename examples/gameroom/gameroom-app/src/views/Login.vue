@@ -51,7 +51,6 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import user from '@/store/modules/user';
 import * as crypto from '@/utils/crypto';
 
 @Component
@@ -71,7 +70,7 @@ export default class Login extends Vue {
 
   async login() {
     this.submitting = true;
-    await user.authenticate({
+    await this.$store.dispatch('user/authenticate', {
       email: this.email,
       hashedPassword: crypto.hashSHA256(this.email, this.password),
     });

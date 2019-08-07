@@ -59,7 +59,6 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import user from '@/store/modules/user';
 import * as crypto from '@/utils/crypto';
 
 @Component
@@ -86,7 +85,7 @@ export default class Register extends Vue {
     }
     const keys = crypto.createKeyPair(this.password);
     this.submitting = true;
-    await user.register({
+    await this.$store.dispatch('user/register', {
       email: this.email,
       hashedPassword: crypto.hashSHA256(this.email, this.password),
       publicKey: keys.publicKey,

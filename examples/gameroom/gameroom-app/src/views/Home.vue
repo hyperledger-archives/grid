@@ -23,7 +23,6 @@ limitations under the License.
 
 <script>
 import { Vue, Component } from 'vue-property-decorator';
-import user from '@/store/modules/user';
 import Gamerooms from '@/views/Gamerooms';
 
 @Component({
@@ -31,7 +30,7 @@ import Gamerooms from '@/views/Gamerooms';
 })
 export default class Home extends Vue {
   get isLoggedIn() {
-    return user.isLoggedIn;
+    return this.$store.getters['user/isLoggedIn'];
   }
 }
 </script>

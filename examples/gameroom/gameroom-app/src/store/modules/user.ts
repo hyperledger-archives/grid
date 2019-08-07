@@ -12,40 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { VuexModule, Module, getModule, Mutation, Action } from 'vuex-module-decorators';
-import store from '@/store';
 import { User, UserCredentials } from '@/store/models';
 import { userAuthenticate, userCreate } from '@/store/api';
 
-@Module({
-  namespaced: true,
-  name: 'user',
-  store,
-  dynamic: true,
-})
-class UserModule extends VuexModule {
-  user: User | null = null;
-
-  @Mutation
-  setUser(user: User) { this.user = user; }
-
-  @Mutation
-  clearUser() { this.user = null; }
-
-  @Action({commit: 'setUser'})
-  async register(userInfo: User) {
-    const user = await userCreate(userInfo);
-    return user;
-  }
-
-  @Action({commit: 'setUser'})
-  async authenticate(credentials: UserCredentials) {
-    const user = await userAuthenticate(credentials);
-    return user;
-  }
-
-  get isLoggedIn() {
-    return this.user;
-  }
+export interface UserState {
+  user: User;
 }
-export default getModule(UserModule);
+
+const userState = {
+  user: {
+    email: '',
+    hashedPassword: '',
+    publicKey: '',
+    encryptedPrivateKey: '',
+  },
+};
+
+const getters = {
+  isLoggedIn(state: UserState) {
+    return state.user.encryptedPrivateKey !== '';
+  },
+};
+
+const actions = {
+  async register({ commit }: any, userInfo: User) {
+    const user = await userCreate(userInfo);
+    commit('setUser', user);
+  },
+  async authenticate({ commit }: any, credentials: UserCredentials) {
+    const user = await userAuthenticate(credentials);
+    commit('setUser', user);
+  },
+};
+
+const mutations = {
+  setUser(state: UserState, user: User) {
+    state.user = user;
+  },
+  clearUser(state: UserState) {
+    state.user = {
+      email: '',
+      hashedPassword: '',
+      publicKey: '',
+      encryptedPrivateKey: '',
+    };
+  },
+};
+
+export default {
+  namespaced: true,
+  state: userState,
+  getters,
+  actions,
+  mutations,
+};
