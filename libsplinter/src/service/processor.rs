@@ -78,8 +78,8 @@ pub struct ServiceProcessor {
     network_sender: Sender<Vec<u8>>,
     network_receiver: Receiver<Vec<u8>>,
     running: Arc<AtomicBool>,
-    inbound_router: InboundRouter<ServiceMessage>,
-    inbound_receiver: Receiver<Result<ServiceMessage, channel::RecvError>>,
+    inbound_router: InboundRouter<CircuitMessageType>,
+    inbound_receiver: Receiver<Result<(CircuitMessageType, Vec<u8>), channel::RecvError>>,
     channel_capacity: usize,
 }
 
@@ -341,7 +341,7 @@ impl ServiceProcessor {
                     Ok(())
                 })?;
 
-        let inbound_receiver = self.inbound_receiver.clone();
+        let inbound_receiver = self.inbound_receiver;
         let inbound_running = self.running.clone();
         // Thread that handles messages that do not have a matching correlation id
         let inbound_join_handle: JoinHandle<Result<(), ServiceProcessorError>> =
@@ -350,30 +350,51 @@ impl ServiceProcessor {
                 .spawn(move || {
                     let timeout = Duration::from_secs(TIMEOUT_SEC);
                     while inbound_running.load(Ordering::SeqCst) {
-                        let service_message = inbound_receiver
-                            .recv_timeout(timeout)
-                            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?
-                            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+                        let service_message = match inbound_receiver.recv_timeout(timeout) {
+                            Ok(msg) => msg,
+                            Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
+                            Err(err) => {
+                                debug!("inbound sender dropped; ending inbound message thread");
+                                return Err(process_err!(err, "inbound sender dropped"));
+                            }
+                        }
+                        .map_err(to_process_err!("received service message error"))?;
+
                         match service_message {
-                            ServiceMessage::AdminDirectMessage(msg) => {
-                                handle_admin_direct_msg(msg, &shared_state).map_err(|err| {
-                                    ServiceProcessorError::ProcessError(Box::new(err))
-                                })?;
+                            (CircuitMessageType::ADMIN_DIRECT_MESSAGE, msg) => {
+                                let admin_direct_message: AdminDirectMessage =
+                                    protobuf::parse_from_bytes(&msg).map_err(to_process_err!(
+                                        "unable to parse inbound admin direct message"
+                                    ))?;
+
+                                handle_admin_direct_msg(admin_direct_message, &shared_state)
+                                    .map_err(to_process_err!(
+                                        "unable to handle inbound admin direct message"
+                                    ))?;
                             }
-                            ServiceMessage::CircuitDirectMessage(msg) => {
-                                handle_circuit_direct_msg(msg, &shared_state).map_err(|err| {
-                                    ServiceProcessorError::ProcessError(Box::new(err))
-                                })?;
+                            (CircuitMessageType::CIRCUIT_DIRECT_MESSAGE, msg) => {
+                                let circuit_direct_message: CircuitDirectMessage =
+                                    protobuf::parse_from_bytes(&msg).map_err(to_process_err!(
+                                        "unable to parse inbound circuit direct message"
+                                    ))?;
+
+                                handle_circuit_direct_msg(circuit_direct_message, &shared_state)
+                                    .map_err(to_process_err!(
+                                        "unable to handle inbound circuit direct message"
+                                    ))?;
                             }
-                            _ => warn!("Received message that does not have a correlation id"),
+                            (msg_type, _) => warn!(
+                                "Received message ({:?}) that does not have a correlation id",
+                                msg_type
+                            ),
                         }
                     }
                     Ok(())
                 })?;
 
-        let outgoing_mesh = self.mesh.clone();
+        let outgoing_mesh = self.mesh;
         let outgoing_running = self.running.clone();
-        let outgoing_receiver = self.network_receiver.clone();
+        let outgoing_receiver = self.network_receiver;
         let node_mesh_id = self.node_mesh_id;
 
         // Thread that handles outgoing messages that need to be sent to the splinter node
