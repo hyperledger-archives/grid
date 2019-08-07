@@ -13,12 +13,16 @@
 // limitations under the License.
 
 use actix_web::{error, web, Error, HttpResponse};
-use bcrypt::{hash, verify, DEFAULT_COST};
+use bcrypt::{hash, verify};
 use futures::Future;
 use gameroom_database::{helpers, models::GameroomUser, ConnectionPool};
 use serde::{Deserialize, Serialize};
 
 use crate::rest_api::RestApiResponseError;
+
+// Default cost is 12. This value should not be used in a production
+// environment.
+const HASH_COST: u32 = 4;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,7 +105,7 @@ fn create_user(
 }
 
 fn hash_password(password: &str) -> Result<String, RestApiResponseError> {
-    hash(password, DEFAULT_COST).map_err(RestApiResponseError::from)
+    hash(password, HASH_COST).map_err(RestApiResponseError::from)
 }
 
 fn authenticate_user(
