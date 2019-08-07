@@ -41,7 +41,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /circuit:
+  /admin/circuit:
     get:
       tags:
         - circuits
