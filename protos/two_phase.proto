@@ -41,3 +41,9 @@ message TwoPhaseMessage {
     ProposalVerificationResponse proposal_verification_response = 3;
     ProposalResult proposal_result = 4;
 }
+
+// Message to be set in consensus data to tell the consensus engine who needs to
+// approve the proposal
+message RequiredVerifiers {
+  repeated bytes verifiers = 1;
+}
