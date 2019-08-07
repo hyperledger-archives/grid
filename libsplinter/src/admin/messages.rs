@@ -203,6 +203,84 @@ impl SplinterService {
         })
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CircuitProposal {
+    pub proposal_type: ProposalType,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub circuit: CreateCircuit,
+    pub votes: Vec<VoteRecord>,
+    pub requester: String,
+}
+
+impl CircuitProposal {
+    fn from_proto(mut proto: admin::CircuitProposal) -> Result<Self, MarshallingError> {
+        let proposal_type = match proto.get_proposal_type() {
+            admin::CircuitProposal_ProposalType::CREATE => ProposalType::Create,
+            admin::CircuitProposal_ProposalType::UPDATE_ROSTER => ProposalType::UpdateRoster,
+            admin::CircuitProposal_ProposalType::ADD_NODE => ProposalType::AddNode,
+            admin::CircuitProposal_ProposalType::REMOVE_NODE => ProposalType::RemoveNode,
+            admin::CircuitProposal_ProposalType::DESTROY => ProposalType::Destroy,
+            admin::CircuitProposal_ProposalType::UNSET_PROPOSAL_TYPE => {
+                return Err(MarshallingError::UnsetField(
+                    "Unset proposal type".to_string(),
+                ));
+            }
+        };
+
+        let votes = proto
+            .take_votes()
+            .into_iter()
+            .map(VoteRecord::from_proto)
+            .collect::<Result<Vec<VoteRecord>, MarshallingError>>()?;
+
+        Ok(Self {
+            proposal_type,
+            circuit_id: proto.take_circuit_id(),
+            circuit_hash: proto.take_circuit_hash(),
+            circuit: CreateCircuit::from_proto(proto.take_circuit_proposal())?,
+            votes,
+            requester: proto.take_requester(),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ProposalType {
+    Create,
+    UpdateRoster,
+    AddNode,
+    RemoveNode,
+    Destroy,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VoteRecord {
+    pub public_key: String,
+    pub vote: Vote,
+}
+
+impl VoteRecord {
+    fn from_proto(mut proto: admin::CircuitProposal_VoteRecord) -> Result<Self, MarshallingError> {
+        let vote = match proto.get_vote() {
+            admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
+            admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
+        };
+
+        Ok(Self {
+            public_key: proto.take_public_key(),
+            vote,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Vote {
+    Accept,
+    Reject,
+}
+
 #[derive(Debug)]
 pub enum MarshallingError {
     UnsetField(String),
