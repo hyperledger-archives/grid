@@ -76,7 +76,7 @@ services:
       container_name: splinterd-node-acme
       expose:
         - 8080
-        - 8043
+        - 8044
         - 8945
         - 8085
       ports:
@@ -89,7 +89,9 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv
+          ./splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
+              --service-endpoint 0.0.0.0:8043 \
+              --network-endpoint 0.0.0.0:8044
         "
 
     db-bubba:
@@ -150,7 +152,7 @@ services:
       container_name: splinterd-node-bubba
       expose:
         - 8080
-        - 8043
+        - 8044
         - 8945
         - 8085
       ports:
@@ -163,5 +165,7 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv
+          ./splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
+              --service-endpoint 0.0.0.0:8043 \
+              --network-endpoint 0.0.0.0:8044
         "
