@@ -38,7 +38,7 @@ use crate::service::{
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
 
-use messages::{AdminServiceEvent, CreateCircuit};
+use messages::{AdminServiceEvent, CreateCircuit, from_payload};
 
 #[derive(Clone)]
 pub struct AdminService {
@@ -366,7 +366,7 @@ fn create_circuit(
     admin_service: AdminService,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
-        CreateCircuit::from_payload(payload).and_then(move |create_circuit| {
+        from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
             let mut circuit_create_request = match create_circuit.into_proto() {
                 Ok(request) => request,
                 Err(_) => return Ok(HttpResponse::BadRequest().finish()),
