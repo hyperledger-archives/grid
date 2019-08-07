@@ -14,7 +14,7 @@
 
 import { VuexModule, Module, getModule, Action } from 'vuex-module-decorators';
 import store from '@/store';
-import { GameroomProposal } from '@/store/models';
+import { NewGameroomProposal } from '@/store/models';
 import { gameroomPropose } from '@/store/api';
 
 @Module({
@@ -25,7 +25,7 @@ import { gameroomPropose } from '@/store/api';
 })
 class GameroomsModule extends VuexModule {
   @Action
-  async proposeGameroom(proposal: GameroomProposal) {
+  async proposeGameroom(proposal: NewGameroomProposal) {
     const response = await gameroomPropose(proposal);
     return response;
   }

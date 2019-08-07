@@ -16,51 +16,46 @@ button {
   font-family: inherit;
 }
 
-button {
+button:disabled {
+  cursor: default;
+}
+
+.btn-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   color: $color-white;
-  border: none;
   background: $color-primary;
-  padding: .5em .5em .5em;
+  padding: .5em .5em;
   font-size: 1em;
   font-weight: 600;
   clear: both;
   @include rounded-border;
   outline: none;
-  cursor: pointer;
   margin-left: 1em;
   width: auto;
   border: 1px solid $color-primary;
-
-  .button-content {
-    display: inline-flex;
-    align-items: center;
-
-    .button-text {
-      padding: 0 .25em 0;
-    }
-  }
 }
 
-button:hover {
+.btn-action:hover {
   background: $color-primary-dark;
   border: 1px solid $color-primary-dark;
 }
 
-button:disabled {
+.btn-action:disabled {
   background: $color-disabled;
   border: 1px solid $color-border;
   color: $color-disabled-text;
-  cursor: default;
 }
 
-.outline-button {
+.btn-outline {
   color: $color-primary;
   border: 1px solid $color-primary;
   background-color: $color-transparent;
   @include rounded-border;
 }
 
-.outline-button:hover {
+.btn-outline:hover {
   color: $color-primary-dark;
   background-color: $color-transparent;
   border: 1px solid $color-primary-dark;

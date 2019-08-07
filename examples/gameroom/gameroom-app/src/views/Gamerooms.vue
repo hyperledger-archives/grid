@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 <template>
-  <div class="gamerooms-container">
+  <div>
     <modal v-if="displayModal" @close="closeNewGameroomModal">
       <h3 slot="title">New Gameroom</h3>
       <div slot="body">
@@ -44,33 +44,25 @@ limitations under the License.
               </template>
             </multiselect>
           </label>
-          <div class="button-container">
-            <button class="form-button outline-button" @click.prevent="closeNewGameroomModal">
+          <div class="flex-container button-container">
+            <button class="btn-action form-button btn-outline" @click.prevent="closeNewGameroomModal">
               Cancel
             </button>
-            <button class="form-button" type="submit" :disabled="!canSubmitNewGameroom">
+            <button class="btn-action form-button" type="submit" :disabled="!canSubmitNewGameroom">
               Submit
             </button>
           </div>
         </form>
       </div>
     </modal>
-    <div class="new-gameroom-button-container">
-      <button class="icon-button" @click="showNewGameroomModal">
-        <div class="button-content">
-        <i class="material-icons" style="font-size:1.5em;">add</i>
-        <span class="button-text">
-          New gameroom
-        </span>
-        </div>
-      </button>
-    </div>
+    <tabs v-on:show-new-gameroom-modal="showNewGameroomModal()" />
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import Modal from '@/components/Modal.vue';
+import Tabs from '@/components/Tabs.vue';
 import Multiselect from 'vue-multiselect';
 import gamerooms from '@/store/modules/gamerooms';
 import nodes from '@/store/modules/nodes';
@@ -82,7 +74,7 @@ interface NewGameroom {
 }
 
 @Component({
-  components: { Modal, Multiselect },
+  components: { Modal, Multiselect, Tabs },
 })
 export default class Gamerooms extends Vue {
   displayModal = false;
@@ -130,14 +122,3 @@ export default class Gamerooms extends Vue {
   }
 }
 </script>
-
-<style lang="scss" scoped>
-.gamerooms-container {
-  margin: 1em;
-  display: flex;
-
-  .new-gameroom-button-container {
-    margin-left: auto;
-  }
-}
-</style>

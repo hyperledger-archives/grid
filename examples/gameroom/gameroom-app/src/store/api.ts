@@ -14,10 +14,11 @@
 
 import axios from 'axios';
 import {
+  GameroomProposal,
   User,
   UserCredentials,
   UserAuthResponse,
-  GameroomProposal,
+  NewGameroomProposal,
   Node,
 } from './models';
 import router from '@/router';
@@ -53,7 +54,7 @@ export async function userAuthenticate(
 
 // Gamerooms
 export async function gameroomPropose(
-  gameroomProposal: GameroomProposal,
+  gameroomProposal: NewGameroomProposal,
 ): Promise<number|undefined> {
   try {
     const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
@@ -68,6 +69,18 @@ export async function listNodes(): Promise<Node[]> {
   try {
     const response = await gameroomAPI.get('/nodes');
     return response.data.data as Node[];
+  } catch (e) {
+    alert(e);
+  }
+  return [];
+}
+
+
+// Proposals
+export async function listProposals(): Promise<GameroomProposal[]> {
+  try {
+    const response = await gameroomAPI.get('/proposals');
+    return response.data.data as GameroomProposal[];
   } catch (e) {
     alert(e);
   }

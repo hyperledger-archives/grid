@@ -12,38 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-*, *:before, *:after {
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
-}
-
-#app {
-  font-family: $ff-ss;
-  color: $color-text;
-  background-color: $color-background;
+.tab-wrapper {
   display: grid;
-  grid-template-columns: auto;
-  grid-template-rows: 76px 1fr 1.3em;
-  min-height: 100vh;
-}
+  grid-template-columns: 240px auto;
+  height: 100%;
 
-h1 {
-  color: $color-text;
-  font-weight: $fw-bold;
-  text-align: center;
-}
+  .tab-sidebar {
+    background-color: $color-base;
+    border-right: 1px solid $color-border;
+    display: grid;
 
-h3 {
-  color: $color-text;
-  line-height: 1.4;
-  font-size: 1.2rem;
-  font-weight: $fw-medium;
-  margin: 0;
-}
+    grid-auto-rows: 3rem;
+    grid-row-gap: .5rem;
+  }
 
-.flex-container {
-  display: flex;
+  .tab-container {
+    padding: 1em 2em;
+    display: grid;
+    grid-template-rows: auto 1fr;
+
+    .tab-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 1em;
+    }
+
+    .tab {
+      border-top: 1px solid $color-border;
+      background-color: $color-transparent;
+    }
+  }
 }

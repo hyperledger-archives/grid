@@ -15,20 +15,18 @@ limitations under the License.
 -->
 
 <template>
-  <div class="footer">
-    <span>
-      <a href="/">Gameroom</a>
-      - An example application built on Splinter. Copyright 2019 Cargill Incorporated. Licensed
-      under the Apache License, Version 2.0.
-    </span>
+  <div>
+    <h3 class="tbl-placeholder">No gamerooms available</h3>
   </div>
 </template>
 
 <script lang="ts">
-  import { Vue, Component } from 'vue-property-decorator';
-  export default class AppFooter extends Vue {}
+import { Vue, Component } from 'vue-property-decorator';
+
+@Component
+export default class GameroomTable extends Vue {}
 </script>
 
 <style lang="scss" scoped>
-  @import '@/scss/components/_app-footer.scss';
+@import '@/scss/components/_custom-table.scss';
 </style>

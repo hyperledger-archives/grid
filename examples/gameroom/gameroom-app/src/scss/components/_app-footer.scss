@@ -12,38 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-*, *:before, *:after {
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
-}
-
-#app {
-  font-family: $ff-ss;
-  color: $color-text;
-  background-color: $color-background;
-  display: grid;
-  grid-template-columns: auto;
-  grid-template-rows: 76px 1fr 1.3em;
-  min-height: 100vh;
-}
-
-h1 {
-  color: $color-text;
-  font-weight: $fw-bold;
-  text-align: center;
-}
-
-h3 {
-  color: $color-text;
-  line-height: 1.4;
-  font-size: 1.2rem;
-  font-weight: $fw-medium;
-  margin: 0;
-}
-
-.flex-container {
+.footer {
   display: flex;
+  align-items: center;
+  background-color: $color-base;
+  color: $color-text-tertiary;
+  border-top: 1px solid $color-border;
+  width: 100%;
+  font-size: .75em;
+  padding-left: .5em
 }

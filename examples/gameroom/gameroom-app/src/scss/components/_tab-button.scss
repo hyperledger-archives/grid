@@ -12,38 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-*, *:before, *:after {
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
-}
-
-#app {
-  font-family: $ff-ss;
+.btn-tab {
   color: $color-text;
-  background-color: $color-background;
-  display: grid;
-  grid-template-columns: auto;
-  grid-template-rows: 76px 1fr 1.3em;
-  min-height: 100vh;
-}
-
-h1 {
-  color: $color-text;
-  font-weight: $fw-bold;
-  text-align: center;
-}
-
-h3 {
-  color: $color-text;
-  line-height: 1.4;
-  font-size: 1.2rem;
-  font-weight: $fw-medium;
-  margin: 0;
-}
-
-.flex-container {
+  background-color: $color-base;
+  border: none;
+  padding: 0;
   display: flex;
+
+  .highlight {
+    width: .3rem;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+  }
+
+  .icon {
+    align-self: center;
+    padding: .3rem 1rem 0;
+    color: $color-primary;
+  }
+
+  .text {
+    align-self: center;
+  }
+}
+
+.btn-tab:hover {
+  background-color: $color-background;
+}
+
+.btn-tab-active {
+  background-color: $color-background;
+  .highlight {
+    background-color: $color-primary;
+  }
 }
