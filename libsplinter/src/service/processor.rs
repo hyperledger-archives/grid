@@ -49,6 +49,24 @@ struct SharedState {
     pub join_handles: Vec<JoinHandle<Result<(), ServiceProcessorError>>>,
 }
 
+/// Helper macro for generating ServiceProcessorError::ProcessError
+macro_rules! process_err {
+    ($err:ident, $ctx_msg:expr) => {
+        ServiceProcessorError::ProcessError($ctx_msg.into(), Box::new($err))
+    };
+    ($err:ident, $ctx_msg:tt, $($fmt_arg:tt)*) => {
+        ServiceProcessorError::ProcessError(format!($ctx_msg, $($fmt_arg)*), Box::new($err))
+    }
+}
+
+/// Helper macro for generating map_err functions that convert errors into
+/// ServiceProcessorError::ProcessError values.
+macro_rules! to_process_err {
+    ($($arg:tt)*) => {
+        |err| process_err!(err, $($arg)*)
+    }
+}
+
 /// The ServiceProcessor handles the networking for services. This includes talking to the
 /// splinter node, connecting for authorization, registering the services, and routing
 /// direct messages to the correct service.
@@ -77,7 +95,7 @@ impl ServiceProcessor {
         let mesh = Mesh::new(incoming_capacity, outgoing_capacity);
         let node_mesh_id = mesh
             .add(connection)
-            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+            .map_err(|err| process_err!(err, "unable to add connection to mesh"))?;
         let (network_sender, network_receiver) = crossbeam_channel::bounded(channel_capacity);
         let (inbound_sender, inbound_receiver) = crossbeam_channel::bounded(channel_capacity);
         Ok(ServiceProcessor {
@@ -205,10 +223,10 @@ impl ServiceProcessor {
         // Starts the authorization process with the splinter node
         // If running over inproc connection, this is the only authroization message required
         let connect_request = create_connect_request()
-            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;;
+            .map_err(|err| process_err!(err, "unable to create connect request"))?;;
         self.mesh
             .send(Envelope::new(self.node_mesh_id, connect_request))
-            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+            .map_err(|err| process_err!(err, "unable to send connect request"))?;
 
         let incoming_mesh = self.mesh.clone();
         let shared_state = self.shared_state.clone();
@@ -231,82 +249,85 @@ impl ServiceProcessor {
                         };
 
                         let msg: NetworkMessage = protobuf::parse_from_bytes(&message_bytes)
-                            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+                            .map_err(to_process_err!("unable parse network message"))?;
 
                         // if a service is waiting on a reply the inbound router will
                         // route back the reponse to the service based on the correlation id in
                         // the message, otherwise it will be sent to the inbound thread
                         match msg.get_message_type() {
                             NetworkMessageType::CIRCUIT => {
-                                let circuit_msg: CircuitMessage =
-                                    protobuf::parse_from_bytes(&msg.get_payload()).map_err(
-                                        |err| ServiceProcessorError::ProcessError(Box::new(err)),
-                                    )?;
+                                let mut circuit_msg: CircuitMessage = protobuf::parse_from_bytes(
+                                    &msg.get_payload(),
+                                )
+                                .map_err(to_process_err!("unable to parse circuit message"))?;
 
                                 match circuit_msg.get_message_type() {
                                     CircuitMessageType::ADMIN_DIRECT_MESSAGE => {
                                         let admin_direct_message: AdminDirectMessage =
-                                            protobuf::parse_from_bytes(&circuit_msg.get_payload())
-                                                .map_err(|err| {
-                                                    ServiceProcessorError::ProcessError(Box::new(
-                                                        err,
-                                                    ))
-                                                })?;
+                                            protobuf::parse_from_bytes(circuit_msg.get_payload())
+                                                .map_err(to_process_err!(
+                                                "unable to parse admin direct message"
+                                            ))?;
                                         inbound_router
-                                            .route(Ok(ServiceMessage::AdminDirectMessage(
-                                                admin_direct_message,
-                                            )))
-                                            .map_err(|err| {
-                                                ServiceProcessorError::ProcessError(Box::new(err))
-                                            })?;
+                                            .route(
+                                                admin_direct_message.get_correlation_id(),
+                                                Ok((
+                                                    CircuitMessageType::ADMIN_DIRECT_MESSAGE,
+                                                    circuit_msg.take_payload(),
+                                                )),
+                                            )
+                                            .map_err(to_process_err!("unable to route message"))?;
                                     }
                                     CircuitMessageType::CIRCUIT_DIRECT_MESSAGE => {
                                         let direct_message: CircuitDirectMessage =
-                                            protobuf::parse_from_bytes(&circuit_msg.get_payload())
-                                                .map_err(|err| {
-                                                    ServiceProcessorError::ProcessError(Box::new(
-                                                        err,
-                                                    ))
-                                                })?;
+                                            protobuf::parse_from_bytes(circuit_msg.get_payload())
+                                                .map_err(to_process_err!(
+                                                "unable to parse circuit direct message"
+                                            ))?;
                                         inbound_router
-                                            .route(Ok(ServiceMessage::CircuitDirectMessage(
-                                                direct_message,
-                                            )))
-                                            .map_err(|err| {
-                                                ServiceProcessorError::ProcessError(Box::new(err))
-                                            })?;
+                                            .route(
+                                                direct_message.get_correlation_id(),
+                                                Ok((
+                                                    CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
+                                                    circuit_msg.take_payload(),
+                                                )),
+                                            )
+                                            .map_err(to_process_err!("unable to route message"))?;
                                     }
                                     CircuitMessageType::SERVICE_CONNECT_RESPONSE => {
                                         let response: ServiceConnectResponse =
-                                            protobuf::parse_from_bytes(&circuit_msg.get_payload())
-                                                .map_err(|err| {
-                                                    ServiceProcessorError::ProcessError(Box::new(
-                                                        err,
-                                                    ))
-                                                })?;
+                                            protobuf::parse_from_bytes(circuit_msg.get_payload())
+                                                .map_err(to_process_err!(
+                                                "unable to parse service connect response"
+                                            ))?;
                                         inbound_router
-                                            .route(Ok(ServiceMessage::ServiceConnectResponse(
-                                                response,
-                                            )))
-                                            .map_err(|err| {
-                                                ServiceProcessorError::ProcessError(Box::new(err))
-                                            })?;
+                                            .route(
+                                                response.get_correlation_id(),
+                                                Ok((
+                                                    CircuitMessageType::SERVICE_CONNECT_RESPONSE,
+                                                    circuit_msg.take_payload(),
+                                                )),
+                                            )
+                                            .map_err(to_process_err!("unable to route message"))?;
                                     }
                                     CircuitMessageType::SERVICE_DISCONNECT_RESPONSE => {
                                         let response: ServiceDisconnectResponse =
-                                            protobuf::parse_from_bytes(&circuit_msg.get_payload())
+                                            protobuf::parse_from_bytes(circuit_msg.get_payload())
                                                 .map_err(|err| {
-                                                    ServiceProcessorError::ProcessError(Box::new(
-                                                        err,
-                                                    ))
-                                                })?;
-                                        inbound_router
-                                            .route(Ok(ServiceMessage::ServiceDisconnectResponse(
-                                                response,
-                                            )))
-                                            .map_err(|err| {
-                                                ServiceProcessorError::ProcessError(Box::new(err))
+                                                process_err!(
+                                                    err,
+                                                    "unable to parse service disconnect response"
+                                                )
                                             })?;
+                                        inbound_router
+                                            .route(
+                                                response.get_correlation_id(),
+                                                Ok((
+                                                    CircuitMessageType::SERVICE_DISCONNECT_RESPONSE,
+                                                    circuit_msg.take_payload(),
+                                                )),
+                                            )
+                                            .map_err(to_process_err!("unable to route message"))?;
                                     }
                                     msg_type => {
                                         warn!("Received unimplemented message: {:?}", msg_type)
@@ -374,7 +395,7 @@ impl ServiceProcessor {
                         // Send message to splinter node
                         outgoing_mesh
                             .send(Envelope::new(node_mesh_id, message_bytes))
-                            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+                            .map_err(to_process_err!("unable to send outbound message"))?;
                     }
                     Ok(())
                 })?;
@@ -463,7 +484,9 @@ fn handle_circuit_direct_msg(
             .send(ProcessorMessage::ServiceMessage(
                 ServiceMessage::CircuitDirectMessage(direct_message),
             ))
-            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+            .map_err(to_process_err!(
+                "unable to send service (circuit direct) message"
+            ))?;
     } else {
         warn!(
             "Service with id {} does not exist, ignoring message",
@@ -487,7 +510,9 @@ fn handle_admin_direct_msg(
             .send(ProcessorMessage::ServiceMessage(
                 ServiceMessage::AdminDirectMessage(admin_direct_message),
             ))
-            .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
+            .map_err(to_process_err!(
+                "unable to send service (admin direct) message"
+            ))?;
     } else {
         warn!(
             "Service with id {} does not exist, ignoring message",
