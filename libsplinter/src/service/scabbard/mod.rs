@@ -14,6 +14,7 @@
 
 mod consensus;
 mod error;
+mod rest_api;
 mod shared;
 mod state;
 
@@ -59,16 +60,6 @@ impl Scabbard {
             shared: Arc::new(Mutex::new(shared)),
             consensus: None,
         })
-    }
-
-    /// Add a batch to the service's queue.
-    pub fn add_batch_to_queue(&self, batch: BatchPair) -> Result<(), ServiceError> {
-        if let Ok(mut shared) = self.shared.lock() {
-            shared.add_batch_to_queue(batch);
-            Ok(())
-        } else {
-            Err(ServiceError::PoisonedLock("shared lock poisoned".into()))
-        }
     }
 }
 
