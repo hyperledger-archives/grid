@@ -14,7 +14,7 @@
 
 use crate::actix_web::{web, Error as ActixError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
-use crate::protos::admin::{self, Circuit, CircuitCreateRequest};
+use crate::protos::admin::{self, CircuitCreateRequest};
 use protobuf::{self, RepeatedField};
 use serde_json;
 
@@ -45,8 +45,54 @@ impl CreateCircuit {
             .into_future()
     }
 
-    pub fn into_proto(self) -> Result<CircuitCreateRequest, ProposalMarshallingError> {
-        let mut circuit = Circuit::new();
+    pub fn from_proto(mut proto: admin::Circuit) -> Result<Self, MarshallingError> {
+        let authorization_type = match proto.get_authorization_type() {
+            admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION => AuthorizationType::Trust,
+            admin::Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE => {
+                return Err(MarshallingError::UnsetField(
+                    "Unset authorization type".to_string(),
+                ));
+            }
+        };
+
+        let persistence = match proto.get_persistence() {
+            admin::Circuit_PersistenceType::ANY_PERSISTENCE => PersistenceType::Any,
+            admin::Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE => {
+                return Err(MarshallingError::UnsetField(
+                    "Unset persistence type".to_string(),
+                ));
+            }
+        };
+
+        let routes = match proto.get_routes() {
+            admin::Circuit_RouteType::ANY_ROUTE => RouteType::Any,
+            admin::Circuit_RouteType::UNSET_ROUTE_TYPE => {
+                return Err(MarshallingError::UnsetField("Unset route type".to_string()));
+            }
+        };
+
+        Ok(Self {
+            circuit_id: proto.take_circuit_id(),
+            roster: proto
+                .take_roster()
+                .into_iter()
+                .map(SplinterService::from_proto)
+                .collect::<Result<Vec<SplinterService>, MarshallingError>>()?,
+            members: proto
+                .take_members()
+                .into_iter()
+                .map(SplinterNode::from_proto)
+                .collect::<Result<Vec<SplinterNode>, MarshallingError>>()?,
+            authorization_type,
+            persistence,
+            routes,
+            circuit_management_type: proto.take_circuit_management_type(),
+            application_metadata: proto.take_application_metadata(),
+        })
+    }
+
+    pub fn into_proto(self) -> Result<CircuitCreateRequest, MarshallingError> {
+        let mut circuit = admin::Circuit::new();
 
         circuit.set_circuit_id(self.circuit_id);
         circuit.set_roster(RepeatedField::from_vec(
@@ -119,6 +165,13 @@ impl SplinterNode {
 
         proto
     }
+
+    pub fn from_proto(mut proto: admin::SplinterNode) -> Result<Self, MarshallingError> {
+        Ok(Self {
+            node_id: proto.take_node_id(),
+            endpoint: proto.take_endpoint(),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -137,6 +190,19 @@ impl SplinterService {
 
         proto
     }
+
+    pub fn from_proto(mut proto: admin::SplinterService) -> Result<Self, MarshallingError> {
+        Ok(Self {
+            service_id: proto.take_service_id(),
+            service_type: proto.take_service_type(),
+            allowed_nodes: proto
+                .take_allowed_nodes()
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        })
+    }
+}
 #[derive(Debug)]
 pub enum MarshallingError {
     UnsetField(String),
