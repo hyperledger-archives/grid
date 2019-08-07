@@ -363,7 +363,7 @@ impl ServiceProcessor {
                             Ok(msg) => msg,
                             Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
                             Err(err) => {
-                                error!("{}", err);
+                                error!("channel dropped while handling outgoing messages: {}", err);
                                 break;
                             }
                         };
