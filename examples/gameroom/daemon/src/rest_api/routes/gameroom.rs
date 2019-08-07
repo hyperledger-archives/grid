@@ -70,7 +70,7 @@ pub fn propose_gameroom(
     };
 
     client
-        .post(format!("{}/auth/circuit", splinterd_url))
+        .post(format!("{}/admin/circuit", splinterd_url))
         .send_json(&create_request)
         .map_err(Error::from)
         .and_then(|resp| match resp.status() {
