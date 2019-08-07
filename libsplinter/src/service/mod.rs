@@ -37,7 +37,7 @@ pub struct ServiceMessageContext {
 
 /// The ServiceNetworkRegistry trait provides functions to register and unregister the service on
 /// the network.  It does not expose the circuit membership information directly.
-pub trait ServiceNetworkRegistry {
+pub trait ServiceNetworkRegistry: Send {
     fn connect(
         &self,
         service_id: &str,
