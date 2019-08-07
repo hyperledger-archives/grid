@@ -72,6 +72,7 @@ macro_rules! to_process_err {
 /// direct messages to the correct service.
 pub struct ServiceProcessor {
     shared_state: Arc<RwLock<SharedState>>,
+    services: Vec<Box<dyn Service>>,
     mesh: Mesh,
     circuit: String,
     node_mesh_id: usize,
@@ -103,6 +104,7 @@ impl ServiceProcessor {
                 services: HashMap::new(),
                 join_handles: vec![],
             })),
+            services: vec![],
             mesh,
             circuit,
             node_mesh_id,
@@ -118,92 +120,20 @@ impl ServiceProcessor {
     /// add_service takes a Service and sets up the thread that the service will run in.
     /// The service will be started, including registration and then messages are routed to the
     /// the services using a channel.
-    pub fn add_service(
-        &mut self,
-        mut service: Box<dyn Service>,
-    ) -> Result<(), ServiceProcessorError> {
-        let mut shared_state = rwlock_write_unwrap!(self.shared_state);
-        let service_id = service.service_id().to_string();
-
-        let (send, recv) = crossbeam_channel::bounded(self.channel_capacity);
-        let network_sender = self.network_sender.clone();
-        let circuit = self.circuit.clone();
-        let inbound_router = self.inbound_router.clone();
-        let join_handle = thread::Builder::new()
-            .name(format!("Service {}", service_id))
-            .spawn(move || {
-                info!("Starting Service: {}", service.service_id());
-                let registry = StandardServiceNetworkRegistry::new(
-                    circuit.to_string(),
-                    network_sender.clone(),
-                    inbound_router.clone(),
-                );
-                service
-                    .start(&registry)
-                    .map_err(|err| ServiceProcessorError::ProcessError(Box::new(err)))?;
-
-                loop {
-                    let service_message: ServiceMessage = match recv.recv() {
-                        Ok(ProcessorMessage::ServiceMessage(message)) => Ok(message),
-                        Ok(ProcessorMessage::Shutdown) => {
-                            info!("Shutting down {}", service.service_id());
-                            service.stop(&registry).map_err(|err| {
-                                ServiceProcessorError::ProcessError(Box::new(err))
-                            })?;
-                            service.destroy().map_err(|err| {
-                                ServiceProcessorError::ProcessError(Box::new(err))
-                            })?;
-                            break;
-                        }
-                        Err(err) => Err(ServiceProcessorError::ProcessError(Box::new(err))),
-                    }?;
-
-                    match service_message {
-                        ServiceMessage::AdminDirectMessage(mut admin_direct_message) => {
-                            let msg_context = ServiceMessageContext {
-                                sender: admin_direct_message.take_sender(),
-                                circuit: admin_direct_message.take_circuit(),
-                                correlation_id: admin_direct_message.take_correlation_id(),
-                            };
-
-                            service
-                                .handle_message(admin_direct_message.get_payload(), &msg_context)
-                                .map_err(|err| {
-                                    ServiceProcessorError::ProcessError(Box::new(err))
-                                })?;
-                        }
-                        ServiceMessage::CircuitDirectMessage(mut direct_message) => {
-                            let msg_context = ServiceMessageContext {
-                                sender: direct_message.take_sender(),
-                                circuit: direct_message.take_circuit(),
-                                correlation_id: direct_message.take_correlation_id(),
-                            };
-
-                            service
-                                .handle_message(direct_message.get_payload(), &msg_context)
-                                .map_err(|err| {
-                                    ServiceProcessorError::ProcessError(Box::new(err))
-                                })?;
-                        }
-                        other_msg => warn!(
-                            "{} received unexpected message type: {:?}",
-                            service.service_id(),
-                            other_msg
-                        ),
-                    }
-                }
-                Ok(())
-            })?;
-        shared_state.join_handles.push(join_handle);
-
-        if shared_state.services.get(&service_id).is_none() {
-            shared_state.services.insert(service_id.to_string(), send);
-            Ok(())
-        } else {
+    pub fn add_service(&mut self, service: Box<dyn Service>) -> Result<(), ServiceProcessorError> {
+        if self
+            .services
+            .iter()
+            .any(|s| s.service_id() == service.service_id())
+        {
             Err(ServiceProcessorError::AddServiceError(format!(
                 "{} already exists",
-                service_id
+                service.service_id()
             )))
+        } else {
+            self.services.push(service);
+
+            Ok(())
         }
     }
 
@@ -227,6 +157,31 @@ impl ServiceProcessor {
         self.mesh
             .send(Envelope::new(self.node_mesh_id, connect_request))
             .map_err(|err| process_err!(err, "unable to send connect request"))?;
+
+        for service in self.services.into_iter() {
+            let mut shared_state = rwlock_write_unwrap!(self.shared_state);
+            let service_id = service.service_id().to_string();
+
+            let (send, recv) = crossbeam_channel::bounded(self.channel_capacity);
+            let network_sender = self.network_sender.clone();
+            let circuit = self.circuit.clone();
+            let inbound_router = self.inbound_router.clone();
+            let join_handle = thread::Builder::new()
+                .name(format!("Service {}", service_id))
+                .spawn(move || {
+                    let service_id = service.service_id().to_string();
+                    if let Err(err) =
+                        run_service_loop(circuit, service, network_sender, recv, inbound_router)
+                    {
+                        error!("Terminating service {} due to error: {}", service_id, err);
+                        Err(err)
+                    } else {
+                        Ok(())
+                    }
+                })?;
+            shared_state.join_handles.push(join_handle);
+            shared_state.services.insert(service_id.to_string(), send);
+        }
 
         let incoming_mesh = self.mesh.clone();
         let shared_state = self.shared_state.clone();
@@ -492,6 +447,64 @@ impl ShutdownHandle {
 
         Ok(())
     }
+}
+
+fn run_service_loop(
+    circuit: String,
+    mut service: Box<dyn Service>,
+    network_sender: Sender<Vec<u8>>,
+    service_recv: Receiver<ProcessorMessage>,
+    inbound_router: InboundRouter<CircuitMessageType>,
+) -> Result<(), ServiceProcessorError> {
+    info!("Starting Service: {}", service.service_id());
+    let registry = StandardServiceNetworkRegistry::new(circuit, network_sender, inbound_router);
+    service.start(&registry).map_err(to_process_err!(
+        "unable to start service {}",
+        service.service_id()
+    ))?;
+
+    loop {
+        let service_message: ServiceMessage = match service_recv.recv() {
+            Ok(ProcessorMessage::ServiceMessage(message)) => Ok(message),
+            Ok(ProcessorMessage::Shutdown) => {
+                info!("Shutting down {}", service.service_id());
+                service
+                    .stop(&registry)
+                    .map_err(to_process_err!("unable to stop service"))?;
+                service
+                    .destroy()
+                    .map_err(to_process_err!("unable to destroy service"))?;
+                break;
+            }
+            Err(err) => Err(process_err!(err, "unable to receive service messages")),
+        }?;
+
+        match service_message {
+            ServiceMessage::AdminDirectMessage(mut admin_direct_message) => {
+                let msg_context = ServiceMessageContext {
+                    sender: admin_direct_message.take_sender(),
+                    circuit: admin_direct_message.take_circuit(),
+                    correlation_id: admin_direct_message.take_correlation_id(),
+                };
+
+                service
+                    .handle_message(admin_direct_message.get_payload(), &msg_context)
+                    .map_err(to_process_err!("unable to handle admin direct message"))?;
+            }
+            ServiceMessage::CircuitDirectMessage(mut direct_message) => {
+                let msg_context = ServiceMessageContext {
+                    sender: direct_message.take_sender(),
+                    circuit: direct_message.take_circuit(),
+                    correlation_id: direct_message.take_correlation_id(),
+                };
+
+                service
+                    .handle_message(direct_message.get_payload(), &msg_context)
+                    .map_err(to_process_err!("unable to handle circuit direct message"))?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn handle_circuit_direct_msg(
