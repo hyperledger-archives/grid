@@ -20,11 +20,13 @@ mod state;
 
 use std::collections::{HashSet, VecDeque};
 use std::convert::TryFrom;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use protobuf::Message;
 use transact::protocol::batch::BatchPair;
 use transact::protos::FromBytes;
+use uuid::Uuid;
 
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
@@ -50,8 +52,14 @@ pub struct Scabbard {
 
 impl Scabbard {
     /// Generate a new Scabbard service.
-    pub fn new(node_id: String, initial_peers: HashSet<String>) -> Result<Self, ScabbardError> {
-        let state = ScabbardState::new()
+    pub fn new(
+        node_id: String,
+        initial_peers: HashSet<String>,
+        db_dir: &Path,
+        db_size: usize,
+    ) -> Result<Self, ScabbardError> {
+        let db_path = db_dir.join(format!("{}.lmdb", Uuid::new_v4()));
+        let state = ScabbardState::new(db_path.as_path(), db_size)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(VecDeque::new(), None, initial_peers, state);
 
@@ -248,7 +256,8 @@ pub mod tests {
     /// Tests that a new scabbard service is properly instantiated.
     #[test]
     fn new_scabbard() {
-        let service = Scabbard::new("0".into(), HashSet::new()).expect("failed to create service");
+        let service = Scabbard::new("0".into(), HashSet::new(), Path::new("/tmp"), 1024 * 1024)
+            .expect("failed to create service");
         assert_eq!(service.service_id(), &format!("{}::0", SERVICE_TYPE));
         assert_eq!(service.service_type(), SERVICE_TYPE);
     }
@@ -257,8 +266,13 @@ pub mod tests {
     /// will hang if the thread does not get shutdown correctly.
     #[test]
     fn thread_cleanup() {
-        let mut service =
-            Scabbard::new("scabbard".into(), HashSet::new()).expect("failed to create service");
+        let mut service = Scabbard::new(
+            "scabbard".into(),
+            HashSet::new(),
+            Path::new("/tmp"),
+            1024 * 1024,
+        )
+        .expect("failed to create service");
         let registry = MockServiceNetworkRegistry::new();
         service.start(&registry).expect("failed to start service");
         service.stop(&registry).expect("failed to stop service");
@@ -267,8 +281,13 @@ pub mod tests {
     /// Tests that the service properly connects and disconnects using the network registry.
     #[test]
     fn connect_and_disconnect() {
-        let mut service =
-            Scabbard::new("scabbard".into(), HashSet::new()).expect("failed to create service");
+        let mut service = Scabbard::new(
+            "scabbard".into(),
+            HashSet::new(),
+            Path::new("/tmp"),
+            1024 * 1024,
+        )
+        .expect("failed to create service");
         test_connect_and_disconnect(&mut service);
     }
 
@@ -279,8 +298,13 @@ pub mod tests {
         let mut peer_services = HashSet::new();
         peer_services.insert("0".into());
         peer_services.insert("1".into());
-        let mut service = Scabbard::new("scabbard".into(), peer_services.clone())
-            .expect("failed to create service");
+        let mut service = Scabbard::new(
+            "scabbard".into(),
+            peer_services.clone(),
+            Path::new("/tmp"),
+            1024 * 1024,
+        )
+        .expect("failed to create service");
         let registry = MockServiceNetworkRegistry::new();
 
         service.start(&registry).expect("failed to start engine");
@@ -332,8 +356,13 @@ pub mod tests {
     /// and `SERVICE_DISCONNECTED` messages, respectively.
     #[test]
     fn add_and_remove_peers() {
-        let service =
-            Scabbard::new("scabbard".into(), HashSet::new()).expect("failed to create service");
+        let service = Scabbard::new(
+            "scabbard".into(),
+            HashSet::new(),
+            Path::new("/tmp"),
+            1024 * 1024,
+        )
+        .expect("failed to create service");
 
         let msg_context = ServiceMessageContext {
             sender: "0".into(),
