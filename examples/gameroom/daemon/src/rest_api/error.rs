@@ -22,12 +22,14 @@ use gameroom_database::DatabaseError;
 #[derive(Debug)]
 pub enum RestApiServerError {
     StdError(std::io::Error),
+    StartUpError(String),
 }
 
 impl Error for RestApiServerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             RestApiServerError::StdError(err) => Some(err),
+            RestApiServerError::StartUpError(_) => None,
         }
     }
 }
@@ -36,6 +38,7 @@ impl fmt::Display for RestApiServerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RestApiServerError::StdError(e) => write!(f, "Std Error: {}", e),
+            RestApiServerError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
         }
     }
 }

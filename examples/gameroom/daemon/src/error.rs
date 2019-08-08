@@ -15,6 +15,7 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::authorization_handler::AppAuthHandlerError;
 use crate::rest_api::RestApiServerError;
 use gameroom_database::DatabaseError;
 
@@ -24,6 +25,7 @@ pub enum GameroomDaemonError {
     ConfigurationError(Box<ConfigurationError>),
     DatabaseError(Box<DatabaseError>),
     RestApiError(RestApiServerError),
+    AppAuthHandlerError(AppAuthHandlerError),
 }
 
 impl Error for GameroomDaemonError {
@@ -33,6 +35,7 @@ impl Error for GameroomDaemonError {
             GameroomDaemonError::ConfigurationError(err) => Some(err),
             GameroomDaemonError::DatabaseError(err) => Some(&**err),
             GameroomDaemonError::RestApiError(err) => Some(err),
+            GameroomDaemonError::AppAuthHandlerError(err) => Some(err),
         }
     }
 }
@@ -46,6 +49,11 @@ impl fmt::Display for GameroomDaemonError {
             GameroomDaemonError::ConfigurationError(e) => write!(f, "Coniguration error: {}", e),
             GameroomDaemonError::DatabaseError(e) => write!(f, "Database error: {}", e),
             GameroomDaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
+            GameroomDaemonError::AppAuthHandlerError(e) => write!(
+                f,
+                "The application authorization handler returned an error: {}",
+                e
+            ),
         }
     }
 }
@@ -65,6 +73,12 @@ impl From<DatabaseError> for GameroomDaemonError {
 impl From<RestApiServerError> for GameroomDaemonError {
     fn from(err: RestApiServerError) -> GameroomDaemonError {
         GameroomDaemonError::RestApiError(err)
+    }
+}
+
+impl From<AppAuthHandlerError> for GameroomDaemonError {
+    fn from(err: AppAuthHandlerError) -> GameroomDaemonError {
+        GameroomDaemonError::AppAuthHandlerError(err)
     }
 }
 
