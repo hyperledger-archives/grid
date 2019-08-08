@@ -188,8 +188,12 @@ fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuth
             debug!("Updated proposal to status 'Accepted'");
             Ok(())
         }
-        _ => {
-            error!("Unknown message type {:?}", admin_event);
+        AdminServiceEvent::ProposalRejected(msg_proposal) => {
+            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
+            let time = SystemTime::now();
+            let conn = &*pool.get()?;
+            helpers::update_circuit_proposal_status(conn, &proposal.id, &time, "Rejected")?;
+            debug!("Updated proposal to status 'Rejected'");
             Ok(())
         }
     }
@@ -421,6 +425,66 @@ mod test {
             Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
         }
     }
+
+    #[test]
+    /// Tests if when receiving an admin message ProposalRejected the circuit_proposal
+    /// table is updated as expected
+    fn test_process_proposal_rejected_message_ok() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_circuit_proposals_table(&pool);
+
+        let created_time = SystemTime::now();
+
+        // insert pending proposal into database
+        insert_proposals_table(
+            &pool,
+            get_circuit_proposal("my_proposal", "my_circuit", created_time.clone()),
+        );
+
+        let rejected_message = get_reject_proposal_msg("my_circuit");
+        let rejected_serialized =
+            serde_json::to_vec(&rejected_message).expect("Failed to serialize message");
+
+        // reject proposal
+        process_text_message(&rejected_serialized, &pool).expect("Error processing message");
+
+        let proposals = query_proposals_table(&pool);
+
+        assert_eq!(proposals.len(), 1);
+
+        let proposal = &proposals[0];
+
+        // Check proposal updated_time changed
+        assert!(proposal.updated_time > created_time);
+        // Check status was changed to rejected
+        assert_eq!(proposal.status, "Rejected");
+    }
+
+    #[test]
+    /// Tests if when receiving an admin message ProposalRejected an error is returned
+    /// if a pending proposal for that circuit is not found
+    fn test_process_proposal_rejected_message_err() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_circuit_proposals_table(&pool);
+
+        let rejected_message = get_reject_proposal_msg("my_circuit");
+        let rejected_serialized =
+            serde_json::to_vec(&rejected_message).expect("Failed to serialize message");
+
+        // reject proposal
+        match process_text_message(&rejected_serialized, &pool) {
+            Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
+            Err(AppAuthHandlerError::DatabaseError(msg)) => {
+                assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
+            }
+            Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
+        }
+    }
+
     #[test]
     /// Tests if when receiving an admin message ProposalVote the circuit_proposal and circuit_vote
     /// tables are updated as expected
@@ -568,6 +632,10 @@ mod test {
             ballot_signature: vec![65, 65, 65, 65, 66, 51, 78],
             signer_public_key: vec![73, 119, 65, 65, 65, 81],
         }
+    }
+
+    fn get_reject_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
+        AdminServiceEvent::ProposalRejected(get_msg_proposal(circuit_id))
     }
 
     fn get_accept_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
