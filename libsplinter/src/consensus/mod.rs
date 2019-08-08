@@ -292,6 +292,7 @@ pub mod tests {
         rejected_proposals: Arc<Mutex<Vec<ProposalId>>>,
         next_proposal_valid: Arc<AtomicBool>,
         return_proposal: Arc<AtomicBool>,
+        consensus_data: Option<Vec<u8>>,
     }
 
     impl Clone for MockProposalManager {
@@ -306,6 +307,7 @@ pub mod tests {
                 rejected_proposals: self.rejected_proposals.clone(),
                 next_proposal_valid: self.next_proposal_valid.clone(),
                 return_proposal: self.return_proposal.clone(),
+                consensus_data: self.consensus_data.clone(),
             }
         }
     }
@@ -320,6 +322,7 @@ pub mod tests {
                 rejected_proposals: Arc::new(Mutex::new(vec![])),
                 next_proposal_valid: Arc::new(AtomicBool::new(true)),
                 return_proposal: Arc::new(AtomicBool::new(true)),
+                consensus_data: None,
             }
         }
 
@@ -330,6 +333,10 @@ pub mod tests {
         pub fn set_return_proposal(&self, return_proposal: bool) {
             self.return_proposal
                 .store(return_proposal, Ordering::Relaxed);
+        }
+
+        pub fn set_consensus_data(&mut self, data: Option<Vec<u8>>) {
+            self.consensus_data = data;
         }
 
         pub fn accepted_proposals(&self) -> MutexGuard<Vec<(ProposalId, Vec<u8>)>> {
@@ -361,7 +368,12 @@ pub mod tests {
                     previous_proposal_id.unwrap_or((*self.last_proposal_id.borrow_mut()).clone());
                 proposal.proposal_height = height as u64;
                 proposal.summary = id.clone();
-                proposal.consensus_data = consensus_data;
+
+                if let Some(data) = &self.consensus_data {
+                    proposal.consensus_data = data.clone();
+                } else {
+                    proposal.consensus_data = consensus_data;
+                }
 
                 self.last_proposal_id.replace(id.into());
                 self.last_proposal_height.store(height, Ordering::Relaxed);
