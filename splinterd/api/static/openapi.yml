@@ -41,10 +41,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /circuit:
+  /admin/circuit:
     get:
       tags:
-        - circuits
+        - Admin Service
       description: Retrieve a list of all circuits
       responses:
         200:
@@ -64,7 +64,7 @@ paths:
 
     post:
       tags:
-        - circuits
+        - Admin Service
       description: Create a new circuit
       requestBody:
           required: true
@@ -91,7 +91,7 @@ paths:
   /admin/circuit/{name}:
     get:
       tags:
-        - circuits
+        - Admin Service
       description: Get circuit with {name}
       parameters:
         - name: name
@@ -124,7 +124,7 @@ paths:
   /ws/admin/register/{type}:
     get:
       tags:
-        - Authorization Handler
+        - Admin Service
       description: Register the handler for a circuit management type
       parameters:
         - name: type
