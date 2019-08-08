@@ -22,6 +22,7 @@ use std::fmt;
 pub enum AppAuthHandlerError {
     RequestError(String),
     IOError(std::io::Error),
+    DeserializationError(Box<dyn Error + Send>),
 }
 
 impl Error for AppAuthHandlerError {
@@ -29,6 +30,7 @@ impl Error for AppAuthHandlerError {
         match self {
             AppAuthHandlerError::RequestError(_) => None,
             AppAuthHandlerError::IOError(err) => Some(err),
+            AppAuthHandlerError::DeserializationError(err) => Some(&**err),
         }
     }
 }
@@ -38,6 +40,9 @@ impl fmt::Display for AppAuthHandlerError {
         match self {
             AppAuthHandlerError::RequestError(msg) => write!(f, "Failed to build request, {}", msg),
             AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred:: {}", msg),
+            AppAuthHandlerError::DeserializationError(msg) => {
+                write!(f, "Failed to deserialize message: {}", msg)
+            }
         }
     }
 }
@@ -45,5 +50,17 @@ impl fmt::Display for AppAuthHandlerError {
 impl From<std::io::Error> for AppAuthHandlerError {
     fn from(err: std::io::Error) -> AppAuthHandlerError {
         AppAuthHandlerError::IOError(err)
+    }
+}
+
+impl From<serde_json::error::Error> for AppAuthHandlerError {
+    fn from(err: serde_json::error::Error) -> AppAuthHandlerError {
+        AppAuthHandlerError::DeserializationError(Box::new(err))
+    }
+}
+
+impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
+    fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
+        AppAuthHandlerError::DeserializationError(Box::new(err))
     }
 }
