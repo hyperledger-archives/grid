@@ -14,13 +14,14 @@
 
 pub mod messages;
 
-use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
-use messages::{AdminServiceEvent, CreateCircuit};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use actix::prelude::*;
+use actix_web_actors::ws;
+use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 
@@ -36,8 +37,8 @@ use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
-use actix::prelude::*;
-use actix_web_actors::ws;
+
+use messages::{AdminServiceEvent, CreateCircuit};
 
 #[derive(Clone)]
 pub struct AdminService {
