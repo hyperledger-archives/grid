@@ -138,22 +138,22 @@ impl SplinterService {
         proto
     }
 #[derive(Debug)]
-pub enum ProposalMarshallingError {
-    UnsetField(String)
+pub enum MarshallingError {
+    UnsetField(String),
 }
 
-impl std::error::Error for ProposalMarshallingError {
+impl std::error::Error for MarshallingError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ProposalMarshallingError::UnsetField(_) => None
+            MarshallingError::UnsetField(_) => None,
         }
     }
 }
 
-impl std::fmt::Display for ProposalMarshallingError {
+impl std::fmt::Display for MarshallingError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ProposalMarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type")
+            MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
         }
     }
 }
