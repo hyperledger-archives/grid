@@ -104,17 +104,6 @@ pub enum RouteType {
     Any,
 }
 
-#[derive(Debug)]
-pub struct ProposalMarshallingError;
-
-impl std::error::Error for ProposalMarshallingError {}
-
-impl std::fmt::Display for ProposalMarshallingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("unable to marshal object")
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SplinterNode {
     pub node_id: String,
@@ -147,5 +136,24 @@ impl SplinterService {
         proto.set_allowed_nodes(RepeatedField::from_vec(self.allowed_nodes));
 
         proto
+    }
+#[derive(Debug)]
+pub enum ProposalMarshallingError {
+    UnsetField(String)
+}
+
+impl std::error::Error for ProposalMarshallingError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ProposalMarshallingError::UnsetField(_) => None
+        }
+    }
+}
+
+impl std::fmt::Display for ProposalMarshallingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ProposalMarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type")
+        }
     }
 }
