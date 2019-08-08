@@ -81,6 +81,7 @@ RUN apt-get update \
     libssl1.1 \
     libzmq5 \
     postgresql-client \
+    curl \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
