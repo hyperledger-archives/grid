@@ -39,7 +39,7 @@ impl fmt::Display for AppAuthHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AppAuthHandlerError::RequestError(msg) => write!(f, "Failed to build request, {}", msg),
-            AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred:: {}", msg),
+            AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred: {}", msg),
             AppAuthHandlerError::DeserializationError(msg) => {
                 write!(f, "Failed to deserialize message: {}", msg)
             }
