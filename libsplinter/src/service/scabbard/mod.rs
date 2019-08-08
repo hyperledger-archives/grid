@@ -53,7 +53,7 @@ pub struct Scabbard {
 impl Scabbard {
     /// Generate a new Scabbard service.
     pub fn new(
-        node_id: String,
+        service_id: String,
         initial_peers: HashSet<String>,
         db_dir: &Path,
         db_size: usize,
@@ -64,7 +64,7 @@ impl Scabbard {
         let shared = ScabbardShared::new(VecDeque::new(), None, initial_peers, state);
 
         Ok(Scabbard {
-            service_id: format!("{}::{}", SERVICE_TYPE, node_id),
+            service_id,
             shared: Arc::new(Mutex::new(shared)),
             consensus: None,
         })
@@ -93,7 +93,7 @@ impl Service for Scabbard {
             let mut shared = self
                 .shared
                 .lock()
-                .map_err(|_| ServiceStartError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
+                .map_err(|_| ServiceStartError::PoisonedLock("shared lock poisoned".into()))?;
 
             shared.set_network_sender(service_registry.connect(self.service_id())?);
 
@@ -145,7 +145,7 @@ impl Service for Scabbard {
         let mut shared = self
             .shared
             .lock()
-            .map_err(|_| ServiceStopError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
+            .map_err(|_| ServiceStopError::PoisonedLock("shared lock poisoned".into()))?;
         let network_sender = shared
             .take_network_sender()
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
@@ -256,9 +256,14 @@ pub mod tests {
     /// Tests that a new scabbard service is properly instantiated.
     #[test]
     fn new_scabbard() {
-        let service = Scabbard::new("0".into(), HashSet::new(), Path::new("/tmp"), 1024 * 1024)
-            .expect("failed to create service");
-        assert_eq!(service.service_id(), &format!("{}::0", SERVICE_TYPE));
+        let service = Scabbard::new(
+            "new_scabbard".into(),
+            HashSet::new(),
+            Path::new("/tmp"),
+            1024 * 1024,
+        )
+        .expect("failed to create service");
+        assert_eq!(service.service_id(), "new_scabbard");
         assert_eq!(service.service_type(), SERVICE_TYPE);
     }
 
@@ -267,7 +272,7 @@ pub mod tests {
     #[test]
     fn thread_cleanup() {
         let mut service = Scabbard::new(
-            "scabbard".into(),
+            "thread_cleanup".into(),
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
@@ -282,7 +287,7 @@ pub mod tests {
     #[test]
     fn connect_and_disconnect() {
         let mut service = Scabbard::new(
-            "scabbard".into(),
+            "connect_and_disconnect".into(),
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
@@ -299,7 +304,7 @@ pub mod tests {
         peer_services.insert("0".into());
         peer_services.insert("1".into());
         let mut service = Scabbard::new(
-            "scabbard".into(),
+            "service_connected_and_disconnected".into(),
             peer_services.clone(),
             Path::new("/tmp"),
             1024 * 1024,
@@ -357,7 +362,7 @@ pub mod tests {
     #[test]
     fn add_and_remove_peers() {
         let service = Scabbard::new(
-            "scabbard".into(),
+            "add_and_remove_peers".into(),
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
