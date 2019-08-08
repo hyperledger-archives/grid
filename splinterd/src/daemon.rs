@@ -41,6 +41,7 @@ use libsplinter::network::{
     ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
 };
 use libsplinter::node_registry::NodeRegistry;
+use libsplinter::orchestrator::ServiceOrchestrator;
 use libsplinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
@@ -102,8 +103,13 @@ impl SplinterDaemon {
         );
         let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
+        let orchestrator = ServiceOrchestrator::new(
+            vec![],
+            self.service_endpoint.clone(),
+            inproc_tranport.clone(),
+        );
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
-        let admin_service = AdminService::new(&self.node_id, peer_connector.clone());
+        let admin_service = AdminService::new(&self.node_id, orchestrator, peer_connector.clone());
 
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();

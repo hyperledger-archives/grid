@@ -31,6 +31,7 @@ use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
+use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{AdminMessage, AdminMessage_Type};
 use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
@@ -50,11 +51,16 @@ pub struct AdminService {
 }
 
 impl AdminService {
-    pub fn new(node_id: &str, peer_connector: PeerConnector) -> Self {
+    pub fn new(
+        node_id: &str,
+        orchestrator: ServiceOrchestrator,
+        peer_connector: PeerConnector,
+    ) -> Self {
         Self {
             service_id: admin_service_id(node_id),
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
                 node_id.to_string(),
+                orchestrator,
                 peer_connector,
             ))),
             consensus: None,
@@ -356,6 +362,7 @@ mod tests {
     use crate::network::Network;
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
+    use crate::transport::inproc::InprocTransport;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
     };
@@ -369,8 +376,10 @@ mod tests {
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
-        let mut admin_service = AdminService::new("test-node".into(), peer_connector);
+        let mut admin_service = AdminService::new("test-node".into(), orchestrator, peer_connector);
 
         let (tx, rx) = channel();
         admin_service

@@ -19,6 +19,7 @@ use crossbeam_channel::Sender;
 
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::peer::PeerConnector;
+use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{
     Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType,
@@ -35,6 +36,8 @@ pub struct AdminServiceShared {
     node_id: String,
     // the list of circuit proposal that are being voted on by members of a circuit
     open_proposals: HashMap<String, CircuitProposal>,
+    // orchestrator used to initialize and shutdown services
+    orchestrator: ServiceOrchestrator,
     // peer connector used to connect to new members listed in a circuit
     peer_connector: PeerConnector,
     // network sender is used to comunicated with other services on the splinter network
@@ -49,11 +52,16 @@ pub struct AdminServiceShared {
 }
 
 impl AdminServiceShared {
-    pub fn new(node_id: String, peer_connector: PeerConnector) -> Self {
+    pub fn new(
+        node_id: String,
+        orchestrator: ServiceOrchestrator,
+        peer_connector: PeerConnector,
+    ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
             network_sender: None,
             open_proposals: Default::default(),
+            orchestrator,
             peer_connector,
             pending_circuit_payloads: VecDeque::new(),
             pending_consesus_proposals: HashMap::new(),
