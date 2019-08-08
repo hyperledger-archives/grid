@@ -38,7 +38,7 @@ use uuid::Uuid;
 
 use gameroom_database::{
     helpers,
-    models::{CircuitProposal, NewCircuitMember, NewCircuitService},
+    models::{CircuitProposal, NewCircuitMember, NewCircuitService, NewProposalVoteRecord},
     ConnectionPool,
 };
 use libsplinter::admin::messages::{
@@ -159,6 +159,27 @@ fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuth
                 Ok(())
             })
         }
+        AdminServiceEvent::ProposalVote(msg_vote) => {
+            let proposal =
+                get_pending_proposal_with_circuit_id(&pool, &&msg_vote.ballot.circuit_id)?;
+            let time = SystemTime::now();
+            let vote = NewProposalVoteRecord {
+                proposal_id: proposal.id.to_string(),
+                voter_public_key: String::from_utf8(msg_vote.signer_public_key)?,
+                vote: format!("{:?}", msg_vote.ballot.vote),
+                created_time: time,
+            };
+            let conn = &*pool.get()?;
+
+            // insert vote and update proposal in a single database transaction
+            conn.transaction::<_, _, _>(|| {
+                helpers::update_circuit_proposal_status(conn, &proposal.id, &time, "Pending")?;
+                helpers::insert_proposal_vote_record(conn, &[vote])?;
+
+                debug!("Inserted new vote into database");
+                Ok(())
+            })
+        }
         _ => {
             error!("Unknown message type {:?}", admin_event);
             Ok(())
@@ -217,14 +238,29 @@ fn parse_splinter_nodes(
         .collect()
 }
 
+fn get_pending_proposal_with_circuit_id(
+    pool: &ConnectionPool,
+    circuit_id: &str,
+) -> Result<CircuitProposal, AppAuthHandlerError> {
+    helpers::fetch_circuit_proposal_with_status(&*pool.get()?, &circuit_id, "Pending")?.ok_or_else(
+        || {
+            AppAuthHandlerError::DatabaseError(format!(
+                "Could not find open proposal for circuit: {}",
+                circuit_id
+            ))
+        },
+    )
+}
+
 #[cfg(all(feature = "test-authorization-handler", test))]
 mod test {
     use super::*;
-    use diesel::{prelude::*, RunQueryDsl};
-    use gameroom_database::models::{CircuitMember, CircuitService};
+    use diesel::{dsl::insert_into, prelude::*, RunQueryDsl};
+    use gameroom_database::models::{CircuitMember, CircuitService, ProposalVoteRecord};
 
     use libsplinter::admin::messages::{
-        AuthorizationType, CreateCircuit, PersistenceType, ProposalType, RouteType,
+        AuthorizationType, Ballot, CircuitProposalVote, CreateCircuit, PersistenceType,
+        ProposalType, RouteType, Vote,
     };
 
     static DATABASE_URL: &str = "postgres://gameroom_test:gameroom_test@db-test:5432/gameroom_test";
@@ -320,6 +356,72 @@ mod test {
     }
 
     #[test]
+    /// Tests if when receiving an admin message ProposalVote the circuit_proposal and circuit_vote
+    /// tables are updated as expected
+    fn test_process_proposal_vote_message_ok() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_circuit_proposals_table(&pool);
+
+        let created_time = SystemTime::now();
+
+        // insert pending proposal into database
+        insert_proposals_table(
+            &pool,
+            get_circuit_proposal("my_proposal", "my_circuit", created_time.clone()),
+        );
+
+        let vote_message = get_vote_proposal_msg("my_circuit");
+        let vote_serialized =
+            serde_json::to_vec(&vote_message).expect("Failed to serialize message");
+
+        // vote proposal
+        process_text_message(&vote_serialized, &pool).expect("Error processing message");
+
+        let proposals = query_proposals_table(&pool);
+
+        assert_eq!(proposals.len(), 1);
+
+        let proposal = &proposals[0];
+
+        // Check proposal updated_time changed
+        assert!(proposal.updated_time > created_time);
+
+        let votes = query_votes_table(&pool);
+        assert_eq!(votes.len(), 1);
+
+        let vote = &votes[0];
+        let expected_vote = get_new_vote_record("", SystemTime::now());
+        assert_eq!(vote.voter_public_key, expected_vote.voter_public_key);
+        assert_eq!(vote.vote, expected_vote.vote);
+        assert_eq!(vote.created_time, proposal.updated_time);
+    }
+
+    #[test]
+    /// Tests if when receiving an admin message ProposalVote an error is returned
+    /// if a pending proposal for that circuit is not found
+    fn test_process_proposal_vote_message_err() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_circuit_proposals_table(&pool);
+
+        let vote_message = get_vote_proposal_msg("my_circuit");
+        let vote_serialized =
+            serde_json::to_vec(&vote_message).expect("Failed to serialize message");
+
+        // vote proposal
+        match process_text_message(&vote_serialized, &pool) {
+            Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
+            Err(AppAuthHandlerError::DatabaseError(msg)) => {
+                assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
+            }
+            Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
+        }
+    }
+
+    #[test]
     /// Tests if the admin message CreateProposal to a database CircuitProposal is successful
     fn test_parse_proposal() {
         let time = SystemTime::now();
@@ -385,6 +487,27 @@ mod test {
         }
     }
 
+    fn get_ballot(circuit_id: &str) -> Ballot {
+        Ballot {
+            circuit_id: circuit_id.to_string(),
+            circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
+                .to_string(),
+            vote: Vote::Accept,
+        }
+    }
+
+    fn get_msg_circuit_proposal_vote(circuit_id: &str) -> CircuitProposalVote {
+        CircuitProposalVote {
+            ballot: get_ballot(circuit_id),
+            ballot_signature: vec![65, 65, 65, 65, 66, 51, 78],
+            signer_public_key: vec![73, 119, 65, 65, 65, 81],
+        }
+    }
+
+    fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
+        AdminServiceEvent::ProposalVote(get_msg_circuit_proposal_vote(circuit_id))
+    }
+
     fn get_submit_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
         AdminServiceEvent::ProposalSubmitted(get_msg_proposal(circuit_id))
     }
@@ -412,6 +535,15 @@ mod test {
         }
     }
 
+    fn get_new_vote_record(proposal_id: &str, timestamp: SystemTime) -> NewProposalVoteRecord {
+        NewProposalVoteRecord {
+            proposal_id: proposal_id.to_string(),
+            voter_public_key: "IwAAAQ".to_string(),
+            vote: "Accept".to_string(),
+            created_time: timestamp,
+        }
+    }
+
     fn get_new_circuit_service(proposal_id: &str) -> NewCircuitService {
         NewCircuitService {
             proposal_id: proposal_id.to_string(),
@@ -427,6 +559,16 @@ mod test {
             node_id: "Node-123".to_string(),
             endpoint: "127.0.0.1:8282".to_string(),
         }
+    }
+
+    fn query_votes_table(pool: &ConnectionPool) -> Vec<ProposalVoteRecord> {
+        use gameroom_database::schema::proposal_vote_record;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        proposal_vote_record::table
+            .select(proposal_vote_record::all_columns)
+            .load::<ProposalVoteRecord>(conn)
+            .expect("Error fetching vote records")
     }
 
     fn query_circuit_members_table(pool: &ConnectionPool) -> Vec<CircuitMember> {
@@ -457,6 +599,17 @@ mod test {
             .select(circuit_proposal::all_columns)
             .load::<CircuitProposal>(conn)
             .expect("Error fetching proposals")
+    }
+
+    fn insert_proposals_table(pool: &ConnectionPool, proposal: CircuitProposal) {
+        use gameroom_database::schema::circuit_proposal;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        insert_into(circuit_proposal::table)
+            .values(&vec![proposal])
+            .execute(conn)
+            .map(|_| ())
+            .expect("Failed to insert proposal in table")
     }
 
     fn clear_circuit_proposals_table(pool: &ConnectionPool) {
