@@ -24,7 +24,7 @@ pub use processor::ShutdownHandle;
 
 pub use error::{
     ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
-    ServiceSendError, ServiceStartError, ServiceStopError,
+    ServiceProcessorError, ServiceSendError, ServiceStartError, ServiceStopError,
 };
 
 /// The ServiceMessageContext is a struct that provides information about the incoming message
