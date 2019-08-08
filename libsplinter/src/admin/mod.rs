@@ -12,19 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod messages;
+
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use actix::prelude::*;
+use actix_web_actors::ws;
+use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use openssl::hash::{hash, MessageDigest};
-use protobuf::{self, Message, RepeatedField};
+use protobuf::Message;
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
-use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
-    self, Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
+    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType,
 };
 use crate::rest_api::{Method, Resource, RestResourceProvider};
@@ -32,9 +37,8 @@ use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
-use actix::prelude::*;
-use actix_web_actors::ws;
-use serde_json;
+
+use messages::{AdminServiceEvent, CreateCircuit};
 
 #[derive(Clone)]
 pub struct AdminService {
@@ -52,6 +56,7 @@ impl AdminService {
                 network_sender: None,
                 open_proposals: Default::default(),
                 peer_connector,
+                socket_senders: Vec::new(),
             })),
         }
     }
@@ -225,6 +230,15 @@ impl AdminService {
         debug!("Proposal complete");
         Ok(())
     }
+
+    pub fn add_socket_sender(&self, sender: Sender<AdminServiceEvent>) -> Result<(), ServiceError> {
+        self.admin_service_state
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
+            .add_socket_sender(sender);
+
+        Ok(())
+    }
 }
 
 fn admin_service_id(node_id: &str) -> String {
@@ -253,6 +267,7 @@ struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
     peer_connector: PeerConnector,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
+    socket_senders: Vec<Sender<AdminServiceEvent>>,
 }
 
 impl AdminServiceState {
@@ -265,137 +280,9 @@ impl AdminServiceState {
     fn has_proposal(&self, circuit_id: &str) -> bool {
         self.open_proposals.contains_key(circuit_id)
     }
-}
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateCircuit {
-    pub circuit_id: String,
-    pub roster: Vec<SplinterService>,
-    pub members: Vec<SplinterNode>,
-    pub authorization_type: AuthorizationType,
-    pub persistence: PersistenceType,
-    pub routes: RouteType,
-    pub circuit_management_type: String,
-    pub application_metadata: Vec<u8>,
-}
-
-impl CreateCircuit {
-    fn from_payload(payload: web::Payload) -> impl Future<Item = Self, Error = ActixError> {
-        payload
-            .from_err()
-            .fold(web::BytesMut::new(), move |mut body, chunk| {
-                body.extend_from_slice(&chunk);
-                Ok::<_, ActixError>(body)
-            })
-            .and_then(|body| {
-                let proposal = serde_json::from_slice::<CreateCircuit>(&body).unwrap();
-                Ok(proposal)
-            })
-            .into_future()
-    }
-
-    fn into_proto(self) -> Result<CircuitCreateRequest, ProposalMarshallingError> {
-        let mut circuit = Circuit::new();
-
-        circuit.set_circuit_id(self.circuit_id);
-        circuit.set_roster(RepeatedField::from_vec(
-            self.roster
-                .into_iter()
-                .map(SplinterService::into_proto)
-                .collect(),
-        ));
-        circuit.set_members(RepeatedField::from_vec(
-            self.members
-                .into_iter()
-                .map(SplinterNode::into_proto)
-                .collect(),
-        ));
-
-        circuit.set_circuit_management_type(self.circuit_management_type);
-        circuit.set_application_metadata(self.application_metadata);
-
-        match self.authorization_type {
-            AuthorizationType::Trust => {
-                circuit
-                    .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
-            }
-        };
-
-        match self.persistence {
-            PersistenceType::Any => {
-                circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
-            }
-        };
-
-        match self.routes {
-            RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
-        };
-
-        let mut create_request = CircuitCreateRequest::new();
-        create_request.set_circuit(circuit);
-
-        Ok(create_request)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum AuthorizationType {
-    Trust,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum PersistenceType {
-    Any,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RouteType {
-    Any,
-}
-
-#[derive(Debug)]
-struct ProposalMarshallingError;
-
-impl std::error::Error for ProposalMarshallingError {}
-
-impl std::fmt::Display for ProposalMarshallingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("unable to marshal object")
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SplinterNode {
-    pub node_id: String,
-    pub endpoint: String,
-}
-
-impl SplinterNode {
-    fn into_proto(self) -> admin::SplinterNode {
-        let mut proto = admin::SplinterNode::new();
-
-        proto.set_node_id(self.node_id);
-        proto.set_endpoint(self.endpoint);
-
-        proto
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SplinterService {
-    pub service_id: String,
-    pub service_type: String,
-    pub allowed_nodes: Vec<String>,
-}
-
-impl SplinterService {
-    fn into_proto(self) -> admin::SplinterService {
-        let mut proto = admin::SplinterService::new();
-        proto.set_service_id(self.service_id);
-        proto.set_service_type(self.service_type);
-        proto.set_allowed_nodes(RepeatedField::from_vec(self.allowed_nodes));
-
-        proto
+    fn add_socket_sender(&mut self, sender: Sender<AdminServiceEvent>) {
+        self.socket_senders.push(sender);
     }
 }
 
@@ -403,7 +290,7 @@ impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
             make_create_circuit_route(self.clone()),
-            make_application_handler_registration_route(),
+            make_application_handler_registration_route(self.clone()),
         ]
     }
 }
@@ -414,7 +301,7 @@ fn make_create_circuit_route(admin_service: AdminService) -> Resource {
     })
 }
 
-fn make_application_handler_registration_route() -> Resource {
+fn make_application_handler_registration_route(admin_service: AdminService) -> Resource {
     Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
@@ -422,11 +309,18 @@ fn make_application_handler_registration_route() -> Resource {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
 
-        let res = ws::start(AdminServiceWebSocket::new(), &r, p);
+        let (send, recv) = unbounded();
 
-        debug!("circuit management type {}", circuit_management_type);
-        debug!("Websocket response: {:?}", res);
-        Box::new(res.into_future())
+        let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
+
+        if let Err(err) = admin_service.add_socket_sender(send) {
+            debug!("Failed to add socket sender: {:?}", err);
+            Box::new(HttpResponse::InternalServerError().finish().into_future())
+        } else {
+            debug!("circuit management type {}", circuit_management_type);
+            debug!("Websocket response: {:?}", res);
+            Box::new(res.into_future())
+        }
     })
 }
 
@@ -454,17 +348,33 @@ fn create_circuit(
     )
 }
 
-pub struct AdminServiceWebSocket {}
+pub struct AdminServiceWebSocket {
+    recv: Receiver<AdminServiceEvent>,
+}
 
 impl AdminServiceWebSocket {
-    fn new() -> Self {
-        Self {}
+    fn new(recv: Receiver<AdminServiceEvent>) -> Self {
+        Self { recv }
     }
 
-    fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(3), |_, ctx| {
-            ctx.ping("");
-            debug!("Admin Service gonna send cool stuff");
+    fn push_updates(&self, recv: Receiver<AdminServiceEvent>, ctx: &mut <Self as Actor>::Context) {
+        ctx.run_interval(Duration::from_secs(3), move |_, ctx| {
+            match recv.try_recv() {
+                Ok(msg) => {
+                    debug!("Received a message: {:?}", msg);
+                    match serde_json::to_string(&msg) {
+                        Ok(text) => ctx.text(text),
+                        Err(err) => {
+                            debug!("Failed to serialize payload: {:?}", err);
+                        }
+                    }
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => {
+                    debug!("Received channel disconnect");
+                    ctx.stop();
+                }
+            };
         });
     }
 }
@@ -474,7 +384,8 @@ impl Actor for AdminServiceWebSocket {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         debug!("Starting Admin Service");
-        self.push_updates(ctx)
+        let recv = self.recv.clone();
+        self.push_updates(recv, ctx)
     }
 }
 
