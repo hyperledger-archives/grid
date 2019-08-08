@@ -100,10 +100,9 @@ table! {
 table! {
     product (id) {
         id -> Int8,
-        prod_id -> Varchar,
-        prod_type -> Array<Text>,
+        product_id -> Varchar,
+        product_namespace -> Text,
         owner -> Varchar,
-        metadata -> Array<Json>,
         start_block_num -> Int8,
         end_block_num -> Int8,
     }
@@ -233,6 +232,7 @@ allow_tables_to_appear_in_same_query!(
     grid_property_definition,
     grid_schema,
     organization,
+    product,
     property,
     proposal,
     record,

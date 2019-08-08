@@ -14,4 +14,4 @@
 -- ------------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS product;
-DROP INDEX IF EXISTS prod_id_block_num_idx;
+DROP INDEX IF EXISTS product_idx;

@@ -15,11 +15,10 @@
 
 CREATE TABLE IF NOT EXISTS product (
     id BIGSERIAL PRIMARY KEY,
-    prod_id VARCHAR(256) NOT NULL,
-    prod_type TEXT NOT NULL,
-    owner VARCHAR(256) NOT NULL,
-    metadata JSON [] NOT NULL
+    product_id VARCHAR(256) NOT NULL,
+    product_namespace TEXT NOT NULL,
+    owner VARCHAR(256) NOT NULL
 ) INHERITS (chain_record);
 
-CREATE INDEX IF NOT EXISTS prod_id_block_num_idx
-    ON product (prod_id, end_block_num);
+CREATE INDEX IF NOT EXISTS product_idx
+    ON product (product_id, end_block_num);

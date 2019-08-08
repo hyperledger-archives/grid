@@ -30,7 +30,7 @@ use diesel::{
 #[allow(dead_code)]
 pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryResult<()> {
     for prod in products {
-        update_prod_end_block_num(conn, &prod.prod_id, prod.start_block_num)?;
+        update_prod_end_block_num(conn, &prod.product_id, prod.start_block_num)?;
     }
 
     insert_into(product::table)
@@ -41,13 +41,13 @@ pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryRes
 
 fn update_prod_end_block_num(
     conn: &PgConnection,
-    prod_id: &str,
+    product_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(product::table)
         .filter(
-            product::prod_id
-                .eq(prod_id)
+            product::product_id
+                .eq(product_id)
                 .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(product::end_block_num.eq(current_block_num))
@@ -68,7 +68,7 @@ pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Optio
     product::table
         .select(product::all_columns)
         .filter(
-            product::prod_id
+            product::product_id
                 .eq(product_id)
                 .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
         )

@@ -94,10 +94,9 @@ pub struct Organization {
 #[derive(Insertable, Debug)]
 #[table_name = "product"]
 pub struct NewProduct {
-    pub prod_id: String,
-    pub prod_type: Vec<String>,
+    pub product_id: String,
+    pub product_namespace: String,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
@@ -106,12 +105,11 @@ pub struct NewProduct {
 
 #[derive(Queryable, Debug)]
 pub struct Product {
-    ///  This is the record id for the slowly-changing-dimensions table.
+    ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
-    pub prod_id: String,
-    pub prod_type: Vec<String>,
+    pub product_id: String,
+    pub product_namespace: String,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
