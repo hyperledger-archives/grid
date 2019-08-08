@@ -51,3 +51,18 @@ services:
       bash -c "
         splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
       "
+
+  db-test:
+    image: postgres:alpine
+    container_name: db-test
+    restart: always
+    expose:
+      - 5432
+    ports:
+        - "5430:5432"
+    environment:
+      POSTGRES_USER: gameroom_test
+      POSTGRES_PASSWORD: gameroom_test
+      POSTGRES_DB: gameroom_test
+    volumes:
+      - "../database/tables:/docker-entrypoint-initdb.d"
