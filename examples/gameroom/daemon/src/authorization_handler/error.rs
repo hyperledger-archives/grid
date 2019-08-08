@@ -23,6 +23,7 @@ pub enum AppAuthHandlerError {
     RequestError(String),
     IOError(std::io::Error),
     DeserializationError(Box<dyn Error + Send>),
+    DatabaseError(String),
 }
 
 impl Error for AppAuthHandlerError {
@@ -31,6 +32,7 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::RequestError(_) => None,
             AppAuthHandlerError::IOError(err) => Some(err),
             AppAuthHandlerError::DeserializationError(err) => Some(&**err),
+            AppAuthHandlerError::DatabaseError(_) => None,
         }
     }
 }
@@ -42,6 +44,9 @@ impl fmt::Display for AppAuthHandlerError {
             AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred: {}", msg),
             AppAuthHandlerError::DeserializationError(msg) => {
                 write!(f, "Failed to deserialize message: {}", msg)
+            }
+            AppAuthHandlerError::DatabaseError(msg) => {
+                write!(f, "The database returned an error: {}", msg)
             }
         }
     }
@@ -62,5 +67,17 @@ impl From<serde_json::error::Error> for AppAuthHandlerError {
 impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
     fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
         AppAuthHandlerError::DeserializationError(Box::new(err))
+    }
+}
+
+impl From<gameroom_database::DatabaseError> for AppAuthHandlerError {
+    fn from(err: gameroom_database::DatabaseError) -> AppAuthHandlerError {
+        AppAuthHandlerError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<diesel::result::Error> for AppAuthHandlerError {
+    fn from(err: diesel::result::Error) -> Self {
+        AppAuthHandlerError::DatabaseError(format!("Error perfoming query: {}", err))
     }
 }
