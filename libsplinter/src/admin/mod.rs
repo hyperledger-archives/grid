@@ -255,7 +255,7 @@ impl AdminService {
     }
 }
 
-fn admin_service_id(node_id: &str) -> String {
+pub fn admin_service_id(node_id: &str) -> String {
     format!("admin::{}", node_id)
 }
 
