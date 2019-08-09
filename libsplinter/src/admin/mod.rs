@@ -13,8 +13,8 @@
 // limitations under the License.
 
 pub mod messages;
+mod state;
 
-use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -27,6 +27,7 @@ use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::admin::state::AdminServiceState;
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
@@ -36,7 +37,7 @@ use crate::protos::admin::{
 use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
-    Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
+    Service, ServiceMessageContext, ServiceNetworkRegistry,
 };
 
 use messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
@@ -298,52 +299,6 @@ impl std::fmt::Display for Sha256Error {
 impl From<Sha256Error> for ServiceError {
     fn from(err: Sha256Error) -> Self {
         ServiceError::UnableToHandleMessage(Box::new(err))
-    }
-}
-
-struct AdminServiceState {
-    open_proposals: HashMap<String, CircuitProposal>,
-    peer_connector: PeerConnector,
-    network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    socket_senders: Vec<(String, Sender<AdminServiceEvent>)>,
-}
-
-impl AdminServiceState {
-    fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
-        let circuit_id = circuit_proposal.get_circuit_id().to_string();
-
-        self.open_proposals.insert(circuit_id, circuit_proposal);
-    }
-
-    fn has_proposal(&self, circuit_id: &str) -> bool {
-        self.open_proposals.contains_key(circuit_id)
-    }
-
-    fn add_socket_sender(
-        &mut self,
-        circuit_management_type: String,
-        sender: Sender<AdminServiceEvent>,
-    ) {
-        self.socket_senders.push((circuit_management_type, sender));
-    }
-
-    fn send_event(&mut self, circuit_management_type: &str, event: AdminServiceEvent) {
-        // The use of retain allows us to drop any senders that are no longer valid.
-        self.socket_senders.retain(|(mgmt_type, sender)| {
-            if mgmt_type != circuit_management_type {
-                return true;
-            }
-
-            if let Err(err) = sender.send(event.clone()) {
-                warn!(
-                    "Dropping sender for {} due to error: {}",
-                    circuit_management_type, err
-                );
-                return false;
-            }
-
-            true
-        });
     }
 }
 
