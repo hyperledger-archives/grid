@@ -140,7 +140,16 @@ impl Service for AdminService {
                     proposal.set_circuit_hash(sha256(&proposed_circuit)?);
                     proposal.set_circuit_proposal(proposed_circuit);
 
-                    admin_service_state.add_proposal(proposal);
+                    admin_service_state.add_proposal(proposal.clone());
+                    let mgmt_type = proposal
+                        .get_circuit_proposal()
+                        .circuit_management_type
+                        .clone();
+                    let event = AdminServiceEvent::ProposalSubmitted(
+                        messages::CircuitProposal::from_proto(proposal)
+                            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?,
+                    );
+                    admin_service_state.send_event(&mgmt_type, event);
                 }
             }
             unknown_action => {
@@ -231,11 +240,15 @@ impl AdminService {
         Ok(())
     }
 
-    pub fn add_socket_sender(&self, sender: Sender<AdminServiceEvent>) -> Result<(), ServiceError> {
+    pub fn add_socket_sender(
+        &self,
+        circuit_management_type: String,
+        sender: Sender<AdminServiceEvent>,
+    ) -> Result<(), ServiceError> {
         self.admin_service_state
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
-            .add_socket_sender(sender);
+            .add_socket_sender(circuit_management_type, sender);
 
         Ok(())
     }
@@ -267,7 +280,7 @@ struct AdminServiceState {
     open_proposals: HashMap<String, CircuitProposal>,
     peer_connector: PeerConnector,
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    socket_senders: Vec<Sender<AdminServiceEvent>>,
+    socket_senders: Vec<(String, Sender<AdminServiceEvent>)>,
 }
 
 impl AdminServiceState {
@@ -281,8 +294,31 @@ impl AdminServiceState {
         self.open_proposals.contains_key(circuit_id)
     }
 
-    fn add_socket_sender(&mut self, sender: Sender<AdminServiceEvent>) {
-        self.socket_senders.push(sender);
+    fn add_socket_sender(
+        &mut self,
+        circuit_management_type: String,
+        sender: Sender<AdminServiceEvent>,
+    ) {
+        self.socket_senders.push((circuit_management_type, sender));
+    }
+
+    fn send_event(&mut self, circuit_management_type: &str, event: AdminServiceEvent) {
+        // The use of retain allows us to drop any senders that are no longer valid.
+        self.socket_senders.retain(|(mgmt_type, sender)| {
+            if mgmt_type != circuit_management_type {
+                return true;
+            }
+
+            if let Err(err) = sender.send(event.clone()) {
+                warn!(
+                    "Dropping sender for {} due to error: {}",
+                    circuit_management_type, err
+                );
+                return false;
+            }
+
+            true
+        });
     }
 }
 
@@ -313,7 +349,7 @@ fn make_application_handler_registration_route(admin_service: AdminService) -> R
 
         let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
 
-        if let Err(err) = admin_service.add_socket_sender(send) {
+        if let Err(err) = admin_service.add_socket_sender(circuit_management_type.into(), send) {
             debug!("Failed to add socket sender: {:?}", err);
             Box::new(HttpResponse::InternalServerError().finish().into_future())
         } else {
