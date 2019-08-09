@@ -84,6 +84,7 @@ impl ProposalStatus {
 }
 
 pub struct TwoPhaseEngine {
+    id: PeerId,
     peers: HashSet<PeerId>,
     state: State,
     verification_request_backlog: HashSet<ProposalId>,
@@ -98,6 +99,7 @@ impl Default for TwoPhaseEngine {
 impl TwoPhaseEngine {
     pub fn new() -> Self {
         TwoPhaseEngine {
+            id: PeerId::default(),
             peers: HashSet::new(),
             state: State::Idle,
             verification_request_backlog: HashSet::new(),
@@ -222,7 +224,6 @@ impl TwoPhaseEngine {
     #[allow(clippy::borrowed_box)]
     fn handle_proposal_update(
         &mut self,
-        own_id: &PeerId,
         update: ProposalUpdate,
         network_sender: &Box<ConsensusNetworkSender>,
         proposal_manager: &Box<ProposalManager>,
@@ -246,7 +247,7 @@ impl TwoPhaseEngine {
 
                     self.state = State::EvaluatingProposal(ProposalStatus::new(
                         proposal.id.clone(),
-                        own_id.clone(),
+                        self.id.clone(),
                         verifiers,
                     ));
 
@@ -390,6 +391,8 @@ impl ConsensusEngine for TwoPhaseEngine {
         let message_timeout = Duration::from_millis(100);
         let proposal_timeout = Duration::from_millis(100);
 
+        self.id = startup_state.id;
+
         for id in startup_state.peer_ids {
             self.peers.insert(id);
         }
@@ -446,12 +449,9 @@ impl ConsensusEngine for TwoPhaseEngine {
                     break;
                 }
                 Ok(update) => {
-                    if let Err(err) = self.handle_proposal_update(
-                        &startup_state.id,
-                        update,
-                        &network_sender,
-                        &proposal_manager,
-                    ) {
+                    if let Err(err) =
+                        self.handle_proposal_update(update, &network_sender, &proposal_manager)
+                    {
                         error!("error while handling proposal update: {}", err);
                     }
                 }
