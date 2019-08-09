@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod error;
 pub mod messages;
 mod state;
 
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::error::Error;
 
 use actix::prelude::*;
 use actix_web_actors::ws;
@@ -279,27 +279,6 @@ fn to_hex(bytes: &[u8]) -> String {
     }
 
     buf
-}
-
-#[derive(Debug)]
-pub struct Sha256Error(pub Box<dyn Error + Send>);
-
-impl Error for Sha256Error {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
-    }
-}
-
-impl std::fmt::Display for Sha256Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "unable to get sha256 hash: {}", self.0)
-    }
-}
-
-impl From<Sha256Error> for ServiceError {
-    fn from(err: Sha256Error) -> Self {
-        ServiceError::UnableToHandleMessage(Box::new(err))
-    }
 }
 
 impl RestResourceProvider for AdminService {
