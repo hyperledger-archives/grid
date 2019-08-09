@@ -16,7 +16,7 @@ pub mod handlers;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 use crate::network::Network;
 
@@ -89,7 +89,7 @@ impl fmt::Display for AuthorizationActionError {
 /// Manages authorization states for connections on a network.
 #[derive(Clone)]
 pub struct AuthorizationManager {
-    states: Arc<RwLock<HashMap<String, AuthorizationState>>>,
+    shared: Arc<Mutex<ManagedAuthorizations>>,
     network: Network,
     identity: Identity,
 }
@@ -98,7 +98,7 @@ impl AuthorizationManager {
     /// Constructs an AuthorizationManager
     pub fn new(network: Network, identity: Identity) -> Self {
         AuthorizationManager {
-            states: Default::default(),
+            shared: Default::default(),
             network,
             identity,
         }
@@ -106,8 +106,8 @@ impl AuthorizationManager {
 
     /// Indicated whether or not a peer is authorized.
     pub fn is_authorized(&self, peer_id: &str) -> bool {
-        let states = rwlock_read_unwrap!(self.states);
-        if let Some(state) = states.get(peer_id) {
+        let shared = mutex_lock_unwrap!(self.shared);
+        if let Some(state) = shared.states.get(peer_id) {
             state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
         } else {
             false
@@ -124,9 +124,12 @@ impl AuthorizationManager {
         peer_id: &str,
         action: AuthorizationAction,
     ) -> Result<AuthorizationState, AuthorizationActionError> {
-        let mut states = rwlock_write_unwrap!(self.states);
+        let mut shared = mutex_lock_unwrap!(self.shared);
 
-        let cur_state = states.get(peer_id).unwrap_or(&AuthorizationState::Unknown);
+        let cur_state = shared
+            .states
+            .get(peer_id)
+            .unwrap_or(&AuthorizationState::Unknown);
         match *cur_state {
             AuthorizationState::Unknown => match action {
                 AuthorizationAction::Connecting => {
@@ -134,12 +137,16 @@ impl AuthorizationManager {
                         if endpoint.contains("inproc") {
                             // Automatically authorize inproc connections
                             debug!("Authorize inproc connection: {}", peer_id);
-                            states.insert(peer_id.to_string(), AuthorizationState::Internal);
+                            shared
+                                .states
+                                .insert(peer_id.to_string(), AuthorizationState::Internal);
                             return Ok(AuthorizationState::Internal);
                         }
                     }
                     // Here the decision for Challenges will be made.
-                    states.insert(peer_id.to_string(), AuthorizationState::Connecting);
+                    shared
+                        .states
+                        .insert(peer_id.to_string(), AuthorizationState::Connecting);
                     Ok(AuthorizationState::Connecting)
                 }
                 AuthorizationAction::Unauthorizing => {
@@ -157,15 +164,17 @@ impl AuthorizationManager {
                 AuthorizationAction::Connecting => Err(AuthorizationActionError::AlreadyConnecting),
                 AuthorizationAction::TrustIdentifying(new_peer_id) => {
                     // Verify pub key allowed
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .update_peer_id(peer_id.to_string(), new_peer_id.clone())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
-                    states.insert(new_peer_id, AuthorizationState::Authorized);
+                    shared
+                        .states
+                        .insert(new_peer_id.clone(), AuthorizationState::Authorized);
                     Ok(AuthorizationState::Authorized)
                 }
                 AuthorizationAction::Unauthorizing => {
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .remove_connection(&peer_id.to_string())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
@@ -174,7 +183,7 @@ impl AuthorizationManager {
             },
             AuthorizationState::Authorized => match action {
                 AuthorizationAction::Unauthorizing => {
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .remove_connection(&peer_id.to_string())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
@@ -191,6 +200,11 @@ impl AuthorizationManager {
             )),
         }
     }
+}
+
+#[derive(Default)]
+struct ManagedAuthorizations {
+    states: HashMap<String, AuthorizationState>,
 }
 
 #[cfg(test)]
