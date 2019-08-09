@@ -397,8 +397,10 @@ impl ConsensusEngine for TwoPhaseEngine {
         loop {
             // If not doing anything, try to get the next proposal
             if let State::Idle = self.state {
-                proposal_manager.create_proposal(None, vec![])?;
-                self.state = State::AwaitingProposal;
+                match proposal_manager.create_proposal(None, vec![]) {
+                    Ok(()) => self.state = State::AwaitingProposal,
+                    Err(err) => error!("error while creating proposal: {}", err),
+                }
             }
 
             // If evaluating a proposal whose verification request has already been received, check
@@ -412,17 +414,24 @@ impl ConsensusEngine for TwoPhaseEngine {
                         "verifying proposal from backlog: {}",
                         proposal_status.proposal_id()
                     );
-                    proposal_manager.check_proposal(proposal_status.proposal_id())?;
+                    if let Err(err) = proposal_manager.check_proposal(proposal_status.proposal_id())
+                    {
+                        error!("failed to check backlogged proposal: {}", err);
+                    }
                 }
             }
 
             // Get and handle a consensus message if there is one
             match consensus_messages.recv_timeout(message_timeout) {
-                Ok(consensus_message) => self.handle_consensus_msg(
-                    consensus_message,
-                    &network_sender,
-                    &proposal_manager,
-                )?,
+                Ok(consensus_message) => {
+                    if let Err(err) = self.handle_consensus_msg(
+                        consensus_message,
+                        &network_sender,
+                        &proposal_manager,
+                    ) {
+                        error!("error while handling consensus message: {}", err);
+                    }
+                }
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
                     info!("consensus message receiver disconnected");
@@ -436,12 +445,16 @@ impl ConsensusEngine for TwoPhaseEngine {
                     info!("received shutdown");
                     break;
                 }
-                Ok(update) => self.handle_proposal_update(
-                    &startup_state.id,
-                    update,
-                    &network_sender,
-                    &proposal_manager,
-                )?,
+                Ok(update) => {
+                    if let Err(err) = self.handle_proposal_update(
+                        &startup_state.id,
+                        update,
+                        &network_sender,
+                        &proposal_manager,
+                    ) {
+                        error!("error while handling proposal update: {}", err);
+                    }
+                }
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
                     info!("proposal update receiver disconnected");
