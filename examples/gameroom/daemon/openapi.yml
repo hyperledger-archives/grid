@@ -78,7 +78,7 @@ paths:
       get:
         tags:
           - Node Registry
-        description: Fetch a nodes in the Node Registry by their identity
+        description: Fetch a node in the Node Registry by their identity
         parameters:
           - name: identity
             in: path
@@ -218,6 +218,73 @@ paths:
           500:
             description: Internal server error occurred
 
+  /proposals:
+    get:
+      description: List Circuit Proposals
+      parameters:
+      - name: offset
+        in: query
+        description: paging offset
+        required: false
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        description: maximum number of items to return (max 100)
+        required: false
+        schema:
+          type: integer
+          default: 100
+      responses:
+        200:
+          description: list of circuit proposals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiCircuitProposal'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        500:
+          description: Internal server error occurred
+        503:
+          description: Server unavailable
+
+  /proposals/{proposal_id}:
+    get:
+      description: Fetch a circuit proposal by the proposal id
+      parameters:
+        - name: proposal_id
+          in: path
+          description: identity of the proposal to fetch
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Circuit proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiCircuitProposal'
+        404:
+          description: The proposal with {proposal_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+        503:
+          description: Server unavailable
 
 components:
   schemas:
@@ -230,6 +297,34 @@ components:
           example: DatabaseError({description})
       required:
         - message
+
+
+    ApiCircuitProposal:
+      type: object
+      properties:
+        proposal_id:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiCircuitMember'
+        requester:
+          type: string
+        created_time:
+          description: time in seconds since the unix epoch the proposal was created
+          type: integer
+        updated_time:
+          description: time in seconds since the unix epoch the proposal was updated
+          type: integer
+
+
+    ApiCircuitMember:
+      type: object
+      properties:
+        node_id:
+          type: string
+        endpoint:
+          type: string
 
 
     Member:

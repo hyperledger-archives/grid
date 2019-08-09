@@ -39,8 +39,8 @@ pub struct CircuitProposal {
     pub persistence: String,
     pub routes: String,
     pub circuit_management_type: String,
-    pub status: String,
     pub application_metadata: Vec<u8>,
+    pub status: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
 }

@@ -13,5 +13,10 @@
 // limitations under the License.
 
 mod gameroom_user;
+mod proposal;
 
 pub use gameroom_user::{fetch_user_by_email, insert_user};
+pub use proposal::{
+    fetch_circuit_members_by_proposal_id, fetch_proposal_by_id, get_proposal_count,
+    list_proposal_circuit_members, list_proposals_with_paging,
+};

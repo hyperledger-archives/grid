@@ -55,6 +55,7 @@ pub enum RestApiResponseError {
     InternalError(String),
     Unauthorized,
     BadRequest(String),
+    NotFound(String),
 }
 
 impl Error for RestApiResponseError {
@@ -64,6 +65,7 @@ impl Error for RestApiResponseError {
             RestApiResponseError::InternalError(_) => None,
             RestApiResponseError::Unauthorized => None,
             RestApiResponseError::BadRequest(_) => None,
+            RestApiResponseError::NotFound(_) => None,
         }
     }
 }
@@ -75,6 +77,7 @@ impl fmt::Display for RestApiResponseError {
             RestApiResponseError::InternalError(e) => write!(f, "Internal error occurred: {}", e),
             RestApiResponseError::Unauthorized => write!(f, "Unauthorized"),
             RestApiResponseError::BadRequest(e) => write!(f, "Bad Request: {}", e),
+            RestApiResponseError::NotFound(e) => write!(f, "Not Found: {}", e),
         }
     }
 }
