@@ -14,6 +14,10 @@
 
 use crate::http::submit_batches;
 use crate::transaction::{schema_batch_builder, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE};
+use crate::yaml_parser::{
+    parse_value_as_boolean, parse_value_as_data_type, parse_value_as_i32, parse_value_as_sequence,
+    parse_value_as_string, parse_value_as_vec_string,
+};
 use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
     SchemaUpdateAction, SchemaUpdateBuilder,
@@ -24,7 +28,7 @@ use reqwest::Client;
 
 use crate::error::CliError;
 use serde::Deserialize;
-use serde_yaml::{Mapping, Sequence, Value};
+use serde_yaml::{Mapping, Value};
 
 #[derive(Debug, Deserialize)]
 pub struct GridSchemaSlice {
@@ -247,13 +251,13 @@ fn parse_properties(properties: &[Value]) -> Result<Vec<PropertyDefinition>, Cli
 }
 
 fn parse_property_definition(property: &Mapping) -> Result<PropertyDefinition, CliError> {
-    let data_type = parse_data_type(&parse_value_as_string(property, "data_type")?.ok_or_else(
-        || {
+    let data_type = parse_value_as_data_type(
+        &parse_value_as_string(property, "data_type")?.ok_or_else(|| {
             CliError::InvalidYamlError(
                 "Missing `data_type` field for property definition.".to_string(),
             )
-        },
-    )?)?;
+        })?,
+    )?;
 
     let mut property_definition = PropertyDefinitionBuilder::new()
         .with_name(parse_value_as_string(property, "name")?.ok_or_else(|| {
@@ -307,105 +311,6 @@ fn parse_property_definition(property: &Mapping) -> Result<PropertyDefinition, C
     })
 }
 
-fn parse_data_type(data_type: &str) -> Result<DataType, CliError> {
-    match data_type.to_lowercase().as_ref() {
-        "string" => Ok(DataType::String),
-        "bytes" => Ok(DataType::Bytes),
-        "number" => Ok(DataType::Number),
-        "enum" => Ok(DataType::Enum),
-        "struct" => Ok(DataType::Struct),
-        "lat_long" => Ok(DataType::LatLong),
-        _ => Err(CliError::InvalidYamlError(format!(
-            "Invalid data type for PropertyDefinition: {}",
-            data_type
-        ))),
-    }
-}
-
-fn parse_value_as_sequence(property: &Mapping, key: &str) -> Result<Option<Sequence>, CliError> {
-    match property.get(&Value::String(key.to_string())) {
-        Some(value) => match value.as_sequence() {
-            Some(value) => Ok(Some(value.to_vec())),
-            None => Err(CliError::InvalidYamlError(format!(
-                "Value of {} has an invalid format. Expected is a yaml list.",
-                key
-            ))),
-        },
-        None => Ok(None),
-    }
-}
-
-fn parse_value_as_string(property: &Mapping, key: &str) -> Result<Option<String>, CliError> {
-    match property.get(&Value::String(key.to_string())) {
-        Some(value) => match value.as_str() {
-            Some(val) => Ok(Some(val.to_string())),
-            None => Err(CliError::InvalidYamlError(format!(
-                "Value of {} has an invalid format. Expected is a yaml string.",
-                key
-            ))),
-        },
-        None => Ok(None),
-    }
-}
-
-fn parse_value_as_boolean(property: &Mapping, key: &str) -> Result<Option<bool>, CliError> {
-    match property.get(&Value::String(key.to_string())) {
-        Some(value) => match value.as_bool() {
-            Some(value) => Ok(Some(value)),
-            None => Err(CliError::InvalidYamlError(format!(
-                "Value of {} has an invalid format. Expected is a yaml boolean (true/false).",
-                key
-            ))),
-        },
-        None => Ok(None),
-    }
-}
-
-fn parse_value_as_i32(property: &Mapping, key: &str) -> Result<Option<i32>, CliError> {
-    match property.get(&Value::String(key.to_string())) {
-        Some(value) => match value.as_i64() {
-            Some(value) => Ok(Some(value.to_string().parse::<i32>().map_err(|_| {
-                CliError::InvalidYamlError(format!(
-                    "Failed to parse value of {} to 32 bit integer",
-                    key
-                ))
-            })?)),
-            None => Err(CliError::InvalidYamlError(format!(
-                "Value of {} has an invalid format. Expected is a yaml integer.",
-                key
-            ))),
-        },
-        None => Ok(None),
-    }
-}
-
-fn parse_value_as_vec_string(
-    property: &Mapping,
-    key: &str,
-) -> Result<Option<Vec<String>>, CliError> {
-    match property.get(&Value::String(key.to_string())) {
-        Some(value) => match value.as_sequence() {
-            Some(sequence) => Ok(Some(
-                sequence
-                    .iter()
-                    .map(|value| match value.as_str() {
-                        Some(value) => Ok(value.to_string()),
-                        None => Err(CliError::InvalidYamlError(format!(
-                            "Values in {} cannot be parsed to string.",
-                            key
-                        ))),
-                    })
-                    .collect::<Result<Vec<String>, CliError>>()?,
-            )),
-            None => Err(CliError::InvalidYamlError(format!(
-                "Value of {} has an invalid format. Expected is a yaml list.",
-                key
-            ))),
-        },
-        None => Ok(None),
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -413,7 +318,6 @@ mod test {
     use grid_sdk::protocol::schema::state::{
         DataType, PropertyDefinition, PropertyDefinitionBuilder,
     };
-    use serde_yaml::{Mapping, Value};
     use std::env;
     use std::fs::{remove_file, File};
     use std::io::Write;
@@ -563,201 +467,6 @@ mod test {
             assert_eq!(make_update_schema_payload_1(), payload[0]);
             assert_eq!(make_update_schema_payload_2(), payload[1]);
         })
-    }
-
-    ///
-    /// Verifies parse_data_type returns the expected data_types for valid inputs and returns an
-    /// error for a invalid input
-    ///
-    #[test]
-    fn test_parse_data_type() {
-        // Check the method returns the expected data types for each valid input
-        assert_eq!(parse_data_type("string").unwrap(), DataType::String);
-        assert_eq!(parse_data_type("bytes").unwrap(), DataType::Bytes);
-        assert_eq!(parse_data_type("NUMBER").unwrap(), DataType::Number);
-        assert_eq!(parse_data_type("enum").unwrap(), DataType::Enum);
-        assert_eq!(parse_data_type("Struct").unwrap(), DataType::Struct);
-        assert_eq!(parse_data_type("lat_long").unwrap(), DataType::LatLong);
-
-        // Check the method returns an error for an invalid input
-        assert!(parse_data_type("not_a_valid_type").is_err());
-    }
-
-    ///
-    /// Verifies parse_value_as_sequence can parse Values as Sequence for valid inputs
-    ///  and returns an error for invalid inputs
-    ///
-    #[test]
-    fn test_parse_value_as_sequence() {
-        let key = "sequence".to_string();
-        let mut property_valid = Mapping::new();
-
-        // Check method can properly parse a sequence value
-        let sequence = Vec::<Value>::new();
-        property_valid.insert(
-            Value::String(key.clone()),
-            Value::Sequence(sequence.clone()),
-        );
-        assert_eq!(
-            parse_value_as_sequence(&property_valid, &key).unwrap(),
-            Some(sequence)
-        );
-
-        // Check method returns an error when key is found but value cannot be parsed into a
-        // sequence
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(
-            Value::String(key.clone()),
-            Value::String("not a sequence".to_string()),
-        );
-        assert!(parse_value_as_sequence(&property_invalid, &key).is_err());
-
-        // Check method returns Ok(None) when key is not found
-        assert!(parse_value_as_sequence(&Mapping::new(), &key)
-            .unwrap()
-            .is_none());
-    }
-
-    ///
-    /// Verifies parse_value_as_string can parse Values as String for valid inputs
-    ///  and returns an error for invalid inputs
-    ///
-    #[test]
-    fn test_parse_value_as_string() {
-        let key = "string".to_string();
-        let string_value = "my string".to_string();
-
-        // Check method can properly parse a string value
-        let mut property_valid = Mapping::new();
-        property_valid.insert(
-            Value::String(key.clone()),
-            Value::String(string_value.clone()),
-        );
-        assert_eq!(
-            parse_value_as_string(&property_valid, &key).unwrap(),
-            Some(string_value.clone())
-        );
-
-        // Check method returns an error when key is found but value cannot be parsed into a
-        // string
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(Value::String(key.clone()), Value::Number(0.into()));
-        assert!(parse_value_as_string(&property_invalid, &key).is_err());
-
-        // Check method returns Ok(None) when key is not found
-        assert!(parse_value_as_string(&Mapping::new(), &key)
-            .unwrap()
-            .is_none());
-    }
-
-    ///
-    /// Verifies parse_value_as_boolean can parse Values as booleans for valid inputs
-    ///  and returns an error for invalid inputs
-    ///
-    #[test]
-    fn test_parse_value_as_boolean() {
-        let key = "bool".to_string();
-        let bool_value = true;
-
-        // Check method can properly parse a boolean value
-        let mut property_valid = Mapping::new();
-        property_valid.insert(Value::String(key.clone()), Value::Bool(bool_value.clone()));
-        assert_eq!(
-            parse_value_as_boolean(&property_valid, &key).unwrap(),
-            Some(bool_value.clone())
-        );
-
-        // Check method returns an error when key is found but value cannot be parsed into a
-        // boolean
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(Value::String(key.clone()), Value::Number(0.into()));
-        assert!(parse_value_as_boolean(&property_invalid, &key).is_err());
-
-        // Check method returns Ok(None) when key is not found
-        assert!(parse_value_as_boolean(&Mapping::new(), &key)
-            .unwrap()
-            .is_none());
-    }
-
-    ///
-    /// Verifies parse_parse_value_as_i32 can parse Values as i32 for valid inputs
-    ///  and returns an error for invalid inputs
-    ///
-    #[test]
-    fn test_parse_value_as_i32() {
-        let key = "number_i32".to_string();
-        let number_value = 200;
-
-        // Check method can properly parse a number value
-        let mut property_valid = Mapping::new();
-        property_valid.insert(
-            Value::String(key.clone()),
-            Value::Number(number_value.clone().into()),
-        );
-        assert_eq!(
-            parse_value_as_i32(&property_valid, &key).unwrap(),
-            Some(number_value.clone())
-        );
-
-        // Check method returns an error when key is found but value overflows an i32 capacity.
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(
-            Value::String(key.clone()),
-            Value::Number(3000000000_i64.into()),
-        );
-        assert!(parse_value_as_i32(&property_invalid, &key).is_err());
-
-        // Check method returns an error when key is found but value cannot be parsed into a
-        // number
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(
-            Value::String(key.clone()),
-            Value::String("Not a number".to_string()),
-        );
-        assert!(parse_value_as_i32(&property_invalid, &key).is_err());
-
-        // Check method returns Ok(None) when key is not found
-        assert!(parse_value_as_i32(&Mapping::new(), &key).unwrap().is_none());
-    }
-
-    ///
-    /// Verifies pparse_value_as_vec_string can parse Values as Vec<String> for valid inputs
-    ///  and returns an error for invalid inputs
-    ///
-    #[test]
-    fn test_parse_value_as_vec_string() {
-        let key = "vec".to_string();
-        let string_value = "value".to_string();
-        let sequence_value = vec![Value::String(string_value.clone())];
-
-        // Check method can properly parse a Value into Vec<String>
-        let mut property_valid = Mapping::new();
-        property_valid.insert(Value::String(key.clone()), Value::Sequence(sequence_value));
-        assert_eq!(
-            parse_value_as_vec_string(&property_valid, &key).unwrap(),
-            Some(vec![string_value.clone()])
-        );
-
-        // Check method returns an error when key is found but values inside the sequence cannot
-        // be parsed into a string.
-        let mut property_invalid = Mapping::new();
-        let sequence_value_invalid = vec![Value::Number(0.into())];
-        property_invalid.insert(
-            Value::String(key.clone()),
-            Value::Sequence(sequence_value_invalid),
-        );
-        assert!(parse_value_as_vec_string(&property_invalid, &key).is_err());
-
-        // Check method returns an error when key is found but value cannot be parsed into a vec
-        let mut property_invalid = Mapping::new();
-        property_invalid.insert(
-            Value::String(key.clone()),
-            Value::String("Not a sequence".to_string()),
-        );
-        assert!(parse_value_as_vec_string(&property_invalid, &key).is_err());
-
-        // Check method returns Ok(None) when key is not found
-        assert!(parse_value_as_i32(&Mapping::new(), &key).unwrap().is_none());
     }
 
     fn make_create_schema_payload_1() -> SchemaPayload {
