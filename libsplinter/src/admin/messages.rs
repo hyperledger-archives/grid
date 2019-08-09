@@ -215,7 +215,7 @@ pub struct CircuitProposal {
 }
 
 impl CircuitProposal {
-    fn from_proto(mut proto: admin::CircuitProposal) -> Result<Self, MarshallingError> {
+    pub fn from_proto(mut proto: admin::CircuitProposal) -> Result<Self, MarshallingError> {
         let proposal_type = match proto.get_proposal_type() {
             admin::CircuitProposal_ProposalType::CREATE => ProposalType::Create,
             admin::CircuitProposal_ProposalType::UPDATE_ROSTER => ProposalType::UpdateRoster,
