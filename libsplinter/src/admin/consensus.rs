@@ -20,9 +20,6 @@ use std::thread::{Builder, JoinHandle};
 
 use protobuf::{Message, RepeatedField};
 
-use crate::admin::error::AdminConsensusManagerError;
-use crate::admin::shared::AdminServiceShared;
-use crate::admin::{admin_service_id, sha256};
 use crate::consensus::two_phase::TwoPhaseEngine;
 use crate::consensus::{
     error::{ConsensusSendError, ProposalManagerError},
@@ -33,6 +30,10 @@ use crate::consensus::{ConsensusEngine, StartupState};
 use crate::protos::admin::{AdminMessage, AdminMessage_Type, ProposedCircuit};
 use crate::protos::two_phase::RequiredVerifiers;
 use crate::service::ServiceError;
+
+use super::error::AdminConsensusManagerError;
+use super::shared::AdminServiceShared;
+use super::{admin_service_id, sha256};
 
 /// Component used by the service to manage and interact with consensus
 pub struct AdminConsensusManager {

@@ -17,9 +17,6 @@ use std::collections::VecDeque;
 
 use crossbeam_channel::Sender;
 
-use crate::admin::error::AdminStateError;
-use crate::admin::messages;
-use crate::admin::sha256;
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::peer::PeerConnector;
 use crate::protos::admin::{
@@ -28,6 +25,10 @@ use crate::protos::admin::{
 };
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
+
+use super::error::AdminStateError;
+use super::messages;
+use super::sha256;
 
 pub struct AdminServiceShared {
     // the node id of the connected splinter node

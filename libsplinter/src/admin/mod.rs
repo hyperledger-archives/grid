@@ -28,9 +28,6 @@ use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
-use crate::admin::consensus::AdminConsensusManager;
-use crate::admin::error::{AdminError, Sha256Error};
-use crate::admin::shared::AdminServiceShared;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
@@ -41,7 +38,10 @@ use crate::service::{
     Service, ServiceMessageContext, ServiceNetworkRegistry,
 };
 
-use messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
+use self::consensus::AdminConsensusManager;
+use self::error::{AdminError, Sha256Error};
+use self::messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
+use self::shared::AdminServiceShared;
 
 pub struct AdminService {
     service_id: String,
