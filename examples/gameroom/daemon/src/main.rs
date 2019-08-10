@@ -83,7 +83,7 @@ fn run() -> Result<(), GameroomDaemonError> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let _ = app_auth_handler_join_handle.join();
+    app_auth_handler_join_handle.join();
     let _ = rest_api_join_handle.join();
 
     Ok(())

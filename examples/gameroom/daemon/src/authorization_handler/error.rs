@@ -24,6 +24,9 @@ pub enum AppAuthHandlerError {
     IOError(std::io::Error),
     DeserializationError(Box<dyn Error + Send>),
     DatabaseError(String),
+    ShutdownError(String),
+    StartUpError(String),
+    ClientError(String),
 }
 
 impl Error for AppAuthHandlerError {
@@ -33,6 +36,9 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::IOError(err) => Some(err),
             AppAuthHandlerError::DeserializationError(err) => Some(&**err),
             AppAuthHandlerError::DatabaseError(_) => None,
+            AppAuthHandlerError::ShutdownError(_) => None,
+            AppAuthHandlerError::StartUpError(_) => None,
+            AppAuthHandlerError::ClientError(_) => None,
         }
     }
 }
@@ -47,6 +53,15 @@ impl fmt::Display for AppAuthHandlerError {
             }
             AppAuthHandlerError::DatabaseError(msg) => {
                 write!(f, "The database returned an error: {}", msg)
+            }
+            AppAuthHandlerError::ShutdownError(msg) => {
+                write!(f, "An error occurred while shutting down: {}", msg)
+            }
+            AppAuthHandlerError::StartUpError(msg) => {
+                write!(f, "An error occurred while starting up: {}", msg)
+            }
+            AppAuthHandlerError::ClientError(msg) => {
+                write!(f, "The client returned an error: {}", msg)
             }
         }
     }

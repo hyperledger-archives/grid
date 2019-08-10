@@ -20,20 +20,21 @@ pub use error::AppAuthHandlerError;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc,
+    mpsc, Arc,
 };
 use std::thread;
 use std::time::SystemTime;
 
-use awc::ws::{Codec, Frame};
+use awc::ws::{CloseCode, CloseReason, Codec, Frame, Message};
 use diesel::connection::Connection;
-use futures::{future, stream::Stream};
-use hyper::{
-    header,
-    rt::{self, Future},
-    Body, Client, Request, StatusCode,
+use futures::{
+    future::{self, Either},
+    sink::Sink,
+    stream::Stream,
+    Future,
 };
-use tokio::codec::Decoder;
+use hyper::{header, Body, Client, Request, StatusCode};
+use tokio::{codec::Decoder, runtime::Runtime};
 use uuid::Uuid;
 
 use gameroom_database::{
@@ -55,20 +56,26 @@ impl AppAuthHandlerShutdownHandle {
     }
 }
 
+pub struct ThreadJoinHandle(Vec<thread::JoinHandle<Result<(), AppAuthHandlerError>>>);
+
+impl ThreadJoinHandle {
+    pub fn join(self) {
+        self.0.into_iter().for_each(|join_handle| {
+            let _ = join_handle.join();
+        });
+    }
+}
+
 pub fn run(
     splinterd_url: &str,
     db_conn: ConnectionPool,
-) -> Result<
-    (
-        AppAuthHandlerShutdownHandle,
-        thread::JoinHandle<Result<(), AppAuthHandlerError>>,
-    ),
-    AppAuthHandlerError,
-> {
+) -> Result<(AppAuthHandlerShutdownHandle, ThreadJoinHandle), AppAuthHandlerError> {
     let splinterd_url = splinterd_url.to_owned();
     let client = Client::new();
     let shutdown_signaler = Arc::new(AtomicBool::new(true));
     let running = shutdown_signaler.clone();
+    let (tx, rx) = mpsc::channel();
+    let (tx_join, rx_join) = mpsc::channel();
     let join_handle = thread::Builder::new()
         .name("GameroomDAppAuthHandler".into())
         .spawn(move || {
@@ -81,7 +88,9 @@ pub fn run(
                 .body(Body::empty())
                 .map_err(|err| AppAuthHandlerError::RequestError(format!("{}", err)))?;
 
-            rt::run(
+            let mut runtime = Runtime::new()?;
+
+            runtime.block_on(
                 client
                     .request(req)
                     .and_then(|res| {
@@ -90,52 +99,107 @@ pub fn run(
                         }
                         res.into_body().on_upgrade()
                     })
-                    .map_err(|e| error!("The client returned an error: {}", e))
+                    .map_err(|e| {
+                        error!("The client returned an error: {}", e);
+                        AppAuthHandlerError::ClientError(format!("{}", e))
+                    })
                     .and_then(move |upgraded| {
                         let codec = Codec::new().client_mode();
                         let framed = codec.framed(upgraded);
+                        let (sink, stream) = framed.split();
+
+                        // Listen to shutdown signal
+                        let join_handle = thread::spawn(move || {
+                            let msg = rx.recv().map_err(|err| {
+                                AppAuthHandlerError::ShutdownError(format!(
+                                    "Unable to receive websocket close message {}",
+                                    err
+                                ))
+                            })?;
+
+                            info!("Sending closing handshake to server");
+                            sink.send(msg).wait().map_err(|e| {
+                                AppAuthHandlerError::ShutdownError(format!(
+                                    "Unable to send close message to server {}",
+                                    e
+                                ))
+                            })?;
+                            Ok(())
+                        });
+
+                        if let Err(err) = tx_join.send(join_handle) {
+                            return Either::A(future::err(AppAuthHandlerError::StartUpError(
+                                format!("Unable to send send join handler addr {}", err),
+                            )));
+                        };
 
                         // Read stream until shutdown signal is received
-                        framed
-                            .take_while(move |message| {
-                                match message {
-                                    Frame::Text(msg) => {
-                                        if let Some(bytes) = msg {
-                                            if let Err(err) =
-                                                process_text_message(&bytes[..], &db_conn)
-                                            {
-                                                error!(
+                        Either::B(
+                            stream
+                                .take_while(move |message| {
+                                    match message {
+                                        Frame::Text(msg) => {
+                                            if let Some(bytes) = msg {
+                                                if let Err(err) =
+                                                    process_text_message(&bytes[..], &db_conn)
+                                                {
+                                                    error!(
                                                     "An error occurred while processing a message:
                                                     {}",
                                                     err
                                                 );
+                                                }
+                                            } else {
+                                                error!("Received empty message");
                                             }
-                                        } else {
-                                            error!("Received empty message");
                                         }
-                                    }
-                                    Frame::Ping(msg) => info!("Received Ping {}", msg),
-                                    _ => error!("Received unknown message: {:?}", message),
-                                };
+                                        Frame::Ping(msg) => info!("Received Ping {}", msg),
+                                        Frame::Close(msg) => {
+                                            info!("Received close message {:?}", msg);
+                                            return future::ok(false);
+                                        }
+                                        _ => error!("Received unknown message: {:?}", message),
+                                    };
 
-                                future::ok(running.load(Ordering::SeqCst))
-                            })
-                            // Transform stream into a future
-                            .for_each(|_| future::ok(()))
-                            .map_err(|e| error!("The client returned an error: {}", e))
+                                    future::ok(running.load(Ordering::SeqCst))
+                                })
+                                // Transform stream into a future
+                                .for_each(|_| future::ok(()))
+                                .map_err(|e| {
+                                    error!("The client returned an error: {}", e);
+                                    AppAuthHandlerError::ClientError(format!("{}", e))
+                                }),
+                        )
                     }),
-            );
-
-            Ok(())
+            )
         })?;
 
+    let join_handle_adrr = rx_join.recv().map_err(|err| {
+        AppAuthHandlerError::StartUpError(format!("Unable to receive join handle addr: {}", err))
+    })?;
     let do_shutdown = Box::new(move || {
         debug!("Shutting down application authentication handler");
         shutdown_signaler.store(false, Ordering::SeqCst);
+
+        // Send shutdown message to listening thread
+        tx.send(Message::Close(Some(CloseReason {
+            code: CloseCode::Normal,
+            description: Some("The client received shutdown signal".to_string()),
+        })))
+        .map_err(|err| {
+            AppAuthHandlerError::ShutdownError(format!(
+                "Unable to send websocket close message {}",
+                err
+            ))
+        })?;
+
         Ok(())
     });
 
-    Ok((AppAuthHandlerShutdownHandle { do_shutdown }, join_handle))
+    Ok((
+        AppAuthHandlerShutdownHandle { do_shutdown },
+        ThreadJoinHandle(vec![join_handle_adrr, join_handle]),
+    ))
 }
 
 fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuthHandlerError> {
