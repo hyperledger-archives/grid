@@ -21,7 +21,7 @@ use std::thread::{Builder, JoinHandle};
 use protobuf::{Message, RepeatedField};
 
 use crate::admin::error::AdminConsensusManagerError;
-use crate::admin::state::AdminServiceState;
+use crate::admin::shared::AdminServiceShared;
 use crate::admin::{admin_service_id, sha256};
 use crate::consensus::two_phase::TwoPhaseEngine;
 use crate::consensus::{
@@ -46,13 +46,14 @@ impl AdminConsensusManager {
     /// consensus, and start consensus in a separate thread.
     pub fn new(
         service_id: String,
-        state: Arc<Mutex<AdminServiceState>>,
+        shared: Arc<Mutex<AdminServiceShared>>,
     ) -> Result<Self, AdminConsensusManagerError> {
         let (consensus_msg_tx, consensus_msg_rx) = channel();
         let (proposal_update_tx, proposal_update_rx) = channel();
 
-        let proposal_manager = AdminProposalManager::new(proposal_update_tx.clone(), state.clone());
-        let consensus_network_sender = AdminConsensusNetworkSender::new(service_id.clone(), state);
+        let proposal_manager =
+            AdminProposalManager::new(proposal_update_tx.clone(), shared.clone());
+        let consensus_network_sender = AdminConsensusNetworkSender::new(service_id.clone(), shared);
         let startup_state = StartupState {
             id: service_id.as_bytes().into(),
             peer_ids: vec![],
@@ -115,17 +116,17 @@ impl AdminConsensusManager {
 
 pub struct AdminProposalManager {
     proposal_update_sender: Sender<ProposalUpdate>,
-    admin_state: Arc<Mutex<AdminServiceState>>,
+    shared: Arc<Mutex<AdminServiceShared>>,
 }
 
 impl AdminProposalManager {
     pub fn new(
         proposal_update_sender: Sender<ProposalUpdate>,
-        admin_state: Arc<Mutex<AdminServiceState>>,
+        shared: Arc<Mutex<AdminServiceShared>>,
     ) -> Self {
         AdminProposalManager {
             proposal_update_sender,
-            admin_state,
+            shared,
         }
     }
 }
@@ -141,7 +142,7 @@ impl ProposalManager for AdminProposalManager {
         _consensus_data: Vec<u8>,
     ) -> Result<(), ProposalManagerError> {
         let network_sender = self
-            .admin_state
+            .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
             .network_sender()
@@ -149,12 +150,12 @@ impl ProposalManager for AdminProposalManager {
             .cloned()
             .ok_or_else(|| ServiceError::NotStarted)?;
 
-        let mut admin_state = self
-            .admin_state
+        let mut shared = self
+            .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
-        if let Some(circuit_payload) = admin_state.pop_pending_circuit_payload() {
-            let (expected_hash, circuit_proposal) = admin_state
+        if let Some(circuit_payload) = shared.pop_pending_circuit_payload() {
+            let (expected_hash, circuit_proposal) = shared
                 .propose_change(circuit_payload.clone())
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
@@ -186,7 +187,7 @@ impl ProposalManager for AdminProposalManager {
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
             proposal.consensus_data = required_verifiers_bytes;
 
-            admin_state.add_pending_consesus_proposal(
+            shared.add_pending_consesus_proposal(
                 proposal.id.clone(),
                 (proposal.clone(), circuit_payload.clone()),
             );
@@ -201,7 +202,7 @@ impl ProposalManager for AdminProposalManager {
 
             let envelope_bytes = msg.write_to_bytes().unwrap();
             for member in members {
-                if member.get_node_id() != admin_state.node_id() {
+                if member.get_node_id() != shared.node_id() {
                     network_sender
                         .send(&admin_service_id(member.get_node_id()), &envelope_bytes)
                         .unwrap();
@@ -219,15 +220,15 @@ impl ProposalManager for AdminProposalManager {
     }
 
     fn check_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
-        let admin_state = &self
-            .admin_state
+        let shared = &self
+            .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match admin_state.pending_consesus_proposals(id) {
+        match shared.pending_consesus_proposals(id) {
             Some((proposal, circuit_payload)) if &proposal.id == id => {
                 let (hash, _) = self
-                    .admin_state
+                    .shared
                     .lock()
                     .map_err(|_| {
                         ServiceError::PoisonedLock("the admin state lock was poisoned".into())
@@ -262,15 +263,15 @@ impl ProposalManager for AdminProposalManager {
         id: &ProposalId,
         _consensus_data: Option<Vec<u8>>,
     ) -> Result<(), ProposalManagerError> {
-        let admin_state = &mut self
-            .admin_state
+        let shared = &mut self
+            .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match admin_state.pending_consesus_proposals(id) {
-            Some((proposal, _)) if &proposal.id == id => match admin_state.commit() {
+        match shared.pending_consesus_proposals(id) {
+            Some((proposal, _)) if &proposal.id == id => match shared.commit() {
                 Ok(_) => {
-                    admin_state.remove_pending_consesus_proposals(id);
+                    shared.remove_pending_consesus_proposals(id);
                     info!("Committed proposal {}", id);
                 }
                 Err(err) => {
@@ -293,15 +294,15 @@ impl ProposalManager for AdminProposalManager {
     }
 
     fn reject_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
-        let admin_state = &mut self
-            .admin_state
+        let shared = &mut self
+            .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match admin_state.pending_consesus_proposals(id) {
-            Some((proposal, _)) if &proposal.id == id => match admin_state.rollback() {
+        match shared.pending_consesus_proposals(id) {
+            Some((proposal, _)) if &proposal.id == id => match shared.rollback() {
                 Ok(_) => {
-                    admin_state.remove_pending_consesus_proposals(id);
+                    shared.remove_pending_consesus_proposals(id);
                     info!("Rolled back proposal {}", id);
                 }
                 Err(err) => {
@@ -317,11 +318,11 @@ impl ProposalManager for AdminProposalManager {
 
 pub struct AdminConsensusNetworkSender {
     service_id: String,
-    state: Arc<Mutex<AdminServiceState>>,
+    state: Arc<Mutex<AdminServiceShared>>,
 }
 
 impl AdminConsensusNetworkSender {
-    pub fn new(service_id: String, state: Arc<Mutex<AdminServiceState>>) -> Self {
+    pub fn new(service_id: String, state: Arc<Mutex<AdminServiceShared>>) -> Self {
         AdminConsensusNetworkSender { service_id, state }
     }
 }
@@ -336,13 +337,13 @@ impl ConsensusNetworkSender for AdminConsensusNetworkSender {
         msg.set_message_type(AdminMessage_Type::CONSENSUS_MESSAGE);
         msg.set_consensus_message(consensus_message.try_into()?);
 
-        let admin_state = self.state.lock().map_err(|_| {
+        let shared = self.state.lock().map_err(|_| {
             ConsensusSendError::Internal(Box::new(ServiceError::PoisonedLock(
                 "the admin state lock was poisoned".into(),
             )))
         })?;
 
-        let network_sender = admin_state
+        let network_sender = shared
             .network_sender()
             .clone()
             .ok_or(ConsensusSendError::NotReady)?;
@@ -360,20 +361,20 @@ impl ConsensusNetworkSender for AdminConsensusNetworkSender {
         msg.set_message_type(AdminMessage_Type::CONSENSUS_MESSAGE);
         msg.set_consensus_message(consensus_message.try_into()?);
 
-        let admin_state = self.state.lock().map_err(|_| {
+        let shared = self.state.lock().map_err(|_| {
             ConsensusSendError::Internal(Box::new(ServiceError::PoisonedLock(
                 "the admin state lock was poisoned".into(),
             )))
         })?;
 
-        let network_sender = admin_state
+        let network_sender = shared
             .network_sender()
             .clone()
             .ok_or(ConsensusSendError::NotReady)?;
 
         // Since there are not a fixed set of peers to send messages too, use the set of members
-        // in the current pending change
-        if let Some(pending_changes) = &admin_state.pending_changes() {
+        // in the curret pending change
+        if let Some(pending_changes) = &shared.pending_changes() {
             for member in pending_changes.get_circuit_proposal().get_members() {
                 {
                     network_sender

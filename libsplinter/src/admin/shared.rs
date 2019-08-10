@@ -29,20 +29,27 @@ use crate::protos::admin::{
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 
-pub struct AdminServiceState {
+pub struct AdminServiceShared {
+    // the node id of the connected splinter node
     node_id: String,
+    // the list of circuit proposal that are being voted on by members of a circuit
     open_proposals: HashMap<String, CircuitProposal>,
+    // peer connector used to connect to new members listed in a circuit
     peer_connector: PeerConnector,
+    // network sender is used to comunicated with other services on the splinter network
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
+    // CircuitManagmentPayloads that still need to go through consensus
     pending_circuit_payloads: VecDeque<CircuitManagementPayload>,
+    // The pending consensus proposals
     pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
+    // the pending changes for the current proposal
     pending_changes: Option<CircuitProposal>,
     socket_senders: Vec<(String, Sender<messages::AdminServiceEvent>)>,
 }
 
-impl AdminServiceState {
+impl AdminServiceShared {
     pub fn new(node_id: String, peer_connector: PeerConnector) -> Self {
-        AdminServiceState {
+        AdminServiceShared {
             node_id: node_id.to_string(),
             network_sender: None,
             open_proposals: Default::default(),

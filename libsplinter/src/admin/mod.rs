@@ -15,7 +15,7 @@
 mod consensus;
 mod error;
 pub mod messages;
-mod state;
+mod shared;
 
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
@@ -30,7 +30,7 @@ use protobuf::{self, Message};
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::admin::consensus::AdminConsensusManager;
 use crate::admin::error::{AdminError, Sha256Error};
-use crate::admin::state::AdminServiceState;
+use crate::admin::shared::AdminServiceShared;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
@@ -45,7 +45,7 @@ use messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircu
 
 pub struct AdminService {
     service_id: String,
-    admin_service_state: Arc<Mutex<AdminServiceState>>,
+    admin_service_shared: Arc<Mutex<AdminServiceShared>>,
     consensus: Option<AdminConsensusManager>,
 }
 
@@ -53,7 +53,7 @@ impl AdminService {
     pub fn new(node_id: &str, peer_connector: PeerConnector) -> Self {
         Self {
             service_id: admin_service_id(node_id),
-            admin_service_state: Arc::new(Mutex::new(AdminServiceState::new(
+            admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
                 node_id.to_string(),
                 peer_connector,
             ))),
@@ -82,16 +82,16 @@ impl Service for AdminService {
         let network_sender = service_registry.connect(&self.service_id)?;
 
         {
-            let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-                ServiceStartError::PoisonedLock("the admin state lock was poisoned".into())
+            let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+                ServiceStartError::PoisonedLock("the admin shared lock was poisoned".into())
             })?;
 
-            admin_service_state.set_network_sender(Some(network_sender));
+            admin_service_shared.set_network_sender(Some(network_sender));
         }
 
         // Setup consensus
         self.consensus = Some(
-            AdminConsensusManager::new(self.service_id().into(), self.admin_service_state.clone())
+            AdminConsensusManager::new(self.service_id().into(), self.admin_service_shared.clone())
                 .map_err(|err| ServiceStartError::Internal(Box::new(err)))?,
         );
         Ok(())
@@ -103,8 +103,8 @@ impl Service for AdminService {
     ) -> Result<(), ServiceStopError> {
         service_registry.disconnect(&self.service_id)?;
 
-        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-            ServiceStopError::PoisonedLock("the admin state lock was poisoned".into())
+        let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+            ServiceStopError::PoisonedLock("the admin shared lock was poisoned".into())
         })?;
 
         // Shutdown consensus
@@ -117,7 +117,7 @@ impl Service for AdminService {
         // Disconnect from splinter network
         service_registry.disconnect(&self.service_id)?;
 
-        admin_service_state.set_network_sender(None);
+        admin_service_shared.set_network_sender(None);
 
         info!("Admin service stopped and disconnected");
 
@@ -161,11 +161,11 @@ impl Service for AdminService {
                     .into();
                 proposal.summary = expected_hash;
 
-                let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
+                let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+                    ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
                 })?;
 
-                admin_service_state.add_pending_consesus_proposal(
+                admin_service_shared.add_pending_consesus_proposal(
                     proposal.id.clone(),
                     (proposal.clone(), circuit_payload.clone()),
                 );
@@ -214,20 +214,20 @@ fn to_hex(bytes: &[u8]) -> String {
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(self.admin_service_state.clone()),
-            make_application_handler_registration_route(self.admin_service_state.clone()),
-            make_vote_route(self.admin_service_state.clone()),
+            make_create_circuit_route(self.admin_service_shared.clone()),
+            make_application_handler_registration_route(self.admin_service_shared.clone()),
+            make_vote_route(self.admin_service_shared.clone()),
         ]
     }
 }
 
-fn make_create_circuit_route(state: Arc<Mutex<AdminServiceState>>) -> Resource {
+fn make_create_circuit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Post, "/admin/circuit", move |r, p| {
-        create_circuit(r, p, state.clone())
+        create_circuit(r, p, shared.clone())
     })
 }
 
-fn make_vote_route(state: Arc<Mutex<AdminServiceState>>) -> Resource {
+fn make_vote_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Post, "/admin/vote", move |_, p| {
         Box::new(from_payload::<CircuitProposalVote>(p).and_then(|vote| {
             debug!("Received vote {:#?}", vote);
@@ -236,7 +236,7 @@ fn make_vote_route(state: Arc<Mutex<AdminServiceState>>) -> Resource {
     })
 }
 
-fn make_application_handler_registration_route(state: Arc<Mutex<AdminServiceState>>) -> Resource {
+fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
@@ -247,11 +247,11 @@ fn make_application_handler_registration_route(state: Arc<Mutex<AdminServiceStat
         let (send, recv) = unbounded();
 
         let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
-        let unlocked_state = state.lock();
+        let unlocked_shared = shared.lock();
 
-        match unlocked_state {
-            Ok(mut state) => {
-                state.add_socket_sender(circuit_management_type.into(), send);
+        match unlocked_shared {
+            Ok(mut shared) => {
+                shared.add_socket_sender(circuit_management_type.into(), send);
                 debug!("circuit management type {}", circuit_management_type);
                 debug!("Websocket response: {:?}", res);
                 Box::new(res.into_future())
@@ -267,7 +267,7 @@ fn make_application_handler_registration_route(state: Arc<Mutex<AdminServiceStat
 fn create_circuit(
     _req: HttpRequest,
     payload: web::Payload,
-    state: Arc<Mutex<AdminServiceState>>,
+    shared: Arc<Mutex<AdminServiceShared>>,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
         from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
@@ -277,8 +277,8 @@ fn create_circuit(
             };
             let circuit = circuit_create_request.take_circuit();
             let circuit_id = circuit.circuit_id.clone();
-            let mut admin_service_state = state.lock().expect("the admin state lock was poisoned");
-            if let Err(err) = admin_service_state.propose_circuit(circuit) {
+            let mut shared = shared.lock().expect("the admin state lock was poisoned");
+            if let Err(err) = shared.propose_circuit(circuit) {
                 error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
                 Ok(HttpResponse::BadRequest().finish())
             } else {
