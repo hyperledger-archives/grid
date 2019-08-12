@@ -106,12 +106,11 @@ impl TwoPhaseEngine {
         }
     }
 
-    #[allow(clippy::borrowed_box)]
     fn handle_consensus_msg(
         &mut self,
         consensus_msg: ConsensusMessage,
-        network_sender: &Box<ConsensusNetworkSender>,
-        proposal_manager: &Box<ProposalManager>,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
     ) -> Result<(), ConsensusEngineError> {
         let two_phase_msg: TwoPhaseMessage = protobuf::parse_from_bytes(&consensus_msg.message)?;
         let proposal_id = ProposalId::from(two_phase_msg.get_proposal_id());
@@ -221,12 +220,11 @@ impl TwoPhaseEngine {
         Ok(())
     }
 
-    #[allow(clippy::borrowed_box)]
     fn handle_proposal_update(
         &mut self,
         update: ProposalUpdate,
-        network_sender: &Box<ConsensusNetworkSender>,
-        proposal_manager: &Box<ProposalManager>,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
     ) -> Result<(), ConsensusEngineError> {
         match update {
             ProposalUpdate::ProposalCreated(Some(proposal)) => {
@@ -429,8 +427,8 @@ impl ConsensusEngine for TwoPhaseEngine {
                 Ok(consensus_message) => {
                     if let Err(err) = self.handle_consensus_msg(
                         consensus_message,
-                        &network_sender,
-                        &proposal_manager,
+                        &*network_sender,
+                        &*proposal_manager,
                     ) {
                         error!("error while handling consensus message: {}", err);
                     }
@@ -450,7 +448,7 @@ impl ConsensusEngine for TwoPhaseEngine {
                 }
                 Ok(update) => {
                     if let Err(err) =
-                        self.handle_proposal_update(update, &network_sender, &proposal_manager)
+                        self.handle_proposal_update(update, &*network_sender, &*proposal_manager)
                     {
                         error!("error while handling proposal update: {}", err);
                     }
