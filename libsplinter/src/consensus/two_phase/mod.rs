@@ -150,6 +150,7 @@ impl TwoPhaseEngine {
                             "Proposal {} verified by peer {}",
                             proposal_id, consensus_msg.origin_id
                         );
+                        // Already checked state above in self.evaluating_proposal()
                         if let State::EvaluatingProposal(tpc_proposal) = &mut self.state {
                             tpc_proposal.add_verified_peer(consensus_msg.origin_id);
 
@@ -164,11 +165,6 @@ impl TwoPhaseEngine {
                                 proposal_manager.accept_proposal(&proposal_id, None)?;
                                 self.state = State::Idle;
                             }
-                        } else {
-                            // self.evaluating_proposal(), which is called above, checks that the
-                            // state is EvaluatingProposal and the current proposal matches the one
-                            // this message is for.
-                            panic!("Already checked proposal being verified");
                         }
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::FAILED => {
