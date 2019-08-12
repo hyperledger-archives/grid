@@ -155,15 +155,15 @@ impl TwoPhaseEngine {
                             tpc_proposal.add_verified_peer(consensus_msg.origin_id);
 
                             if tpc_proposal.peers_verified() == tpc_proposal.required_verifiers() {
+                                proposal_manager.accept_proposal(&proposal_id, None)?;
+                                self.state = State::Idle;
+
                                 let mut result = TwoPhaseMessage::new();
                                 result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                                result.set_proposal_id(proposal_id.clone().into());
+                                result.set_proposal_id(proposal_id.into());
                                 result.set_proposal_result(TwoPhaseMessage_ProposalResult::APPLY);
 
                                 network_sender.broadcast(result.write_to_bytes()?)?;
-
-                                proposal_manager.accept_proposal(&proposal_id, None)?;
-                                self.state = State::Idle;
                             }
                         }
                     }
@@ -172,15 +172,16 @@ impl TwoPhaseEngine {
                             "Proposal {} failed by peer {}",
                             proposal_id, consensus_msg.origin_id
                         );
-                        let mut result = TwoPhaseMessage::new();
-                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                        result.set_proposal_id(proposal_id.clone().into());
-                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
-
-                        network_sender.broadcast(result.write_to_bytes()?)?;
 
                         proposal_manager.reject_proposal(&proposal_id)?;
                         self.state = State::Idle;
+
+                        let mut result = TwoPhaseMessage::new();
+                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+                        result.set_proposal_id(proposal_id.into());
+                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
+
+                        network_sender.broadcast(result.write_to_bytes()?)?;
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::UNSET_VERIFICATION_RESPONSE => {
                         warn!(
