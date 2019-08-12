@@ -116,34 +116,33 @@ impl TwoPhaseEngine {
         let two_phase_msg: TwoPhaseMessage = protobuf::parse_from_bytes(&consensus_msg.message)?;
         let proposal_id = ProposalId::from(two_phase_msg.get_proposal_id());
 
-        // Ignore any messages that aren't for the current proposal (except for verification
-        // requests, which are backlogged)
-        if !self.evaluating_proposal(&proposal_id) {
-            match two_phase_msg.get_message_type() {
-                TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST => {
-                    debug!(
-                        "backlogging verification request for unknown proposal: {}",
-                        proposal_id,
-                    );
-                    // Note: this is a potential leak, because requests don't get removed unless
-                    // the proposal is actually evaluated at some point in the future.
-                    self.verification_request_backlog.push_back(proposal_id);
-                }
-                _ => warn!(
-                    "ignoring message for proposal that is not being evaluated: {}",
-                    proposal_id
-                ),
-            }
-
-            return Ok(());
-        }
-
         match two_phase_msg.get_message_type() {
             TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST => {
-                debug!("Verifying proposal {}", proposal_id);
-                proposal_manager.check_proposal(&proposal_id)?;
+
+                match self.state {
+                    State::EvaluatingProposal(ref tpc_proposal)
+                        if tpc_proposal.proposal_id() != &proposal_id =>
+                    {
+                        debug!(
+                            "Proposal already in progress, backlogging verification request: {}",
+                            proposal_id
+                        );
+                        self.verification_request_backlog.push_back(proposal_id);
+                    }
+                    _ => {
+                        proposal_manager.check_proposal(&proposal_id)?;
+                    }
+                }
             }
             TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE => {
+                if !self.evaluating_proposal(&proposal_id) {
+                    warn!(
+                        "Received unexpected verification response for proposal {}",
+                        proposal_id
+                    );
+                    return Ok(());
+                }
+
                 match two_phase_msg.get_proposal_verification_response() {
                     TwoPhaseMessage_ProposalVerificationResponse::VERIFIED => {
                         debug!(
@@ -193,14 +192,25 @@ impl TwoPhaseEngine {
             }
             TwoPhaseMessage_Type::PROPOSAL_RESULT => match two_phase_msg.get_proposal_result() {
                 TwoPhaseMessage_ProposalResult::APPLY => {
-                    debug!("accepting proposal {}", proposal_id);
-                    proposal_manager.accept_proposal(&proposal_id, None)?;
-                    self.state = State::Idle;
+                    if self.evaluating_proposal(&proposal_id) {
+                        debug!("Accepting proposal {}", proposal_id);
+                        proposal_manager.accept_proposal(&proposal_id, None)?;
+                        self.state = State::Idle;
+                    } else {
+                        warn!(
+                            "Received unexpected apply result for proposal {}",
+                            proposal_id
+                        );
+                    }
                 }
                 TwoPhaseMessage_ProposalResult::REJECT => {
                     debug!("rejecting proposal {}", proposal_id);
                     proposal_manager.reject_proposal(&proposal_id)?;
-                    self.state = State::Idle;
+
+                    // Only update state if this was the currently evaluating proposal
+                    if self.evaluating_proposal(&proposal_id) {
+                        self.state = State::Idle;
+                    }
                 }
                 TwoPhaseMessage_ProposalResult::UNSET_RESULT => warn!(
                     "ignoring improperly specified proposal result from {}",
