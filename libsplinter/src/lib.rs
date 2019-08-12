@@ -16,6 +16,8 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 
 #[macro_export]
 macro_rules! rwlock_read_unwrap {
