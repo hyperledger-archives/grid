@@ -33,7 +33,6 @@ use clap::{clap_app, crate_version};
 use libsplinter::transport::raw::RawTransport;
 use libsplinter::transport::tls::{TlsInitError, TlsTransport};
 use libsplinter::transport::Transport;
-use log::LogLevel;
 use openssl::error::ErrorStack;
 use tempdir::TempDir;
 
@@ -86,10 +85,10 @@ fn main() {
     .get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(LogLevel::Warn),
-        1 => simple_logger::init_with_level(LogLevel::Info),
-        2 => simple_logger::init_with_level(LogLevel::Debug),
-        _ => simple_logger::init_with_level(LogLevel::Trace),
+        0 => simple_logger::init_with_level(log::Level::Warn),
+        1 => simple_logger::init_with_level(log::Level::Info),
+        2 => simple_logger::init_with_level(log::Level::Debug),
+        _ => simple_logger::init_with_level(log::Level::Trace),
     };
 
     logger.expect("Failed to create logger");

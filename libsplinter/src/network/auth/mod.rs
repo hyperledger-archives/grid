@@ -16,7 +16,7 @@ pub mod handlers;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 use crate::network::Network;
 
@@ -89,7 +89,7 @@ impl fmt::Display for AuthorizationActionError {
 /// Manages authorization states for connections on a network.
 #[derive(Clone)]
 pub struct AuthorizationManager {
-    states: Arc<RwLock<HashMap<String, AuthorizationState>>>,
+    shared: Arc<Mutex<ManagedAuthorizations>>,
     network: Network,
     identity: Identity,
 }
@@ -98,16 +98,21 @@ impl AuthorizationManager {
     /// Constructs an AuthorizationManager
     pub fn new(network: Network, identity: Identity) -> Self {
         AuthorizationManager {
-            states: Default::default(),
+            shared: Default::default(),
             network,
             identity,
         }
     }
 
+    pub fn register_callback(&self, callback: Box<dyn AuthorizationCallback>) {
+        let mut shared = mutex_lock_unwrap!(self.shared);
+        shared.callbacks.push(callback)
+    }
+
     /// Indicated whether or not a peer is authorized.
     pub fn is_authorized(&self, peer_id: &str) -> bool {
-        let states = rwlock_read_unwrap!(self.states);
-        if let Some(state) = states.get(peer_id) {
+        let shared = mutex_lock_unwrap!(self.shared);
+        if let Some(state) = shared.states.get(peer_id) {
             state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
         } else {
             false
@@ -124,9 +129,12 @@ impl AuthorizationManager {
         peer_id: &str,
         action: AuthorizationAction,
     ) -> Result<AuthorizationState, AuthorizationActionError> {
-        let mut states = rwlock_write_unwrap!(self.states);
+        let mut shared = mutex_lock_unwrap!(self.shared);
 
-        let cur_state = states.get(peer_id).unwrap_or(&AuthorizationState::Unknown);
+        let cur_state = shared
+            .states
+            .get(peer_id)
+            .unwrap_or(&AuthorizationState::Unknown);
         match *cur_state {
             AuthorizationState::Unknown => match action {
                 AuthorizationAction::Connecting => {
@@ -134,12 +142,21 @@ impl AuthorizationManager {
                         if endpoint.contains("inproc") {
                             // Automatically authorize inproc connections
                             debug!("Authorize inproc connection: {}", peer_id);
-                            states.insert(peer_id.to_string(), AuthorizationState::Internal);
+                            shared
+                                .states
+                                .insert(peer_id.to_string(), AuthorizationState::Internal);
+                            Self::notify_callbacks(
+                                &shared.callbacks,
+                                peer_id,
+                                PeerAuthorizationState::Authorized,
+                            );
                             return Ok(AuthorizationState::Internal);
                         }
                     }
                     // Here the decision for Challenges will be made.
-                    states.insert(peer_id.to_string(), AuthorizationState::Connecting);
+                    shared
+                        .states
+                        .insert(peer_id.to_string(), AuthorizationState::Connecting);
                     Ok(AuthorizationState::Connecting)
                 }
                 AuthorizationAction::Unauthorizing => {
@@ -157,27 +174,44 @@ impl AuthorizationManager {
                 AuthorizationAction::Connecting => Err(AuthorizationActionError::AlreadyConnecting),
                 AuthorizationAction::TrustIdentifying(new_peer_id) => {
                     // Verify pub key allowed
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .update_peer_id(peer_id.to_string(), new_peer_id.clone())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
-                    states.insert(new_peer_id, AuthorizationState::Authorized);
+                    shared
+                        .states
+                        .insert(new_peer_id.clone(), AuthorizationState::Authorized);
+                    Self::notify_callbacks(
+                        &shared.callbacks,
+                        &new_peer_id,
+                        PeerAuthorizationState::Authorized,
+                    );
                     Ok(AuthorizationState::Authorized)
                 }
                 AuthorizationAction::Unauthorizing => {
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .remove_connection(&peer_id.to_string())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
+                    Self::notify_callbacks(
+                        &shared.callbacks,
+                        peer_id,
+                        PeerAuthorizationState::Unauthorized,
+                    );
                     Ok(AuthorizationState::Unauthorized)
                 }
             },
             AuthorizationState::Authorized => match action {
                 AuthorizationAction::Unauthorizing => {
-                    states.remove(peer_id);
+                    shared.states.remove(peer_id);
                     self.network
                         .remove_connection(&peer_id.to_string())
                         .map_err(|_| AuthorizationActionError::ConnectionLost)?;
+                    Self::notify_callbacks(
+                        &shared.callbacks,
+                        peer_id,
+                        PeerAuthorizationState::Unauthorized,
+                    );
                     Ok(AuthorizationState::Unauthorized)
                 }
                 _ => Err(AuthorizationActionError::InvalidMessageOrder(
@@ -191,11 +225,50 @@ impl AuthorizationManager {
             )),
         }
     }
+
+    fn notify_callbacks(
+        callbacks: &[Box<dyn AuthorizationCallback>],
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) {
+        for callback in callbacks {
+            callback.on_authorization_change(peer_id, state.clone());
+        }
+    }
+}
+
+#[derive(Default)]
+struct ManagedAuthorizations {
+    states: HashMap<String, AuthorizationState>,
+    callbacks: Vec<Box<dyn AuthorizationCallback>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PeerAuthorizationState {
+    Authorized,
+    Unauthorized,
+}
+
+/// A callback for changes in a peer's authorization state.
+pub trait AuthorizationCallback: Send {
+    /// This function is called when a peer's state changes to Authorized or Unauthorized.
+    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState);
+}
+
+impl<F> AuthorizationCallback for F
+where
+    F: Fn(&str, PeerAuthorizationState) + Send,
+{
+    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState) {
+        (*self)(peer_id, state);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::sync::{Arc, Mutex};
 
     use crate::mesh::Mesh;
     use crate::network::Network;
@@ -301,6 +374,56 @@ mod tests {
         assert!(!auth_manager.is_authorized(&new_peer_id));
         let empty_vec: Vec<String> = Vec::with_capacity(0);
         assert_eq!(empty_vec, network.peer_ids());
+    }
+
+    /// This test begins a connection, trust it, and notifies a callback of the authorized state.
+    /// It should not be notified of intermediate states.
+    #[test]
+    fn trust_state_machine_notify_callbacks() {
+        let (network, peer_id) = create_network_with_initial_temp_peer();
+
+        let auth_manager = AuthorizationManager::new(network.clone(), "mock_identity".into());
+        let notifications = Arc::new(Mutex::new(vec![]));
+
+        let callback_values = notifications.clone();
+        auth_manager.register_callback(Box::new(
+            move |peer_id: &str, state: PeerAuthorizationState| {
+                callback_values
+                    .lock()
+                    .expect("callback values poisoned")
+                    .push((peer_id.to_string(), state.clone()));
+            },
+        ));
+
+        assert!(!auth_manager.is_authorized(&peer_id));
+
+        assert_eq!(
+            Ok(AuthorizationState::Connecting),
+            auth_manager.next_state(&peer_id, AuthorizationAction::Connecting)
+        );
+
+        assert!(!auth_manager.is_authorized(&peer_id));
+
+        // Supply the TrustIdentifying action and verify that it is authorized
+        let new_peer_id = "abcd".to_string();
+        assert_eq!(
+            Ok(AuthorizationState::Authorized),
+            auth_manager.next_state(
+                &peer_id,
+                AuthorizationAction::TrustIdentifying(new_peer_id.clone())
+            )
+        );
+        // we now have the new identified peer
+        assert!(auth_manager.is_authorized(&new_peer_id));
+        assert_eq!(vec![new_peer_id.clone()], network.peer_ids());
+
+        assert_eq!(
+            Some(("abcd".to_string(), PeerAuthorizationState::Authorized)),
+            notifications
+                .lock()
+                .expect("callback values posioned")
+                .pop()
+        );
     }
 
     fn create_network_with_initial_temp_peer() -> (Network, String) {
