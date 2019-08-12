@@ -37,26 +37,27 @@ use crate::protos::two_phase::{
 enum State {
     Idle,
     AwaitingProposal,
-    EvaluatingProposal(ProposalStatus),
+    EvaluatingProposal(TwoPhaseProposal),
 }
 
+/// Contains information about a proposal that two phase consensus needs to keep track of
 #[derive(Debug)]
-struct ProposalStatus {
+struct TwoPhaseProposal {
     proposal_id: ProposalId,
-    proposer_id: PeerId,
+    coordinator_id: PeerId,
     peers_verified: HashSet<PeerId>,
     required_verifiers: HashSet<PeerId>,
 }
 
-impl ProposalStatus {
+impl TwoPhaseProposal {
     fn new(
         proposal_id: ProposalId,
-        proposer_id: PeerId,
+        coordinator_id: PeerId,
         required_verifiers: HashSet<PeerId>,
     ) -> Self {
-        ProposalStatus {
+        TwoPhaseProposal {
             proposal_id,
-            proposer_id,
+            coordinator_id,
             peers_verified: HashSet::new(),
             required_verifiers,
         }
@@ -66,8 +67,8 @@ impl ProposalStatus {
         &self.proposal_id
     }
 
-    fn proposer_id(&self) -> &PeerId {
-        &self.proposer_id
+    fn coordinator_id(&self) -> &PeerId {
+        &self.coordinator_id
     }
 
     fn peers_verified(&self) -> &HashSet<PeerId> {
@@ -149,12 +150,10 @@ impl TwoPhaseEngine {
                             "Proposal {} verified by peer {}",
                             proposal_id, consensus_msg.origin_id
                         );
-                        if let State::EvaluatingProposal(proposal_status) = &mut self.state {
-                            proposal_status.add_verified_peer(consensus_msg.origin_id);
+                        if let State::EvaluatingProposal(tpc_proposal) = &mut self.state {
+                            tpc_proposal.add_verified_peer(consensus_msg.origin_id);
 
-                            if proposal_status.peers_verified()
-                                == proposal_status.required_verifiers()
-                            {
+                            if tpc_proposal.peers_verified() == tpc_proposal.required_verifiers() {
                                 let mut result = TwoPhaseMessage::new();
                                 result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
                                 result.set_proposal_id(proposal_id.clone().into());
@@ -243,7 +242,7 @@ impl TwoPhaseEngine {
                         verifiers = self.peers.clone();
                     }
 
-                    self.state = State::EvaluatingProposal(ProposalStatus::new(
+                    self.state = State::EvaluatingProposal(TwoPhaseProposal::new(
                         proposal.id.clone(),
                         self.id.clone(),
                         verifiers,
@@ -265,13 +264,13 @@ impl TwoPhaseEngine {
                 }
             }
             ProposalUpdate::ProposalReceived(proposal, peer_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status) => {
-                    if proposal_status.proposal_id() != &proposal.id {
+                State::EvaluatingProposal(ref tpc_proposal) => {
+                    if tpc_proposal.proposal_id() != &proposal.id {
                         warn!(
                             "Rejecting proposal {} because another ({}) is currently being \
                              evaluated",
                             proposal.id,
-                            proposal_status.proposal_id(),
+                            tpc_proposal.proposal_id(),
                         );
                         proposal_manager.reject_proposal(&proposal.id)?;
                     }
@@ -289,7 +288,7 @@ impl TwoPhaseEngine {
                     } else {
                         verifiers = self.peers.clone();
                     }
-                    self.state = State::EvaluatingProposal(ProposalStatus::new(
+                    self.state = State::EvaluatingProposal(TwoPhaseProposal::new(
                         proposal.id,
                         peer_id,
                         verifiers,
@@ -297,8 +296,8 @@ impl TwoPhaseEngine {
                 }
             },
             ProposalUpdate::ProposalValid(proposal_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status)
-                    if proposal_status.proposal_id() == &proposal_id =>
+                State::EvaluatingProposal(ref tpc_proposal)
+                    if tpc_proposal.proposal_id() == &proposal_id =>
                 {
                     debug!(
                         "Received valid proposal message for proposal {}",
@@ -312,13 +311,13 @@ impl TwoPhaseEngine {
                     );
 
                     network_sender
-                        .send_to(proposal_status.proposer_id(), response.write_to_bytes()?)?;
+                        .send_to(tpc_proposal.coordinator_id(), response.write_to_bytes()?)?;
                 }
                 _ => warn!("Got valid message for unknown proposal: {}", proposal_id),
             },
             ProposalUpdate::ProposalInvalid(proposal_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status)
-                    if proposal_status.proposal_id() == &proposal_id =>
+                State::EvaluatingProposal(ref tpc_proposal)
+                    if tpc_proposal.proposal_id() == &proposal_id =>
                 {
                     debug!(
                         "Received invalid proposal message for proposal {}",
@@ -332,7 +331,7 @@ impl TwoPhaseEngine {
                     );
 
                     network_sender
-                        .send_to(proposal_status.proposer_id(), response.write_to_bytes()?)?;
+                        .send_to(tpc_proposal.coordinator_id(), response.write_to_bytes()?)?;
                 }
                 _ => warn!("Got invalid message for unknown proposal: {}", proposal_id),
             },
@@ -406,17 +405,16 @@ impl ConsensusEngine for TwoPhaseEngine {
 
             // If evaluating a proposal whose verification request has already been received, check
             // the validity of the proposal
-            if let State::EvaluatingProposal(ref proposal_status) = self.state {
+            if let State::EvaluatingProposal(ref tpc_proposal) = self.state {
                 if self
                     .verification_request_backlog
-                    .remove(proposal_status.proposal_id())
+                    .remove(tpc_proposal.proposal_id())
                 {
                     debug!(
                         "verifying proposal from backlog: {}",
-                        proposal_status.proposal_id()
+                        tpc_proposal.proposal_id()
                     );
-                    if let Err(err) = proposal_manager.check_proposal(proposal_status.proposal_id())
-                    {
+                    if let Err(err) = proposal_manager.check_proposal(tpc_proposal.proposal_id()) {
                         error!("failed to check backlogged proposal: {}", err);
                     }
                 }
