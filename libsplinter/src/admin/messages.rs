@@ -18,7 +18,7 @@ use crate::protos::admin::{self, CircuitCreateRequest};
 use protobuf::{self, RepeatedField};
 use serde_json;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CreateCircuit {
     pub circuit_id: String,
     pub roster: Vec<SplinterService>,
@@ -135,22 +135,22 @@ impl CreateCircuit {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum AuthorizationType {
     Trust,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum PersistenceType {
     Any,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum RouteType {
     Any,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SplinterNode {
     pub node_id: String,
     pub endpoint: String,
@@ -174,7 +174,7 @@ impl SplinterNode {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SplinterService {
     pub service_id: String,
     pub service_type: String,
@@ -204,7 +204,7 @@ impl SplinterService {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CircuitProposal {
     pub proposal_type: ProposalType,
     pub circuit_id: String,
@@ -215,7 +215,7 @@ pub struct CircuitProposal {
 }
 
 impl CircuitProposal {
-    fn from_proto(mut proto: admin::CircuitProposal) -> Result<Self, MarshallingError> {
+    pub fn from_proto(mut proto: admin::CircuitProposal) -> Result<Self, MarshallingError> {
         let proposal_type = match proto.get_proposal_type() {
             admin::CircuitProposal_ProposalType::CREATE => ProposalType::Create,
             admin::CircuitProposal_ProposalType::UPDATE_ROSTER => ProposalType::UpdateRoster,
@@ -246,7 +246,7 @@ impl CircuitProposal {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum ProposalType {
     Create,
     UpdateRoster,
@@ -255,13 +255,13 @@ pub enum ProposalType {
     Destroy,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct VoteRecord {
     pub public_key: String,
     pub vote: Vote,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CircuitProposalVote {
     pub ballot: Ballot,
     pub ballot_signature: Vec<u8>,
@@ -278,7 +278,7 @@ impl CircuitProposalVote {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Ballot {
     pub circuit_id: String,
     pub circuit_hash: String,
@@ -314,13 +314,13 @@ impl VoteRecord {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Vote {
     Accept,
     Reject,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "eventType", content = "message")]
 pub enum AdminServiceEvent {
     ProposalSubmitted(CircuitProposal),
