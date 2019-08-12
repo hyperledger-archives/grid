@@ -18,7 +18,7 @@
 //! is considered at a time. A proposal manager can define its own set of required verifiers by
 //! setting this information in the consensus data.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
@@ -88,7 +88,7 @@ pub struct TwoPhaseEngine {
     id: PeerId,
     peers: HashSet<PeerId>,
     state: State,
-    verification_request_backlog: HashSet<ProposalId>,
+    verification_request_backlog: VecDeque<ProposalId>,
 }
 
 impl Default for TwoPhaseEngine {
@@ -103,7 +103,7 @@ impl TwoPhaseEngine {
             id: PeerId::default(),
             peers: HashSet::new(),
             state: State::Idle,
-            verification_request_backlog: HashSet::new(),
+            verification_request_backlog: VecDeque::new(),
         }
     }
 
@@ -127,7 +127,7 @@ impl TwoPhaseEngine {
                     );
                     // Note: this is a potential leak, because requests don't get removed unless
                     // the proposal is actually evaluated at some point in the future.
-                    self.verification_request_backlog.insert(proposal_id);
+                    self.verification_request_backlog.push_back(proposal_id);
                 }
                 _ => warn!(
                     "ignoring message for proposal that is not being evaluated: {}",
@@ -406,10 +406,12 @@ impl ConsensusEngine for TwoPhaseEngine {
             // If evaluating a proposal whose verification request has already been received, check
             // the validity of the proposal
             if let State::EvaluatingProposal(ref tpc_proposal) = self.state {
-                if self
+                if let Some(idx) = self
                     .verification_request_backlog
-                    .remove(tpc_proposal.proposal_id())
+                    .iter()
+                    .position(|proposal_id| proposal_id == tpc_proposal.proposal_id())
                 {
+                    self.verification_request_backlog.remove(idx);
                     debug!(
                         "verifying proposal from backlog: {}",
                         tpc_proposal.proposal_id()
