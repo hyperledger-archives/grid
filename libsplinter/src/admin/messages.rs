@@ -16,6 +16,7 @@ use crate::actix_web::{web, Error as ActixError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::protos::admin::{self, CircuitCreateRequest};
 use protobuf::{self, RepeatedField};
+use serde::de::DeserializeOwned;
 use serde_json;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -30,21 +31,20 @@ pub struct CreateCircuit {
     pub application_metadata: Vec<u8>,
 }
 
-impl CreateCircuit {
-    pub fn from_payload(payload: web::Payload) -> impl Future<Item = Self, Error = ActixError> {
-        payload
-            .from_err()
-            .fold(web::BytesMut::new(), move |mut body, chunk| {
-                body.extend_from_slice(&chunk);
-                Ok::<_, ActixError>(body)
-            })
-            .and_then(|body| {
-                let proposal = serde_json::from_slice::<CreateCircuit>(&body).unwrap();
-                Ok(proposal)
-            })
-            .into_future()
-    }
+pub fn from_payload<T: DeserializeOwned>(
+    payload: web::Payload,
+) -> impl Future<Item = T, Error = ActixError> {
+    payload
+        .from_err()
+        .fold(web::BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            Ok::<_, ActixError>(body)
+        })
+        .and_then(|body| Ok(serde_json::from_slice::<T>(&body)?))
+        .into_future()
+}
 
+impl CreateCircuit {
     pub fn from_proto(mut proto: admin::Circuit) -> Result<Self, MarshallingError> {
         let authorization_type = match proto.get_authorization_type() {
             admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION => AuthorizationType::Trust,

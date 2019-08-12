@@ -38,7 +38,7 @@ use crate::service::{
     Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
 };
 
-use messages::{AdminServiceEvent, CreateCircuit};
+use messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
 
 #[derive(Clone)]
 pub struct AdminService {
@@ -327,6 +327,7 @@ impl RestResourceProvider for AdminService {
         vec![
             make_create_circuit_route(self.clone()),
             make_application_handler_registration_route(self.clone()),
+            make_vote_route(self.clone()),
         ]
     }
 }
@@ -334,6 +335,15 @@ impl RestResourceProvider for AdminService {
 fn make_create_circuit_route(admin_service: AdminService) -> Resource {
     Resource::new(Method::Post, "/admin/circuit", move |r, p| {
         create_circuit(r, p, admin_service.clone())
+    })
+}
+
+fn make_vote_route(admin_service: AdminService) -> Resource {
+    Resource::new(Method::Post, "/admin/vote", move |_, p| {
+        Box::new(from_payload::<CircuitProposalVote>(p).and_then(|vote| {
+            debug!("Received vote {:#?}", vote);
+            HttpResponse::Accepted().finish().into_future()
+        }))
     })
 }
 
@@ -366,7 +376,7 @@ fn create_circuit(
     admin_service: AdminService,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
-        CreateCircuit::from_payload(payload).and_then(move |create_circuit| {
+        from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
             let mut circuit_create_request = match create_circuit.into_proto() {
                 Ok(request) => request,
                 Err(_) => return Ok(HttpResponse::BadRequest().finish()),

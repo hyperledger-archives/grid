@@ -121,6 +121,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /admin/vote:
+    post:
+      tags:
+        - Admin Service
+      description: Send vote to admin service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CircuitProposalVote'
+      responses:
+        202:
+          description: The vote was accepted
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
   /ws/admin/register/{type}:
     get:
       tags:
@@ -395,6 +423,35 @@ components:
         identity: node-123123-asdf
         company: Cargill
         status: Up
+
+    Ballot:
+      type: object
+      properties:
+        circuit_id:
+          type: string
+          example: circuit-000
+        circuit_hash:
+          type: string
+          example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
+        vote:
+          type: string
+          enum:
+            - Accept
+            - Reject
+
+    CircuitProposalVote:
+      type: object
+      properties:
+        ballot:
+          $ref: '#/components/schemas/Ballot'
+        ballot_signature:
+          type: array
+          items:
+            type: integer
+        signer_public_key:
+          type: array
+          items:
+            type: integer
 
     
     Paging:
