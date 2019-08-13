@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Scabbard is a Splinter `Service` that runs the Sawtooth Sabre smart contract engine using the
+//! `transact` library for state. Scabbard uses two-phase consensus to reach agreement on
+//! transactions.
+
 mod consensus;
 mod error;
 mod rest_api;
