@@ -15,8 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{NewProduct, Product};
-use super::schema::product;
+use super::models::{NewProduct, NewProductPropertyValue, Product};
+use super::schema::{product, product_property_value};
 use super::MAX_BLOCK_NUM;
 
 use diesel::{
@@ -30,7 +30,7 @@ use diesel::{
 #[allow(dead_code)]
 pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryResult<()> {
     for prod in products {
-        update_prod_end_block_num(conn, &prod.prod_id, prod.start_block_num)?;
+        update_prod_end_block_num(conn, &prod.product_id, prod.start_block_num)?;
     }
 
     insert_into(product::table)
@@ -39,18 +39,48 @@ pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryRes
         .map(|_| ())
 }
 
+pub fn insert_product_property_values(
+    conn: &PgConnection,
+    property_values: &[NewProductPropertyValue],
+) -> QueryResult<()> {
+    for value in property_values {
+        update_prod_property_values(conn, &value.property_name, value.start_block_num)?;
+    }
+
+    insert_into(product_property_value::table)
+        .values(property_values)
+        .execute(conn)
+        .map(|_| ())
+}
+
 fn update_prod_end_block_num(
     conn: &PgConnection,
-    prod_id: &str,
+    product_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(product::table)
         .filter(
-            product::prod_id
-                .eq(prod_id)
+            product::product_id
+                .eq(product_id)
                 .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(product::end_block_num.eq(current_block_num))
+        .execute(conn)
+        .map(|_| ())
+}
+
+fn update_prod_property_values(
+    conn: &PgConnection,
+    property_name: &str,
+    current_block_num: i64,
+) -> QueryResult<()> {
+    update(product_property_value::table)
+        .filter(
+            product_property_value::property_name
+                .eq(property_name)
+                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .set(product_property_value::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -68,7 +98,7 @@ pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Optio
     product::table
         .select(product::all_columns)
         .filter(
-            product::prod_id
+            product::product_id
                 .eq(product_id)
                 .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
         )

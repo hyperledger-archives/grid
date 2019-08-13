@@ -100,10 +100,29 @@ table! {
 table! {
     product (id) {
         id -> Int8,
-        prod_id -> Varchar,
-        prod_type -> Array<Text>,
+        product_id -> Varchar,
+        product_namespace -> Text,
         owner -> Varchar,
-        metadata -> Array<Json>,
+        start_block_num -> Int8,
+        end_block_num -> Int8,
+    }
+}
+
+table! {
+    use diesel::sql_types::*;
+    use super::LatLong;
+    product_property_value (id) {
+        id -> Int8,
+        product_id -> Varchar,
+        property_name -> Text,
+        data_type -> Text,
+        bytes_value -> Nullable<Bytea>,
+        boolean_value -> Nullable<Bool>,
+        number_value -> Nullable<Int8>,
+        string_value -> Nullable<Text>,
+        enum_value -> Nullable<Int4>,
+        struct_values -> Nullable<Array<Text>>,
+        lat_long_value -> Nullable<LatLong>,
         start_block_num -> Int8,
         end_block_num -> Int8,
     }
@@ -233,6 +252,8 @@ allow_tables_to_appear_in_same_query!(
     grid_property_definition,
     grid_schema,
     organization,
+    product,
+    product_property_value,
     property,
     proposal,
     record,

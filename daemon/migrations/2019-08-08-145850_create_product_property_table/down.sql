@@ -11,14 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
--- -----------------------------------------------------------------------------
+-- ------------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS product (
-    id BIGSERIAL PRIMARY KEY,
-    product_id VARCHAR(256) NOT NULL,
-    product_namespace TEXT NOT NULL,
-    owner VARCHAR(256) NOT NULL
-) INHERITS (chain_record);
-
-CREATE INDEX IF NOT EXISTS product_idx
-    ON product (product_id, end_block_num);
+DROP TABLE IF EXISTS product_property_value;
+DROP INDEX IF EXISTS product_property_value_idx;

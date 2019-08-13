@@ -25,7 +25,7 @@ use std::io::Write;
 
 use super::schema::{
     agent, associated_agent, block, grid_property_definition, grid_schema, organization, product,
-    property, proposal, record, reported_value, reporter,
+    product_property_value, property, proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -91,13 +91,12 @@ pub struct Organization {
     pub end_block_num: i64,
 }
 
-#[derive(Insertable, Debug)]
+#[derive(Clone, Insertable, Debug)]
 #[table_name = "product"]
 pub struct NewProduct {
-    pub prod_id: String,
-    pub prod_type: Vec<String>,
+    pub product_id: String,
+    pub product_namespace: String,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,
@@ -106,12 +105,51 @@ pub struct NewProduct {
 
 #[derive(Queryable, Debug)]
 pub struct Product {
-    ///  This is the record id for the slowly-changing-dimensions table.
+    ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
-    pub prod_id: String,
-    pub prod_type: Vec<String>,
+    pub product_id: String,
+    pub product_namespace: String,
     pub owner: String,
-    pub metadata: Vec<JsonValue>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+}
+
+#[derive(Clone, Insertable, Debug)]
+#[table_name = "product_property_value"]
+pub struct NewProductPropertyValue {
+    pub product_id: String,
+    pub property_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_block_num: i64,
+    pub end_block_num: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Queryable, Debug)]
+pub struct ProductPropertyValue {
+    ///  This is the product id for the slowly-changing-dimensions table.
+    pub id: i64,
+    pub product_id: String,
+    pub property_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
     pub start_block_num: i64,

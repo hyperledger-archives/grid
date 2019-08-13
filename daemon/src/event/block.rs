@@ -20,7 +20,8 @@ use diesel::result::Error;
 use grid_sdk::{
     protocol::{
         pike::state::{AgentList, OrganizationList},
-        schema::state::{DataType, PropertyDefinition, SchemaList},
+        product::state::ProductList,
+        schema::state::{DataType, PropertyDefinition, PropertyValue, SchemaList},
         track_and_trace::state::{
             PropertyList, PropertyPageList, ProposalList, RecordList, ReportedValue,
         },
@@ -41,16 +42,16 @@ use crate::database::{
     helpers as db,
     models::{
         Block, LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition,
-        NewGridSchema, NewOrganization, NewProperty, NewProposal, NewRecord, NewReportedValue,
-        NewReporter,
+        NewGridSchema, NewOrganization, NewProduct, NewProductPropertyValue, NewProperty,
+        NewProposal, NewRecord, NewReportedValue, NewReporter,
     },
     ConnectionPool,
 };
 
 use super::{
-    error::EventError, EventHandler, GRID_NAMESPACE, GRID_SCHEMA, PIKE_AGENT, PIKE_NAMESPACE,
-    PIKE_ORG, TRACK_AND_TRACE_NAMESPACE, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
-    TRACK_AND_TRACE_RECORD,
+    error::EventError, EventHandler, GRID_NAMESPACE, GRID_PRODUCT, GRID_SCHEMA, PIKE_AGENT,
+    PIKE_NAMESPACE, PIKE_ORG, TRACK_AND_TRACE_NAMESPACE, TRACK_AND_TRACE_PROPERTY,
+    TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
 };
 
 pub struct BlockEventHandler {
@@ -397,6 +398,36 @@ fn state_change_to_db_operation(
 
             Ok(DbInsertOperation::Records(records, associated_agents))
         }
+        GRID_PRODUCT => {
+            let product_tuple = ProductList::from_bytes(&state_change.value)
+                .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
+                .products()
+                .iter()
+                .fold((Vec::new(), Vec::new()), |mut acc, product| {
+                    let new_product = NewProduct {
+                        product_id: product.product_id().to_string(),
+                        product_namespace: format!("{:?}", product.product_type()),
+                        owner: product.owner().to_string(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                    };
+                    acc.0.push(new_product);
+
+                    let mut properties = make_product_property_values(
+                        block_num,
+                        product.product_id(),
+                        product.properties(),
+                    );
+                    acc.1.append(&mut properties);
+
+                    acc
+                });
+
+            Ok(DbInsertOperation::Products(
+                product_tuple.0,
+                product_tuple.1,
+            ))
+        }
         _ => Err(EventError(format!(
             "Could not handle state change unknown address: {}",
             &state_change.address
@@ -413,6 +444,7 @@ enum DbInsertOperation {
     ReportedValues(Vec<NewReportedValue>),
     Proposals(Vec<NewProposal>),
     Records(Vec<NewRecord>, Vec<NewAssociatedAgent>),
+    Products(Vec<NewProduct>, Vec<NewProductPropertyValue>),
 }
 
 impl DbInsertOperation {
@@ -435,6 +467,10 @@ impl DbInsertOperation {
             DbInsertOperation::Records(ref records, ref associated_agents) => {
                 db::insert_records(conn, records)?;
                 db::insert_associated_agents(conn, associated_agents)
+            }
+            DbInsertOperation::Products(ref products, ref properties) => {
+                db::insert_products(conn, products)?;
+                db::insert_product_property_values(conn, properties)
             }
         }
     }
@@ -554,6 +590,49 @@ fn make_property_definitions(
                 start_block_num,
                 schema_name,
                 def.struct_properties(),
+            ));
+        }
+    }
+
+    properties
+}
+
+fn make_product_property_values(
+    start_block_num: i64,
+    product_id: &str,
+    values: &[PropertyValue],
+) -> Vec<NewProductPropertyValue> {
+    let mut properties = Vec::new();
+
+    for val in values {
+        properties.push(NewProductPropertyValue {
+            property_name: val.name().to_string(),
+            product_id: product_id.to_string(),
+            data_type: format!("{:?}", val.data_type()),
+            bytes_value: Some(val.bytes_value().to_vec()),
+            boolean_value: Some(*val.boolean_value()),
+            number_value: Some(*val.number_value()),
+            string_value: Some(val.string_value().to_string()),
+            enum_value: Some(*val.enum_value() as i32),
+            struct_values: Some(
+                val.struct_values()
+                    .iter()
+                    .map(|x| x.name().to_string())
+                    .collect(),
+            ),
+            lat_long_value: Some(LatLongValue(
+                *val.lat_long_value().latitude(),
+                *val.lat_long_value().longitude(),
+            )),
+            start_block_num,
+            end_block_num: db::MAX_BLOCK_NUM,
+        });
+
+        if !val.struct_values().is_empty() {
+            properties.append(&mut make_product_property_values(
+                start_block_num,
+                product_id,
+                val.struct_values(),
             ));
         }
     }
