@@ -29,7 +29,7 @@ services:
       - ./node_registry:/node_registry
     command: >
       bash -c "
-        /splinterd -vv \
+        splinterd -vv \
                 --transport raw \
                 --storage yaml \
                 --service-endpoint 0.0.0.0:8043 \
@@ -53,7 +53,7 @@ services:
       - ./node_registry:/node_registry
     command: >
       bash -c "
-        /splinterd -vv \
+        splinterd -vv \
                 --transport raw \
                 --storage yaml \
                 --service-endpoint 0.0.0.0:8045 \
@@ -77,7 +77,7 @@ services:
     command: >
         bash -c "
           sleep 10;
-          /private-xo -vv \
+          private-xo -vv \
                       --bind 0.0.0.0:8000 \
                       --circuit alpha \
                       --service-id service_a \
@@ -98,7 +98,7 @@ services:
     command: >
         bash -c "
           sleep 10;
-          /private-xo -vv \
+          private-xo -vv \
                       --bind 0.0.0.0:8000 \
                       --circuit alpha \
                       --service-id service_b \

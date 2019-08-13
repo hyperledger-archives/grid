@@ -76,7 +76,7 @@ services:
                sleep 1
             done
 
-           ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-acme:5432/gameroom \
+            gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-acme:5432/gameroom \
               -b gameroomd-acme:8000 --splinterd-url http://splinterd-node-acme:8085
           "
     splinterd-node-acme:
@@ -97,7 +97,7 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
+          splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044
         "
@@ -159,7 +159,7 @@ services:
                sleep 1
             done
 
-           ./target/debug/gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-bubba:5432/gameroom \
+            gameroomd -vv --database-url postgres://gameroom:gameroom_example@db-bubba:5432/gameroom \
               -b gameroomd-bubba:8000 --splinterd-url http://splinterd-node-bubba:8085
           "
 
@@ -181,7 +181,7 @@ services:
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
-          ./splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
+          splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044
         "

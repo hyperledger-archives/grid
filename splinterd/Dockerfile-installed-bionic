@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -------------=== splinterd docker build ===-------------
+
 FROM ubuntu:bionic as BUILDER
 
 # Install base dependencies
@@ -67,22 +69,17 @@ RUN rm target/release/splinterd* target/release/deps/splinterd*
 COPY splinterd/src ./src
 COPY splinterd/api ./api
 
-# Build the project
-RUN cargo build --release
+RUN cargo install cargo-deb
 
-# create the standalone image
+# Build the package
+RUN cargo deb
+
+# -------------=== splinterd docker build ===-------------
+
 FROM ubuntu:bionic
 
+COPY --from=builder /build/splinterd/target/debian/splinterd_*.deb /tmp
+
 RUN apt-get update \
- && apt-get install -y \
-    libssl1.1 \
-    libzmq5 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-COPY --from=BUILDER /build/splinterd/target/release/splinterd /usr/bin/splinterd
-
-EXPOSE 8043
-EXPOSE 8945
-EXPOSE 8080
-CMD ["splinterd"]
+ && dpkg -i /tmp/splinterd_*.deb || true \
+ && apt-get -f -y install

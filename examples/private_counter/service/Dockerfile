@@ -19,48 +19,61 @@ RUN apt-get update \
  curl \
  gcc \
  libssl-dev \
+ libzmq3-dev \
  pkg-config \
  unzip
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
-    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /protoc3 \
-    && rm protoc-3.5.1-linux-x86_64.zip
+ENV PATH=$PATH:/root/.cargo/bin
 
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
 
-# Copy over libsplinter, protos and create the example folder, for the
-# relative dependencies
-COPY ./protos /protos
-COPY ./libsplinter /libsplinter
-RUN mkdir -p /examples/private_counter
+# Install protoc
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
 
-# Create an empty project, copy over the Cargo toml, and buld the deps first
-WORKDIR /examples/private_counter
+# Copy dependencies
+COPY protos /build/protos
+COPY libsplinter /build/libsplinter
 
+# Create empty cargo project
+WORKDIR /build/examples/private_counter
 RUN USER=root cargo new --bin service --name private-counter
 
-WORKDIR /examples/private_counter/service
-COPY ./examples/private_counter/service/Cargo.toml ./Cargo.toml
+# Copy over Cargo.toml file
+COPY examples/private_counter/service/Cargo.toml /build/examples/private_counter/service/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/examples/private_counter/service
 RUN cargo build --release
 
-# Copy over the source and build the app
-RUN rm ./src/*.rs
-COPY ./examples/private_counter/protos ../protos
-COPY ./examples/private_counter/service/build.rs ./build.rs
-COPY ./examples/private_counter/service/src ./src
-RUN rm ./target/release/private-counter* ./target/release/deps/private_counter*
+# Remove the auto-generated .rs files and the built files
+RUN rm src/*
+RUN rm target/release/private-counter* target/release/deps/private_counter*
+
+# Copy over source files
+COPY examples/private_counter/protos /build/examples/private_counter/protos
+COPY examples/private_counter/service/build.rs /build/examples/private_counter/service/build.rs
+COPY examples/private_counter/service/src /build/examples/private_counter/service/src
+COPY libsplinter/src /build/libsplinter/src
+
+# Build the project
 RUN cargo build --release
 
 # Create the standalone image
 FROM ubuntu:bionic
 
 RUN apt-get update \
- && apt-get install -y libssl1.1 \
+ && apt-get install -y \
+ libssl1.1 \
+ libzmq5 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILDER /examples/private_counter/service/target/release/private-counter /
+COPY --from=BUILDER /build/examples/private_counter/service/target/release/private-counter /usr/bin/private-counter
 
 EXPOSE 8000
-CMD ["/private-counter"]
+CMD ["private-counter"]

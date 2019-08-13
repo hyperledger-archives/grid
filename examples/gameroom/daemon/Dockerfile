@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic
+FROM ubuntu:bionic as BUILDER
 
 RUN apt-get update \
  && apt-get install -y \
@@ -29,22 +29,60 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
+ENV PATH=$PATH:/root/.cargo/bin
 
-# For Building Protobufs
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
-    && unzip -o protoc-3.5.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.5.1-linux-x86_64.zip
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
+ && chmod +x /usr/bin/rustup-init \
+ && rustup-init -y
 
-# Copy over libsplinter, protos and create the example folder, for the
-# relative dependencies
-COPY ./protos /protos
-COPY ./libsplinter /libsplinter
+# Install protoc
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
 
-COPY /examples/gameroom /examples/gameroom
+RUN mkdir /build
 
-WORKDIR /examples/gameroom/daemon
-RUN cargo build
+# Copy dependencies
+COPY examples/gameroom/database /build/examples/gameroom/database
+COPY protos /build/protos
+COPY libsplinter /build/libsplinter
 
-ENV PATH=$PATH:/project/gameroom/daemon/target/debug/
+# Create empty cargo project
+WORKDIR /build/examples/gameroom
+RUN USER=root cargo new --bin daemon
+
+# Copy over Cargo.toml file
+COPY examples/gameroom/daemon/Cargo.toml /build/examples/gameroom/daemon/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/examples/gameroom/daemon
+RUN cargo build --release
+
+# Remove the auto-generated .rs files and the built files
+WORKDIR /build
+RUN rm */src/*.rs
+RUN rm examples/gameroom/daemon/target/release/gameroom* examples/gameroom/daemon/target/release/deps/gameroom*
+
+# Copy over source files
+COPY examples/gameroom/daemon/src /build/examples/gameroom/daemon/src
+COPY libsplinter/src /build/libsplinter/src
+COPY protos/ /build/protos
+
+# Build the project
+WORKDIR /build/examples/gameroom/daemon
+RUN cargo build --release
+
+# create the standalone image
+FROM ubuntu:bionic
+
+RUN apt-get update \
+ && apt-get install -y \
+    libssl1.1 \
+    libzmq5 \
+    postgresql-client \
+    curl \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=BUILDER /build/examples/gameroom/daemon/target/release/gameroomd /usr/bin/gameroomd

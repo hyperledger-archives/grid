@@ -1,0 +1,59 @@
+# Copyright 2019 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: '3.7'
+
+services:
+
+  splinter-cli:
+    build:
+      context: .
+      dockerfile: cli/Dockerfile-installed-${DISTRO}
+    image: splinter-cli:${ISOLATION_ID}
+    container_name: splinter-cli
+
+  splinterd:
+    build:
+      context: .
+      dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+    image: splinterd:${ISOLATION_ID}
+    container_name: splinterd
+
+  private_xo:
+    build:
+      context: .
+      dockerfile: examples/private_xo/Dockerfile-installed-${DISTRO}
+    image: private_xo:${ISOLATION_ID}
+    container_name: private_xo
+
+  gameroomd:
+    build:
+      context: .
+      dockerfile: examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+    image: gameroomd:${ISOLATION_ID}
+    container_name: gameroomd
+
+  private_counter_cli:
+    build:
+      context: .
+      dockerfile: examples/private_counter/cli/Dockerfile-installed-${DISTRO}
+    image: private_counter_cli:${ISOLATION_ID}
+    container_name: private_counter_cli
+
+  private_counter_service:
+    build:
+      context: .
+      dockerfile: examples/private_counter/service/Dockerfile-installed-${DISTRO}
+    image: private_counter_service:${ISOLATION_ID}
+    container_name: private_counter_service

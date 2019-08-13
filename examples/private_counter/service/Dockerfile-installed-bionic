@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2019 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,23 +14,14 @@
 
 FROM ubuntu:bionic as BUILDER
 
-# Install base dependencies
 RUN apt-get update \
- && apt-get install -y -q \
-    build-essential \
-    curl \
-    gcc \
-    g++ \
-    libpq-dev \
-    libssl-dev \
-    libsasl2-dev \
-    libzmq3-dev \
-    openssl \
-    pkg-config \
-    python \
-    unzip \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y \
+ curl \
+ gcc \
+ libssl-dev \
+ libzmq3-dev \
+ pkg-config \
+ unzip
 
 ENV PATH=$PATH:/root/.cargo/bin
 
@@ -49,40 +40,40 @@ COPY protos /build/protos
 COPY libsplinter /build/libsplinter
 
 # Create empty cargo project
-WORKDIR /build
-RUN USER=root cargo new --bin splinterd
+WORKDIR /build/examples/private_counter
+RUN USER=root cargo new --bin service --name private-counter
 
 # Copy over Cargo.toml file
-COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
+COPY examples/private_counter/service/Cargo.toml /build/examples/private_counter/service/Cargo.toml
 
 # Do a release build to cache dependencies
-WORKDIR /build/splinterd
+WORKDIR /build/examples/private_counter/service
 RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
-RUN rm src/*.rs
-RUN rm target/release/splinterd* target/release/deps/splinterd*
+RUN rm src/*
+RUN rm target/release/private-counter* target/release/deps/private_counter*
 
 # Copy over source files
-COPY splinterd/src ./src
-COPY splinterd/api ./api
+COPY examples/private_counter/protos /build/examples/private_counter/protos
+COPY examples/private_counter/service/build.rs /build/examples/private_counter/service/build.rs
+COPY examples/private_counter/service/src /build/examples/private_counter/service/src
+COPY libsplinter/src /build/libsplinter/src
 
-# Build the project
-RUN cargo build --release
+RUN cargo install cargo-deb
 
-# create the standalone image
+# Build the package
+RUN cargo deb
+
+# -------------=== private_xo docker build ===-------------
 FROM ubuntu:bionic
 
+COPY --from=BUILDER /build/examples/private_counter/service/target/debian/private-counter*.deb /tmp
+
 RUN apt-get update \
- && apt-get install -y \
-    libssl1.1 \
-    libzmq5 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ && dpkg -i /tmp/private-counter*.deb || true \
+ && apt-get -f -y install
 
-COPY --from=BUILDER /build/splinterd/target/release/splinterd /usr/bin/splinterd
+EXPOSE 8000
 
-EXPOSE 8043
-EXPOSE 8945
-EXPOSE 8080
-CMD ["splinterd"]
+CMD ["private-counter"]

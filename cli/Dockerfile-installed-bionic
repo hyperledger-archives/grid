@@ -44,45 +44,47 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
 
+RUN mkdir /build
+
 # Copy dependencies
-COPY protos /build/protos
-COPY libsplinter /build/libsplinter
+COPY libsplinter/ /build/libsplinter/
+COPY protos/ /build/protos/
+COPY client/ /build/client/
 
 # Create empty cargo project
 WORKDIR /build
-RUN USER=root cargo new --bin splinterd
+RUN USER=root cargo new --bin cli
 
 # Copy over Cargo.toml file
-COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
+COPY cli/Cargo.toml /build/cli/Cargo.toml
 
 # Do a release build to cache dependencies
-WORKDIR /build/splinterd
+WORKDIR /build/cli
 RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
-RUN rm src/*.rs
-RUN rm target/release/splinterd* target/release/deps/splinterd*
+WORKDIR /build
+RUN rm */src/*.rs
+RUN rm cli/target/release/splinter* cli/target/release/deps/splinter*
 
 # Copy over source files
-COPY splinterd/src ./src
-COPY splinterd/api ./api
+COPY cli/src /build/cli/src
+COPY client/src /build/client/src
+COPY libsplinter/src /build/libsplinter/src
+COPY protos/ /build/protos/
+
+RUN cargo install cargo-deb
 
 # Build the project
-RUN cargo build --release
+WORKDIR /build/cli
+RUN cargo deb
 
-# create the standalone image
+# -------------=== splinter cli docker build ===-------------
+
 FROM ubuntu:bionic
 
+COPY --from=builder /build/cli/target/debian/splinter-cli_*.deb /tmp
+
 RUN apt-get update \
- && apt-get install -y \
-    libssl1.1 \
-    libzmq5 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-COPY --from=BUILDER /build/splinterd/target/release/splinterd /usr/bin/splinterd
-
-EXPOSE 8043
-EXPOSE 8945
-EXPOSE 8080
-CMD ["splinterd"]
+ && dpkg -i /tmp/splinter-cli_*.deb || true \
+ && apt-get -f -y install

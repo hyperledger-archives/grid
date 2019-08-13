@@ -36,7 +36,7 @@ WORKDIR /build/
 RUN USER=root cargo new --bin cli --name pcounter
 
 # Copy over Cargo.toml file
-COPY cli/Cargo.toml /build/cli/Cargo.toml
+COPY examples/private_counter/cli/Cargo.toml /build/cli/Cargo.toml
 
 # Do a release build to cache dependencies
 WORKDIR /build/cli
@@ -47,21 +47,21 @@ RUN rm src/*.rs
 RUN rm target/release/pcounter* ./target/release/deps/pcounter*
 
 # Copy over source files
-COPY cli/src src
+COPY examples/private_counter/cli/src src
+
+RUN cargo install cargo-deb
 
 # Build the project
-RUN cargo build --release
+RUN cargo deb
 
-# Create the standalone image
+# -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic
 
-RUN apt-get update \
- && apt-get install -y \
- libssl1.1 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+COPY --from=BUILDER /build/cli/target/debian/pcounter*.deb /tmp
 
-COPY --from=BUILDER /build/cli/target/release/pcounter /usr/bin/pcounter
+RUN apt-get update \
+ && dpkg -i /tmp/pcounter*.deb || true \
+ && apt-get -f -y install
 
 EXPOSE 8000
 

@@ -14,11 +14,13 @@
 
 FROM ubuntu:bionic as BUILDER
 
+# Install base dependencies
 RUN apt-get update \
  && apt-get install -y \
     curl \
     gcc \
     libssl-dev \
+    libzmq3-dev \
     pkg-config \
     unzip \
  && apt-get clean \
@@ -31,38 +33,51 @@ RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
  && chmod +x /usr/bin/rustup-init \
  && rustup-init -y
 
+# Install protoc
+RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
+    && rm protoc-3.7.1-linux-x86_64.zip
+
+# Copy dependencies
+COPY protos /build/protos
+COPY libsplinter /build/libsplinter
+
 # Create empty cargo project
-WORKDIR /build/
-RUN USER=root cargo new --bin cli --name pcounter
+WORKDIR /build/examples
+RUN USER=root cargo new --bin private_xo
 
 # Copy over Cargo.toml file
-COPY cli/Cargo.toml /build/cli/Cargo.toml
+COPY examples/private_xo/Cargo.toml /build/examples/private_xo/Cargo.toml
 
 # Do a release build to cache dependencies
-WORKDIR /build/cli
+WORKDIR /build/examples/private_xo
 RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-RUN rm target/release/pcounter* ./target/release/deps/pcounter*
+RUN rm target/release/private-xo* target/release/deps/private_xo*
 
 # Copy over source files
-COPY cli/src src
+COPY ./examples/private_xo/protos /build/examples/private_xo/protos
+COPY ./examples/private_xo/build.rs /build/examples/private_xo/build.rs
+COPY ./examples/private_xo/src /build/examples/private_xo/src
+COPY libsplinter/src /build/libsplinter/src
+COPY protos/ /build/protos/
 
-# Build the project
-RUN cargo build --release
+RUN cargo install cargo-deb
 
-# Create the standalone image
+# Build the package
+RUN cargo deb
+
+# -------------=== private_xo docker build ===-------------
 FROM ubuntu:bionic
 
-RUN apt-get update \
- && apt-get install -y \
- libssl1.1 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+COPY --from=BUILDER /build/examples/private_xo/target/debian/private-xo*.deb /tmp
 
-COPY --from=BUILDER /build/cli/target/release/pcounter /usr/bin/pcounter
+RUN apt-get update \
+ && dpkg -i /tmp/private-xo*.deb || true \
+ && apt-get -f -y install
 
 EXPOSE 8000
 
-CMD ["pcounter"]
+CMD ["private-xo"]
