@@ -12,6 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Rest API Module.
+//!
+//! Module for creating REST APIs for services.
+//!
+//! Below is an example of a `struct` that implements `ResouceProvider` and then passes its resources
+//! to a running instance of `RestApi`.
+//!
+//! ```
+//! use libsplinter::rest_api::{Resource, Method, RestApiBuilder, RestResourceProvider};
+//! use actix_web::HttpResponse;
+//! use futures::IntoFuture;
+//!
+//! struct IndexResource {
+//!     pub name: String
+//! }
+//!
+//! impl RestResourceProvider for IndexResource {
+//!     fn resources(&self) -> Vec<Resource> {
+//!         let name = self.name.clone();
+//!
+//!         vec![Resource::new(Method::Get, "/index", move |r, p| {
+//!             Box::new(
+//!                 HttpResponse::Ok()
+//!                 .body(format!("Hello, I am {}", name))
+//!                 .into_future())
+//!         })]
+//!     }
+//! }
+//!
+//! let index_resource = IndexResource { name: "Taco".to_string() };
+//!
+//! RestApiBuilder::new()
+//!     .add_resources(index_resource.resources())
+//!     .with_bind("localhost:8080")
+//!     .build()
+//!     .unwrap()
+//!     .run();
+//! ```
+
 mod errors;
 
 use actix_http::Error as ActixError;
@@ -23,6 +62,7 @@ use std::thread;
 
 pub use errors::RestApiServerError;
 
+/// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
     fn resources(&self) -> Vec<Resource>;
 }
@@ -34,6 +74,8 @@ type HandlerFunction = Box<
         + 'static,
 >;
 
+/// Shutdown handle returned by `RestApi::run`. Allows rest api instance to be shut down
+/// gracefully.
 pub struct RestApiShutdownHandle {
     do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
 }
@@ -44,6 +86,7 @@ impl RestApiShutdownHandle {
     }
 }
 
+/// Rest methods compatible with `RestApi`.
 #[derive(Clone)]
 pub enum Method {
     Get,
@@ -54,6 +97,23 @@ pub enum Method {
     Head,
 }
 
+/// Resource is a `struct` meant to describe a RESTful endpoint.
+///
+/// ```
+///
+/// use libsplinter::rest_api::{Resource, Method};
+/// use actix_web::HttpResponse;
+/// use futures::IntoFuture;
+///
+///
+/// let resource = Resource::new(Method::Get, "/index", |r, p| {
+///     Box::new(
+///         HttpResponse::Ok()
+///             .body("Hello, World")
+///             .into_future()
+///     )
+/// });
+/// ```
 #[derive(Clone)]
 pub struct Resource {
     route: String,
@@ -95,6 +155,7 @@ impl Resource {
     }
 }
 
+/// `RestApi` is used to create an instance of a restful web server.
 #[derive(Clone)]
 pub struct RestApi {
     resources: Vec<Resource>,
@@ -157,6 +218,7 @@ impl RestApi {
     }
 }
 
+/// Builder `struct` for `RestApi`.
 pub struct RestApiBuilder {
     resources: Vec<Resource>,
     bind: Option<String>,

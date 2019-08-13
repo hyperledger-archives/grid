@@ -15,6 +15,7 @@
 use std::error::Error;
 use std::fmt;
 
+/// Error module for `rest_api`.
 #[derive(Debug)]
 pub enum RestApiServerError {
     StartUpError(String),
