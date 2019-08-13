@@ -245,6 +245,9 @@ pub trait ConsensusNetworkSender: Send {
     fn broadcast(&self, message: Vec<u8>) -> Result<(), ConsensusSendError>;
 }
 
+/// Consensus algorithms are implemented as consensus engines. The ConsensusEngine interface
+/// defines how consensus algorithms are identified (name, version, and supported protocols), as
+/// well as how they are run and what values are required for running.
 pub trait ConsensusEngine: Send {
     /// The name of the consensus engine
     fn name(&self) -> &str;
