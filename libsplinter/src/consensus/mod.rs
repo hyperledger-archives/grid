@@ -396,6 +396,10 @@ pub mod tests {
                 self.update_sender
                     .send(ProposalUpdate::ProposalCreated(Some(proposal)))
                     .expect("failed to send proposal");
+            } else {
+                self.update_sender
+                    .send(ProposalUpdate::ProposalCreated(None))
+                    .expect("failed to send proposal");
             }
 
             Ok(())
