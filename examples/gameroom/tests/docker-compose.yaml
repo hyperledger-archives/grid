@@ -31,6 +31,7 @@ services:
         bash -c "
            cd examples/gameroom/daemon
            cargo test --features test-node-endpoint
+           cargo test --features test-authorization-handler -- --test-threads=1
         "
 
   splinterd-node:
@@ -49,7 +50,20 @@ services:
       dockerfile: splinterd/Dockerfile
     entrypoint: |
       bash -c "
-      pwd
-      ls project/splinter/examples/gameroom/tests
         splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
       "
+
+  db-test:
+    image: postgres:alpine
+    container_name: db-test
+    restart: always
+    expose:
+      - 5432
+    ports:
+        - "5430:5432"
+    environment:
+      POSTGRES_USER: gameroom_test
+      POSTGRES_PASSWORD: gameroom_test
+      POSTGRES_DB: gameroom_test
+    volumes:
+      - "../database/tables:/docker-entrypoint-initdb.d"

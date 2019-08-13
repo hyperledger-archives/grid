@@ -60,7 +60,7 @@ fn run() -> Result<(), GameroomDaemonError> {
         gameroom_database::create_connection_pool(config.database_url())?;
 
     let (app_auth_handler_shutdown_handle, app_auth_handler_join_handle) =
-        authorization_handler::run(config.splinterd_url())?;
+        authorization_handler::run(config.splinterd_url(), connection_pool.clone())?;
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
@@ -83,7 +83,7 @@ fn run() -> Result<(), GameroomDaemonError> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let _ = app_auth_handler_join_handle.join();
+    app_auth_handler_join_handle.join();
     let _ = rest_api_join_handle.join();
 
     Ok(())

@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::models::{CircuitMember, CircuitProposal};
-use crate::schema::{circuit_proposal, proposal_circuit_member};
+use std::time::SystemTime;
 
-use diesel::{pg::PgConnection, prelude::*, result::Error::NotFound, QueryResult};
+use crate::models::{
+    CircuitMember, CircuitProposal, NewCircuitMember, NewCircuitService, NewProposalVoteRecord,
+};
+use crate::schema::{
+    circuit_proposal, proposal_circuit_member, proposal_circuit_service, proposal_vote_record,
+};
+use diesel::{
+    dsl::insert_into, pg::PgConnection, prelude::*, result::Error::NotFound, QueryResult,
+};
 
 pub fn fetch_proposal_by_id(conn: &PgConnection, id: &str) -> QueryResult<Option<CircuitProposal>> {
     circuit_proposal::table
@@ -54,4 +61,90 @@ pub fn list_proposal_circuit_members(conn: &PgConnection) -> QueryResult<Vec<Cir
     proposal_circuit_member::table
         .select(proposal_circuit_member::all_columns)
         .load::<CircuitMember>(conn)
+}
+
+pub fn insert_circuit_proposal(conn: &PgConnection, proposal: CircuitProposal) -> QueryResult<()> {
+    insert_into(circuit_proposal::table)
+        .values(&vec![proposal])
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn update_circuit_proposal_status(
+    conn: &PgConnection,
+    proposal_id: &str,
+    updated_time: &SystemTime,
+    status: &str,
+) -> QueryResult<()> {
+    diesel::update(circuit_proposal::table.find(proposal_id))
+        .set((
+            circuit_proposal::updated_time.eq(updated_time),
+            circuit_proposal::status.eq(status),
+        ))
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn insert_proposal_vote_record(
+    conn: &PgConnection,
+    vote_records: &[NewProposalVoteRecord],
+) -> QueryResult<()> {
+    insert_into(proposal_vote_record::table)
+        .values(vote_records)
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn insert_circuit_service(
+    conn: &PgConnection,
+    circuit_services: &[NewCircuitService],
+) -> QueryResult<()> {
+    insert_into(proposal_circuit_service::table)
+        .values(circuit_services)
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn insert_circuit_member(
+    conn: &PgConnection,
+    circuit_members: &[NewCircuitMember],
+) -> QueryResult<()> {
+    insert_into(proposal_circuit_member::table)
+        .values(circuit_members)
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn insert_proposal_information(
+    conn: &PgConnection,
+    proposal: CircuitProposal,
+    proposal_votes: &[NewProposalVoteRecord],
+    circuit_services: &[NewCircuitService],
+    circuit_members: &[NewCircuitMember],
+) -> QueryResult<()> {
+    conn.transaction::<_, _, _>(|| {
+        insert_circuit_proposal(conn, proposal)?;
+        insert_proposal_vote_record(conn, proposal_votes)?;
+        insert_circuit_service(conn, circuit_services)?;
+        insert_circuit_member(conn, circuit_members)?;
+
+        Ok(())
+    })
+}
+
+pub fn fetch_circuit_proposal_with_status(
+    conn: &PgConnection,
+    circuit_id: &str,
+    status: &str,
+) -> QueryResult<Option<CircuitProposal>> {
+    circuit_proposal::table
+        .select(circuit_proposal::all_columns)
+        .filter(
+            circuit_proposal::circuit_id
+                .eq(circuit_id)
+                .and(circuit_proposal::status.eq(status)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }

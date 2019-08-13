@@ -27,7 +27,7 @@ pub struct GameroomUser {
     pub hashed_password: String,
 }
 
-#[derive(Insertable, Queryable, Identifiable)]
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
 #[table_name = "circuit_proposal"]
 pub struct CircuitProposal {
     pub id: String,
@@ -45,7 +45,7 @@ pub struct CircuitProposal {
     pub updated_time: SystemTime,
 }
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[table_name = "proposal_vote_record"]
 #[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
 pub struct ProposalVoteRecord {
@@ -56,7 +56,7 @@ pub struct ProposalVoteRecord {
     pub created_time: SystemTime,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, PartialEq, Debug)]
 #[table_name = "proposal_vote_record"]
 pub struct NewProposalVoteRecord {
     pub proposal_id: String,
@@ -65,7 +65,7 @@ pub struct NewProposalVoteRecord {
     pub created_time: SystemTime,
 }
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[table_name = "proposal_circuit_member"]
 #[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
 pub struct CircuitMember {
@@ -75,7 +75,7 @@ pub struct CircuitMember {
     pub endpoint: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, PartialEq, Debug)]
 #[table_name = "proposal_circuit_member"]
 pub struct NewCircuitMember {
     pub proposal_id: String,
@@ -83,7 +83,7 @@ pub struct NewCircuitMember {
     pub endpoint: String,
 }
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[table_name = "proposal_circuit_service"]
 #[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
 pub struct CircuitService {
@@ -94,7 +94,7 @@ pub struct CircuitService {
     pub allowed_nodes: Vec<String>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, PartialEq, Debug)]
 #[table_name = "proposal_circuit_service"]
 pub struct NewCircuitService {
     pub proposal_id: String,
