@@ -179,6 +179,11 @@ impl TwoPhaseEngine {
                             tpc_proposal.add_verified_peer(consensus_msg.origin_id);
 
                             if tpc_proposal.peers_verified() == tpc_proposal.required_verifiers() {
+                                debug!(
+                                    "All verifiers have approved; accepting proposal {}",
+                                    proposal_id
+                                );
+
                                 proposal_manager.accept_proposal(&proposal_id, None)?;
                                 self.state = State::Idle;
 
@@ -193,8 +198,8 @@ impl TwoPhaseEngine {
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::FAILED => {
                         debug!(
-                            "Proposal {} failed by peer {}",
-                            proposal_id, consensus_msg.origin_id
+                            "Proposal failed by peer {}; rejecting proposal {}",
+                            consensus_msg.origin_id, proposal_id
                         );
 
                         proposal_manager.reject_proposal(&proposal_id)?;
@@ -209,7 +214,7 @@ impl TwoPhaseEngine {
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::UNSET_VERIFICATION_RESPONSE => {
                         warn!(
-                            "ignoring improperly specified proposal verification response from {}",
+                            "Ignoring improperly specified proposal verification response from {}",
                             consensus_msg.origin_id
                         )
                     }
@@ -229,7 +234,7 @@ impl TwoPhaseEngine {
                     }
                 }
                 TwoPhaseMessage_ProposalResult::REJECT => {
-                    debug!("rejecting proposal {}", proposal_id);
+                    debug!("Rejecting proposal {}", proposal_id);
                     proposal_manager.reject_proposal(&proposal_id)?;
 
                     // Only update state if this was the currently evaluating proposal
@@ -238,12 +243,12 @@ impl TwoPhaseEngine {
                     }
                 }
                 TwoPhaseMessage_ProposalResult::UNSET_RESULT => warn!(
-                    "ignoring improperly specified proposal result from {}",
+                    "Ignoring improperly specified proposal result from {}",
                     consensus_msg.origin_id
                 ),
             },
             TwoPhaseMessage_Type::UNSET_TYPE => warn!(
-                "ignoring improperly specified two-phase message from {}",
+                "Ignoring improperly specified two-phase message from {}",
                 consensus_msg.origin_id
             ),
         }
@@ -527,7 +532,7 @@ impl ConsensusEngine for TwoPhaseEngine {
                 {
                     let tpc_proposal = self.proposal_backlog.remove(idx).unwrap();
                     debug!(
-                        "verifying proposal from backlog: {}",
+                        "Starting coordination for backlogged proposal {}",
                         tpc_proposal.proposal_id()
                     );
                     if let Err(err) =
