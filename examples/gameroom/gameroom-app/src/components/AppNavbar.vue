@@ -21,6 +21,12 @@ limitations under the License.
     </router-link>
     <ul v-if="isLoggedIn">
       <li>
+        <dropdown
+          icon="notifications"
+          :badge-count="notificationCount"
+          title="Notifications" />
+      </li>
+      <li>
         <router-link to='/'>
           <span v-on:click="logout">Log out</span>
         </router-link>
@@ -43,12 +49,18 @@ limitations under the License.
 
 <script lang='ts'>
 import { Vue, Component } from 'vue-property-decorator';
+import Dropdown from '@/components/Dropdown.vue';
 
-@Component
+@Component({
+  components: { Dropdown },
+})
 export default class AppNavbar extends Vue {
-
   get isLoggedIn() {
     return this.$store.getters['user/isLoggedIn'];
+  }
+
+  get notificationCount() {
+    return this.$store.getters['notifications/getNewNotificationCount'];
   }
 
   logout() {

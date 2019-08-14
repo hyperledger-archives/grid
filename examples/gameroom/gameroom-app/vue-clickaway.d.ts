@@ -12,15 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-.footer {
-  display: flex;
-  overflow: hidden;
-  white-space: nowrap;
-  align-items: center;
-  background-color: $color-base;
-  color: $color-text-tertiary;
-  border-top: 1px solid $color-border;
-  width: 100%;
-  font-size: .75em;
-  padding-left: .5em
+declare module 'vue-clickaway' {
+  export const mixin: any;
 }
