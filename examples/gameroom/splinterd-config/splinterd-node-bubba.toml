@@ -13,7 +13,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-node_id = "123asdf"
+node_id = "bubba-node-000"
 
 # Endpoint used for service to daemon communication.
 service_endpoint = "127.0.0.1:8043"
