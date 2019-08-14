@@ -52,6 +52,7 @@
 //! ```
 
 mod errors;
+mod events;
 
 use actix_http::Error as ActixError;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
@@ -61,6 +62,8 @@ use std::sync::{mpsc, Arc};
 use std::thread;
 
 pub use errors::{ResponseError, RestApiServerError};
+
+pub use events::EventDealer;
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
