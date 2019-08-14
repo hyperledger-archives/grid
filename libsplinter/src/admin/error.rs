@@ -100,3 +100,24 @@ impl From<Sha256Error> for AdminStateError {
         AdminStateError(err.to_string())
     }
 }
+
+#[derive(Debug)]
+pub enum MarshallingError {
+    UnsetField(String),
+}
+
+impl std::error::Error for MarshallingError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            MarshallingError::UnsetField(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for MarshallingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
+        }
+    }
+}

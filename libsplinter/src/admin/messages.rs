@@ -20,6 +20,8 @@ use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
+use super::error::MarshallingError;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CreateCircuit {
     pub circuit_id: String,
@@ -329,25 +331,4 @@ pub enum AdminServiceEvent {
     ProposalVote(CircuitProposalVote),
     ProposalAccepted(CircuitProposal),
     ProposalRejected(CircuitProposal),
-}
-
-#[derive(Debug)]
-pub enum MarshallingError {
-    UnsetField(String),
-}
-
-impl std::error::Error for MarshallingError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            MarshallingError::UnsetField(_) => None,
-        }
-    }
-}
-
-impl std::fmt::Display for MarshallingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
-        }
-    }
 }
