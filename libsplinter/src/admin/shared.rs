@@ -25,7 +25,8 @@ use crate::network::{
 use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{
     Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitProposal, CircuitProposal_ProposalType,
+    CircuitProposal, CircuitProposal_ProposalType, Circuit_AuthorizationType,
+    Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
@@ -190,26 +191,20 @@ impl AdminServiceShared {
                     verifiers.push(admin_service_id(member.get_node_id()));
                 }
 
-                if self.has_proposal(proposed_circuit.get_circuit_id()) {
-                    Err(AdminSharedError::ValidationFailed(format!(
-                        "Ignoring duplicate create proposal of circuit {}",
-                        proposed_circuit.get_circuit_id()
-                    )))
-                } else {
-                    debug!("proposing {}", proposed_circuit.get_circuit_id());
+                self.validate_create_circuit(&proposed_circuit)?;
+                debug!("proposing {}", proposed_circuit.get_circuit_id());
 
-                    let mut circuit_proposal = CircuitProposal::new();
-                    circuit_proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
-                    circuit_proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
-                    circuit_proposal.set_circuit_hash(sha256(&proposed_circuit)?);
-                    circuit_proposal.set_circuit_proposal(proposed_circuit);
+                let mut circuit_proposal = CircuitProposal::new();
+                circuit_proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
+                circuit_proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
+                circuit_proposal.set_circuit_hash(sha256(&proposed_circuit)?);
+                circuit_proposal.set_circuit_proposal(proposed_circuit);
 
-                    let expected_hash = sha256(&circuit_proposal)?;
-                    self.pending_changes = Some(circuit_proposal.clone());
-                    self.current_consensus_verifiers = verifiers;
+                let expected_hash = sha256(&circuit_proposal)?;
+                self.pending_changes = Some(circuit_proposal.clone());
+                self.current_consensus_verifiers = verifiers;
 
-                    Ok((expected_hash, circuit_proposal))
-                }
+                Ok((expected_hash, circuit_proposal))
             }
             unknown_action => Err(AdminSharedError::UnknownAction(format!(
                 "{:?}",
@@ -266,12 +261,6 @@ impl AdminServiceShared {
             self.unpeered_payloads.push((unauthorized_peers, envelope));
         }
         Ok(())
-    }
-
-    fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
-        let circuit_id = circuit_proposal.get_circuit_id().to_string();
-
-        self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
     pub fn add_subscriber(
@@ -335,18 +324,140 @@ impl AdminServiceShared {
                 .extend(fully_peered.into_iter().map(|(_, payload)| payload));
         }
     }
+
+    fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
+        let circuit_id = circuit_proposal.get_circuit_id().to_string();
+
+        self.open_proposals.insert(circuit_id, circuit_proposal);
+    }
+
+    fn validate_create_circuit(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
+        if self.has_proposal(circuit.get_circuit_id()) {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Ignoring duplicate create proposal of circuit {}",
+                circuit.get_circuit_id()
+            )));
+        }
+
+        if self
+            .splinter_state
+            .read()
+            .expect("splinter state lock poisoned")
+            .has_circuit(circuit.get_circuit_id())
+        {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Circuit with circuit id {} already exists",
+                circuit.get_circuit_id()
+            )));
+        }
+
+        self.validate_circuit(circuit)?;
+        Ok(())
+    }
+
+    fn validate_circuit(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
+        if circuit.get_authorization_type() == Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE {
+            return Err(AdminSharedError::ValidationFailed(
+                "authorization_type cannot be unset".to_string(),
+            ));
+        }
+
+        if circuit.get_persistence() == Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE {
+            return Err(AdminSharedError::ValidationFailed(
+                "persistence_type cannot be unset".to_string(),
+            ));
+        }
+
+        if circuit.get_durability() == Circuit_DurabilityType::UNSET_DURABILITY_TYPE {
+            return Err(AdminSharedError::ValidationFailed(
+                "durability_type cannot be unset".to_string(),
+            ));
+        }
+
+        if circuit.get_routes() == Circuit_RouteType::UNSET_ROUTE_TYPE {
+            return Err(AdminSharedError::ValidationFailed(
+                "route_type cannot be unset".to_string(),
+            ));
+        }
+
+        if circuit.get_circuit_id().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "circuit_id must be set".to_string(),
+            ));
+        }
+
+        if circuit.get_circuit_management_type().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "circuit_management_type must be set".to_string(),
+            ));
+        }
+
+        let members: Vec<String> = circuit
+            .get_members()
+            .iter()
+            .map(|node| node.get_node_id().to_string())
+            .collect();
+
+        if members.is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "The circuit must have members".to_string(),
+            ));
+        }
+
+        // check this node is in members
+        if !members.contains(&self.node_id) {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Circuit does not contain this node: {}",
+                self.node_id
+            )));
+        }
+
+        if circuit.get_roster().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "The circuit must have services".to_string(),
+            ));
+        }
+
+        // check that all services' allowed nodes are in members
+        for service in circuit.get_roster() {
+            for node in service.get_allowed_nodes() {
+                if !members.contains(node) {
+                    return Err(AdminSharedError::ValidationFailed(format!(
+                        "Service cannot have an allowed node that is not in members: {}",
+                        self.node_id
+                    )));
+                }
+            }
+        }
+
+        if circuit.get_circuit_management_type().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "The circuit must have a mangement type".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    use std::path::PathBuf;
+
+    use protobuf::RepeatedField;
+    use tempdir::TempDir;
+
+    use crate::circuit::directory::CircuitDirectory;
     use crate::mesh::Mesh;
     use crate::network::{
         auth::{AuthorizationCallback, AuthorizationCallbackError},
         Network,
     };
     use crate::protos::admin;
+    use crate::protos::admin::{SplinterNode, SplinterService};
+    use crate::storage::get_storage;
     use crate::transport::{
         inproc::InprocTransport, ConnectError, Connection, DisconnectError, RecvError, SendError,
         Transport,
@@ -366,11 +477,13 @@ mod tests {
         let orchestrator =
             ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
+        let state = setup_splinter_state();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
             peer_connector,
             Box::new(MockAuthInquisitor),
+            state,
         );
 
         let mut circuit = Circuit::new();
@@ -378,6 +491,7 @@ mod tests {
         circuit.set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
+        circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
         circuit.set_circuit_management_type("test app auth handler".into());
 
         circuit.set_members(protobuf::RepeatedField::from_vec(vec![
@@ -418,11 +532,13 @@ mod tests {
         let orchestrator =
             ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
+        let state = setup_splinter_state();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
             peer_connector,
             Box::new(MockAuthInquisitor),
+            state,
         );
 
         let mut circuit = Circuit::new();
@@ -453,6 +569,313 @@ mod tests {
         // The message should be dropped
         assert_eq!(0, shared.pending_circuit_payloads.len());
         assert_eq!(0, shared.unpeered_payloads.len());
+    }
+
+    #[test]
+    // test that a valid circuit is validated correctly
+    fn test_validate_circuit_valid() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let circuit = setup_test_circuit();
+
+        if let Err(err) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been valid: {}", err);
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a service in its roster with an allowed node that is not in
+    // members an error is returned
+    fn test_validate_circuit_bad_node() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        let mut service_bad = SplinterService::new();
+        service_bad.set_service_id("service_b".to_string());
+        service_bad.set_service_type("type_a".to_string());
+        service_bad.set_allowed_nodes(RepeatedField::from_vec(vec!["node_bad".to_string()]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid due to service having an allowed node not in members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have any services in its roster an error is returned
+    fn test_validate_circuit_empty_roster() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+        circuit.set_roster(RepeatedField::from_vec(vec![]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid due to empty roster");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have any nodes in its members an error is returned
+    fn test_validate_circuit_empty_members() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_members(RepeatedField::from_vec(vec![]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid empty members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have the local node in the member list an error is
+    // returned
+    fn test_validate_circuit_missing_local_node() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("test://endpoint_b:0".to_string());
+
+        circuit.set_members(RepeatedField::from_vec(vec![node_b]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because node_a is not in members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have authorization set an error is returned
+    fn test_validate_circuit_no_authorization() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_authorization_type(Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE);
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because authorizaiton type is unset");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have persistence set an error is returned
+    fn test_validate_circuit_no_persitance() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_persistence(Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE);
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because persistence type is unset");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have durability set an error is returned
+    fn test_validate_circuit_unset_durability() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_durability(Circuit_DurabilityType::UNSET_DURABILITY_TYPE);
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because durabilty type is unset");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have route type set an error is returned
+    fn test_validate_circuit_no_routes() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_routes(Circuit_RouteType::UNSET_ROUTE_TYPE);
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because route type is unset");
+        }
+    }
+
+    #[test]
+    // test that if a circuit does not have circuit_management_type set an error is returned
+    fn test_validate_circuit_no_management_type() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+        );
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_circuit_management_type("".to_string());
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
+            panic!("Should have been invalid because route type is unset");
+        }
+    }
+
+    pub fn setup_test_circuit() -> Circuit {
+        let mut service_a = SplinterService::new();
+        service_a.set_service_id("service_a".to_string());
+        service_a.set_service_type("type_a".to_string());
+        service_a.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
+
+        let mut service_b = SplinterService::new();
+        service_b.set_service_id("service_b".to_string());
+        service_b.set_service_type("type_a".to_string());
+        service_b.set_allowed_nodes(RepeatedField::from_vec(vec!["node_b".to_string()]));
+
+        let mut node_a = SplinterNode::new();
+        node_a.set_node_id("node_a".to_string());
+        node_a.set_endpoint("test://endpoint_a:0".to_string());
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("test://endpoint_b:0".to_string());
+
+        let mut circuit = Circuit::new();
+        circuit.set_circuit_id("alpha".to_string());
+        circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
+        circuit.set_roster(RepeatedField::from_vec(vec![service_b, service_a]));
+        circuit.set_authorization_type(Circuit_AuthorizationType::TRUST_AUTHORIZATION);
+        circuit.set_persistence(Circuit_PersistenceType::ANY_PERSISTENCE);
+        circuit.set_durability(Circuit_DurabilityType::NO_DURABILITY);
+        circuit.set_routes(Circuit_RouteType::ANY_ROUTE);
+        circuit.set_circuit_management_type("test_circuit".to_string());
+        circuit.set_application_metadata(b"test_data".to_vec());
+
+        circuit
+    }
+
+    fn setup_splinter_state() -> Arc<RwLock<SplinterState>> {
+        // create temp directoy
+        let temp_dir = TempDir::new("test_circuit_write_file").unwrap();
+        let temp_dir = temp_dir.path().to_path_buf();
+
+        // setup empty state filename
+        let path = setup_storage(temp_dir);
+        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
+        let circuit_directory = storage.write().clone();
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            path.to_string(),
+            circuit_directory,
+        )));
+        state
+    }
+
+    fn setup_peer_connector() -> PeerConnector {
+        let mesh = Mesh::new(4, 16);
+        let network = Network::new(mesh.clone());
+        let transport = MockConnectingTransport::expect_connections(vec![
+            Ok(Box::new(MockConnection)),
+            Ok(Box::new(MockConnection)),
+        ]);
+        let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
+        peer_connector
+    }
+
+    fn setup_storage(mut temp_dir: PathBuf) -> String {
+        // Creat the temp file
+        temp_dir.push("circuits.yaml");
+        let path = temp_dir.to_str().unwrap().to_string();
+
+        // Write out the mock state file to the temp directory
+        path
     }
 
     fn splinter_node(node_id: &str, endpoint: &str) -> admin::SplinterNode {
