@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{NewProduct, NewProductPropertyValue, Product};
+use super::models::{NewProduct, NewProductPropertyValue, Product, ProductPropertyValue};
 use super::schema::{product, product_property_value};
 use super::MAX_BLOCK_NUM;
 
@@ -27,7 +27,6 @@ use diesel::{
     QueryResult,
 };
 
-#[allow(dead_code)]
 pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryResult<()> {
     for prod in products {
         update_prod_end_block_num(conn, &prod.product_id, prod.start_block_num)?;
@@ -85,7 +84,6 @@ fn update_prod_property_values(
         .map(|_| ())
 }
 
-#[allow(dead_code)]
 pub fn list_products(conn: &PgConnection) -> QueryResult<Vec<Product>> {
     product::table
         .select(product::all_columns)
@@ -93,7 +91,13 @@ pub fn list_products(conn: &PgConnection) -> QueryResult<Vec<Product>> {
         .load::<Product>(conn)
 }
 
-#[allow(dead_code)]
+pub fn list_product_property_values(conn: &PgConnection) -> QueryResult<Vec<ProductPropertyValue>> {
+    product_property_value::table
+        .select(product_property_value::all_columns)
+        .filter(product_property_value::end_block_num.eq(MAX_BLOCK_NUM))
+        .load::<ProductPropertyValue>(conn)
+}
+
 pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Option<Product>> {
     product::table
         .select(product::all_columns)
@@ -105,4 +109,18 @@ pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Optio
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn fetch_product_property_values(
+    conn: &PgConnection,
+    product_id: &str,
+) -> QueryResult<Vec<ProductPropertyValue>> {
+    product_property_value::table
+        .select(product_property_value::all_columns)
+        .filter(
+            product_property_value::product_id
+                .eq(product_id)
+                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .load::<ProductPropertyValue>(conn)
 }
