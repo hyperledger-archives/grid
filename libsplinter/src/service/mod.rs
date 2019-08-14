@@ -13,18 +13,20 @@
 // limitations under the License.
 
 pub mod error;
+mod factory;
 mod processor;
 mod registry;
 pub mod scabbard;
 mod sender;
 
+pub use factory::ServiceFactory;
 pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;
 
 pub use error::{
-    ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError, ServiceError,
-    ServiceProcessorError, ServiceSendError, ServiceStartError, ServiceStopError,
+    FactoryCreateError, ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError,
+    ServiceError, ServiceProcessorError, ServiceSendError, ServiceStartError, ServiceStopError,
 };
 
 /// The ServiceMessageContext is a struct that provides information about the incoming message
