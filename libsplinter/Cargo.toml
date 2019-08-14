@@ -23,10 +23,11 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 
 [dependencies]
-actix = "0.8"
-actix-web = "1.0"
+actix = { version = "0.8", default-features = false }
+actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
+flate2 = "1.0.10"
 actix-service = "0.4"
-actix-http = "0.2"
+actix-http = {version = "0.2", features = ["flate2-zlib"] }
 actix-web-actors = "1.0"
 futures = "0.1"
 atomicwrites = "0.2"
