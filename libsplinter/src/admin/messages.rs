@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
-use crate::futures::{stream::Stream, Future, IntoFuture};
-use crate::protos::admin::{self, CircuitCreateRequest};
 use protobuf::{self, RepeatedField};
 use serde::de::DeserializeOwned;
 use serde_json;
+
+use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
+use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::protos::admin::{self, CircuitCreateRequest};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CreateCircuit {

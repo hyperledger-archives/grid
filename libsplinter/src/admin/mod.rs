@@ -12,52 +12,52 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod consensus;
+mod error;
 pub mod messages;
+mod shared;
 
-use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use actix::prelude::*;
 use actix_web_actors::ws;
-use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+use crossbeam_channel::{unbounded, Receiver, TryRecvError};
 use openssl::hash::{hash, MessageDigest};
-use protobuf::Message;
+use protobuf::{self, Message};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
-use crate::protos::admin::{
-    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitProposal, CircuitProposal_ProposalType,
-};
+use crate::protos::admin::{AdminMessage, AdminMessage_Type};
 use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
-    Service, ServiceMessageContext, ServiceNetworkRegistry, ServiceNetworkSender,
+    Service, ServiceMessageContext, ServiceNetworkRegistry,
 };
 
-use messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
+use self::consensus::AdminConsensusManager;
+use self::error::{AdminError, Sha256Error};
+use self::messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
+use self::shared::AdminServiceShared;
 
-#[derive(Clone)]
 pub struct AdminService {
-    node_id: String,
     service_id: String,
-    admin_service_state: Arc<Mutex<AdminServiceState>>,
+    admin_service_shared: Arc<Mutex<AdminServiceShared>>,
+    consensus: Option<AdminConsensusManager>,
 }
 
 impl AdminService {
     pub fn new(node_id: &str, peer_connector: PeerConnector) -> Self {
         Self {
-            node_id: node_id.to_string(),
             service_id: admin_service_id(node_id),
-            admin_service_state: Arc::new(Mutex::new(AdminServiceState {
-                network_sender: None,
-                open_proposals: Default::default(),
+            admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
+                node_id.to_string(),
                 peer_connector,
-                socket_senders: Vec::new(),
-            })),
+            ))),
+            consensus: None,
         }
     }
 }
@@ -75,16 +75,25 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
+        if self.consensus.is_some() {
+            return Err(ServiceStartError::AlreadyStarted);
+        }
+
         let network_sender = service_registry.connect(&self.service_id)?;
 
-        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-            ServiceStartError::PoisonedLock("the admin state lock was poisoned".into())
-        })?;
+        {
+            let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+                ServiceStartError::PoisonedLock("the admin shared lock was poisoned".into())
+            })?;
 
-        admin_service_state.network_sender = Some(network_sender);
+            admin_service_shared.set_network_sender(Some(network_sender));
+        }
 
-        info!("Admin service started and connected");
-
+        // Setup consensus
+        self.consensus = Some(
+            AdminConsensusManager::new(self.service_id().into(), self.admin_service_shared.clone())
+                .map_err(|err| ServiceStartError::Internal(Box::new(err)))?,
+        );
         Ok(())
     }
 
@@ -94,11 +103,21 @@ impl Service for AdminService {
     ) -> Result<(), ServiceStopError> {
         service_registry.disconnect(&self.service_id)?;
 
-        let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-            ServiceStopError::PoisonedLock("the admin state lock was poisoned".into())
+        let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+            ServiceStopError::PoisonedLock("the admin shared lock was poisoned".into())
         })?;
 
-        admin_service_state.network_sender = None;
+        // Shutdown consensus
+        self.consensus
+            .take()
+            .ok_or_else(|| ServiceStopError::NotStarted)?
+            .shutdown()
+            .map_err(|err| ServiceStopError::Internal(Box::new(err)))?;
+
+        // Disconnect from splinter network
+        service_registry.disconnect(&self.service_id)?;
+
+        admin_service_shared.set_network_sender(None);
 
         info!("Admin service stopped and disconnected");
 
@@ -106,165 +125,81 @@ impl Service for AdminService {
     }
 
     fn destroy(self: Box<Self>) -> Result<(), ServiceDestroyError> {
-        Ok(())
+        if self.consensus.is_some() {
+            Err(ServiceDestroyError::NotStopped)
+        } else {
+            Ok(())
+        }
     }
 
     fn handle_message(
         &self,
         message_bytes: &[u8],
-        _message_context: &ServiceMessageContext,
+        message_context: &ServiceMessageContext,
     ) -> Result<(), ServiceError> {
-        let mut envelope: CircuitManagementPayload = protobuf::parse_from_bytes(message_bytes)
+        let admin_message: AdminMessage = protobuf::parse_from_bytes(message_bytes)
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
 
-        match envelope.action {
-            CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
-                let mut create_request = envelope.take_circuit_create_request();
+        match admin_message.get_message_type() {
+            AdminMessage_Type::CONSENSUS_MESSAGE => self
+                .consensus
+                .as_ref()
+                .ok_or_else(|| ServiceError::NotStarted)?
+                .handle_message(admin_message.get_consensus_message())
+                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err))),
+            AdminMessage_Type::PROPOSED_CIRCUIT => {
+                let proposed_circuit = admin_message.get_proposed_circuit();
 
-                let proposed_circuit = create_request.take_circuit();
-                let mut admin_service_state = self.admin_service_state.lock().map_err(|_| {
-                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
+                let expected_hash = proposed_circuit.get_expected_hash().to_vec();
+                let circuit_payload = proposed_circuit.get_circuit_payload();
+
+                let mut proposal = Proposal::default();
+
+                proposal.id = sha256(circuit_payload)
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                    .as_bytes()
+                    .into();
+                proposal.summary = expected_hash;
+
+                let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+                    ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
                 })?;
 
-                if admin_service_state.has_proposal(proposed_circuit.get_circuit_id()) {
-                    info!(
-                        "Ignoring duplicate create proposal of circuit {}",
-                        proposed_circuit.get_circuit_id()
-                    );
-                } else {
-                    debug!("proposing {}", proposed_circuit.get_circuit_id());
+                admin_service_shared.add_pending_consesus_proposal(
+                    proposal.id.clone(),
+                    (proposal.clone(), circuit_payload.clone()),
+                );
 
-                    let mut proposal = CircuitProposal::new();
-                    proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
-                    proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
-                    proposal.set_circuit_hash(sha256(&proposed_circuit)?);
-                    proposal.set_circuit_proposal(proposed_circuit);
-
-                    admin_service_state.add_proposal(proposal.clone());
-                    let mgmt_type = proposal
-                        .get_circuit_proposal()
-                        .circuit_management_type
-                        .clone();
-                    let event = AdminServiceEvent::ProposalSubmitted(
-                        messages::CircuitProposal::from_proto(proposal)
-                            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?,
-                    );
-                    admin_service_state.send_event(&mgmt_type, event);
-                }
+                self.consensus
+                    .as_ref()
+                    .ok_or_else(|| ServiceError::NotStarted)?
+                    .send_update(ProposalUpdate::ProposalReceived(
+                        proposal,
+                        message_context.sender.as_bytes().into(),
+                    ))
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
             }
-            unknown_action => {
-                error!("Unable to handle {:?}", unknown_action);
-            }
+            AdminMessage_Type::UNSET => Err(ServiceError::InvalidMessageFormat(Box::new(
+                AdminError::MessageTypeUnset,
+            ))),
         }
-
-        Ok(())
     }
 }
 
-impl AdminService {
-    /// Propose a new circuit
-    ///
-    /// This operation will propose a new circuit to all the member nodes of the circuit.  If there
-    /// is no peer connection, a connection to the peer will also be established.
-    pub fn propose_circuit(&self, proposed_circuit: Circuit) -> Result<(), ServiceError> {
-        let network_sender = self
-            .admin_service_state
-            .lock()
-            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
-            .network_sender
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| ServiceError::NotStarted)?;
-
-        {
-            debug!("proposing {}", proposed_circuit.get_circuit_id());
-
-            let mut proposal = CircuitProposal::new();
-            proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
-            proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
-            proposal.set_circuit_hash(sha256(&proposed_circuit)?);
-            proposal.set_circuit_proposal(proposed_circuit.clone());
-
-            self.admin_service_state
-                .lock()
-                .map_err(|_| {
-                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
-                })?
-                .add_proposal(proposal);
-
-            debug!("Proposal added");
-        }
-
-        let mut member_node_ids = vec![];
-        {
-            debug!("Adding members as peers");
-            let peer_connector = self
-                .admin_service_state
-                .lock()
-                .map_err(|_| {
-                    ServiceError::PoisonedLock("the admin state lock was poisoned".into())
-                })?
-                .peer_connector
-                .clone();
-
-            for node in proposed_circuit.get_members() {
-                if self.node_id != node.get_node_id() {
-                    debug!("Connecting to node {:?}", node);
-                    peer_connector
-                        .connect_peer(node.get_node_id(), node.get_endpoint())
-                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
-
-                    member_node_ids.push(node.get_node_id().to_string())
-                }
-            }
-            debug!("Members added");
-        }
-
-        debug!("Sending create request to other members.");
-        let mut create_request = CircuitCreateRequest::new();
-        create_request.set_circuit(proposed_circuit);
-
-        let mut envelope = CircuitManagementPayload::new();
-        envelope.set_action(CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        envelope.set_circuit_create_request(create_request);
-
-        let envelope_bytes = envelope
-            .write_to_bytes()
-            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
-
-        for member_id in member_node_ids {
-            network_sender.send(&admin_service_id(&member_id), &envelope_bytes)?;
-        }
-
-        debug!("Proposal complete");
-        Ok(())
-    }
-
-    pub fn add_socket_sender(
-        &self,
-        circuit_management_type: String,
-        sender: Sender<AdminServiceEvent>,
-    ) -> Result<(), ServiceError> {
-        self.admin_service_state
-            .lock()
-            .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?
-            .add_socket_sender(circuit_management_type, sender);
-
-        Ok(())
-    }
-}
-
-fn admin_service_id(node_id: &str) -> String {
+pub fn admin_service_id(node_id: &str) -> String {
     format!("admin::{}", node_id)
 }
 
-fn sha256(circuit: &Circuit) -> Result<String, ServiceError> {
-    let bytes = circuit
+pub fn sha256<T>(message: &T) -> Result<String, Sha256Error>
+where
+    T: Message,
+{
+    let bytes = message
         .write_to_bytes()
-        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+        .map_err(|err| Sha256Error(Box::new(err)))?;
     hash(MessageDigest::sha256(), &bytes)
         .map(|digest| to_hex(&*digest))
-        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+        .map_err(|err| Sha256Error(Box::new(err)))
 }
 
 fn to_hex(bytes: &[u8]) -> String {
@@ -276,69 +211,23 @@ fn to_hex(bytes: &[u8]) -> String {
     buf
 }
 
-struct AdminServiceState {
-    open_proposals: HashMap<String, CircuitProposal>,
-    peer_connector: PeerConnector,
-    network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    socket_senders: Vec<(String, Sender<AdminServiceEvent>)>,
-}
-
-impl AdminServiceState {
-    fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
-        let circuit_id = circuit_proposal.get_circuit_id().to_string();
-
-        self.open_proposals.insert(circuit_id, circuit_proposal);
-    }
-
-    fn has_proposal(&self, circuit_id: &str) -> bool {
-        self.open_proposals.contains_key(circuit_id)
-    }
-
-    fn add_socket_sender(
-        &mut self,
-        circuit_management_type: String,
-        sender: Sender<AdminServiceEvent>,
-    ) {
-        self.socket_senders.push((circuit_management_type, sender));
-    }
-
-    fn send_event(&mut self, circuit_management_type: &str, event: AdminServiceEvent) {
-        // The use of retain allows us to drop any senders that are no longer valid.
-        self.socket_senders.retain(|(mgmt_type, sender)| {
-            if mgmt_type != circuit_management_type {
-                return true;
-            }
-
-            if let Err(err) = sender.send(event.clone()) {
-                warn!(
-                    "Dropping sender for {} due to error: {}",
-                    circuit_management_type, err
-                );
-                return false;
-            }
-
-            true
-        });
-    }
-}
-
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(self.clone()),
-            make_application_handler_registration_route(self.clone()),
-            make_vote_route(self.clone()),
+            make_create_circuit_route(self.admin_service_shared.clone()),
+            make_application_handler_registration_route(self.admin_service_shared.clone()),
+            make_vote_route(self.admin_service_shared.clone()),
         ]
     }
 }
 
-fn make_create_circuit_route(admin_service: AdminService) -> Resource {
+fn make_create_circuit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Post, "/admin/circuit", move |r, p| {
-        create_circuit(r, p, admin_service.clone())
+        create_circuit(r, p, shared.clone())
     })
 }
 
-fn make_vote_route(admin_service: AdminService) -> Resource {
+fn make_vote_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Post, "/admin/vote", move |_, p| {
         Box::new(from_payload::<CircuitProposalVote>(p).and_then(|vote| {
             debug!("Received vote {:#?}", vote);
@@ -347,7 +236,7 @@ fn make_vote_route(admin_service: AdminService) -> Resource {
     })
 }
 
-fn make_application_handler_registration_route(admin_service: AdminService) -> Resource {
+fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
             t
@@ -358,14 +247,19 @@ fn make_application_handler_registration_route(admin_service: AdminService) -> R
         let (send, recv) = unbounded();
 
         let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
+        let unlocked_shared = shared.lock();
 
-        if let Err(err) = admin_service.add_socket_sender(circuit_management_type.into(), send) {
-            debug!("Failed to add socket sender: {:?}", err);
-            Box::new(HttpResponse::InternalServerError().finish().into_future())
-        } else {
-            debug!("circuit management type {}", circuit_management_type);
-            debug!("Websocket response: {:?}", res);
-            Box::new(res.into_future())
+        match unlocked_shared {
+            Ok(mut shared) => {
+                shared.add_socket_sender(circuit_management_type.into(), send);
+                debug!("circuit management type {}", circuit_management_type);
+                debug!("Websocket response: {:?}", res);
+                Box::new(res.into_future())
+            }
+            Err(err) => {
+                debug!("Failed to add socket sender: {:?}", err);
+                Box::new(HttpResponse::InternalServerError().finish().into_future())
+            }
         }
     })
 }
@@ -373,7 +267,7 @@ fn make_application_handler_registration_route(admin_service: AdminService) -> R
 fn create_circuit(
     _req: HttpRequest,
     payload: web::Payload,
-    admin_service: AdminService,
+    shared: Arc<Mutex<AdminServiceShared>>,
 ) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
         from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
@@ -383,7 +277,8 @@ fn create_circuit(
             };
             let circuit = circuit_create_request.take_circuit();
             let circuit_id = circuit.circuit_id.clone();
-            if let Err(err) = admin_service.propose_circuit(circuit) {
+            let mut shared = shared.lock().expect("the admin state lock was poisoned");
+            if let Err(err) = shared.propose_circuit(circuit) {
                 error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
                 Ok(HttpResponse::BadRequest().finish())
             } else {
@@ -455,6 +350,7 @@ mod tests {
 
     use std::collections::VecDeque;
     use std::sync::mpsc::{channel, Sender};
+    use std::{thread, time};
 
     use crate::mesh::Mesh;
     use crate::network::Network;
@@ -481,7 +377,7 @@ mod tests {
             .start(&MockNetworkRegistry { tx })
             .expect("Service should have started correctly");
 
-        let mut proposed_circuit = Circuit::new();
+        let mut proposed_circuit = admin::Circuit::new();
         proposed_circuit.set_circuit_id("test_propose_circuit".into());
         proposed_circuit
             .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
@@ -499,16 +395,33 @@ mod tests {
         ]));
 
         admin_service
+            .admin_service_shared
+            .lock()
+            .unwrap()
             .propose_circuit(proposed_circuit.clone())
             .expect("The proposal was not handled correctly");
+
+        // sleep for the consensus message timeout time so the proposed circuit message will be
+        // handled
+        let consensus_timeout = time::Duration::from_millis(100);
+        thread::sleep(consensus_timeout);
 
         let (recipient, message) = rx.try_recv().expect("A message should have been sent");
         assert_eq!("admin::other-node".to_string(), recipient);
 
-        let mut envelope: CircuitManagementPayload =
+        let mut admin_envelope: admin::AdminMessage =
             protobuf::parse_from_bytes(&message).expect("The message could not be parsed");
+
         assert_eq!(
-            CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST,
+            admin::AdminMessage_Type::PROPOSED_CIRCUIT,
+            admin_envelope.get_message_type()
+        );
+
+        let mut envelope = admin_envelope
+            .take_proposed_circuit()
+            .take_circuit_payload();
+        assert_eq!(
+            admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST,
             envelope.get_action()
         );
         assert_eq!(
