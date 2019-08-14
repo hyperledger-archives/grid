@@ -14,7 +14,9 @@
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::sync::{Arc, RwLock};
 
+use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
@@ -62,6 +64,8 @@ pub struct AdminServiceShared {
     current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
     event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
+    // copy of splinter state
+    splinter_state: Arc<RwLock<SplinterState>>,
 }
 
 impl AdminServiceShared {
@@ -70,6 +74,7 @@ impl AdminServiceShared {
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
+        splinter_state: Arc<RwLock<SplinterState>>,
     ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
@@ -84,6 +89,7 @@ impl AdminServiceShared {
             pending_changes: None,
             current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
+            splinter_state,
         }
     }
 
