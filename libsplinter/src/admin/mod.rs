@@ -19,11 +19,7 @@ mod shared;
 
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
-use actix::prelude::*;
-use actix_web_actors::ws;
-use crossbeam_channel::{unbounded, Receiver, TryRecvError};
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
@@ -36,7 +32,7 @@ use crate::network::{
 };
 use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{AdminMessage, AdminMessage_Type};
-use crate::rest_api::{Method, Resource, RestResourceProvider};
+use crate::rest_api::{Method, Request, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -44,7 +40,7 @@ use crate::service::{
 
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
-use self::messages::{from_payload, AdminServiceEvent, CircuitProposalVote, CreateCircuit};
+use self::messages::{from_payload, CircuitProposalVote, CreateCircuit};
 use self::shared::AdminServiceShared;
 
 pub struct AdminService {
@@ -279,22 +275,27 @@ fn make_vote_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
 fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
     Resource::new(Method::Get, "/ws/admin/register/{type}", move |r, p| {
         let circuit_management_type = if let Some(t) = r.match_info().get("type") {
-            t
+            t.to_string()
         } else {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
 
-        let (send, recv) = unbounded();
-
-        let res = ws::start(AdminServiceWebSocket::new(recv), &r, p);
         let unlocked_shared = shared.lock();
 
         match unlocked_shared {
             Ok(mut shared) => {
-                shared.add_socket_sender(circuit_management_type.into(), send);
+                let request = Request::from((r, p));
                 debug!("circuit management type {}", circuit_management_type);
-                debug!("Websocket response: {:?}", res);
-                Box::new(res.into_future())
+                match shared.add_subscriber(circuit_management_type, request) {
+                    Ok(res) => {
+                        debug!("Websocket response: {:?}", res);
+                        Box::new(res.into_future())
+                    }
+                    Err(err) => {
+                        debug!("Failed to create websocket: {:?}", err);
+                        Box::new(HttpResponse::InternalServerError().finish().into_future())
+                    }
+                }
             }
             Err(err) => {
                 debug!("Failed to add socket sender: {:?}", err);
@@ -329,68 +330,13 @@ fn create_circuit(
     )
 }
 
-pub struct AdminServiceWebSocket {
-    recv: Receiver<AdminServiceEvent>,
-}
-
-impl AdminServiceWebSocket {
-    fn new(recv: Receiver<AdminServiceEvent>) -> Self {
-        Self { recv }
-    }
-
-    fn push_updates(&self, recv: Receiver<AdminServiceEvent>, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(3), move |_, ctx| {
-            match recv.try_recv() {
-                Ok(msg) => {
-                    debug!("Received a message: {:?}", msg);
-                    match serde_json::to_string(&msg) {
-                        Ok(text) => ctx.text(text),
-                        Err(err) => {
-                            debug!("Failed to serialize payload: {:?}", err);
-                        }
-                    }
-                }
-                Err(TryRecvError::Empty) => (),
-                Err(TryRecvError::Disconnected) => {
-                    debug!("Received channel disconnect");
-                    ctx.stop();
-                }
-            };
-        });
-    }
-}
-
-impl Actor for AdminServiceWebSocket {
-    type Context = ws::WebsocketContext<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        debug!("Starting Admin Service");
-        let recv = self.recv.clone();
-        self.push_updates(recv, ctx)
-    }
-}
-
-impl StreamHandler<ws::Message, ws::ProtocolError> for AdminServiceWebSocket {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        debug!("WS: {:?}", msg);
-        match msg {
-            ws::Message::Ping(msg) => ctx.ping(&msg),
-            ws::Message::Pong(msg) => ctx.pong(&msg),
-            ws::Message::Text(text) => ctx.text(text),
-            ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(_) => ctx.stop(),
-            ws::Message::Nop => (),
-        };
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use std::collections::VecDeque;
     use std::sync::mpsc::{channel, Sender};
-    use std::time;
+    use std::time::{Duration, Instant};
 
     use crate::mesh::Mesh;
     use crate::network::{auth::AuthorizationCallback, Network};
@@ -453,9 +399,9 @@ mod tests {
         // wait up to 1 second for the proposed circuit message
         let mut recipient;
         let mut message;
-        let start = time::Instant::now();
+        let start = Instant::now();
         loop {
-            if time::Instant::now().duration_since(start) > Duration::from_secs(1) {
+            if Instant::now().duration_since(start) > Duration::from_secs(1) {
                 panic!("Failed to receive proposed circuit message in time");
             }
             if let Ok((r, m)) = rx.recv_timeout(Duration::from_millis(100)) {
