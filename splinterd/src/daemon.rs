@@ -51,6 +51,7 @@ use libsplinter::rest_api::{
     Method, Resource, RestApiBuilder, RestApiServerError, RestResourceProvider,
 };
 use libsplinter::rwlock_read_unwrap;
+use libsplinter::service::scabbard::ScabbardFactory;
 use libsplinter::service::{self, Service, ServiceProcessor};
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{
@@ -104,7 +105,7 @@ impl SplinterDaemon {
         let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
         let orchestrator = ServiceOrchestrator::new(
-            vec![],
+            vec![Box::new(ScabbardFactory::new(None, None))],
             self.service_endpoint.clone(),
             inproc_tranport.clone(),
         );
