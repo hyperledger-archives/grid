@@ -1,10 +1,10 @@
 # How to Run the Gameroom Demo
 
-Gameroom is a demo Splinter application that allows you to set up a dynamic
-two-party circuit (called a "gameroom") and play tic tac toe with shared state,
-as managed by two-phase-commit consensus. This example application sets up
-Splinter nodes for two imaginary organizations: Acme Corporation and Bubba
-Bakery.
+Gameroom is a demo Splinter application that allows you to set up dynamic
+multi-party circuits (called "gamerooms") and play tic tac toe with shared
+state, as managed by two-phase-commit consensus between the parties. This
+example application, as configured,  sets up Splinter nodes for two imaginary
+organizations: Acme Corporation and Bubba Bakery.
 
 **Note:** This demo uses the Sabre smart contract engine provided in
 [Sawtooth Sabre](https://github.com/hyperledger/sawtooth-sabre) and the XO smart
