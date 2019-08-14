@@ -102,3 +102,24 @@ pub struct NewCircuitService {
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
 }
+
+#[derive(Queryable, Identifiable, Associations)]
+#[table_name = "gameroom_notification"]
+pub struct GameroomNotification {
+    pub id: i64,
+    pub notification_type: String,
+    pub requester: String,
+    pub target: String,
+    pub created_time: SystemTime,
+    pub read: bool,
+}
+
+#[derive(Debug, Insertable)]
+#[table_name = "gameroom_notification"]
+pub struct NewGameroomNotification {
+    pub notification_type: String,
+    pub requester: String,
+    pub target: String,
+    pub created_time: SystemTime,
+    pub read: bool,
+}
