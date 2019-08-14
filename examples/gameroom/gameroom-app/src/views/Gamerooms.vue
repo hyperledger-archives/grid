@@ -22,7 +22,7 @@ limitations under the License.
         <form class="modal-form" @submit.prevent="createGameroom">
           <label class="form-label">
             Alias
-            <input class="form-input" type="text" v-model="newGameroom.alias" />
+            <input v-focus class="form-input" type="text" v-model="newGameroom.alias" />
           </label>
           <label class="form-label">
             <div class="multiselect-label">Member</div>

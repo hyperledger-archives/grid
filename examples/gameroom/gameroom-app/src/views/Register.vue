@@ -24,6 +24,7 @@ limitations under the License.
             class="form-input"
             type="email"
             v-model="email"
+            v-focus
           />
         </label>
         <label class="form-label">
