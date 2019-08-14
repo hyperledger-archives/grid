@@ -14,6 +14,7 @@
 
 import axios from 'axios';
 import {
+  GameroomNotification,
   GameroomProposal,
   User,
   UserCredentials,
@@ -85,4 +86,25 @@ export async function listProposals(): Promise<GameroomProposal[]> {
     alert(e);
   }
   return [];
+}
+
+
+// Notifications
+export async function listNotifications(): Promise<GameroomNotification[]> {
+  try {
+    const response = await gameroomAPI.get('/notifications');
+    return response.data.data as GameroomNotification[];
+  } catch (e) {
+    alert(e);
+  }
+  return [];
+}
+
+export async function markRead(id: string): Promise<GameroomNotification|undefined> {
+  try {
+    const response = await gameroomAPI.patch(`/notifications/${id}/read`);
+    return response.data as GameroomNotification;
+  } catch (e) {
+    alert(e);
+  }
 }

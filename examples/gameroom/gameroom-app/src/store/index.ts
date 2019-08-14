@@ -15,6 +15,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import userModule from '@/store/modules/user';
+import notificationsModule from '@/store/modules/notifications';
 import VuexPersistence from 'vuex-persist';
 
 Vue.use(Vuex);
@@ -27,6 +28,7 @@ const vuexLocal = new VuexPersistence({
 export default new Vuex.Store({
   modules: {
     user: userModule,
+    notifications: notificationsModule,
   },
   plugins: [vuexLocal.plugin],
 });
