@@ -80,4 +80,8 @@ impl CircuitDirectory {
             self.circuits.get(circuit_name)
         }
     }
+
+    pub fn has_circuit(&self, circuit_name: &str) -> bool {
+        self.circuits.contains_key(circuit_name)
+    }
 }
