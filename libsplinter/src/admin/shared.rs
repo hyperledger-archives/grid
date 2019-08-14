@@ -31,7 +31,7 @@ use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 
-use super::error::AdminStateError;
+use super::error::AdminSharedError;
 use super::messages;
 use super::{admin_service_id, sha256};
 
@@ -139,7 +139,7 @@ impl AdminServiceShared {
         &self.current_consensus_verifiers
     }
 
-    pub fn commit(&mut self) -> Result<(), AdminStateError> {
+    pub fn commit(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
             Some(circuit_proposal) => {
                 let circuit_id = circuit_proposal.get_circuit_id().to_string();
@@ -153,9 +153,8 @@ impl AdminServiceShared {
                 // notify registered authorization application handlers of the commited circuit
                 // proposal
                 let event = messages::AdminServiceEvent::ProposalSubmitted(
-                    messages::CircuitProposal::from_proto(circuit_proposal.clone()).map_err(
-                        |err| AdminStateError(format!("invalid message format {}", err)),
-                    )?,
+                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                        .map_err(AdminSharedError::InvalidMessageFormat)?,
                 );
                 self.send_event(&mgmt_type, event);
 
@@ -163,11 +162,11 @@ impl AdminServiceShared {
 
                 Ok(())
             }
-            None => Err(AdminStateError("no pending changes to commit".into())),
+            None => Err(AdminSharedError::NoPendingChanges),
         }
     }
 
-    pub fn rollback(&mut self) -> Result<(), AdminStateError> {
+    pub fn rollback(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
             Some(circuit_proposal) => {
                 info!("discarded change for {}", circuit_proposal.get_circuit_id())
@@ -181,7 +180,7 @@ impl AdminServiceShared {
     pub fn propose_change(
         &mut self,
         mut circuit_payload: CircuitManagementPayload,
-    ) -> Result<(String, CircuitProposal), AdminStateError> {
+    ) -> Result<(String, CircuitProposal), AdminSharedError> {
         match circuit_payload.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 let mut create_request = circuit_payload.take_circuit_create_request();
@@ -192,7 +191,7 @@ impl AdminServiceShared {
                 }
 
                 if self.has_proposal(proposed_circuit.get_circuit_id()) {
-                    Err(AdminStateError(format!(
+                    Err(AdminSharedError::ValidationFailed(format!(
                         "Ignoring duplicate create proposal of circuit {}",
                         proposed_circuit.get_circuit_id()
                     )))
@@ -212,8 +211,8 @@ impl AdminServiceShared {
                     Ok((expected_hash, circuit_proposal))
                 }
             }
-            unknown_action => Err(AdminStateError(format!(
-                "Unable to handle {:?}",
+            unknown_action => Err(AdminSharedError::UnknownAction(format!(
+                "{:?}",
                 unknown_action
             ))),
         }

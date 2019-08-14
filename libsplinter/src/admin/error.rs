@@ -25,13 +25,41 @@ impl From<ServiceError> for ProposalManagerError {
 }
 
 #[derive(Debug)]
-pub struct AdminStateError(pub String);
+pub enum AdminSharedError {
+    HashError(Sha256Error),
+    InvalidMessageFormat(MarshallingError),
+    NoPendingChanges,
+    UnknownAction(String),
+    ValidationFailed(String),
+}
 
-impl Error for AdminStateError {}
+impl Error for AdminSharedError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            AdminSharedError::HashError(err) => Some(err),
+            AdminSharedError::InvalidMessageFormat(err) => Some(err),
+            AdminSharedError::NoPendingChanges => None,
+            AdminSharedError::UnknownAction(_) => None,
+            AdminSharedError::ValidationFailed(_) => None,
+        }
+    }
+}
 
-impl fmt::Display for AdminStateError {
+impl fmt::Display for AdminSharedError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "State Error: {}", self.0)
+        match self {
+            AdminSharedError::HashError(err) => write!(f, "received error while hashing: {}", err),
+            AdminSharedError::InvalidMessageFormat(err) => {
+                write!(f, "invalid message format: {}", err)
+            }
+            AdminSharedError::NoPendingChanges => {
+                write!(f, "tried to commit without pending changes")
+            }
+            AdminSharedError::UnknownAction(msg) => {
+                write!(f, "received message with unknown action: {}", msg)
+            }
+            AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
+        }
     }
 }
 
@@ -95,9 +123,9 @@ impl std::fmt::Display for Sha256Error {
     }
 }
 
-impl From<Sha256Error> for AdminStateError {
+impl From<Sha256Error> for AdminSharedError {
     fn from(err: Sha256Error) -> Self {
-        AdminStateError(err.to_string())
+        AdminSharedError::HashError(err)
     }
 }
 
