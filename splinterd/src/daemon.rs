@@ -88,6 +88,17 @@ impl SplinterDaemon {
         let node_registry_manager =
             routes::NodeRegistryManager::new(self.node_id.clone(), registry);
 
+        // Load initial state from the configured storage location and create the new
+        // SplinterState from the retrieved circuit directory
+        let storage = get_storage(&self.storage_location, CircuitDirectory::new)
+            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
+
+        let circuit_directory = storage.read().clone();
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            self.storage_location.to_string(),
+            circuit_directory,
+        )));
+
         // set up the listeners on the transport
         let mut network_listener = transport.listen(&self.network_endpoint)?;
         debug!(
@@ -113,6 +124,7 @@ impl SplinterDaemon {
             orchestrator,
             peer_connector.clone(),
             Box::new(auth_manager.clone()),
+            state.clone(),
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
@@ -145,17 +157,6 @@ impl SplinterDaemon {
         .expect("Error setting Ctrl-C handler");
 
         info!("Starting SpinterNode with id {}", self.node_id);
-
-        // Load initial state from the configured storage location and create the new
-        // SplinterState from the retrieved circuit directory
-        let storage = get_storage(&self.storage_location, CircuitDirectory::new)
-            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
-
-        let circuit_directory = storage.read().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            self.storage_location.to_string(),
-            circuit_directory,
-        )));
 
         let network = self.network.clone();
         let (send, recv) = crossbeam_channel::bounded(5);
