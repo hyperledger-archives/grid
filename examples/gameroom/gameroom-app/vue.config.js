@@ -33,6 +33,13 @@ module.exports = {
         ws: true,
         changeOrigin: true
       },
+      '^/ws': {
+        target: 'ws://localhost:8000',
+        pathRewrite: {'^/ws': ''},
+        secure: false,
+        ws: true,
+        changeOrigin: true
+      },
     },
   },
   transpileDependencies: ['vuex-module-decorators'],
