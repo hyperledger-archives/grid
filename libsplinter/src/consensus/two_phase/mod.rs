@@ -39,6 +39,8 @@ use crate::protos::two_phase::{
 use self::timing::Timeout;
 
 const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 5000; // 5 seconds
+const MESSAGE_TIMEOUT_MILLIS: u64 = 100;
+const PROPOSAL_TIMEOUT_MILLIS: u64 = 100;
 
 #[derive(Debug)]
 enum State {
@@ -607,8 +609,8 @@ impl ConsensusEngine for TwoPhaseEngine {
         proposal_manager: Box<dyn ProposalManager>,
         startup_state: StartupState,
     ) -> Result<(), ConsensusEngineError> {
-        let message_timeout = Duration::from_millis(100);
-        let proposal_timeout = Duration::from_millis(100);
+        let message_timeout = Duration::from_millis(MESSAGE_TIMEOUT_MILLIS);
+        let proposal_timeout = Duration::from_millis(PROPOSAL_TIMEOUT_MILLIS);
 
         self.id = startup_state.id;
 
