@@ -166,7 +166,7 @@ fn main() -> Result<(), ServiceError> {
     let consensus_thread = Builder::new()
         .name("TwoPhaseConsensus".into())
         .spawn(move || {
-            let mut two_phase_engine = TwoPhaseEngine::new();
+            let mut two_phase_engine = TwoPhaseEngine::default();
             two_phase_engine
                 .run(
                     consensus_msg_rx,

@@ -18,6 +18,8 @@
 //! manager can define its own set of required verifiers by setting this information in the
 //! consensus data.
 
+mod timing;
+
 use std::collections::{HashSet, VecDeque};
 use std::iter::FromIterator;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
@@ -33,6 +35,10 @@ use crate::protos::two_phase::{
     RequiredVerifiers, TwoPhaseMessage, TwoPhaseMessage_ProposalResult,
     TwoPhaseMessage_ProposalVerificationResponse, TwoPhaseMessage_Type,
 };
+
+use self::timing::Timeout;
+
+const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 5000; // 5 seconds
 
 #[derive(Debug)]
 enum State {
@@ -89,22 +95,24 @@ pub struct TwoPhaseEngine {
     id: PeerId,
     peers: HashSet<PeerId>,
     state: State,
+    coordinator_timeout: Timeout,
     proposal_backlog: VecDeque<TwoPhaseProposal>,
     verification_request_backlog: VecDeque<ProposalId>,
 }
 
 impl Default for TwoPhaseEngine {
     fn default() -> Self {
-        Self::new()
+        Self::new(Duration::from_millis(DEFAULT_COORDINATOR_TIMEOUT_MILLIS))
     }
 }
 
 impl TwoPhaseEngine {
-    pub fn new() -> Self {
+    pub fn new(coordinator_timeout_duration: Duration) -> Self {
         TwoPhaseEngine {
             id: PeerId::default(),
             peers: HashSet::new(),
             state: State::Idle,
+            coordinator_timeout: Timeout::new(coordinator_timeout_duration),
             proposal_backlog: VecDeque::new(),
             verification_request_backlog: VecDeque::new(),
         }
@@ -369,7 +377,10 @@ impl TwoPhaseEngine {
     ) -> Result<(), ConsensusEngineError> {
         debug!("Checking proposal {}", tpc_proposal.proposal_id());
         match proposal_manager.check_proposal(tpc_proposal.proposal_id()) {
-            Ok(_) => self.state = State::EvaluatingProposal(tpc_proposal),
+            Ok(_) => {
+                self.state = State::EvaluatingProposal(tpc_proposal);
+                self.coordinator_timeout.start();
+            }
             Err(err) => {
                 debug!(
                     "Rejecting proposal {}; failed to check proposal due to err: {}",
@@ -411,6 +422,7 @@ impl TwoPhaseEngine {
         }
 
         self.state = State::Idle;
+        self.coordinator_timeout.stop();
 
         let mut result = TwoPhaseMessage::new();
         result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
@@ -476,6 +488,31 @@ impl TwoPhaseEngine {
                 tpc_proposal.proposal_id()
             );
             self.proposal_backlog.push_back(tpc_proposal);
+        }
+
+        Ok(())
+    }
+
+    /// If the coordinator timeout has expired, abort the current proposal.
+    fn abort_proposal_if_timed_out(
+        &mut self,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        if let State::EvaluatingProposal(ref tpc_proposal) = self.state {
+            if self.coordinator_timeout.check_expired() {
+                warn!(
+                    "Proposal timed out; rejecting: {}",
+                    tpc_proposal.proposal_id()
+                );
+                let proposal_id = tpc_proposal.proposal_id().clone();
+                self.complete_coordination(
+                    proposal_id,
+                    TwoPhaseMessage_ProposalResult::REJECT,
+                    network_sender,
+                    proposal_manager,
+                )?;
+            }
         }
 
         Ok(())
@@ -580,6 +617,11 @@ impl ConsensusEngine for TwoPhaseEngine {
         }
 
         loop {
+            if let Err(err) = self.abort_proposal_if_timed_out(&*network_sender, &*proposal_manager)
+            {
+                error!("Failed to abort timed-out proposal: {}", err);
+            }
+
             if let Err(err) = self.handle_backlogged_verification_request(&*proposal_manager) {
                 error!("Failed to handle backlogged verification request: {}", err);
             }
@@ -656,7 +698,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::new();
+        let mut engine = TwoPhaseEngine::default();
         let thread = std::thread::spawn(move || {
             engine
                 .run(
@@ -692,7 +734,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::new();
+        let mut engine = TwoPhaseEngine::default();
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -867,7 +909,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::new();
+        let mut engine = TwoPhaseEngine::default();
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -1030,7 +1072,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::new();
+        let mut engine = TwoPhaseEngine::default();
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -1161,6 +1203,83 @@ pub mod tests {
         loop {
             if let Some(id) = manager.rejected_proposals().get(0) {
                 assert_eq!(id, &vec![2].into());
+                break;
+            }
+        }
+
+        update_tx
+            .send(ProposalUpdate::Shutdown)
+            .expect("failed to send shutdown");
+        thread.join().expect("failed to join engine thread");
+    }
+
+    /// Test that the coordinator will abort a commit if the coordinator timeout expires while
+    /// evaluating the commit.
+    #[test]
+    fn test_coordinator_timeout() {
+        let (update_tx, update_rx) = channel();
+        let (_consensus_msg_tx, consensus_msg_rx) = channel();
+
+        let manager = MockProposalManager::new(update_tx.clone());
+        let network = MockConsensusNetworkSender::new();
+        let startup_state = StartupState {
+            id: vec![0].into(),
+            peer_ids: vec![vec![1].into(), vec![2].into()],
+            last_proposal: None,
+        };
+
+        // Start engine with a very short coordinator timeout
+        let mut engine = TwoPhaseEngine::new(Duration::from_millis(10));
+        let network_clone = network.clone();
+        let manager_clone = manager.clone();
+        let thread = std::thread::spawn(move || {
+            engine
+                .run(
+                    consensus_msg_rx,
+                    update_rx,
+                    Box::new(network_clone),
+                    Box::new(manager_clone),
+                    startup_state,
+                )
+                .expect("engine failed")
+        });
+
+        // Check that a proposal verification request is sent
+        loop {
+            if let Some(msg) = network.broadcast_messages().get(0) {
+                let msg: TwoPhaseMessage =
+                    protobuf::parse_from_bytes(msg).expect("failed to parse message");
+                assert_eq!(
+                    msg.get_message_type(),
+                    TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST
+                );
+                assert_eq!(msg.get_proposal_id(), vec![1].as_slice());
+                break;
+            }
+        }
+
+        // Verify the Reject message is sent for the proposal (due to the timeout)
+        loop {
+            if let Some(msg) = network.broadcast_messages().get(1) {
+                let msg: TwoPhaseMessage =
+                    protobuf::parse_from_bytes(msg).expect("failed to parse message");
+                assert_eq!(
+                    msg.get_message_type(),
+                    TwoPhaseMessage_Type::PROPOSAL_RESULT
+                );
+                assert_eq!(
+                    msg.get_proposal_result(),
+                    TwoPhaseMessage_ProposalResult::REJECT
+                );
+                assert_eq!(msg.get_proposal_id(), vec![1].as_slice());
+                break;
+            }
+        }
+
+        // Verify the proposal was rejected
+        loop {
+            if let Some(id) = manager.rejected_proposals().get(0) {
+                assert_eq!(id, &vec![1].into());
                 break;
             }
         }
