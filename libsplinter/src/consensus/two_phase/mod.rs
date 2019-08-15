@@ -480,6 +480,73 @@ impl TwoPhaseEngine {
 
         Ok(())
     }
+
+    /// If not doing anything, see if there are any backlogged verification requests that this node
+    /// has received a proposal for, and evaluate that proposal.
+    fn handle_backlogged_verification_request(
+        &mut self,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        if let State::Idle = self.state {
+            if let Some(idx) = self
+                .verification_request_backlog
+                .iter()
+                .position(|proposal_id| {
+                    self.proposal_backlog
+                        .iter()
+                        .any(|tpc_proposal| tpc_proposal.proposal_id() == proposal_id)
+                })
+            {
+                let proposal_id = self.verification_request_backlog.remove(idx).unwrap();
+                let proposal_idx = self
+                    .proposal_backlog
+                    .iter()
+                    .position(|tpc_proposal| tpc_proposal.proposal_id() == &proposal_id)
+                    .unwrap();
+                let tpc_proposal = self.proposal_backlog.remove(proposal_idx).unwrap();
+
+                debug!("Checking proposal from backlog: {}", proposal_id);
+                proposal_manager.check_proposal(&proposal_id)?;
+                self.state = State::EvaluatingProposal(tpc_proposal);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// If not doing anything, try to get the next proposal. First check if there's one that this
+    /// node is the coordinator for in the local backlog; if not, ask the proposal manager.
+    fn get_next_proposal(
+        &mut self,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        if let State::Idle = self.state {
+            if let Some(idx) = self
+                .proposal_backlog
+                .iter()
+                .position(|tpc_proposal| tpc_proposal.coordinator_id() == &self.id)
+            {
+                let tpc_proposal = self.proposal_backlog.remove(idx).unwrap();
+                debug!(
+                    "Starting coordination for backlogged proposal {}",
+                    tpc_proposal.proposal_id()
+                );
+                if let Err(err) =
+                    self.start_coordination(tpc_proposal, network_sender, proposal_manager)
+                {
+                    error!("Failed to start coordination for proposal: {}", err);
+                }
+            } else {
+                match proposal_manager.create_proposal(None, vec![]) {
+                    Ok(()) => self.state = State::AwaitingProposal,
+                    Err(err) => error!("Error while creating proposal: {}", err),
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl ConsensusEngine for TwoPhaseEngine {
@@ -513,58 +580,12 @@ impl ConsensusEngine for TwoPhaseEngine {
         }
 
         loop {
-            // If not doing anything, see if there are any backlogged verification requests that
-            // this node has received a proposal for, and evaluate that proposal.
-            if let State::Idle = self.state {
-                if let Some(idx) =
-                    self.verification_request_backlog
-                        .iter()
-                        .position(|proposal_id| {
-                            self.proposal_backlog
-                                .iter()
-                                .any(|tpc_proposal| tpc_proposal.proposal_id() == proposal_id)
-                        })
-                {
-                    let proposal_id = self.verification_request_backlog.remove(idx).unwrap();
-                    let proposal_idx = self
-                        .proposal_backlog
-                        .iter()
-                        .position(|tpc_proposal| tpc_proposal.proposal_id() == &proposal_id)
-                        .unwrap();
-                    let tpc_proposal = self.proposal_backlog.remove(proposal_idx).unwrap();
-                    debug!("Checking proposal from backlog: {}", proposal_id);
-                    match proposal_manager.check_proposal(&proposal_id) {
-                        Ok(_) => self.state = State::EvaluatingProposal(tpc_proposal),
-                        Err(err) => error!("Failed to check backlogged proposal: {}", err),
-                    }
-                }
+            if let Err(err) = self.handle_backlogged_verification_request(&*proposal_manager) {
+                error!("Failed to handle backlogged verification request: {}", err);
             }
 
-            // If not doing anything, try to get the next proposal. First check if there's one that
-            // this node is the coordinator for in the local backlog; if not, ask the proposal
-            // manager.
-            if let State::Idle = self.state {
-                if let Some(idx) = self
-                    .proposal_backlog
-                    .iter()
-                    .position(|tpc_proposal| tpc_proposal.coordinator_id() == &self.id)
-                {
-                    let tpc_proposal = self.proposal_backlog.remove(idx).unwrap();
-                    debug!(
-                        "Starting coordination for backlogged proposal {}",
-                        tpc_proposal.proposal_id()
-                    );
-                    if let Err(err) =
-                        self.start_coordination(tpc_proposal, &*network_sender, &*proposal_manager)
-                    {
-                        error!("Failed to start coordination for proposal: {}", err);
-                    }
-                } else {
-                    match proposal_manager.create_proposal(None, vec![]) {
-                        Ok(()) => self.state = State::AwaitingProposal,
-                        Err(err) => error!("Error while creating proposal: {}", err),
-                    }
-                }
+            if let Err(err) = self.get_next_proposal(&*network_sender, &*proposal_manager) {
+                error!("Failed to get next proposal: {}", err);
             }
 
             // Get and handle a consensus message if there is one
