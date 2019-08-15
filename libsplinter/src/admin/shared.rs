@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
 use crate::circuit::SplinterState;
@@ -22,7 +21,7 @@ use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
-use crate::orchestrator::ServiceOrchestrator;
+use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
     Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType, Circuit_AuthorizationType,
@@ -45,6 +44,8 @@ pub struct AdminServiceShared {
     open_proposals: HashMap<String, CircuitProposal>,
     // orchestrator used to initialize and shutdown services
     orchestrator: ServiceOrchestrator,
+    // list of services that have been initialized using the orchestrator
+    running_services: HashSet<ServiceDefinition>,
     // peer connector used to connect to new members listed in a circuit
     peer_connector: PeerConnector,
     // auth inquisitor
@@ -82,6 +83,7 @@ impl AdminServiceShared {
             network_sender: None,
             open_proposals: Default::default(),
             orchestrator,
+            running_services: HashSet::new(),
             peer_connector,
             auth_inquisitor,
             unpeered_payloads: Vec::new(),
@@ -434,6 +436,49 @@ impl AdminServiceShared {
             return Err(AdminSharedError::ValidationFailed(
                 "The circuit must have a mangement type".to_string(),
             ));
+        }
+
+        Ok(())
+    }
+
+    /// Initialize all services that this node should run on the created circuit using the service
+    /// orchestrator.
+    pub fn initialize_services(
+        &mut self,
+        create_circuit: &messages::CreateCircuit,
+    ) -> Result<(), AdminSharedError> {
+        // Get all services this node is allowed to run
+        let services = create_circuit
+            .roster
+            .iter()
+            .filter(|service| service.allowed_nodes.contains(&self.node_id))
+            .collect::<Vec<_>>();
+
+        // Start all services
+        for service in services {
+            let peer_services = create_circuit
+                .roster
+                .iter()
+                .filter_map(|peer_service| {
+                    if peer_service.service_id != service.service_id {
+                        Some(peer_service.service_id.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let service_definition = ServiceDefinition {
+                circuit: create_circuit.circuit_id.clone(),
+                service_id: service.service_id.clone(),
+                service_type: service.service_type.clone(),
+                peer_services,
+            };
+
+            self.orchestrator
+                .initialize_service(service_definition.clone(), service.arguments.clone())?;
+
+            self.running_services.insert(service_definition);
         }
 
         Ok(())
