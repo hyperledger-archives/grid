@@ -25,39 +25,37 @@ use super::{shared::ScabbardShared, Scabbard};
 
 impl RestResourceProvider for Scabbard {
     fn resources(&self) -> Vec<Resource> {
-        let shared = self.shared.clone();
-        vec![Resource::new(Method::Post, "/batches", move |_, p| {
-            add_batch_to_queue(p, shared.clone())
-        })]
+        vec![make_add_batch_to_queue_route(self.shared.clone())]
     }
 }
 
-fn add_batch_to_queue(
-    payload: web::Payload,
-    shared: Arc<Mutex<ScabbardShared>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
-    Box::new(
-        payload
-            .from_err()
-            .fold(web::BytesMut::new(), move |mut body, chunk| {
-                body.extend_from_slice(&chunk);
-                Ok::<_, ActixError>(body)
-            })
-            .and_then(move |body| {
-                let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
-                    Ok(batches) => batches,
-                    Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
-                };
+fn make_add_batch_to_queue_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
+    Resource::new(Method::Post, "/batches", move |_, p| {
+        let shared = shared.clone();
+        Box::new(
+            p.from_err()
+                .fold(web::BytesMut::new(), move |mut body, chunk| {
+                    body.extend_from_slice(&chunk);
+                    Ok::<_, ActixError>(body)
+                })
+                .and_then(move |body| {
+                    let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
+                        Ok(batches) => batches,
+                        Err(_) => {
+                            return Box::new(HttpResponse::BadRequest().finish().into_future())
+                        }
+                    };
 
-                if let Ok(mut shared) = shared.lock() {
-                    for batch in batches {
-                        shared.add_batch_to_queue(batch);
+                    if let Ok(mut shared) = shared.lock() {
+                        for batch in batches {
+                            shared.add_batch_to_queue(batch);
+                        }
+                        Box::new(HttpResponse::Ok().finish().into_future())
+                    } else {
+                        Box::new(HttpResponse::InternalServerError().finish().into_future())
                     }
-                    Box::new(HttpResponse::Ok().finish().into_future())
-                } else {
-                    Box::new(HttpResponse::InternalServerError().finish().into_future())
-                }
-            })
-            .into_future(),
-    )
+                })
+                .into_future(),
+        )
+    })
 }
