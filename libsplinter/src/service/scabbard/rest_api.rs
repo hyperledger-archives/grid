@@ -19,14 +19,35 @@ use transact::protos::FromBytes;
 
 use crate::actix_web::{web, Error as ActixError, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
-use crate::rest_api::{Method, Resource, RestResourceProvider};
+use crate::rest_api::{Method, Request, Resource, RestResourceProvider};
 
 use super::{shared::ScabbardShared, Scabbard};
 
 impl RestResourceProvider for Scabbard {
     fn resources(&self) -> Vec<Resource> {
-        vec![make_add_batch_to_queue_route(self.shared.clone())]
+        vec![
+            make_add_batch_to_queue_route(self.shared.clone()),
+            make_subscribe_route(self.shared.clone()),
+        ]
     }
+}
+
+fn make_subscribe_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
+    Resource::new(Method::Get, "/ws/subscribe", move |r, p| {
+        let mut shared = if let Ok(s) = shared.lock() {
+            s
+        } else {
+            return Box::new(HttpResponse::InternalServerError().finish().into_future());
+        };
+
+        match shared.state_mut().subscribe_to_state(Request::from((r, p))) {
+            Ok(res) => Box::new(res.into_future()),
+            Err(err) => {
+                debug!("Failed to create websocket: {:?}", err);
+                Box::new(HttpResponse::InternalServerError().finish().into_future())
+            }
+        }
+    })
 }
 
 fn make_add_batch_to_queue_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
