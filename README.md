@@ -38,6 +38,6 @@ Splinter includes example applications that you can run as demos.
   tic tac toe. See the [Private XO README](examples/private_xo/README.md).
 
 - Gameroom demo: Web application that allows you to set up a dynamic
-  two-party circuit (called a "gameroom") and play tic tac toe on a distributed
-  ledger. See the [Gameroom README](examples/gameroom/README.md).
+  multi-party circuit (called a "gameroom") and play tic tac toe.
+  See the [Gameroom README](examples/gameroom/README.md).
 
