@@ -13,12 +13,13 @@
 // limitations under the License.
 
 //! A simple n-party, two-phase consensus algorithm implemented as a `ConsensusEngine`. This is a
-//! bully algorithm where there is no established coordinator; instead, whichever peer makes a
-//! proposal first is considered the coordinator for the life of that proposal. Only one proposal
-//! is considered at a time. A proposal manager can define its own set of required verifiers by
-//! setting this information in the consensus data.
+//! bully algorithm where the coordinator for a proposal is determined as the node with the
+//! lowest ID in the set of verifiers. Only one proposal is considered at a time. A proposal
+//! manager can define its own set of required verifiers by setting this information in the
+//! consensus data.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
+use std::iter::FromIterator;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
@@ -26,7 +27,7 @@ use protobuf::Message;
 
 use crate::consensus::{
     ConsensusEngine, ConsensusEngineError, ConsensusMessage, ConsensusNetworkSender, PeerId,
-    ProposalId, ProposalManager, ProposalUpdate, StartupState,
+    Proposal, ProposalId, ProposalManager, ProposalUpdate, StartupState,
 };
 use crate::protos::two_phase::{
     RequiredVerifiers, TwoPhaseMessage, TwoPhaseMessage_ProposalResult,
@@ -37,26 +38,27 @@ use crate::protos::two_phase::{
 enum State {
     Idle,
     AwaitingProposal,
-    EvaluatingProposal(ProposalStatus),
+    EvaluatingProposal(TwoPhaseProposal),
 }
 
+/// Contains information about a proposal that two phase consensus needs to keep track of
 #[derive(Debug)]
-struct ProposalStatus {
+struct TwoPhaseProposal {
     proposal_id: ProposalId,
-    proposer_id: PeerId,
+    coordinator_id: PeerId,
     peers_verified: HashSet<PeerId>,
     required_verifiers: HashSet<PeerId>,
 }
 
-impl ProposalStatus {
+impl TwoPhaseProposal {
     fn new(
         proposal_id: ProposalId,
-        proposer_id: PeerId,
+        coordinator_id: PeerId,
         required_verifiers: HashSet<PeerId>,
     ) -> Self {
-        ProposalStatus {
+        TwoPhaseProposal {
             proposal_id,
-            proposer_id,
+            coordinator_id,
             peers_verified: HashSet::new(),
             required_verifiers,
         }
@@ -66,8 +68,8 @@ impl ProposalStatus {
         &self.proposal_id
     }
 
-    fn proposer_id(&self) -> &PeerId {
-        &self.proposer_id
+    fn coordinator_id(&self) -> &PeerId {
+        &self.coordinator_id
     }
 
     fn peers_verified(&self) -> &HashSet<PeerId> {
@@ -84,9 +86,11 @@ impl ProposalStatus {
 }
 
 pub struct TwoPhaseEngine {
+    id: PeerId,
     peers: HashSet<PeerId>,
     state: State,
-    verification_request_backlog: HashSet<ProposalId>,
+    proposal_backlog: VecDeque<TwoPhaseProposal>,
+    verification_request_backlog: VecDeque<ProposalId>,
 }
 
 impl Default for TwoPhaseEngine {
@@ -98,97 +102,119 @@ impl Default for TwoPhaseEngine {
 impl TwoPhaseEngine {
     pub fn new() -> Self {
         TwoPhaseEngine {
+            id: PeerId::default(),
             peers: HashSet::new(),
             state: State::Idle,
-            verification_request_backlog: HashSet::new(),
+            proposal_backlog: VecDeque::new(),
+            verification_request_backlog: VecDeque::new(),
         }
     }
 
-    #[allow(clippy::borrowed_box)]
     fn handle_consensus_msg(
         &mut self,
         consensus_msg: ConsensusMessage,
-        network_sender: &Box<ConsensusNetworkSender>,
-        proposal_manager: &Box<ProposalManager>,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
     ) -> Result<(), ConsensusEngineError> {
         let two_phase_msg: TwoPhaseMessage = protobuf::parse_from_bytes(&consensus_msg.message)?;
         let proposal_id = ProposalId::from(two_phase_msg.get_proposal_id());
 
-        // Ignore any messages that aren't for the current proposal (except for verification
-        // requests, which are backlogged)
-        if !self.evaluating_proposal(&proposal_id) {
-            match two_phase_msg.get_message_type() {
-                TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST => {
-                    debug!(
-                        "backlogging verification request for unknown proposal: {}",
-                        proposal_id,
-                    );
-                    // Note: this is a potential leak, because requests don't get removed unless
-                    // the proposal is actually evaluated at some point in the future.
-                    self.verification_request_backlog.insert(proposal_id);
-                }
-                _ => warn!(
-                    "ignoring message for proposal that is not being evaluated: {}",
-                    proposal_id
-                ),
-            }
-
-            return Ok(());
-        }
-
         match two_phase_msg.get_message_type() {
             TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST => {
-                debug!("Verifying proposal {}", proposal_id);
-                proposal_manager.check_proposal(&proposal_id)?;
+                debug!("Proposal verification request received: {}", proposal_id);
+
+                match self.state {
+                    State::EvaluatingProposal(ref tpc_proposal)
+                        if tpc_proposal.proposal_id() != &proposal_id =>
+                    {
+                        debug!(
+                            "Proposal already in progress, backlogging verification request: {}",
+                            proposal_id
+                        );
+                        self.verification_request_backlog.push_back(proposal_id);
+                    }
+                    _ => {
+                        // Try to find the proposal in the backlog
+                        match self
+                            .proposal_backlog
+                            .iter()
+                            .position(|tpc_proposal| tpc_proposal.proposal_id() == &proposal_id)
+                        {
+                            Some(idx) => {
+                                debug!("Checking proposal {}", proposal_id);
+                                proposal_manager.check_proposal(&proposal_id)?;
+                                self.state = State::EvaluatingProposal(
+                                    self.proposal_backlog.remove(idx).unwrap(),
+                                );
+                            }
+                            None => {
+                                debug!(
+                                    "Proposal not yet received, backlogging verification request: \
+                                     {}",
+                                    proposal_id
+                                );
+                                self.verification_request_backlog.push_back(proposal_id);
+                            }
+                        }
+                    }
+                }
             }
             TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE => {
+                if !self.evaluating_proposal(&proposal_id) {
+                    warn!(
+                        "Received unexpected verification response for proposal {}",
+                        proposal_id
+                    );
+                    return Ok(());
+                }
+
                 match two_phase_msg.get_proposal_verification_response() {
                     TwoPhaseMessage_ProposalVerificationResponse::VERIFIED => {
                         debug!(
                             "Proposal {} verified by peer {}",
                             proposal_id, consensus_msg.origin_id
                         );
-                        if let State::EvaluatingProposal(proposal_status) = &mut self.state {
-                            proposal_status.add_verified_peer(consensus_msg.origin_id);
+                        // Already checked state above in self.evaluating_proposal()
+                        if let State::EvaluatingProposal(tpc_proposal) = &mut self.state {
+                            tpc_proposal.add_verified_peer(consensus_msg.origin_id);
 
-                            if proposal_status.peers_verified()
-                                == proposal_status.required_verifiers()
-                            {
-                                let mut result = TwoPhaseMessage::new();
-                                result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                                result.set_proposal_id(proposal_id.clone().into());
-                                result.set_proposal_result(TwoPhaseMessage_ProposalResult::APPLY);
-
-                                network_sender.broadcast(result.write_to_bytes()?)?;
+                            if tpc_proposal.peers_verified() == tpc_proposal.required_verifiers() {
+                                debug!(
+                                    "All verifiers have approved; accepting proposal {}",
+                                    proposal_id
+                                );
 
                                 proposal_manager.accept_proposal(&proposal_id, None)?;
                                 self.state = State::Idle;
+
+                                let mut result = TwoPhaseMessage::new();
+                                result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+                                result.set_proposal_id(proposal_id.into());
+                                result.set_proposal_result(TwoPhaseMessage_ProposalResult::APPLY);
+
+                                network_sender.broadcast(result.write_to_bytes()?)?;
                             }
-                        } else {
-                            // self.evaluating_proposal(), which is called above, checks that the
-                            // state is EvaluatingProposal and the current proposal matches the one
-                            // this message is for.
-                            panic!("Already checked proposal being verified");
                         }
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::FAILED => {
                         debug!(
-                            "Proposal {} failed by peer {}",
-                            proposal_id, consensus_msg.origin_id
+                            "Proposal failed by peer {}; rejecting proposal {}",
+                            consensus_msg.origin_id, proposal_id
                         );
-                        let mut result = TwoPhaseMessage::new();
-                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                        result.set_proposal_id(proposal_id.clone().into());
-                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
-
-                        network_sender.broadcast(result.write_to_bytes()?)?;
 
                         proposal_manager.reject_proposal(&proposal_id)?;
                         self.state = State::Idle;
+
+                        let mut result = TwoPhaseMessage::new();
+                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+                        result.set_proposal_id(proposal_id.into());
+                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
+
+                        network_sender.broadcast(result.write_to_bytes()?)?;
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::UNSET_VERIFICATION_RESPONSE => {
                         warn!(
-                            "ignoring improperly specified proposal verification response from {}",
+                            "Ignoring improperly specified proposal verification response from {}",
                             consensus_msg.origin_id
                         )
                     }
@@ -196,22 +222,33 @@ impl TwoPhaseEngine {
             }
             TwoPhaseMessage_Type::PROPOSAL_RESULT => match two_phase_msg.get_proposal_result() {
                 TwoPhaseMessage_ProposalResult::APPLY => {
-                    debug!("accepting proposal {}", proposal_id);
-                    proposal_manager.accept_proposal(&proposal_id, None)?;
-                    self.state = State::Idle;
+                    if self.evaluating_proposal(&proposal_id) {
+                        debug!("Accepting proposal {}", proposal_id);
+                        proposal_manager.accept_proposal(&proposal_id, None)?;
+                        self.state = State::Idle;
+                    } else {
+                        warn!(
+                            "Received unexpected apply result for proposal {}",
+                            proposal_id
+                        );
+                    }
                 }
                 TwoPhaseMessage_ProposalResult::REJECT => {
-                    debug!("rejecting proposal {}", proposal_id);
+                    debug!("Rejecting proposal {}", proposal_id);
                     proposal_manager.reject_proposal(&proposal_id)?;
-                    self.state = State::Idle;
+
+                    // Only update state if this was the currently evaluating proposal
+                    if self.evaluating_proposal(&proposal_id) {
+                        self.state = State::Idle;
+                    }
                 }
                 TwoPhaseMessage_ProposalResult::UNSET_RESULT => warn!(
-                    "ignoring improperly specified proposal result from {}",
+                    "Ignoring improperly specified proposal result from {}",
                     consensus_msg.origin_id
                 ),
             },
             TwoPhaseMessage_Type::UNSET_TYPE => warn!(
-                "ignoring improperly specified two-phase message from {}",
+                "Ignoring improperly specified two-phase message from {}",
                 consensus_msg.origin_id
             ),
         }
@@ -219,121 +256,92 @@ impl TwoPhaseEngine {
         Ok(())
     }
 
-    #[allow(clippy::borrowed_box)]
     fn handle_proposal_update(
         &mut self,
-        own_id: &PeerId,
         update: ProposalUpdate,
-        network_sender: &Box<ConsensusNetworkSender>,
-        proposal_manager: &Box<ProposalManager>,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
     ) -> Result<(), ConsensusEngineError> {
         match update {
-            ProposalUpdate::ProposalCreated(Some(proposal)) => {
-                if let State::AwaitingProposal = self.state {
-                    debug!("Proposal created: {}", proposal.id);
-                    let mut verifiers: HashSet<PeerId> = HashSet::new();
-
-                    if !proposal.consensus_data.is_empty() {
-                        let mut required_verifiers: RequiredVerifiers =
-                            protobuf::parse_from_bytes(&proposal.consensus_data)?;
-
-                        for id in required_verifiers.take_verifiers().to_vec() {
-                            verifiers.insert(id.into());
-                        }
-                    } else {
-                        verifiers = self.peers.clone();
-                    }
-
-                    self.state = State::EvaluatingProposal(ProposalStatus::new(
-                        proposal.id.clone(),
-                        own_id.clone(),
-                        verifiers,
-                    ));
-
-                    let mut request = TwoPhaseMessage::new();
-                    request.set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST);
-                    request.set_proposal_id(proposal.id.into());
-
-                    network_sender.broadcast(request.write_to_bytes()?)?;
-                } else if !self.evaluating_proposal(&proposal.id) {
-                    warn!("Received proposal creation, but not awaiting one");
-                    proposal_manager.reject_proposal(&proposal.id)?;
-                }
-            }
             ProposalUpdate::ProposalCreated(None) => {
                 if let State::AwaitingProposal = self.state {
                     self.state = State::Idle;
                 }
             }
-            ProposalUpdate::ProposalReceived(proposal, peer_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status) => {
-                    if proposal_status.proposal_id() != &proposal.id {
-                        warn!(
-                            "Rejecting proposal {} because another ({}) is currently being \
-                             evaluated",
-                            proposal.id,
-                            proposal_status.proposal_id(),
-                        );
-                        proposal_manager.reject_proposal(&proposal.id)?;
-                    }
-                }
-                _ => {
-                    debug!("Proposal received: {}", proposal.id);
-                    let mut verifiers: HashSet<PeerId> = HashSet::new();
-                    if !proposal.consensus_data.is_empty() {
-                        let mut required_verifiers: RequiredVerifiers =
-                            protobuf::parse_from_bytes(&proposal.consensus_data)?;
-
-                        for id in required_verifiers.take_verifiers().to_vec() {
-                            verifiers.insert(id.into());
-                        }
-                    } else {
-                        verifiers = self.peers.clone();
-                    }
-                    self.state = State::EvaluatingProposal(ProposalStatus::new(
-                        proposal.id,
-                        peer_id,
-                        verifiers,
-                    ));
-                }
-            },
-            ProposalUpdate::ProposalValid(proposal_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status)
-                    if proposal_status.proposal_id() == &proposal_id =>
+            ProposalUpdate::ProposalCreated(Some(proposal)) => {
+                debug!("Proposal created: {}", proposal.id);
+                self.handle_proposal(proposal, network_sender, proposal_manager)?;
+            }
+            ProposalUpdate::ProposalReceived(proposal, _) => {
+                debug!("Proposal received: {}", proposal.id);
+                self.handle_proposal(proposal, network_sender, proposal_manager)?;
+            }
+            ProposalUpdate::ProposalValid(proposal_id) => match &mut self.state {
+                State::EvaluatingProposal(tpc_proposal)
+                    if tpc_proposal.proposal_id() == &proposal_id =>
                 {
-                    debug!(
-                        "Received valid proposal message for proposal {}",
-                        proposal_id
-                    );
-                    let mut response = TwoPhaseMessage::new();
-                    response.set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE);
-                    response.set_proposal_id(proposal_id.into());
-                    response.set_proposal_verification_response(
-                        TwoPhaseMessage_ProposalVerificationResponse::VERIFIED,
-                    );
+                    debug!("Proposal valid: {}", proposal_id);
 
-                    network_sender
-                        .send_to(proposal_status.proposer_id(), response.write_to_bytes()?)?;
+                    if &self.id == tpc_proposal.coordinator_id() {
+                        tpc_proposal.add_verified_peer(self.id.clone());
+
+                        debug!("Requesting verification of proposal {}", proposal_id);
+
+                        let mut request = TwoPhaseMessage::new();
+                        request
+                            .set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_REQUEST);
+                        request.set_proposal_id(proposal_id.into());
+
+                        network_sender.broadcast(request.write_to_bytes()?)?;
+                    } else {
+                        debug!("Sending verified response for proposal {}", proposal_id);
+
+                        let mut response = TwoPhaseMessage::new();
+                        response
+                            .set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE);
+                        response.set_proposal_id(proposal_id.into());
+                        response.set_proposal_verification_response(
+                            TwoPhaseMessage_ProposalVerificationResponse::VERIFIED,
+                        );
+
+                        network_sender
+                            .send_to(tpc_proposal.coordinator_id(), response.write_to_bytes()?)?;
+                    }
                 }
                 _ => warn!("Got valid message for unknown proposal: {}", proposal_id),
             },
             ProposalUpdate::ProposalInvalid(proposal_id) => match self.state {
-                State::EvaluatingProposal(ref proposal_status)
-                    if proposal_status.proposal_id() == &proposal_id =>
+                State::EvaluatingProposal(ref tpc_proposal)
+                    if tpc_proposal.proposal_id() == &proposal_id =>
                 {
-                    debug!(
-                        "Received invalid proposal message for proposal {}",
-                        proposal_id
-                    );
-                    let mut response = TwoPhaseMessage::new();
-                    response.set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE);
-                    response.set_proposal_id(proposal_id.into());
-                    response.set_proposal_verification_response(
-                        TwoPhaseMessage_ProposalVerificationResponse::FAILED,
-                    );
+                    debug!("Proposal invalid: {}", proposal_id);
 
-                    network_sender
-                        .send_to(proposal_status.proposer_id(), response.write_to_bytes()?)?;
+                    if &self.id == tpc_proposal.coordinator_id() {
+                        debug!("Rejecting proposal {}", proposal_id);
+
+                        proposal_manager.reject_proposal(&proposal_id)?;
+                        self.state = State::Idle;
+
+                        let mut result = TwoPhaseMessage::new();
+                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+                        result.set_proposal_id(proposal_id.into());
+                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
+
+                        network_sender.broadcast(result.write_to_bytes()?)?;
+                    } else {
+                        debug!("Sending failed response for proposal {}", proposal_id);
+
+                        let mut response = TwoPhaseMessage::new();
+                        response
+                            .set_message_type(TwoPhaseMessage_Type::PROPOSAL_VERIFICATION_RESPONSE);
+                        response.set_proposal_id(proposal_id.into());
+                        response.set_proposal_verification_response(
+                            TwoPhaseMessage_ProposalVerificationResponse::FAILED,
+                        );
+
+                        network_sender
+                            .send_to(tpc_proposal.coordinator_id(), response.write_to_bytes()?)?;
+                    }
                 }
                 _ => warn!("Got invalid message for unknown proposal: {}", proposal_id),
             },
@@ -364,6 +372,95 @@ impl TwoPhaseEngine {
             _ => false,
         }
     }
+
+    fn start_coordination(
+        &mut self,
+        tpc_proposal: TwoPhaseProposal,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        debug!("Checking proposal {}", tpc_proposal.proposal_id());
+        match proposal_manager.check_proposal(tpc_proposal.proposal_id()) {
+            Ok(_) => self.state = State::EvaluatingProposal(tpc_proposal),
+            Err(err) => {
+                debug!(
+                    "Rejecting proposal {}; failed to check proposal due to err: {}",
+                    tpc_proposal.proposal_id(),
+                    err
+                );
+
+                proposal_manager.reject_proposal(tpc_proposal.proposal_id())?;
+                self.state = State::Idle;
+
+                let mut result = TwoPhaseMessage::new();
+                result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+                result.set_proposal_id(tpc_proposal.proposal_id().clone().into());
+                result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
+
+                network_sender.broadcast(result.write_to_bytes()?)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_proposal(
+        &mut self,
+        proposal: Proposal,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        // Determine which peers must verify the proposal for it to be committed. If the proposal
+        // manager provides a list in the consensus data field, those peers are used; otherwise,
+        // the list will be all peers.
+        let verifiers = if !proposal.consensus_data.is_empty() {
+            let required_verifiers: RequiredVerifiers =
+                protobuf::parse_from_bytes(&proposal.consensus_data)?;
+            HashSet::from_iter(required_verifiers.verifiers.into_iter().map(PeerId::from))
+        } else {
+            let mut verifiers = self.peers.clone();
+            verifiers.insert(self.id.clone());
+            verifiers
+        };
+
+        // Determines which verifier is the coordinator; the coordinator is the verifier with the
+        // lowest peer ID (bully algorithm).
+        let coordinator = match verifiers.iter().min() {
+            Some(coordinator) => coordinator.clone(),
+            None => {
+                error!(
+                    "Rejecting proposal; no verifiers specified: {}",
+                    proposal.id
+                );
+                proposal_manager.reject_proposal(&proposal.id)?;
+                self.state = State::Idle;
+                return Ok(());
+            }
+        };
+
+        let tpc_proposal = TwoPhaseProposal::new(proposal.id, coordinator, verifiers);
+
+        if let State::EvaluatingProposal(_) = self.state {
+            debug!(
+                "Proposal already in progress, backlogging proposal {}",
+                tpc_proposal.proposal_id()
+            );
+            self.proposal_backlog.push_back(tpc_proposal);
+        } else if &self.id == tpc_proposal.coordinator_id() {
+            debug!(
+                "Starting coordination for proposal {}",
+                tpc_proposal.proposal_id()
+            );
+            self.start_coordination(tpc_proposal, network_sender, proposal_manager)?;
+        } else {
+            debug!(
+                "Not coordinator, backlogging proposal {}",
+                tpc_proposal.proposal_id()
+            );
+            self.proposal_backlog.push_back(tpc_proposal);
+        }
+
+        Ok(())
+    }
 }
 
 impl ConsensusEngine for TwoPhaseEngine {
@@ -390,33 +487,63 @@ impl ConsensusEngine for TwoPhaseEngine {
         let message_timeout = Duration::from_millis(100);
         let proposal_timeout = Duration::from_millis(100);
 
+        self.id = startup_state.id;
+
         for id in startup_state.peer_ids {
             self.peers.insert(id);
         }
 
         loop {
-            // If not doing anything, try to get the next proposal
+            // If not doing anything, see if there are any backlogged verification requests that
+            // this node has received a proposal for, and evaluate that proposal.
             if let State::Idle = self.state {
-                match proposal_manager.create_proposal(None, vec![]) {
-                    Ok(()) => self.state = State::AwaitingProposal,
-                    Err(err) => error!("error while creating proposal: {}", err),
+                if let Some(idx) =
+                    self.verification_request_backlog
+                        .iter()
+                        .position(|proposal_id| {
+                            self.proposal_backlog
+                                .iter()
+                                .any(|tpc_proposal| tpc_proposal.proposal_id() == proposal_id)
+                        })
+                {
+                    let proposal_id = self.verification_request_backlog.remove(idx).unwrap();
+                    let proposal_idx = self
+                        .proposal_backlog
+                        .iter()
+                        .position(|tpc_proposal| tpc_proposal.proposal_id() == &proposal_id)
+                        .unwrap();
+                    let tpc_proposal = self.proposal_backlog.remove(proposal_idx).unwrap();
+                    debug!("Checking proposal from backlog: {}", proposal_id);
+                    match proposal_manager.check_proposal(&proposal_id) {
+                        Ok(_) => self.state = State::EvaluatingProposal(tpc_proposal),
+                        Err(err) => error!("Failed to check backlogged proposal: {}", err),
+                    }
                 }
             }
 
-            // If evaluating a proposal whose verification request has already been received, check
-            // the validity of the proposal
-            if let State::EvaluatingProposal(ref proposal_status) = self.state {
-                if self
-                    .verification_request_backlog
-                    .remove(proposal_status.proposal_id())
+            // If not doing anything, try to get the next proposal. First check if there's one that
+            // this node is the coordinator for in the local backlog; if not, ask the proposal
+            // manager.
+            if let State::Idle = self.state {
+                if let Some(idx) = self
+                    .proposal_backlog
+                    .iter()
+                    .position(|tpc_proposal| tpc_proposal.coordinator_id() == &self.id)
                 {
+                    let tpc_proposal = self.proposal_backlog.remove(idx).unwrap();
                     debug!(
-                        "verifying proposal from backlog: {}",
-                        proposal_status.proposal_id()
+                        "Starting coordination for backlogged proposal {}",
+                        tpc_proposal.proposal_id()
                     );
-                    if let Err(err) = proposal_manager.check_proposal(proposal_status.proposal_id())
+                    if let Err(err) =
+                        self.start_coordination(tpc_proposal, &*network_sender, &*proposal_manager)
                     {
-                        error!("failed to check backlogged proposal: {}", err);
+                        error!("Failed to start coordination for proposal: {}", err);
+                    }
+                } else {
+                    match proposal_manager.create_proposal(None, vec![]) {
+                        Ok(()) => self.state = State::AwaitingProposal,
+                        Err(err) => error!("Error while creating proposal: {}", err),
                     }
                 }
             }
@@ -426,8 +553,8 @@ impl ConsensusEngine for TwoPhaseEngine {
                 Ok(consensus_message) => {
                     if let Err(err) = self.handle_consensus_msg(
                         consensus_message,
-                        &network_sender,
-                        &proposal_manager,
+                        &*network_sender,
+                        &*proposal_manager,
                     ) {
                         error!("error while handling consensus message: {}", err);
                     }
@@ -446,12 +573,9 @@ impl ConsensusEngine for TwoPhaseEngine {
                     break;
                 }
                 Ok(update) => {
-                    if let Err(err) = self.handle_proposal_update(
-                        &startup_state.id,
-                        update,
-                        &network_sender,
-                        &proposal_manager,
-                    ) {
+                    if let Err(err) =
+                        self.handle_proposal_update(update, &*network_sender, &*proposal_manager)
+                    {
                         error!("error while handling proposal update: {}", err);
                     }
                 }
@@ -690,6 +814,7 @@ pub mod tests {
 
         let mut required_verifiers = RequiredVerifiers::new();
         required_verifiers.set_verifiers(RepeatedField::from_vec(vec![
+            vec![0].into(),
             vec![1].into(),
             vec![2].into(),
         ]));
