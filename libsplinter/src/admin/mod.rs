@@ -356,7 +356,7 @@ mod tests {
 
     use std::collections::VecDeque;
     use std::sync::mpsc::{channel, Sender};
-    use std::{thread, time};
+    use std::time;
 
     use crate::mesh::Mesh;
     use crate::network::Network;
@@ -410,12 +410,21 @@ mod tests {
             .propose_circuit(proposed_circuit.clone())
             .expect("The proposal was not handled correctly");
 
-        // sleep for the consensus message timeout time so the proposed circuit message will be
-        // handled
-        let consensus_timeout = time::Duration::from_millis(100);
-        thread::sleep(consensus_timeout);
+        // wait up to 1 second for the proposed circuit message
+        let mut recipient;
+        let mut message;
+        let start = time::Instant::now();
+        loop {
+            if time::Instant::now().duration_since(start) > Duration::from_secs(1) {
+                panic!("Failed to receive proposed circuit message in time");
+            }
+            if let Ok((r, m)) = rx.recv_timeout(Duration::from_millis(100)) {
+                recipient = r;
+                message = m;
+                break;
+            }
+        }
 
-        let (recipient, message) = rx.try_recv().expect("A message should have been sent");
         assert_eq!("admin::other-node".to_string(), recipient);
 
         let mut admin_envelope: admin::AdminMessage =
