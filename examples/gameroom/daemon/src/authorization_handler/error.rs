@@ -29,6 +29,7 @@ pub enum AppAuthHandlerError {
     ShutdownError(String),
     StartUpError(String),
     ClientError(String),
+    SubmitVoteError(String),
 }
 
 impl Error for AppAuthHandlerError {
@@ -41,6 +42,7 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::ShutdownError(_) => None,
             AppAuthHandlerError::StartUpError(_) => None,
             AppAuthHandlerError::ClientError(_) => None,
+            AppAuthHandlerError::SubmitVoteError(_) => None,
         }
     }
 }
@@ -64,6 +66,9 @@ impl fmt::Display for AppAuthHandlerError {
             }
             AppAuthHandlerError::ClientError(msg) => {
                 write!(f, "The client returned an error: {}", msg)
+            }
+            AppAuthHandlerError::SubmitVoteError(msg) => {
+                write!(f, "An error occurred while submitting vote: {}", msg)
             }
         }
     }

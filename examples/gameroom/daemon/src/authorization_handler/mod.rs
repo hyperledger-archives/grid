@@ -49,7 +49,8 @@ use gameroom_database::{
     ConnectionPool,
 };
 use libsplinter::admin::messages::{
-    AdminServiceEvent, CircuitProposal as MsgCircuitProposal, SplinterNode, SplinterService,
+    AdminServiceEvent, CircuitProposal as MsgCircuitProposal, CircuitProposalVote, SplinterNode,
+    SplinterService,
 };
 
 // number of consecutive invalid messages the client will accept before trying to reconnect
@@ -255,6 +256,48 @@ pub fn run(
         AppAuthHandlerShutdownHandle { do_shutdown },
         ThreadJoinHandle(vec![join_handle_client, join_handle_connection]),
     ))
+}
+
+pub fn submit_vote(url: &str, vote: &CircuitProposalVote) -> Result<(), AppAuthHandlerError> {
+    let serialized = serde_json::to_vec(vote)?;
+    let body_stream = futures::stream::once::<_, std::io::Error>(Ok(serialized));
+    let req = Request::builder()
+        .uri(format!("{}/admin/vote", url))
+        .method("POST")
+        .body(Body::wrap_stream(body_stream))
+        .map_err(|err| AppAuthHandlerError::RequestError(format!("{}", err)))?;
+
+    let mut runtime = tokio::runtime::Runtime::new()?;
+    let client = Client::new();
+    runtime.block_on(client.request(req).then(|response| match response {
+        Ok(res) => {
+            let status = res.status();
+            let body = res
+                .into_body()
+                .concat2()
+                .wait()
+                .map_err(|err| {
+                    AppAuthHandlerError::SubmitVoteError(format!(
+                        "The client encountered an error {}",
+                        err
+                    ))
+                })?
+                .to_vec();
+
+            match status {
+                StatusCode::ACCEPTED => Ok(()),
+                _ => Err(AppAuthHandlerError::SubmitVoteError(format!(
+                    "The server returned an error. Status: {}, {}",
+                    status,
+                    String::from_utf8(body)?
+                ))),
+            }
+        }
+        Err(err) => Err(AppAuthHandlerError::SubmitVoteError(format!(
+            "The client encountered an error {}",
+            err
+        ))),
+    }))
 }
 
 fn make_request(url: &str) -> Result<Request<Body>, AppAuthHandlerError> {
