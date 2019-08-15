@@ -54,7 +54,8 @@ pub fn run(
             let addr = HttpServer::new(move || {
                 App::new()
                     .data(database_connection.clone())
-                    .data((Client::new(), splinterd_url.to_owned()))
+                    .data(Client::new())
+                    .data(splinterd_url.to_owned())
                     .service(
                         web::resource("/nodes/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),
