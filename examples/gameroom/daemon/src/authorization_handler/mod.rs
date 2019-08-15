@@ -20,21 +20,27 @@ pub use error::AppAuthHandlerError;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    mpsc, Arc,
+    mpsc::{self, Receiver, Sender, TryRecvError},
+    Arc,
 };
 use std::thread;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use awc::ws::{CloseCode, CloseReason, Codec, Frame, Message};
 use diesel::connection::Connection;
 use futures::{
-    future::{self, Either},
+    future::{self, Either, FutureResult},
     sink::Sink,
-    stream::Stream,
+    stream::{SplitSink, Stream},
     Future,
 };
+use hyper::upgrade::Upgraded;
 use hyper::{header, Body, Client, Request, StatusCode};
-use tokio::{codec::Decoder, runtime::Runtime};
+
+use tokio::{
+    codec::{Decoder, Framed},
+    runtime::Runtime,
+};
 use uuid::Uuid;
 
 use gameroom_database::{
@@ -45,6 +51,12 @@ use gameroom_database::{
 use libsplinter::admin::messages::{
     AdminServiceEvent, CircuitProposal as MsgCircuitProposal, SplinterNode, SplinterService,
 };
+
+// number of consecutive invalid messages the client will accept before trying to reconnect
+static INVALID_MESSAGE_THRESHOLD: u32 = 10;
+
+// wait time in seconds before the client attempts to reconnect
+static RECONNECT_WAIT_TIME: u64 = 10;
 
 pub struct AppAuthHandlerShutdownHandle {
     do_shutdown: Box<dyn Fn() -> Result<(), AppAuthHandlerError> + Send>,
@@ -70,140 +82,365 @@ pub fn run(
     splinterd_url: &str,
     db_conn: ConnectionPool,
 ) -> Result<(AppAuthHandlerShutdownHandle, ThreadJoinHandle), AppAuthHandlerError> {
-    let splinterd_url = splinterd_url.to_owned();
-    let client = Client::new();
+    let url = splinterd_url.to_string();
     let shutdown_signaler = Arc::new(AtomicBool::new(true));
+
+    // channel to send request future to client thread
+    let (tx_future, rx_future) = mpsc::channel();
+
+    //  channel to send sink to connection manager thread
+    let (tx_closing, rx_closing) = mpsc::channel();
+
+    //  channel to send closing message to connection manager thread
+    let (tx_msg_closing, rx_msg_closing) = mpsc::channel::<Message>();
+
+    // Flag to signal the thread managing the websocket connection that it should attempt to
+    // reconnect once the connection is dropped.
+    let reconnect = Arc::new(AtomicBool::new(false));
+
     let running = shutdown_signaler.clone();
-    let (tx, rx) = mpsc::channel();
-    let (tx_join, rx_join) = mpsc::channel();
-    let join_handle = thread::Builder::new()
-        .name("GameroomDAppAuthHandler".into())
+
+    // Thread that will receive request futures and execute them
+    let join_handle_client = thread::Builder::new()
+        .name("GameroomdAppAuthHandlerClient".into())
         .spawn(move || {
-            let req = Request::builder()
-                .uri(format!("{}/ws/admin/register/gameroom", splinterd_url))
-                .header(header::UPGRADE, "websocket")
-                .header(header::CONNECTION, "Upgrade")
-                .header(header::SEC_WEBSOCKET_VERSION, "13")
-                .header(header::SEC_WEBSOCKET_KEY, "13")
-                .body(Body::empty())
-                .map_err(|err| AppAuthHandlerError::RequestError(format!("{}", err)))?;
-
-            let mut runtime = Runtime::new()?;
-
-            runtime.block_on(
-                client
-                    .request(req)
-                    .and_then(|res| {
-                        if res.status() != StatusCode::SWITCHING_PROTOCOLS {
-                            error!("The server didn't upgrade: {}", res.status());
+            let result = loop {
+                let request_future = match try_recv(&rx_future, running.clone()) {
+                    Ok(future) => {
+                        match future {
+                            Some(future) => future,
+                            None => break Ok(()), // no request future to receive
                         }
-                        res.into_body().on_upgrade()
-                    })
-                    .map_err(|e| {
-                        error!("The client returned an error: {}", e);
-                        AppAuthHandlerError::ClientError(format!("{}", e))
-                    })
-                    .and_then(move |upgraded| {
-                        let codec = Codec::new().client_mode();
-                        let framed = codec.framed(upgraded);
-                        let (sink, stream) = framed.split();
+                    }
+                    Err(err) => break Err(err),
+                };
 
-                        // Listen to shutdown signal
-                        let join_handle = thread::spawn(move || {
-                            let msg = rx.recv().map_err(|err| {
-                                AppAuthHandlerError::ShutdownError(format!(
-                                    "Unable to receive websocket close message {}",
-                                    err
-                                ))
-                            })?;
+                let mut runtime = match Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(err) => break Err(err.into()),
+                };
+                if let Err(err) = runtime.block_on(request_future) {
+                    break Err(err);
+                };
+                if !running.load(Ordering::SeqCst) {
+                    debug!("Exiting request loop");
+                    break Ok(());
+                }
+            };
 
-                            info!("Sending closing handshake to server");
-                            sink.send(msg).wait().map_err(|e| {
-                                AppAuthHandlerError::ShutdownError(format!(
-                                    "Unable to send close message to server {}",
-                                    e
-                                ))
-                            })?;
-                            Ok(())
-                        });
-
-                        if let Err(err) = tx_join.send(join_handle) {
-                            return Either::A(future::err(AppAuthHandlerError::StartUpError(
-                                format!("Unable to send send join handler addr {}", err),
-                            )));
-                        };
-
-                        // Read stream until shutdown signal is received
-                        Either::B(
-                            stream
-                                .take_while(move |message| {
-                                    match message {
-                                        Frame::Text(msg) => {
-                                            if let Some(bytes) = msg {
-                                                if let Err(err) =
-                                                    process_text_message(&bytes[..], &db_conn)
-                                                {
-                                                    error!(
-                                                    "An error occurred while processing a message:
-                                                    {}",
-                                                    err
-                                                );
-                                                }
-                                            } else {
-                                                error!("Received empty message");
-                                            }
-                                        }
-                                        Frame::Ping(msg) => info!("Received Ping {}", msg),
-                                        Frame::Close(msg) => {
-                                            info!("Received close message {:?}", msg);
-                                            return future::ok(false);
-                                        }
-                                        _ => error!("Received unknown message: {:?}", message),
-                                    };
-
-                                    future::ok(running.load(Ordering::SeqCst))
-                                })
-                                // Transform stream into a future
-                                .for_each(|_| future::ok(()))
-                                .map_err(|e| {
-                                    error!("The client returned an error: {}", e);
-                                    AppAuthHandlerError::ClientError(format!("{}", e))
-                                }),
-                        )
-                    }),
-            )
+            // if loop exits with an error, signal that AppAuthHandler should exit
+            if result.is_err() {
+                running.store(false, Ordering::SeqCst);
+            };
+            result
         })?;
 
-    let join_handle_adrr = rx_join.recv().map_err(|err| {
-        AppAuthHandlerError::StartUpError(format!("Unable to receive join handle addr: {}", err))
+    let request_future = prepare_request(
+        &url,
+        &tx_closing,
+        &tx_msg_closing,
+        &db_conn,
+        shutdown_signaler.clone(),
+        reconnect.clone(),
+    );
+
+    // Send initial connection request
+    tx_future.send(request_future).map_err(|err| {
+        AppAuthHandlerError::StartUpError(format!("Unable to send connect request {}", err))
     })?;
+
+    let running = shutdown_signaler.clone();
+    let closing_msg_sender = tx_msg_closing.clone();
+
+    // Thread that will listen to shutdown requests and forward them to the server
+    // this thread is also responsible for managing reconnection attempts
+    let join_handle_connection = thread::Builder::new()
+        .name("GameroomDAppAuthHandlerConnectionManager".into())
+        .spawn(move || {
+            let result = loop {
+                let sink = match try_recv(&rx_closing, running.clone()) {
+                    Ok(sink) => {
+                        match sink {
+                            Some(sink) => sink,
+                            None => break Ok(()), // no sink to receive
+                        }
+                    }
+                    Err(err) => break Err(err),
+                };
+
+                let msg = match try_recv(&rx_msg_closing, running.clone()) {
+                    Ok(msg) => {
+                        match msg {
+                            Some(msg) => msg,
+                            None => break Ok(()), // no msg to receive
+                        }
+                    }
+                    Err(err) => break Err(err),
+                };
+
+                if let Err(err) = sink.send(msg).wait() {
+                    break Err(AppAuthHandlerError::ShutdownError(format!(
+                        "Unable to send close message to server {}",
+                        err
+                    )));
+                };
+
+                if !reconnect.load(Ordering::SeqCst) || !running.load(Ordering::SeqCst) {
+                    debug!("Exiting messaging loop");
+                    break Ok(());
+                }
+
+                debug!(
+                    "The client will try to reconnect in {} seconds",
+                    RECONNECT_WAIT_TIME
+                );
+
+                thread::sleep(Duration::from_secs(RECONNECT_WAIT_TIME));
+
+                if !running.load(Ordering::SeqCst) {
+                    debug!("Exiting messaging loop");
+                    break Ok(());
+                }
+
+                debug!("Sending reconnect request");
+                let request_future = prepare_request(
+                    &url,
+                    &tx_closing,
+                    &closing_msg_sender,
+                    &db_conn,
+                    running.clone(),
+                    reconnect.clone(),
+                );
+
+                if let Err(err) = tx_future.send(request_future) {
+                    break Err(AppAuthHandlerError::StartUpError(format!(
+                        "Unable to send reconnect request message to {}",
+                        err
+                    )));
+                };
+
+                // reset reconnect flag
+                reconnect.store(false, Ordering::SeqCst);
+            };
+
+            // if loop exits with an error, signal that AppAuthHandler should exit
+            if result.is_err() {
+                running.store(false, Ordering::SeqCst);
+            };
+
+            result
+        })?;
+
     let do_shutdown = Box::new(move || {
         debug!("Shutting down application authentication handler");
         shutdown_signaler.store(false, Ordering::SeqCst);
 
         // Send shutdown message to listening thread
-        tx.send(Message::Close(Some(CloseReason {
-            code: CloseCode::Normal,
-            description: Some("The client received shutdown signal".to_string()),
-        })))
-        .map_err(|err| {
-            AppAuthHandlerError::ShutdownError(format!(
-                "Unable to send websocket close message {}",
-                err
-            ))
-        })?;
+        tx_msg_closing
+            .send(Message::Close(Some(CloseReason {
+                code: CloseCode::Normal,
+                description: Some("The client received shutdown signal".to_string()),
+            })))
+            .map_err(|err| {
+                AppAuthHandlerError::ShutdownError(format!(
+                    "Unable to send websocket close message {}",
+                    err
+                ))
+            })?;
 
         Ok(())
     });
 
     Ok((
         AppAuthHandlerShutdownHandle { do_shutdown },
-        ThreadJoinHandle(vec![join_handle_adrr, join_handle]),
+        ThreadJoinHandle(vec![join_handle_client, join_handle_connection]),
     ))
 }
 
-fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuthHandlerError> {
-    let admin_event: AdminServiceEvent = serde_json::from_slice(msg)?;
+fn make_request(url: &str) -> Result<Request<Body>, AppAuthHandlerError> {
+    Request::builder()
+        .uri(format!("{}/ws/admin/register/gameroom", url))
+        .header(header::UPGRADE, "websocket")
+        .header(header::CONNECTION, "Upgrade")
+        .header(header::SEC_WEBSOCKET_VERSION, "13")
+        .header(header::SEC_WEBSOCKET_KEY, "13")
+        .body(Body::empty())
+        .map_err(|err| AppAuthHandlerError::RequestError(format!("{}", err)))
+}
+
+fn prepare_request(
+    url: &str,
+    tx_closing: &Sender<SplitSink<Framed<Upgraded, Codec>>>,
+    closing_sender: &Sender<Message>,
+    db_conn: &ConnectionPool,
+    running: Arc<AtomicBool>,
+    reconnect: Arc<AtomicBool>,
+) -> Box<dyn Future<Item = (), Error = AppAuthHandlerError> + Send> {
+    let tx_closing = tx_closing.clone();
+    let closing_sender = closing_sender.clone();
+    let db_conn = db_conn.clone();
+    let request = match make_request(url) {
+        Ok(req) => req,
+        Err(err) => {
+            let error: Box<FutureResult<_, _>> = Box::new(err.into());
+            return error;
+        }
+    };
+
+    Box::new(
+        Client::new()
+            .request(request)
+            .and_then(|res| {
+                if res.status() != StatusCode::SWITCHING_PROTOCOLS {
+                    error!("The server didn't upgrade: {}", res.status());
+                }
+                res.into_body().on_upgrade()
+            })
+            .map_err(|e| {
+                error!("The client returned an error: {}", e);
+                AppAuthHandlerError::ClientError(format!("{}", e))
+            })
+            .and_then(move |upgraded| {
+                let codec = Codec::new().client_mode();
+                let framed = codec.framed(upgraded);
+                let (sink, stream) = framed.split();
+
+                if let Err(err) = tx_closing.send(sink) {
+                    return Either::A(future::err(AppAuthHandlerError::StartUpError(format!(
+                        "Unable to send send join handler addr {}",
+                        err
+                    ))));
+                };
+
+                let mut invalid_message_count = 0;
+                // Read stream until shutdown signal is received
+                Either::B(
+                    stream
+                        .map_err(|e| {
+                            error!("The client returned an error: {}", e);
+                            AppAuthHandlerError::ClientError(format!("{}", e))
+                        })
+                        .take_while(move |message| {
+                            match message {
+                                Frame::Text(msg) => {
+                                    let msg_bytes = match msg {
+                                        Some(bytes) => &bytes[..],
+                                        None => &[],
+                                    };
+
+                                    match parse_message_bytes(msg_bytes) {
+                                        Ok(admin_event) => {
+                                            // reset invalid message count
+                                            invalid_message_count = 0;
+                                            if let Err(err) =
+                                                process_admin_event(admin_event, &db_conn)
+                                            {
+                                                return err.into();
+                                            }
+                                        }
+                                        Err(_) => {
+                                            invalid_message_count += 1;
+                                            if invalid_message_count > INVALID_MESSAGE_THRESHOLD {
+                                                return handle_invalid_messages(
+                                                    closing_sender.clone(),
+                                                    reconnect.clone(),
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                Frame::Ping(msg) => {
+                                    info!("Received Ping {}", msg);
+                                    invalid_message_count = 0;
+                                }
+                                Frame::Close(msg) => {
+                                    info!("Received close message {:?}", msg);
+                                    invalid_message_count = 0;
+                                    running.store(false, Ordering::SeqCst);
+                                }
+                                _ => {
+                                    error!("Received invalid message: {:?}", message);
+                                    invalid_message_count += 1;
+                                    if invalid_message_count > INVALID_MESSAGE_THRESHOLD {
+                                        return handle_invalid_messages(
+                                            closing_sender.clone(),
+                                            reconnect.clone(),
+                                        );
+                                    }
+                                }
+                            };
+
+                            future::ok(running.load(Ordering::SeqCst))
+                        })
+                        // Transform stream into a future
+                        .for_each(|_| future::ok(()))
+                        .map_err(|e| {
+                            error!("The client returned an error: {}", e);
+                            AppAuthHandlerError::ClientError(format!("{}", e))
+                        }),
+                )
+            }),
+    )
+}
+
+fn try_recv<T>(
+    receiver: &Receiver<T>,
+    running: Arc<AtomicBool>,
+) -> Result<Option<T>, AppAuthHandlerError> {
+    loop {
+        if !running.load(Ordering::SeqCst) {
+            debug!("Exiting loop");
+            break Ok(None);
+        }
+
+        thread::sleep(Duration::from_secs(1));
+        match receiver.try_recv() {
+            Ok(sink) => break Ok(Some(sink)),
+            Err(TryRecvError::Empty) => (),
+            Err(TryRecvError::Disconnected) => {
+                break Err(AppAuthHandlerError::ShutdownError(
+                    "Unable to receive sink".to_string(),
+                ))
+            }
+        }
+    }
+}
+
+fn handle_invalid_messages(
+    sender: Sender<Message>,
+    reconnect: Arc<AtomicBool>,
+) -> FutureResult<bool, AppAuthHandlerError> {
+    warn!("Received too many invalid messages from Splinterd websocket server. Disconnecting.");
+    // signal to thread that it should try to reconnect
+    reconnect.store(true, Ordering::SeqCst);
+    match sender.send(Message::Close(Some(CloseReason {
+        code: CloseCode::Unsupported,
+        description: Some("Received too many invalid messages".to_string()),
+    }))) {
+        Ok(()) => future::ok(true),
+        Err(err) => AppAuthHandlerError::ShutdownError(format!(
+            "Unable to send websocket close message {}",
+            err
+        ))
+        .into(),
+    }
+}
+
+fn parse_message_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, AppAuthHandlerError> {
+    if bytes.is_empty() {
+        error!("Received empty message");
+        return Err(AppAuthHandlerError::InvalidMessageError(
+            "Received empty message".to_string(),
+        ));
+    };
+    let admin_event: AdminServiceEvent = serde_json::from_slice(bytes)?;
+    Ok(admin_event)
+}
+
+fn process_admin_event(
+    admin_event: AdminServiceEvent,
+    pool: &ConnectionPool,
+) -> Result<(), AppAuthHandlerError> {
     match admin_event {
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
             let time = SystemTime::now();
@@ -349,10 +586,9 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_circuit_proposals_table(&pool);
-        let message = get_submit_proposal_msg("my_circuit");
-        let serialized = serde_json::to_vec(&message).expect("Failed to serialize message");
 
-        process_text_message(&serialized, &pool).expect("Error processing message");
+        let message = get_submit_proposal_msg("my_circuit");
+        process_admin_event(message, &pool).expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -390,10 +626,9 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_circuit_proposals_table(&pool);
-        let message = get_submit_proposal_msg("my_circuit");
-        let serialized = serde_json::to_vec(&message).expect("Failed to serialize message");
 
-        process_text_message(&serialized, &pool).expect("Error processing message");
+        let message = get_submit_proposal_msg("my_circuit");
+        process_admin_event(message, &pool).expect("Error processing message");
 
         let members = query_circuit_members_table(&pool);
 
@@ -414,10 +649,9 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_circuit_proposals_table(&pool);
-        let message = get_submit_proposal_msg("my_circuit");
-        let serialized = serde_json::to_vec(&message).expect("Failed to serialize message");
 
-        process_text_message(&serialized, &pool).expect("Error processing message");
+        let message = get_submit_proposal_msg("my_circuit");
+        process_admin_event(message, &pool).expect("Error processing message");
 
         let services = query_circuit_service_table(&pool);
 
@@ -449,11 +683,9 @@ mod test {
         );
 
         let accept_message = get_accept_proposal_msg("my_circuit");
-        let accept_serialized =
-            serde_json::to_vec(&accept_message).expect("Failed to serialize message");
 
         // accept proposal
-        process_text_message(&accept_serialized, &pool).expect("Error processing message");
+        process_admin_event(accept_message, &pool).expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -477,11 +709,9 @@ mod test {
         clear_circuit_proposals_table(&pool);
 
         let accept_message = get_accept_proposal_msg("my_circuit");
-        let accept_serialized =
-            serde_json::to_vec(&accept_message).expect("Failed to serialize message");
 
         // accept proposal
-        match process_text_message(&accept_serialized, &pool) {
+        match process_admin_event(accept_message, &pool) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -508,11 +738,9 @@ mod test {
         );
 
         let rejected_message = get_reject_proposal_msg("my_circuit");
-        let rejected_serialized =
-            serde_json::to_vec(&rejected_message).expect("Failed to serialize message");
 
         // reject proposal
-        process_text_message(&rejected_serialized, &pool).expect("Error processing message");
+        process_admin_event(rejected_message, &pool).expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -536,11 +764,9 @@ mod test {
         clear_circuit_proposals_table(&pool);
 
         let rejected_message = get_reject_proposal_msg("my_circuit");
-        let rejected_serialized =
-            serde_json::to_vec(&rejected_message).expect("Failed to serialize message");
 
         // reject proposal
-        match process_text_message(&rejected_serialized, &pool) {
+        match process_admin_event(rejected_message, &pool) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -567,11 +793,9 @@ mod test {
         );
 
         let vote_message = get_vote_proposal_msg("my_circuit");
-        let vote_serialized =
-            serde_json::to_vec(&vote_message).expect("Failed to serialize message");
 
         // vote proposal
-        process_text_message(&vote_serialized, &pool).expect("Error processing message");
+        process_admin_event(vote_message, &pool).expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -602,11 +826,9 @@ mod test {
         clear_circuit_proposals_table(&pool);
 
         let vote_message = get_vote_proposal_msg("my_circuit");
-        let vote_serialized =
-            serde_json::to_vec(&vote_message).expect("Failed to serialize message");
 
         // vote proposal
-        match process_text_message(&vote_serialized, &pool) {
+        match process_admin_event(vote_message, &pool) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));

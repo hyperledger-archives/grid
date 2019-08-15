@@ -18,11 +18,13 @@
 use std::error::Error;
 use std::fmt;
 
+use futures::future;
+
 #[derive(Debug)]
 pub enum AppAuthHandlerError {
     RequestError(String),
     IOError(std::io::Error),
-    DeserializationError(Box<dyn Error + Send>),
+    InvalidMessageError(String),
     DatabaseError(String),
     ShutdownError(String),
     StartUpError(String),
@@ -34,7 +36,7 @@ impl Error for AppAuthHandlerError {
         match self {
             AppAuthHandlerError::RequestError(_) => None,
             AppAuthHandlerError::IOError(err) => Some(err),
-            AppAuthHandlerError::DeserializationError(err) => Some(&**err),
+            AppAuthHandlerError::InvalidMessageError(_) => None,
             AppAuthHandlerError::DatabaseError(_) => None,
             AppAuthHandlerError::ShutdownError(_) => None,
             AppAuthHandlerError::StartUpError(_) => None,
@@ -48,8 +50,8 @@ impl fmt::Display for AppAuthHandlerError {
         match self {
             AppAuthHandlerError::RequestError(msg) => write!(f, "Failed to build request, {}", msg),
             AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred: {}", msg),
-            AppAuthHandlerError::DeserializationError(msg) => {
-                write!(f, "Failed to deserialize message: {}", msg)
+            AppAuthHandlerError::InvalidMessageError(msg) => {
+                write!(f, "The client received an invalid message: {}", msg)
             }
             AppAuthHandlerError::DatabaseError(msg) => {
                 write!(f, "The database returned an error: {}", msg)
@@ -75,13 +77,13 @@ impl From<std::io::Error> for AppAuthHandlerError {
 
 impl From<serde_json::error::Error> for AppAuthHandlerError {
     fn from(err: serde_json::error::Error) -> AppAuthHandlerError {
-        AppAuthHandlerError::DeserializationError(Box::new(err))
+        AppAuthHandlerError::InvalidMessageError(format!("{}", err))
     }
 }
 
 impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
     fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
-        AppAuthHandlerError::DeserializationError(Box::new(err))
+        AppAuthHandlerError::InvalidMessageError(format!("{}", err))
     }
 }
 
@@ -94,5 +96,11 @@ impl From<gameroom_database::DatabaseError> for AppAuthHandlerError {
 impl From<diesel::result::Error> for AppAuthHandlerError {
     fn from(err: diesel::result::Error) -> Self {
         AppAuthHandlerError::DatabaseError(format!("Error perfoming query: {}", err))
+    }
+}
+
+impl<T> Into<future::FutureResult<T, AppAuthHandlerError>> for AppAuthHandlerError {
+    fn into(self) -> future::FutureResult<T, AppAuthHandlerError> {
+        future::err(self)
     }
 }
