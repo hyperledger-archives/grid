@@ -66,7 +66,7 @@ fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
 pub fn fetch_node(
     request: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let identity = request
         .match_info()
         .get("identity")
@@ -89,7 +89,7 @@ pub fn fetch_node(
 pub fn list_nodes(
     req: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let query: web::Query<HashMap<String, String>> =
         if let Ok(q) = web::Query::from_query(req.query_string()) {
             q

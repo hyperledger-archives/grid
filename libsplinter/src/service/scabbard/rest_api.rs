@@ -35,7 +35,7 @@ impl RestResourceProvider for Scabbard {
 fn add_batch_to_queue(
     payload: web::Payload,
     shared: Arc<Mutex<ScabbardShared>>,
-) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
         payload
             .from_err()

@@ -480,8 +480,8 @@ impl ConsensusEngine for TwoPhaseEngine {
         &mut self,
         consensus_messages: Receiver<ConsensusMessage>,
         proposal_updates: Receiver<ProposalUpdate>,
-        network_sender: Box<ConsensusNetworkSender>,
-        proposal_manager: Box<ProposalManager>,
+        network_sender: Box<dyn ConsensusNetworkSender>,
+        proposal_manager: Box<dyn ProposalManager>,
         startup_state: StartupState,
     ) -> Result<(), ConsensusEngineError> {
         let message_timeout = Duration::from_millis(100);

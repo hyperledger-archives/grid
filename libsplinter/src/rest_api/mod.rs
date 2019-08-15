@@ -68,7 +68,7 @@ pub trait RestResourceProvider {
 }
 
 type HandlerFunction = Box<
-    dyn Fn(HttpRequest, web::Payload) -> Box<Future<Item = HttpResponse, Error = ActixError>>
+    dyn Fn(HttpRequest, web::Payload) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
         + Send
         + Sync
         + 'static,
@@ -124,7 +124,10 @@ pub struct Resource {
 impl Resource {
     pub fn new<F>(method: Method, route: &str, handle: F) -> Self
     where
-        F: Fn(HttpRequest, web::Payload) -> Box<Future<Item = HttpResponse, Error = ActixError>>
+        F: Fn(
+                HttpRequest,
+                web::Payload,
+            ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
             + Send
             + Sync
             + 'static

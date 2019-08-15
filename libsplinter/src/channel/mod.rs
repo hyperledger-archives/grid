@@ -36,11 +36,11 @@ pub trait Receiver<T>: Send {
 // can be passed to a Handler.
 pub trait Sender<T>: Send {
     fn send(&self, t: T) -> Result<(), SendError>;
-    fn box_clone(&self) -> Box<Sender<T>>;
+    fn box_clone(&self) -> Box<dyn Sender<T>>;
 }
 
-impl<T> Clone for Box<Sender<T>> {
-    fn clone(&self) -> Box<Sender<T>> {
+impl<T> Clone for Box<dyn Sender<T>> {
+    fn clone(&self) -> Box<dyn Sender<T>> {
         self.box_clone()
     }
 }

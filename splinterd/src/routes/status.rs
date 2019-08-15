@@ -25,7 +25,7 @@ struct Status {
 pub fn get_status(
     node_id: String,
     endpoint: String,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let status = Status {
         node_id,
         endpoint,
@@ -38,7 +38,7 @@ pub fn get_status(
 pub fn get_openapi(
     _: HttpRequest,
     _: web::Payload,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         HttpResponse::Ok()
             .body(include_str!("../../api/static/openapi.yml"))

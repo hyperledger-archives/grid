@@ -83,7 +83,7 @@ pub fn create_authorization_dispatcher(
 /// This Handler accepts authorization network messages, unwraps the envelope, and forwards the
 /// message contents to an authorization dispatcher.
 pub struct AuthorizationMessageHandler {
-    sender: Box<Sender<DispatchMessage<AuthorizationMessageType>>>,
+    sender: Box<dyn Sender<DispatchMessage<AuthorizationMessageType>>>,
 }
 
 impl AuthorizationMessageHandler {
@@ -91,7 +91,7 @@ impl AuthorizationMessageHandler {
     ///
     /// This constructs an AuthorizationMessageHandler with a sender that will dispatch messages
     /// to a authorization dispatcher.
-    pub fn new(sender: Box<Sender<DispatchMessage<AuthorizationMessageType>>>) -> Self {
+    pub fn new(sender: Box<dyn Sender<DispatchMessage<AuthorizationMessageType>>>) -> Self {
         AuthorizationMessageHandler { sender }
     }
 }
@@ -120,7 +120,7 @@ impl Handler<NetworkMessageType, AuthorizationMessage> for AuthorizationMessageH
 /// NetworkMessageType.
 pub struct NetworkAuthGuardHandler<M: FromMessageBytes> {
     auth_manager: AuthorizationManager,
-    handler: Box<Handler<NetworkMessageType, M>>,
+    handler: Box<dyn Handler<NetworkMessageType, M>>,
 }
 
 impl<M: FromMessageBytes> NetworkAuthGuardHandler<M> {
@@ -129,7 +129,7 @@ impl<M: FromMessageBytes> NetworkAuthGuardHandler<M> {
     /// Handlers must be typed to the NetworkMessageType, but may be any message content type.
     pub fn new(
         auth_manager: AuthorizationManager,
-        handler: Box<Handler<NetworkMessageType, M>>,
+        handler: Box<dyn Handler<NetworkMessageType, M>>,
     ) -> Self {
         NetworkAuthGuardHandler {
             auth_manager,

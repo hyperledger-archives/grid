@@ -256,7 +256,7 @@ impl NodeRegistry for YamlNodeRegistry {
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
 
-    fn clone_box(&self) -> Box<NodeRegistry> {
+    fn clone_box(&self) -> Box<dyn NodeRegistry> {
         Box::new(Clone::clone(self))
     }
 }

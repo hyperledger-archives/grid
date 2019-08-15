@@ -275,8 +275,8 @@ pub trait ConsensusEngine: Send {
         &mut self,
         consensus_messages: Receiver<ConsensusMessage>,
         proposal_updates: Receiver<ProposalUpdate>,
-        network_sender: Box<ConsensusNetworkSender>,
-        proposal_manager: Box<ProposalManager>,
+        network_sender: Box<dyn ConsensusNetworkSender>,
+        proposal_manager: Box<dyn ProposalManager>,
         startup_state: StartupState,
     ) -> Result<(), ConsensusEngineError>;
 }

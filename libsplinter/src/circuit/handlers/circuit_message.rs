@@ -19,7 +19,7 @@ use crate::protos::network::NetworkMessageType;
 
 // Implements a handler that pass messages to another dispatcher loop
 pub struct CircuitMessageHandler {
-    sender: Box<Sender<DispatchMessage<CircuitMessageType>>>,
+    sender: Box<dyn Sender<DispatchMessage<CircuitMessageType>>>,
 }
 
 impl Handler<NetworkMessageType, CircuitMessage> for CircuitMessageHandler {
@@ -41,7 +41,7 @@ impl Handler<NetworkMessageType, CircuitMessage> for CircuitMessageHandler {
 }
 
 impl CircuitMessageHandler {
-    pub fn new(sender: Box<Sender<DispatchMessage<CircuitMessageType>>>) -> Self {
+    pub fn new(sender: Box<dyn Sender<DispatchMessage<CircuitMessageType>>>) -> Self {
         CircuitMessageHandler { sender }
     }
 }
