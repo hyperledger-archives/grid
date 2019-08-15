@@ -105,6 +105,8 @@ paths:
 
   /api/users:
       post:
+        tags:
+          - Users
         description: Create new Gameroom User entry in database
         requestBody:
           content:
@@ -157,6 +159,8 @@ paths:
 
   /api/users/authenticate:
       post:
+        tags:
+          - Users
         description: Authenticate a Gameroom User
         requestBody:
           content:
@@ -194,6 +198,8 @@ paths:
 
   /gamerooms/propose:
       post:
+        tags:
+          - Gamerooms
         description: Propose a new Gameroom
         requestBody:
           content:
@@ -220,6 +226,8 @@ paths:
 
   /proposals:
     get:
+      tags:
+          - Proposals
       description: List Circuit Proposals
       parameters:
       - name: offset
@@ -257,6 +265,8 @@ paths:
 
   /proposals/{proposal_id}:
     get:
+      tags:
+          - Proposals
       description: Fetch a circuit proposal by the proposal id
       parameters:
         - name: proposal_id
@@ -285,6 +295,53 @@ paths:
           description: Internal server error occurred
         503:
           description: Server unavailable
+
+  /proposals/{proposal_id}/vote:
+      post:
+        tags:
+          - Proposals
+        description: Vote on a proposal
+        parameters:
+          - name: proposal_id
+            in: path
+            description: identity of the proposal to vote on
+            required: true
+            schema:
+              type: string
+        requestBody:
+          content:
+            application/json:
+              schema:
+                 $ref: '#/components/schemas/Vote'
+
+        responses:
+          202:
+            description: Proposal vote has been accepted
+            content:
+              application/json:
+                schema:
+                  properties:
+                    message:
+                      type: string
+                      example: "The vote was accepted"
+          400:
+            description: The vote payload is invalid
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          404:
+            description: The proposal with {proposal_id} was not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          500:
+            description: Internal server error occurred
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -355,7 +412,6 @@ components:
         encrypted_private_key:
           type: string
 
-
     Node:
       type: object
       properties:
@@ -395,3 +451,31 @@ components:
         prev: /nodes?offset=0&limit=10
         next: /nodes?offset=20&limit=10
         last: /nodes?offset=40&limit=10
+
+    Vote:
+      type: object
+      properties:
+        ballot:
+          type: object
+          properties:
+            circuit_id:
+              type: string
+              example: circuit-000
+            circuit_hash:
+              type: string
+              example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
+            vote:
+              type: string
+              enum:
+                - Accept
+                - Reject
+        ballot_signature:
+          type: array
+          items:
+            type: integer
+          example: [65, 65, 65, 65, 66, 51, 78]
+        signer_public_key:
+          type: array
+          items:
+            type: integer
+          example: [73, 119, 65, 65, 65, 81]

@@ -78,6 +78,10 @@ pub fn run(
                     .service(
                         web::scope("/proposals")
                             .service(
+                                web::resource("/{proposal_id}/vote")
+                                    .route(web::post().to_async(routes::proposal_vote)),
+                            )
+                            .service(
                                 web::resource("/{proposal_id}")
                                     .route(web::get().to_async(routes::fetch_proposal)),
                             )
