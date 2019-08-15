@@ -183,16 +183,12 @@ impl TwoPhaseEngine {
                                     "All verifiers have approved; accepting proposal {}",
                                     proposal_id
                                 );
-
-                                proposal_manager.accept_proposal(&proposal_id, None)?;
-                                self.state = State::Idle;
-
-                                let mut result = TwoPhaseMessage::new();
-                                result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                                result.set_proposal_id(proposal_id.into());
-                                result.set_proposal_result(TwoPhaseMessage_ProposalResult::APPLY);
-
-                                network_sender.broadcast(result.write_to_bytes()?)?;
+                                self.complete_coordination(
+                                    proposal_id,
+                                    TwoPhaseMessage_ProposalResult::APPLY,
+                                    network_sender,
+                                    proposal_manager,
+                                )?;
                             }
                         }
                     }
@@ -201,16 +197,12 @@ impl TwoPhaseEngine {
                             "Proposal failed by peer {}; rejecting proposal {}",
                             consensus_msg.origin_id, proposal_id
                         );
-
-                        proposal_manager.reject_proposal(&proposal_id)?;
-                        self.state = State::Idle;
-
-                        let mut result = TwoPhaseMessage::new();
-                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                        result.set_proposal_id(proposal_id.into());
-                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
-
-                        network_sender.broadcast(result.write_to_bytes()?)?;
+                        self.complete_coordination(
+                            proposal_id,
+                            TwoPhaseMessage_ProposalResult::REJECT,
+                            network_sender,
+                            proposal_manager,
+                        )?;
                     }
                     TwoPhaseMessage_ProposalVerificationResponse::UNSET_VERIFICATION_RESPONSE => {
                         warn!(
@@ -318,16 +310,12 @@ impl TwoPhaseEngine {
 
                     if &self.id == tpc_proposal.coordinator_id() {
                         debug!("Rejecting proposal {}", proposal_id);
-
-                        proposal_manager.reject_proposal(&proposal_id)?;
-                        self.state = State::Idle;
-
-                        let mut result = TwoPhaseMessage::new();
-                        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                        result.set_proposal_id(proposal_id.into());
-                        result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
-
-                        network_sender.broadcast(result.write_to_bytes()?)?;
+                        self.complete_coordination(
+                            proposal_id,
+                            TwoPhaseMessage_ProposalResult::REJECT,
+                            network_sender,
+                            proposal_manager,
+                        )?;
                     } else {
                         debug!("Sending failed response for proposal {}", proposal_id);
 
@@ -388,18 +376,49 @@ impl TwoPhaseEngine {
                     tpc_proposal.proposal_id(),
                     err
                 );
-
-                proposal_manager.reject_proposal(tpc_proposal.proposal_id())?;
-                self.state = State::Idle;
-
-                let mut result = TwoPhaseMessage::new();
-                result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-                result.set_proposal_id(tpc_proposal.proposal_id().clone().into());
-                result.set_proposal_result(TwoPhaseMessage_ProposalResult::REJECT);
-
-                network_sender.broadcast(result.write_to_bytes()?)?;
+                self.complete_coordination(
+                    tpc_proposal.proposal_id().clone(),
+                    TwoPhaseMessage_ProposalResult::REJECT,
+                    network_sender,
+                    proposal_manager,
+                )?;
             }
         }
+        Ok(())
+    }
+
+    fn complete_coordination(
+        &mut self,
+        proposal_id: ProposalId,
+        proposal_result: TwoPhaseMessage_ProposalResult,
+        network_sender: &dyn ConsensusNetworkSender,
+        proposal_manager: &dyn ProposalManager,
+    ) -> Result<(), ConsensusEngineError> {
+        match proposal_result {
+            TwoPhaseMessage_ProposalResult::APPLY => {
+                proposal_manager.accept_proposal(&proposal_id, None)?;
+            }
+            TwoPhaseMessage_ProposalResult::REJECT => {
+                proposal_manager.reject_proposal(&proposal_id)?;
+            }
+            TwoPhaseMessage_ProposalResult::UNSET_RESULT => {
+                warn!(
+                    "Unset proposal result when completing proposal {}",
+                    proposal_id
+                );
+                return Ok(());
+            }
+        }
+
+        self.state = State::Idle;
+
+        let mut result = TwoPhaseMessage::new();
+        result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
+        result.set_proposal_id(proposal_id.into());
+        result.set_proposal_result(proposal_result);
+
+        network_sender.broadcast(result.write_to_bytes()?)?;
+
         Ok(())
     }
 
