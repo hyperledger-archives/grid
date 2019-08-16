@@ -15,7 +15,10 @@
 use std::path::Path;
 
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
+use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
+use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
+use sawtooth_sdk::messages::setting::{Setting, Setting_Entry};
 use transact::context::manager::sync::ContextManager;
 use transact::database::{
     lmdb::{LmdbContext, LmdbDatabase},
@@ -44,11 +47,41 @@ pub struct ScabbardState {
 }
 
 impl ScabbardState {
-    pub fn new(db_path: &Path, db_size: usize) -> Result<Self, ScabbardStateError> {
+    pub fn new(
+        db_path: &Path,
+        db_size: usize,
+        admin_keys: Vec<String>,
+    ) -> Result<Self, ScabbardStateError> {
+        // Initialize the database
         let db = Box::new(LmdbDatabase::new(
             LmdbContext::new(db_path, INDEXES.len(), Some(db_size))?,
             &INDEXES,
         )?);
+
+        // Set initial state (admin keys)
+        let mut admin_keys_entry = Setting_Entry::new();
+        admin_keys_entry.set_key(ADMINISTRATORS_SETTING_KEY.into());
+        admin_keys_entry.set_value(admin_keys.join(","));
+        let mut admin_keys_setting = Setting::new();
+        admin_keys_setting.set_entries(vec![admin_keys_entry].into());
+        let admin_keys_setting_bytes = admin_keys_setting.write_to_bytes().map_err(|err| {
+            ScabbardStateError(format!(
+                "failed to write admin keys setting to bytes: {}",
+                err
+            ))
+        })?;
+        let admin_keys_state_change = StateChange::Set {
+            key: ADMINISTRATORS_SETTING_ADDRESS.into(),
+            value: admin_keys_setting_bytes,
+        };
+
+        let initial_state_root = MerkleRadixTree::new(db.clone_box(), None)?.get_merkle_root();
+        let current_state_root = MerkleState::new(db.clone()).commit(
+            &initial_state_root,
+            vec![admin_keys_state_change].as_slice(),
+        )?;
+
+        // Initialize transact
         let context_manager = ContextManager::new(Box::new(MerkleState::new(db.clone())));
         let executor = Executor::new(vec![Box::new(StaticExecutionAdapter::new_adapter(
             vec![Box::new(SawtoothToTransactHandlerAdapter::new(
@@ -56,7 +89,6 @@ impl ScabbardState {
             ))],
             context_manager.clone(),
         )?)]);
-        let current_state_root = MerkleRadixTree::new(db.clone_box(), None)?.get_merkle_root();
 
         let event_dealer = EventDealer::new();
 

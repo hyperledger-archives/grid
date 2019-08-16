@@ -16,6 +16,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
 
+use serde_json;
+
 use crate::service::{FactoryCreateError, Service, ServiceFactory};
 
 use super::{Scabbard, SERVICE_TYPE};
@@ -44,17 +46,28 @@ impl ServiceFactory for ScabbardFactory {
         self.service_types.as_slice()
     }
 
+    /// `args` should be the list of public keys that are allowed to create and modify sabre
+    /// contracts, formatted as a serialized JSON array of strings.
     fn create(
         &self,
         service_id: String,
         _service_type: &str,
         peer_services: Vec<String>,
-        _args: HashMap<String, String>,
+        args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError> {
         let initial_peers = HashSet::from_iter(peer_services.into_iter());
         let db_dir = Path::new(&self.db_dir);
+        let admin_keys_str = args.get("admin_keys").ok_or_else(|| {
+            FactoryCreateError::InvalidArguments("admin_keys argument not specified".into())
+        })?;
+        let admin_keys = serde_json::from_str(admin_keys_str).map_err(|err| {
+            FactoryCreateError::InvalidArguments(format!(
+                "failed to parse admin_keys list: {}",
+                err,
+            ))
+        })?;
 
-        let service = Scabbard::new(service_id, initial_peers, &db_dir, self.db_size)
+        let service = Scabbard::new(service_id, initial_peers, &db_dir, self.db_size, admin_keys)
             .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 
         Ok(Box::new(service))
@@ -67,13 +80,20 @@ mod tests {
 
     #[test]
     fn scabbard_factory() {
+        let admin_keys: Vec<String> = vec![];
+        let mut args = HashMap::new();
+        args.insert(
+            "admin_keys".into(),
+            serde_json::to_string(&admin_keys).expect("failed to serialize admin_keys"),
+        );
+
         let factory = ScabbardFactory::new(Some("/tmp".into()), Some(1024 * 1024));
         let service = factory
             .create(
                 "0".into(),
                 "",
                 vec!["1".into(), "2".into(), "3".into()],
-                vec![].as_slice(),
+                args,
             )
             .expect("failed to create service");
 

@@ -61,11 +61,15 @@ impl Scabbard {
     pub fn new(
         service_id: String,
         initial_peers: HashSet<String>,
+        // The directory in which to create sabre's LMDB database
         db_dir: &Path,
+        // The size of sabre's LMDB database
         db_size: usize,
+        // The public keys that are authorized to create and manage sabre contracts
+        admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
         let db_path = db_dir.join(format!("{}.lmdb", Uuid::new_v4()));
-        let state = ScabbardState::new(db_path.as_path(), db_size)
+        let state = ScabbardState::new(db_path.as_path(), db_size, admin_keys)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(VecDeque::new(), None, initial_peers, state);
 
@@ -267,6 +271,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            vec![],
         )
         .expect("failed to create service");
         assert_eq!(service.service_id(), "new_scabbard");
@@ -282,6 +287,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            vec![],
         )
         .expect("failed to create service");
         let registry = MockServiceNetworkRegistry::new();
@@ -297,6 +303,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            vec![],
         )
         .expect("failed to create service");
         test_connect_and_disconnect(&mut service);
@@ -314,6 +321,7 @@ pub mod tests {
             peer_services.clone(),
             Path::new("/tmp"),
             1024 * 1024,
+            vec![],
         )
         .expect("failed to create service");
         let registry = MockServiceNetworkRegistry::new();
@@ -372,6 +380,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            vec![],
         )
         .expect("failed to create service");
 
