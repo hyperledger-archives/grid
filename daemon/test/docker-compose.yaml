@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------------
-
-version: '2.1'
+version: "2.1"
 
 services:
     test_server:
@@ -26,24 +25,27 @@ services:
             POSTGRES_PASSWORD: grid_test
             POSTGRES_DB: grid_test
 
-    daemon:
-        build:
-          context: ../..
-          dockerfile: docker/tests
-          args:
-            - http_proxy
-            - https_proxy
-            - no_proxy
-        image: grid:tests
-        volumes:
-          - ../..:/project/grid
-        command: |
-          bash -c "
-            # we need to wait for the db to have started.
-            until PGPASSWORD=grid_test psql -h test_server -U grid_test -c '\q'; do
-                >&2 echo \"Database is unavailable - sleeping\"
-                sleep 1
-            done
-            cd daemon
-            cargo test --features test-api --  --test-threads=1
-            "
+  daemon:
+    build:
+      context: ../..
+      dockerfile: docker/tests
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: grid:tests
+    volumes:
+      - ../..:/project/grid
+    command: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_test psql -h test_server -U grid_test -c '\q'; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        cd daemon
+        cargo test --features test-api --  --test-threads=1
+        cd ../cli
+        cargo test actions -- --test-threads=1
+        cargo test yaml_parser -- --test-threads=1
+        "
