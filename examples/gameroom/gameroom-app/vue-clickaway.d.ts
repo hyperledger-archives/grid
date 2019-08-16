@@ -12,24 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Vue from 'vue';
-import App from '@/App.vue';
-import router from '@/router';
-import store from '@/store';
-import VueNativeSock from 'vue-native-websocket';
-
-Vue.config.productionTip = false;
-
-new Vue({
-  router,
-  store,
-  render: (h) => h(App),
-}).$mount('#app');
-
-Vue.use(VueNativeSock, `ws://${window.location.host}/ws`, {
-  store,
-  format: 'json',
-  reconnection: true,
-  reconnectionAttempts: 30,
-  reconnectionDelay: 10,
-});
+declare module 'vue-clickaway' {
+  export const mixin: any;
+}

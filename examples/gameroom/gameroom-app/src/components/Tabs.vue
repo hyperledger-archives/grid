@@ -28,7 +28,7 @@ limitations under the License.
           v-bind:is-active="currentTab == 2"
           class="btn-tab"
           text="Invites"
-          icon="message"/>
+          icon="share"/>
     </div>
     <div class="tab-container">
       <div class="tab-title">

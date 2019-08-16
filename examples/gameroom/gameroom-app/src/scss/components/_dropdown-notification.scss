@@ -1,0 +1,70 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+.dropdown-notification {
+  display: flex;
+  padding: .5rem;
+  border-bottom: 1px solid $color-border;
+  font-size: .8rem;
+  cursor: pointer;
+
+  .logo-wrapper {
+    .logo{
+      display: flex;
+      height: 3rem;
+      width: 3rem;
+      margin-right: 1rem;
+    }
+  }
+
+  .text-wrapper {
+    display: flex;
+    flex-direction: column;
+
+    .text {
+      .bold {
+        font-weight: $fw-bold;
+      }
+    }
+
+    .meta-wrapper {
+      display: flex;
+      align-items: center;
+      padding-top: .4rem;
+
+      .icon {
+        font-size: .8rem;
+        color: $color-primary;
+        padding-right: .2rem;
+      }
+
+      .timestamp {
+        color: $color-text-tertiary;
+      }
+    }
+  }
+
+  &.new {
+    background-color: darken($color-background, 2%);
+  }
+
+  &:hover {
+    background-color: $color-background;
+  }
+
+  &:last-child {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+  }
+}

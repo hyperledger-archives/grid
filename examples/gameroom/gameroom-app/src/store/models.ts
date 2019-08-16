@@ -55,3 +55,12 @@ export interface GameroomProposal {
   created_time: number;
   updated_time: number;
 }
+
+export interface GameroomNotification {
+  id: number;
+  type: string;
+  org: string;
+  target: string;
+  timestamp: number;
+  read: boolean;
+}

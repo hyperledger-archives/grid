@@ -16,6 +16,7 @@
     "object-literal-sort-keys": false,
     "no-consecutive-blank-lines": false,
     "semicolon": [true, "always"],
-    "member-access": [true, "no-public"]
+    "member-access": [true, "no-public"],
+    "no-console": [true, "log"]
   }
 }

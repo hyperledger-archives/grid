@@ -15,6 +15,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import userModule from '@/store/modules/user';
+import notificationsModule from '@/store/modules/notifications';
 import VuexPersistence from 'vuex-persist';
 
 Vue.use(Vuex);
@@ -27,6 +28,28 @@ const vuexLocal = new VuexPersistence({
 export default new Vuex.Store({
   modules: {
     user: userModule,
+    notifications: notificationsModule,
   },
   plugins: [vuexLocal.plugin],
+  mutations: {
+    SOCKET_ONOPEN(state, event)  {
+      Vue.prototype.$socket = event.currentTarget;
+      state.socket.isConnected = true;
+    },
+    SOCKET_ONCLOSE(state, event)  {
+      state.socket.isConnected = false;
+    },
+    SOCKET_ONERROR(state, event)  {
+      console.error(state, event);
+    },
+    SOCKET_ONMESSAGE(state, message)  {
+      state.socket.message = message;
+    },
+    SOCKET_RECONNECT(state, count) {
+      console.info(state, count);
+    },
+    SOCKET_RECONNECT_ERROR(state) {
+      state.socket.reconnectError = true;
+    },
+  },
 });

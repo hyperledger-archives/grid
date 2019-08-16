@@ -14,6 +14,8 @@
 
 .footer {
   display: flex;
+  overflow: hidden;
+  white-space: nowrap;
   align-items: center;
   background-color: $color-base;
   color: $color-text-tertiary;
