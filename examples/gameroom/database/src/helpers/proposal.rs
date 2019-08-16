@@ -14,8 +14,10 @@
 
 use std::time::SystemTime;
 
+use crate::helpers::{create_new_notification, insert_gameroom_notification};
 use crate::models::{
-    CircuitMember, CircuitProposal, NewCircuitMember, NewCircuitService, NewProposalVoteRecord,
+    CircuitMember, CircuitProposal, NewCircuitMember, NewCircuitService, NewGameroomNotification,
+    NewProposalVoteRecord,
 };
 use crate::schema::{
     circuit_proposal, proposal_circuit_member, proposal_circuit_service, proposal_vote_record,
@@ -70,6 +72,22 @@ pub fn insert_circuit_proposal(conn: &PgConnection, proposal: CircuitProposal) -
         .map(|_| ())
 }
 
+pub fn insert_circuit_proposal_and_notification(
+    conn: &PgConnection,
+    proposal: CircuitProposal,
+) -> QueryResult<()> {
+    conn.transaction::<_, _, _>(|| {
+        let notification = create_new_notification(
+            "circuit_proposal",
+            &proposal.requester,
+            &proposal.circuit_id,
+        );
+        insert_gameroom_notification(conn, &[notification])?;
+        insert_circuit_proposal(conn, proposal)?;
+        Ok(())
+    })
+}
+
 pub fn update_circuit_proposal_status(
     conn: &PgConnection,
     proposal_id: &str,
@@ -93,6 +111,28 @@ pub fn insert_proposal_vote_record(
         .values(vote_records)
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn insert_proposal_vote_record_and_notification(
+    conn: &PgConnection,
+    vote_records: &[NewProposalVoteRecord],
+) -> QueryResult<()> {
+    conn.transaction::<_, _, _>(|| {
+        let notifications = vote_records
+            .iter()
+            .map(|vote| {
+                create_new_notification(
+                    "proposal_vote_record",
+                    &vote.voter_public_key,
+                    &vote.proposal_id,
+                )
+            })
+            .collect::<Vec<NewGameroomNotification>>();
+        insert_gameroom_notification(conn, &notifications)?;
+        insert_proposal_vote_record(conn, vote_records)?;
+
+        Ok(())
+    })
 }
 
 pub fn insert_circuit_service(
@@ -123,6 +163,29 @@ pub fn insert_proposal_information(
     circuit_members: &[NewCircuitMember],
 ) -> QueryResult<()> {
     conn.transaction::<_, _, _>(|| {
+        insert_circuit_proposal(conn, proposal)?;
+        insert_proposal_vote_record(conn, proposal_votes)?;
+        insert_circuit_service(conn, circuit_services)?;
+        insert_circuit_member(conn, circuit_members)?;
+
+        Ok(())
+    })
+}
+
+pub fn insert_proposal_information_and_notification(
+    conn: &PgConnection,
+    proposal: CircuitProposal,
+    proposal_votes: &[NewProposalVoteRecord],
+    circuit_services: &[NewCircuitService],
+    circuit_members: &[NewCircuitMember],
+) -> QueryResult<()> {
+    conn.transaction::<_, _, _>(|| {
+        let notification = create_new_notification(
+            "circuit_proposal",
+            &proposal.requester,
+            &proposal.circuit_id,
+        );
+        insert_gameroom_notification(conn, &[notification])?;
         insert_circuit_proposal(conn, proposal)?;
         insert_proposal_vote_record(conn, proposal_votes)?;
         insert_circuit_service(conn, circuit_services)?;
