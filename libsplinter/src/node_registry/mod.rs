@@ -97,11 +97,11 @@ pub trait NodeRegistry: Send + Sync {
     ///  fn clone_box(&self) -> Box<NodeRegistry> {
     ///     Box::new(Clone::clone(self))
     ///  }
-    fn clone_box(&self) -> Box<NodeRegistry>;
+    fn clone_box(&self) -> Box<dyn NodeRegistry>;
 }
 
-impl Clone for Box<NodeRegistry> {
-    fn clone(&self) -> Box<NodeRegistry> {
+impl Clone for Box<dyn NodeRegistry> {
+    fn clone(&self) -> Box<dyn NodeRegistry> {
         self.clone_box()
     }
 }

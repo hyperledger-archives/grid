@@ -51,8 +51,8 @@ pub trait StorageWriteGuard<'a, T: Sized>: DerefMut<Target = T> {}
 pub trait Storage {
     type S;
 
-    fn read<'a>(&'a self) -> Box<StorageReadGuard<'a, Self::S, Target = Self::S> + 'a>;
-    fn write<'a>(&'a mut self) -> Box<StorageWriteGuard<'a, Self::S, Target = Self::S> + 'a>;
+    fn read<'a>(&'a self) -> Box<dyn StorageReadGuard<'a, Self::S, Target = Self::S> + 'a>;
+    fn write<'a>(&'a mut self) -> Box<dyn StorageWriteGuard<'a, Self::S, Target = Self::S> + 'a>;
 }
 
 /// Given a location string, returns the appropriate storage
@@ -63,9 +63,9 @@ pub fn get_storage<'a, T: Sized + Serialize + DeserializeOwned + 'a, F: Fn() -> 
     default: F,
 ) -> Result<Box<dyn Storage<S = T> + 'a>, String> {
     if location.ends_with(".yaml") {
-        Ok(Box::new(YamlStorage::new(location, default).unwrap()) as Box<Storage<S = T>>)
+        Ok(Box::new(YamlStorage::new(location, default).unwrap()) as Box<dyn Storage<S = T>>)
     } else if location == "memory" {
-        Ok(Box::new(MemStorage::new(default).unwrap()) as Box<Storage<S = T>>)
+        Ok(Box::new(MemStorage::new(default).unwrap()) as Box<dyn Storage<S = T>>)
     } else {
         Err(format!("Unknown state location type: {}", location))
     }

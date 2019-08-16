@@ -274,7 +274,7 @@ fn create_circuit(
     _req: HttpRequest,
     payload: web::Payload,
     shared: Arc<Mutex<AdminServiceShared>>,
-) -> Box<Future<Item = HttpResponse, Error = ActixError>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
     Box::new(
         from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
             let mut circuit_create_request = match create_circuit.into_proto() {

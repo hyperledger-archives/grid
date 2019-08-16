@@ -61,7 +61,7 @@ where
         Ok(())
     }
 
-    fn box_clone(&self) -> Box<Sender<T>> {
+    fn box_clone(&self) -> Box<dyn Sender<T>> {
         Box::new((*self).clone())
     }
 }

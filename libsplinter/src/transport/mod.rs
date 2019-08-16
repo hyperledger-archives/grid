@@ -69,13 +69,13 @@ pub trait Listener: Send {
 pub trait Incoming {
     fn incoming<'a>(
         &'a mut self,
-    ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a>;
+    ) -> Box<dyn Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a>;
 }
 
 impl Incoming for dyn Listener {
     fn incoming<'a>(
         &'a mut self,
-    ) -> Box<Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<Box<dyn Connection>, AcceptError>> + 'a> {
         Box::new(IncomingIter::new(self))
     }
 }

@@ -160,11 +160,11 @@ impl<T: fmt::Display + Serialize + DeserializeOwned> fmt::Display for YamlStorag
 impl<T: Serialize + DeserializeOwned> Storage for YamlStorage<T> {
     type S = T;
 
-    fn read<'a>(&'a self) -> Box<StorageReadGuard<'a, T, Target = T> + 'a> {
+    fn read<'a>(&'a self) -> Box<dyn StorageReadGuard<'a, T, Target = T> + 'a> {
         Box::new(YamlStorageReadGuard::new(self))
     }
 
-    fn write<'a>(&'a mut self) -> Box<StorageWriteGuard<'a, T, Target = T> + 'a> {
+    fn write<'a>(&'a mut self) -> Box<dyn StorageWriteGuard<'a, T, Target = T> + 'a> {
         Box::new(YamlStorageWriteGuard::new(self))
     }
 }

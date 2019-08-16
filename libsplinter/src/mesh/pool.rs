@@ -59,7 +59,7 @@ impl Pool {
     /// outgoing queue
     pub fn add(
         &mut self,
-        connection: Box<Connection>,
+        connection: Box<dyn Connection>,
         outgoing: mio_channel::Receiver<Envelope>,
     ) -> Result<usize, io::Error> {
         let connection_token = self.next_token();
@@ -91,7 +91,7 @@ impl Pool {
     }
 
     /// Remove a connection from the reactor, returning it if it exists
-    pub fn remove(&mut self, id: usize) -> Result<Option<Box<Connection>>, io::Error> {
+    pub fn remove(&mut self, id: usize) -> Result<Option<Box<dyn Connection>>, io::Error> {
         if let Some(entry) = self.entries.remove(&id) {
             let connection_token = entry.connection_token();
             let outgoing_token = entry.outgoing_token();
