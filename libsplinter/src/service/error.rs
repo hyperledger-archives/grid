@@ -258,6 +258,34 @@ impl From<ServiceSendError> for ServiceError {
 }
 
 #[derive(Debug)]
+pub enum FactoryCreateError {
+    CreationFailed(Box<dyn Error + Send>),
+    InvalidArguments(String),
+}
+
+impl Error for FactoryCreateError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            FactoryCreateError::CreationFailed(err) => Some(&**err),
+            FactoryCreateError::InvalidArguments(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for FactoryCreateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FactoryCreateError::CreationFailed(err) => {
+                write!(f, "failed to create service: {}", err)
+            }
+            FactoryCreateError::InvalidArguments(err) => {
+                write!(f, "invalid arguments specified: {}", err)
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum ServiceProcessorError {
     /// Returned if an error is detected adding a new service
     AddServiceError(String),

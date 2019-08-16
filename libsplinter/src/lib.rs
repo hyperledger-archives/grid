@@ -57,6 +57,7 @@ pub mod consensus;
 pub mod mesh;
 pub mod network;
 pub mod node_registry;
+pub mod orchestrator;
 pub mod protos;
 pub mod rest_api;
 pub mod service;

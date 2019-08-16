@@ -18,6 +18,7 @@
 
 mod consensus;
 mod error;
+mod factory;
 mod rest_api;
 mod shared;
 mod state;
@@ -42,6 +43,7 @@ use super::{
 
 use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
+pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
 use state::ScabbardState;
 

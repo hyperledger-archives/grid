@@ -31,6 +31,7 @@ use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::peer::PeerConnector;
+use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{AdminMessage, AdminMessage_Type};
 use crate::rest_api::{Method, Resource, RestResourceProvider};
 use crate::service::{
@@ -50,11 +51,16 @@ pub struct AdminService {
 }
 
 impl AdminService {
-    pub fn new(node_id: &str, peer_connector: PeerConnector) -> Self {
+    pub fn new(
+        node_id: &str,
+        orchestrator: ServiceOrchestrator,
+        peer_connector: PeerConnector,
+    ) -> Self {
         Self {
             service_id: admin_service_id(node_id),
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
                 node_id.to_string(),
+                orchestrator,
                 peer_connector,
             ))),
             consensus: None,
@@ -350,12 +356,13 @@ mod tests {
 
     use std::collections::VecDeque;
     use std::sync::mpsc::{channel, Sender};
-    use std::{thread, time};
+    use std::time;
 
     use crate::mesh::Mesh;
     use crate::network::Network;
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
+    use crate::transport::inproc::InprocTransport;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
     };
@@ -369,8 +376,10 @@ mod tests {
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
+        let orchestrator =
+            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
-        let mut admin_service = AdminService::new("test-node".into(), peer_connector);
+        let mut admin_service = AdminService::new("test-node".into(), orchestrator, peer_connector);
 
         let (tx, rx) = channel();
         admin_service
@@ -401,12 +410,21 @@ mod tests {
             .propose_circuit(proposed_circuit.clone())
             .expect("The proposal was not handled correctly");
 
-        // sleep for the consensus message timeout time so the proposed circuit message will be
-        // handled
-        let consensus_timeout = time::Duration::from_millis(100);
-        thread::sleep(consensus_timeout);
+        // wait up to 1 second for the proposed circuit message
+        let mut recipient;
+        let mut message;
+        let start = time::Instant::now();
+        loop {
+            if time::Instant::now().duration_since(start) > Duration::from_secs(1) {
+                panic!("Failed to receive proposed circuit message in time");
+            }
+            if let Ok((r, m)) = rx.recv_timeout(Duration::from_millis(100)) {
+                recipient = r;
+                message = m;
+                break;
+            }
+        }
 
-        let (recipient, message) = rx.try_recv().expect("A message should have been sent");
         assert_eq!("admin::other-node".to_string(), recipient);
 
         let mut admin_envelope: admin::AdminMessage =

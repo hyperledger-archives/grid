@@ -22,6 +22,7 @@ pub mod zmq;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
+use std::error::Error;
 use std::io::{self, Read, Write};
 use std::mem;
 
@@ -177,6 +178,26 @@ pub enum ConnectError {
     IoError(io::Error),
     ParseError(String),
     ProtocolError(String),
+}
+
+impl Error for ConnectError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ConnectError::IoError(err) => Some(err),
+            ConnectError::ParseError(_) => None,
+            ConnectError::ProtocolError(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for ConnectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ConnectError::IoError(err) => write!(f, "io error occurred: {}", err),
+            ConnectError::ParseError(err) => write!(f, "error while parsing: {}", err),
+            ConnectError::ProtocolError(err) => write!(f, "protocol error occurred: {}", err),
+        }
+    }
 }
 
 impl_from_io_error!(ConnectError);
