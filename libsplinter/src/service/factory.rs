@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use super::{FactoryCreateError, Service};
 
 /// A `ServiceFactory` creates services.
@@ -25,6 +27,6 @@ pub trait ServiceFactory: Send {
         service_id: String,
         service_type: &str,
         peer_services: Vec<String>,
-        args: &[String],
+        args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError>;
 }

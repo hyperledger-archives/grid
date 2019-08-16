@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
 
@@ -49,7 +49,7 @@ impl ServiceFactory for ScabbardFactory {
         service_id: String,
         _service_type: &str,
         peer_services: Vec<String>,
-        _args: &[String],
+        _args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError> {
         let initial_peers = HashSet::from_iter(peer_services.into_iter());
         let db_dir = Path::new(&self.db_dir);

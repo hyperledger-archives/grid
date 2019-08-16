@@ -79,7 +79,7 @@ impl ServiceOrchestrator {
     pub fn initialize_service(
         &self,
         service_definition: ServiceDefinition,
-        args: &[String],
+        args: HashMap<String, String>,
     ) -> Result<(), InitializeServiceError> {
         let factory = self
             .service_factories
