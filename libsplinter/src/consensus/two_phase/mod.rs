@@ -442,6 +442,18 @@ impl TwoPhaseEngine {
         network_sender: &dyn ConsensusNetworkSender,
         proposal_manager: &dyn ProposalManager,
     ) -> Result<(), ConsensusEngineError> {
+        let proposal_in_backlog = self
+            .proposal_backlog
+            .iter()
+            .any(|tpc_proposal| tpc_proposal.proposal_id() == &proposal.id);
+        if proposal_in_backlog {
+            debug!(
+                "Proposal already received and backlogged; ignoring: {}",
+                proposal.id
+            );
+            return Ok(());
+        }
+
         // Determine which peers must verify the proposal for it to be committed. If the proposal
         // manager provides a list in the consensus data field, those peers are used; otherwise,
         // the list will be all peers.
@@ -472,12 +484,19 @@ impl TwoPhaseEngine {
 
         let tpc_proposal = TwoPhaseProposal::new(proposal.id, coordinator, verifiers);
 
-        if let State::EvaluatingProposal(_) = self.state {
-            debug!(
-                "Proposal already in progress, backlogging proposal {}",
-                tpc_proposal.proposal_id()
-            );
-            self.proposal_backlog.push_back(tpc_proposal);
+        if let State::EvaluatingProposal(ref current_proposal) = self.state {
+            if tpc_proposal.proposal_id() == current_proposal.proposal_id() {
+                debug!(
+                    "This proposal is already being evaluated; ignoring: {}",
+                    tpc_proposal.proposal_id()
+                );
+            } else {
+                debug!(
+                    "Another proposal is already in progress; backlogging proposal {}",
+                    tpc_proposal.proposal_id()
+                );
+                self.proposal_backlog.push_back(tpc_proposal);
+            }
         } else if &self.id == tpc_proposal.coordinator_id() {
             debug!(
                 "Starting coordination for proposal {}",
