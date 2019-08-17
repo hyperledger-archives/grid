@@ -99,7 +99,8 @@ services:
         bash -c "
           splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
-              --network-endpoint 0.0.0.0:8044
+              --network-endpoint 0.0.0.0:8044 \
+              --bind 0.0.0.0:8085
         "
 
     db-bubba:
@@ -183,5 +184,6 @@ services:
         bash -c "
           splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
-              --network-endpoint 0.0.0.0:8044
+              --network-endpoint 0.0.0.0:8044 \
+              --bind 0.0.0.0:8085
         "

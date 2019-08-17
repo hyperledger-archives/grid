@@ -33,7 +33,7 @@ storage = "memory"
 transport = "tls"
 
 # Rest api address.
-bind = "0.0.0.0:8085"
+bind = "localhost:8085"
 
 # Node Registry file
 registry_file = "/node_registry/nodes.yaml"
