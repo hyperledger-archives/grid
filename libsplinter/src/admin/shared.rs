@@ -18,7 +18,10 @@ use std::collections::VecDeque;
 use crossbeam_channel::Sender;
 
 use crate::consensus::{Proposal, ProposalId};
-use crate::network::peer::PeerConnector;
+use crate::network::{
+    auth::{AuthorizationInquisitor, PeerAuthorizationState},
+    peer::PeerConnector,
+};
 use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{
     Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
@@ -40,6 +43,8 @@ pub struct AdminServiceShared {
     orchestrator: ServiceOrchestrator,
     // peer connector used to connect to new members listed in a circuit
     peer_connector: PeerConnector,
+    // auth inquisitor
+    auth_inquisitor: Box<dyn AuthorizationInquisitor>,
     // network sender is used to comunicated with other services on the splinter network
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
     // CircuitManagmentPayloads that still need to go through consensus
@@ -56,6 +61,7 @@ impl AdminServiceShared {
         node_id: String,
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
+        auth_inquisitor: Box<dyn AuthorizationInquisitor>,
     ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
@@ -63,6 +69,7 @@ impl AdminServiceShared {
             open_proposals: Default::default(),
             orchestrator,
             peer_connector,
+            auth_inquisitor,
             pending_circuit_payloads: VecDeque::new(),
             pending_consesus_proposals: HashMap::new(),
             pending_changes: None,
@@ -76,6 +83,10 @@ impl AdminServiceShared {
 
     pub fn network_sender(&self) -> &Option<Box<dyn ServiceNetworkSender>> {
         &self.network_sender
+    }
+
+    pub fn auth_inquisitor(&self) -> &dyn AuthorizationInquisitor {
+        &*self.auth_inquisitor
     }
 
     pub fn set_network_sender(&mut self, network_sender: Option<Box<dyn ServiceNetworkSender>>) {

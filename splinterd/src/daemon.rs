@@ -107,7 +107,13 @@ impl SplinterDaemon {
             inproc_tranport.clone(),
         );
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
-        let admin_service = AdminService::new(&self.node_id, orchestrator, peer_connector.clone());
+        let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
+        let admin_service = AdminService::new(
+            &self.node_id,
+            orchestrator,
+            peer_connector.clone(),
+            Box::new(auth_manager.clone()),
+        );
 
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
@@ -172,7 +178,6 @@ impl SplinterDaemon {
         let circuit_dispatcher_thread = thread::spawn(move || circuit_dispatch_loop.run());
 
         // Set up the Auth dispatcher
-        let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
         let (auth_dispatch_send, auth_dispatch_recv) = crossbeam_channel::bounded(5);
         let auth_dispatcher =
             create_authorization_dispatcher(auth_manager.clone(), Box::new(send.clone()));

@@ -30,7 +30,10 @@ use protobuf::{self, Message};
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
-use crate::network::peer::PeerConnector;
+use crate::network::{
+    auth::{AuthorizationInquisitor, PeerAuthorizationState},
+    peer::PeerConnector,
+};
 use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{AdminMessage, AdminMessage_Type};
 use crate::rest_api::{Method, Resource, RestResourceProvider};
@@ -55,16 +58,20 @@ impl AdminService {
         node_id: &str,
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
+        authorization_inquistor: Box<dyn AuthorizationInquisitor>,
     ) -> Self {
-        Self {
+        let new_service = Self {
             service_id: admin_service_id(node_id),
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
                 node_id.to_string(),
                 orchestrator,
                 peer_connector,
+                authorization_inquistor,
             ))),
             consensus: None,
-        }
+        };
+
+        new_service
     }
 }
 
@@ -359,7 +366,7 @@ mod tests {
     use std::time;
 
     use crate::mesh::Mesh;
-    use crate::network::Network;
+    use crate::network::{auth::AuthorizationCallback, Network};
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
     use crate::transport::inproc::InprocTransport;
@@ -379,7 +386,12 @@ mod tests {
         let orchestrator =
             ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
-        let mut admin_service = AdminService::new("test-node".into(), orchestrator, peer_connector);
+        let mut admin_service = AdminService::new(
+            "test-node".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+        );
 
         let (tx, rx) = channel();
         admin_service
@@ -446,8 +458,6 @@ mod tests {
             proposed_circuit,
             envelope.take_circuit_create_request().take_circuit()
         );
-
-        assert_eq!(Some(&"other-node".to_string()), network.peer_ids().get(0));
     }
 
     fn splinter_node(node_id: &str, endpoint: &str) -> admin::SplinterNode {
@@ -602,6 +612,19 @@ mod tests {
 
         fn deregister(&self, _poll: &mio::Poll) -> std::io::Result<()> {
             Ok(())
+        }
+    }
+
+    struct MockAuthInquisitor;
+
+    impl AuthorizationInquisitor for MockAuthInquisitor {
+        fn is_authorized(&self, _: &str) -> bool {
+            true
+        }
+
+        fn register_callback(&self, _: Box<dyn AuthorizationCallback>) {
+            // The callback won't be called, as this test implementation indicates that all nodes
+            // are peered.
         }
     }
 }
