@@ -405,6 +405,7 @@ mod tests {
             .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         proposed_circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         proposed_circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
+        proposed_circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
         proposed_circuit.set_circuit_management_type("test app auth handler".into());
 
         proposed_circuit.set_members(protobuf::RepeatedField::from_vec(vec![

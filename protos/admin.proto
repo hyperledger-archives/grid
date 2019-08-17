@@ -74,15 +74,18 @@ message Circuit {
     // Whether the circuit connections need to be persisted
     PersistenceType persistence = 5;
 
+    // Whether the connection must be durable
+    DurabilityType durability = 6;
+
     // Routes a message is allowed to take from one service to another
-    RouteType routes = 6;
+    RouteType routes = 7;
 
     // The circuit management type indicates the application authorization
-    // handler that will handle this cicuit's change proposals.
-    string circuit_management_type  = 7;
+    // handler that will handle this circuit's change proposals.
+    string circuit_management_type  = 8;
 
     // Opaque bytes that can be used by applications
-    bytes application_metadata = 8;
+    bytes application_metadata = 9;
 }
 
 // Contains the vote counts for a given proposal.

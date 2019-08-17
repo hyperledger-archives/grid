@@ -589,6 +589,7 @@ fn parse_gameroom(circuit: &CreateCircuit, timestamp: SystemTime) -> Gameroom {
         circuit_id: circuit.circuit_id.clone(),
         authorization_type: format!("{:?}", circuit.authorization_type),
         persistence: format!("{:?}", circuit.persistence),
+        durability: format!("{:?}", circuit.durability),
         routes: format!("{:?}", circuit.routes),
         circuit_management_type: circuit.circuit_management_type.clone(),
         application_metadata: circuit.application_metadata.clone(),
@@ -659,8 +660,8 @@ mod test {
     };
 
     use libsplinter::admin::messages::{
-        AuthorizationType, Ballot, CircuitProposalVote, CreateCircuit, PersistenceType,
-        ProposalType, RouteType, Vote,
+        AuthorizationType, Ballot, CircuitProposalVote, CreateCircuit, DurabilityType,
+        PersistenceType, ProposalType, RouteType, Vote,
     };
 
     static DATABASE_URL: &str = "postgres://gameroom_test:gameroom_test@db-test:5432/gameroom_test";
@@ -719,6 +720,7 @@ mod test {
         );
         assert_eq!(gameroom.persistence, expected_gameroom.persistence);
         assert_eq!(gameroom.routes, expected_gameroom.routes);
+        assert_eq!(gameroom.durability, expected_gameroom.durability);
         assert_eq!(
             gameroom.circuit_management_type,
             expected_gameroom.circuit_management_type
@@ -1113,6 +1115,7 @@ mod test {
             }],
             authorization_type: AuthorizationType::Trust,
             persistence: PersistenceType::Any,
+            durability: DurabilityType::NoDurabilty,
             routes: RouteType::Any,
             circuit_management_type: "gameroom".to_string(),
             application_metadata: vec![],
@@ -1182,6 +1185,7 @@ mod test {
             circuit_id: circuit_id.to_string(),
             authorization_type: "Trust".to_string(),
             persistence: "Any".to_string(),
+            durability: "NoDurabilty".to_string(),
             routes: "Any".to_string(),
             circuit_management_type: "gameroom".to_string(),
             application_metadata: vec![],

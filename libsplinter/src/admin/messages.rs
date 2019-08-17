@@ -29,6 +29,7 @@ pub struct CreateCircuit {
     pub members: Vec<SplinterNode>,
     pub authorization_type: AuthorizationType,
     pub persistence: PersistenceType,
+    pub durability: DurabilityType,
     pub routes: RouteType,
     pub circuit_management_type: String,
     pub application_metadata: Vec<u8>,
@@ -68,6 +69,15 @@ impl CreateCircuit {
             }
         };
 
+        let durability = match proto.get_durability() {
+            admin::Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurabilty,
+            admin::Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
+                return Err(MarshallingError::UnsetField(
+                    "Unset durability type".to_string(),
+                ));
+            }
+        };
+
         let routes = match proto.get_routes() {
             admin::Circuit_RouteType::ANY_ROUTE => RouteType::Any,
             admin::Circuit_RouteType::UNSET_ROUTE_TYPE => {
@@ -89,6 +99,7 @@ impl CreateCircuit {
                 .collect::<Result<Vec<SplinterNode>, MarshallingError>>()?,
             authorization_type,
             persistence,
+            durability,
             routes,
             circuit_management_type: proto.take_circuit_management_type(),
             application_metadata: proto.take_application_metadata(),
@@ -127,6 +138,11 @@ impl CreateCircuit {
                 circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
             }
         };
+        match self.durability {
+            DurabilityType::NoDurabilty => {
+                circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
+            }
+        };
 
         match self.routes {
             RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
@@ -147,6 +163,11 @@ pub enum AuthorizationType {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum PersistenceType {
     Any,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum DurabilityType {
+    NoDurabilty,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

@@ -29,6 +29,7 @@ table! {
         circuit_id -> Text,
         authorization_type -> Text,
         persistence -> Text,
+        durability -> Text,
         routes -> Text,
         circuit_management_type -> Text,
         application_metadata -> Bytea,
