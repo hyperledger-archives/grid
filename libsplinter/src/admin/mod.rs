@@ -71,6 +71,22 @@ impl AdminService {
             consensus: None,
         };
 
+        let auth_callback_shared = Arc::clone(&new_service.admin_service_shared);
+
+        new_service
+            .admin_service_shared
+            .lock()
+            .expect("The lock was poisoned while creating the service")
+            .auth_inquisitor()
+            .register_callback(Box::new(
+                move |peer_id: &str, state: PeerAuthorizationState| {
+                    auth_callback_shared
+                        .lock()
+                        .expect("The admin lock was poisoned before handling authorization changes")
+                        .on_authorization_change(peer_id, state);
+                },
+            ));
+
         new_service
     }
 }
