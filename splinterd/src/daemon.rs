@@ -17,7 +17,6 @@ use std::thread;
 use std::time::Duration;
 
 use crossbeam_channel;
-use protobuf::Message;
 
 use crate::node_registry::yaml::YamlNodeRegistry;
 use libsplinter::admin::AdminService;
@@ -42,9 +41,7 @@ use libsplinter::network::{
 };
 use libsplinter::node_registry::NodeRegistry;
 use libsplinter::orchestrator::ServiceOrchestrator;
-use libsplinter::protos::authorization::{
-    AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
-};
+use libsplinter::protos::authorization::AuthorizationMessageType;
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
 use libsplinter::rest_api::{
@@ -288,12 +285,6 @@ impl SplinterDaemon {
             } else {
                 debug!("node {} has no known endpoints", node_id);
             }
-        }
-
-        let connect_request_msg_bytes = create_connect_request()?;
-        for peer_id in self.network.peer_ids() {
-            debug!("Sending connect request to peer {}", peer_id);
-            self.network.send(&peer_id, &connect_request_msg_bytes)?;
         }
 
         let timeout = Duration::from_secs(TIMEOUT_SEC);
@@ -602,21 +593,6 @@ fn set_up_circuit_dispatcher(
     );
 
     dispatcher
-}
-
-fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
-    let mut connect_request = ConnectRequest::new();
-    connect_request.set_handshake_mode(ConnectRequest_HandshakeMode::BIDIRECTIONAL);
-
-    let mut auth_msg_env = AuthorizationMessage::new();
-    auth_msg_env.set_message_type(AuthorizationMessageType::CONNECT_REQUEST);
-    auth_msg_env.set_payload(connect_request.write_to_bytes()?);
-
-    let mut network_msg = NetworkMessage::new();
-    network_msg.set_message_type(NetworkMessageType::AUTHORIZATION);
-    network_msg.set_payload(auth_msg_env.write_to_bytes()?);
-
-    network_msg.write_to_bytes()
 }
 
 fn create_node_registry(

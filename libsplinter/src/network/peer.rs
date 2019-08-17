@@ -14,6 +14,15 @@
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+use protobuf::Message;
+
+use crate::protos::{
+    authorization::{
+        AuthorizationMessage, AuthorizationMessageType, ConnectRequest,
+        ConnectRequest_HandshakeMode,
+    },
+    network::{NetworkMessage, NetworkMessageType},
+};
 use crate::transport::Transport;
 
 use super::Network;
@@ -101,6 +110,21 @@ impl PeerConnector {
             .add_peer(node_id.to_string(), connection)
             .map_err(|err| PeerConnectorError::add_peer_failed(node_id, err.to_string()))?;
 
+        let connect_request_msg_bytes = create_connect_request().map_err(|err| {
+            PeerConnectorError::connection_failed(
+                node_id,
+                format!("unable to create message: {}", err),
+            )
+        })?;
+        self.network
+            .send(&node_id, &connect_request_msg_bytes)
+            .map_err(|err| {
+                PeerConnectorError::connection_failed(
+                    node_id,
+                    format!("unable to send connect request: {:?}", err),
+                )
+            })?;
+
         Ok(())
     }
 
@@ -117,13 +141,43 @@ impl PeerConnector {
             .connect(&endpoint)
             .map_err(|err| PeerConnectorError::connection_failed(endpoint, format!("{:?}", err)))?;
         debug!("Successfully connected to {}", connection.remote_endpoint());
-        let _temp_peer_id = self
+        let temp_peer_id = self
             .network
             .add_connection(connection)
             .map_err(|err| PeerConnectorError::add_peer_failed(endpoint, err.to_string()))?;
 
+        let connect_request_msg_bytes = create_connect_request().map_err(|err| {
+            PeerConnectorError::connection_failed(
+                endpoint,
+                format!("unable to create message: {}", err),
+            )
+        })?;
+        self.network
+            .send(&temp_peer_id, &connect_request_msg_bytes)
+            .map_err(|err| {
+                PeerConnectorError::connection_failed(
+                    endpoint,
+                    format!("unable to send connect request: {:?}", err),
+                )
+            })?;
+
         Ok(())
     }
+}
+
+fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
+    let mut connect_request = ConnectRequest::new();
+    connect_request.set_handshake_mode(ConnectRequest_HandshakeMode::BIDIRECTIONAL);
+
+    let mut auth_msg_env = AuthorizationMessage::new();
+    auth_msg_env.set_message_type(AuthorizationMessageType::CONNECT_REQUEST);
+    auth_msg_env.set_payload(connect_request.write_to_bytes()?);
+
+    let mut network_msg = NetworkMessage::new();
+    network_msg.set_message_type(NetworkMessageType::AUTHORIZATION);
+    network_msg.set_payload(auth_msg_env.write_to_bytes()?);
+
+    network_msg.write_to_bytes()
 }
 
 #[cfg(test)]
