@@ -86,6 +86,14 @@ impl fmt::Display for AuthorizationActionError {
     }
 }
 
+pub trait AuthorizationInquisitor: Send {
+    /// Register a callback to receive notifications about peer authorization statuses.
+    fn register_callback(&self, callback: Box<dyn AuthorizationCallback>);
+
+    /// Indicates whether or not a peer is authorized.
+    fn is_authorized(&self, peer_id: &str) -> bool;
+}
+
 /// Manages authorization states for connections on a network.
 #[derive(Clone)]
 pub struct AuthorizationManager {
@@ -101,21 +109,6 @@ impl AuthorizationManager {
             shared: Default::default(),
             network,
             identity,
-        }
-    }
-
-    pub fn register_callback(&self, callback: Box<dyn AuthorizationCallback>) {
-        let mut shared = mutex_lock_unwrap!(self.shared);
-        shared.callbacks.push(callback)
-    }
-
-    /// Indicated whether or not a peer is authorized.
-    pub fn is_authorized(&self, peer_id: &str) -> bool {
-        let shared = mutex_lock_unwrap!(self.shared);
-        if let Some(state) = shared.states.get(peer_id) {
-            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
-        } else {
-            false
         }
     }
 
@@ -233,6 +226,22 @@ impl AuthorizationManager {
     ) {
         for callback in callbacks {
             callback.on_authorization_change(peer_id, state.clone());
+        }
+    }
+}
+
+impl AuthorizationInquisitor for AuthorizationManager {
+    fn register_callback(&self, callback: Box<dyn AuthorizationCallback>) {
+        let mut shared = mutex_lock_unwrap!(self.shared);
+        shared.callbacks.push(callback)
+    }
+
+    fn is_authorized(&self, peer_id: &str) -> bool {
+        let shared = mutex_lock_unwrap!(self.shared);
+        if let Some(state) = shared.states.get(peer_id) {
+            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
+        } else {
+            false
         }
     }
 }
