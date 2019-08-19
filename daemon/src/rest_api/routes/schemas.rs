@@ -107,7 +107,7 @@ impl Handler<ListGridSchemas> for DbExecutor {
 
 pub fn list_grid_schemas(
     req: HttpRequest<AppState>,
-) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     req.state()
         .database_connection
         .send(ListGridSchemas)

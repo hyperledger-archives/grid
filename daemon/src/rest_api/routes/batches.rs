@@ -162,7 +162,7 @@ pub fn submit_batches(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     req.body().from_err().and_then(
-        move |body| -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+        move |body| -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
             let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
                 Ok(batch_list) => batch_list,
                 Err(err) => {
@@ -204,7 +204,7 @@ pub fn get_batch_statuses(
         Query<HashMap<String, String>>,
         HttpRequest<AppState>,
     ),
-) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     let batch_ids = match query.get("id") {
         Some(ids) => ids.split(',').map(ToString::to_string).collect(),
         None => {
