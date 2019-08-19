@@ -40,13 +40,24 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 
 # Copy dependencies
 COPY protos /build/protos
-COPY libsplinter /build/libsplinter
 
-# Create empty cargo project
+# Create empty cargo project for libsplinter
+WORKDIR /build
+RUN USER=root cargo new --lib libsplinter
+
+# Copy over libsplinter Cargo.toml and build.rs
+COPY libsplinter/build.rs /build/libsplinter/build.rs
+COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/libsplinter
+RUN cargo build --release
+
+# Create empty cargo for private_xo
 WORKDIR /build/examples
 RUN USER=root cargo new --bin private_xo
 
-# Copy over Cargo.toml file
+# Copy over private_xo Cargo.toml file
 COPY examples/private_xo/Cargo.toml /build/examples/private_xo/Cargo.toml
 
 # Do a release build to cache dependencies
@@ -55,14 +66,14 @@ RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-RUN rm target/release/private-xo* target/release/deps/private_xo*
+RUN rm target/release/private-xo* target/release/deps/private_xo* \
+   target/release/deps/*libsplinter*
 
 # Copy over source files
 COPY ./examples/private_xo/protos /build/examples/private_xo/protos
 COPY ./examples/private_xo/build.rs /build/examples/private_xo/build.rs
 COPY ./examples/private_xo/src /build/examples/private_xo/src
 COPY libsplinter/src /build/libsplinter/src
-COPY protos/ /build/protos/
 
 # Build the project
 RUN cargo build --release

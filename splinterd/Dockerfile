@@ -46,9 +46,20 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 
 # Copy dependencies
 COPY protos /build/protos
-COPY libsplinter /build/libsplinter
 
-# Create empty cargo project
+# Create empty cargo project for libsplinter
+WORKDIR /build
+RUN USER=root cargo new --lib libsplinter
+
+# Copy over Cargo.toml and build.rs
+COPY libsplinter/build.rs /build/libsplinter/build.rs
+COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/libsplinter
+RUN cargo build --release
+
+# Create empty cargo project for splinterd
 WORKDIR /build
 RUN USER=root cargo new --bin splinterd
 
@@ -61,9 +72,14 @@ RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
 RUN rm src/*.rs
-RUN rm target/release/splinterd* target/release/deps/splinterd*
+RUN rm target/release/splinterd* target/release/deps/splinterd* \
+    target/release/deps/*libsplinter*
 
 # Copy over source files
+WORKDIR /build/libsplinter
+COPY libsplinter /build/libsplinter
+
+WORKDIR /build/splinterd
 COPY splinterd/src ./src
 COPY splinterd/api ./api
 

@@ -37,13 +37,24 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
 
 # Copy dependencies
 COPY protos /build/protos
-COPY libsplinter /build/libsplinter
 
-# Create empty cargo project
+# Create empty cargo project for libsplinter
+WORKDIR /build
+RUN USER=root cargo new --lib libsplinter
+
+# Copy over libsplinter Cargo.toml and build.rs
+COPY libsplinter/build.rs /build/libsplinter/build.rs
+COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
+
+# Do a release build to cache dependencies
+WORKDIR /build/libsplinter
+RUN cargo build --release
+
+# Create empty cargo for private_counter
 WORKDIR /build/examples/private_counter
 RUN USER=root cargo new --bin service --name private-counter
 
-# Copy over Cargo.toml file
+# Copy over private_counter Cargo.toml file
 COPY examples/private_counter/service/Cargo.toml /build/examples/private_counter/service/Cargo.toml
 
 # Do a release build to cache dependencies
@@ -51,14 +62,15 @@ WORKDIR /build/examples/private_counter/service
 RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
-RUN rm src/*
-RUN rm target/release/private-counter* target/release/deps/private_counter*
+RUN rm src/*.rs
+RUN rm target/release/private-counter* target/release/deps/private_counter* \
+    target/release/deps/*libsplinter*
 
 # Copy over source files
 COPY examples/private_counter/protos /build/examples/private_counter/protos
 COPY examples/private_counter/service/build.rs /build/examples/private_counter/service/build.rs
 COPY examples/private_counter/service/src /build/examples/private_counter/service/src
-COPY libsplinter/src /build/libsplinter/src
+COPY libsplinter/ /build/libsplinter/
 
 # Build the project
 RUN cargo build --release
