@@ -72,7 +72,7 @@ impl ScabbardConsensusManager {
         let thread_handle = Builder::new()
             .name(format!("consensus-{}", service_id))
             .spawn(move || {
-                let mut two_phase_engine = TwoPhaseEngine::new();
+                let mut two_phase_engine = TwoPhaseEngine::default();
                 two_phase_engine
                     .run(
                         consensus_msg_rx,
