@@ -33,3 +33,10 @@ Vue.use(VueNativeSock, `ws://${window.location.host}/ws`, {
   reconnectionAttempts: 30,
   reconnectionDelay: 10,
 });
+
+// When the page loads, the element with this directive gains focus.
+Vue.directive('focus', {
+  inserted: (el) => {
+    el.focus();
+  },
+});
