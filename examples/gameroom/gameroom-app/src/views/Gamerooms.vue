@@ -32,24 +32,24 @@ limitations under the License.
           </label>
           <label class="form-label">
             <div class="multiselect-label">Member</div>
-            <multiselect
-              v-model="newGameroom.member"
-              track-by="identity"
-              label="metadata"
-              placeholder=""
-              deselect-label=""
-              open-direction="bottom"
-              :close-on-select="true"
-              :clear-on-select="false"
-              :custom-label="getMemberLabel"
-              :options="nodeList"
-              :allow-empty="false"
-            >
-              <template slot="singleLabel" slot-scope="{ option }">
-                <strong>{{ option.metadata.organization }}</strong>
-              </template>
-            </multiselect>
           </label>
+          <multiselect
+            v-model="newGameroom.member"
+            track-by="identity"
+            label="metadata"
+            placeholder=""
+            open-direction="bottom"
+            :show-labels="false"
+            :close-on-select="true"
+            :clear-on-select="false"
+            :custom-label="getMemberLabel"
+            :options="nodeList"
+            :allow-empty="false"
+          >
+            <template slot="singleLabel" slot-scope="{ option }">
+              <strong>{{ option.metadata.organization }}</strong>
+            </template>
+          </multiselect>
           <div class="flex-container button-container">
             <button class="btn-action outline small" @click.prevent="closeNewGameroomModal">
               <div class="btn-text">Cancel</div>
