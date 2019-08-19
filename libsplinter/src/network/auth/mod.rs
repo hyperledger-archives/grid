@@ -428,16 +428,18 @@ mod tests {
         let notifications = Arc::new(Mutex::new(vec![]));
 
         let callback_values = notifications.clone();
-        auth_manager.register_callback(Box::new(
-            move |peer_id: &str, state: PeerAuthorizationState| {
-                callback_values
-                    .lock()
-                    .expect("callback values poisoned")
-                    .push((peer_id.to_string(), state.clone()));
+        auth_manager
+            .register_callback(Box::new(
+                move |peer_id: &str, state: PeerAuthorizationState| {
+                    callback_values
+                        .lock()
+                        .expect("callback values poisoned")
+                        .push((peer_id.to_string(), state.clone()));
 
-                Ok(())
-            },
-        ));
+                    Ok(())
+                },
+            ))
+            .expect("The callback failed to be registered");
 
         assert!(!auth_manager.is_authorized(&peer_id));
 

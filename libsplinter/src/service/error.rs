@@ -201,6 +201,8 @@ impl std::fmt::Display for ServiceDestroyError {
 
 #[derive(Debug)]
 pub enum ServiceError {
+    /// Returned if an error is detected when creating a service
+    UnableToCreate(Box<dyn Error + Send>),
     /// Returned if an error is detected when parsing a message
     InvalidMessageFormat(Box<dyn Error + Send>),
     /// Returned if an error is detected during the handling of a message
@@ -218,6 +220,7 @@ pub enum ServiceError {
 impl Error for ServiceError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            ServiceError::UnableToCreate(err) => Some(&**err),
             ServiceError::InvalidMessageFormat(err) => Some(&**err),
             ServiceError::UnableToHandleMessage(err) => Some(&**err),
             ServiceError::UnableToSendMessage(err) => Some(err),
@@ -230,6 +233,9 @@ impl Error for ServiceError {
 impl std::fmt::Display for ServiceError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
+            ServiceError::UnableToCreate(ref err) => {
+                write!(f, "service was unable to be created: {}", err)
+            }
             ServiceError::InvalidMessageFormat(ref err) => {
                 write!(f, "message is in an invalid format: {}", err)
             }

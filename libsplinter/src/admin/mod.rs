@@ -59,7 +59,7 @@ impl AdminService {
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
-    ) -> Self {
+    ) -> Result<Self, ServiceError> {
         let new_service = Self {
             service_id: admin_service_id(node_id),
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
@@ -76,7 +76,11 @@ impl AdminService {
         new_service
             .admin_service_shared
             .lock()
-            .expect("The lock was poisoned while creating the service")
+            .map_err(|_| {
+                ServiceError::PoisonedLock(
+                    "The lock was poisoned while creating the service".into(),
+                )
+            })?
             .auth_inquisitor()
             .register_callback(Box::new(
                 move |peer_id: &str, state: PeerAuthorizationState| {
@@ -91,9 +95,10 @@ impl AdminService {
 
                     Ok(())
                 },
-            ));
+            ))
+            .map_err(|err| ServiceError::UnableToCreate(Box::new(err)))?;
 
-        new_service
+        Ok(new_service)
     }
 }
 
@@ -413,7 +418,8 @@ mod tests {
             orchestrator,
             peer_connector,
             Box::new(MockAuthInquisitor),
-        );
+        )
+        .expect("Service should have been created correctly");
 
         let (tx, rx) = channel();
         admin_service

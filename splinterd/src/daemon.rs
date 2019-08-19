@@ -113,7 +113,10 @@ impl SplinterDaemon {
             orchestrator,
             peer_connector.clone(),
             Box::new(auth_manager.clone()),
-        );
+        )
+        .map_err(|err| {
+            StartError::AdminServiceError(format!("unable to create admin service: {}", err))
+        })?;
 
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
