@@ -28,13 +28,10 @@ pub struct GameroomUser {
 }
 
 #[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
-#[table_name = "circuit_proposal"]
-pub struct CircuitProposal {
-    pub id: String,
-    pub proposal_type: String,
+#[table_name = "gameroom"]
+#[primary_key(circuit_id)]
+pub struct Gameroom {
     pub circuit_id: String,
-    pub circuit_hash: String,
-    pub requester: String,
     pub authorization_type: String,
     pub persistence: String,
     pub routes: String,
@@ -46,11 +43,37 @@ pub struct CircuitProposal {
 }
 
 #[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "gameroom_proposal"]
+#[belongs_to(Gameroom, foreign_key = "circuit_id")]
+pub struct GameroomProposal {
+    pub id: i64,
+    pub proposal_type: String,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub requester: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "gameroom_proposal"]
+pub struct NewGameroomProposal {
+    pub proposal_type: String,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub requester: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[table_name = "proposal_vote_record"]
-#[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
+#[belongs_to(GameroomProposal, foreign_key = "proposal_id")]
 pub struct ProposalVoteRecord {
     pub id: i64,
-    pub proposal_id: String,
+    pub proposal_id: i64,
     pub voter_public_key: String,
     pub vote: String,
     pub created_time: SystemTime,
@@ -59,48 +82,60 @@ pub struct ProposalVoteRecord {
 #[derive(Insertable, PartialEq, Debug)]
 #[table_name = "proposal_vote_record"]
 pub struct NewProposalVoteRecord {
-    pub proposal_id: String,
+    pub proposal_id: i64,
     pub voter_public_key: String,
     pub vote: String,
     pub created_time: SystemTime,
 }
 
 #[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
-#[table_name = "proposal_circuit_member"]
-#[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
-pub struct CircuitMember {
+#[table_name = "gameroom_member"]
+#[belongs_to(Gameroom, foreign_key = "circuit_id")]
+pub struct GameroomMember {
     pub id: i64,
-    pub proposal_id: String,
+    pub circuit_id: String,
     pub node_id: String,
     pub endpoint: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
 }
 
 #[derive(Insertable, PartialEq, Debug)]
-#[table_name = "proposal_circuit_member"]
-pub struct NewCircuitMember {
-    pub proposal_id: String,
+#[table_name = "gameroom_member"]
+pub struct NewGameroomMember {
+    pub circuit_id: String,
     pub node_id: String,
     pub endpoint: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
 }
 
 #[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
-#[table_name = "proposal_circuit_service"]
-#[belongs_to(CircuitProposal, foreign_key = "proposal_id")]
-pub struct CircuitService {
+#[table_name = "gameroom_service"]
+#[belongs_to(Gameroom, foreign_key = "circuit_id")]
+pub struct GameroomService {
     pub id: i64,
-    pub proposal_id: String,
+    pub circuit_id: String,
     pub service_id: String,
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
 }
 
 #[derive(Insertable, PartialEq, Debug)]
-#[table_name = "proposal_circuit_service"]
-pub struct NewCircuitService {
-    pub proposal_id: String,
+#[table_name = "gameroom_service"]
+pub struct NewGameroomService {
+    pub circuit_id: String,
     pub service_id: String,
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
 }
 
 #[derive(Queryable, Identifiable, Associations)]

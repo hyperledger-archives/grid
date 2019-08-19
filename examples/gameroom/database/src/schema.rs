@@ -25,12 +25,8 @@ table! {
 }
 
 table! {
-    circuit_proposal (id) {
-        id -> Text,
-        proposal_type -> Text,
+    gameroom (circuit_id) {
         circuit_id -> Text,
-        circuit_hash -> Text,
-        requester -> Text,
         authorization_type -> Text,
         persistence -> Text,
         routes -> Text,
@@ -43,9 +39,22 @@ table! {
 }
 
 table! {
+    gameroom_proposal (id) {
+        id -> Int8,
+        proposal_type -> Text,
+        circuit_id -> Text,
+        circuit_hash -> Text,
+        requester -> Text,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
+
+table! {
     proposal_vote_record (id) {
         id -> Int8,
-        proposal_id -> Text,
+        proposal_id -> Int8,
         voter_public_key -> Text,
         vote -> Text,
         created_time -> Timestamp,
@@ -53,21 +62,27 @@ table! {
 }
 
 table! {
-    proposal_circuit_member (id) {
+    gameroom_member (id) {
         id -> Int8,
-        proposal_id -> Text,
+        circuit_id -> Text,
         node_id -> Text,
         endpoint -> Text,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
     }
 }
 
 table! {
-    proposal_circuit_service (id) {
+    gameroom_service (id) {
         id -> Int8,
-        proposal_id -> Text,
+        circuit_id -> Text,
         service_id -> Text,
         service_type -> Text,
         allowed_nodes -> Array<Text>,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
     }
 }
 
