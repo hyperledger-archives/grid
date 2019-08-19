@@ -15,7 +15,9 @@
 use protobuf::Message;
 
 use crate::channel::Sender;
-use crate::network::auth::{AuthorizationAction, AuthorizationManager, AuthorizationState};
+use crate::network::auth::{
+    AuthorizationAction, AuthorizationInquisitor, AuthorizationManager, AuthorizationState,
+};
 use crate::network::dispatch::{
     DispatchError, DispatchMessage, Dispatcher, FromMessageBytes, Handler, MessageContext,
 };

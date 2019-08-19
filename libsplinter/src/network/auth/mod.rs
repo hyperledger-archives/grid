@@ -86,6 +86,28 @@ impl fmt::Display for AuthorizationActionError {
     }
 }
 
+#[derive(Debug)]
+pub struct AuthorizationCallbackError(pub String);
+
+impl std::error::Error for AuthorizationCallbackError {}
+
+impl fmt::Display for AuthorizationCallbackError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unable to register callback: {}", self.0)
+    }
+}
+
+pub trait AuthorizationInquisitor: Send {
+    /// Register a callback to receive notifications about peer authorization statuses.
+    fn register_callback(
+        &self,
+        callback: Box<dyn AuthorizationCallback>,
+    ) -> Result<(), AuthorizationCallbackError>;
+
+    /// Indicates whether or not a peer is authorized.
+    fn is_authorized(&self, peer_id: &str) -> bool;
+}
+
 /// Manages authorization states for connections on a network.
 #[derive(Clone)]
 pub struct AuthorizationManager {
@@ -101,21 +123,6 @@ impl AuthorizationManager {
             shared: Default::default(),
             network,
             identity,
-        }
-    }
-
-    pub fn register_callback(&self, callback: Box<dyn AuthorizationCallback>) {
-        let mut shared = mutex_lock_unwrap!(self.shared);
-        shared.callbacks.push(callback)
-    }
-
-    /// Indicated whether or not a peer is authorized.
-    pub fn is_authorized(&self, peer_id: &str) -> bool {
-        let shared = mutex_lock_unwrap!(self.shared);
-        if let Some(state) = shared.states.get(peer_id) {
-            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
-        } else {
-            false
         }
     }
 
@@ -232,7 +239,34 @@ impl AuthorizationManager {
         state: PeerAuthorizationState,
     ) {
         for callback in callbacks {
-            callback.on_authorization_change(peer_id, state.clone());
+            if let Err(err) = callback.on_authorization_change(peer_id, state.clone()) {
+                error!("Unable to call authorization change callback: {}", err);
+            }
+        }
+    }
+}
+
+impl AuthorizationInquisitor for AuthorizationManager {
+    fn register_callback(
+        &self,
+        callback: Box<dyn AuthorizationCallback>,
+    ) -> Result<(), AuthorizationCallbackError> {
+        let mut shared = self
+            .shared
+            .lock()
+            .map_err(|_| AuthorizationCallbackError("shared state lock was poisoned".into()))?;
+
+        shared.callbacks.push(callback);
+
+        Ok(())
+    }
+
+    fn is_authorized(&self, peer_id: &str) -> bool {
+        let shared = mutex_lock_unwrap!(self.shared);
+        if let Some(state) = shared.states.get(peer_id) {
+            state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
+        } else {
+            false
         }
     }
 }
@@ -252,15 +286,23 @@ pub enum PeerAuthorizationState {
 /// A callback for changes in a peer's authorization state.
 pub trait AuthorizationCallback: Send {
     /// This function is called when a peer's state changes to Authorized or Unauthorized.
-    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState);
+    fn on_authorization_change(
+        &self,
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) -> Result<(), AuthorizationCallbackError>;
 }
 
 impl<F> AuthorizationCallback for F
 where
-    F: Fn(&str, PeerAuthorizationState) + Send,
+    F: Fn(&str, PeerAuthorizationState) -> Result<(), AuthorizationCallbackError> + Send,
 {
-    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState) {
-        (*self)(peer_id, state);
+    fn on_authorization_change(
+        &self,
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) -> Result<(), AuthorizationCallbackError> {
+        (*self)(peer_id, state)
     }
 }
 
@@ -386,14 +428,18 @@ mod tests {
         let notifications = Arc::new(Mutex::new(vec![]));
 
         let callback_values = notifications.clone();
-        auth_manager.register_callback(Box::new(
-            move |peer_id: &str, state: PeerAuthorizationState| {
-                callback_values
-                    .lock()
-                    .expect("callback values poisoned")
-                    .push((peer_id.to_string(), state.clone()));
-            },
-        ));
+        auth_manager
+            .register_callback(Box::new(
+                move |peer_id: &str, state: PeerAuthorizationState| {
+                    callback_values
+                        .lock()
+                        .expect("callback values poisoned")
+                        .push((peer_id.to_string(), state.clone()));
+
+                    Ok(())
+                },
+            ))
+            .expect("The callback failed to be registered");
 
         assert!(!auth_manager.is_authorized(&peer_id));
 

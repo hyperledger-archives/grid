@@ -14,18 +14,63 @@
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+use protobuf::Message;
+
+use crate::protos::{
+    authorization::{
+        AuthorizationMessage, AuthorizationMessageType, ConnectRequest,
+        ConnectRequest_HandshakeMode,
+    },
+    network::{NetworkMessage, NetworkMessageType},
+};
 use crate::transport::Transport;
 
 use super::Network;
 
 #[derive(Debug, PartialEq)]
-pub struct PeerConnectorError(String);
+pub struct ErrorInfo {
+    pub node_id: String,
+    pub message: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PeerConnectorError {
+    PoisonedLock(String),
+    ConnectionFailed(ErrorInfo),
+    AddPeerFailed(ErrorInfo),
+}
+
+impl PeerConnectorError {
+    fn connection_failed(peer_id: &str, message: String) -> Self {
+        PeerConnectorError::ConnectionFailed(ErrorInfo {
+            node_id: peer_id.to_string(),
+            message,
+        })
+    }
+
+    fn add_peer_failed(peer_id: &str, message: String) -> Self {
+        PeerConnectorError::AddPeerFailed(ErrorInfo {
+            node_id: peer_id.to_string(),
+            message,
+        })
+    }
+}
 
 impl std::error::Error for PeerConnectorError {}
 
 impl fmt::Display for PeerConnectorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a peering error occurred: {}", self.0)
+        match self {
+            PeerConnectorError::PoisonedLock(msg) => write!(f, "unable to acquire lock: {}", msg),
+            PeerConnectorError::ConnectionFailed(info) => {
+                write!(f, "failed to connect to {}: {}", info.node_id, info.message)
+            }
+            PeerConnectorError::AddPeerFailed(info) => write!(
+                f,
+                "failed to add peer for {}: {}",
+                info.node_id, info.message
+            ),
+        }
     }
 }
 
@@ -44,17 +89,18 @@ impl PeerConnector {
     }
 
     pub fn connect_peer(&self, node_id: &str, endpoint: &str) -> Result<(), PeerConnectorError> {
-        let mut transport = self.transport.lock().map_err(|err| {
-            PeerConnectorError(format!("Unable to acquire transport lock: {}", err))
-        })?;
+        let mut transport = self
+            .transport
+            .lock()
+            .map_err(|err| PeerConnectorError::PoisonedLock(err.to_string()))?;
 
         if self.network.get_peer_by_endpoint(endpoint).is_some() {
             return Ok(());
         }
 
-        let connection = transport.connect(&endpoint).map_err(|err| {
-            PeerConnectorError(format!("Unable to connect to node {}: {:?}", node_id, err))
-        })?;
+        let connection = transport
+            .connect(&endpoint)
+            .map_err(|err| PeerConnectorError::connection_failed(node_id, format!("{:?}", err)))?;
         debug!(
             "Successfully connected to node {}: {}",
             node_id,
@@ -62,8 +108,21 @@ impl PeerConnector {
         );
         self.network
             .add_peer(node_id.to_string(), connection)
+            .map_err(|err| PeerConnectorError::add_peer_failed(node_id, err.to_string()))?;
+
+        let connect_request_msg_bytes = create_connect_request().map_err(|err| {
+            PeerConnectorError::connection_failed(
+                node_id,
+                format!("unable to create message: {}", err),
+            )
+        })?;
+        self.network
+            .send(&node_id, &connect_request_msg_bytes)
             .map_err(|err| {
-                PeerConnectorError(format!("Unable to add peer {}: {}", node_id, err))
+                PeerConnectorError::connection_failed(
+                    node_id,
+                    format!("unable to send connect request: {:?}", err),
+                )
             })?;
 
         Ok(())
@@ -71,23 +130,54 @@ impl PeerConnector {
 
     pub fn connect_unidentified_peer(&self, endpoint: &str) -> Result<(), PeerConnectorError> {
         let mut transport = self.transport.lock().map_err(|err| {
-            PeerConnectorError(format!("Unable to acquire transport lock: {}", err))
+            PeerConnectorError::PoisonedLock(format!("Unable to acquire transport lock: {}", err))
         })?;
 
         if self.network.get_peer_by_endpoint(endpoint).is_some() {
             return Ok(());
         }
 
-        let connection = transport.connect(&endpoint).map_err(|err| {
-            PeerConnectorError(format!("Unable to connect to {}: {:?}", endpoint, err))
-        })?;
+        let connection = transport
+            .connect(&endpoint)
+            .map_err(|err| PeerConnectorError::connection_failed(endpoint, format!("{:?}", err)))?;
         debug!("Successfully connected to {}", connection.remote_endpoint());
-        self.network.add_connection(connection).map_err(|err| {
-            PeerConnectorError(format!("Unable to add peer endpoint {}: {}", endpoint, err))
+        let temp_peer_id = self
+            .network
+            .add_connection(connection)
+            .map_err(|err| PeerConnectorError::add_peer_failed(endpoint, err.to_string()))?;
+
+        let connect_request_msg_bytes = create_connect_request().map_err(|err| {
+            PeerConnectorError::connection_failed(
+                endpoint,
+                format!("unable to create message: {}", err),
+            )
         })?;
+        self.network
+            .send(&temp_peer_id, &connect_request_msg_bytes)
+            .map_err(|err| {
+                PeerConnectorError::connection_failed(
+                    endpoint,
+                    format!("unable to send connect request: {:?}", err),
+                )
+            })?;
 
         Ok(())
     }
+}
+
+fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
+    let mut connect_request = ConnectRequest::new();
+    connect_request.set_handshake_mode(ConnectRequest_HandshakeMode::BIDIRECTIONAL);
+
+    let mut auth_msg_env = AuthorizationMessage::new();
+    auth_msg_env.set_message_type(AuthorizationMessageType::CONNECT_REQUEST);
+    auth_msg_env.set_payload(connect_request.write_to_bytes()?);
+
+    let mut network_msg = NetworkMessage::new();
+    network_msg.set_message_type(NetworkMessageType::AUTHORIZATION);
+    network_msg.set_payload(auth_msg_env.write_to_bytes()?);
+
+    network_msg.write_to_bytes()
 }
 
 #[cfg(test)]

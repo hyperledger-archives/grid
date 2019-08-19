@@ -152,7 +152,6 @@ impl PeerMap {
 
 #[derive(Clone)]
 pub struct Network {
-    // Peer Id to Connection Id
     peers: Arc<RwLock<PeerMap>>,
     mesh: Mesh,
 }
