@@ -31,7 +31,7 @@ use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::{
-    auth::{AuthorizationInquisitor, PeerAuthorizationState},
+    auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
@@ -82,8 +82,14 @@ impl AdminService {
                 move |peer_id: &str, state: PeerAuthorizationState| {
                     auth_callback_shared
                         .lock()
-                        .expect("The admin lock was poisoned before handling authorization changes")
+                        .map_err(|_| {
+                            AuthorizationCallbackError(
+                                "admin service shared lock was poisoned".into(),
+                            )
+                        })?
                         .on_authorization_change(peer_id, state);
+
+                    Ok(())
                 },
             ));
 
@@ -638,9 +644,13 @@ mod tests {
             true
         }
 
-        fn register_callback(&self, _: Box<dyn AuthorizationCallback>) {
+        fn register_callback(
+            &self,
+            _: Box<dyn AuthorizationCallback>,
+        ) -> Result<(), AuthorizationCallbackError> {
             // The callback won't be called, as this test implementation indicates that all nodes
             // are peered.
+            Ok(())
         }
     }
 }

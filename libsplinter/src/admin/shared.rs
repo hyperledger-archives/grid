@@ -328,11 +328,14 @@ mod tests {
     use super::*;
 
     use crate::mesh::Mesh;
-    use crate::network::{auth::AuthorizationCallback, Network};
+    use crate::network::{
+        auth::{AuthorizationCallback, AuthorizationCallbackError},
+        Network,
+    };
     use crate::protos::admin;
     use crate::transport::{
-        ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
-        inproc::InprocTransport
+        inproc::InprocTransport, ConnectError, Connection, DisconnectError, RecvError, SendError,
+        Transport,
     };
 
     /// Test that the CircuitManagementPayload is moved to the pending payloads when the peers are
@@ -459,7 +462,10 @@ mod tests {
             false
         }
 
-        fn register_callback(&self, _: Box<AuthorizationCallback>) {
+        fn register_callback(
+            &self,
+            _: Box<dyn AuthorizationCallback>,
+        ) -> Result<(), AuthorizationCallbackError> {
             unimplemented!();
         }
     }

@@ -86,9 +86,23 @@ impl fmt::Display for AuthorizationActionError {
     }
 }
 
+#[derive(Debug)]
+pub struct AuthorizationCallbackError(pub String);
+
+impl std::error::Error for AuthorizationCallbackError {}
+
+impl fmt::Display for AuthorizationCallbackError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unable to register callback: {}", self.0)
+    }
+}
+
 pub trait AuthorizationInquisitor: Send {
     /// Register a callback to receive notifications about peer authorization statuses.
-    fn register_callback(&self, callback: Box<dyn AuthorizationCallback>);
+    fn register_callback(
+        &self,
+        callback: Box<dyn AuthorizationCallback>,
+    ) -> Result<(), AuthorizationCallbackError>;
 
     /// Indicates whether or not a peer is authorized.
     fn is_authorized(&self, peer_id: &str) -> bool;
@@ -225,15 +239,26 @@ impl AuthorizationManager {
         state: PeerAuthorizationState,
     ) {
         for callback in callbacks {
-            callback.on_authorization_change(peer_id, state.clone());
+            if let Err(err) = callback.on_authorization_change(peer_id, state.clone()) {
+                error!("Unable to call authorization change callback: {}", err);
+            }
         }
     }
 }
 
 impl AuthorizationInquisitor for AuthorizationManager {
-    fn register_callback(&self, callback: Box<dyn AuthorizationCallback>) {
-        let mut shared = mutex_lock_unwrap!(self.shared);
-        shared.callbacks.push(callback)
+    fn register_callback(
+        &self,
+        callback: Box<dyn AuthorizationCallback>,
+    ) -> Result<(), AuthorizationCallbackError> {
+        let mut shared = self
+            .shared
+            .lock()
+            .map_err(|_| AuthorizationCallbackError("shared state lock was poisoned".into()))?;
+
+        shared.callbacks.push(callback);
+
+        Ok(())
     }
 
     fn is_authorized(&self, peer_id: &str) -> bool {
@@ -261,15 +286,23 @@ pub enum PeerAuthorizationState {
 /// A callback for changes in a peer's authorization state.
 pub trait AuthorizationCallback: Send {
     /// This function is called when a peer's state changes to Authorized or Unauthorized.
-    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState);
+    fn on_authorization_change(
+        &self,
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) -> Result<(), AuthorizationCallbackError>;
 }
 
 impl<F> AuthorizationCallback for F
 where
-    F: Fn(&str, PeerAuthorizationState) + Send,
+    F: Fn(&str, PeerAuthorizationState) -> Result<(), AuthorizationCallbackError> + Send,
 {
-    fn on_authorization_change(&self, peer_id: &str, state: PeerAuthorizationState) {
-        (*self)(peer_id, state);
+    fn on_authorization_change(
+        &self,
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) -> Result<(), AuthorizationCallbackError> {
+        (*self)(peer_id, state)
     }
 }
 
@@ -401,6 +434,8 @@ mod tests {
                     .lock()
                     .expect("callback values poisoned")
                     .push((peer_id.to_string(), state.clone()));
+
+                Ok(())
             },
         ));
 
