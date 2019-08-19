@@ -38,6 +38,8 @@ struct ProposalListResponse {
 #[derive(Debug, Serialize)]
 struct ApiCircuitProposal {
     proposal_id: String,
+    circuit_id: String,
+    circuit_hash: String,
     members: Vec<ApiCircuitMember>,
     requester: String,
     created_time: u64,
@@ -48,6 +50,8 @@ impl ApiCircuitProposal {
     fn from(db_proposal: CircuitProposal, db_members: Vec<CircuitMember>) -> Self {
         ApiCircuitProposal {
             proposal_id: db_proposal.id.to_string(),
+            circuit_id: db_proposal.circuit_id.to_string(),
+            circuit_hash: db_proposal.circuit_hash.to_string(),
             members: db_members.into_iter().map(ApiCircuitMember::from).collect(),
             requester: db_proposal.requester.to_string(),
             created_time: db_proposal

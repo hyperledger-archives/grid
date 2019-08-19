@@ -361,6 +361,10 @@ components:
       properties:
         proposal_id:
           type: string
+        circuit_id:
+          type: string
+        circuit_hash:
+          type: string
         members:
           type: array
           items:
