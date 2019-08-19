@@ -16,6 +16,12 @@ limitations under the License.
 
 <template>
   <div>
+    <toast toast-type="error" :active="error" v-on:toast-action="clearError">
+      {{ error }}
+    </toast>
+    <toast toast-type="success" :active="success" v-on:toast-action="clearSuccess">
+      {{ success }}
+    </toast>
     <modal v-if="displayModal" @close="closeNewGameroomModal">
       <h3 slot="title">New Gameroom</h3>
       <div slot="body">
@@ -45,11 +51,12 @@ limitations under the License.
             </multiselect>
           </label>
           <div class="flex-container button-container">
-            <button class="btn-action form-button btn-outline" @click.prevent="closeNewGameroomModal">
-              Cancel
+            <button class="btn-action outline small" @click.prevent="closeNewGameroomModal">
+              <div class="btn-text">Cancel</div>
             </button>
-            <button class="btn-action form-button" type="submit" :disabled="!canSubmitNewGameroom">
-              Submit
+            <button class="btn-action small" type="submit" :disabled="!canSubmitNewGameroom">
+              <div v-if="submitting" class="spinner" />
+              <div class="btn-text" v-else>Submit</div>
             </button>
           </div>
         </form>
@@ -67,6 +74,7 @@ import Multiselect from 'vue-multiselect';
 import gamerooms from '@/store/modules/gamerooms';
 import nodes from '@/store/modules/nodes';
 import { Node } from '@/store/models';
+import Toast from '../components/Toast.vue';
 
 interface NewGameroom {
   alias: string;
@@ -74,10 +82,13 @@ interface NewGameroom {
 }
 
 @Component({
-  components: { Modal, Multiselect, Tabs },
+  components: { Modal, Multiselect, Tabs, Toast },
 })
 export default class Gamerooms extends Vue {
   displayModal = false;
+  submitting = false;
+  error = '';
+  success = '';
 
   newGameroom: NewGameroom = {
     alias: '',
@@ -93,18 +104,35 @@ export default class Gamerooms extends Vue {
   }
 
   get canSubmitNewGameroom() {
-    if (this.newGameroom.alias !== '' &&
+    if (!this.submitting &&
+        this.newGameroom.alias !== '' &&
         this.newGameroom.member !== null) {
       return true;
     }
     return false;
   }
 
-  createGameroom() {
-    gamerooms.proposeGameroom({
-      alias: this.newGameroom.alias,
-      member: [this.newGameroom.member as Node],
-    });
+  clearError() {
+    this.error = '';
+  }
+
+  clearSuccess() {
+    this.success = '';
+  }
+
+  async createGameroom() {
+    this.submitting = true;
+    try {
+      await gamerooms.proposeGameroom({
+        alias: this.newGameroom.alias,
+        member: [this.newGameroom.member as Node],
+      });
+      this.success = 'Your invitation has been sent!';
+    } catch (e) {
+      this.error = e.message;
+    }
+    this.submitting = false;
+    this.closeNewGameroomModal();
   }
 
   getMemberLabel(node: Node) {
