@@ -26,6 +26,8 @@ mod node_registry;
 mod registry_config;
 mod routes;
 
+use flexi_logger::{LogSpecBuilder, Logger};
+
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
 use crate::daemon::SplinterDaemonBuilder;
@@ -84,14 +86,21 @@ fn main() {
          "increase output verbosity"))
     .get_matches();
 
-    let logger = match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(log::Level::Warn),
-        1 => simple_logger::init_with_level(log::Level::Info),
-        2 => simple_logger::init_with_level(log::Level::Debug),
-        _ => simple_logger::init_with_level(log::Level::Trace),
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
     };
 
-    logger.expect("Failed to create logger");
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+    log_spec_builder.module("hyper", log::LevelFilter::Warn);
+    log_spec_builder.module("tokio", log::LevelFilter::Warn);
+
+    Logger::with(log_spec_builder.build())
+        .start()
+        .expect("Failed to create logger");
 
     debug!("Loading configuration file");
 

@@ -24,8 +24,8 @@ mod config;
 mod error;
 mod rest_api;
 
+use flexi_logger::{LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
-use simple_logger;
 
 use crate::config::GameroomConfigBuilder;
 use crate::error::GameroomDaemonError;
@@ -46,11 +46,19 @@ fn run() -> Result<(), GameroomDaemonError> {
     )
     .get_matches();
 
-    match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(log::Level::Warn),
-        1 => simple_logger::init_with_level(log::Level::Info),
-        _ => simple_logger::init_with_level(log::Level::Debug),
-    }?;
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    };
+
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+    log_spec_builder.module("hyper", log::LevelFilter::Warn);
+    log_spec_builder.module("tokio", log::LevelFilter::Warn);
+
+    Logger::with(log_spec_builder.build()).start()?;
 
     let config = GameroomConfigBuilder::default()
         .with_cli_args(&matches)
