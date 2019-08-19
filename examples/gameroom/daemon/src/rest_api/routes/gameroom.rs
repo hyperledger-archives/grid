@@ -40,6 +40,7 @@ pub struct GameroomMember {
 pub struct MemberMetadata {
     organization: String,
     endpoint: String,
+    public_key: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,6 +85,25 @@ pub fn propose_gameroom(
         }
     };
 
+    let scabbard_admin_keys = match serde_json::to_string(
+        &create_gameroom
+            .member
+            .iter()
+            .map(|member| member.metadata.public_key.clone())
+            .collect::<Vec<_>>(),
+    ) {
+        Ok(s) => s,
+        Err(err) => {
+            return Box::new(
+                Ok(HttpResponse::InternalServerError()
+                    .json(format!("failed to serialize member public keys: {}", err)))
+                .into_future(),
+            )
+        }
+    };
+    let mut scabbard_args = HashMap::new();
+    scabbard_args.insert("admin_keys".into(), scabbard_admin_keys);
+
     let create_request = CreateCircuit {
         circuit_id: format!(
             "gameroom{}::{}",
@@ -96,7 +116,7 @@ pub fn propose_gameroom(
                 service_id: format!("gameroom_{}", node.node_id),
                 service_type: "scabbard".to_string(),
                 allowed_nodes: vec![node.node_id.to_string()],
-                arguments: HashMap::default(),
+                arguments: scabbard_args.clone(),
             })
             .collect::<Vec<SplinterService>>(),
         members,
