@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import {
   GameroomNotification,
   GameroomProposal,
@@ -28,64 +28,62 @@ export const gameroomAPI = axios.create({
   baseURL: '/api',
 });
 
+gameroomAPI.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          throw new Error('Incorrect username or password.');
+        case 500:
+          throw new Error(
+            'The Gameroom server has encountered an error. Please contact the administrator.',
+          );
+        case 503:
+          throw new Error('The Gameroom server is unavailable. Please contact the administrator.');
+        default:
+          throw new Error(error.response.data);
+      }
+    }
+  },
+);
+
 // Users
 export async function userCreate(
   user: User,
-): Promise<UserAuthResponse|undefined> {
-  try {
-    const response = await gameroomAPI.post('/users', user);
-    router.push('/');
-    return response.data as UserAuthResponse;
-  } catch (e) {
-    alert(e);
-  }
+): Promise<UserAuthResponse> {
+  const response = await gameroomAPI.post('/users', user);
+  router.push('/');
+  return response.data as UserAuthResponse;
 }
 
 export async function userAuthenticate(
   userCredentials: UserCredentials,
-): Promise<UserAuthResponse|undefined> {
-  try {
+): Promise<UserAuthResponse> {
     const response = await gameroomAPI.post('/users/authenticate', userCredentials);
     router.push('/');
     return response.data as UserAuthResponse;
-  } catch (e) {
-    alert(e);
-  }
 }
 
 // Gamerooms
 export async function gameroomPropose(
   gameroomProposal: NewGameroomProposal,
-): Promise<number|undefined> {
-  try {
-    const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
-    return response.status;
-  } catch (e) {
-    alert(e);
-  }
+): Promise<number> {
+  const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
+  return response.status;
 }
 
 // Nodes
 export async function listNodes(): Promise<Node[]> {
-  try {
-    const response = await gameroomAPI.get('/nodes');
-    return response.data.data as Node[];
-  } catch (e) {
-    alert(e);
-  }
-  return [];
+  const response = await gameroomAPI.get('/nodes');
+  return response.data.data as Node[];
 }
 
 
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
-  try {
-    const response = await gameroomAPI.get('/proposals');
-    return response.data.data as GameroomProposal[];
-  } catch (e) {
-    alert(e);
-  }
-  return [];
+  const response = await gameroomAPI.get('/proposals');
+  return response.data.data as GameroomProposal[];
 }
 
 
