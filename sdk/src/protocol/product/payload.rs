@@ -141,7 +141,7 @@ impl StdError for ProductPayloadBuildError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             ProductPayloadBuildError::MissingField(_) => None,
         }

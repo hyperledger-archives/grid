@@ -63,7 +63,7 @@ impl Handler<ListAgents> for DbExecutor {
 
 pub fn list_agents(
     req: HttpRequest<AppState>,
-) -> Box<Future<Item = HttpResponse, Error = RestApiResponseError>> {
+) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     req.state()
         .database_connection
         .send(ListAgents)
