@@ -35,11 +35,7 @@ limitations under the License.
         <h2 v-if="currentTab == 1">Gamerooms</h2>
         <h2 v-if="currentTab == 2">Invites</h2>
         <button class="btn-action" @click="$emit('show-new-gameroom-modal')">
-          <div class="button-content">
-            <span class="button-text">
-              New Gameroom
-            </span>
-          </div>
+            <div class="btn-text">New Gameroom</div>
         </button>
       </div>
       <div class="tab">

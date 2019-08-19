@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@import 'modules/colors';
-@import 'modules/mixins';
-@import 'modules/typography';
-
-@import 'partials/animations';
-@import 'partials/base';
-@import 'partials/buttons';
-@import 'partials/forms';
-@import 'partials/icons';
-@import 'partials/links';
-
-@import 'vendor/normalize';
-@import 'vendor/multiselect';
+.spinner {
+  animation-name: spin;
+  animation-duration: 1000ms;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border: .15em solid transparent;
+  border-top: .15em solid $color-disabled-text;
+  border-radius: 50%
+}

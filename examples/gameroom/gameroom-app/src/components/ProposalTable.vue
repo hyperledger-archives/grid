@@ -53,12 +53,12 @@ limitations under the License.
             {{ fromNow(proposal.created_time) }}
           </td>
           <td class="tbl-data tbl-data-body">
-            <div class="flex-container">
-              <button class="btn-action btn-outline tbl-data-btn">
-                Reject
+            <div class="flex-container button-container">
+              <button class="btn-action table outline">
+                <div class="btn-text">Reject</div>
               </button>
-              <button class="btn-action tbl-data-btn">
-                Accept
+              <button class="btn-action table">
+                <div class="btn-text">Accept</div>
               </button>
             </div>
           </td>

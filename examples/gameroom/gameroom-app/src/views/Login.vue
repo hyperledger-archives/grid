@@ -19,7 +19,7 @@ limitations under the License.
     <div class="auth-wrapper">
       <form class="auth-form" @submit.prevent="login">
         <label class= "form-label">
-          Email
+          <div>Email</div>
           <input
             v-focus
             class="form-input"
@@ -28,23 +28,25 @@ limitations under the License.
           />
         </label>
         <label class="form-label">
-          Password
+          <div>Password</div>
           <input
             class="form-input"
             type="password"
             v-model="password"
           />
         </label>
-        <button class="btn-action form-button" type="submit" :disabled="!canSubmit">
-          <div v-if="submitting"> Logging in... </div>
-          <div v-else> Log In </div>
-        </button>
-        <span class="form-link">
-          Don't have an account yet?
-          <router-link to="/register">
-            Click here to register.
-          </router-link>
-        </span>
+        <div class="submit-container">
+          <button class="btn-action large" type="submit" :disabled="!canSubmit">
+            <div v-if="submitting" class="spinner" />
+            <div class="btn-text" v-else> Log In </div>
+          </button>
+          <div class="form-link">
+            Don't have an account yet?
+            <router-link to="/register">
+              Click here to register.
+            </router-link>
+          </div>
+        </div>
       </form>
     </div>
   </div>
