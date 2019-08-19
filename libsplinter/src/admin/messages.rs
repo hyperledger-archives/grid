@@ -313,12 +313,21 @@ pub struct CircuitProposalVote {
 }
 
 impl CircuitProposalVote {
-    fn from_proto(mut proto: admin::CircuitProposalVote) -> Result<Self, MarshallingError> {
+    pub fn from_proto(mut proto: admin::CircuitProposalVote) -> Result<Self, MarshallingError> {
         Ok(CircuitProposalVote {
             ballot: Ballot::from_proto(proto.take_ballot())?,
             ballot_signature: proto.take_ballot_signature(),
             signer_public_key: proto.take_signer_public_key(),
         })
+    }
+
+    pub fn into_proto(self) -> admin::CircuitProposalVote {
+        let mut vote = admin::CircuitProposalVote::new();
+        vote.set_ballot_signature(self.ballot_signature);
+        vote.set_signer_public_key(self.signer_public_key);
+        vote.set_ballot(self.ballot.into_proto());
+
+        vote
     }
 }
 
@@ -341,6 +350,17 @@ impl Ballot {
             circuit_hash: proto.take_circuit_hash(),
             vote,
         })
+    }
+
+    pub fn into_proto(self) -> admin::CircuitProposalVote_Ballot {
+        let mut ballot = admin::CircuitProposalVote_Ballot::new();
+        ballot.set_circuit_id(self.circuit_id);
+        ballot.set_circuit_hash(self.circuit_hash);
+        match self.vote {
+            Vote::Accept => ballot.set_vote(admin::CircuitProposalVote_Vote::ACCEPT),
+            Vote::Reject => ballot.set_vote(admin::CircuitProposalVote_Vote::REJECT),
+        }
+        ballot
     }
 }
 
