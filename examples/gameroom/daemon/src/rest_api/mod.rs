@@ -56,9 +56,9 @@ pub fn run(
     let splinterd_url = splinterd_url.to_owned();
     let (tx, rx) = mpsc::channel();
     let join_handle = thread::Builder::new()
-        .name("GameroomDRestApi".into())
+        .name("GameroomdRestApi".into())
         .spawn(move || {
-            let sys = actix::System::new("GameroomD-Rest-API");
+            let sys = actix::System::new("Gameroomd-Rest-API");
 
             // get splinter node information from splinterd
             let node = get_node(&splinterd_url)?;

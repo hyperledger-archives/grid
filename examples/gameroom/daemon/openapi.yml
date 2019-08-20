@@ -16,8 +16,8 @@ openapi: '3.0.0'
 
 info:
   version: 0.2.1
-  title: GameroomD API
-  description: REST API for GameroomD
+  title: Gameroomd API
+  description: REST API for Gameroomd
 
 servers:
   - url: http://localhost:8000
