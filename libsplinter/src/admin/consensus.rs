@@ -221,39 +221,32 @@ impl ProposalManager for AdminProposalManager {
     }
 
     fn check_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
-        let shared = &self
+        let mut shared = self
             .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match shared.pending_consesus_proposals(id) {
-            Some((proposal, circuit_payload)) if &proposal.id == id => {
-                let (hash, _) = self
-                    .shared
-                    .lock()
-                    .map_err(|_| {
-                        ServiceError::PoisonedLock("the admin state lock was poisoned".into())
-                    })?
-                    .propose_change(circuit_payload.clone())
-                    .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
+        let (proposal, circuit_payload) = shared
+            .pending_consesus_proposals(id)
+            .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?
+            .clone();
 
-                // check if hash is the expected hash stored in summary
-                if hash.as_bytes().to_vec() != proposal.summary {
-                    warn!(
-                        "Hash mismatch: expected {:?} but was {}",
-                        proposal.summary, hash
-                    );
+        let (hash, _) = shared
+            .propose_change(circuit_payload.clone())
+            .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
-                    self.proposal_update_sender
-                        .send(ProposalUpdate::ProposalInvalid(id.clone()))?;
-                } else {
-                    Err(ProposalManagerError::UnknownProposal(id.clone()))?;
-                }
-            }
-            _ => {
-                warn!("checked proposal that isn't pending: {}", id);
-                Err(ProposalManagerError::UnknownProposal(id.clone()))?;
-            }
+        // check if hash is the expected hash stored in summary
+        if hash.as_bytes().to_vec() != proposal.summary {
+            warn!(
+                "Hash mismatch: expected {:?} but was {}",
+                proposal.summary, hash
+            );
+
+            self.proposal_update_sender
+                .send(ProposalUpdate::ProposalInvalid(id.clone()))?;
+        } else {
+            self.proposal_update_sender
+                .send(ProposalUpdate::ProposalValid(id.clone()))?;
         }
 
         Ok(())
@@ -264,7 +257,7 @@ impl ProposalManager for AdminProposalManager {
         id: &ProposalId,
         _consensus_data: Option<Vec<u8>>,
     ) -> Result<(), ProposalManagerError> {
-        let shared = &mut self
+        let mut shared = self
             .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
@@ -295,23 +288,20 @@ impl ProposalManager for AdminProposalManager {
     }
 
     fn reject_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
-        let shared = &mut self
+        let mut shared = self
             .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match shared.pending_consesus_proposals(id) {
-            Some((proposal, _)) if &proposal.id == id => match shared.rollback() {
-                Ok(_) => {
-                    shared.remove_pending_consesus_proposals(id);
-                    info!("Rolled back proposal {}", id);
-                }
-                Err(err) => {
-                    error!("Failed to roll back proposal: {}", err);
-                }
-            },
-            _ => warn!("Rejected proposal that was not pending: {}", id),
-        }
+        shared
+            .remove_pending_consesus_proposals(id)
+            .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?;
+
+        shared
+            .rollback()
+            .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
+
+        info!("Rolled back proposal {}", id);
 
         Ok(())
     }
