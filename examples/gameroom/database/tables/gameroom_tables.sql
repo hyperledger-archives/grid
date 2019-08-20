@@ -61,3 +61,12 @@ CREATE TABLE IF NOT EXISTS proposal_circuit_service (
   allowed_nodes             TEXT[][]    NOT NULL,
   FOREIGN KEY (proposal_id) REFERENCES circuit_proposal(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS gameroom_notification (
+  id                        BIGSERIAL   PRIMARY KEY,
+  notification_type         TEXT        NOT NULL,
+  requester                 TEXT        NOT NULL,
+  target                    TEXT        NOT NULL,
+  created_time              TIMESTAMP   NOT NULL,
+  read                      BOOLEAN     NOT NULL
+);

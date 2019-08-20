@@ -215,6 +215,12 @@ fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuth
 
             // insert proposal information in database tables in a single transaction
             conn.transaction::<_, _, _>(|| {
+                let notification = helpers::create_new_notification(
+                    "circuit_proposal",
+                    &proposal.requester,
+                    &proposal.circuit_id,
+                );
+                helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::insert_circuit_proposal(conn, proposal)?;
                 helpers::insert_circuit_service(conn, &services)?;
                 helpers::insert_circuit_member(conn, &nodes)?;
@@ -237,6 +243,13 @@ fn process_text_message(msg: &[u8], pool: &ConnectionPool) -> Result<(), AppAuth
 
             // insert vote and update proposal in a single database transaction
             conn.transaction::<_, _, _>(|| {
+                let notification = helpers::create_new_notification(
+                    "proposal_vote_record",
+                    &vote.voter_public_key,
+                    &vote.proposal_id,
+                );
+                helpers::insert_gameroom_notification(conn, &[notification])?;
+
                 helpers::update_circuit_proposal_status(conn, &proposal.id, &time, "Pending")?;
                 helpers::insert_proposal_vote_record(conn, &[vote])?;
 

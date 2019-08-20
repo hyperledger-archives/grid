@@ -70,3 +70,14 @@ table! {
         allowed_nodes -> Array<Text>,
     }
 }
+
+table! {
+    gameroom_notification (id) {
+        id -> Int8,
+        notification_type -> Text,
+        requester -> Text,
+        target -> Text,
+        created_time -> Timestamp,
+        read -> Bool,
+    }
+}

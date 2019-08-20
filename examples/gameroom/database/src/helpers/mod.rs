@@ -13,12 +13,19 @@
 // limitations under the License.
 
 mod gameroom_user;
+mod notification;
 mod proposal;
 
 pub use gameroom_user::{fetch_user_by_email, insert_user};
+pub use notification::{
+    create_new_notification, fetch_notification, insert_gameroom_notification,
+    list_unread_notifications, update_gameroom_notification,
+};
 pub use proposal::{
     fetch_circuit_members_by_proposal_id, fetch_circuit_proposal_with_status, fetch_proposal_by_id,
-    get_proposal_count, insert_circuit_member, insert_circuit_proposal, insert_circuit_service,
-    insert_proposal_information, insert_proposal_vote_record, list_proposal_circuit_members,
+    get_proposal_count, insert_circuit_member, insert_circuit_proposal,
+    insert_circuit_proposal_and_notification, insert_circuit_service, insert_proposal_information,
+    insert_proposal_information_and_notification, insert_proposal_vote_record,
+    insert_proposal_vote_record_and_notification, list_proposal_circuit_members,
     list_proposals_with_paging, update_circuit_proposal_status,
 };
