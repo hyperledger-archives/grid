@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use actix_web::{error, web, Error, HttpResponse};
@@ -20,7 +21,7 @@ use gameroom_database::{helpers, models::GameroomNotification, ConnectionPool};
 
 use crate::rest_api::RestApiResponseError;
 
-use super::Paging;
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
 
 #[derive(Debug, Serialize)]
 struct NotificationListResponse {
@@ -93,4 +94,59 @@ fn get_notification_from_db(
         "Notification id: {}",
         id
     )))
+}
+
+pub fn list_unread_notifications(
+    pool: web::Data<ConnectionPool>,
+    query: web::Query<HashMap<String, usize>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let offset: usize = query
+        .get("offset")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_OFFSET);
+
+    let limit: usize = query
+        .get("limit")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_LIMIT);
+
+    Box::new(
+        web::block(move || list_unread_notifications_from_db(pool, limit, offset)).then(
+            move |res| match res {
+                Ok((notifications, query_count)) => {
+                    let paging_info = get_response_paging_info(
+                        limit,
+                        offset,
+                        "api/notifications?",
+                        query_count as usize,
+                    );
+                    Ok(HttpResponse::Ok().json(NotificationListResponse {
+                        data: notifications,
+                        paging: paging_info,
+                    }))
+                }
+                Err(err) => Ok(HttpResponse::InternalServerError().json(json!({
+                    "message": format!("Internal Server Error: {}", err.to_string())
+                }))),
+            },
+        ),
+    )
+}
+
+fn list_unread_notifications_from_db(
+    pool: web::Data<ConnectionPool>,
+    limit: usize,
+    offset: usize,
+) -> Result<(Vec<ApiNotification>, i64), RestApiResponseError> {
+    let db_limit = limit as i64;
+    let db_offset = offset as i64;
+
+    let notifications =
+        helpers::list_unread_notifications_with_paging(&*pool.get()?, db_limit, db_offset)?
+            .into_iter()
+            .map(ApiNotification::from)
+            .collect();
+    let notification_count = helpers::get_unread_notification_count(&*pool.get()?)?;
+
+    Ok((notifications, notification_count))
 }
