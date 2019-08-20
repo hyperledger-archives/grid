@@ -14,7 +14,11 @@
 
 use std::time::{Duration, SystemTime};
 
-use gameroom_database::models::GameroomNotification;
+use actix_web::{error, web, Error, HttpResponse};
+use futures::Future;
+use gameroom_database::{helpers, models::GameroomNotification, ConnectionPool};
+
+use crate::rest_api::RestApiResponseError;
 
 use super::Paging;
 
@@ -49,4 +53,44 @@ impl ApiNotification {
             read: db_notification.read,
         }
     }
+}
+
+pub fn fetch_notificaiton(
+    pool: web::Data<ConnectionPool>,
+    notification_id: web::Path<i64>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || get_notification_from_db(pool, *notification_id)).then(
+            |res| match res {
+                Ok(notification) => Ok(HttpResponse::Ok().json(notification)),
+                Err(err) => match err {
+                    error::BlockingError::Error(err) => match err {
+                        RestApiResponseError::NotFound(err) => {
+                            Ok(HttpResponse::NotFound().json(json!({
+                                "message": format!("Not Found error: {}", err.to_string())
+                            })))
+                        }
+                        _ => Ok(HttpResponse::BadRequest().json(json!({
+                            "message": format!("Bad Request error: {}", err.to_string())
+                        }))),
+                    },
+                    error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
+                        .json(json!({ "message": "Failed to fetch notification" }))),
+                },
+            },
+        ),
+    )
+}
+
+fn get_notification_from_db(
+    pool: web::Data<ConnectionPool>,
+    id: i64,
+) -> Result<ApiNotification, RestApiResponseError> {
+    if let Some(notification) = helpers::fetch_notification(&*pool.get()?, id)? {
+        return Ok(ApiNotification::from(notification));
+    }
+    Err(RestApiResponseError::NotFound(format!(
+        "Notification id: {}",
+        id
+    )))
 }

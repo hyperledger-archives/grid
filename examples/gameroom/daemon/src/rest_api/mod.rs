@@ -103,6 +103,11 @@ pub fn run(
                                     .route(web::get().to_async(routes::list_proposals)),
                             ),
                     )
+                    .service(web::scope("/notifications").service(
+                        web::scope("/{notification_id}").service(
+                            web::resource("").route(web::get().to_async(routes::fetch_node)),
+                        ),
+                    ))
             })
             .bind(bind_url)?
             .disable_signals()
