@@ -15,10 +15,19 @@
 mod error;
 mod routes;
 
-use actix_web::{client::Client, web, App, HttpServer, Result};
-use gameroom_database::ConnectionPool;
 use std::sync::mpsc;
 use std::thread;
+
+use actix_web::{client::Client, web, App, HttpServer, Result};
+use futures::{
+    future::{self, Either},
+    Future, Stream,
+};
+use gameroom_database::ConnectionPool;
+use hyper::{Client as HyperClient, StatusCode, Uri};
+use libsplinter::node_registry::Node;
+use serde_json::Value;
+use tokio::runtime::Runtime;
 
 pub use error::{RestApiResponseError, RestApiServerError};
 
@@ -51,11 +60,15 @@ pub fn run(
         .spawn(move || {
             let sys = actix::System::new("GameroomD-Rest-API");
 
+            // get splinter node information from splinterd
+            let node = get_node(&splinterd_url)?;
+
             let addr = HttpServer::new(move || {
                 App::new()
                     .data(database_connection.clone())
                     .data(Client::new())
                     .data(splinterd_url.to_owned())
+                    .data(node.clone())
                     .service(
                         web::resource("/nodes/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),
@@ -119,4 +132,111 @@ pub fn run(
     });
 
     Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
+}
+
+fn get_node(splinterd_url: &str) -> Result<Node, RestApiServerError> {
+    let mut runtime = Runtime::new()?;
+    let client = HyperClient::new();
+    let splinterd_url = splinterd_url.to_owned();
+    let uri = format!("{}/status", splinterd_url)
+        .parse::<Uri>()
+        .map_err(|err| {
+            RestApiServerError::StartUpError(format!("Failed to get set up request : {}", err))
+        })?;
+
+    runtime.block_on(
+        client
+            .get(uri)
+            .map_err(|err| {
+                RestApiServerError::StartUpError(format!(
+                    "Failed to get splinter node metadata: {}",
+                    err
+                ))
+            })
+            .and_then(|resp| {
+                if resp.status() != StatusCode::OK {
+                    return Err(RestApiServerError::StartUpError(format!(
+                        "Failed to get splinter node metadata. Splinterd responded with status {}",
+                        resp.status()
+                    )));
+                }
+                let body = resp
+                    .into_body()
+                    .concat2()
+                    .wait()
+                    .map_err(|err| {
+                        RestApiServerError::StartUpError(format!(
+                            "Failed to get splinter node metadata: {}",
+                            err
+                        ))
+                    })?
+                    .to_vec();
+
+                let node_status: Value = serde_json::from_slice(&body).map_err(|err| {
+                    RestApiServerError::StartUpError(format!(
+                        "Failed to get splinter node metadata: {}",
+                        err
+                    ))
+                })?;
+
+                let node_id = match node_status.get("node_id") {
+                    Some(node_id_val) => node_id_val.as_str().unwrap_or("").to_string(),
+                    None => "".to_string(),
+                };
+
+                Ok(node_id)
+            })
+            .and_then(move |node_id| {
+                let uri = match format!("{}/nodes/{}", splinterd_url, node_id).parse::<Uri>() {
+                        Ok(uri) => uri,
+                        Err(err) => return
+                            Either::A(
+                                future::err(RestApiServerError::StartUpError(format!(
+                                    "Failed to get set up request : {}",
+                                    err
+                                ))))
+                };
+
+                Either::B(client
+                    .get(uri)
+                    .map_err(|err| {
+                        RestApiServerError::StartUpError(format!(
+                            "Failed to get splinter node: {}",
+                            err
+                        ))
+                    })
+                    .then(|resp| {
+                        let response = resp?;
+                        let status = response.status();
+                        let body = response
+                            .into_body()
+                            .concat2()
+                            .wait()
+                            .map_err(|err| {
+                                RestApiServerError::StartUpError(format!(
+                                    "Failed to get splinter node metadata: {}",
+                                    err
+                                ))
+                            })?
+                            .to_vec();
+
+                        match status {
+                            StatusCode::OK => {
+                                let node: Node = serde_json::from_slice(&body).map_err(|err| {
+                                    RestApiServerError::StartUpError(format!(
+                                        "Failed to get splinter node: {}",
+                                        err
+                                    ))
+                                })?;
+
+                                Ok(node)
+                            }
+                            _ => Err(RestApiServerError::StartUpError(format!(
+                                "Failed to get splinter node data. Splinterd responded with status {}",
+                                status
+                            ))),
+                        }
+                    }))
+            }),
+    )
 }
