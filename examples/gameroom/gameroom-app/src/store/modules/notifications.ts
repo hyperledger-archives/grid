@@ -22,7 +22,7 @@ export interface NotificationState {
 const mockNotifications: GameroomNotification[] = [
   {
     id: 1,
-    type: 'invite',
+    notification_type: 'invite',
     org: 'ACME Corporation',
     target: 'acme:bubba',
     timestamp: 1565735940,
@@ -30,7 +30,7 @@ const mockNotifications: GameroomNotification[] = [
   },
   {
     id: 2,
-    type: 'invite',
+    notification_type: 'invite',
     org: 'ACME Corporation',
     target: 'acme:asdforg',
     timestamp: 1565732000,
@@ -38,7 +38,7 @@ const mockNotifications: GameroomNotification[] = [
   },
   {
     id: 3,
-    type: 'invite',
+    notification_type: 'invite',
     org: 'Bubba Bakery',
     target: 'bubba:asdforg',
     timestamp: 1465732000,

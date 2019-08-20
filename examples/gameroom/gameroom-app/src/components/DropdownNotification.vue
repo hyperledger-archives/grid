@@ -30,7 +30,7 @@ limitations under the License.
       </span>
       <div class="meta-wrapper">
         <i class="icon material-icons-round">
-          {{ icons[notification.type] }}
+          {{ icons[notification.notification_type] }}
         </i>
         <span class="timestamp">
           {{ fromNow(notification.timestamp) }}
@@ -61,7 +61,7 @@ export default class DropdownNotification extends Vue {
   }
 
   formatText(notification: GameroomNotification) {
-    if (notification.type === 'invite') {
+    if (notification.notification_type === 'invite') {
       return ' has invited you to a new gameroom: ';
     }
     return '';
