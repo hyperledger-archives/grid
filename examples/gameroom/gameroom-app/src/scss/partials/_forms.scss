@@ -76,6 +76,10 @@ input:focus {
   display: flex;
   flex-direction: column;
 
+  .multiselect-input {
+    padding-bottom: 1rem;
+  }
+
   .form-label {
     .multiselect-label {
       margin-bottom: .25em;

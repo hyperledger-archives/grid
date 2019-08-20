@@ -27,13 +27,10 @@ limitations under the License.
       <div slot="body">
         <form class="modal-form" @submit.prevent="createGameroom">
           <label class="form-label">
-            Alias
-            <input v-focus class="form-input" type="text" v-model="newGameroom.alias" />
-          </label>
-          <label class="form-label">
             <div class="multiselect-label">Member</div>
           </label>
           <multiselect
+            class="multiselect-input"
             v-model="newGameroom.member"
             track-by="identity"
             label="metadata"
@@ -44,14 +41,15 @@ limitations under the License.
             :clear-on-select="false"
             :custom-label="getMemberLabel"
             :options="nodeList"
-            :allow-empty="false"
-          >
-            <template slot="singleLabel" slot-scope="{ option }">
-              <strong>{{ option.metadata.organization }}</strong>
-            </template>
-          </multiselect>
+            :allow-empty="false" />
+          <label class="form-label">
+            Alias
+            <input class="form-input" type="text" v-model="newGameroom.alias" />
+          </label>
           <div class="flex-container button-container">
-            <button class="btn-action outline small" @click.prevent="closeNewGameroomModal">
+            <button class="btn-action outline small"
+                    type="reset"
+                    @click.prevent="closeNewGameroomModal">
               <div class="btn-text">Cancel</div>
             </button>
             <button class="btn-action small" type="submit" :disabled="!canSubmitNewGameroom">
@@ -120,19 +118,21 @@ export default class Gamerooms extends Vue {
     this.success = '';
   }
 
-  async createGameroom() {
-    this.submitting = true;
-    try {
-      await gamerooms.proposeGameroom({
-        alias: this.newGameroom.alias,
-        member: [this.newGameroom.member as Node],
-      });
-      this.success = 'Your invitation has been sent!';
-    } catch (e) {
-      this.error = e.message;
+  createGameroom() {
+    if (this.canSubmitNewGameroom) {
+        this.submitting = true;
+        try {
+          gamerooms.proposeGameroom({
+            alias: this.newGameroom.alias,
+            member: [this.newGameroom.member as Node],
+          });
+          this.success = 'Your invitation has been sent!';
+        } catch (e) {
+          this.error = e.message;
+        }
+        this.submitting = false;
+        this.closeNewGameroomModal();
     }
-    this.submitting = false;
-    this.closeNewGameroomModal();
   }
 
   getMemberLabel(node: Node) {
