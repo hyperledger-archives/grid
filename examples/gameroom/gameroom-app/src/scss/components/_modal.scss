@@ -23,7 +23,6 @@
   height: 100%;
   z-index: 10;
   background-color: rgba(0, 0, 0, 0.4);
-  transition: opacity .3s ease;
 }
 
 .m-modal-wrapper {
@@ -60,13 +59,4 @@
   div {
     margin: 0;
   }
-}
-
-.modal-enter, .modal-leave-active {
-  opacity: 0;
-}
-
-.modal-enter .m-modal-wrapper,
-.modal-leave-active .m-modal-wrapper {
-  transform: scale(1.1);
 }

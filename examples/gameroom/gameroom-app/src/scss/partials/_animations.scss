@@ -12,16 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@import 'modules/colors';
-@import 'modules/mixins';
-@import 'modules/typography';
+@-ms-keyframes spin {
+  from { -ms-transform: rotate(0deg); }
+  to { -ms-transform: rotate(360deg); }
+}
 
-@import 'partials/animations';
-@import 'partials/base';
-@import 'partials/buttons';
-@import 'partials/forms';
-@import 'partials/icons';
-@import 'partials/links';
+@-moz-keyframes spin {
+  from { -moz-transform: rotate(0deg); }
+  to { -moz-transform: rotate(360deg); }
+}
 
-@import 'vendor/normalize';
-@import 'vendor/multiselect';
+@-webkit-keyframes spin {
+  from { -webkit-transform: rotate(0deg); }
+  to { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  from {
+      transform:rotate(0deg);
+  }
+  to {
+      transform:rotate(360deg);
+  }
+}

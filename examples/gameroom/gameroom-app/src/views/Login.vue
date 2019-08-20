@@ -16,10 +16,13 @@ limitations under the License.
 
 <template>
   <div class="auth-container">
+    <toast toast-type="error" :active="error" v-on:toast-action="clearError">
+      {{ error }}
+    </toast>
     <div class="auth-wrapper">
       <form class="auth-form" @submit.prevent="login">
         <label class= "form-label">
-          Email
+          <div>Email</div>
           <input
             v-focus
             class="form-input"
@@ -28,23 +31,25 @@ limitations under the License.
           />
         </label>
         <label class="form-label">
-          Password
+          <div>Password</div>
           <input
             class="form-input"
             type="password"
             v-model="password"
           />
         </label>
-        <button class="btn-action form-button" type="submit" :disabled="!canSubmit">
-          <div v-if="submitting"> Logging in... </div>
-          <div v-else> Log In </div>
-        </button>
-        <span class="form-link">
-          Don't have an account yet?
-          <router-link to="/register">
-            Click here to register.
-          </router-link>
-        </span>
+        <div class="submit-container">
+          <button class="btn-action large" type="submit" :disabled="!canSubmit">
+            <div v-if="submitting" class="spinner" />
+            <div class="btn-text" v-else> Log In </div>
+          </button>
+          <div class="form-link">
+            Don't have an account yet?
+            <router-link to="/register">
+              Click here to register.
+            </router-link>
+          </div>
+        </div>
       </form>
     </div>
   </div>
@@ -53,12 +58,16 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import * as crypto from '@/utils/crypto';
+import Toast from '../components/Toast.vue';
 
-@Component
+@Component({
+  components: { Toast },
+})
 export default class Login extends Vue {
   email = '';
   password = '';
   submitting = false;
+  error = '';
 
   get canSubmit() {
     if (!this.submitting &&
@@ -69,12 +78,20 @@ export default class Login extends Vue {
     return false;
   }
 
+  clearError() {
+    this.error = '';
+  }
+
   async login() {
     this.submitting = true;
-    await this.$store.dispatch('user/authenticate', {
-      email: this.email,
-      hashedPassword: crypto.hashSHA256(this.email, this.password),
-    });
+    try {
+      await this.$store.dispatch('user/authenticate', {
+        email: this.email,
+        hashedPassword: crypto.hashSHA256(this.email, this.password),
+      });
+    } catch (e) {
+      this.error = e.message;
+    }
     this.submitting = false;
   }
 }

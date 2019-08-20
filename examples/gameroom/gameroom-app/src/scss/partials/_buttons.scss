@@ -27,37 +27,55 @@ button:disabled {
   align-items: center;
   color: $color-white;
   background: $color-primary;
-  padding: .5em .5em;
-  font-size: 1em;
+  font-size: 1rem;
+  padding: 0 1.5em;
   font-weight: 600;
   clear: both;
   @include rounded-border;
   outline: none;
-  margin-left: 1em;
   width: auto;
   border: 1px solid $color-primary;
-}
 
-.btn-action:hover {
-  background: $color-primary-dark;
-  border: 1px solid $color-primary-dark;
-}
+  .btn-text {
+    padding: .75em 0;
+  }
 
-.btn-action:disabled {
-  background: $color-disabled;
-  border: 1px solid $color-border;
-  color: $color-disabled-text;
-}
+  &:hover {
+    background: $color-primary-dark;
+    border: 1px solid $color-primary-dark;
+  }
 
-.btn-outline {
-  color: $color-primary;
-  border: 1px solid $color-primary;
-  background-color: $color-transparent;
-  @include rounded-border;
-}
+  &:disabled {
+    background: $color-disabled;
+    border: 1px solid $color-border;
+    color: $color-disabled-text;
+  }
 
-.btn-outline:hover {
-  color: $color-primary-dark;
-  background-color: $color-transparent;
-  border: 1px solid $color-primary-dark;
+  &.outline {
+    color: $color-primary;
+    border: 1px solid $color-primary;
+    background-color: $color-transparent;
+
+    &:hover {
+      color: $color-primary-dark;
+      background-color: $color-transparent;
+      border: 1px solid $color-primary-dark;
+    }
+  }
+
+  &.large {
+    width: 100%;
+    font-size: 1.25rem;
+    height: 4rem;
+  }
+
+  &.small {
+    font-size: 1em;
+    width: 6rem;
+  }
+
+  &.table {
+    font-size: .9em;
+    margin-right: 1em;
+  }
 }
