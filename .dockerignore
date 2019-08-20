@@ -28,5 +28,9 @@
 /examples/gameroom/daemon/target
 /examples/gameroom/daemon/Cargo.lock
 
+/examples/gameroom/gameroom-app/node_modules
+/examples/gameroom/gameroom-app/dist
+/examples/gameroom/gameroom-app/package-lock.json
+
 /target
 /Cargo.lock
