@@ -33,14 +33,17 @@ impl RestResourceProvider for Scabbard {
 }
 
 fn make_subscribe_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
-    Resource::new(Method::Get, "/ws/subscribe", move |r, p| {
+    Resource::new(Method::Get, "/ws/subscribe", move |request, payload| {
         let mut shared = if let Ok(s) = shared.lock() {
             s
         } else {
             return Box::new(HttpResponse::InternalServerError().finish().into_future());
         };
 
-        match shared.state_mut().subscribe_to_state(Request::from((r, p))) {
+        match shared
+            .state_mut()
+            .subscribe_to_state(Request::from((request, payload)))
+        {
             Ok(res) => Box::new(res.into_future()),
             Err(err) => {
                 debug!("Failed to create websocket: {:?}", err);
@@ -51,10 +54,11 @@ fn make_subscribe_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
 }
 
 fn make_add_batch_to_queue_route(shared: Arc<Mutex<ScabbardShared>>) -> Resource {
-    Resource::new(Method::Post, "/batches", move |_, p| {
+    Resource::new(Method::Post, "/batches", move |_, payload| {
         let shared = shared.clone();
         Box::new(
-            p.from_err()
+            payload
+                .from_err()
                 .fold(web::BytesMut::new(), move |mut body, chunk| {
                     body.extend_from_slice(&chunk);
                     Ok::<_, ActixError>(body)
