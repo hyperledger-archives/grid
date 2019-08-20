@@ -37,12 +37,10 @@ pub struct MemberMetadata {
 }
 
 pub fn propose_gameroom(
-    client: web::Data<(Client, String)>,
+    client: web::Data<Client>,
+    splinterd_url: web::Data<String>,
     create_gameroom: web::Json<CreateGameroomForm>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let splinterd_url = &client.1;
-    let client = &client.0;
-
     let members = &create_gameroom.member;
 
     let create_request = CreateCircuit {
@@ -70,7 +68,7 @@ pub fn propose_gameroom(
     };
 
     client
-        .post(format!("{}/admin/circuit", splinterd_url))
+        .post(format!("{}/admin/circuit", splinterd_url.get_ref()))
         .send_json(&create_request)
         .map_err(Error::from)
         .and_then(|resp| match resp.status() {

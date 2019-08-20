@@ -27,13 +27,11 @@ pub struct ListNodesResponse {
 
 pub fn fetch_node(
     identity: web::Path<String>,
-    client: web::Data<(Client, String)>,
+    client: web::Data<Client>,
+    splinterd_url: web::Data<String>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let splinterd_url = &client.1;
-    let client = &client.0;
-
     client
-        .get(&format!("{}/nodes/{}", splinterd_url, identity))
+        .get(&format!("{}/nodes/{}", splinterd_url.get_ref(), identity))
         .send()
         .map_err(Error::from)
         .and_then(|mut resp| {
@@ -56,13 +54,11 @@ pub fn fetch_node(
 }
 
 pub fn list_nodes(
-    client: web::Data<(Client, String)>,
+    client: web::Data<Client>,
+    splinterd_url: web::Data<String>,
     query: web::Query<HashMap<String, String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let splinterd_url = &client.1;
-    let client = &client.0;
-
-    let mut request_url = format!("{}/nodes", splinterd_url);
+    let mut request_url = format!("{}/nodes", splinterd_url.get_ref());
 
     let offset = query
         .get("offset")
@@ -121,7 +117,8 @@ mod test {
     fn test_fetch_node_ok() {
         let mut app = test::init_service(
             App::new()
-                .data((Client::new(), SPLINTERD_URL.to_string()))
+                .data(Client::new())
+                .data(SPLINTERD_URL.to_string())
                 .service(web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node))),
         );
 
@@ -141,7 +138,8 @@ mod test {
     fn test_fetch_node_not_found() {
         let mut app = test::init_service(
             App::new()
-                .data((Client::new(), SPLINTERD_URL.to_string()))
+                .data(Client::new())
+                .data(SPLINTERD_URL.to_string())
                 .service(web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node))),
         );
 
@@ -159,7 +157,8 @@ mod test {
     fn test_list_node_ok() {
         let mut app = test::init_service(
             App::new()
-                .data((Client::new(), SPLINTERD_URL.to_string()))
+                .data(Client::new())
+                .data(SPLINTERD_URL.to_string())
                 .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
         );
 
@@ -181,7 +180,8 @@ mod test {
     fn test_list_node_with_filters_ok() {
         let mut app = test::init_service(
             App::new()
-                .data((Client::new(), SPLINTERD_URL.to_string()))
+                .data(Client::new())
+                .data(SPLINTERD_URL.to_string())
                 .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
         );
 
@@ -210,7 +210,8 @@ mod test {
     fn test_list_node_with_filters_bad_request() {
         let mut app = test::init_service(
             App::new()
-                .data((Client::new(), SPLINTERD_URL.to_string()))
+                .data(Client::new())
+                .data(SPLINTERD_URL.to_string())
                 .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
         );
 

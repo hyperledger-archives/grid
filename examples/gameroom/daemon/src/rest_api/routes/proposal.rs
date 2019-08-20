@@ -22,7 +22,9 @@ use gameroom_database::{
     models::{CircuitMember, CircuitProposal},
     ConnectionPool,
 };
+use libsplinter::admin::messages::CircuitProposalVote;
 
+use crate::authorization_handler;
 use crate::rest_api::RestApiResponseError;
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
@@ -36,6 +38,8 @@ struct ProposalListResponse {
 #[derive(Debug, Serialize)]
 struct ApiCircuitProposal {
     proposal_id: String,
+    circuit_id: String,
+    circuit_hash: String,
     members: Vec<ApiCircuitMember>,
     requester: String,
     created_time: u64,
@@ -46,6 +50,8 @@ impl ApiCircuitProposal {
     fn from(db_proposal: CircuitProposal, db_members: Vec<CircuitMember>) -> Self {
         ApiCircuitProposal {
             proposal_id: db_proposal.id.to_string(),
+            circuit_id: db_proposal.circuit_id.to_string(),
+            circuit_hash: db_proposal.circuit_hash.to_string(),
             members: db_members.into_iter().map(ApiCircuitMember::from).collect(),
             requester: db_proposal.requester.to_string(),
             created_time: db_proposal
@@ -174,4 +180,63 @@ fn list_proposals_from_db(
         .collect::<Vec<ApiCircuitProposal>>();
 
     Ok((proposals, helpers::get_proposal_count(&*pool.get()?)?))
+}
+
+pub fn proposal_vote(
+    vote: web::Json<CircuitProposalVote>,
+    proposal_id: web::Path<String>,
+    pool: web::Data<ConnectionPool>,
+    splinterd_url: web::Data<String>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || {
+            check_proposal_exists(&proposal_id, pool)?;
+            authorization_handler::submit_vote(&splinterd_url, &vote.into_inner()).map_err(|err| {
+                RestApiResponseError::InternalError(format!(
+                    "Ann error occurred while submitting vote: {}",
+                    err
+                ))
+            })
+        })
+        .then(|res| match res {
+            Ok(()) => {
+                Ok(HttpResponse::Accepted().json(json!({ "message": "The vote was accepted"})))
+            }
+            Err(err) => match err {
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(json!({ "message": err.to_string() })))
+                    }
+                    RestApiResponseError::BadRequest(err) => {
+                        Ok(HttpResponse::BadRequest().json(json!({ "message": err.to_string() })))
+                    }
+                    _ => Ok(HttpResponse::InternalServerError()
+                        .json(json!({ "message": format!("{}", err) }))),
+                },
+                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
+                    .json(json!({ "message": "Failed to submit vote"}))),
+            },
+        }),
+    )
+}
+
+fn check_proposal_exists(
+    proposal_id: &str,
+    pool: web::Data<ConnectionPool>,
+) -> Result<(), RestApiResponseError> {
+    if let Some(proposal) = helpers::fetch_proposal_by_id(&*pool.get()?, proposal_id)? {
+        if proposal.status == "Pending" {
+            return Ok(());
+        } else {
+            return Err(RestApiResponseError::BadRequest(format!(
+                "Cannot vote on proposal with id {}. The proposal status is {}",
+                proposal_id, proposal.status
+            )));
+        }
+    }
+
+    Err(RestApiResponseError::NotFound(format!(
+        "Proposal with id {} not found.",
+        proposal_id
+    )))
 }
