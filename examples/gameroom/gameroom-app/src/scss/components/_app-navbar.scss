@@ -13,8 +13,8 @@
 // limitations under the License.
 
 .navbar {
-  background-color: $color-base;
-  border-bottom: 1px solid $color-border;
+  @include overlay(4);
+  @include shadow(2);
   display: flex;
   justify-content: space-between;
   align-items: center;

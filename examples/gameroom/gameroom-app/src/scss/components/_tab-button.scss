@@ -13,8 +13,8 @@
 // limitations under the License.
 
 .btn-tab {
-  color: $color-text;
-  background-color: $color-base;
+  color: $color-text-high;
+  background-color: transparent;
   border: none;
   padding: 0;
   display: flex;
@@ -37,11 +37,14 @@
 }
 
 .btn-tab:hover {
-  background-color: $color-background;
+  @include overlay(4);
 }
 
 .btn-tab-active {
-  background-color: $color-background;
+  @include overlay(6);
+  &:hover {
+    @include overlay(12);
+  }
   .highlight {
     background-color: $color-primary;
   }

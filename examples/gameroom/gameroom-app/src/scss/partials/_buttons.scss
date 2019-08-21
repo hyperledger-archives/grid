@@ -13,6 +13,7 @@
 // limitations under the License.
 
 button {
+  color: rgba(255, 255, 255, .87);
   font-family: inherit;
   cursor: pointer;
 }
@@ -25,7 +26,6 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: $color-white;
   background: $color-primary;
   font-size: 1rem;
   padding: 0 1.5em;
@@ -34,32 +34,32 @@ button:disabled {
   @include rounded-border;
   outline: none;
   width: auto;
-  border: 1px solid $color-primary;
+  border: 1px solid transparent;
 
   .btn-text {
     padding: .75em 0;
   }
 
   &:hover {
-    background: $color-primary-dark;
-    border: 1px solid $color-primary-dark;
+    background: lighten($color-primary, 4%);
+    border: 1px solid transparent;
   }
 
   &:disabled {
     background: $color-disabled;
-    border: 1px solid $color-border;
-    color: $color-disabled-text;
+    border: 1px solid transparent;
+    color: $color-text-disabled;
   }
 
   &.outline {
+    background-color: transparent;
     color: $color-primary;
     border: 1px solid $color-primary;
-    background-color: $color-transparent;
 
     &:hover {
-      color: $color-primary-dark;
-      background-color: $color-transparent;
-      border: 1px solid $color-primary-dark;
+      background-color: transparent;
+      color: lighten($color-primary, 4%);
+      border: 1px solid lighten($color-primary, 4%);
     }
   }
 

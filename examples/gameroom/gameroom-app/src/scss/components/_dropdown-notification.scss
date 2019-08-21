@@ -13,9 +13,10 @@
 // limitations under the License.
 
 .dropdown-notification {
+  @include overlay(1);
   display: flex;
   padding: .5rem;
-  border-bottom: 1px solid $color-border;
+  border-top: 1px solid $color-border;
   font-size: .8rem;
   cursor: pointer;
 
@@ -50,17 +51,21 @@
       }
 
       .timestamp {
-        color: $color-text-tertiary;
+        color: $color-text-disabled;
       }
     }
   }
 
   &.new {
-    background-color: darken($color-background, 2%);
+    @include overlay(6);
+
+    &:hover {
+      @include overlay(12);
+    }
   }
 
   &:hover {
-    background-color: $color-background;
+    @include overlay(4);
   }
 
   &:last-child {

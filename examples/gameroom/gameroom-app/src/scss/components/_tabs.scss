@@ -18,8 +18,7 @@
   height: 100%;
 
   .tab-sidebar {
-    background-color: $color-base;
-    border-right: 1px solid $color-border;
+    @include overlay(1);
     display: grid;
 
     grid-auto-rows: 3rem;
@@ -40,7 +39,6 @@
 
     .tab {
       border-top: 1px solid $color-border;
-      background-color: $color-transparent;
     }
   }
 }

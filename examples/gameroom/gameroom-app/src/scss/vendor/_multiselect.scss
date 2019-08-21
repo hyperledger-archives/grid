@@ -24,7 +24,7 @@ $vue-multiselect-placeholder-color: $color-text-form !default;
 $vue-multiselect-bg: $color-white !default;
 $vue-multiselect-color: $color-text-form !default;
 $vue-multiselect-disabled-bg: $color-disabled !default;
-$vue-multiselect-disabled-color: $color-disabled-text !default;
+$vue-multiselect-disabled-color: $color-text-disabled !default;
 
 $vue-multiselect-option-selected-color: $color-white !default;
 $vue-multiselect-option-selected-bg: $color-primary !default;
@@ -33,7 +33,7 @@ $vue-multiselect-option-highlight-bg: #f3f3f3 !default;
 $vue-multiselect-option-selected-highlight-color: $color-white !default;
 $vue-multiselect-option-selected-highlight-bg: $color-primary !default;
 
-$vue-multiselect-tag-color: $color-base !default;
+$vue-multiselect-tag-color: $color-primary !default;
 $vue-multiselect-tag-bg: $color-white !default;
 $vue-multiselect-tag-font-size: 0.5rem !default;
 $vue-multiselect-tag-font-weight: normal !default;

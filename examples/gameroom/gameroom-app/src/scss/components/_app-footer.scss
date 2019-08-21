@@ -13,13 +13,12 @@
 // limitations under the License.
 
 .footer {
+  @include overlay(4);
   display: flex;
   overflow: hidden;
   white-space: nowrap;
   align-items: center;
-  background-color: $color-base;
-  color: $color-text-tertiary;
-  border-top: 1px solid $color-border;
+  color: $color-text-disabled;
   width: 100%;
   font-size: .75em;
   padding-left: .5em

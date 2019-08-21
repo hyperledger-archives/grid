@@ -16,20 +16,15 @@ $color-primary: #2d9ee0;
 $color-primary-light: #70cfff;
 $color-primary-dark: #0070ae;
 
-$color-base: #ffffff;
-$color-background: #f9f9f9;
-$color-border: #e7e7e7;
+$color-surface: #ffffff;
+$color-overlay: #666666;
+$color-disabled: rgba(0, 0, 0, .12);
+$color-border: rgba(0, 0, 0, .12);
 
-$color-text: #3a3a3a;
-$color-text-secondary: #6a6a6a;
-$color-text-tertiary: #9a9a9a;
-$color-text-form: #3a3a3a;
-
-$color-disabled-text: #d7d7d7;
-$color-disabled: #f3f3f3;
-
-$color-white: #ffffff;
-$color-transparent: rgba(0, 0, 0, 0);
-
-$a-tags: 'a, a:active, a:hover, a:visited';
-$a-tags-hover: 'a:active, a:hover';
+$color-text-base: #222222;
+$color-text-high: rgba($color-text-base, .87);
+$color-text-med: rgba($color-text-base, .6);
+$color-text-disabled: rgba($color-text-base, .38);
+$color-text-form: rgba(0, 0, 0, .87);
+$color-text-link: $color-text-med;
+$color-text-link-hover: $color-primary-dark;

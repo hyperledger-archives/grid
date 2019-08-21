@@ -26,6 +26,9 @@
 }
 
 .m-modal-wrapper {
+  background-color: $color-surface;
+  @include shadow(4);
+  @include rounded-border;
   display: flex;
   flex-direction: column;
   width: 500px;
@@ -33,7 +36,7 @@
 }
 
 .m-modal-header {
-  background-color: $color-background;
+  @include overlay(12);
   @include rounded-border-top;
   display: flex;
   align-items: center;
@@ -50,7 +53,7 @@
 }
 
 .m-modal-body {
-  background-color: $color-background;
+  @include overlay(1);
   @include rounded-border-bottom;
   flex: 1;
   font-size: 14px;

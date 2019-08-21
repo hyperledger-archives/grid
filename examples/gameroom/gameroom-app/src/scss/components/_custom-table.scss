@@ -34,9 +34,9 @@ thead, tbody {
   }
 
   .tbl-row-body {
-    background-color: $color-base;
-    border: 1px solid $color-border;
-    color: $color-text-secondary;
+    @include overlay(1);
+    @include shadow(1);
+    color: $color-text-med;
     @include rounded-border;
     list-style: none;
     .tbl-data:first-child {
@@ -59,7 +59,7 @@ thead, tbody {
     font-weight: $fw-bold;
     text-transform: uppercase;
     font-size: .7rem;
-    color: $color-text-secondary;
+    color: $color-text-med;
   }
 
   .tbl-data-body {
@@ -71,5 +71,5 @@ thead, tbody {
   display: flex;
   justify-content: center;
   padding-top: 1em;
-  color: $color-text-tertiary;
+  color: $color-text-disabled;
 }
