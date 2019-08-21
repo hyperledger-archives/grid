@@ -18,6 +18,7 @@ use std::fmt;
 use crate::consensus::error::ProposalManagerError;
 use crate::orchestrator::InitializeServiceError;
 use crate::service::error::ServiceError;
+use crate::signing;
 
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
@@ -33,6 +34,13 @@ pub enum AdminSharedError {
     ServiceInitializationFailed(InitializeServiceError),
     UnknownAction(String),
     ValidationFailed(String),
+
+    /// An error occured while attempting to verify a payload's signature
+    SignerError(signing::error::Error),
+
+    /// Returned if a signer is not specified currently only usra is supported
+    /// and the feature flag "ursa-compat" must be supplied.
+    UndefinedSigner,
 }
 
 impl Error for AdminSharedError {
@@ -44,6 +52,8 @@ impl Error for AdminSharedError {
             AdminSharedError::ServiceInitializationFailed(err) => Some(err),
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
+            AdminSharedError::SignerError(_) => None,
+            AdminSharedError::UndefinedSigner => None,
         }
     }
 }
@@ -65,6 +75,8 @@ impl fmt::Display for AdminSharedError {
                 write!(f, "received message with unknown action: {}", msg)
             }
             AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
+            AdminSharedError::SignerError(ref msg) => write!(f, "Signing error: {}", msg),
+            AdminSharedError::UndefinedSigner => f.write_str("Signing method was not defined"),
         }
     }
 }
@@ -72,6 +84,12 @@ impl fmt::Display for AdminSharedError {
 impl From<InitializeServiceError> for AdminSharedError {
     fn from(err: InitializeServiceError) -> Self {
         AdminSharedError::ServiceInitializationFailed(err)
+    }
+}
+
+impl From<signing::error::Error> for AdminSharedError {
+    fn from(err: signing::error::Error) -> Self {
+        AdminSharedError::SignerError(err)
     }
 }
 
