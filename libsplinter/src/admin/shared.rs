@@ -31,7 +31,7 @@ use crate::service::ServiceNetworkSender;
 
 use super::error::AdminStateError;
 use super::messages;
-use super::sha256;
+use super::{admin_service_id, sha256};
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
 
@@ -58,7 +58,8 @@ pub struct AdminServiceShared {
     pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
     pending_changes: Option<CircuitProposal>,
-
+    // the verifiers that should be broadcasted for the pending change
+    current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
     event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
 }
@@ -81,6 +82,7 @@ impl AdminServiceShared {
             pending_circuit_payloads: VecDeque::new(),
             pending_consesus_proposals: HashMap::new(),
             pending_changes: None,
+            current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
         }
     }
@@ -127,8 +129,8 @@ impl AdminServiceShared {
         self.pending_consesus_proposals.insert(id, proposal);
     }
 
-    pub fn pending_changes(&self) -> &Option<CircuitProposal> {
-        &self.pending_changes
+    pub fn current_consensus_verifiers(&self) -> &Vec<String> {
+        &self.current_consensus_verifiers
     }
 
     pub fn commit(&mut self) -> Result<(), AdminStateError> {
@@ -178,6 +180,10 @@ impl AdminServiceShared {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 let mut create_request = circuit_payload.take_circuit_create_request();
                 let proposed_circuit = create_request.take_circuit();
+                let mut verifiers = vec![];
+                for member in proposed_circuit.get_members() {
+                    verifiers.push(admin_service_id(member.get_node_id()));
+                }
 
                 if self.has_proposal(proposed_circuit.get_circuit_id()) {
                     Err(AdminStateError(format!(
@@ -195,6 +201,7 @@ impl AdminServiceShared {
 
                     let expected_hash = sha256(&circuit_proposal)?;
                     self.pending_changes = Some(circuit_proposal.clone());
+                    self.current_consensus_verifiers = verifiers;
 
                     Ok((expected_hash, circuit_proposal))
                 }

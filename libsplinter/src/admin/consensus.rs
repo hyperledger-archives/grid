@@ -360,20 +360,15 @@ impl ConsensusNetworkSender for AdminConsensusNetworkSender {
             .clone()
             .ok_or(ConsensusSendError::NotReady)?;
 
-        // Since there are not a fixed set of peers to send messages too, use the set of members
-        // in the curret pending change
-        if let Some(pending_changes) = &shared.pending_changes() {
-            for member in pending_changes.get_circuit_proposal().get_members() {
-                {
-                    // don't send a message back to this service
-                    if member.get_node_id() != shared.node_id() {
-                        network_sender
-                            .send(
-                                &admin_service_id(member.get_node_id()),
-                                msg.write_to_bytes()?.as_slice(),
-                            )
-                            .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?;
-                    }
+        // Since there are not a fixed set of peers to send messages too, use the set of verifiers
+        // in the current_consensus_verifiers which comes from the pending_changes
+        for verifier in shared.current_consensus_verifiers() {
+            {
+                // don't send a message back to this service
+                if verifier != &admin_service_id(shared.node_id()) {
+                    network_sender
+                        .send(verifier, msg.write_to_bytes()?.as_slice())
+                        .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?;
                 }
             }
         }
