@@ -15,6 +15,11 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
+#[cfg(feature = "ursa-compat")]
+use ursa::signatures::ed25519::EcdsaSecp256k1Sha256;
+#[cfg(feature = "ursa-compat")]
+use ursa::signatures::SignatureScheme;
+
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::{
@@ -30,6 +35,9 @@ use crate::protos::admin::{
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
+
+#[cfg(feature = "ursa-compat")]
+use crate::signing::{ursa::UrsaSecp256k1SignatureVerifier, SignatureVerifier};
 
 use super::error::AdminSharedError;
 use super::messages;
@@ -470,6 +478,29 @@ impl AdminServiceShared {
 
         Ok(())
     }
+}
+
+#[cfg(feature = "ursa-compat")]
+fn verify_signature(payload: &CircuitManagementPayload) -> Result<bool, ServiceError> {
+    let scheme = EcdsaSecp256k1Sha256::new();
+    let ursa_signature_verifier = UrsaSecp256k1SignatureVerifier::new(&scheme);
+
+    let signature = payload.get_signature();
+    let public_key = payload.get_header().get_requester();
+    let payload_hash = payload.get_header().get_payload_hash();
+
+    ursa_signature_verifier
+        .verify(&payload.get_header(), &signature, &public_key)
+        .map_err(AdminShared::from)
+        .map_err(Box::new)
+        .map_err(ServiceError::UnableToHandleMessage)
+}
+
+#[cfg(not(feature = "ursa-compat"))]
+fn verify_signature(_: &CircuitManagementPayload) -> Result<bool, ServiceError> {
+    Err(ServiceError::UnableToHandleMessage(Box::new(
+        AdminSharedError::UndefinedSigner,
+    )))
 }
 
 #[cfg(test)]
