@@ -176,17 +176,13 @@ impl ProposalManager for AdminProposalManager {
             let mut verifiers = vec![];
             let members = circuit_proposal.get_circuit_proposal().get_members();
             for member in members {
-                verifiers.push(
-                    format!("admin::{}", member.get_node_id())
-                        .as_bytes()
-                        .to_vec(),
-                );
+                verifiers.push(admin_service_id(member.get_node_id()).as_bytes().to_vec());
             }
             required_verifiers.set_verifiers(RepeatedField::from_vec(verifiers));
             let required_verifiers_bytes = required_verifiers
                 .write_to_bytes()
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
-            proposal.consensus_data = required_verifiers_bytes;
+            proposal.consensus_data = required_verifiers_bytes.clone();
 
             shared.add_pending_consesus_proposal(
                 proposal.id.clone(),
@@ -197,6 +193,7 @@ impl ProposalManager for AdminProposalManager {
             let mut proposed_circuit = ProposedCircuit::new();
             proposed_circuit.set_circuit_payload(circuit_payload);
             proposed_circuit.set_expected_hash(expected_hash.as_bytes().into());
+            proposed_circuit.set_required_verifiers(required_verifiers_bytes);
             let mut msg = AdminMessage::new();
             msg.set_message_type(AdminMessage_Type::PROPOSED_CIRCUIT);
             msg.set_proposed_circuit(proposed_circuit);
