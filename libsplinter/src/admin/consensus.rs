@@ -162,7 +162,7 @@ impl ProposalManager for AdminProposalManager {
 
             // Cheating a bit here by not setting the ID properly (isn't a hash of previous_id,
             // proposal_height, and summary), but none of this really matters with 2-phase
-            // consensus. The ID is the hash of the circuit managment playlaod. This example will
+            // consensus. The ID is the hash of the circuit management playload. This example will
             // not work with forking consensus, because it does not track previously accepted
             // proposals.
             let mut proposal = Proposal::default();
@@ -176,17 +176,13 @@ impl ProposalManager for AdminProposalManager {
             let mut verifiers = vec![];
             let members = circuit_proposal.get_circuit_proposal().get_members();
             for member in members {
-                verifiers.push(
-                    format!("admin::{}", member.get_node_id())
-                        .as_bytes()
-                        .to_vec(),
-                );
+                verifiers.push(admin_service_id(member.get_node_id()).as_bytes().to_vec());
             }
             required_verifiers.set_verifiers(RepeatedField::from_vec(verifiers));
             let required_verifiers_bytes = required_verifiers
                 .write_to_bytes()
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
-            proposal.consensus_data = required_verifiers_bytes;
+            proposal.consensus_data = required_verifiers_bytes.clone();
 
             shared.add_pending_consesus_proposal(
                 proposal.id.clone(),
@@ -197,6 +193,7 @@ impl ProposalManager for AdminProposalManager {
             let mut proposed_circuit = ProposedCircuit::new();
             proposed_circuit.set_circuit_payload(circuit_payload);
             proposed_circuit.set_expected_hash(expected_hash.as_bytes().into());
+            proposed_circuit.set_required_verifiers(required_verifiers_bytes);
             let mut msg = AdminMessage::new();
             msg.set_message_type(AdminMessage_Type::PROPOSED_CIRCUIT);
             msg.set_proposed_circuit(proposed_circuit);
@@ -363,20 +360,15 @@ impl ConsensusNetworkSender for AdminConsensusNetworkSender {
             .clone()
             .ok_or(ConsensusSendError::NotReady)?;
 
-        // Since there are not a fixed set of peers to send messages too, use the set of members
-        // in the curret pending change
-        if let Some(pending_changes) = &shared.pending_changes() {
-            for member in pending_changes.get_circuit_proposal().get_members() {
-                {
-                    // don't send a message back to this service
-                    if member.get_node_id() != shared.node_id() {
-                        network_sender
-                            .send(
-                                &admin_service_id(member.get_node_id()),
-                                msg.write_to_bytes()?.as_slice(),
-                            )
-                            .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?;
-                    }
+        // Since there are not a fixed set of peers to send messages too, use the set of verifiers
+        // in the current_consensus_verifiers which comes from the pending_changes
+        for verifier in shared.current_consensus_verifiers() {
+            {
+                // don't send a message back to this service
+                if verifier != &admin_service_id(shared.node_id()) {
+                    network_sender
+                        .send(verifier, msg.write_to_bytes()?.as_slice())
+                        .map_err(|err| ConsensusSendError::Internal(Box::new(err)))?;
                 }
             }
         }

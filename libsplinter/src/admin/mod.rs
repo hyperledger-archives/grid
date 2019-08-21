@@ -175,7 +175,7 @@ impl Service for AdminService {
     ) -> Result<(), ServiceError> {
         let admin_message: AdminMessage = protobuf::parse_from_bytes(message_bytes)
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
-
+        debug!("received admin message {:?}", admin_message);
         match admin_message.get_message_type() {
             AdminMessage_Type::CONSENSUS_MESSAGE => self
                 .consensus
@@ -188,7 +188,7 @@ impl Service for AdminService {
 
                 let expected_hash = proposed_circuit.get_expected_hash().to_vec();
                 let circuit_payload = proposed_circuit.get_circuit_payload();
-
+                let required_verifiers = proposed_circuit.get_required_verifiers();
                 let mut proposal = Proposal::default();
 
                 proposal.id = sha256(circuit_payload)
@@ -196,6 +196,7 @@ impl Service for AdminService {
                     .as_bytes()
                     .into();
                 proposal.summary = expected_hash;
+                proposal.consensus_data = required_verifiers.to_vec();
 
                 let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
                     ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
