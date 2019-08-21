@@ -14,7 +14,6 @@
 
 use std::path::Path;
 
-use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
@@ -32,6 +31,8 @@ use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, INDEXES},
     StateChange, Write,
 };
+
+use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 
 use super::error::ScabbardStateError;
 
