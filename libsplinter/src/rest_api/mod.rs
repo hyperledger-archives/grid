@@ -54,9 +54,12 @@
 mod errors;
 mod events;
 
-use actix_http::Error as ActixError;
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
-use futures::{future::FutureResult, Future, IntoFuture};
+use actix_web::{
+    error::ErrorBadRequest, middleware, web, App, Error as ActixError, HttpRequest, HttpResponse,
+    HttpServer,
+};
+use futures::{future::FutureResult, stream::Stream, Future, IntoFuture};
+use protobuf::{self, Message};
 use std::boxed::Box;
 use std::sync::{mpsc, Arc};
 use std::thread;
@@ -307,6 +310,22 @@ impl RestApiBuilder {
             resources: self.resources,
         })
     }
+}
+
+pub fn into_protobuf<M: Message>(
+    payload: web::Payload,
+) -> impl Future<Item = M, Error = ActixError> {
+    payload
+        .from_err::<ActixError>()
+        .fold(web::BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            Ok::<_, ActixError>(body)
+        })
+        .and_then(|body| match protobuf::parse_from_bytes::<M>(&body) {
+            Ok(proto) => Ok(proto),
+            Err(err) => Err(ErrorBadRequest(json!({ "message": format!("{}", err) }))),
+        })
+        .into_future()
 }
 
 #[cfg(test)]
