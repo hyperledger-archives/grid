@@ -76,7 +76,7 @@ pub fn propose_gameroom(
         authorization_type: AuthorizationType::Trust,
         persistence: PersistenceType::Any,
         routes: RouteType::Any,
-        circuit_management_type: "Gameroom".to_string(),
+        circuit_management_type: "gameroom".to_string(),
         application_metadata: vec![],
     };
 
