@@ -367,16 +367,6 @@ impl ProductListBuilder {
             ProductListBuildError::MissingField("'products' field is required".to_string())
         })?;
 
-        let products = {
-            if products.is_empty() {
-                return Err(ProductListBuildError::MissingField(
-                    "'products' cannot be empty".to_string(),
-                ));
-            } else {
-                products
-            }
-        };
-
         Ok(ProductList { products })
     }
 }
