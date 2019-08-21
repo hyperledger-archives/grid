@@ -15,8 +15,6 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
-use crossbeam_channel::Sender;
-
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
@@ -27,6 +25,7 @@ use crate::protos::admin::{
     Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
     CircuitProposal, CircuitProposal_ProposalType,
 };
+use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 
@@ -59,7 +58,9 @@ pub struct AdminServiceShared {
     pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
     pending_changes: Option<CircuitProposal>,
-    socket_senders: Vec<(String, Sender<messages::AdminServiceEvent>)>,
+
+    // Map of event dealers, keyed by circuit management type
+    event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
 }
 
 impl AdminServiceShared {
@@ -80,7 +81,7 @@ impl AdminServiceShared {
             pending_circuit_payloads: VecDeque::new(),
             pending_consesus_proposals: HashMap::new(),
             pending_changes: None,
-            socket_senders: Vec::new(),
+            event_dealers: HashMap::new(),
         }
     }
 
@@ -261,12 +262,21 @@ impl AdminServiceShared {
         self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
-    pub fn add_socket_sender(
+    pub fn add_subscriber(
         &mut self,
         circuit_management_type: String,
-        sender: Sender<messages::AdminServiceEvent>,
-    ) {
-        self.socket_senders.push((circuit_management_type, sender));
+        request: Request,
+    ) -> Result<Response, ResponseError> {
+        if let Some(dealer) = self.event_dealers.get_mut(&circuit_management_type) {
+            dealer.subscribe(request)
+        } else {
+            let mut dealer = EventDealer::new();
+            let res = dealer.subscribe(request)?;
+
+            self.event_dealers.insert(circuit_management_type, dealer);
+
+            Ok(res)
+        }
     }
 
     pub fn send_event(
@@ -274,22 +284,14 @@ impl AdminServiceShared {
         circuit_management_type: &str,
         event: messages::AdminServiceEvent,
     ) {
-        // The use of retain allows us to drop any senders that are no longer valid.
-        self.socket_senders.retain(|(mgmt_type, sender)| {
-            if mgmt_type != circuit_management_type {
-                return true;
-            }
-
-            if let Err(err) = sender.send(event.clone()) {
-                warn!(
-                    "Dropping sender for {} due to error: {}",
-                    circuit_management_type, err
-                );
-                return false;
-            }
-
-            true
-        });
+        if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
+            dealer.dispatch(event);
+        } else {
+            warn!(
+                "No event dealer for circuit management type {}",
+                circuit_management_type
+            );
+        }
     }
 
     pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {

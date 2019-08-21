@@ -14,6 +14,7 @@
 
 use std::path::Path;
 
+use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use transact::context::manager::sync::ContextManager;
 use transact::database::{
@@ -39,6 +40,7 @@ pub struct ScabbardState {
     executor: Executor,
     current_state_root: String,
     pending_changes: Option<Vec<StateChange>>,
+    event_dealer: EventDealer<Vec<StateChangeEvent>>,
 }
 
 impl ScabbardState {
@@ -56,12 +58,15 @@ impl ScabbardState {
         )?)]);
         let current_state_root = MerkleRadixTree::new(db.clone_box(), None)?.get_merkle_root();
 
+        let event_dealer = EventDealer::new();
+
         Ok(ScabbardState {
             db,
             context_manager,
             executor,
             current_state_root,
             pending_changes: None,
+            event_dealer,
         })
     }
 
@@ -130,6 +135,12 @@ impl ScabbardState {
                     self.current_state_root,
                 );
 
+                let events = state_changes
+                    .into_iter()
+                    .map(StateChangeEvent::from_state_change)
+                    .collect();
+
+                self.event_dealer.dispatch(events);
                 Ok(())
             }
             None => Err(ScabbardStateError("no pending changes to commit".into())),
@@ -144,6 +155,10 @@ impl ScabbardState {
 
         Ok(())
     }
+
+    pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
+        self.event_dealer.subscribe(request)
+    }
 }
 
 fn into_writable_state_change(
@@ -155,6 +170,22 @@ fn into_writable_state_change(
         }
         transact::protocol::receipt::StateChange::Delete { key } => {
             transact::state::StateChange::Delete { key }
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(tag = "eventType", content = "message")]
+enum StateChangeEvent {
+    Set { key: String, value: Vec<u8> },
+    Delete { key: String },
+}
+
+impl StateChangeEvent {
+    fn from_state_change(state_change: StateChange) -> Self {
+        match state_change {
+            StateChange::Set { key, value } => StateChangeEvent::Set { key, value },
+            StateChange::Delete { key } => StateChangeEvent::Delete { key },
         }
     }
 }

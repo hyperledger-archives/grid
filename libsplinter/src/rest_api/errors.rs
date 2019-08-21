@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+use actix_web::Error as ActixError;
+
 /// Error module for `rest_api`.
 #[derive(Debug)]
 pub enum RestApiServerError {
@@ -48,5 +50,14 @@ impl fmt::Display for RestApiServerError {
                 write!(f, "Missing required field: {}", field)
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct ResponseError(ActixError);
+
+impl From<ActixError> for ResponseError {
+    fn from(err: ActixError) -> Self {
+        Self(err)
     }
 }
