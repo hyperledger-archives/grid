@@ -56,14 +56,18 @@
       z-index: 1;
       right: -1rem;
       top: 3rem;
-      width: 280px;
+      width: 28rem;
 
       .dropdown-header {
         @include rounded-border-top;
         @include overlay(24);
         color: $color-text-med;
         text-align: center;
-        padding: .5rem;
+        padding: 1rem;
+
+        .title {
+          color: $color-text-high;
+        }
       }
 
       .dropdown-body {

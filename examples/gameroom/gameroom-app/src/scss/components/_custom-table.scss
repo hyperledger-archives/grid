@@ -48,7 +48,6 @@ thead, tbody {
   .tbl-data {
     text-overflow: ellipsis;
     overflow: hidden;
-    font-size: .8rem;
   }
 
   .tbl-data-header {
@@ -58,7 +57,7 @@ thead, tbody {
     text-align: left;
     font-weight: $fw-bold;
     text-transform: uppercase;
-    font-size: .7rem;
+    font-size: .8rem;
     color: $color-text-med;
   }
 
