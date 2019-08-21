@@ -106,10 +106,16 @@ pub fn run(
                     .service(
                         web::scope("/notifications")
                             .service(
-                                web::scope("/{notification_id}").service(
-                                    web::resource("")
-                                        .route(web::get().to_async(routes::fetch_notificaiton)),
-                                ),
+                                web::scope("/{notification_id}")
+                                    .service(
+                                        web::resource("")
+                                            .route(web::get().to_async(routes::fetch_notificaiton)),
+                                    )
+                                    .service(
+                                        web::resource("/read").route(
+                                            web::patch().to_async(routes::read_notification),
+                                        ),
+                                    ),
                             )
                             .service(
                                 web::resource("")

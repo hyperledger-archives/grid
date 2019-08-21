@@ -150,3 +150,47 @@ fn list_unread_notifications_from_db(
 
     Ok((notifications, notification_count))
 }
+
+pub fn read_notification(
+    pool: web::Data<ConnectionPool>,
+    notification_id: web::Path<i64>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || update_gameroom_notification(pool, *notification_id)).then(|res| {
+            match res {
+                Ok(notification) => Ok(HttpResponse::Ok().json(notification)),
+                Err(err) => {
+                    match err {
+                        error::BlockingError::Error(err) => match err {
+                            RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                                .json(json!({
+                                    "message": format!("Not Found error: {}", err.to_string())
+                                }))),
+                            _ => Ok(HttpResponse::BadRequest().json(json!({
+                                "message": format!("Bad Request error: {}", err.to_string())
+                            }))),
+                        },
+                        error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": format!("Internal Server error: {}", err.to_string())
+                            }))),
+                    }
+                }
+            }
+        }),
+    )
+}
+
+fn update_gameroom_notification(
+    pool: web::Data<ConnectionPool>,
+    id: i64,
+) -> Result<ApiNotification, RestApiResponseError> {
+    if let Some(notification) = helpers::fetch_notification(&*pool.get()?, id)? {
+        helpers::update_gameroom_notification(&*pool.get()?, id)?;
+        return Ok(ApiNotification::from(notification));
+    }
+    Err(RestApiResponseError::NotFound(format!(
+        "Notification id: {}",
+        id
+    )))
+}
