@@ -162,7 +162,7 @@ impl ProposalManager for AdminProposalManager {
 
             // Cheating a bit here by not setting the ID properly (isn't a hash of previous_id,
             // proposal_height, and summary), but none of this really matters with 2-phase
-            // consensus. The ID is the hash of the circuit managment playlaod. This example will
+            // consensus. The ID is the hash of the circuit management playload. This example will
             // not work with forking consensus, because it does not track previously accepted
             // proposals.
             let mut proposal = Proposal::default();
