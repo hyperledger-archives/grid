@@ -18,6 +18,8 @@ use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, PersistenceType, RouteType, SplinterNode, SplinterService,
 };
 
+use libsplinter::node_registry::Node;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGameroomForm {
     alias: String,
@@ -40,32 +42,45 @@ pub fn propose_gameroom(
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
     create_gameroom: web::Json<CreateGameroomForm>,
+    node_info: web::Data<Node>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let members = &create_gameroom.member;
+    let mut members = create_gameroom
+        .member
+        .iter()
+        .map(|node| SplinterNode {
+            node_id: node.identity.to_string(),
+            endpoint: node.metadata.endpoint.to_string(),
+        })
+        .collect::<Vec<SplinterNode>>();
+
+    members.push(SplinterNode {
+        node_id: node_info.identity.to_string(),
+        endpoint: node_info
+            .metadata
+            .get("endpoint")
+            .unwrap_or(&"".to_string())
+            .to_string(),
+    });
 
     let create_request = CreateCircuit {
         circuit_id: create_gameroom.alias.to_string(),
         roster: members
             .iter()
             .map(|node| SplinterService {
-                service_id: format!("gameroom_{}", node.identity),
-                service_type: "gameroom_service".to_string(),
-                allowed_nodes: vec![node.identity.to_string()],
+                service_id: format!("gameroom_{}", node.node_id),
+                service_type: "scabbard".to_string(),
+                allowed_nodes: vec![node.node_id.to_string()],
             })
             .collect::<Vec<SplinterService>>(),
-        members: members
-            .iter()
-            .map(|node| SplinterNode {
-                node_id: node.identity.to_string(),
-                endpoint: node.metadata.endpoint.to_string(),
-            })
-            .collect::<Vec<SplinterNode>>(),
+        members,
         authorization_type: AuthorizationType::Trust,
         persistence: PersistenceType::Any,
         routes: RouteType::Any,
         circuit_management_type: "Gameroom".to_string(),
         application_metadata: vec![],
     };
+
+    debug!("Create circuit message {:?}", create_request);
 
     client
         .post(format!("{}/admin/circuit", splinterd_url.get_ref()))
