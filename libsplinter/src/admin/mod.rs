@@ -175,7 +175,7 @@ impl Service for AdminService {
     ) -> Result<(), ServiceError> {
         let admin_message: AdminMessage = protobuf::parse_from_bytes(message_bytes)
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
-
+        debug!("received admin message {:?}", admin_message);
         match admin_message.get_message_type() {
             AdminMessage_Type::CONSENSUS_MESSAGE => self
                 .consensus
