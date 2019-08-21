@@ -653,7 +653,10 @@ fn get_pending_proposal_with_circuit_id(
 mod test {
     use super::*;
     use diesel::{dsl::insert_into, prelude::*, RunQueryDsl};
-    use gameroom_database::models::{GameroomMember, GameroomService, ProposalVoteRecord};
+    use gameroom_database::models::{
+        GameroomMember, GameroomNotification, GameroomService, NewGameroomNotification,
+        ProposalVoteRecord,
+    };
 
     use libsplinter::admin::messages::{
         AuthorizationType, Ballot, CircuitProposalVote, CreateCircuit, PersistenceType,
@@ -670,6 +673,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
         process_admin_event(message, &pool).expect("Error processing message");
@@ -696,6 +700,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
         process_admin_event(message, &pool).expect("Error processing message");
@@ -733,6 +738,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
         process_admin_event(message, &pool).expect("Error processing message");
@@ -756,6 +762,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
         process_admin_event(message, &pool).expect("Error processing message");
@@ -773,6 +780,36 @@ mod test {
     }
 
     #[test]
+    /// Tests if when receiving an admin message to CreateProposal the gameroom_notification
+    /// table is updated as expected
+    fn test_process_proposal_submitted_message_update_notification_table() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
+
+        let message = get_submit_proposal_msg("my_circuit");
+        process_admin_event(message, &pool).expect("Error processing message");
+
+        let notifications = query_gameroom_notification_table(&pool);
+
+        assert_eq!(notifications.len(), 1);
+
+        let notification = &notifications[0];
+        let expected_notification =
+            get_new_gameroom_notification_proposal("my_circuit", SystemTime::now());
+
+        assert_eq!(
+            notification.notification_type,
+            expected_notification.notification_type
+        );
+        assert_eq!(notification.requester, expected_notification.requester);
+        assert_eq!(notification.target, expected_notification.target);
+        assert_eq!(notification.read, expected_notification.read);
+    }
+
+    #[test]
     /// Tests if when receiving an admin message ProposalAccepted the gameroom_proposal
     /// table is updated as expected
     fn test_process_proposal_accepted_message_ok() {
@@ -780,6 +817,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let created_time = SystemTime::now();
 
@@ -817,6 +855,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let accept_message = get_accept_proposal_msg("my_circuit");
 
@@ -838,6 +877,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let created_time = SystemTime::now();
 
@@ -886,6 +926,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
@@ -907,6 +948,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let created_time = SystemTime::now();
 
@@ -944,6 +986,54 @@ mod test {
     }
 
     #[test]
+    /// Tests if when receiving an admin message to ProposalVote the gameroom_notification
+    /// table is updated as expected
+    fn test_process_proposal_vote_message_update_notification_table() {
+        let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
+            .expect("Failed to get database connection pool");
+
+        clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
+
+        let created_time = SystemTime::now();
+
+        // insert gameroom into database
+        insert_gameroom_table(&pool, get_gameroom("my_circuit", created_time.clone()));
+
+        // insert pending proposal into database
+        insert_proposals_table(
+            &pool,
+            get_gameroom_proposal("my_circuit", created_time.clone()),
+        );
+
+        let vote_message = get_vote_proposal_msg("my_circuit");
+
+        // vote proposal
+        process_admin_event(vote_message, &pool).expect("Error processing message");
+
+        let notifications = query_gameroom_notification_table(&pool);
+
+        assert_eq!(notifications.len(), 1);
+
+        let votes = query_votes_table(&pool);
+        assert_eq!(votes.len(), 1);
+
+        let vote = &votes[0];
+
+        let notification = &notifications[0];
+        let expected_notification =
+            get_new_gameroom_notification_vote(vote.proposal_id, SystemTime::now());
+
+        assert_eq!(
+            notification.notification_type,
+            expected_notification.notification_type
+        );
+        assert_eq!(notification.requester, expected_notification.requester);
+        assert_eq!(notification.target, expected_notification.target);
+        assert_eq!(notification.read, expected_notification.read);
+    }
+
+    #[test]
     /// Tests if when receiving an admin message ProposalVote an error is returned
     /// if a pending proposal for that circuit is not found
     fn test_process_proposal_vote_message_err() {
@@ -951,6 +1041,7 @@ mod test {
             .expect("Failed to get database connection pool");
 
         clear_gameroom_table(&pool);
+        clear_gameroom_notification_table(&pool);
 
         let vote_message = get_vote_proposal_msg("my_circuit");
 
@@ -1132,6 +1223,32 @@ mod test {
         }
     }
 
+    fn get_new_gameroom_notification_proposal(
+        circuit_id: &str,
+        timestamp: SystemTime,
+    ) -> NewGameroomNotification {
+        NewGameroomNotification {
+            notification_type: "gameroom_proposal".to_string(),
+            requester: "acme_corp".to_string(),
+            target: circuit_id.to_string(),
+            created_time: timestamp,
+            read: false,
+        }
+    }
+
+    fn get_new_gameroom_notification_vote(
+        proposal_id: i64,
+        timestamp: SystemTime,
+    ) -> NewGameroomNotification {
+        NewGameroomNotification {
+            notification_type: "proposal_vote_record".to_string(),
+            requester: "IwAAAQ".to_string(),
+            target: proposal_id.to_string(),
+            created_time: timestamp,
+            read: false,
+        }
+    }
+
     fn query_votes_table(pool: &ConnectionPool) -> Vec<ProposalVoteRecord> {
         use gameroom_database::schema::proposal_vote_record;
 
@@ -1182,6 +1299,16 @@ mod test {
             .expect("Error fetching proposals")
     }
 
+    fn query_gameroom_notification_table(pool: &ConnectionPool) -> Vec<GameroomNotification> {
+        use gameroom_database::schema::gameroom_notification;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        gameroom_notification::table
+            .select(gameroom_notification::all_columns)
+            .load::<GameroomNotification>(conn)
+            .expect("Error fetching proposals")
+    }
+
     fn insert_proposals_table(pool: &ConnectionPool, proposal: NewGameroomProposal) {
         use gameroom_database::schema::gameroom_proposal;
 
@@ -1210,7 +1337,16 @@ mod test {
         let conn = &*pool.get().expect("Error getting db connection");
         diesel::delete(gameroom)
             .execute(conn)
-            .expect("Error cleaning proposals table");
+            .expect("Error cleaning gameroom table");
+    }
+
+    fn clear_gameroom_notification_table(pool: &ConnectionPool) {
+        use gameroom_database::schema::gameroom_notification::dsl::*;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        diesel::delete(gameroom_notification)
+            .execute(conn)
+            .expect("Error cleaning gameroom_notification table");
     }
 
 }
