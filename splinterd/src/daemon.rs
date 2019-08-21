@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use crossbeam_channel;
 
-use crate::node_registry::yaml::YamlNodeRegistry;
+use crate::node_registry;
 use libsplinter::admin::AdminService;
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
@@ -447,8 +447,8 @@ impl SplinterDaemonBuilder {
         self
     }
 
-    pub fn with_registry_backend(mut self, value: String) -> Self {
-        self.registry_backend = Some(value);
+    pub fn with_registry_backend(mut self, value: Option<String>) -> Self {
+        self.registry_backend = value;
         self
     }
 
@@ -486,9 +486,8 @@ impl SplinterDaemonBuilder {
         })?;
 
         let mut registry_config_builder = RegistryConfigBuilder::default();
-        if let Some(value) = self.registry_backend {
-            registry_config_builder = registry_config_builder.with_registry_backend(value);
-        }
+        registry_config_builder =
+            registry_config_builder.with_registry_backend(self.registry_backend);
 
         if let Some(value) = self.registry_file {
             registry_config_builder = registry_config_builder.with_registry_file(value);
@@ -606,18 +605,16 @@ fn set_up_circuit_dispatcher(
 fn create_node_registry(
     registry_config: &RegistryConfig,
 ) -> Result<Box<dyn NodeRegistry>, RestApiServerError> {
-    match &registry_config.registry_backend() as &str {
-        "FILE" => Ok(Box::new(
-            YamlNodeRegistry::new(&registry_config.registry_file()).map_err(|err| {
+    match registry_config {
+        RegistryConfig::File { registry_file } => Ok(Box::new(
+            node_registry::yaml::YamlNodeRegistry::new(&registry_file).map_err(|err| {
                 RestApiServerError::StartUpError(format!(
                     "Failed to initialize YamlNodeRegistry: {}",
                     err
                 ))
             })?,
         )),
-        _ => Err(RestApiServerError::StartUpError(
-            "NodeRegistry type is not supported".to_string(),
-        )),
+        RegistryConfig::NoOp => Ok(Box::new(node_registry::noop::NoOpNodeRegistry)),
     }
 }
 
