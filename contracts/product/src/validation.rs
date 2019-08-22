@@ -208,5 +208,4 @@ mod tests {
             "InvalidTransaction: Invalid GTIN, GTIN-8 is not supported at this time: 40170725"
         );
     }
-
 }
