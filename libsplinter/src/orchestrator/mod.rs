@@ -271,6 +271,44 @@ impl ServiceOrchestrator {
             .cloned()
             .collect())
     }
+
+    pub fn destroy(self) -> Result<(), OrchestratorError> {
+        let mut services = self
+            .services
+            .lock()
+            .map_err(|_| OrchestratorError::LockPoisoned)?;
+
+        for (_, managed_service) in services.drain() {
+            let ManagedService {
+                mut service,
+                registry,
+            } = managed_service;
+            service
+                .stop(&registry)
+                .map_err(|err| OrchestratorError::Internal(Box::new(err)))?;
+            service
+                .destroy()
+                .map_err(|err| OrchestratorError::Internal(Box::new(err)))?;
+        }
+
+        self.running.store(false, Ordering::SeqCst);
+
+        match self.join_handles.join_all() {
+            Ok(results) => results.iter().for_each(|res| {
+                if let Err(err) = res {
+                    error!(
+                        "Orchestrator background thread failed while running: {}",
+                        err
+                    )
+                }
+            }),
+            Err(err) => error!(
+                "Orchestrator failed to join background thread(s) cleanly: {:?}",
+                err
+            ),
+        };
+        Ok(())
+    }
 }
 
 pub struct JoinHandles<T> {
