@@ -554,8 +554,7 @@ mod tests {
     use crate::protos::admin::{SplinterNode, SplinterService};
     use crate::storage::get_storage;
     use crate::transport::{
-        inproc::InprocTransport, ConnectError, Connection, DisconnectError, RecvError, SendError,
-        Transport,
+        ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
     };
 
     /// Test that the CircuitManagementPayload is moved to the pending payloads when the peers are
@@ -564,13 +563,16 @@ mod tests {
     fn test_auth_change() {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
-        let transport = MockConnectingTransport::expect_connections(vec![
+        let mut transport = MockConnectingTransport::expect_connections(vec![
+            Ok(Box::new(MockConnection)),
             Ok(Box::new(MockConnection)),
             Ok(Box::new(MockConnection)),
         ]);
-
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator_connection = transport
+            .connect("inproc://admin-service")
+            .expect("failed to create connection");
+        let orchestrator = ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
+            .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
         let mut shared = AdminServiceShared::new(
@@ -631,13 +633,16 @@ mod tests {
     fn test_unauth_change() {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
-        let transport = MockConnectingTransport::expect_connections(vec![
+        let mut transport = MockConnectingTransport::expect_connections(vec![
+            Ok(Box::new(MockConnection)),
             Ok(Box::new(MockConnection)),
             Ok(Box::new(MockConnection)),
         ]);
-
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator_connection = transport
+            .connect("inproc://admin-service")
+            .expect("failed to create connection");
+        let orchestrator = ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
+            .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
         let mut shared = AdminServiceShared::new(
@@ -695,8 +700,7 @@ mod tests {
     fn test_validate_circuit_valid() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -717,8 +721,7 @@ mod tests {
     fn test_validate_circuit_bad_node() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -745,8 +748,7 @@ mod tests {
     fn test_validate_circuit_empty_roster() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -767,8 +769,7 @@ mod tests {
     fn test_validate_circuit_empty_members() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -791,8 +792,7 @@ mod tests {
     fn test_validate_circuit_missing_local_node() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -818,8 +818,7 @@ mod tests {
     fn test_validate_circuit_no_authorization() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -841,8 +840,7 @@ mod tests {
     fn test_validate_circuit_no_persitance() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -864,8 +862,7 @@ mod tests {
     fn test_validate_circuit_unset_durability() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -887,8 +884,7 @@ mod tests {
     fn test_validate_circuit_no_routes() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -910,8 +906,7 @@ mod tests {
     fn test_validate_circuit_no_management_type() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+        let orchestrator = setup_orchestrator();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -986,6 +981,16 @@ mod tests {
         ]);
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         peer_connector
+    }
+
+    fn setup_orchestrator() -> ServiceOrchestrator {
+        let mut transport =
+            MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
+        let orchestrator_connection = transport
+            .connect("inproc://admin-service")
+            .expect("failed to create connection");
+        ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
+            .expect("failed to create orchestrator")
     }
 
     fn setup_storage(mut temp_dir: PathBuf) -> String {

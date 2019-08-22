@@ -17,6 +17,47 @@ use std::error::Error;
 use crate::service::FactoryCreateError;
 
 #[derive(Debug)]
+pub struct NewOrchestratorError(pub Box<dyn Error + Send>);
+
+impl Error for NewOrchestratorError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&*self.0)
+    }
+}
+
+impl std::fmt::Display for NewOrchestratorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "unable to create new orchestrator: {}", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub enum OrchestratorError {
+    Internal(Box<dyn Error + Send>),
+    LockPoisoned,
+}
+
+impl Error for OrchestratorError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            OrchestratorError::Internal(err) => Some(&**err),
+            OrchestratorError::LockPoisoned => None,
+        }
+    }
+}
+
+impl std::fmt::Display for OrchestratorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OrchestratorError::Internal(err) => {
+                write!(f, "an orchestration error occurred: {}", err)
+            }
+            OrchestratorError::LockPoisoned => write!(f, "internal lock poisoned"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum InitializeServiceError {
     InitializationFailed(Box<dyn Error + Send>),
     LockPoisoned,

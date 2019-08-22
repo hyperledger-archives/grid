@@ -349,7 +349,6 @@ mod tests {
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
     use crate::storage::get_storage;
-    use crate::transport::inproc::InprocTransport;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
     };
@@ -360,8 +359,10 @@ mod tests {
     fn test_propose_circuit() {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
-        let transport =
-            MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
+        let mut transport = MockConnectingTransport::expect_connections(vec![
+            Ok(Box::new(MockConnection)),
+            Ok(Box::new(MockConnection)),
+        ]);
 
         // create temp directory
         let temp_dir = TempDir::new("test_circuit_write_file").unwrap();
@@ -375,8 +376,13 @@ mod tests {
             path.to_string(),
             circuit_directory,
         )));
-        let orchestrator =
-            ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
+
+        let orchestrator_connection = transport
+            .connect("inproc://admin-service")
+            .expect("failed to create connection");
+        let orchestrator = ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
+            .expect("failed to create orchestrator");
+
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let mut admin_service = AdminService::new(
             "test-node".into(),

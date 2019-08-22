@@ -40,7 +40,7 @@ use libsplinter::network::{
     ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
 };
 use libsplinter::node_registry::NodeRegistry;
-use libsplinter::orchestrator::ServiceOrchestrator;
+use libsplinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use libsplinter::protos::authorization::AuthorizationMessageType;
 use libsplinter::protos::circuit::CircuitMessageType;
 use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
@@ -62,6 +62,9 @@ use crate::routes;
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
 const ADMIN_SERVICE_ADDRESS: &str = "inproc://admin-service";
+const ORCHESTRATOR_INCOMING_CAPACITY: usize = 8;
+const ORCHESTRATOR_OUTGOING_CAPACITY: usize = 8;
+const ORCHESTRATOR_CHANNEL_CAPACITY: usize = 8;
 
 pub struct SplinterDaemon {
     storage_location: String,
@@ -76,7 +79,7 @@ pub struct SplinterDaemon {
 
 impl SplinterDaemon {
     pub fn start(&mut self, transport: Box<dyn Transport + Send>) -> Result<(), StartError> {
-        let inproc_tranport = InprocTransport::default();
+        let mut inproc_tranport = InprocTransport::default();
         let mut transport = MultiTransport::new(vec![transport, Box::new(inproc_tranport.clone())]);
 
         // Setup up ctrlc handling
@@ -112,11 +115,23 @@ impl SplinterDaemon {
         );
         let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
+        let orchestrator_connection =
+            inproc_tranport
+                .connect(ADMIN_SERVICE_ADDRESS)
+                .map_err(|err| {
+                    StartError::TransportError(format!(
+                        "unable to initiate orchestrator connection: {:?}",
+                        err
+                    ))
+                })?;
         let orchestrator = ServiceOrchestrator::new(
             vec![Box::new(ScabbardFactory::new(None, None))],
-            self.service_endpoint.clone(),
-            inproc_tranport.clone(),
-        );
+            orchestrator_connection,
+            ORCHESTRATOR_INCOMING_CAPACITY,
+            ORCHESTRATOR_OUTGOING_CAPACITY,
+            ORCHESTRATOR_CHANNEL_CAPACITY,
+        )?;
+
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
         let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
         let admin_service = AdminService::new(
@@ -639,6 +654,7 @@ pub enum StartError {
     ProtocolError(String),
     RestApiError(String),
     AdminServiceError(String),
+    OrchestratorError(String),
 }
 
 impl From<RestApiServerError> for StartError {
@@ -686,5 +702,11 @@ impl From<PeerUpdateError> for StartError {
 impl From<protobuf::ProtobufError> for StartError {
     fn from(err: protobuf::ProtobufError) -> Self {
         StartError::ProtocolError(format!("Protocol Format Error: {:?}", err))
+    }
+}
+
+impl From<NewOrchestratorError> for StartError {
+    fn from(err: NewOrchestratorError) -> Self {
+        StartError::OrchestratorError(format!("failed to create new orchestrator: {}", err))
     }
 }

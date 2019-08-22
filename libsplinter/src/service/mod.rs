@@ -46,6 +46,7 @@ pub use factory::ServiceFactory;
 pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;
+pub use registry::StandardServiceNetworkRegistry;
 
 pub use error::{
     FactoryCreateError, ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError,
