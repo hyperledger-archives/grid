@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod error;
+mod rest_api;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};

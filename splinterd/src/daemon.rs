@@ -131,6 +131,7 @@ impl SplinterDaemon {
             ORCHESTRATOR_OUTGOING_CAPACITY,
             ORCHESTRATOR_CHANNEL_CAPACITY,
         )?;
+        let orchestrator_resources = orchestrator.resources();
 
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
         let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
@@ -159,6 +160,7 @@ impl SplinterDaemon {
             }))
             .add_resources(node_registry_manager.resources())
             .add_resources(admin_service.resources())
+            .add_resources(orchestrator_resources)
             .build()?
             .run()?;
 

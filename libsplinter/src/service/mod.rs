@@ -42,7 +42,7 @@ mod registry;
 pub mod scabbard;
 mod sender;
 
-pub use factory::ServiceFactory;
+pub use factory::{ServiceEndpoint, ServiceFactory};
 pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;
