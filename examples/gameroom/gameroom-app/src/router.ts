@@ -15,14 +15,26 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import Home from '@/views/Home.vue';
+import store from '@/store';
 
 Vue.use(Router);
 
-export default new Router({
+const router = new Router({
   routes: [
     {
       path: '/',
       name: 'home',
+      redirect: () => {
+        if (store.getters['user/isLoggedIn']) {
+          return {name: 'dashboard'};
+        } else {
+          return {name: 'welcome'};
+        }
+      },
+    },
+    {
+      path: '/welcome',
+      name: 'welcome',
       component: Home,
     },
     {
@@ -35,5 +47,43 @@ export default new Router({
       name: 'register',
       component: () => import('@/views/Register.vue'),
     },
+    {
+      path: '/dashboard',
+      component: () => import('@/views/Dashboard.vue'),
+      meta: {
+        requiresAuth: true,
+      },
+      children: [
+        {
+          path: 'home',
+          name: 'dashboard',
+          component: () => import('@/views/DashboardHome.vue'),
+          meta: {
+            requiresAuth: true,
+          },
+        },
+        {
+          path: 'invitations',
+          name: 'invitations',
+          component: () => import('@/views/Invitations.vue'),
+          meta: {
+            requiresAuth: true,
+          },
+        },
+      ],
+    },
   ],
 });
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth) {
+    if (!store.getters['user/isLoggedIn']) {
+      return next({ name: 'login' });
+    } else {
+      return next();
+    }
+  }
+  next();
+});
+
+export default router;

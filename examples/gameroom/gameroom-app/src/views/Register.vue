@@ -106,6 +106,7 @@ export default class Register extends Vue {
         publicKey: keys.publicKey,
         encryptedPrivateKey: keys.encryptedPrivateKey,
       });
+      this.$router.push({ name: 'dashboard' });
     } catch (e) {
       this.error = e.message;
     }
