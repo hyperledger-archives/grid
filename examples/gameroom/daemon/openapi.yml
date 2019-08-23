@@ -347,6 +347,30 @@ paths:
               application/json:
                 schema:
                   $ref: '#/components/schemas/Error'
+  /submit:
+      post:
+        tags:
+          - Splinter
+        description: Submit signed serialized payload to Splinter daemon
+        requestBody:
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+        responses:
+          202:
+            description: The payload was accepted
+          400:
+            description: Request was malformed
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          500:
+            description: Internal server error
+
 
   /notifications:
     get:

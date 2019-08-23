@@ -98,11 +98,9 @@ pub fn propose_gameroom(
     ) {
         Ok(s) => s,
         Err(err) => {
-            return Box::new(
-                Ok(HttpResponse::InternalServerError()
-                    .json(format!("failed to serialize member public keys: {}", err)))
-                .into_future(),
-            )
+            return HttpResponse::InternalServerError()
+                .json(format!("failed to serialize member public keys: {}", err))
+                .into_future()
         }
     };
     let mut scabbard_args = HashMap::new();
@@ -124,11 +122,9 @@ pub fn propose_gameroom(
         ) {
             Ok(s) => s,
             Err(err) => {
-                return Box::new(
-                    Ok(HttpResponse::InternalServerError()
-                        .json(format!("failed to serialize peer services: {}", err)))
-                    .into_future(),
-                )
+                return HttpResponse::InternalServerError()
+                    .json(format!("failed to serialize peer services: {}", err))
+                    .into_future()
             }
         };
 

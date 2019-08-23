@@ -17,12 +17,14 @@ mod gameroom;
 mod node;
 mod notification;
 mod proposal;
+mod submit;
 
 pub use authenticate::*;
 pub use gameroom::*;
 pub use node::*;
 pub use notification::*;
 pub use proposal::*;
+pub use submit::*;
 
 use percent_encoding::{AsciiSet, CONTROLS};
 
