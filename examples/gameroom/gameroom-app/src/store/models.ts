@@ -64,3 +64,14 @@ export interface GameroomNotification {
   timestamp: number;
   read: boolean;
 }
+
+export interface Section {
+  name: string;
+  icon: string;
+  active: boolean;
+  items: any[];
+  link: string;
+  dropdown: boolean;
+  action: boolean;
+  actionIcon: string;
+}
