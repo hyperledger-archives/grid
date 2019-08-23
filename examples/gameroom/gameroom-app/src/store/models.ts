@@ -48,9 +48,16 @@ export interface NewGameroomProposal {
   member: [Node];
 }
 
+interface Member {
+  node_id: string;
+  endpoint: string;
+}
+
 export interface GameroomProposal {
-  name: string;
-  members: string[];
+  proposal_id: string;
+  circuit_id: string;
+  circuit_hash: string;
+  members: Member[];
   requester: string;
   created_time: number;
   updated_time: number;

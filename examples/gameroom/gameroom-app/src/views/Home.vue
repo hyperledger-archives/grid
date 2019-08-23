@@ -18,9 +18,9 @@ limitations under the License.
   <h1>Welcome to Gameroom</h1>
 </template>
 
-<script>
+<script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 
 @Component
-export default class Home extends Vue {}
+  export default class Home extends Vue {}
 </script>

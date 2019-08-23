@@ -17,7 +17,7 @@ limitations under the License.
 <template>
   <div id="app">
     <app-navbar></app-navbar>
-    <router-view/>
+    <router-view id="main-router-view" />
   </div>
 </template>
 

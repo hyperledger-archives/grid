@@ -16,7 +16,6 @@ import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-dec
 import store from '@/store';
 import { GameroomProposal } from '@/store/models';
 import { listProposals } from '@/store/api';
-import nodes from './nodes';
 
 @Module({
   namespaced: true,
@@ -38,24 +37,60 @@ class ProposalsModule extends VuexModule {
 
   @Action({ commit: 'setProposals' })
   listProposalsMock() {
-    const proposals = [
+    const proposals: GameroomProposal[] = [
       {
-        name: 'acme_corp:bubba_bakery',
+        proposal_id: 'proposal1',
+        circuit_id: 'gameroom::acme-node-000::bubba-node-000::a57747f7-6a54-4d74-8a7a-7029b71b59f4',
+        circuit_hash: '8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d',
         members: [
-          'bubba_bakery', 'acme_corp',
+          {
+            node_id: 'acme-node-000',
+            endpoint: 'tls://splinterd-node-acme:8044',
+          },
+          {
+            node_id: 'bubba-node-000',
+            endpoint: 'tls://splinterd-node-bubba:8044',
+          },
         ],
-        requester: 'acme_corp',
-        created_time: 1564772396,
-        updated_time: 0,
+        requester: '395acb89a89835ffd4ecaf92baeb83b74eea6e5ade10a5c570debfd12a772baa87',
+        created_time: 1565732000,
+        updated_time: 1565732000,
       },
       {
-        name: 'asdforg:bubba_bakery',
+        proposal_id: 'proposal2',
+        circuit_id: 'gameroom::acme-node-000::bubba-node-000::a57747f7-6a54-4d74-8a7a-7029b71b59f4',
+        circuit_hash: '8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d',
         members: [
-          'asdforg', 'acme_corp',
+          {
+            node_id: 'acme-node-000',
+            endpoint: 'tls://splinterd-node-acme:8044',
+          },
+          {
+            node_id: 'bubba-node-000',
+            endpoint: 'tls://splinterd-node-bubba:8044',
+          },
         ],
-        requester: 'asdforg',
-        created_time: 1564772439,
-        updated_time: 0,
+        requester: '03473bfa98097f3e09b1d929c7830419ba372638af4c67ea23ac3e1f616fd85e9d',
+        created_time: 1565732000,
+        updated_time: 1565732000,
+      },
+      {
+        proposal_id: 'proposal3',
+        circuit_id: 'gameroom::acme-node-000::bubba-node-000::a57747f7-6a54-4d74-8a7a-7029b71b59f4',
+        circuit_hash: '8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d',
+        members: [
+          {
+            node_id: 'acme-node-000',
+            endpoint: 'tls://splinterd-node-acme:8044',
+          },
+          {
+            node_id: 'bubba-node-000',
+            endpoint: 'tls://splinterd-node-bubba:8044',
+          },
+        ],
+        requester: '395acb89a89835ffd4ecaf92baeb83b74eea6e5ade10a5c570debfd12a772baa87',
+        created_time: 1565732000,
+        updated_time: 1565732000,
       },
     ];
     return proposals;
