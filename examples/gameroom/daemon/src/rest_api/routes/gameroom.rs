@@ -13,12 +13,14 @@
 // limitations under the License.
 
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
-use futures::Future;
+use futures::{Future, IntoFuture};
 use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, PersistenceType, RouteType, SplinterNode, SplinterService,
 };
-
 use libsplinter::node_registry::Node;
+use uuid::Uuid;
+
+use crate::rest_api::RestApiResponseError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGameroomForm {
@@ -38,12 +40,17 @@ pub struct MemberMetadata {
     endpoint: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApplicationMetadata {
+    alias: String,
+}
+
 pub fn propose_gameroom(
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let mut members = create_gameroom
         .member
         .iter()
@@ -62,8 +69,25 @@ pub fn propose_gameroom(
             .to_string(),
     });
 
+    let partial_circuit_id = members.iter().fold(String::new(), |mut acc, member| {
+        acc.push_str(&format!("::{}", member.node_id));
+        acc
+    });
+
+    let application_metadata = match make_application_metadata(&create_gameroom.alias) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            debug!("Failed to serialize application metadata: {}", err);
+            return Box::new(HttpResponse::InternalServerError().finish().into_future());
+        }
+    };
+
     let create_request = CreateCircuit {
-        circuit_id: create_gameroom.alias.to_string(),
+        circuit_id: format!(
+            "gameroom{}::{}",
+            partial_circuit_id,
+            Uuid::new_v4().to_string()
+        ),
         roster: members
             .iter()
             .map(|node| SplinterService {
@@ -77,17 +101,26 @@ pub fn propose_gameroom(
         persistence: PersistenceType::Any,
         routes: RouteType::Any,
         circuit_management_type: "gameroom".to_string(),
-        application_metadata: vec![],
+        application_metadata,
     };
 
     debug!("Create circuit message {:?}", create_request);
 
-    client
-        .post(format!("{}/admin/circuit", splinterd_url.get_ref()))
-        .send_json(&create_request)
-        .map_err(Error::from)
-        .and_then(|resp| match resp.status() {
-            StatusCode::ACCEPTED => Ok(HttpResponse::Accepted().finish()),
-            _ => Ok(HttpResponse::InternalServerError().finish()),
-        })
+    Box::new(
+        client
+            .post(format!("{}/admin/circuit", splinterd_url.get_ref()))
+            .send_json(&create_request)
+            .map_err(Error::from)
+            .and_then(|resp| match resp.status() {
+                StatusCode::ACCEPTED => Ok(HttpResponse::Accepted().finish()),
+                _ => Ok(HttpResponse::InternalServerError().finish()),
+            }),
+    )
+}
+
+fn make_application_metadata(alias: &str) -> Result<Vec<u8>, RestApiResponseError> {
+    serde_json::to_vec(&ApplicationMetadata {
+        alias: alias.to_string(),
+    })
+    .map_err(|err| RestApiResponseError::InternalError(err.to_string()))
 }
