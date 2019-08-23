@@ -219,8 +219,13 @@ paths:
                     $ref: '#/components/schemas/Member'
 
         responses:
-          202:
-            description: Create Gameroom proposal has been accepted
+          200:
+            description: A serialized circuit management payload
+            content:
+              application/octet-stream:
+                schema:
+                  type: string
+                  format: binary
           500:
             description: Internal server error occurred
 

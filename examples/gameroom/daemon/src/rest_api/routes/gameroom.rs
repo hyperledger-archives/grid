@@ -13,13 +13,19 @@
 // limitations under the License.
 use std::collections::HashMap;
 
-use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
+use actix_web::{web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
 use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
 };
 use libsplinter::node_registry::Node;
+use libsplinter::protos::admin::{
+    CircuitManagementPayload, CircuitManagementPayload_Action as Action,
+    CircuitManagementPayload_Header as Header,
+};
+use openssl::hash::{hash, MessageDigest};
+use protobuf::Message;
 use uuid::Uuid;
 
 use crate::rest_api::RestApiResponseError;
@@ -49,11 +55,9 @@ pub struct ApplicationMetadata {
 }
 
 pub fn propose_gameroom(
-    client: web::Data<Client>,
-    splinterd_url: web::Data<String>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let mut members = create_gameroom
         .member
         .iter()
@@ -81,7 +85,7 @@ pub fn propose_gameroom(
         Ok(bytes) => bytes,
         Err(err) => {
             debug!("Failed to serialize application metadata: {}", err);
-            return Box::new(HttpResponse::InternalServerError().finish().into_future());
+            return HttpResponse::InternalServerError().finish().into_future();
         }
     };
 
@@ -155,18 +159,17 @@ pub fn propose_gameroom(
         application_metadata,
     };
 
-    debug!("Create circuit message {:?}", create_request);
+    let payload_bytes = match make_payload(create_request) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            debug!("Failed to make circuit management payload: {}", err);
+            return HttpResponse::InternalServerError().finish().into_future();
+        }
+    };
 
-    Box::new(
-        client
-            .post(format!("{}/admin/circuit", splinterd_url.get_ref()))
-            .send_json(&create_request)
-            .map_err(Error::from)
-            .and_then(|resp| match resp.status() {
-                StatusCode::ACCEPTED => Ok(HttpResponse::Accepted().finish()),
-                _ => Ok(HttpResponse::InternalServerError().finish()),
-            }),
-    )
+    HttpResponse::Ok()
+        .json(json!({ "data": { "payload_bytes": payload_bytes } }))
+        .into_future()
 }
 
 fn make_application_metadata(alias: &str) -> Result<Vec<u8>, RestApiResponseError> {
@@ -174,4 +177,21 @@ fn make_application_metadata(alias: &str) -> Result<Vec<u8>, RestApiResponseErro
         alias: alias.to_string(),
     })
     .map_err(|err| RestApiResponseError::InternalError(err.to_string()))
+}
+
+fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiResponseError> {
+    let circuit_proto = create_request.into_proto()?;
+    let circuit_bytes = circuit_proto.write_to_bytes()?;
+    let hashed_bytes = hash(MessageDigest::sha512(), &circuit_bytes)?;
+
+    let mut header = Header::new();
+    header.set_action(Action::CIRCUIT_CREATE_REQUEST);
+    header.set_payload_sha512(hashed_bytes.to_vec());
+    let header_bytes = header.write_to_bytes()?;
+
+    let mut circuit_management_payload = CircuitManagementPayload::new();
+    circuit_management_payload.set_header(header_bytes);
+    circuit_management_payload.set_circuit_create_request(circuit_proto);
+    let payload_bytes = circuit_management_payload.write_to_bytes()?;
+    Ok(payload_bytes)
 }

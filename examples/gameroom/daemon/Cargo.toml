@@ -39,6 +39,8 @@ serde = "1.0"
 serde_derive = "1.0"
 percent-encoding = "2.0"
 uuid = { version = "0.7", features = ["v4"]}
+protobuf = "2"
+openssl = "0.10"
 
 [features]
 test-node-endpoint = []
