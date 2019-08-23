@@ -16,7 +16,53 @@ limitations under the License.
 
 <template>
   <div class="dashboard-container">
-    <gameroom-sidebar class="sidebar" />
+    <toast toast-type="error" :active="error" v-on:toast-action="clearError">
+      {{ error }}
+    </toast>
+    <toast toast-type="success" :active="success" v-on:toast-action="clearSuccess">
+      {{ success }}
+    </toast>
+    <modal v-if="displayModal" @close="closeNewGameroomModal">
+      <h3 slot="title">New Gameroom</h3>
+      <div slot="body">
+        <form class="modal-form" @submit.prevent="createGameroom">
+          <label class="form-label">
+            <div class="multiselect-label">Member</div>
+          </label>
+          <multiselect
+            class="multiselect-input"
+            v-model="newGameroom.member"
+            track-by="identity"
+            label="metadata"
+            placeholder=""
+            open-direction="bottom"
+            :show-labels="false"
+            :close-on-select="true"
+            :clear-on-select="false"
+            :custom-label="getMemberLabel"
+            :options="nodeList"
+            :allow-empty="false" />
+          <label class="form-label">
+            Alias
+            <input class="form-input" type="text" v-model="newGameroom.alias" />
+          </label>
+          <div class="flex-container button-container">
+            <button class="btn-action outline small"
+                    type="reset"
+                    @click.prevent="closeNewGameroomModal">
+              <div class="btn-text">Cancel</div>
+            </button>
+            <button class="btn-action small" type="submit" :disabled="!canSubmitNewGameroom">
+              <div v-if="submitting" class="spinner" />
+              <div class="btn-text" v-else>Send</div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </modal>
+    <gameroom-sidebar
+      v-on:show-new-gameroom-modal="showNewGameroomModal()"
+      class="sidebar" />
     <router-view class="dashboard-view" />
   </div>
 </template>
@@ -24,11 +70,88 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import GameroomSidebar from '@/components/sidebar/GameroomSidebar.vue';
+import Toast from '../components/Toast.vue';
+import Multiselect from 'vue-multiselect';
+import gamerooms from '@/store/modules/gamerooms';
+import nodes from '@/store/modules/nodes';
+import { Node } from '@/store/models';
+import Modal from '@/components/Modal.vue';
+
+interface NewGameroom {
+  alias: string;
+  member: Node | null;
+}
 
 @Component({
-  components: { GameroomSidebar },
+  components: { Modal, Multiselect, GameroomSidebar, Toast },
 })
-export default class Dashboard extends Vue {}
+export default class Dashboard extends Vue {
+  displayModal = false;
+  submitting = false;
+  error = '';
+  success = '';
+
+  newGameroom: NewGameroom = {
+    alias: '',
+    member: null,
+  };
+
+  mounted() {
+    nodes.listNodes();
+  }
+
+  get nodeList() {
+    return nodes.nodeList;
+  }
+
+  get canSubmitNewGameroom() {
+    if (!this.submitting &&
+        this.newGameroom.alias !== '' &&
+        this.newGameroom.member !== null) {
+      return true;
+    }
+    return false;
+  }
+
+  clearError() {
+    this.error = '';
+  }
+
+  clearSuccess() {
+    this.success = '';
+  }
+
+  createGameroom() {
+    if (this.canSubmitNewGameroom) {
+        this.submitting = true;
+        try {
+          gamerooms.proposeGameroom({
+            alias: this.newGameroom.alias,
+            member: [this.newGameroom.member as Node],
+          });
+          this.success = 'Your invitation has been sent!';
+        } catch (e) {
+          this.error = e.message;
+        }
+        this.submitting = false;
+        this.closeNewGameroomModal();
+    }
+  }
+
+  getMemberLabel(node: Node) {
+    return node.metadata.organization;
+  }
+
+  showNewGameroomModal() {
+    this.displayModal = true;
+  }
+
+  closeNewGameroomModal() {
+    this.displayModal = false;
+    this.newGameroom.alias = '';
+    this.newGameroom.member = null;
+  }
+}
 </script>
 
 <style lang="scss" scoped>

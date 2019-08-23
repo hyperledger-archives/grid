@@ -19,7 +19,7 @@ limitations under the License.
     <router-link to='/dashboard/home'>
       <sidebar-section :section="home" />
     </router-link>
-    <sidebar-section :section="gamerooms" />
+    <sidebar-section v-on:action="$emit('show-new-gameroom-modal')" :section="gamerooms" />
     <router-link class="position-end" to='/dashboard/invitations'>
       <sidebar-section :section="invitations" />
     </router-link>
@@ -63,8 +63,8 @@ export default class GameroomSidebar extends Vue {
     items: [this.gameroom1, this.gameroom2],
     link: '',
     dropdown: true,
-    action: false,
-    actionIcon: '',
+    action: true,
+    actionIcon: 'add_circle_outline',
   };
 
   invitationsSection = {
