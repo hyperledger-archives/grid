@@ -79,7 +79,7 @@ fn main() {
         (@arg bind: --("bind") +takes_value
             "connection endpoint for REST API")
         (@arg registry_backend: --("registry-backend") +takes_value
-            "backend type for the node registry. Default is FILE.")
+            "backend type for the node registry. Possible values: FILE.")
         (@arg registry_file: --("registry-file") +takes_value
             "file path to the node registry file if registry-backend is FILE.")
         (@arg verbose: -v --verbose +multiple
@@ -195,9 +195,7 @@ fn main() {
     let registry_backend = matches
         .value_of("registry_backend")
         .map(String::from)
-        .or_else(|| config.registry_backend())
-        .or_else(|| Some("FILE".to_string()))
-        .expect("Must provide a type for registry backend");
+        .or_else(|| config.registry_backend());
 
     let registry_file = matches
         .value_of("registry_file")
@@ -213,10 +211,8 @@ fn main() {
         .with_rest_api_endpoint(rest_api_endpoint)
         .with_registry_backend(registry_backend.clone());
 
-    if &registry_backend == "FILE" && registry_file.is_none() {
-        panic!("Must provide path for registry file if registry_backend type = 'FILE'.")
-    } else if &registry_backend == "FILE" {
-        daemon_builder = daemon_builder.with_registry_file(registry_file.unwrap());
+    if let Some(registry_file) = registry_file {
+        daemon_builder = daemon_builder.with_registry_file(registry_file);
     }
 
     let mut node = match daemon_builder.build() {

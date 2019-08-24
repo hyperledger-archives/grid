@@ -16,19 +16,9 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct RegistryConfig {
-    registry_backend: String,
-    registry_file: String,
-}
-
-impl RegistryConfig {
-    pub fn registry_backend(&self) -> &str {
-        &self.registry_backend
-    }
-
-    pub fn registry_file(&self) -> &str {
-        &self.registry_file
-    }
+pub enum RegistryConfig {
+    File { registry_file: String },
+    NoOp,
 }
 
 pub struct RegistryConfigBuilder {
@@ -46,8 +36,8 @@ impl Default for RegistryConfigBuilder {
 }
 
 impl RegistryConfigBuilder {
-    pub fn with_registry_backend(mut self, value: String) -> Self {
-        self.registry_backend = Some(value);
+    pub fn with_registry_backend(mut self, value: Option<String>) -> Self {
+        self.registry_backend = value;
         self
     }
 
@@ -57,23 +47,17 @@ impl RegistryConfigBuilder {
     }
 
     pub fn build(self) -> Result<RegistryConfig, RegistryConfigError> {
-        let registry_backend = self.registry_backend.ok_or_else(|| {
-            RegistryConfigError::MissingValue("Missing field: registry_backend".to_string())
-        })?;
-
-        match &registry_backend as &str {
-            "FILE" => {
-                let registry_file = self.registry_file.clone().ok_or_else(|| {
+        match self.registry_backend {
+            Some(ref registry_type) if registry_type == "FILE" => self
+                .registry_file
+                .map(|registry_file| RegistryConfig::File { registry_file })
+                .ok_or_else(|| {
                     RegistryConfigError::MissingValue(
                         "For registry_backend of type 'FILE' a path to the file must be provided."
                             .to_string(),
                     )
-                })?;
-                Ok(RegistryConfig {
-                    registry_backend,
-                    registry_file,
-                })
-            }
+                }),
+            None => Ok(RegistryConfig::NoOp),
             _ => Err(RegistryConfigError::InvalidType(
                 "NodeRegistry type is not supported".to_string(),
             )),

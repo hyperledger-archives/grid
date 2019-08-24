@@ -13,4 +13,5 @@
 // limitations under the License.
 
 pub mod error;
+pub mod noop;
 pub mod yaml;
