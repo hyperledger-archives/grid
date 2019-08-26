@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::collections::HashMap;
 
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
@@ -95,6 +96,7 @@ pub fn propose_gameroom(
                 service_id: format!("gameroom_{}", node.node_id),
                 service_type: "scabbard".to_string(),
                 allowed_nodes: vec![node.node_id.to_string()],
+                arguments: HashMap::default(),
             })
             .collect::<Vec<SplinterService>>(),
         members,

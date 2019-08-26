@@ -24,9 +24,15 @@ message SplinterNode {
 }
 
 message SplinterService {
+    message Argument {
+        string key = 1;
+        string value = 2;
+    }
+
     string service_id = 1;
     string service_type = 2;
     repeated string allowed_nodes = 3;
+    repeated Argument arguments = 4;
 }
 
 message Circuit {

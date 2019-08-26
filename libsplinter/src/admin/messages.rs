@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use protobuf::{self, RepeatedField};
 use serde::de::DeserializeOwned;
 use serde_json;
@@ -204,6 +206,7 @@ pub struct SplinterService {
     pub service_id: String,
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
+    pub arguments: HashMap<String, String>,
 }
 
 impl SplinterService {
@@ -212,6 +215,17 @@ impl SplinterService {
         proto.set_service_id(self.service_id);
         proto.set_service_type(self.service_type);
         proto.set_allowed_nodes(RepeatedField::from_vec(self.allowed_nodes));
+        proto.set_arguments(RepeatedField::from_vec(
+            self.arguments
+                .into_iter()
+                .map(|(k, v)| {
+                    let mut argument = admin::SplinterService_Argument::new();
+                    argument.set_key(k);
+                    argument.set_value(v);
+                    argument
+                })
+                .collect(),
+        ));
 
         proto
     }
@@ -224,6 +238,11 @@ impl SplinterService {
                 .take_allowed_nodes()
                 .into_iter()
                 .map(String::from)
+                .collect(),
+            arguments: proto
+                .take_arguments()
+                .into_iter()
+                .map(|mut argument| (argument.take_key(), argument.take_value()))
                 .collect(),
         })
     }
