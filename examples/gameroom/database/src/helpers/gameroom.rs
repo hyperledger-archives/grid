@@ -186,3 +186,19 @@ pub fn get_gameroom_count(conn: &PgConnection, status: &str) -> QueryResult<i64>
         .count()
         .get_result(conn)
 }
+
+pub fn fetch_gameroom_with_status(
+    conn: &PgConnection,
+    status: &str,
+    circuit_id: &str,
+) -> QueryResult<Option<Gameroom>> {
+    gameroom::table
+        .filter(
+            gameroom::status
+                .eq(status)
+                .and(gameroom::circuit_id.eq(circuit_id)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}

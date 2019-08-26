@@ -18,8 +18,8 @@ mod notification;
 
 pub use gameroom::{
     fetch_gameroom_members_by_circuit_id_and_status, fetch_gameroom_proposal_with_status,
-    fetch_proposal_by_id, get_gameroom_count, get_proposal_count, insert_gameroom,
-    insert_gameroom_members, insert_gameroom_proposal, insert_gameroom_services,
+    fetch_gameroom_with_status, fetch_proposal_by_id, get_gameroom_count, get_proposal_count,
+    insert_gameroom, insert_gameroom_members, insert_gameroom_proposal, insert_gameroom_services,
     insert_proposal_vote_record, list_gameroom_members_with_status, list_gamerooms_with_paging,
     list_proposals_with_paging, update_gameroom_proposal_status, update_gameroom_status,
 };
