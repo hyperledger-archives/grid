@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use actix_web::{web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
-use gameroom_database::models::Gameroom;
+use gameroom_database::{helpers, models::Gameroom, ConnectionPool};
 use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
@@ -222,4 +222,22 @@ fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiRespons
     circuit_management_payload.set_circuit_create_request(circuit_proto);
     let payload_bytes = circuit_management_payload.write_to_bytes()?;
     Ok(payload_bytes)
+}
+
+fn list_gamerooms_from_db(
+    pool: web::Data<ConnectionPool>,
+    limit: usize,
+    offset: usize,
+) -> Result<(Vec<ApiGameroom>, i64), RestApiResponseError> {
+    let db_limit = limit as i64;
+    let db_offset = offset as i64;
+
+    let gamerooms =
+        helpers::list_gamerooms_with_paging(&*pool.get()?, "ACCECPTED", db_limit, db_offset)?
+            .into_iter()
+            .map(ApiGameroom::from)
+            .collect();
+    let gameroom_count = helpers::get_gameroom_count(&*pool.get()?, "ACCEPTED")?;
+
+    Ok((gamerooms, gameroom_count))
 }
