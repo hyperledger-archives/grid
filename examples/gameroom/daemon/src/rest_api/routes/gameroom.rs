@@ -31,7 +31,7 @@ use uuid::Uuid;
 
 use crate::rest_api::RestApiResponseError;
 
-use super::Paging;
+use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGameroomForm {
@@ -222,6 +222,43 @@ fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiRespons
     circuit_management_payload.set_circuit_create_request(circuit_proto);
     let payload_bytes = circuit_management_payload.write_to_bytes()?;
     Ok(payload_bytes)
+}
+
+pub fn list_gamerooms(
+    pool: web::Data<ConnectionPool>,
+    query: web::Query<HashMap<String, usize>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let offset: usize = query
+        .get("offset")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_OFFSET);
+
+    let limit: usize = query
+        .get("limit")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_LIMIT);
+
+    Box::new(
+        web::block(move || list_gamerooms_from_db(pool, limit, offset)).then(
+            move |res| match res {
+                Ok((gamerooms, query_count)) => {
+                    let paging_info = get_response_paging_info(
+                        limit,
+                        offset,
+                        "api/gamerooms?",
+                        query_count as usize,
+                    );
+                    Ok(HttpResponse::Ok().json(GameroomListResponse {
+                        data: gamerooms,
+                        paging: paging_info,
+                    }))
+                }
+                Err(err) => Ok(HttpResponse::InternalServerError().json(json!({
+                    "message": format!("Internal Server error: {}", err.to_string())
+                }))),
+            },
+        ),
+    )
 }
 
 fn list_gamerooms_from_db(

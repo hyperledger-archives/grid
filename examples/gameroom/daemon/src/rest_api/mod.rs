@@ -126,6 +126,9 @@ pub fn run(
                         web::resource("/submit")
                             .route(web::post().to_async(routes::submit_signed_payload)),
                     )
+                    .service(web::scope("/gamerooms").service(
+                        web::resource("").route(web::get().to_async(routes::list_gamerooms)),
+                    ))
             })
             .bind(bind_url)?
             .disable_signals()
