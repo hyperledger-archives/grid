@@ -13,7 +13,7 @@
 // limitations under the License.
 use std::collections::HashMap;
 
-use actix_web::{web, Error, HttpResponse};
+use actix_web::{error, web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
 use gameroom_database::{helpers, models::Gameroom, ConnectionPool};
 use libsplinter::admin::messages::{
@@ -277,6 +277,31 @@ fn list_gamerooms_from_db(
     let gameroom_count = helpers::get_gameroom_count(&*pool.get()?, "ACCEPTED")?;
 
     Ok((gamerooms, gameroom_count))
+}
+
+pub fn fetch_gameroom(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: web::Path<String>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || fetch_gameroom_from_db(pool, &circuit_id)).then(|res| match res {
+            Ok(gameroom) => Ok(HttpResponse::Ok().json(gameroom)),
+            Err(err) => match err {
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(json!({
+                            "message": format!("Not Found error: {}", err.to_string())
+                        })))
+                    }
+                    _ => Ok(HttpResponse::BadRequest().json(json!({
+                        "message": format!("Bad Request error: {}", err.to_string())
+                    }))),
+                },
+                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
+                    .json(json!({ "message": "Failed to fetch Gameroom" }))),
+            },
+        }),
+    )
 }
 
 fn fetch_gameroom_from_db(
