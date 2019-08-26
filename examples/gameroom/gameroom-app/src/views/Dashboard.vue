@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 <template>
-  <div>
+  <div class="dashboard-container">
     <toast toast-type="error" :active="error" v-on:toast-action="clearError">
       {{ error }}
     </toast>
@@ -54,25 +54,28 @@ limitations under the License.
             </button>
             <button class="btn-action small" type="submit" :disabled="!canSubmitNewGameroom">
               <div v-if="submitting" class="spinner" />
-              <div class="btn-text" v-else>Submit</div>
+              <div class="btn-text" v-else>Send</div>
             </button>
           </div>
         </form>
       </div>
     </modal>
-    <tabs v-on:show-new-gameroom-modal="showNewGameroomModal()" />
+    <gameroom-sidebar
+      v-on:show-new-gameroom-modal="showNewGameroomModal()"
+      class="sidebar" />
+    <router-view class="dashboard-view" />
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import Modal from '@/components/Modal.vue';
-import Tabs from '@/components/Tabs.vue';
+import GameroomSidebar from '@/components/sidebar/GameroomSidebar.vue';
+import Toast from '../components/Toast.vue';
 import Multiselect from 'vue-multiselect';
 import gamerooms from '@/store/modules/gamerooms';
 import nodes from '@/store/modules/nodes';
 import { Node } from '@/store/models';
-import Toast from '../components/Toast.vue';
+import Modal from '@/components/Modal.vue';
 
 interface NewGameroom {
   alias: string;
@@ -80,9 +83,9 @@ interface NewGameroom {
 }
 
 @Component({
-  components: { Modal, Multiselect, Tabs, Toast },
+  components: { Modal, Multiselect, GameroomSidebar, Toast },
 })
-export default class Gamerooms extends Vue {
+export default class Dashboard extends Vue {
   displayModal = false;
   submitting = false;
   error = '';
@@ -150,3 +153,7 @@ export default class Gamerooms extends Vue {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+  @import '@/scss/components/_dashboard.scss';
+</style>

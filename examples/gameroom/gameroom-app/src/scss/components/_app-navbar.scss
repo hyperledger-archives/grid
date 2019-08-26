@@ -13,8 +13,12 @@
 // limitations under the License.
 
 .navbar {
-  background-color: $color-base;
-  border-bottom: 1px solid $color-border;
+  @include overlay(4);
+  @include shadow(2);
+  grid-column: 1;
+  position: fixed;
+  top: 0;
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -30,6 +34,7 @@
     li {
       padding-left: 1em;
       padding-right: 1em;
+      font-size: 1.2rem;
     }
   }
 }
@@ -38,11 +43,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .5em;
-
-  .brand-text {
-    font-size: 2em;
-  }
+  padding: .5rem;
 }
 
 .left-nav-item {

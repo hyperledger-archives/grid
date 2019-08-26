@@ -48,9 +48,16 @@ export interface NewGameroomProposal {
   member: [Node];
 }
 
+interface Member {
+  node_id: string;
+  endpoint: string;
+}
+
 export interface GameroomProposal {
-  name: string;
-  members: string[];
+  proposal_id: string;
+  circuit_id: string;
+  circuit_hash: string;
+  members: Member[];
   requester: string;
   created_time: number;
   updated_time: number;
@@ -63,4 +70,15 @@ export interface GameroomNotification {
   target: string;
   timestamp: number;
   read: boolean;
+}
+
+export interface Section {
+  name: string;
+  icon: string;
+  active: boolean;
+  items: any[];
+  link: string;
+  dropdown: boolean;
+  action: boolean;
+  actionIcon: string;
 }

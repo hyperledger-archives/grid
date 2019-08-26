@@ -16,14 +16,15 @@ $color-primary: #d32f2f;
 $color-primary-light: #ff6659;
 $color-primary-dark: #9a0007;
 
-$color-base: #212121;
-$color-background: #303030;
-$color-border: #444444;
+$color-surface: #121212;
+$color-overlay: #ffffff;
+$color-disabled: rgba(255, 255, 255, .12);
+$color-border: rgba(255, 255, 255, .12);
 
-$color-text: #ffffff;
-$color-text-secondary: #bbbbbb;
-$color-text-tertiary: #888888;
-$color-text-form: #212121;
-
-$color-disabled: #575757;
-$color-disabled-text: #303030;
+$color-text-base: #ffffff;
+$color-text-high: rgba($color-text-base, .87);
+$color-text-med: rgba($color-text-base, .6);
+$color-text-disabled: rgba($color-text-base, .38);
+$color-text-form: rgba(0, 0, 0, .87);
+$color-text-link: $color-text-med;
+$color-text-link-hover: $color-primary-light;

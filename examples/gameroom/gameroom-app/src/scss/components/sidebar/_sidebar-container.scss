@@ -12,37 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-.btn-tab {
-  color: $color-text;
-  background-color: $color-base;
-  border: none;
-  padding: 0;
+.sidebar-container {
+  @include overlay(1);
   display: flex;
+  flex-direction: column;
+  padding-top: 1rem;
+  width: 20rem;
 
-  .highlight {
-    width: .3rem;
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
-  }
-
-  .icon {
-    align-self: center;
-    padding: .3rem 1rem 0;
-    color: $color-primary;
-  }
-
-  .text {
-    align-self: center;
+  .position-end {
+    margin-top: auto;
   }
 }
 
-.btn-tab:hover {
-  background-color: $color-background;
-}
+.gameroom-row {
+  display: flex;
+  align-items: center;
 
-.btn-tab-active {
-  background-color: $color-background;
-  .highlight {
-    background-color: $color-primary;
+  .button {
+    display: flex;
+    justify-self: center;
+    padding-bottom: 1rem;
+    padding-right: 1rem;
   }
 }

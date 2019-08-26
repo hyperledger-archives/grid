@@ -1,0 +1,75 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+.card-container {
+  display: flex;
+  @include overlay(1);
+  @include shadow(1);
+  @include rounded-border;
+  padding: 1rem;
+  margin: 1rem;
+
+
+  .header {
+    display: flex;
+    border-right: 1px solid $color-border;
+    padding-right: 2rem;
+  }
+
+  .body {
+    display: flex;
+    flex-direction: row;
+
+    .data {
+      padding: .5rem 1rem 0;
+
+      .key {
+        text-transform: uppercase;
+        font-weight: $fw-bold;
+        font-size: .8rem;
+        color: $color-text-med;
+        padding-bottom: .5rem;
+      }
+
+      .value {
+        font-size: .9rem;
+        padding-left: .5rem;
+        list-style: none;
+
+        &.breakable-value {
+          word-break: break-all;
+        }
+
+
+        .list-value {
+          padding-bottom: .5rem;
+        }
+      }
+    }
+  }
+
+  .actions {
+    margin-left: auto;
+    border-left: 1px solid $color-border;
+    padding-left: 2rem;
+    & > :last-child {
+      margin-top: .5rem;
+    }
+  }
+
+  &:hover {
+    @include overlay(4);
+    @include shadow(4);
+  }
+}

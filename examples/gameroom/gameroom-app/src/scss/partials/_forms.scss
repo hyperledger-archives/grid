@@ -26,8 +26,10 @@ input:focus {
 
 .auth-container {
   display: flex;
+  height: 100%;
+  width: 100%;
   justify-content: center;
-  align-self: center;
+  align-items: center;
 }
 
 .auth-wrapper {
@@ -36,19 +38,18 @@ input:focus {
 }
 
 .auth-form {
+  @include overlay(4);
+  @include shadow(4);
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: $color-base;
   padding: 2rem;
   @include rounded-border;
-  border: 1px solid $color-border;
 
   .form-label {
     width: 100%;
     display: flex;
     flex-direction: column;
-    color: $color-text;
     padding-bottom: 1rem;
 
     .form-input {
@@ -56,7 +57,7 @@ input:focus {
       height: 3rem;
       padding-left: .5em;
       margin-top: .25rem;
-      font-size: 1.2em;
+      font-size: 1.2rem;
       outline: none;
       @include rounded-border;
     }

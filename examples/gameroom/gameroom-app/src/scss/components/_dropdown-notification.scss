@@ -13,10 +13,11 @@
 // limitations under the License.
 
 .dropdown-notification {
+  @include overlay(1);
   display: flex;
   padding: .5rem;
-  border-bottom: 1px solid $color-border;
-  font-size: .8rem;
+  border-top: 1px solid $color-border;
+  font-size: .9rem;
   cursor: pointer;
 
   .logo-wrapper {
@@ -44,23 +45,27 @@
       padding-top: .4rem;
 
       .icon {
-        font-size: .8rem;
+        font-size: .9rem;
         color: $color-primary;
         padding-right: .2rem;
       }
 
       .timestamp {
-        color: $color-text-tertiary;
+        color: $color-text-disabled;
       }
     }
   }
 
   &.new {
-    background-color: darken($color-background, 2%);
+    @include overlay(6);
+
+    &:hover {
+      @include overlay(12);
+    }
   }
 
   &:hover {
-    background-color: $color-background;
+    @include overlay(4);
   }
 
   &:last-child {

@@ -26,6 +26,9 @@
 }
 
 .m-modal-wrapper {
+  background-color: $color-surface;
+  @include shadow(4);
+  @include rounded-border;
   display: flex;
   flex-direction: column;
   width: 500px;
@@ -33,28 +36,27 @@
 }
 
 .m-modal-header {
-  background-color: $color-background;
+  @include overlay(12);
   @include rounded-border-top;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 20px;
+  padding: 1rem;
   border-bottom: 1px solid $color-border;
 }
 
 .m-modal-close {
   i {
     color: inherit;
-    font-size: 1.5em;
+    font-size: 2rem;
   }
 }
 
 .m-modal-body {
-  background-color: $color-background;
+  @include overlay(1);
   @include rounded-border-bottom;
   flex: 1;
-  font-size: 14px;
-  padding: 20px;
+  padding: 1.2rem;
   overflow-y: visible;
   div {
     margin: 0;

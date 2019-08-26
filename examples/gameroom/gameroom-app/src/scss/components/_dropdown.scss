@@ -27,7 +27,7 @@
       border: none;
 
       .icon {
-        color: $color-text-secondary;
+        color: $color-text-med;
         font-size: 2rem;
       }
 
@@ -49,26 +49,30 @@
     }
 
     .dropdown-menu {
-      background-color: $color-base;
-      border: 1px solid $color-border;
+      background-color: $color-surface;
+      @include shadow(4);
       @include rounded-border;
       position: absolute;
       z-index: 1;
       right: -1rem;
       top: 3rem;
-      width: 280px;
-      border: 1px solid $color-border;
+      width: 28rem;
 
       .dropdown-header {
-        color: $color-text-secondary;
+        @include rounded-border-top;
+        @include overlay(24);
+        color: $color-text-med;
         text-align: center;
-        padding: .5rem;
+        padding: 1rem;
+
+        .title {
+          color: $color-text-high;
+        }
       }
 
       .dropdown-body {
         overflow: auto;
         max-height: 80vh;
-        border-top: 1px solid $color-border;
       }
     }
   }

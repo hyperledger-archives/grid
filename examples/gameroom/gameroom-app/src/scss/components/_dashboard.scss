@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-.footer {
+.dashboard-container {
   display: flex;
-  overflow: hidden;
-  white-space: nowrap;
-  align-items: center;
-  background-color: $color-base;
-  color: $color-text-tertiary;
-  border-top: 1px solid $color-border;
+  height: 100vh;
   width: 100%;
-  font-size: .75em;
-  padding-left: .5em
+
+  .sidebar {
+    flex: 0 0 auto;
+  }
+
+  .dashboard-view {
+    flex: 1 1 auto;
+    overflow: auto;
+  }
 }

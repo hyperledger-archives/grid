@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import {
   GameroomNotification,
   GameroomProposal,
@@ -22,7 +22,6 @@ import {
   NewGameroomProposal,
   Node,
 } from './models';
-import router from '@/router';
 
 export const gameroomAPI = axios.create({
   baseURL: '/api',
@@ -53,7 +52,6 @@ export async function userCreate(
   user: User,
 ): Promise<UserAuthResponse> {
   const response = await gameroomAPI.post('/users', user);
-  router.push('/');
   return response.data as UserAuthResponse;
 }
 
@@ -61,7 +59,6 @@ export async function userAuthenticate(
   userCredentials: UserCredentials,
 ): Promise<UserAuthResponse> {
     const response = await gameroomAPI.post('/users/authenticate', userCredentials);
-    router.push('/');
     return response.data as UserAuthResponse;
 }
 

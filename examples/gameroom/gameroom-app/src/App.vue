@@ -17,20 +17,16 @@ limitations under the License.
 <template>
   <div id="app">
     <app-navbar></app-navbar>
-    <router-view/>
-    <app-footer></app-footer>
+    <router-view id="main-router-view" />
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import AppFooter from '@/components/AppFooter.vue';
 import AppNavbar from '@/components/AppNavbar.vue';
 
 @Component({
-  components: {
-    AppFooter, AppNavbar,
-  },
+  components: { AppNavbar },
 })
 export default class App extends Vue {}
 </script>

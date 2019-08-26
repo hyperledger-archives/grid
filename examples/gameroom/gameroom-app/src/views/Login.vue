@@ -89,6 +89,7 @@ export default class Login extends Vue {
         email: this.email,
         hashedPassword: crypto.hashSHA256(this.email, this.password),
       });
+      this.$router.push({ name: 'dashboard' });
     } catch (e) {
       this.error = e.message;
     }

@@ -16,30 +16,40 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 14px;
+  background-color: $color-surface;
+  color: $color-text-high;
+}
+
 html, body {
   height: 100%;
 }
 
 #app {
   font-family: $ff-ss;
-  color: $color-text;
-  background-color: $color-background;
-  display: grid;
-  grid-template-columns: auto;
-  grid-template-rows: 76px 1fr 1.3em;
-  min-height: 100vh;
+  display: flex;
+  height: 100vh;
+
+  #main-router-view {
+    padding-top: 74px;
+  }
 }
 
 h1 {
-  color: $color-text;
   font-weight: $fw-bold;
   text-align: center;
 }
 
-h3 {
-  color: $color-text;
-  line-height: 1.4;
+h2 {
   font-size: 1.2rem;
+  font-weight: $fw-bold;
+  padding: 0;
+  margin: 0;
+}
+
+h3 {
+  line-height: 1.4;
   font-weight: $fw-medium;
   margin: 0;
 }

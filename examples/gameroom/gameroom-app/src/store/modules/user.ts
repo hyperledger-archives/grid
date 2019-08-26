@@ -29,6 +29,9 @@ const userState = {
 };
 
 const getters = {
+  getPublicKey(state: UserState) {
+    return state.user.publicKey;
+  },
   isLoggedIn(state: UserState) {
     return state.user.encryptedPrivateKey !== '';
   },
