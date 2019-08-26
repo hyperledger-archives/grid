@@ -35,3 +35,14 @@ toml = "0.4.8"
 protobuf = "2"
 openssl = "0.10"
 tempdir = "0.3"
+
+[package.metadata.deb]
+maintainer = "The Splinter Team"
+depends = "$auto"
+assets = [
+    ["target/release/splinterd", "/usr/bin/splinterd", "755"]
+]
+maintainer-scripts = "packaging/ubuntu"
+extended-description = """\
+Splinter is a blockchain-inspired networking platform for distributed \
+communications between organizations."""
