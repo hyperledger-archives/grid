@@ -278,3 +278,18 @@ fn list_gamerooms_from_db(
 
     Ok((gamerooms, gameroom_count))
 }
+
+fn fetch_gameroom_from_db(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: &str,
+) -> Result<ApiGameroom, RestApiResponseError> {
+    if let Some(gameroom) =
+        helpers::fetch_gameroom_with_status(&*pool.get()?, "ACCECPTED", circuit_id)?
+    {
+        return Ok(ApiGameroom::from(gameroom));
+    }
+    Err(RestApiResponseError::NotFound(format!(
+        "Gameroom {}",
+        circuit_id
+    )))
+}
