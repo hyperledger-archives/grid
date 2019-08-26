@@ -15,6 +15,7 @@ use std::collections::HashMap;
 
 use actix_web::{web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
+use gameroom_database::models::Gameroom;
 use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
@@ -29,6 +30,8 @@ use protobuf::Message;
 use uuid::Uuid;
 
 use crate::rest_api::RestApiResponseError;
+
+use super::Paging;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGameroomForm {
@@ -52,6 +55,35 @@ pub struct MemberMetadata {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApplicationMetadata {
     alias: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GameroomListResponse {
+    data: Vec<ApiGameroom>,
+    paging: Paging,
+}
+
+#[derive(Debug, Serialize)]
+struct ApiGameroom {
+    circuit_id: String,
+    authorization_type: String,
+    persistence: String,
+    routes: String,
+    circuit_management_type: String,
+    application_metadata: Vec<u8>,
+}
+
+impl ApiGameroom {
+    fn from(db_gameroom: Gameroom) -> Self {
+        Self {
+            circuit_id: db_gameroom.circuit_id.to_string(),
+            authorization_type: db_gameroom.authorization_type.to_string(),
+            persistence: db_gameroom.persistence.to_string(),
+            routes: db_gameroom.routes.to_string(),
+            circuit_management_type: db_gameroom.circuit_management_type.to_string(),
+            application_metadata: db_gameroom.application_metadata.to_vec(),
+        }
+    }
 }
 
 pub fn propose_gameroom(
