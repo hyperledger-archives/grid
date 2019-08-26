@@ -40,6 +40,8 @@ tempdir = "0.3"
 maintainer = "The Splinter Team"
 depends = "$auto"
 assets = [
+    ["packaging/nodes.yaml.example", "/etc/splinter/nodes.yaml.example", "644"],
+    ["packaging/splinterd.toml.example", "/etc/splinter/splinterd.toml.example", "644"],
     ["target/release/splinterd", "/usr/bin/splinterd", "755"]
 ]
 maintainer-scripts = "packaging/ubuntu"

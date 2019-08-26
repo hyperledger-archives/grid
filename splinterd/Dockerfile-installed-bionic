@@ -68,6 +68,7 @@ RUN rm target/release/splinterd* target/release/deps/splinterd*
 # Copy over source files
 COPY splinterd/src ./src
 COPY splinterd/api ./api
+COPY splinterd/packaging/ ./packaging
 
 RUN cargo install cargo-deb
 
