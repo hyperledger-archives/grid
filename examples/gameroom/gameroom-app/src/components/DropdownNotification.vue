@@ -18,9 +18,6 @@ limitations under the License.
   <div :class="{ 'new' : !notification.read }"
         class="dropdown-notification"
         @click="markAsRead">
-    <div class="logo-wrapper">
-      <img class="logo" :src="getLogo(notification.org)" alt="">
-    </div>
     <div class="text-wrapper">
       <span class="text">
         <span class="bold">{{ notification.org }}</span>
@@ -55,14 +52,9 @@ export default class DropdownNotification extends Vue {
   @Prop()
   notification!: GameroomNotification;
 
-  getLogo(org: string) {
-    const images = require.context('../assets/logos', false, /\.png$/);
-    return images('./' + org + '.png');
-  }
-
   formatText(notification: GameroomNotification) {
-    if (notification.notification_type === 'invite') {
-      return ' has invited you to a new gameroom: ';
+    if (notification.notification_type === 'gameroom_proposal') {
+      return 'Someone has invited you to a new gameroom: ';
     }
     return '';
   }
@@ -72,7 +64,7 @@ export default class DropdownNotification extends Vue {
   }
 
   markAsRead() {
-    this.$store.dispatch('notifications/markReadMock', this.notification.id);
+    this.$store.dispatch('notifications/markRead', this.notification.id);
   }
 }
 </script>

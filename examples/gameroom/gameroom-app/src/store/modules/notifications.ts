@@ -19,33 +19,6 @@ export interface NotificationState {
   notifications: GameroomNotification[];
 }
 
-const mockNotifications: GameroomNotification[] = [
-  {
-    id: 1,
-    notification_type: 'invite',
-    org: 'ACME Corporation',
-    target: 'acme:bubba',
-    timestamp: 1565735940,
-    read: false,
-  },
-  {
-    id: 2,
-    notification_type: 'invite',
-    org: 'ACME Corporation',
-    target: 'acme:asdforg',
-    timestamp: 1565732000,
-    read: false,
-  },
-  {
-    id: 3,
-    notification_type: 'invite',
-    org: 'Bubba Bakery',
-    target: 'bubba:asdforg',
-    timestamp: 1465732000,
-    read: false,
-  },
-];
-
 const notificationState = {
   notifications: ([] as GameroomNotification[]),
 };
@@ -73,17 +46,6 @@ const actions = {
   async markRead({ commit }: any, id: string) {
     const update = await markRead(id);
     if (update) {
-      commit('updateNotification', update);
-    }
-  },
-  listNotificationsMock({ commit }: any) {
-    commit('setNotifications', mockNotifications);
-  },
-  markReadMock({ commit }: any, id: number) {
-    const update = mockNotifications.find(
-      (notification) => notification.id === id);
-    if (update) {
-      update.read = true;
       commit('updateNotification', update);
     }
   },
