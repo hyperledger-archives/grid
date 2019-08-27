@@ -501,6 +501,94 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /gamerooms:
+    get:
+      tags:
+        - Gamerooms
+      description: List Gamerooms created from accepted gameroom proposals
+      parameters:
+        - name: offset
+          in: query
+          description: paging offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: maximum number of items to return (max 100)
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        200:
+          description: list of Gamerooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiGameroom'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /gamerooms/{circuit_id}:
+    get:
+      tags:
+        - Gamerooms
+      description: Fetch a Gameroom by the circuit id
+      parameters:
+        - name: circuit_id
+          in: path
+          description: identity of the Gameroom circuit to fetch
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Gameroom
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiGameroom'
+        404:
+          description: The Gameroom with {circuit_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Error:
@@ -545,6 +633,24 @@ components:
         endpoint:
           type: string
 
+    ApiGameroom:
+      type: object
+      properties:
+        circuit_id:
+          type: string
+        authorization_type:
+          type: string
+        persistence:
+          type: string
+        routes:
+          type: string
+        circuit_management_type:
+          type: string
+        application_metadata:
+          description: serialized bytes of metadata
+          type: array
+          items:
+            type: integer
 
     Member:
       type: object
