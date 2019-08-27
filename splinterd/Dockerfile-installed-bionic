@@ -79,8 +79,8 @@ RUN cargo deb
 
 FROM ubuntu:bionic
 
-COPY --from=builder /build/splinterd/target/debian/splinterd_*.deb /tmp
+COPY --from=builder /build/splinterd/target/debian/splinter-daemon*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/splinterd_*.deb || true \
+ && dpkg -i /tmp/splinter-daemon*.deb || true \
  && apt-get -f -y install
