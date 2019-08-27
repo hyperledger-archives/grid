@@ -72,10 +72,10 @@ RUN cargo deb
 # -------------=== private_xo docker build ===-------------
 FROM ubuntu:bionic
 
-COPY --from=BUILDER /build/examples/private_xo/target/debian/private-xo*.deb /tmp
+COPY --from=BUILDER /build/examples/private_xo/target/debian/private-xo-service*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/private-xo*.deb || true \
+ && dpkg -i /tmp/private-xo-service*.deb || true \
  && apt-get -f -y install
 
 EXPOSE 8000
