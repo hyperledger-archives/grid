@@ -17,6 +17,7 @@ name = "pcounter"
 version = "0.3.1"
 authors = ["Cargill Incorporated"]
 edition = "2018"
+license = "Apache-2.0"
 
 [dependencies]
 clap = "2.32"
