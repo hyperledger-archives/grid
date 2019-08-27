@@ -268,6 +268,10 @@ impl SplinterState {
     pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
         self.circuit_directory.circuit(circuit_name)
     }
+
+    pub fn has_circuit(&self, circuit_name: &str) -> bool {
+        self.circuit_directory.has_circuit(circuit_name)
+    }
 }
 
 #[derive(Debug)]

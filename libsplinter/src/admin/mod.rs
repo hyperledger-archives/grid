@@ -18,12 +18,13 @@ pub mod messages;
 mod shared;
 
 use std::fmt::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
 use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::{Future, IntoFuture};
 use crate::network::{
@@ -55,6 +56,7 @@ impl AdminService {
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
+        splinter_state: Arc<RwLock<SplinterState>>,
     ) -> Result<Self, ServiceError> {
         let new_service = Self {
             service_id: admin_service_id(node_id),
@@ -63,6 +65,7 @@ impl AdminService {
                 orchestrator,
                 peer_connector,
                 authorization_inquistor,
+                splinter_state,
             ))),
             consensus: None,
         };
@@ -342,13 +345,17 @@ mod tests {
     use super::*;
 
     use std::collections::VecDeque;
+    use std::path::PathBuf;
     use std::sync::mpsc::{channel, Sender};
     use std::time::{Duration, Instant};
+    use tempdir::TempDir;
 
+    use crate::circuit::{directory::CircuitDirectory, SplinterState};
     use crate::mesh::Mesh;
     use crate::network::{auth::AuthorizationCallback, Network};
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
+    use crate::storage::get_storage;
     use crate::transport::inproc::InprocTransport;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
@@ -363,6 +370,18 @@ mod tests {
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
+        // create temp directory
+        let temp_dir = TempDir::new("test_circuit_write_file").unwrap();
+        let temp_dir = temp_dir.path().to_path_buf();
+
+        // setup empty state filename
+        let path = setup_storage(temp_dir);
+        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
+        let circuit_directory = storage.write().clone();
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            path.to_string(),
+            circuit_directory,
+        )));
         let orchestrator =
             ServiceOrchestrator::new(vec![], "".to_string(), InprocTransport::default());
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
@@ -371,6 +390,7 @@ mod tests {
             orchestrator,
             peer_connector,
             Box::new(MockAuthInquisitor),
+            state,
         )
         .expect("Service should have been created correctly");
 
@@ -385,6 +405,7 @@ mod tests {
             .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         proposed_circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         proposed_circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
+        proposed_circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
         proposed_circuit.set_circuit_management_type("test app auth handler".into());
 
         proposed_circuit.set_members(protobuf::RepeatedField::from_vec(vec![
@@ -404,8 +425,8 @@ mod tests {
             .expect("The proposal was not handled correctly");
 
         // wait up to 1 second for the proposed circuit message
-        let mut recipient;
-        let mut message;
+        let recipient;
+        let message;
         let start = Instant::now();
         loop {
             if Instant::now().duration_since(start) > Duration::from_secs(1) {
@@ -611,5 +632,14 @@ mod tests {
             // are peered.
             Ok(())
         }
+    }
+
+    fn setup_storage(mut temp_dir: PathBuf) -> String {
+        // Creat the temp file
+        temp_dir.push("circuits.yaml");
+        let path = temp_dir.to_str().unwrap().to_string();
+
+        // Write out the mock state file to the temp directory
+        path
     }
 }

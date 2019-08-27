@@ -20,6 +20,8 @@ use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
+use super::error::MarshallingError;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CreateCircuit {
     pub circuit_id: String,
@@ -27,6 +29,7 @@ pub struct CreateCircuit {
     pub members: Vec<SplinterNode>,
     pub authorization_type: AuthorizationType,
     pub persistence: PersistenceType,
+    pub durability: DurabilityType,
     pub routes: RouteType,
     pub circuit_management_type: String,
     pub application_metadata: Vec<u8>,
@@ -66,6 +69,15 @@ impl CreateCircuit {
             }
         };
 
+        let durability = match proto.get_durability() {
+            admin::Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurabilty,
+            admin::Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
+                return Err(MarshallingError::UnsetField(
+                    "Unset durability type".to_string(),
+                ));
+            }
+        };
+
         let routes = match proto.get_routes() {
             admin::Circuit_RouteType::ANY_ROUTE => RouteType::Any,
             admin::Circuit_RouteType::UNSET_ROUTE_TYPE => {
@@ -87,6 +99,7 @@ impl CreateCircuit {
                 .collect::<Result<Vec<SplinterNode>, MarshallingError>>()?,
             authorization_type,
             persistence,
+            durability,
             routes,
             circuit_management_type: proto.take_circuit_management_type(),
             application_metadata: proto.take_application_metadata(),
@@ -125,6 +138,11 @@ impl CreateCircuit {
                 circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
             }
         };
+        match self.durability {
+            DurabilityType::NoDurabilty => {
+                circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
+            }
+        };
 
         match self.routes {
             RouteType::Any => circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE),
@@ -145,6 +163,11 @@ pub enum AuthorizationType {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum PersistenceType {
     Any,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum DurabilityType {
+    NoDurabilty,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -329,25 +352,4 @@ pub enum AdminServiceEvent {
     ProposalVote(CircuitProposalVote),
     ProposalAccepted(CircuitProposal),
     ProposalRejected(CircuitProposal),
-}
-
-#[derive(Debug)]
-pub enum MarshallingError {
-    UnsetField(String),
-}
-
-impl std::error::Error for MarshallingError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            MarshallingError::UnsetField(_) => None,
-        }
-    }
-}
-
-impl std::fmt::Display for MarshallingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
-        }
-    }
 }

@@ -15,7 +15,8 @@
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
 use libsplinter::admin::messages::{
-    AuthorizationType, CreateCircuit, PersistenceType, RouteType, SplinterNode, SplinterService,
+    AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
+    SplinterService,
 };
 use libsplinter::node_registry::Node;
 use uuid::Uuid;
@@ -99,6 +100,7 @@ pub fn propose_gameroom(
         members,
         authorization_type: AuthorizationType::Trust,
         persistence: PersistenceType::Any,
+        durability: DurabilityType::NoDurabilty,
         routes: RouteType::Any,
         circuit_management_type: "gameroom".to_string(),
         application_metadata,
