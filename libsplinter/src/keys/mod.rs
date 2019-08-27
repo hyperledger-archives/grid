@@ -25,6 +25,7 @@
 //! and modified.
 
 mod error;
+pub mod insecure;
 
 use std::collections::HashMap;
 use std::fmt::{self, Write};
