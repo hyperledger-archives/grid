@@ -57,10 +57,10 @@ RUN cargo deb
 # -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic
 
-COPY --from=BUILDER /build/cli/target/debian/pcounter*.deb /tmp
+COPY --from=BUILDER /build/cli/target/debian/private-counter-cli*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/pcounter*.deb || true \
+ && dpkg -i /tmp/private-counter-cli*.deb || true \
  && apt-get -f -y install
 
 EXPOSE 8000

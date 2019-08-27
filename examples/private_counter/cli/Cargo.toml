@@ -13,11 +13,15 @@
 # limitations under the License.
 
 [package]
-name = "pcounter"
+name = "private-counter-cli"
 version = "0.3.1"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+
+[[bin]]
+name = "pcounter"
+path = "src/main.rs"
 
 [dependencies]
 clap = "2.32"
