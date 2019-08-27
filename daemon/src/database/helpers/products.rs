@@ -43,11 +43,43 @@ pub fn insert_product_property_values(
     property_values: &[NewProductPropertyValue],
 ) -> QueryResult<()> {
     for value in property_values {
-        update_prod_property_values(conn, &value.property_name, value.start_block_num)?;
+        update_prod_property_values(conn, &value.product_id, value.start_block_num)?;
     }
 
     insert_into(product_property_value::table)
         .values(property_values)
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn delete_product(
+    conn: &PgConnection,
+    address: &str,
+    current_block_num: i64,
+) -> QueryResult<()> {
+    update(product::table)
+        .filter(
+            product::product_address
+                .eq(address)
+                .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .set(product::end_block_num.eq(current_block_num))
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn delete_product_property_values(
+    conn: &PgConnection,
+    address: &str,
+    current_block_num: i64,
+) -> QueryResult<()> {
+    update(product_property_value::table)
+        .filter(
+            product_property_value::product_address
+                .eq(address)
+                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+        )
+        .set(product_property_value::end_block_num.eq(current_block_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -70,13 +102,13 @@ fn update_prod_end_block_num(
 
 fn update_prod_property_values(
     conn: &PgConnection,
-    property_name: &str,
+    product_id: &str,
     current_block_num: i64,
 ) -> QueryResult<()> {
     update(product_property_value::table)
         .filter(
-            product_property_value::property_name
-                .eq(property_name)
+            product_property_value::product_id
+                .eq(product_id)
                 .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
         )
         .set(product_property_value::end_block_num.eq(current_block_num))

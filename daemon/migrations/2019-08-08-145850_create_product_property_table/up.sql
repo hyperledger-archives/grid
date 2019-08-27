@@ -16,6 +16,7 @@
 CREATE TABLE IF NOT EXISTS product_property_value (
     id BIGSERIAL PRIMARY KEY,
     product_id VARCHAR(256) NOT NULL,
+    product_address VARCHAR(70) NOT NULL,
     property_name TEXT NOT NULL,
     data_type TEXT NOT NULL,
     bytes_value BYTEA,
