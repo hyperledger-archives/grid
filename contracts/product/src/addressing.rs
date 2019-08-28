@@ -15,15 +15,16 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
-const STANDARD: &str = "01"; // Indicates GS1 standard
-const PRODUCT: &str = "02"; // Indicates product under GS1 standard
-const PRODUCT_PREFIX: &str = "621dee"; // Grid prefix
+const GRID_ADDRESS_LEN: usize = 70;
+const GS1_NAMESPACE: &str = "01"; // Indicates GS1 standard
+const PRODUCT_NAMESPACE: &str = "02"; // Indicates product under GS1 standard
+const GRID_NAMESPACE: &str = "621dee"; // Grid prefix
 pub const PIKE_NAMESPACE: &str = "cad11d";
 pub const PIKE_AGENT_NAMESPACE: &str = "00";
 pub const PIKE_ORG_NAMESPACE: &str = "01";
 
 pub fn get_product_prefix() -> String {
-    PRODUCT_PREFIX.to_string()
+    GRID_NAMESPACE.to_string()
 }
 
 pub fn hash(to_hash: &str, num: usize) -> String {
@@ -35,7 +36,11 @@ pub fn hash(to_hash: &str, num: usize) -> String {
 }
 
 pub fn make_product_address(product_id: &str) -> String {
-    get_product_prefix() + PRODUCT + STANDARD + &hash(product_id, 70)
+    let grid_product_gs1_prefix = get_product_prefix() + PRODUCT_NAMESPACE + GS1_NAMESPACE;
+    let grid_product_gs1_prefix_len = grid_product_gs1_prefix.chars().count();
+    let hash_len = GRID_ADDRESS_LEN - grid_product_gs1_prefix_len;
+
+    grid_product_gs1_prefix + &hash(product_id, hash_len)
 }
 
 /// Computes the address a Pike Agent is stored at based on its public_key

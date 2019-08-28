@@ -132,7 +132,7 @@ impl ProductTransactionHandler {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
-        // Check that the org owns the GS1 company prefix in the product_id
+        // Check that the organization ID exists in state
         let org = match state.get_organization(payload.owner())? {
             Some(org) => org,
             None => {
