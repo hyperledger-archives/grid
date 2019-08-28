@@ -15,7 +15,9 @@
 use std::time::Duration;
 
 use actix::prelude::*;
+use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
+use futures::{Future, IntoFuture};
 
 pub struct GameroomWebSocket {}
 
@@ -53,4 +55,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for GameroomWebSocket {
             ws::Message::Nop => (),
         };
     }
+}
+
+pub fn connect_socket(
+    req: HttpRequest,
+    stream: web::Payload,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(ws::start(GameroomWebSocket::new(), &req, stream).into_future())
 }
