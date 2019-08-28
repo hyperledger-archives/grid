@@ -30,14 +30,10 @@ use libsplinter::protos::admin::{
 use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use super::{
+    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+};
 use crate::rest_api::RestApiResponseError;
-
-#[derive(Debug, Serialize)]
-struct ProposalListResponse {
-    data: Vec<ApiGameroomProposal>,
-    paging: Paging,
-}
 
 #[derive(Debug, Serialize)]
 struct ApiGameroomProposal {
@@ -96,15 +92,20 @@ pub fn fetch_proposal(
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || get_proposal_from_db(pool, *proposal_id)).then(|res| match res {
-            Ok(proposal) => Ok(HttpResponse::Ok().json(proposal)),
+            Ok(proposal) => Ok(HttpResponse::Ok().json(SuccessResponse::new(proposal))),
             Err(err) => match err {
-                error::BlockingError::Error(err) => match err {
-                    RestApiResponseError::NotFound(err) => {
-                        Ok(HttpResponse::NotFound().json(err.to_string()))
+                error::BlockingError::Error(err) => {
+                    match err {
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        _ => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
                     }
-                    _ => Ok(HttpResponse::BadRequest().json(err.to_string())),
-                },
-                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+                }
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )
@@ -122,7 +123,10 @@ fn get_proposal_from_db(
         )?;
         return Ok(ApiGameroomProposal::from(proposal, members));
     }
-    Err(RestApiResponseError::NotFound(format!("Proposal {}", id)))
+    Err(RestApiResponseError::NotFound(format!(
+        "Proposal with id {} not found",
+        id
+    )))
 }
 
 pub fn list_proposals(
@@ -149,12 +153,12 @@ pub fn list_proposals(
                         "api/proposals?",
                         query_count as usize,
                     );
-                    Ok(HttpResponse::Ok().json(ProposalListResponse {
-                        data: proposals,
-                        paging: paging_info,
-                    }))
+                    Ok(HttpResponse::Ok().json(SuccessResponse::list(proposals, paging_info)))
                 }
-                Err(err) => Ok(HttpResponse::InternalServerError().json(err.to_string())),
+                Err(err) => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         ),
     )
@@ -201,28 +205,28 @@ pub fn proposal_vote(
     Box::new(
         web::block(move || check_proposal_exists(*proposal_id, pool)).then(|res| match res {
             Ok(()) => match make_payload(vote.into_inner()) {
-                Ok(bytes) => {
-                    Ok(HttpResponse::Ok().json(json!({ "data": { "payload_bytes": bytes } })))
-                }
+                Ok(bytes) => Ok(HttpResponse::Ok()
+                    .json(SuccessResponse::new(json!({ "payload_bytes": bytes })))),
                 Err(err) => {
                     debug!("Failed to prepare circuit management payload {}", err);
-                    Ok(HttpResponse::InternalServerError()
-                        .json(json!({ "message": "Failed to submit vote" })))
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
             },
             Err(err) => match err {
-                error::BlockingError::Error(err) => match err {
-                    RestApiResponseError::NotFound(err) => {
-                        Ok(HttpResponse::NotFound().json(json!({ "message": err.to_string() })))
+                error::BlockingError::Error(err) => {
+                    match err {
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        RestApiResponseError::BadRequest(err) => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                        _ => Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error())),
                     }
-                    RestApiResponseError::BadRequest(err) => {
-                        Ok(HttpResponse::BadRequest().json(json!({ "message": err.to_string() })))
-                    }
-                    _ => Ok(HttpResponse::InternalServerError()
-                        .json(json!({ "message": format!("{}", err) }))),
-                },
-                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
-                    .json(json!({ "message": "Failed to submit vote"}))),
+                }
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )

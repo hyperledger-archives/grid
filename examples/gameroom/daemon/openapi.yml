@@ -283,8 +283,10 @@ paths:
                     $ref: '#/components/schemas/Paging'
         500:
           description: Internal server error occurred
-        503:
-          description: Server unavailable
+          content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
 
   /proposals/{proposal_id}:
     get:
@@ -744,30 +746,17 @@ components:
     Vote:
       type: object
       properties:
-        ballot:
-          type: object
-          properties:
-            circuit_id:
-              type: string
-              example: circuit-000
-            circuit_hash:
-              type: string
-              example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
-            vote:
-              type: string
-              enum:
-                - Accept
-                - Reject
-        ballot_signature:
-          type: array
-          items:
-            type: integer
-          example: [65, 65, 65, 65, 66, 51, 78]
-        signer_public_key:
-          type: array
-          items:
-            type: integer
-          example: [73, 119, 65, 65, 65, 81]
+        circuit_id:
+          type: string
+          example: circuit-000
+        circuit_hash:
+          type: string
+          example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
+        vote:
+          type: string
+          enum:
+            - Accept
+            - Reject
 
     ApiNotification:
       type: object
