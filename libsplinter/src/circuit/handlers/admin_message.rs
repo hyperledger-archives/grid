@@ -494,7 +494,7 @@ mod tests {
             Ok(())
         }
 
-        fn box_clone(&self) -> Box<Sender<SendRequest>> {
+        fn box_clone(&self) -> Box<dyn Sender<SendRequest>> {
             Box::new(MockNetworkSender {
                 sent: self.sent.clone(),
             })

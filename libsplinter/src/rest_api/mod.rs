@@ -317,7 +317,7 @@ mod test {
 
     #[test]
     fn test_create_handle() {
-        let handler = Resource::new(Method::Get, "/test", |_: HttpRequest, _: web::Payload| {
+        let _handler = Resource::new(Method::Get, "/test", |_: HttpRequest, _: web::Payload| {
             Box::new(Response::Ok().finish().into_future())
         });
     }
