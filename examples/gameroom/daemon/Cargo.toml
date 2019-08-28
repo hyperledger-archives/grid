@@ -22,6 +22,7 @@ license = "Apache-2.0"
 [dependencies]
 actix = { version = "0.8", default-features = false }
 actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
+actix-web-actors = "1.0"
 flate2 = "1.0.10"
 awc = "0.2"
 bcrypt = "0.5"
