@@ -17,22 +17,17 @@ syntax = "proto3";
 message ScabbardMessage {
     enum Type {
         UNSET = 0;
-        SERVICE_CONNECTED = 1;
-        SERVICE_DISCONNECTED = 2;
-        CONSENSUS_MESSAGE = 3;
-        PROPOSED_BATCH = 4;
+        CONSENSUS_MESSAGE = 1;
+        PROPOSED_BATCH = 2;
     }
 
     Type message_type = 1;
 
-    // Set if type is SERVICE_CONNECTED or SERVICE_DISCONNECTED
-    string service_id = 2;
-
     // Set if type is CONSENSUS_MESSAGE
-    bytes consensus_message = 3;
+    bytes consensus_message = 2;
 
     // Set if type is PROPOSED_BATCH
-    ProposedBatch proposed_batch = 4;
+    ProposedBatch proposed_batch = 3;
 }
 
 message ProposedBatch {

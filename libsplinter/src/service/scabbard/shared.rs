@@ -29,8 +29,7 @@ pub struct ScabbardShared {
     /// Used to send messages to other services; set when the service is started and unset when the
     /// service is stopped.
     network_sender: Option<Box<dyn ServiceNetworkSender>>,
-    /// List of service IDs that this service is configured to communicate with; this can change as
-    /// other services connect and disconnect.
+    /// List of service IDs that this service is configured to communicate and share state with.
     peer_services: HashSet<String>,
     /// Tracks which batches are currently being evaluated, indexed by corresponding proposal IDs.
     proposed_batches: HashMap<ProposalId, BatchPair>,
@@ -75,14 +74,6 @@ impl ScabbardShared {
 
     pub fn peer_services(&self) -> &HashSet<String> {
         &self.peer_services
-    }
-
-    pub fn add_peer_service(&mut self, service_id: String) -> bool {
-        self.peer_services.insert(service_id)
-    }
-
-    pub fn remove_peer_service(&mut self, service_id: &str) -> bool {
-        self.peer_services.remove(service_id)
     }
 
     pub fn add_proposed_batch(
