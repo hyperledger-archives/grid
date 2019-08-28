@@ -36,7 +36,6 @@ pub struct ServiceDefinition {
     pub circuit: String,
     pub service_id: String,
     pub service_type: String,
-    pub peer_services: Vec<String>,
 }
 
 /// Handle used to shutdown the service processor that is running a service
@@ -94,7 +93,6 @@ impl ServiceOrchestrator {
         let service = factory.create(
             service_definition.service_id.clone(),
             service_definition.service_type.as_str(),
-            service_definition.peer_services.clone(),
             args,
         )?;
 

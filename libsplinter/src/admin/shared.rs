@@ -456,23 +456,10 @@ impl AdminServiceShared {
 
         // Start all services
         for service in services {
-            let peer_services = create_circuit
-                .roster
-                .iter()
-                .filter_map(|peer_service| {
-                    if peer_service.service_id != service.service_id {
-                        Some(peer_service.service_id.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
             let service_definition = ServiceDefinition {
                 circuit: create_circuit.circuit_id.clone(),
                 service_id: service.service_id.clone(),
                 service_type: service.service_type.clone(),
-                peer_services,
             };
 
             self.orchestrator

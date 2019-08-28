@@ -21,12 +21,11 @@ pub trait ServiceFactory: Send {
     /// Return the available service types that this factory can create.
     fn available_service_types(&self) -> &[String];
 
-    /// Create a Service instance of a given type, with the given arguments.
+    /// Create a Service instance with the given ID, of the given type, with the given arguments.
     fn create(
         &self,
         service_id: String,
         service_type: &str,
-        peer_services: Vec<String>,
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError>;
 }
