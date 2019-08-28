@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS gameroom_service (
   service_id                TEXT        NOT NULL,
   service_type              TEXT        NOT NULL,
   allowed_nodes             TEXT[][]    NOT NULL,
+  arguments                 JSON []     NOT NULL,
   status                    TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   updated_time              TIMESTAMP   NOT NULL,

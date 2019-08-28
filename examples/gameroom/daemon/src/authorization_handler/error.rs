@@ -100,7 +100,7 @@ impl From<gameroom_database::DatabaseError> for AppAuthHandlerError {
 
 impl From<diesel::result::Error> for AppAuthHandlerError {
     fn from(err: diesel::result::Error) -> Self {
-        AppAuthHandlerError::DatabaseError(format!("Error perfoming query: {}", err))
+        AppAuthHandlerError::DatabaseError(format!("Error performing query: {}", err))
     }
 }
 

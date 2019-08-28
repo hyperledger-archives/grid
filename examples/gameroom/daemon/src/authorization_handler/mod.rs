@@ -611,6 +611,17 @@ fn parse_splinter_services(
             service_id: service.service_id.to_string(),
             service_type: service.service_type.to_string(),
             allowed_nodes: service.allowed_nodes.clone(),
+            arguments: service
+                .arguments
+                .clone()
+                .iter()
+                .map(|(key, value)| {
+                    json!({
+                        "key": key,
+                        "value": value
+                    })
+                })
+                .collect(),
             status: "Pending".to_string(),
             created_time: timestamp,
             updated_time: timestamp,
@@ -653,6 +664,9 @@ fn get_pending_proposal_with_circuit_id(
 #[cfg(all(feature = "test-authorization-handler", test))]
 mod test {
     use super::*;
+
+    use std::collections::HashMap;
+
     use diesel::{dsl::insert_into, prelude::*, RunQueryDsl};
     use gameroom_database::models::{
         GameroomMember, GameroomNotification, GameroomService, NewGameroomNotification,
@@ -1102,12 +1116,16 @@ mod test {
     }
 
     fn get_create_circuit_msg(circuit_id: &str) -> CreateCircuit {
+        let mut arguments = HashMap::new();
+        arguments.insert("test_key".to_string(), "test_value".to_string());
+
         CreateCircuit {
             circuit_id: circuit_id.to_string(),
             roster: vec![SplinterService {
                 service_id: "scabbard_123".to_string(),
                 service_type: "scabbard".to_string(),
                 allowed_nodes: vec!["acme_corp".to_string()],
+                arguments: arguments,
             }],
             members: vec![SplinterNode {
                 node_id: "Node-123".to_string(),
@@ -1210,6 +1228,10 @@ mod test {
             service_id: "scabbard_123".to_string(),
             service_type: "scabbard".to_string(),
             allowed_nodes: vec!["acme_corp".to_string()],
+            arguments: vec![json!({
+                "key": "test_key",
+                "value": "test_value"
+            })],
             status: "Pending".to_string(),
             created_time: timestamp,
             updated_time: timestamp,

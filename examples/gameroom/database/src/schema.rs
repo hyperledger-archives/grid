@@ -81,6 +81,7 @@ table! {
         service_id -> Text,
         service_type -> Text,
         allowed_nodes -> Array<Text>,
+        arguments -> Array<Json>,
         status -> Text,
         created_time -> Timestamp,
         updated_time -> Timestamp,
