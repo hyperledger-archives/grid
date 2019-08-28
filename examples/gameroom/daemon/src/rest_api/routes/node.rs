@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
 use libsplinter::node_registry::Node;
 use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct ListNodesResponse {
-    pub data: Vec<Node>,
-    pub paging: Paging,
-}
+use super::{ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 
 pub fn fetch_node(
     identity: web::Path<String>,
@@ -39,15 +34,20 @@ pub fn fetch_node(
             match resp.status() {
                 StatusCode::OK => {
                     let node: Node = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::Ok().json(node))
+                    Ok(HttpResponse::Ok().json(SuccessResponse::new(node)))
                 }
                 StatusCode::NOT_FOUND => {
                     let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::NotFound().json(message))
+                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&message)))
                 }
                 _ => {
                     let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::InternalServerError().json(message))
+                    debug!(
+                        "Internal Server Error. Splinterd responded with error {} message {}",
+                        resp.status(),
+                        message
+                    );
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
             }
         })
@@ -87,16 +87,21 @@ pub fn list_nodes(
             let body = resp.body().wait()?;
             match resp.status() {
                 StatusCode::OK => {
-                    let nodes: ListNodesResponse = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::Ok().json(nodes))
+                    let list_reponse: SuccessResponse<Vec<Node>> = serde_json::from_slice(&body)?;
+                    Ok(HttpResponse::Ok().json(list_reponse))
                 }
                 StatusCode::BAD_REQUEST => {
                     let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::BadRequest().json(message))
+                    Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message)))
                 }
                 _ => {
                     let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::InternalServerError().json(message))
+                    debug!(
+                        "Internal Server Error. Splinterd responded with error {} message {}",
+                        resp.status(),
+                        message
+                    );
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
             }
         })
@@ -105,6 +110,7 @@ pub fn list_nodes(
 #[cfg(all(feature = "test-node-endpoint", test))]
 mod test {
     use super::*;
+    use crate::rest_api::routes::Paging;
     use actix_web::{
         http::{header, StatusCode},
         test, web, App,
@@ -129,8 +135,9 @@ mod test {
         let resp = test::call_service(&mut app, req);
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let node: Node = serde_json::from_slice(&test::read_body(resp)).unwrap();
-        assert_eq!(node, get_node_1())
+        let response: SuccessResponse<Node> =
+            serde_json::from_slice(&test::read_body(resp)).unwrap();
+        assert_eq!(response.data, get_node_1())
     }
 
     #[test]
@@ -167,11 +174,12 @@ mod test {
         let resp = test::call_service(&mut app, req);
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let nodes: ListNodesResponse = serde_json::from_slice(&test::read_body(resp)).unwrap();
+        let nodes: SuccessResponse<Vec<Node>> =
+            serde_json::from_slice(&test::read_body(resp)).unwrap();
         assert_eq!(nodes.data, vec![get_node_1(), get_node_2()]);
         assert_eq!(
             nodes.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, "/nodes?")
+            Some(create_test_paging_response(0, 100, 0, 0, 0, 2, "/nodes?"))
         )
     }
 
@@ -196,12 +204,13 @@ mod test {
         let resp = test::call_service(&mut app, req);
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let nodes: ListNodesResponse = serde_json::from_slice(&test::read_body(resp)).unwrap();
+        let nodes: SuccessResponse<Vec<Node>> =
+            serde_json::from_slice(&test::read_body(resp)).unwrap();
         assert_eq!(nodes.data, vec![get_node_1()]);
         let link = format!("/nodes?filter={}&", filter);
         assert_eq!(
             nodes.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            Some(create_test_paging_response(0, 100, 0, 0, 0, 1, &link))
         )
     }
 
