@@ -103,7 +103,7 @@ paths:
                 schema:
                   $ref: '#/components/schemas/Error'
 
-  /api/users:
+  /users:
       post:
         tags:
           - Users
@@ -145,7 +145,10 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/AuthResponseData'
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AuthResponseData'
           400:
             description: Invalid request was made
             content:
@@ -154,10 +157,12 @@ paths:
                   $ref: '#/components/schemas/Error'
           500:
             description: Internal server error occurred
-          503:
-            description: Server unavailable
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
 
-  /api/users/authenticate:
+  /users/authenticate:
       post:
         tags:
           - Users
@@ -187,13 +192,23 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/AuthResponseData'
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AuthResponseData'
           401:
             description: Unauthorized request
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
           500:
             description: Internal server error occurred
-          503:
-            description: Server unavailable
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
+
 
 
   /gamerooms/propose:
@@ -583,10 +598,14 @@ components:
     Error:
       additionalProperties: false
       properties:
+        code:
+          description: The HTTP error code
+          type: string
+          example: 404
         message:
           description: A message describing the error that occurred
           type: string
-          example: DatabaseError({description})
+          example: Resource not found
       required:
         - message
 

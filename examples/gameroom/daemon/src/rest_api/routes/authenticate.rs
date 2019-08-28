@@ -18,6 +18,7 @@ use futures::Future;
 use gameroom_database::{helpers, models::GameroomUser, ConnectionPool};
 use serde::{Deserialize, Serialize};
 
+use super::{ErrorResponse, SuccessResponse};
 use crate::rest_api::RestApiResponseError;
 
 // Default cost is 12. This value should not be used in a production
@@ -45,10 +46,14 @@ pub fn login(
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || authenticate_user(pool, auth_data.into_inner())).then(|res| match res {
-            Ok(user) => Ok(HttpResponse::Ok().json(user)),
+            Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
             Err(err) => match err {
-                error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized().into()),
-                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+                error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized()
+                    .json(ErrorResponse::unauthorized("Invalid email or password"))),
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )
@@ -69,12 +74,16 @@ pub fn register(
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
         web::block(move || create_user(pool, new_user.into_inner())).then(|res| match res {
-            Ok(user) => Ok(HttpResponse::Ok().json(user)),
+            Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
             Err(err) => match err {
                 error::BlockingError::Error(err) => {
-                    Ok(HttpResponse::BadRequest().json(err.to_string()))
+                    Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string())))
                 }
-                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError().into()),
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )

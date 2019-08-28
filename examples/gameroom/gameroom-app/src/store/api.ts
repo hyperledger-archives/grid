@@ -42,7 +42,7 @@ gameroomAPI.interceptors.response.use(
         case 503:
           throw new Error('The Gameroom server is unavailable. Please contact the administrator.');
         default:
-          throw new Error(error.response.data);
+          throw new Error(error.response.data.message);
       }
     }
   },
@@ -53,14 +53,14 @@ export async function userCreate(
   user: UserRegistration,
 ): Promise<UserAuthResponse> {
   const response = await gameroomAPI.post('/users', user);
-  return response.data as UserAuthResponse;
+  return response.data.data as UserAuthResponse;
 }
 
 export async function userAuthenticate(
   userCredentials: UserCredentials,
 ): Promise<UserAuthResponse> {
     const response = await gameroomAPI.post('/users/authenticate', userCredentials);
-    return response.data as UserAuthResponse;
+    return response.data.data as UserAuthResponse;
 }
 
 // Gamerooms
