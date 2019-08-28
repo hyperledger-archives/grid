@@ -18,7 +18,9 @@ mod routes;
 use std::sync::mpsc;
 use std::thread;
 
-use actix_web::{client::Client, web, App, HttpServer, Result};
+use actix_web::{
+    client::Client, error as ActixError, web, App, FromRequest, HttpResponse, HttpServer, Result,
+};
 use futures::{
     future::{self, Either},
     Future, Stream,
@@ -30,6 +32,7 @@ use serde_json::Value;
 use tokio::runtime::Runtime;
 
 pub use error::{RestApiResponseError, RestApiServerError};
+use routes::ErrorResponse;
 
 pub struct RestApiShutdownHandle {
     do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
@@ -69,6 +72,20 @@ pub fn run(
                     .data(Client::new())
                     .data(splinterd_url.to_owned())
                     .data(node.clone())
+                    .data(
+                        // change path extractor configuration
+                        web::Path::<String>::configure(|cfg| {
+                            // <- create custom error response
+                            cfg.error_handler(|err, _| handle_error(Box::new(err)))
+                        }),
+                    )
+                    .data(
+                        // change json extractor configuration
+                        web::Json::<String>::configure(|cfg| {
+                            // <- create custom error response
+                            cfg.error_handler(|err, _| handle_error(Box::new(err)))
+                        }),
+                    )
                     .service(
                         web::resource("/nodes/{identity}")
                             .route(web::get().to_async(routes::fetch_node)),
@@ -166,6 +183,15 @@ pub fn run(
     });
 
     Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
+}
+
+fn handle_error(err: Box<dyn ActixError::ResponseError>) -> ActixError::Error {
+    let message = err.to_string();
+    ActixError::InternalError::from_response(
+        err,
+        HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message)),
+    )
+    .into()
 }
 
 fn get_node(splinterd_url: &str) -> Result<Node, RestApiServerError> {
