@@ -215,23 +215,20 @@ paths:
       post:
         tags:
           - Gamerooms
-        description: Propose a new Gameroom
+        description: Propose a new gameroom
         requestBody:
           content:
             application/json:
               schema:
                 properties:
                   alias:
-                    description: Name of new Gameroom
+                    description: Name of new gameroom
+                    example: my_gameroom
                   member:
-                    description: Proposed members of the Gameroom
+                    $ref: '#/components/schemas/Member'
                 required:
                   - alias
                   - member
-                example:
-                  alias: My_Gameroom
-                  member:
-                    $ref: '#/components/schemas/Member'
 
         responses:
           200:
@@ -239,10 +236,16 @@ paths:
             content:
               application/octet-stream:
                 schema:
-                  type: string
-                  format: binary
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/BinaryData'
           500:
             description: Internal server error occurred
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
 
   /proposals:
     get:
@@ -646,23 +649,31 @@ components:
       properties:
         circuit_id:
           type: string
+          example: gameroom::acme-node-000::bubba-node-000::11bf5b37-e0b8-42e0-8dcf-dc8c4aefc000
         authorization_type:
           type: string
+          example: Trust
         persistence:
           type: string
+          example: Any
         routes:
           type: string
+          example: Any
         circuit_management_type:
           type: string
+          example: Gameroom
         alias:
           description: alias of the gameroom
           type: string
+          example: Acme-Bubba-Gameroom
 
     Member:
       type: object
+      description: Member of the gameroom
       properties:
         identity:
           type: string
+          example: acme-node-000
         metadata:
           $ref: '#/components/schemas/MemberMetadata'
 
@@ -672,8 +683,10 @@ components:
       properties:
         organization:
           type: string
+          example: Acme Corporation
         endpoint:
           type: string
+          example: tls://127.0.0.1:8080
         public_key:
           type: string
 

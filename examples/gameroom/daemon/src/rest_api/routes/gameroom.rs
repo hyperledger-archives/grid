@@ -32,7 +32,9 @@ use uuid::Uuid;
 use crate::application_metadata::ApplicationMetadata;
 use crate::rest_api::RestApiResponseError;
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use super::{
+    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGameroomForm {
@@ -51,12 +53,6 @@ pub struct MemberMetadata {
     organization: String,
     endpoint: String,
     public_key: String,
-}
-
-#[derive(Debug, Serialize)]
-struct GameroomListResponse {
-    data: Vec<ApiGameroom>,
-    paging: Paging,
 }
 
 #[derive(Debug, Serialize)]
@@ -113,7 +109,9 @@ pub fn propose_gameroom(
         Ok(bytes) => bytes,
         Err(err) => {
             debug!("Failed to serialize application metadata: {}", err);
-            return HttpResponse::InternalServerError().finish().into_future();
+            return HttpResponse::InternalServerError()
+                .json(ErrorResponse::internal_error())
+                .into_future();
         }
     };
 
@@ -126,9 +124,10 @@ pub fn propose_gameroom(
     ) {
         Ok(s) => s,
         Err(err) => {
+            debug!("Failed to serialize member public keys: {}", err);
             return HttpResponse::InternalServerError()
-                .json(format!("failed to serialize member public keys: {}", err))
-                .into_future()
+                .json(ErrorResponse::internal_error())
+                .into_future();
         }
     };
     let mut scabbard_args = HashMap::new();
@@ -150,9 +149,10 @@ pub fn propose_gameroom(
         ) {
             Ok(s) => s,
             Err(err) => {
+                debug!("Failed to serialize peer services: {}", err);
                 return HttpResponse::InternalServerError()
-                    .json(format!("failed to serialize peer services: {}", err))
-                    .into_future()
+                    .json(ErrorResponse::internal_error())
+                    .into_future();
             }
         };
 
@@ -187,12 +187,16 @@ pub fn propose_gameroom(
         Ok(bytes) => bytes,
         Err(err) => {
             debug!("Failed to make circuit management payload: {}", err);
-            return HttpResponse::InternalServerError().finish().into_future();
+            return HttpResponse::InternalServerError()
+                .json(ErrorResponse::internal_error())
+                .into_future();
         }
     };
 
     HttpResponse::Ok()
-        .json(json!({ "data": { "payload_bytes": payload_bytes } }))
+        .json(SuccessResponse::new(json!({
+            "payload_bytes": payload_bytes
+        })))
         .into_future()
 }
 
@@ -237,14 +241,12 @@ pub fn list_gamerooms(
                         "api/gamerooms?",
                         query_count as usize,
                     );
-                    Ok(HttpResponse::Ok().json(GameroomListResponse {
-                        data: gamerooms,
-                        paging: paging_info,
-                    }))
+                    Ok(HttpResponse::Ok().json(SuccessResponse::list(gamerooms, paging_info)))
                 }
-                Err(err) => Ok(HttpResponse::InternalServerError().json(json!({
-                    "message": format!("Internal Server error: {}", err.to_string())
-                }))),
+                Err(err) => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         ),
     )
@@ -276,18 +278,18 @@ pub fn fetch_gameroom(
         web::block(move || fetch_gameroom_from_db(pool, &circuit_id)).then(|res| match res {
             Ok(gameroom) => Ok(HttpResponse::Ok().json(gameroom)),
             Err(err) => match err {
-                error::BlockingError::Error(err) => match err {
-                    RestApiResponseError::NotFound(err) => {
-                        Ok(HttpResponse::NotFound().json(json!({
-                            "message": format!("Not Found error: {}", err.to_string())
-                        })))
+                error::BlockingError::Error(err) => {
+                    match err {
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        _ => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
                     }
-                    _ => Ok(HttpResponse::BadRequest().json(json!({
-                        "message": format!("Bad Request error: {}", err.to_string())
-                    }))),
-                },
-                error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
-                    .json(json!({ "message": "Failed to fetch Gameroom" }))),
+                }
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )
@@ -303,7 +305,7 @@ fn fetch_gameroom_from_db(
         return Ok(ApiGameroom::from(gameroom));
     }
     Err(RestApiResponseError::NotFound(format!(
-        "Gameroom {}",
+        "Gameroom with id {} not found",
         circuit_id
     )))
 }
