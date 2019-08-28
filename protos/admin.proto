@@ -108,7 +108,7 @@ message CircuitProposal {
     // An individual vote record
     message VoteRecord {
         // The public key of the voter
-        string public_key = 1;
+        bytes public_key = 1;
 
         // The voter's actual vote
         CircuitProposalVote.Vote vote = 2;

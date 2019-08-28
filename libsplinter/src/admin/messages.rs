@@ -301,7 +301,7 @@ pub enum ProposalType {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct VoteRecord {
-    pub public_key: String,
+    pub public_key: Vec<u8>,
     pub vote: Vote,
 }
 
