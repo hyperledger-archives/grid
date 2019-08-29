@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod consensus;
-mod error;
+pub mod error;
 pub mod messages;
 mod shared;
 
