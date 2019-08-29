@@ -66,3 +66,24 @@ export function encrypt(password: string, privateKey: string): string {
 export function decrypt(password: string, encryptedPrivateKey: string): string {
   return sjcl.decrypt(password, JSON.parse(encryptedPrivateKey));
 }
+
+/**
+ * Fills out, signs, and encodes an incomplete CircuitManagementPayload.
+ *
+ * @param payload - The incomplete CircuitManagementPayload.
+ * @param signer - Wrapper containing the user's keys.
+ */
+export function signPayload(payload: Uint8Array, privateKey: string): Uint8Array {
+  const pkey = Secp256k1PrivateKey.fromHex(privateKey);
+  const signer = CRYPTO_FACTORY.newSigner(pkey);
+
+  const message = protos.CircuitManagementPayload.decode(payload);
+  const header = protos.CircuitManagementPayload.Header.decode(message.header);
+
+  const pubKey = signer.getPublicKey().asBytes();
+  header.requester = pubKey;
+  message.signature = signer.sign(header);
+  message.header = protos.CircuitManagementPayload.Header.encode(header).finish();
+  const signedPayload = protos.CircuitManagementPayload.encode(message).finish();
+  return signedPayload;
+}

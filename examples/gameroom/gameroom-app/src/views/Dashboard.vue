@@ -121,16 +121,17 @@ export default class Dashboard extends Vue {
     this.success = '';
   }
 
-  createGameroom() {
+  async createGameroom() {
     if (this.canSubmitNewGameroom) {
         this.submitting = true;
         try {
-          gamerooms.proposeGameroom({
+          await gamerooms.proposeGameroom({
             alias: this.newGameroom.alias,
             member: [this.newGameroom.member as Node],
           });
           this.success = 'Your invitation has been sent!';
         } catch (e) {
+          console.error(e);
           this.error = e.message;
         }
         this.submitting = false;

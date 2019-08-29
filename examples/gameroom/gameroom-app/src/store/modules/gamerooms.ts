@@ -15,7 +15,8 @@
 import { VuexModule, Module, getModule, Action } from 'vuex-module-decorators';
 import store from '@/store';
 import { NewGameroomProposal } from '@/store/models';
-import { gameroomPropose } from '@/store/api';
+import { gameroomPropose, submitPayload } from '@/store/api';
+import { signPayload } from '@/utils/crypto';
 
 @Module({
   namespaced: true,
@@ -24,10 +25,17 @@ import { gameroomPropose } from '@/store/api';
   dynamic: true,
 })
 class GameroomsModule extends VuexModule {
-  @Action
+  @Action({rawError: true})
   async proposeGameroom(proposal: NewGameroomProposal) {
-    const response = await gameroomPropose(proposal);
-    return response;
+    const user = this.context.rootGetters['user/getUser'];
+    try {
+      const payload = await gameroomPropose(proposal);
+      const signedPayload = signPayload(payload, user.privateKey);
+      const response = await submitPayload(signedPayload);
+      return response;
+    } catch (err) {
+      throw err;
+    }
   }
 }
 export default getModule(GameroomsModule);

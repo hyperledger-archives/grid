@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import axios from 'axios';
+import rp from 'request-promise';
 import {
   GameroomNotification,
   GameroomProposal,
@@ -65,9 +66,9 @@ export async function userAuthenticate(
 // Gamerooms
 export async function gameroomPropose(
   gameroomProposal: NewGameroomProposal,
-): Promise<number> {
+): Promise<Uint8Array> {
   const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
-  return response.status;
+  return response.data.data.payload_bytes as Uint8Array;
 }
 
 // Nodes
@@ -76,6 +77,24 @@ export async function listNodes(): Promise<Node[]> {
   return response.data.data as Node[];
 }
 
+// Payloads
+export async function submitPayload(payload: Uint8Array): Promise<void> {
+  const options = {
+    method: 'POST',
+    url: `http://${window.location.host}/api/submit`,
+    body: payload,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+  };
+
+  await rp(options).then((body) => {
+    return;
+  })
+  .catch((err) => {
+    throw new Error(err.message);
+  });
+}
 
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
