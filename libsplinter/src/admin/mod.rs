@@ -17,6 +17,7 @@ pub mod error;
 pub mod messages;
 mod shared;
 
+use std::any::Any;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -227,6 +228,10 @@ impl Service for AdminService {
                 AdminError::MessageTypeUnset,
             ))),
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

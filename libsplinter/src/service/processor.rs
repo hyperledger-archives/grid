@@ -576,6 +576,7 @@ fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
 pub mod tests {
     use super::*;
 
+    use std::any::Any;
     use std::thread;
 
     use crate::network::Network;
@@ -862,6 +863,10 @@ pub mod tests {
             }
             Ok(())
         }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
     }
 
     // Service that can be used for testing a Admin service's functionality
@@ -946,6 +951,10 @@ pub mod tests {
                 }
             }
             Ok(())
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
         }
     }
 

@@ -23,6 +23,7 @@ mod rest_api;
 mod shared;
 mod state;
 
+use std::any::Any;
 use std::collections::{HashSet, VecDeque};
 use std::convert::TryFrom;
 use std::path::Path;
@@ -254,6 +255,10 @@ impl Service for Scabbard {
                 ScabbardError::MessageTypeUnset,
             ))),
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
