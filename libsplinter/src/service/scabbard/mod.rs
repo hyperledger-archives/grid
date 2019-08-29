@@ -19,7 +19,6 @@
 mod consensus;
 mod error;
 mod factory;
-mod rest_api;
 mod shared;
 mod state;
 
@@ -36,6 +35,7 @@ use uuid::Uuid;
 
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
+use crate::rest_api::{Request, Response, ResponseError};
 
 use super::{
     Service, ServiceDestroyError, ServiceError, ServiceMessageContext, ServiceNetworkRegistry,
@@ -79,6 +79,31 @@ impl Scabbard {
             shared: Arc::new(Mutex::new(shared)),
             consensus: None,
         })
+    }
+
+    pub fn add_batches(&self, batches: Vec<BatchPair>) -> Result<(), ServiceError> {
+        let mut shared = self
+            .shared
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+
+        for batch in batches {
+            shared.add_batch_to_queue(batch);
+        }
+
+        Ok(())
+    }
+
+    pub fn subscribe_to_state(
+        &self,
+        request: Request,
+    ) -> Result<Result<Response, ResponseError>, ServiceError> {
+        Ok(self
+            .shared
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?
+            .state_mut()
+            .subscribe_to_state(request))
     }
 }
 
