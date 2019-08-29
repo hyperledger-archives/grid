@@ -16,7 +16,7 @@ import axios from 'axios';
 import {
   GameroomNotification,
   GameroomProposal,
-  User,
+  UserRegistration,
   UserCredentials,
   UserAuthResponse,
   NewGameroomProposal,
@@ -49,7 +49,7 @@ gameroomAPI.interceptors.response.use(
 
 // Users
 export async function userCreate(
-  user: User,
+  user: UserRegistration,
 ): Promise<UserAuthResponse> {
   const response = await gameroomAPI.post('/users', user);
   return response.data as UserAuthResponse;

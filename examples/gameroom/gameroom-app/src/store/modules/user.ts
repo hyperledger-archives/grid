@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { User, UserCredentials } from '@/store/models';
+import { User } from '@/store/models';
 import { userAuthenticate, userCreate } from '@/store/api';
+import * as crypto from '@/utils/crypto';
 
 export interface UserState {
   user: User;
@@ -22,29 +23,53 @@ export interface UserState {
 const userState = {
   user: {
     email: '',
-    hashedPassword: '',
     publicKey: '',
-    encryptedPrivateKey: '',
+    privateKey: '',
   },
 };
 
+interface Creds {
+  email: string;
+  password: string;
+}
+
 const getters = {
+  getUser(state: UserState) {
+    return state.user;
+  },
   getPublicKey(state: UserState) {
     return state.user.publicKey;
   },
   isLoggedIn(state: UserState) {
-    return state.user.encryptedPrivateKey !== '';
+    return state.user.privateKey !== '';
   },
 };
 
 const actions = {
-  async register({ commit }: any, userInfo: User) {
-    const user = await userCreate(userInfo);
-    commit('setUser', user);
+  async register({ commit }: any, creds: Creds) {
+    const keys = crypto.createKeyPair();
+    await userCreate({
+      email: creds.email,
+      hashedPassword: crypto.hashSHA256(creds.email, creds.password),
+      publicKey: keys.publicKey,
+      encryptedPrivateKey: crypto.encrypt(creds.password, keys.privateKey),
+    });
+    commit('setUser', {
+      email: creds.email,
+      publicKey: keys.publicKey,
+      privateKey: keys.privateKey,
+    });
   },
-  async authenticate({ commit }: any, credentials: UserCredentials) {
-    const user = await userAuthenticate(credentials);
-    commit('setUser', user);
+  async authenticate({ commit }: any, creds: Creds) {
+    const hashedPassword = crypto.hashSHA256(creds.email, creds.password);
+    const user = await userAuthenticate({email: creds.email, hashedPassword});
+    const privateKey = crypto.decrypt(creds.password, user.encryptedPrivateKey);
+    commit('setUser', {
+      email: creds.email,
+      publicKey: user.publicKey,
+      privateKey,
+    });
+    return user;
   },
 };
 
@@ -55,9 +80,8 @@ const mutations = {
   clearUser(state: UserState) {
     state.user = {
       email: '',
-      hashedPassword: '',
       publicKey: '',
-      encryptedPrivateKey: '',
+      privateKey: '',
     };
   },
 };

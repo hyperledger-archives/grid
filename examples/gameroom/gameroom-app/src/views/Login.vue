@@ -57,7 +57,6 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import * as crypto from '@/utils/crypto';
 import Toast from '../components/Toast.vue';
 
 @Component({
@@ -87,8 +86,9 @@ export default class Login extends Vue {
     try {
       await this.$store.dispatch('user/authenticate', {
         email: this.email,
-        hashedPassword: crypto.hashSHA256(this.email, this.password),
+        password: this.password,
       });
+
       this.$router.push({ name: 'dashboard' });
     } catch (e) {
       this.error = e.message;
