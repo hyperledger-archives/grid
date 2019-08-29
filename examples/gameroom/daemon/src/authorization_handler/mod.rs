@@ -1374,5 +1374,4 @@ mod test {
             .execute(conn)
             .expect("Error cleaning gameroom_notification table");
     }
-
 }

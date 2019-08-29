@@ -845,7 +845,7 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .send(&message_context.sender, b"send_response")
-                        .unwrap();;
+                        .unwrap();
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {
@@ -858,7 +858,7 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .reply(&message_context, b"reply response")
-                        .unwrap();;
+                        .unwrap();
                 }
             }
             Ok(())
@@ -934,7 +934,7 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .send(&message_context.sender, b"send_response")
-                        .unwrap();;
+                        .unwrap();
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {

@@ -401,5 +401,4 @@ pub mod tests {
         assert_eq!("123", message.peer_id());
         assert_eq!(b"hello_world", message.payload());
     }
-
 }
