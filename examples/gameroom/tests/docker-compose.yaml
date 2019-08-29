@@ -30,8 +30,7 @@ services:
       command: |
         bash -c "
            cd examples/gameroom/daemon
-           cargo test --features test-node-endpoint
-           cargo test --features test-authorization-handler -- --test-threads=1
+           ../tests/bin/run_tests
         "
 
   splinterd-node:
