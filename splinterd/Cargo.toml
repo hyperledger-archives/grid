@@ -14,7 +14,7 @@
 
 [package]
 name = "splinterd"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 
