@@ -26,8 +26,18 @@ circuits:
       - 012
       - 345
     roster:
-      - service_a
-      - service_b
+      - service_id: service_a
+        service_type: private_xo_service
+        allowed_nodes:
+          - "012"
+        arguments:
+          peer: service_b
+      - service_id: service_b
+        service_type: private_xo_service
+        allowed_nodes:
+          - "345"
+        arguments:
+          peer: service_a
     persistence: any
     durability: none
     routes: require_direct

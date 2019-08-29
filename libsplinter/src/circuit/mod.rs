@@ -41,7 +41,7 @@ impl Circuit {
         id: String,
         auth: String,
         members: Vec<String>,
-        roster: Vec<String>,
+        roster: Vec<ServiceDefinition>,
         persistence: String,
         durability: String,
         routes: String,
@@ -125,23 +125,96 @@ impl<'c> IntoIterator for Members<'c> {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub struct ServiceDefinition {
+    service_id: String,
+    service_type: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default = "Vec::new")]
+    allowed_nodes: Vec<String>,
+
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default = "BTreeMap::new")]
+    arguments: BTreeMap<String, String>,
+}
+
+impl ServiceDefinition {
+    pub fn builder(service_id: String, service_type: String) -> ServiceDefinitionBuilder {
+        ServiceDefinitionBuilder {
+            service_id,
+            service_type,
+            allowed_nodes: vec![],
+            arguments: BTreeMap::new(),
+        }
+    }
+
+    pub fn service_id(&self) -> &str {
+        &self.service_id
+    }
+
+    pub fn service_type(&self) -> &str {
+        &self.service_type
+    }
+
+    pub fn allowed_nodes(&self) -> &[String] {
+        &self.allowed_nodes
+    }
+
+    pub fn arguments(&self) -> &BTreeMap<String, String> {
+        &self.arguments
+    }
+}
+
+pub struct ServiceDefinitionBuilder {
+    service_id: String,
+    service_type: String,
+    allowed_nodes: Vec<String>,
+    arguments: BTreeMap<String, String>,
+}
+
+impl ServiceDefinitionBuilder {
+    pub fn with_allowed_nodes<I: IntoIterator<Item = String>>(mut self, node_ids: I) -> Self {
+        self.allowed_nodes.extend(node_ids.into_iter());
+
+        self
+    }
+
+    pub fn with_arguments<I: IntoIterator<Item = (String, String)>>(
+        mut self,
+        arguments: I,
+    ) -> Self {
+        self.arguments.extend(arguments.into_iter());
+
+        self
+    }
+
+    pub fn build(self) -> ServiceDefinition {
+        ServiceDefinition {
+            service_id: self.service_id,
+            service_type: self.service_type,
+            allowed_nodes: self.allowed_nodes,
+            arguments: self.arguments,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Roster {
-    Standard(Vec<String>),
+    Standard(Vec<ServiceDefinition>),
     Admin,
 }
 
 impl Roster {
     pub fn contains(&self, service_name: &str) -> bool {
         match self {
-            Roster::Standard(roster) => {
-                roster.iter().any(|roster_name| roster_name == service_name)
-            }
+            Roster::Standard(roster) => roster
+                .iter()
+                .any(|service_def| service_def.service_id == service_name),
             Roster::Admin => service_name.starts_with("admin::"),
         }
     }
 
-    pub fn to_vec(&self) -> Vec<String> {
+    pub fn to_vec(&self) -> Vec<ServiceDefinition> {
         match self {
             Roster::Standard(roster) => roster.to_vec(),
             Roster::Admin => Vec::with_capacity(0),
@@ -157,12 +230,12 @@ impl Roster {
 }
 
 pub enum RosterIter<'r> {
-    Standard(std::slice::Iter<'r, String>),
+    Standard(std::slice::Iter<'r, ServiceDefinition>),
     Admin,
 }
 
 impl<'r> Iterator for RosterIter<'r> {
-    type Item = &'r String;
+    type Item = &'r ServiceDefinition;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -173,7 +246,7 @@ impl<'r> Iterator for RosterIter<'r> {
 }
 
 impl<'r> IntoIterator for &'r Roster {
-    type Item = &'r String;
+    type Item = &'r ServiceDefinition;
     type IntoIter = RosterIter<'r>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -294,6 +367,15 @@ mod tests {
         path
     }
 
+    impl Into<ServiceDefinition> for &str {
+        fn into(self) -> ServiceDefinition {
+            ServiceDefinition::builder(self.to_string(), "test_type".into())
+                .with_allowed_nodes(vec!["*".into()])
+                .with_arguments(vec![("test-key".into(), "test-value".into())])
+                .build()
+        }
+    }
+
     #[test]
     fn test_circuit_write_file() {
         // create temp directoy
@@ -334,7 +416,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(

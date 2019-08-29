@@ -192,9 +192,19 @@ mod tests {
             auth: trust
             members:
               - "123"
-            services:
-              - abc
-              - def
+            roster:
+              - service_id: abc
+                service_type: test_service
+                allowed_nodes:
+                  - "*"
+                arguments:
+                  test_arg: test_value
+              - service_id: def
+                service_type: test_service
+                allowed_nodes:
+                  - "*"
+                arguments:
+                  test_arg: test_value
             persistence: any
             durability: none
             routes: require_direct
@@ -348,7 +358,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -451,7 +461,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -509,7 +519,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -531,7 +541,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["qwe".to_string(), "rty".to_string(), "uio".to_string()]
+            vec!["qwe".into(), "rty".into(), "uio".into()]
         );
 
         assert_eq!(
