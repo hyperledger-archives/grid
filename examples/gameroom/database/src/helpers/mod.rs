@@ -25,6 +25,7 @@ pub use gameroom::{
 };
 pub use gameroom_user::{fetch_user_by_email, insert_user};
 pub use notification::{
-    create_new_notification, fetch_notification, insert_gameroom_notification,
-    list_unread_notifications, update_gameroom_notification,
+    create_new_notification, fetch_notification, get_unread_notification_count,
+    insert_gameroom_notification, list_unread_notifications_with_paging,
+    update_gameroom_notification,
 };

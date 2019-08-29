@@ -31,10 +31,16 @@ pub fn fetch_notification(
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
-pub fn list_unread_notifications(conn: &PgConnection) -> QueryResult<Vec<GameroomNotification>> {
+pub fn list_unread_notifications_with_paging(
+    conn: &PgConnection,
+    limit: i64,
+    offset: i64,
+) -> QueryResult<Vec<GameroomNotification>> {
     gameroom_notification::table
         .select(gameroom_notification::all_columns)
         .filter(gameroom_notification::read.eq(false))
+        .limit(limit)
+        .offset(offset)
         .load::<GameroomNotification>(conn)
 }
 
@@ -67,4 +73,11 @@ pub fn create_new_notification(
         created_time: SystemTime::now(),
         read: false,
     }
+}
+
+pub fn get_unread_notification_count(conn: &PgConnection) -> QueryResult<i64> {
+    gameroom_notification::table
+        .filter(gameroom_notification::read.eq(false))
+        .count()
+        .get_result(conn)
 }

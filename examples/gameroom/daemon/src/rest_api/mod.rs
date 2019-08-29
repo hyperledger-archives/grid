@@ -103,6 +103,25 @@ pub fn run(
                                     .route(web::get().to_async(routes::list_proposals)),
                             ),
                     )
+                    .service(
+                        web::scope("/notifications")
+                            .service(
+                                web::scope("/{notification_id}")
+                                    .service(
+                                        web::resource("")
+                                            .route(web::get().to_async(routes::fetch_notificaiton)),
+                                    )
+                                    .service(
+                                        web::resource("/read").route(
+                                            web::patch().to_async(routes::read_notification),
+                                        ),
+                                    ),
+                            )
+                            .service(
+                                web::resource("")
+                                    .route(web::get().to_async(routes::list_unread_notifications)),
+                            ),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()

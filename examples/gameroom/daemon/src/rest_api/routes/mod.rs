@@ -15,11 +15,13 @@
 mod authenticate;
 mod gameroom;
 mod node;
+mod notification;
 mod proposal;
 
 pub use authenticate::*;
 pub use gameroom::*;
 pub use node::*;
+pub use notification::*;
 pub use proposal::*;
 
 use percent_encoding::{AsciiSet, CONTROLS};

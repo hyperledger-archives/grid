@@ -343,6 +343,135 @@ paths:
                 schema:
                   $ref: '#/components/schemas/Error'
 
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      description: List Gameroom notifications
+      parameters:
+      - name: offset
+        in: query
+        description: paging offset
+        required: false
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        description: maximum number of items to return (max 100)
+        required: false
+        schema:
+          type: integer
+          default: 100
+      responses:
+        200:
+          description: list of Gameroom notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiNotification'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/{notification_id}:
+    get:
+      tags:
+        - Notifications
+      description: Fetch Gameroom notification by notification id
+      parameters:
+      - name: notification_id
+        in: path
+        description: identity of the notification to fetch
+        required: true
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Gameroom Notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiNotification'
+        404:
+          description: The notification with {notification_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/{notification_id}/read:
+    patch:
+      tags:
+        - Notifications
+      description: Indicate the Gameroom notification has been viewed by a client's user
+      parameters:
+      - name: notification_id
+        in: path
+        description: identity of the notification to update
+        required: true
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Gameroom Notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiNotification'
+        404:
+          description: The notification with {notification_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Error:
@@ -483,3 +612,22 @@ components:
           items:
             type: integer
           example: [73, 119, 65, 65, 65, 81]
+
+    ApiNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+        notification_type:
+          type: string
+        org:
+          type: string
+        target:
+          type: string
+        timestamp:
+          description: time in seconds since the unix epoch the notification was created
+          type: integer
+        read:
+          description: states whether the notification has been returned to the client
+          type: boolean
+          default: false

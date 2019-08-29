@@ -65,7 +65,7 @@ export interface GameroomProposal {
 
 export interface GameroomNotification {
   id: number;
-  type: string;
+  notification_type: string;
   org: string;
   target: string;
   timestamp: number;

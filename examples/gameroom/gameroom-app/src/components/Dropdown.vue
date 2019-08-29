@@ -63,7 +63,7 @@ export default class Dropdown extends Vue {
   dropdownVisible = false;
 
   mounted() {
-    this.$store.dispatch('notifications/listNotificationsMock');
+    this.$store.dispatch('notifications/listNotifications');
   }
 
   get notifications() {
