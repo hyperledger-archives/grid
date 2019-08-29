@@ -59,7 +59,7 @@ impl<T: Any + Clone + Send> Sender<T> for MockSender<T> {
         Ok(())
     }
 
-    fn box_clone(&self) -> Box<Sender<T>> {
+    fn box_clone(&self) -> Box<dyn Sender<T>> {
         Box::new(MockSender {
             sent: self.sent.clone(),
         })

@@ -54,6 +54,7 @@ pub mod channel;
 pub mod circuit;
 pub mod collections;
 pub mod consensus;
+pub mod keys;
 pub mod mesh;
 pub mod network;
 pub mod node_registry;

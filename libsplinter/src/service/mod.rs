@@ -277,7 +277,7 @@ pub mod tests {
     }
 
     /// Verifies that the given service connects on start and disconnects on stop.
-    pub fn test_connect_and_disconnect(service: &mut Service) {
+    pub fn test_connect_and_disconnect(service: &mut dyn Service) {
         let registry = MockServiceNetworkRegistry::new();
         service.start(&registry).expect("failed to start engine");
         assert!(registry
