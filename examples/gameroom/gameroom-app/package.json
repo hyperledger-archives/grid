@@ -11,13 +11,16 @@
     "build": "npm run build-acme",
     "build-acme": "cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service build",
     "build-bubba": "cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "generate-proto-files": "node scripts/compile_protobuf.js > src/compiled_protos.json"
   },
   "dependencies": {
+    "@types/protobufjs": "^6.0.0",
     "@types/sjcl": "^1.0.28",
     "axios": "^0.19.0",
     "core-js": "^2.6.5",
     "moment": "^2.24.0",
+    "protobufjs": "^6.8.8",
     "sawtooth-sdk": "^1.0.5",
     "sjcl": "^1.0.8",
     "vue": "^2.6.10",
