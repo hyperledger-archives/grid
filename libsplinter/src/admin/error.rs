@@ -16,6 +16,7 @@ use std::error::Error;
 use std::fmt;
 
 use crate::consensus::error::ProposalManagerError;
+use crate::orchestrator::InitializeServiceError;
 use crate::service::error::ServiceError;
 
 impl From<ServiceError> for ProposalManagerError {
@@ -29,6 +30,7 @@ pub enum AdminSharedError {
     HashError(Sha256Error),
     InvalidMessageFormat(MarshallingError),
     NoPendingChanges,
+    ServiceInitializationFailed(InitializeServiceError),
     UnknownAction(String),
     ValidationFailed(String),
 }
@@ -39,6 +41,7 @@ impl Error for AdminSharedError {
             AdminSharedError::HashError(err) => Some(err),
             AdminSharedError::InvalidMessageFormat(err) => Some(err),
             AdminSharedError::NoPendingChanges => None,
+            AdminSharedError::ServiceInitializationFailed(err) => Some(err),
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
         }
@@ -55,11 +58,20 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::NoPendingChanges => {
                 write!(f, "tried to commit without pending changes")
             }
+            AdminSharedError::ServiceInitializationFailed(err) => {
+                write!(f, "failed to initialize service: {}", err)
+            }
             AdminSharedError::UnknownAction(msg) => {
                 write!(f, "received message with unknown action: {}", msg)
             }
             AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
         }
+    }
+}
+
+impl From<InitializeServiceError> for AdminSharedError {
+    fn from(err: InitializeServiceError) -> Self {
+        AdminSharedError::ServiceInitializationFailed(err)
     }
 }
 

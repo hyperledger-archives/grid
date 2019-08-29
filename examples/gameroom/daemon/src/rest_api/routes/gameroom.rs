@@ -40,6 +40,7 @@ pub struct GameroomMember {
 pub struct MemberMetadata {
     organization: String,
     endpoint: String,
+    public_key: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,21 +85,67 @@ pub fn propose_gameroom(
         }
     };
 
+    let scabbard_admin_keys = match serde_json::to_string(
+        &create_gameroom
+            .member
+            .iter()
+            .map(|member| member.metadata.public_key.clone())
+            .collect::<Vec<_>>(),
+    ) {
+        Ok(s) => s,
+        Err(err) => {
+            return Box::new(
+                Ok(HttpResponse::InternalServerError()
+                    .json(format!("failed to serialize member public keys: {}", err)))
+                .into_future(),
+            )
+        }
+    };
+    let mut scabbard_args = HashMap::new();
+    scabbard_args.insert("admin_keys".into(), scabbard_admin_keys);
+
+    let mut roster = vec![];
+    for node in members.iter() {
+        let peer_services = match serde_json::to_string(
+            &members
+                .iter()
+                .filter_map(|other_node| {
+                    if other_node.node_id != node.node_id {
+                        Some(format!("gameroom_{}", other_node.node_id))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ) {
+            Ok(s) => s,
+            Err(err) => {
+                return Box::new(
+                    Ok(HttpResponse::InternalServerError()
+                        .json(format!("failed to serialize peer services: {}", err)))
+                    .into_future(),
+                )
+            }
+        };
+
+        let mut service_args = scabbard_args.clone();
+        service_args.insert("peer_services".into(), peer_services);
+
+        roster.push(SplinterService {
+            service_id: format!("gameroom_{}", node.node_id),
+            service_type: "scabbard".to_string(),
+            allowed_nodes: vec![node.node_id.to_string()],
+            arguments: service_args,
+        });
+    }
+
     let create_request = CreateCircuit {
         circuit_id: format!(
             "gameroom{}::{}",
             partial_circuit_id,
             Uuid::new_v4().to_string()
         ),
-        roster: members
-            .iter()
-            .map(|node| SplinterService {
-                service_id: format!("gameroom_{}", node.node_id),
-                service_type: "scabbard".to_string(),
-                allowed_nodes: vec![node.node_id.to_string()],
-                arguments: HashMap::default(),
-            })
-            .collect::<Vec<SplinterService>>(),
+        roster,
         members,
         authorization_type: AuthorizationType::Trust,
         persistence: PersistenceType::Any,

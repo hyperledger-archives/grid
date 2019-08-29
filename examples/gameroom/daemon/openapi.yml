@@ -533,6 +533,8 @@ components:
           type: string
         endpoint:
           type: string
+        public_key:
+          type: string
 
 
     AuthResponseData:
