@@ -183,6 +183,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "admin_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -247,6 +248,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "admin_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -311,6 +313,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "admin_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();

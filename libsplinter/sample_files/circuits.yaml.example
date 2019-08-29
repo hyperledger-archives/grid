@@ -39,3 +39,4 @@ circuits:
     persistence: any
     durability: none
     routes: require_direct
+    circuit_management_type: default

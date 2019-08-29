@@ -428,6 +428,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_connect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -495,6 +496,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_connect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -584,6 +586,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_connect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -655,6 +658,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_connect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -758,6 +762,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_disconnect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -824,6 +829,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_disconnect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -914,6 +920,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_disconnect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();
@@ -980,6 +987,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "service_disconnect_test_app".into(),
         );
 
         let mut circuit_directory = CircuitDirectory::new();

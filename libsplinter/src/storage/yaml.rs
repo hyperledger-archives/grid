@@ -208,6 +208,7 @@ mod tests {
             persistence: any
             durability: none
             routes: require_direct
+            circuit_management_type: state_test_app
     */
     fn set_up_mock_state_file(mut temp_dir: PathBuf) -> String {
         // Create mock state
@@ -223,6 +224,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "state_test_app".into(),
         );
         state.add_circuit("alpha".into(), circuit);
 
@@ -371,6 +373,16 @@ mod tests {
                 .to_vec(),
             vec!["123".to_string()],
         );
+
+        assert_eq!(
+            storage
+                .data
+                .circuits()
+                .get("alpha")
+                .unwrap()
+                .circuit_management_type(),
+            "state_test_app"
+        );
     }
 
     #[test]
@@ -497,6 +509,7 @@ mod tests {
                 "any".into(),
                 "none".into(),
                 "require_direct".into(),
+                "state_write_test_app".into(),
             );
             storage.write().add_circuit("beta".into(), circuit);
 
@@ -553,6 +566,16 @@ mod tests {
                 .members()
                 .to_vec(),
             vec!["456".to_string(), "789".to_string()],
+        );
+
+        assert_eq!(
+            storage
+                .data
+                .circuits()
+                .get("beta")
+                .unwrap()
+                .circuit_management_type(),
+            "state_write_test_app"
         );
     }
 

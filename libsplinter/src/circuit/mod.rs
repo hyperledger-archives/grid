@@ -34,6 +34,9 @@ pub struct Circuit {
     persistence: String,
     durability: String,
     routes: String,
+
+    #[serde(default = "Circuit::default_management_type")]
+    circuit_management_type: String,
 }
 
 impl Circuit {
@@ -45,6 +48,7 @@ impl Circuit {
         persistence: String,
         durability: String,
         routes: String,
+        circuit_management_type: String,
     ) -> Self {
         Circuit {
             id,
@@ -54,7 +58,12 @@ impl Circuit {
             persistence,
             durability,
             routes,
+            circuit_management_type,
         }
+    }
+
+    fn default_management_type() -> String {
+        "default".into()
     }
 
     pub fn new_admin() -> Self {
@@ -66,6 +75,7 @@ impl Circuit {
             persistence: "".into(),
             durability: "".into(),
             routes: "".into(),
+            circuit_management_type: "".into(),
         }
     }
 
@@ -95,6 +105,10 @@ impl Circuit {
 
     pub fn routes(&self) -> &str {
         &self.routes
+    }
+
+    pub fn circuit_management_type(&self) -> &str {
+        &self.circuit_management_type
     }
 }
 
@@ -399,6 +413,7 @@ mod tests {
             "any".into(),
             "none".into(),
             "require_direct".into(),
+            "test_app".into(),
         );
         // add circuit to splinter state
         state.add_circuit("alpha".into(), circuit).unwrap();
