@@ -151,7 +151,7 @@ impl ServiceProcessor {
         ServiceProcessorError,
     > {
         // Starts the authorization process with the splinter node
-        // If running over inproc connection, this is the only authroization message required
+        // If running over inproc connection, this is the only authorization message required
         let connect_request = create_connect_request()
             .map_err(|err| process_err!(err, "unable to create connect request"))?;;
         self.mesh

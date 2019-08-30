@@ -97,7 +97,7 @@ impl ServiceOrchestrator {
         let running = Arc::new(AtomicBool::new(true));
 
         // Start the authorization process with the splinter node.
-        // If running over inproc connection, this is the only authroization message required.
+        // If running over inproc connection, this is the only authorization message required.
         let connect_request =
             create_connect_request().map_err(|err| NewOrchestratorError(Box::new(err)))?;
         mesh.send(Envelope::new(mesh_id, connect_request))
