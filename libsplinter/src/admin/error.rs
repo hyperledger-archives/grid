@@ -20,6 +20,8 @@ use crate::orchestrator::InitializeServiceError;
 use crate::service::error::ServiceError;
 use crate::signing;
 
+use protobuf::error;
+
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
         ProposalManagerError::Internal(Box::new(err))
@@ -93,6 +95,12 @@ impl From<signing::error::Error> for AdminSharedError {
     }
 }
 
+impl From<MarshallingError> for AdminSharedError {
+    fn from(err: MarshallingError) -> Self {
+        AdminSharedError::InvalidMessageFormat(err)
+    }
+}
+
 #[derive(Debug)]
 pub struct AdminConsensusManagerError(pub Box<dyn Error + Send>);
 
@@ -162,12 +170,14 @@ impl From<Sha256Error> for AdminSharedError {
 #[derive(Debug)]
 pub enum MarshallingError {
     UnsetField(String),
+    ProtobufError(error::ProtobufError),
 }
 
 impl std::error::Error for MarshallingError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             MarshallingError::UnsetField(_) => None,
+            MarshallingError::ProtobufError(err) => Some(err),
         }
     }
 }
@@ -176,6 +186,13 @@ impl std::fmt::Display for MarshallingError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
+            MarshallingError::ProtobufError(err) => write!(f, "Protobuf Error: {}", err),
         }
+    }
+}
+
+impl From<error::ProtobufError> for MarshallingError {
+    fn from(err: error::ProtobufError) -> Self {
+        MarshallingError::ProtobufError(err)
     }
 }
