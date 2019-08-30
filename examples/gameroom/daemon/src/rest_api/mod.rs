@@ -122,6 +122,10 @@ pub fn run(
                                     .route(web::get().to_async(routes::list_unread_notifications)),
                             ),
                     )
+                    .service(
+                        web::resource("/submit")
+                            .route(web::post().to_async(routes::submit_signed_payload)),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()

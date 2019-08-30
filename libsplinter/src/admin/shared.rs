@@ -15,6 +15,11 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
+#[cfg(feature = "ursa-compat")]
+use ursa::signatures::ed25519::EcdsaSecp256k1Sha256;
+#[cfg(feature = "ursa-compat")]
+use ursa::signatures::SignatureScheme;
+
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::{
@@ -23,15 +28,18 @@ use crate::network::{
 };
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
-    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitProposal, CircuitProposal_ProposalType, Circuit_AuthorizationType,
-    Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
+    Circuit, CircuitManagementPayload, CircuitManagementPayload_Action,
+    CircuitManagementPayload_Header, CircuitProposal, CircuitProposal_ProposalType,
+    Circuit_AuthorizationType, Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 
-use super::error::AdminSharedError;
+#[cfg(feature = "ursa-compat")]
+use crate::signing::{ursa::UrsaSecp256k1SignatureVerifier, SignatureVerifier};
+
+use super::error::{AdminSharedError, MarshallingError};
 use super::messages;
 use super::{admin_service_id, sha256};
 
@@ -184,7 +192,12 @@ impl AdminServiceShared {
         &mut self,
         mut circuit_payload: CircuitManagementPayload,
     ) -> Result<(String, CircuitProposal), AdminSharedError> {
-        match circuit_payload.get_action() {
+        let header = protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(
+            circuit_payload.get_header(),
+        )
+        .map_err(MarshallingError::from)?;
+
+        match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 let mut create_request = circuit_payload.take_circuit_create_request();
                 let proposed_circuit = create_request.take_circuit();
@@ -223,14 +236,24 @@ impl AdminServiceShared {
     ///
     /// This operation will propose a new circuit to all the member nodes of the circuit.  If there
     /// is no peer connection, a connection to the peer will also be established.
-    pub fn propose_circuit(&mut self, proposed_circuit: Circuit) -> Result<(), ServiceError> {
+    pub fn propose_circuit(
+        &mut self,
+        payload: CircuitManagementPayload,
+    ) -> Result<(), ServiceError> {
         debug!(
             "received circuit proposal for {}",
-            proposed_circuit.get_circuit_id()
+            payload
+                .get_circuit_create_request()
+                .get_circuit()
+                .get_circuit_id()
         );
 
         let mut unauthorized_peers = vec![];
-        for node in proposed_circuit.get_members() {
+        for node in payload
+            .get_circuit_create_request()
+            .get_circuit()
+            .get_members()
+        {
             if self.node_id() != node.get_node_id() {
                 if self.auth_inquisitor.is_authorized(node.get_node_id()) {
                     continue;
@@ -245,24 +268,40 @@ impl AdminServiceShared {
             }
         }
 
-        let mut create_request = CircuitCreateRequest::new();
-        create_request.set_circuit(proposed_circuit);
-
-        let mut envelope = CircuitManagementPayload::new();
-        envelope.set_action(CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        envelope.set_circuit_create_request(create_request);
-
         if unauthorized_peers.is_empty() {
-            self.pending_circuit_payloads.push_back(envelope);
+            self.pending_circuit_payloads.push_back(payload);
         } else {
             debug!(
                 "Members {:?} added; awaiting network authorization before proceeding",
                 &unauthorized_peers
             );
 
-            self.unpeered_payloads.push((unauthorized_peers, envelope));
+            self.unpeered_payloads.push((unauthorized_peers, payload));
         }
         Ok(())
+    }
+
+    pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
+        debug!("Payload submitted: {:?}", payload);
+
+        match verify_signature(&payload) {
+            Ok(_) => (),
+            Err(ServiceError::UnableToHandleMessage(_)) => (),
+            Err(err) => return Err(err),
+        };
+
+        let header =
+            protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
+
+        match header.get_action() {
+            CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
+                self.propose_circuit(payload)
+            }
+            _ => {
+                debug!("Unhandled action: {:?}", header.get_action());
+                Ok(())
+            }
+        }
     }
 
     pub fn add_subscriber(
@@ -472,6 +511,30 @@ impl AdminServiceShared {
     }
 }
 
+#[cfg(feature = "ursa-compat")]
+fn verify_signature(payload: &CircuitManagementPayload) -> Result<bool, ServiceError> {
+    let scheme = EcdsaSecp256k1Sha256::new();
+    let ursa_signature_verifier = UrsaSecp256k1SignatureVerifier::new(&scheme);
+
+    let header = protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.header())?;
+
+    let signature = payload.get_signature();
+    let public_key = header.get_requester();
+
+    ursa_signature_verifier
+        .verify(&payload.get_header(), &signature, &public_key)
+        .map_err(AdminShared::from)
+        .map_err(Box::new)
+        .map_err(ServiceError::UnableToHandleMessage)
+}
+
+#[cfg(not(feature = "ursa-compat"))]
+fn verify_signature(_: &CircuitManagementPayload) -> Result<bool, ServiceError> {
+    Err(ServiceError::UnableToHandleMessage(Box::new(
+        AdminSharedError::UndefinedSigner,
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,7 +581,7 @@ mod tests {
             state,
         );
 
-        let mut circuit = Circuit::new();
+        let mut circuit = admin::Circuit::new();
         circuit.set_circuit_id("test_propose_circuit".into());
         circuit.set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
@@ -535,8 +598,20 @@ mod tests {
             splinter_service("service-b", "sabre"),
         ]));
 
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+
+        let mut payload = admin::CircuitManagementPayload::new();
+
+        payload.set_signature(Vec::new());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        payload.set_circuit_create_request(request);
+
         shared
-            .propose_circuit(circuit)
+            .propose_circuit(payload)
             .expect("Proposal not accepted");
 
         // None of the proposed members are peered
@@ -573,7 +648,7 @@ mod tests {
             state,
         );
 
-        let mut circuit = Circuit::new();
+        let mut circuit = admin::Circuit::new();
         circuit.set_circuit_id("test_propose_circuit".into());
         circuit.set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
@@ -589,8 +664,20 @@ mod tests {
             splinter_service("service-b", "sabre"),
         ]));
 
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+
+        let mut payload = admin::CircuitManagementPayload::new();
+
+        payload.set_signature(Vec::new());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        payload.set_circuit_create_request(request);
+
         shared
-            .propose_circuit(circuit)
+            .propose_circuit(payload)
             .expect("Proposal not accepted");
 
         // None of the proposed members are peered

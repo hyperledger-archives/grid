@@ -12,7 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-declare module 'sawtooth-sdk/signing' {
-  var sawtoothSDK: any;
-  export = sawtoothSDK;
+'use strict'
+
+const protobuf = require('protobufjs');
+
+const path = require('path');
+const fs = require('fs');
+
+const proto_dir = '../../../protos/';
+
+const include = [
+  'admin.proto',
+]
+
+let root = new protobuf.Root();
+
+let files = fs.readdirSync(proto_dir)
+  .filter(f => include.includes(f))
+  .map(f => path.resolve(proto_dir, f));
+
+try {
+  root = root.loadSync(files);
+} catch (e) {
+  console.error(e);
+  throw e;
+}
+
+let output = JSON.stringify(root, null, 2);
+
+if (output !== '') {
+  process.stdout.write(output, 'utf8');
 }

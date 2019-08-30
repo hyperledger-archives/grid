@@ -46,7 +46,6 @@ module.exports = {
   configureWebpack: {
     resolve: {
       alias: {
-        zeromq$: path.resolve(__dirname, './src/mock_zmq.js'),
         'brandVariables': path.resolve(
           __dirname, whitelabelConfig[process.env.VUE_APP_BRAND].scssVariables),
         'brandAssets': path.resolve(

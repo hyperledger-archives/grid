@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as sawtoothSDK from 'sawtooth-sdk';
 import sjcl from 'sjcl';
+import protos from '@/protobuf';
 
-const signing = sawtoothSDK.signing;
+const signing = require('sawtooth-sdk/signing');
+const { Secp256k1PrivateKey } = require('sawtooth-sdk/signing/secp256k1');
 
 const CRYPTO_CONTEXT = signing.createContext('secp256k1');
 const CRYPTO_FACTORY = new signing.CryptoFactory(CRYPTO_CONTEXT);
@@ -40,11 +41,49 @@ export function hashSHA256(salt: string, data: string): string {
  * @returns An object containing the public key as hex and the ciphertext of
  *  the encrypted private key.
  */
-export function createKeyPair(password: string) {
+export function createKeyPair() {
   const privateKey = CRYPTO_CONTEXT.newRandomPrivateKey();
   const signer = CRYPTO_FACTORY.newSigner(privateKey);
-  const encryptedPrivateKey = JSON.stringify(
-    sjcl.encrypt(password, privateKey.asHex()));
   const publicKey = signer.getPublicKey().asHex();
-  return({publicKey, encryptedPrivateKey});
+  const privateKeyHex = privateKey.asHex();
+  return({publicKey, privateKey: privateKeyHex});
+}
+
+/**
+ * Encrypts a private key.
+ * @param password - Encryption key.
+ * @param privateKey - Unencrypted private key.
+ */
+export function encrypt(password: string, privateKey: string): string {
+  return JSON.stringify(sjcl.encrypt(password, privateKey));
+}
+
+/**
+ * Decrypts a private key.
+ * @param password - Encryption key.
+ * @param encryptedPrivateKey - Encrypted private key.
+ */
+export function decrypt(password: string, encryptedPrivateKey: string): string {
+  return sjcl.decrypt(password, JSON.parse(encryptedPrivateKey));
+}
+
+/**
+ * Fills out, signs, and encodes an incomplete CircuitManagementPayload.
+ *
+ * @param payload - The incomplete CircuitManagementPayload.
+ * @param signer - Wrapper containing the user's keys.
+ */
+export function signPayload(payload: Uint8Array, privateKey: string): Uint8Array {
+  const pkey = Secp256k1PrivateKey.fromHex(privateKey);
+  const signer = CRYPTO_FACTORY.newSigner(pkey);
+
+  const message = protos.CircuitManagementPayload.decode(payload);
+  const header = protos.CircuitManagementPayload.Header.decode(message.header);
+
+  const pubKey = signer.getPublicKey().asBytes();
+  header.requester = pubKey;
+  message.signature = signer.sign(header);
+  message.header = protos.CircuitManagementPayload.Header.encode(header).finish();
+  const signedPayload = protos.CircuitManagementPayload.encode(message).finish();
+  return signedPayload;
 }

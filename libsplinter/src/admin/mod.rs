@@ -13,27 +13,28 @@
 // limitations under the License.
 
 mod consensus;
-mod error;
+pub mod error;
 pub mod messages;
 mod shared;
 
 use std::fmt::Write;
 use std::sync::{Arc, Mutex, RwLock};
 
+use futures::Future;
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
-use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::actix_web::HttpResponse;
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalUpdate};
-use crate::futures::{Future, IntoFuture};
+use crate::futures::IntoFuture;
 use crate::network::{
     auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{AdminMessage, AdminMessage_Type};
-use crate::rest_api::{Method, Request, Resource, RestResourceProvider};
+use crate::protos::admin::{AdminMessage, AdminMessage_Type, CircuitManagementPayload};
+use crate::rest_api::{into_protobuf, Method, Request, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -41,7 +42,6 @@ use crate::service::{
 
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
-use self::messages::{from_payload, CircuitProposalVote, CreateCircuit};
 use self::shared::AdminServiceShared;
 
 pub struct AdminService {
@@ -114,6 +114,10 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
+        if !cfg!(feature = "ursa-compat") {
+            warn!("Payload signature verfication disabled");
+        }
+
         if self.consensus.is_some() {
             return Err(ServiceStartError::AlreadyStarted);
         }
@@ -254,25 +258,39 @@ fn to_hex(bytes: &[u8]) -> String {
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(self.admin_service_shared.clone()),
             make_application_handler_registration_route(self.admin_service_shared.clone()),
-            make_vote_route(self.admin_service_shared.clone()),
+            make_submit_route(self.admin_service_shared.clone()),
         ]
     }
 }
 
-fn make_create_circuit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(Method::Post, "/admin/circuit", move |request, payload| {
-        create_circuit(request, payload, shared.clone())
-    })
-}
-
-fn make_vote_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(Method::Post, "/admin/vote", move |_, payload| {
+fn make_submit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
+    Resource::new(Method::Post, "/admin/submit", move |_, payload| {
+        let shared = shared.clone();
         Box::new(
-            from_payload::<CircuitProposalVote>(payload).and_then(|vote| {
-                debug!("Received vote {:#?}", vote);
-                HttpResponse::Accepted().finish().into_future()
+            into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
+                let mut shared = match shared.lock() {
+                    Ok(shared) => shared,
+                    Err(err) => {
+                        debug!("Lock poisoned: {}", err);
+                        return HttpResponse::InternalServerError().finish().into_future();
+                    }
+                };
+
+                match shared.submit(payload) {
+                    Ok(()) => HttpResponse::Accepted().finish().into_future(),
+                    Err(ServiceError::UnableToHandleMessage(err)) => HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": format!("Unable to handle message: {}", err)
+                        }))
+                        .into_future(),
+                    Err(ServiceError::InvalidMessageFormat(err)) => HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": format!("Failed to parse payload: {}", err)
+                        }))
+                        .into_future(),
+                    Err(_) => HttpResponse::InternalServerError().finish().into_future(),
+                }
             }),
         )
     })
@@ -312,31 +330,6 @@ fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceSha
                 }
             }
         },
-    )
-}
-
-fn create_circuit(
-    _req: HttpRequest,
-    payload: web::Payload,
-    shared: Arc<Mutex<AdminServiceShared>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
-    Box::new(
-        from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
-            let mut circuit_create_request = match create_circuit.into_proto() {
-                Ok(request) => request,
-                Err(_) => return Ok(HttpResponse::BadRequest().finish()),
-            };
-            let circuit = circuit_create_request.take_circuit();
-            let circuit_id = circuit.circuit_id.clone();
-            let mut shared = shared.lock().expect("the admin state lock was poisoned");
-            if let Err(err) = shared.propose_circuit(circuit) {
-                error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
-                Ok(HttpResponse::BadRequest().finish())
-            } else {
-                debug!("Circuit {} proposed", circuit_id);
-                Ok(HttpResponse::Accepted().finish())
-            }
-        }),
     )
 }
 
@@ -417,11 +410,23 @@ mod tests {
             splinter_service("service-b", "sabre"),
         ]));
 
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(proposed_circuit.clone());
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+
+        let mut payload = admin::CircuitManagementPayload::new();
+
+        payload.set_signature(Vec::new());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        payload.set_circuit_create_request(request);
+
         admin_service
             .admin_service_shared
             .lock()
             .unwrap()
-            .propose_circuit(proposed_circuit.clone())
+            .propose_circuit(payload)
             .expect("The proposal was not handled correctly");
 
         // wait up to 1 second for the proposed circuit message
@@ -452,9 +457,12 @@ mod tests {
         let mut envelope = admin_envelope
             .take_proposed_circuit()
             .take_circuit_payload();
+
+        let header: admin::CircuitManagementPayload_Header =
+            protobuf::parse_from_bytes(envelope.get_header()).unwrap();
         assert_eq!(
             admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST,
-            envelope.get_action()
+            header.get_action()
         );
         assert_eq!(
             proposed_circuit,

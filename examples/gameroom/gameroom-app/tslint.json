@@ -17,6 +17,7 @@
     "no-consecutive-blank-lines": false,
     "semicolon": [true, "always"],
     "member-access": [true, "no-public"],
-    "no-console": [true, "log"]
+    "no-console": [true, "log"],
+    "no-var-requires": false
   }
 }

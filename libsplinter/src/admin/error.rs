@@ -18,6 +18,9 @@ use std::fmt;
 use crate::consensus::error::ProposalManagerError;
 use crate::orchestrator::InitializeServiceError;
 use crate::service::error::ServiceError;
+use crate::signing;
+
+use protobuf::error;
 
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
@@ -33,6 +36,13 @@ pub enum AdminSharedError {
     ServiceInitializationFailed(InitializeServiceError),
     UnknownAction(String),
     ValidationFailed(String),
+
+    /// An error occured while attempting to verify a payload's signature
+    SignerError(signing::error::Error),
+
+    /// Returned if a signer is not specified currently only usra is supported
+    /// and the feature flag "ursa-compat" must be supplied.
+    UndefinedSigner,
 }
 
 impl Error for AdminSharedError {
@@ -44,6 +54,8 @@ impl Error for AdminSharedError {
             AdminSharedError::ServiceInitializationFailed(err) => Some(err),
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
+            AdminSharedError::SignerError(_) => None,
+            AdminSharedError::UndefinedSigner => None,
         }
     }
 }
@@ -65,6 +77,8 @@ impl fmt::Display for AdminSharedError {
                 write!(f, "received message with unknown action: {}", msg)
             }
             AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
+            AdminSharedError::SignerError(ref msg) => write!(f, "Signing error: {}", msg),
+            AdminSharedError::UndefinedSigner => f.write_str("Signing method was not defined"),
         }
     }
 }
@@ -72,6 +86,18 @@ impl fmt::Display for AdminSharedError {
 impl From<InitializeServiceError> for AdminSharedError {
     fn from(err: InitializeServiceError) -> Self {
         AdminSharedError::ServiceInitializationFailed(err)
+    }
+}
+
+impl From<signing::error::Error> for AdminSharedError {
+    fn from(err: signing::error::Error) -> Self {
+        AdminSharedError::SignerError(err)
+    }
+}
+
+impl From<MarshallingError> for AdminSharedError {
+    fn from(err: MarshallingError) -> Self {
+        AdminSharedError::InvalidMessageFormat(err)
     }
 }
 
@@ -144,12 +170,14 @@ impl From<Sha256Error> for AdminSharedError {
 #[derive(Debug)]
 pub enum MarshallingError {
     UnsetField(String),
+    ProtobufError(error::ProtobufError),
 }
 
 impl std::error::Error for MarshallingError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             MarshallingError::UnsetField(_) => None,
+            MarshallingError::ProtobufError(err) => Some(err),
         }
     }
 }
@@ -158,6 +186,13 @@ impl std::fmt::Display for MarshallingError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             MarshallingError::UnsetField(_) => write!(f, "Invalid enumerated type"),
+            MarshallingError::ProtobufError(err) => write!(f, "Protobuf Error: {}", err),
         }
+    }
+}
+
+impl From<error::ProtobufError> for MarshallingError {
+    fn from(err: error::ProtobufError) -> Self {
+        MarshallingError::ProtobufError(err)
     }
 }

@@ -18,6 +18,8 @@ use std::error::Error;
 use std::fmt;
 
 use gameroom_database::DatabaseError;
+use libsplinter::admin::error::MarshallingError;
+use protobuf::error::ProtobufError;
 
 #[derive(Debug)]
 pub enum RestApiServerError {
@@ -96,6 +98,24 @@ impl From<diesel::result::Error> for RestApiResponseError {
 
 impl From<BcryptError> for RestApiResponseError {
     fn from(err: BcryptError) -> Self {
+        RestApiResponseError::InternalError(err.to_string())
+    }
+}
+
+impl From<openssl::error::ErrorStack> for RestApiResponseError {
+    fn from(err: openssl::error::ErrorStack) -> Self {
+        RestApiResponseError::InternalError(err.to_string())
+    }
+}
+
+impl From<ProtobufError> for RestApiResponseError {
+    fn from(err: ProtobufError) -> Self {
+        RestApiResponseError::InternalError(err.to_string())
+    }
+}
+
+impl From<MarshallingError> for RestApiResponseError {
+    fn from(err: MarshallingError) -> Self {
         RestApiResponseError::InternalError(err.to_string())
     }
 }

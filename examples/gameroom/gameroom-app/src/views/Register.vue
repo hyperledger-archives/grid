@@ -65,7 +65,6 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
-import * as crypto from '@/utils/crypto';
 import Toast from '../components/Toast.vue';
 
 @Component({
@@ -97,14 +96,11 @@ export default class Register extends Vue {
       this.error = 'Passwords do not match.';
       return;
     }
-    const keys = crypto.createKeyPair(this.password);
     this.submitting = true;
     try {
       await this.$store.dispatch('user/register', {
         email: this.email,
-        hashedPassword: crypto.hashSHA256(this.email, this.password),
-        publicKey: keys.publicKey,
-        encryptedPrivateKey: keys.encryptedPrivateKey,
+        password: this.password,
       });
       this.$router.push({ name: 'dashboard' });
     } catch (e) {

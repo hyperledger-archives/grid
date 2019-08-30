@@ -19,6 +19,12 @@ export interface ApiError {
 
 export interface User {
   email: string;
+  publicKey: string;
+  privateKey: string;
+}
+
+export interface UserRegistration {
+  email: string;
   hashedPassword: string;
   publicKey: string;
   encryptedPrivateKey: string;

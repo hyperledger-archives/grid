@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-declare module 'sawtooth-sdk/signing' {
-  var sawtoothSDK: any;
-  export = sawtoothSDK;
-}
+import protobuf, { Root } from 'protobufjs';
+const protoJSON = require('../compiled_protos.json');
+
+const root: Root = protobuf.Root.fromJSON(protoJSON);
+
+export default Object.keys(root)
+  .filter((key) => /^[A-Z]/.test(key))
+  .reduce((acc: any, key) => {
+    acc[key] = root.get(key);
+    return acc;
+  }, {});
