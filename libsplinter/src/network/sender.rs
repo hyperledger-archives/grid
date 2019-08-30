@@ -229,5 +229,4 @@ mod tests {
         let (send, recv) = mpsc::channel();
         test_network_message_sender_rapid_fire(Box::new(send), Box::new(recv));
     }
-
 }

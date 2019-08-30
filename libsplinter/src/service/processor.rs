@@ -151,7 +151,7 @@ impl ServiceProcessor {
         ServiceProcessorError,
     > {
         // Starts the authorization process with the splinter node
-        // If running over inproc connection, this is the only authroization message required
+        // If running over inproc connection, this is the only authorization message required
         let connect_request = create_connect_request()
             .map_err(|err| process_err!(err, "unable to create connect request"))?;;
         self.mesh
@@ -576,6 +576,7 @@ fn create_connect_request() -> Result<Vec<u8>, protobuf::ProtobufError> {
 pub mod tests {
     use super::*;
 
+    use std::any::Any;
     use std::thread;
 
     use crate::network::Network;
@@ -844,7 +845,7 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .send(&message_context.sender, b"send_response")
-                        .unwrap();;
+                        .unwrap();
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {
@@ -857,10 +858,14 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .reply(&message_context, b"reply response")
-                        .unwrap();;
+                        .unwrap();
                 }
             }
             Ok(())
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
         }
     }
 
@@ -929,7 +934,7 @@ pub mod tests {
                 if let Some(network_sender) = &self.network_sender {
                     network_sender
                         .send(&message_context.sender, b"send_response")
-                        .unwrap();;
+                        .unwrap();
                 }
             } else if message_bytes == b"send_and_await" {
                 if let Some(network_sender) = &self.network_sender {
@@ -946,6 +951,10 @@ pub mod tests {
                 }
             }
             Ok(())
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
         }
     }
 

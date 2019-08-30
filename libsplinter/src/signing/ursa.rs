@@ -180,5 +180,4 @@ mod tests {
         let ursa_signature_verifier = UrsaEd25519Sha512SignatureVerifier::new(&scheme);
         test_signer_implementation(&ursa_signer, &ursa_signature_verifier)
     }
-
 }

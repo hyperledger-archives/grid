@@ -729,5 +729,4 @@ mod test {
         temp_dir.push(format!("test_node_registry-{:?}.yaml", thread_id));
         temp_dir.to_str().unwrap().to_string()
     }
-
 }

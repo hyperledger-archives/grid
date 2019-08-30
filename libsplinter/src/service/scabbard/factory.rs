@@ -15,10 +15,17 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
+use std::sync::Arc;
 
 use serde_json;
 
-use crate::service::{FactoryCreateError, Service, ServiceFactory};
+use transact::protocol::batch::BatchPair;
+use transact::protos::FromBytes;
+
+use crate::actix_web::{web, Error as ActixError, HttpResponse};
+use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::rest_api::{Method, Request};
+use crate::service::{FactoryCreateError, Service, ServiceEndpoint, ServiceFactory};
 
 use super::{Scabbard, SERVICE_TYPE};
 
@@ -85,6 +92,74 @@ impl ServiceFactory for ScabbardFactory {
             .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 
         Ok(Box::new(service))
+    }
+
+    fn get_rest_endpoints(&self) -> Vec<ServiceEndpoint> {
+        vec![
+            make_add_batches_to_queue_endpoint(),
+            make_subscribe_endpoint(),
+        ]
+    }
+}
+
+fn make_subscribe_endpoint() -> ServiceEndpoint {
+    ServiceEndpoint {
+        service_type: SERVICE_TYPE.into(),
+        route: "/ws/subscribe".into(),
+        method: Method::Get,
+        handler: Arc::new(move |request, payload, service| {
+            let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
+                Some(s) => s,
+                None => {
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                }
+            };
+
+            match scabbard.subscribe_to_state(Request::from((request, payload))) {
+                Ok(Ok(response)) => Box::new(response.into_future()),
+                _ => Box::new(HttpResponse::InternalServerError().finish().into_future()),
+            }
+        }),
+    }
+}
+
+fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
+    ServiceEndpoint {
+        service_type: SERVICE_TYPE.into(),
+        route: "/batches".into(),
+        method: Method::Post,
+        handler: Arc::new(move |_, payload, service| {
+            let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
+                Some(s) => s,
+                None => {
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                }
+            };
+
+            let body = match payload
+                .map_err(ActixError::from)
+                .fold(web::BytesMut::new(), move |mut body, chunk| {
+                    body.extend_from_slice(&chunk);
+                    Ok::<_, ActixError>(body)
+                })
+                .wait()
+            {
+                Ok(b) => b,
+                Err(_) => {
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
+                }
+            };
+
+            let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
+                Ok(b) => b,
+                Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
+            };
+
+            match scabbard.add_batches(batches) {
+                Ok(_) => Box::new(HttpResponse::Ok().finish().into_future()),
+                Err(_) => Box::new(HttpResponse::InternalServerError().finish().into_future()),
+            }
+        }),
     }
 }
 

@@ -178,5 +178,4 @@ mod tests {
             last: last_link,
         }
     }
-
 }

@@ -42,10 +42,13 @@ mod registry;
 pub mod scabbard;
 mod sender;
 
-pub use factory::ServiceFactory;
+use std::any::Any;
+
+pub use factory::{ServiceEndpoint, ServiceFactory};
 pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;
+pub use registry::StandardServiceNetworkRegistry;
 
 pub use error::{
     FactoryCreateError, ServiceConnectionError, ServiceDestroyError, ServiceDisconnectionError,
@@ -141,6 +144,11 @@ pub trait Service: Send {
         message_bytes: &[u8],
         message_context: &ServiceMessageContext,
     ) -> Result<(), ServiceError>;
+
+    /// Cast the service as `&dyn Any`.
+    ///
+    /// This allows for downcasting the `Service` to a specific implementation.
+    fn as_any(&self) -> &dyn Any;
 }
 
 #[cfg(test)]

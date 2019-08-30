@@ -584,5 +584,4 @@ mod tests {
             vec!["tcp://127.0.0.1:8000".to_string()]
         );
     }
-
 }

@@ -104,7 +104,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /nodes:
     get:
       tags:
@@ -185,6 +185,24 @@ paths:
                 schema:
                   $ref: '#/components/schemas/Error'
 
+  /scabbard/{circuit}/{service_id}/batches:
+    post:
+      description: Send a list of Sabre batches to the specified Scabbard service
+      parameters:
+        - name: circuit
+          in: path
+          description: circuit the targeted service belongs to
+          required: true
+          schema:
+            type: string
+        - name: service_id
+          in: path
+          description: ID of the targeted service
+          required: true
+          schema:
+            type: string
+
+
 components:
   schemas:
     Error:
@@ -207,7 +225,7 @@ components:
         node_id:
           description: Node id
           type: string
-          example: node-009 
+          example: node-009
         endpoint:
           description: The node's service endpoint
           example: tcp://foo.bar.biz
@@ -230,7 +248,7 @@ components:
         error_reason:
           description: Error message if the registration failed
           type: string
-    
+
     RegisteredNode:
       type: object
       properties:
@@ -241,13 +259,13 @@ components:
         identity: node-123123-asdf
         company: Cargill
         status: Up
-    
+
     Paging:
       type: object
       properties:
         current:
           type: string
-        offset: 
+        offset:
           type: integer
         limit:
           type: integer
