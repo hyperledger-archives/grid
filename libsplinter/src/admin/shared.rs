@@ -28,8 +28,10 @@ use crate::network::{
 };
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
-    Circuit, CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitProposal, CircuitProposal_ProposalType, Circuit_AuthorizationType,
+    Circuit, CircuitCreateRequest, CircuitManagementPayload,
+    CircuitManagementPayload_Action,
+    CircuitProposal,
+    CircuitProposal_ProposalType, Circuit_AuthorizationType,
     Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
@@ -485,9 +487,10 @@ fn verify_signature(payload: &CircuitManagementPayload) -> Result<bool, ServiceE
     let scheme = EcdsaSecp256k1Sha256::new();
     let ursa_signature_verifier = UrsaSecp256k1SignatureVerifier::new(&scheme);
 
+    let header = protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.header())?;
+
     let signature = payload.get_signature();
-    let public_key = payload.get_header().get_requester();
-    let payload_hash = payload.get_header().get_payload_hash();
+    let public_key = header.get_requester();
 
     ursa_signature_verifier
         .verify(&payload.get_header(), &signature, &public_key)

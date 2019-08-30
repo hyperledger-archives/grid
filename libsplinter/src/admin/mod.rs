@@ -23,16 +23,18 @@ use std::sync::{Arc, Mutex, RwLock};
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
-use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
 use crate::circuit::SplinterState;
+use crate::actix_web::HttpResponse;
 use crate::consensus::{Proposal, ProposalUpdate};
-use crate::futures::{Future, IntoFuture};
+use crate::futures::IntoFuture;
 use crate::network::{
     auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{AdminMessage, AdminMessage_Type};
+use crate::protos::admin::{
+    AdminMessage, AdminMessage_Type,
+};
 use crate::rest_api::{Method, Request, Resource, RestResourceProvider};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
@@ -41,7 +43,6 @@ use crate::service::{
 
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
-use self::messages::{from_payload, CircuitProposalVote, CreateCircuit};
 use self::shared::AdminServiceShared;
 
 pub struct AdminService {
@@ -254,28 +255,9 @@ fn to_hex(bytes: &[u8]) -> String {
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         vec![
-            make_create_circuit_route(self.admin_service_shared.clone()),
             make_application_handler_registration_route(self.admin_service_shared.clone()),
-            make_vote_route(self.admin_service_shared.clone()),
         ]
     }
-}
-
-fn make_create_circuit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(Method::Post, "/admin/circuit", move |request, payload| {
-        create_circuit(request, payload, shared.clone())
-    })
-}
-
-fn make_vote_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(Method::Post, "/admin/vote", move |_, payload| {
-        Box::new(
-            from_payload::<CircuitProposalVote>(payload).and_then(|vote| {
-                debug!("Received vote {:#?}", vote);
-                HttpResponse::Accepted().finish().into_future()
-            }),
-        )
-    })
 }
 
 fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
@@ -312,31 +294,6 @@ fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceSha
                 }
             }
         },
-    )
-}
-
-fn create_circuit(
-    _req: HttpRequest,
-    payload: web::Payload,
-    shared: Arc<Mutex<AdminServiceShared>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
-    Box::new(
-        from_payload::<CreateCircuit>(payload).and_then(move |create_circuit| {
-            let mut circuit_create_request = match create_circuit.into_proto() {
-                Ok(request) => request,
-                Err(_) => return Ok(HttpResponse::BadRequest().finish()),
-            };
-            let circuit = circuit_create_request.take_circuit();
-            let circuit_id = circuit.circuit_id.clone();
-            let mut shared = shared.lock().expect("the admin state lock was poisoned");
-            if let Err(err) = shared.propose_circuit(circuit) {
-                error!("Unable to submit circuit {} proposal: {}", circuit_id, err);
-                Ok(HttpResponse::BadRequest().finish())
-            } else {
-                debug!("Circuit {} proposed", circuit_id);
-                Ok(HttpResponse::Accepted().finish())
-            }
-        }),
     )
 }
 
