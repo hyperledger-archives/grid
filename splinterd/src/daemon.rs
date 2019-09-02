@@ -19,7 +19,7 @@ use std::time::Duration;
 use crossbeam_channel;
 
 use crate::node_registry;
-use libsplinter::admin::AdminService;
+use libsplinter::admin::{admin_service_id, AdminService};
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
@@ -49,7 +49,7 @@ use libsplinter::rest_api::{
 };
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::service::scabbard::ScabbardFactory;
-use libsplinter::service::{self, Service, ServiceProcessor};
+use libsplinter::service::{self, ServiceProcessor};
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{
     inproc::InprocTransport, multi::MultiTransport, AcceptError, ConnectError, Incoming,
@@ -84,8 +84,6 @@ impl SplinterDaemon {
 
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
-        let r = running.clone();
-
         let registry = create_node_registry(&self.registry_config)?;
 
         let node_registry_manager =
@@ -115,63 +113,19 @@ impl SplinterDaemon {
         );
         let admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
-        let orchestrator_connection =
-            inproc_tranport
-                .connect(ADMIN_SERVICE_ADDRESS)
-                .map_err(|err| {
-                    StartError::TransportError(format!(
-                        "unable to initiate orchestrator connection: {:?}",
-                        err
-                    ))
-                })?;
-        let orchestrator = ServiceOrchestrator::new(
-            vec![Box::new(ScabbardFactory::new(None, None))],
-            orchestrator_connection,
-            ORCHESTRATOR_INCOMING_CAPACITY,
-            ORCHESTRATOR_OUTGOING_CAPACITY,
-            ORCHESTRATOR_CHANNEL_CAPACITY,
-        )?;
-        let orchestrator_resources = orchestrator.resources();
+        // Listen for services
+        Self::listen_for_services(
+            self.network.clone(),
+            admin_service_listener,
+            vec![
+                format!("orchestator::{}", &self.node_id),
+                admin_service_id(&self.node_id),
+            ],
+            service_listener,
+        );
 
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
         let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
-        let admin_service = AdminService::new(
-            &self.node_id,
-            orchestrator,
-            peer_connector.clone(),
-            Box::new(auth_manager.clone()),
-            state.clone(),
-        )
-        .map_err(|err| {
-            StartError::AdminServiceError(format!("unable to create admin service: {}", err))
-        })?;
-
-        let node_id = self.node_id.clone();
-        let service_endpoint = self.service_endpoint.clone();
-        let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
-            .with_bind(&self.rest_api_endpoint)
-            .add_resource(Resource::new(
-                Method::Get,
-                "/openapi.yml",
-                routes::get_openapi,
-            ))
-            .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
-                routes::get_status(node_id.clone(), service_endpoint.clone())
-            }))
-            .add_resources(node_registry_manager.resources())
-            .add_resources(admin_service.resources())
-            .add_resources(orchestrator_resources)
-            .build()?
-            .run()?;
-
-        ctrlc::set_handler(move || {
-            info!("Recieved Shutdown");
-            r.store(false, Ordering::SeqCst);
-            if let Err(err) = rest_api_shutdown_handle.shutdown() {
-                error!("Unable to cleanly shutdown REST API server: {}", err);
-            }
-        })
-        .expect("Error setting Ctrl-C handler");
 
         info!("Starting SpinterNode with id {}", self.node_id);
 
@@ -214,7 +168,7 @@ impl SplinterDaemon {
         let network_dispatcher = set_up_network_dispatcher(
             send,
             &self.node_id,
-            auth_manager,
+            auth_manager.clone(),
             circuit_dispatch_send,
             auth_dispatch_send,
         );
@@ -246,13 +200,6 @@ impl SplinterDaemon {
             Ok(())
         });
 
-        Self::listen_for_services(
-            self.network.clone(),
-            admin_service_listener,
-            vec![admin_service.service_id().to_string()],
-            service_listener,
-        );
-
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
             if let Err(err) = peer_connector.connect_unidentified_peer(&peer) {
@@ -283,39 +230,108 @@ impl SplinterDaemon {
 
         let timeout = Duration::from_secs(TIMEOUT_SEC);
 
+        // start the recv loop
+        let main_loop_network = self.network.clone();
+        let main_loop_running = running.clone();
+        let main_loop_join_handle = thread::Builder::new()
+            .name("MainLoop".into())
+            .spawn(move || {
+                while main_loop_running.load(Ordering::SeqCst) {
+                    match main_loop_network.recv_timeout(timeout) {
+                        // This is where the message should be dispatched
+                        Ok(message) => {
+                            let mut msg: NetworkMessage =
+                                protobuf::parse_from_bytes(message.payload()).unwrap();
+                            let dispatch_msg = DispatchMessage::new(
+                                msg.get_message_type(),
+                                msg.take_payload(),
+                                message.peer_id().to_string(),
+                            );
+                            debug!("Received Message from {}: {:?}", message.peer_id(), msg);
+                            match network_dispatch_send.send(dispatch_msg) {
+                                Ok(()) => (),
+                                Err(err) => error!("Dispatch Error {}", err.to_string()),
+                            }
+                        }
+                        Err(RecvTimeoutError::Disconnected) => {
+                            // if the reciever has disconnected, shutdown
+                            warn!("Recieved Disconnected Error from Network");
+                            break;
+                        }
+                        Err(_) => {
+                            // Timeout or NoPeerError are ignored
+                            continue;
+                        }
+                    }
+                }
+                info!("Shutting down");
+            })
+            .map_err(|_| StartError::ThreadError("Unable to spawn main loop".into()))?;
+
+        let orchestrator_connection =
+            inproc_tranport
+                .connect(ADMIN_SERVICE_ADDRESS)
+                .map_err(|err| {
+                    StartError::TransportError(format!(
+                        "unable to initiate orchestrator connection: {:?}",
+                        err
+                    ))
+                })?;
+        let orchestrator = ServiceOrchestrator::new(
+            vec![Box::new(ScabbardFactory::new(None, None))],
+            orchestrator_connection,
+            ORCHESTRATOR_INCOMING_CAPACITY,
+            ORCHESTRATOR_OUTGOING_CAPACITY,
+            ORCHESTRATOR_CHANNEL_CAPACITY,
+        )?;
+        let orchestrator_resources = orchestrator.resources();
+
+        let admin_service = AdminService::new(
+            &self.node_id,
+            orchestrator,
+            peer_connector.clone(),
+            Box::new(auth_manager.clone()),
+            state.clone(),
+        )
+        .map_err(|err| {
+            StartError::AdminServiceError(format!("unable to create admin service: {}", err))
+        })?;
+
+        let node_id = self.node_id.clone();
+        let service_endpoint = self.service_endpoint.clone();
+        let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
+            .with_bind(&self.rest_api_endpoint)
+            .add_resource(Resource::new(
+                Method::Get,
+                "/openapi.yml",
+                routes::get_openapi,
+            ))
+            .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
+                routes::get_status(node_id.clone(), service_endpoint.clone())
+            }))
+            .add_resources(node_registry_manager.resources())
+            .add_resources(admin_service.resources())
+            .add_resources(orchestrator_resources)
+            .build()?
+            .run()?;
+
+        let r = running.clone();
+        ctrlc::set_handler(move || {
+            info!("Received Shutdown");
+            r.store(false, Ordering::SeqCst);
+            if let Err(err) = rest_api_shutdown_handle.shutdown() {
+                error!("Unable to cleanly shutdown REST API server: {}", err);
+            }
+        })
+        .expect("Error setting Ctrl-C handler");
+
         let service_processor_join_handle =
             Self::start_admin_service(inproc_tranport, admin_service, Arc::clone(&running))?;
 
-        // start the recv loop
-        while running.load(Ordering::SeqCst) {
-            match self.network.recv_timeout(timeout) {
-                // This is where the message should be dispatched
-                Ok(message) => {
-                    let mut msg: NetworkMessage =
-                        protobuf::parse_from_bytes(message.payload()).unwrap();
-                    let dispatch_msg = DispatchMessage::new(
-                        msg.get_message_type(),
-                        msg.take_payload(),
-                        message.peer_id().to_string(),
-                    );
-                    debug!("Received Message from {}: {:?}", message.peer_id(), msg);
-                    match network_dispatch_send.send(dispatch_msg) {
-                        Ok(()) => (),
-                        Err(err) => error!("Dispatch Error {}", err.to_string()),
-                    }
-                }
-                Err(RecvTimeoutError::Disconnected) => {
-                    // if the reciever has disconnected, shutdown
-                    warn!("Recieved Disconnected Error from Network");
-                    break;
-                }
-                Err(_) => {
-                    // Timeout or NoPeerError are ignored
-                    continue;
-                }
-            }
-        }
-        info!("Shutting down");
+        main_loop_join_handle
+            .join()
+            .map_err(|_| StartError::ThreadError("Unable to join main loop".into()))?;
+
         // Join network sender and dispatcher threads
         let _ = network_message_sender_thread.join();
         let _ = circuit_dispatcher_thread.join();
@@ -330,26 +346,27 @@ impl SplinterDaemon {
     fn listen_for_services(
         network: Network,
         mut internal_service_listener: Box<dyn Listener>,
-        mut internal_service_peer_ids: Vec<String>,
+        internal_service_peer_ids: Vec<String>,
         mut external_service_listener: Box<dyn Listener>,
     ) {
         // this thread will just be dropped on shutdown
-        let admin_service_peer_id = internal_service_peer_ids.pop().unwrap();
         let _ = thread::spawn(move || {
             // accept the admin service's connection
-            match internal_service_listener.incoming().next() {
-                Some(Ok(connection)) => {
-                    if let Err(err) = network.add_peer(admin_service_peer_id.clone(), connection) {
-                        error!("Unable to add peer {}: {}", admin_service_peer_id, err);
+            for service_peer_id in internal_service_peer_ids.into_iter() {
+                match internal_service_listener.incoming().next() {
+                    Some(Ok(connection)) => {
+                        if let Err(err) = network.add_peer(service_peer_id.clone(), connection) {
+                            error!("Unable to add peer {}: {}", service_peer_id, err);
+                        }
                     }
+                    Some(Err(err)) => {
+                        return Err(StartError::TransportError(format!(
+                            "Accept Error: {:?}",
+                            err
+                        )));
+                    }
+                    None => {}
                 }
-                Some(Err(err)) => {
-                    return Err(StartError::TransportError(format!(
-                        "Accept Error: {:?}",
-                        err
-                    )));
-                }
-                None => {}
             }
 
             for connection_result in external_service_listener.incoming() {
@@ -672,6 +689,7 @@ pub enum StartError {
     RestApiError(String),
     AdminServiceError(String),
     OrchestratorError(String),
+    ThreadError(String),
 }
 
 impl From<RestApiServerError> for StartError {
