@@ -53,7 +53,7 @@ use libsplinter::service::{self, Service, ServiceProcessor};
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{
     inproc::InprocTransport, multi::MultiTransport, AcceptError, ConnectError, Incoming,
-    ListenError, Transport,
+    ListenError, Listener, Transport,
 };
 
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
@@ -108,12 +108,12 @@ impl SplinterDaemon {
             "Listening for peer connections on {}",
             network_listener.endpoint()
         );
-        let mut service_listener = transport.listen(&self.service_endpoint)?;
+        let service_listener = transport.listen(&self.service_endpoint)?;
         debug!(
             "Listening for service connections on {}",
             service_listener.endpoint()
         );
-        let mut admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
+        let admin_service_listener = transport.listen(ADMIN_SERVICE_ADDRESS)?;
 
         let orchestrator_connection =
             inproc_tranport
@@ -246,44 +246,12 @@ impl SplinterDaemon {
             Ok(())
         });
 
-        // setup a thread to listen on the service port and add incoming connection to the network
-        let service_clone = self.network.clone();
-
-        // this thread will just be dropped on shutdown
-        let admin_service_peer_id = admin_service.service_id().to_string();
-        let _ = thread::spawn(move || {
-            // accept the admin service's connection
-            match admin_service_listener.incoming().next() {
-                Some(Ok(connection)) => {
-                    service_clone.add_peer(admin_service_peer_id, connection)?;
-                }
-                Some(Err(err)) => {
-                    return Err(StartError::TransportError(format!(
-                        "Accept Error: {:?}",
-                        err
-                    )));
-                }
-                None => {}
-            }
-
-            for connection_result in service_listener.incoming() {
-                let connection = match connection_result {
-                    Ok(connection) => connection,
-                    Err(err) => {
-                        return Err(StartError::TransportError(format!(
-                            "Accept Error: {:?}",
-                            err
-                        )));
-                    }
-                };
-                debug!(
-                    "Received service connection from {}",
-                    connection.remote_endpoint()
-                );
-                service_clone.add_connection(connection)?;
-            }
-            Ok(())
-        });
+        Self::listen_for_services(
+            self.network.clone(),
+            admin_service_listener,
+            vec![admin_service.service_id().to_string()],
+            service_listener,
+        );
 
         // For provided initial peers, try to connect to them
         for peer in self.initial_peers.iter() {
@@ -357,6 +325,53 @@ impl SplinterDaemon {
         let _ = service_processor_join_handle.join_all();
 
         Ok(())
+    }
+
+    fn listen_for_services(
+        network: Network,
+        mut internal_service_listener: Box<dyn Listener>,
+        mut internal_service_peer_ids: Vec<String>,
+        mut external_service_listener: Box<dyn Listener>,
+    ) {
+        // this thread will just be dropped on shutdown
+        let admin_service_peer_id = internal_service_peer_ids.pop().unwrap();
+        let _ = thread::spawn(move || {
+            // accept the admin service's connection
+            match internal_service_listener.incoming().next() {
+                Some(Ok(connection)) => {
+                    if let Err(err) = network.add_peer(admin_service_peer_id.clone(), connection) {
+                        error!("Unable to add peer {}: {}", admin_service_peer_id, err);
+                    }
+                }
+                Some(Err(err)) => {
+                    return Err(StartError::TransportError(format!(
+                        "Accept Error: {:?}",
+                        err
+                    )));
+                }
+                None => {}
+            }
+
+            for connection_result in external_service_listener.incoming() {
+                let connection = match connection_result {
+                    Ok(connection) => connection,
+                    Err(err) => {
+                        return Err(StartError::TransportError(format!(
+                            "Accept Error: {:?}",
+                            err
+                        )));
+                    }
+                };
+                debug!(
+                    "Received service connection from {}",
+                    connection.remote_endpoint()
+                );
+                if let Err(err) = network.add_connection(connection) {
+                    error!("Unable to add inbound service connection: {}", err);
+                }
+            }
+            Ok(())
+        });
     }
 
     fn start_admin_service(
