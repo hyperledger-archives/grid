@@ -21,7 +21,7 @@ use diesel::{
 
 pub fn fetch_user_by_email(conn: &PgConnection, email: &str) -> QueryResult<Option<GameroomUser>> {
     gameroom_user::table
-        .filter(gameroom_user::email.eq(email))
+        .find(email)
         .first::<GameroomUser>(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })

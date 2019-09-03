@@ -21,9 +21,9 @@ use std::time::SystemTime;
 #[derive(Insertable, Queryable)]
 #[table_name = "gameroom_user"]
 pub struct GameroomUser {
+    pub email: String,
     pub public_key: String,
     pub encrypted_private_key: String,
-    pub email: String,
     pub hashed_password: String,
 }
 
