@@ -108,7 +108,7 @@ message CircuitProposal {
     // An individual vote record
     message VoteRecord {
         // The public key of the voter
-        string public_key = 1;
+        bytes public_key = 1;
 
         // The voter's actual vote
         CircuitProposalVote.Vote vote = 2;
@@ -191,20 +191,12 @@ message CircuitProposalVote {
         REJECT = 1;
     }
 
-    message Ballot {
-        // The id of the circuit being updated
-        string circuit_id = 1;
-
-        // The sha256 hash of the final state of the new circuit definition in
-        // bytes
-        string circuit_hash = 2;
-
-        Vote vote = 3;
-    }
-
-    Ballot ballot = 1;
-    bytes ballot_signature = 2;
-    bytes signer_public_key = 3;
+    // The id of the circuit being updated
+    string circuit_id = 1;
+    // The sha256 hash of the final state of the new circuit definition in
+    // bytes
+    string circuit_hash = 2;
+    Vote vote = 3;
 }
 
 // This message will be submitted to a splinter node by an administrator that

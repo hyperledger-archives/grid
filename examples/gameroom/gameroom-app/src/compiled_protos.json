@@ -158,7 +158,7 @@
         "VoteRecord": {
           "fields": {
             "publicKey": {
-              "type": "string",
+              "type": "bytes",
               "id": 1
             },
             "vote": {
@@ -260,16 +260,16 @@
     },
     "CircuitProposalVote": {
       "fields": {
-        "ballot": {
-          "type": "Ballot",
+        "circuitId": {
+          "type": "string",
           "id": 1
         },
-        "ballotSignature": {
-          "type": "bytes",
+        "circuitHash": {
+          "type": "string",
           "id": 2
         },
-        "signerPublicKey": {
-          "type": "bytes",
+        "vote": {
+          "type": "Vote",
           "id": 3
         }
       },
@@ -278,22 +278,6 @@
           "values": {
             "ACCEPT": 0,
             "REJECT": 1
-          }
-        },
-        "Ballot": {
-          "fields": {
-            "circuitId": {
-              "type": "string",
-              "id": 1
-            },
-            "circuitHash": {
-              "type": "string",
-              "id": 2
-            },
-            "vote": {
-              "type": "Vote",
-              "id": 3
-            }
           }
         }
       }

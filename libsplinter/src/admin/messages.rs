@@ -301,46 +301,40 @@ pub enum ProposalType {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct VoteRecord {
-    pub public_key: String,
+    pub public_key: Vec<u8>,
     pub vote: Vote,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CircuitProposalVote {
-    pub ballot: Ballot,
-    pub ballot_signature: Vec<u8>,
-    pub signer_public_key: Vec<u8>,
-}
-
-impl CircuitProposalVote {
-    fn from_proto(mut proto: admin::CircuitProposalVote) -> Result<Self, MarshallingError> {
-        Ok(CircuitProposalVote {
-            ballot: Ballot::from_proto(proto.take_ballot())?,
-            ballot_signature: proto.take_ballot_signature(),
-            signer_public_key: proto.take_signer_public_key(),
-        })
-    }
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct Ballot {
     pub circuit_id: String,
     pub circuit_hash: String,
     pub vote: Vote,
 }
 
-impl Ballot {
-    fn from_proto(mut proto: admin::CircuitProposalVote_Ballot) -> Result<Self, MarshallingError> {
+impl CircuitProposalVote {
+    pub fn from_proto(mut proto: admin::CircuitProposalVote) -> Result<Self, MarshallingError> {
         let vote = match proto.get_vote() {
             admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
             admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
         };
 
-        Ok(Ballot {
+        Ok(CircuitProposalVote {
             circuit_id: proto.take_circuit_id(),
             circuit_hash: proto.take_circuit_hash(),
             vote,
         })
+    }
+
+    pub fn into_proto(self) -> admin::CircuitProposalVote {
+        let mut vote = admin::CircuitProposalVote::new();
+        vote.set_circuit_id(self.circuit_id);
+        vote.set_circuit_hash(self.circuit_hash);
+        match self.vote {
+            Vote::Accept => vote.set_vote(admin::CircuitProposalVote_Vote::ACCEPT),
+            Vote::Reject => vote.set_vote(admin::CircuitProposalVote_Vote::REJECT),
+        }
+        vote
     }
 }
 
@@ -368,7 +362,7 @@ pub enum Vote {
 #[serde(tag = "eventType", content = "message")]
 pub enum AdminServiceEvent {
     ProposalSubmitted(CircuitProposal),
-    ProposalVote(CircuitProposalVote),
+    ProposalVote((CircuitProposalVote, Vec<u8>)),
     ProposalAccepted(CircuitProposal),
     ProposalRejected(CircuitProposal),
 }

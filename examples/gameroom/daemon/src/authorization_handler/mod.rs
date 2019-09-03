@@ -525,14 +525,13 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::ProposalVote(msg_vote) => {
-            let proposal =
-                get_pending_proposal_with_circuit_id(&pool, &msg_vote.ballot.circuit_id)?;
+        AdminServiceEvent::ProposalVote((msg_vote, signer_public_key)) => {
+            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_vote.circuit_id)?;
             let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
-                voter_public_key: String::from_utf8(msg_vote.signer_public_key)?,
-                vote: format!("{:?}", msg_vote.ballot.vote),
+                voter_public_key: String::from_utf8(signer_public_key)?,
+                vote: format!("{:?}", msg_vote.vote),
                 created_time: time,
             };
             let conn = &*pool.get()?;
@@ -674,8 +673,8 @@ mod test {
     };
 
     use libsplinter::admin::messages::{
-        AuthorizationType, Ballot, CircuitProposalVote, CreateCircuit, DurabilityType,
-        PersistenceType, ProposalType, RouteType, Vote,
+        AuthorizationType, CircuitProposalVote, CreateCircuit, DurabilityType, PersistenceType,
+        ProposalType, RouteType, Vote,
     };
 
     static DATABASE_URL: &str = "postgres://gameroom_test:gameroom_test@db-test:5432/gameroom_test";
@@ -1152,20 +1151,12 @@ mod test {
         }
     }
 
-    fn get_ballot(circuit_id: &str) -> Ballot {
-        Ballot {
+    fn get_msg_circuit_proposal_vote(circuit_id: &str) -> CircuitProposalVote {
+        CircuitProposalVote {
             circuit_id: circuit_id.to_string(),
             circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
                 .to_string(),
             vote: Vote::Accept,
-        }
-    }
-
-    fn get_msg_circuit_proposal_vote(circuit_id: &str) -> CircuitProposalVote {
-        CircuitProposalVote {
-            ballot: get_ballot(circuit_id),
-            ballot_signature: vec![65, 65, 65, 65, 66, 51, 78],
-            signer_public_key: vec![73, 119, 65, 65, 65, 81],
         }
     }
 
@@ -1178,7 +1169,10 @@ mod test {
     }
 
     fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalVote(get_msg_circuit_proposal_vote(circuit_id))
+        AdminServiceEvent::ProposalVote((
+            get_msg_circuit_proposal_vote(circuit_id),
+            vec![73, 119, 65, 65, 65, 81],
+        ))
     }
 
     fn get_submit_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
