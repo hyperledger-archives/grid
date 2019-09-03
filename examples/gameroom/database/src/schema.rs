@@ -16,10 +16,10 @@
  */
 
 table! {
-    gameroom_user (public_key) {
+    gameroom_user (email) {
+        email -> Text,
         public_key -> Text,
         encrypted_private_key -> Text,
-        email -> Text,
         hashed_password -> Text,
     }
 }

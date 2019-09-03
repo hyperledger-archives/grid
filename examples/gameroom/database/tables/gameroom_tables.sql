@@ -14,9 +14,9 @@
 
 -- Create tables
 CREATE TABLE IF NOT EXISTS gameroom_user (
-  public_key                TEXT        PRIMARY KEY,
+  email                     TEXT        PRIMARY KEY,
+  public_key                TEXT        NOT NULL,
   encrypted_private_key     TEXT        NOT NULL,
-  email                     TEXT        NOT NULL,
   hashed_password           TEXT        NOT NULL
 );
 
