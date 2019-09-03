@@ -65,6 +65,7 @@ RUN rm */src/*.rs
 RUN rm examples/gameroom/daemon/target/release/gameroom* examples/gameroom/daemon/target/release/deps/gameroom*
 
 # Copy over source files
+COPY examples/gameroom/daemon/packaging /build/examples/gameroom/daemon/packaging
 COPY examples/gameroom/daemon/src /build/examples/gameroom/daemon/src
 COPY libsplinter/src /build/libsplinter/src
 COPY protos/ /build/protos

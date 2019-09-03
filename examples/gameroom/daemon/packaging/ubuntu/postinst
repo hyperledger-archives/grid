@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[package]
-name = "private-counter-cli"
-version = "0.3.1"
-authors = ["Cargill Incorporated"]
-edition = "2018"
-license = "Apache-2.0"
+user="gameroomd"
+group="gameroomd"
 
-[[bin]]
-name = "pcounter"
-path = "src/main.rs"
+case "$1" in
+    configure)
 
-[dependencies]
-clap = "2.32"
-log = "0.3.0"
-simple_logger = "0.4.0"
+    # This value is present only during upgrades
+    if [ -z "$2" ]; then
+        # Create gameroomd group if it doesn't exist
+        if ! getent group $group >/dev/null; then
+            addgroup --quiet --system $group
+        fi
+
+        # Create gameroomd user if it doesn't exist
+        if ! getent passwd $user >/dev/null; then
+            adduser --quiet --system --ingroup $group $user
+        fi
+    else
+        true
+    fi
+    ;;
+esac

@@ -17,6 +17,7 @@ name = "gameroom-daemon"
 version = "0.3.1"
 authors = ["Cargill Incorporated"]
 edition = "2018"
+license = "Apache-2.0"
 
 [dependencies]
 actix = { version = "0.8", default-features = false }
@@ -49,3 +50,17 @@ test-authorization-handler = []
 [[bin]]
 name = "gameroomd"
 path = "src/main.rs"
+
+[package.metadata.deb]
+maintainer = "The Splinter Team"
+depends = "$auto"
+assets = [
+    ["packaging/systemd/gameroomd.service", "/lib/systemd/system/gameroomd.service", "644"],
+    ["packaging/systemd/gameroomd", "/etc/default/gameroomd", "644"],
+    ["target/release/gameroomd", "/usr/bin/gameroomd", "755"]
+]
+maintainer-scripts = "packaging/ubuntu"
+extended-description = """\
+Gameroom is a demo Splinter application that allows you to set up dynamic \
+multi-party circuits (called "gamerooms") and play tic tac toe with \
+shared state"""
