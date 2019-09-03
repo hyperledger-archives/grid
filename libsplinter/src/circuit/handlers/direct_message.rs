@@ -206,15 +206,17 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         // Add circuit and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into()],
-            vec!["abc".into(), "def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into()])
+            .with_roster(vec!["abc".into(), "def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -293,15 +295,17 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         // Add circuit and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into(), "345".into()],
-            vec!["abc".into(), "def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into()])
+            .with_roster(vec!["abc".into(), "def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -380,15 +384,17 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         // add the circuit and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into()],
-            vec!["abc".into(), "def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into()])
+            .with_roster(vec!["abc".into(), "def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -465,16 +471,17 @@ mod tests {
         let sender = Box::new(MockNetworkSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        // add the circuit and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into()],
-            vec!["abc".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into()])
+            .with_roster(vec!["abc".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -552,15 +559,17 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         // add circuits and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into(), "345".into()],
-            vec!["abc".into(), "def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into(), "345".into()])
+            .with_roster(vec!["abc".into(), "def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -633,15 +642,17 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         // add circuits and service to splinter state
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into(), "345".into()],
-            vec!["def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into(), "345".into()])
+            .with_roster(vec!["def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("circuit_direct_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);

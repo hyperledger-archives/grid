@@ -26,8 +26,17 @@ circuits:
       - 012 # <- public key, matches key in node definition
       - 345
     roster:
-      - service_a
-      - service_b
+      - service_id: service_a
+        service_type: example_service
+        allowed_nodes:
+          - "012"
+        arguments:
+          example_key: example_value
+      - service_id: service_b
+        service_type: example_service
+        allowed_nodes:
+          - "345"
     persistence: any
     durability: none
     routes: require_direct
+    circuit_management_type: default

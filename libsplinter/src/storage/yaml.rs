@@ -192,12 +192,23 @@ mod tests {
             auth: trust
             members:
               - "123"
-            services:
-              - abc
-              - def
+            roster:
+              - service_id: abc
+                service_type: test_service
+                allowed_nodes:
+                  - "*"
+                arguments:
+                  test_arg: test_value
+              - service_id: def
+                service_type: test_service
+                allowed_nodes:
+                  - "*"
+                arguments:
+                  test_arg: test_value
             persistence: any
             durability: none
             routes: require_direct
+            circuit_management_type: state_test_app
     */
     fn set_up_mock_state_file(mut temp_dir: PathBuf) -> String {
         // Create mock state
@@ -205,15 +216,18 @@ mod tests {
         let node = SplinterNode::new("123".into(), vec!["tcp://127.0.0.1:8000".into()]);
         state.add_node("123".into(), node);
 
-        let circuit = Circuit::new(
-            "alpha".into(),
-            "trust".into(),
-            vec!["123".into()],
-            vec!["abc".into(), "def".into()],
-            "any".into(),
-            "none".into(),
-            "require_direct".into(),
-        );
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into()])
+            .with_roster(vec!["abc".into(), "def".into()])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("state_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
+
         state.add_circuit("alpha".into(), circuit);
 
         let state_string = serde_yaml::to_string(&state).unwrap();
@@ -348,7 +362,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -360,6 +374,16 @@ mod tests {
                 .members()
                 .to_vec(),
             vec!["123".to_string()],
+        );
+
+        assert_eq!(
+            storage
+                .data
+                .circuits()
+                .get("alpha")
+                .unwrap()
+                .circuit_management_type(),
+            "state_test_app"
         );
     }
 
@@ -451,7 +475,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -479,15 +503,18 @@ mod tests {
         {
             // load state file into yaml storage
             let mut storage = YamlStorage::new(path.clone(), CircuitDirectory::new).unwrap();
-            let circuit = Circuit::new(
-                "beta".into(),
-                "trust".into(),
-                vec!["456".into(), "789".into()],
-                vec!["qwe".into(), "rty".into(), "uio".into()],
-                "any".into(),
-                "none".into(),
-                "require_direct".into(),
-            );
+            let circuit = Circuit::builder()
+                .with_id("alpha".into())
+                .with_auth("trust".into())
+                .with_members(vec!["456".into(), "789".into()])
+                .with_roster(vec!["qwe".into(), "rty".into(), "uio".into()])
+                .with_persistence("any".into())
+                .with_durability("none".into())
+                .with_routes("require_direct".into())
+                .with_circuit_management_type("state_write_test_app".into())
+                .build()
+                .expect("Should have built a correct circuit");
+
             storage.write().add_circuit("beta".into(), circuit);
 
             //drop storage
@@ -509,7 +536,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["abc".to_string(), "def".to_string()]
+            vec!["abc".into(), "def".into()]
         );
 
         assert_eq!(
@@ -531,7 +558,7 @@ mod tests {
                 .unwrap()
                 .roster()
                 .to_vec(),
-            vec!["qwe".to_string(), "rty".to_string(), "uio".to_string()]
+            vec!["qwe".into(), "rty".into(), "uio".into()]
         );
 
         assert_eq!(
@@ -543,6 +570,16 @@ mod tests {
                 .members()
                 .to_vec(),
             vec!["456".to_string(), "789".to_string()],
+        );
+
+        assert_eq!(
+            storage
+                .data
+                .circuits()
+                .get("beta")
+                .unwrap()
+                .circuit_management_type(),
+            "state_write_test_app"
         );
     }
 
