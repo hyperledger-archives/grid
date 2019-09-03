@@ -29,6 +29,7 @@ pub enum GameroomDaemonError {
     RestApiError(RestApiServerError),
     AppAuthHandlerError(AppAuthHandlerError),
     KeyGenError(KeyGenError),
+    GetNodeError(GetNodeError),
 }
 
 impl Error for GameroomDaemonError {
@@ -40,6 +41,7 @@ impl Error for GameroomDaemonError {
             GameroomDaemonError::RestApiError(err) => Some(err),
             GameroomDaemonError::AppAuthHandlerError(err) => Some(err),
             GameroomDaemonError::KeyGenError(err) => Some(err),
+            GameroomDaemonError::GetNodeError(err) => Some(err),
         }
     }
 }
@@ -61,6 +63,11 @@ impl fmt::Display for GameroomDaemonError {
             GameroomDaemonError::KeyGenError(e) => write!(
                 f,
                 "an error occurred while generating a new key pair: {}",
+                e
+            ),
+            GameroomDaemonError::GetNodeError(e) => write!(
+                f,
+                "an error occurred while getting splinterd node information: {}",
                 e
             ),
         }
@@ -117,5 +124,26 @@ impl fmt::Display for ConfigurationError {
 impl From<ConfigurationError> for GameroomDaemonError {
     fn from(err: ConfigurationError) -> Self {
         GameroomDaemonError::ConfigurationError(Box::new(err))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct GetNodeError(pub String);
+
+impl Error for GetNodeError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+impl fmt::Display for GetNodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<GetNodeError> for GameroomDaemonError {
+    fn from(err: GetNodeError) -> Self {
+        GameroomDaemonError::GetNodeError(err)
     }
 }
