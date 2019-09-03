@@ -40,6 +40,7 @@ use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
 };
+use crate::signing::SignatureVerifier;
 
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
@@ -58,6 +59,7 @@ impl AdminService {
         peer_connector: PeerConnector,
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
         splinter_state: Arc<RwLock<SplinterState>>,
+        signature_verifier: Box<dyn SignatureVerifier + Send>,
     ) -> Result<Self, ServiceError> {
         let new_service = Self {
             service_id: admin_service_id(node_id),
@@ -67,6 +69,7 @@ impl AdminService {
                 peer_connector,
                 authorization_inquistor,
                 splinter_state,
+                signature_verifier,
             ))),
             consensus: None,
         };
@@ -344,6 +347,7 @@ mod tests {
     use crate::network::{auth::AuthorizationCallback, Network};
     use crate::protos::admin;
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
+    use crate::signing::hash::HashVerifier;
     use crate::storage::get_storage;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
@@ -386,6 +390,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         )
         .expect("Service should have been created correctly");
 
