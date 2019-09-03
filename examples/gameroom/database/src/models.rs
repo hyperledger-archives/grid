@@ -37,7 +37,7 @@ pub struct Gameroom {
     pub durability: String,
     pub routes: String,
     pub circuit_management_type: String,
-    pub application_metadata: Vec<u8>,
+    pub alias: String,
     pub status: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,

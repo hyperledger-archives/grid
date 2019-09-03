@@ -70,7 +70,7 @@ struct ApiGameroom {
     persistence: String,
     routes: String,
     circuit_management_type: String,
-    application_metadata: Vec<u8>,
+    alias: String,
 }
 
 impl ApiGameroom {
@@ -81,7 +81,7 @@ impl ApiGameroom {
             persistence: db_gameroom.persistence.to_string(),
             routes: db_gameroom.routes.to_string(),
             circuit_management_type: db_gameroom.circuit_management_type.to_string(),
-            application_metadata: db_gameroom.application_metadata.to_vec(),
+            alias: db_gameroom.alias.to_string(),
         }
     }
 }
