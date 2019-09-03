@@ -370,7 +370,14 @@ paths:
 
         responses:
           202:
-            description: The payload was accepted
+            description:  The payload was accepted
+            content:
+              application/json:
+                schema:
+                  properties:
+                    data:
+                      type: string
+                      example: "The payload was submitted successfully"
           400:
             description: Request was malformed
             content:
