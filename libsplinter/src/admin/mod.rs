@@ -18,7 +18,6 @@ pub mod messages;
 mod shared;
 
 use std::any::Any;
-use std::fmt::Write;
 use std::sync::{Arc, Mutex, RwLock};
 
 use futures::Future;
@@ -29,6 +28,7 @@ use crate::actix_web::HttpResponse;
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::IntoFuture;
+use crate::hex::to_hex;
 use crate::network::{
     auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
@@ -249,15 +249,6 @@ where
     hash(MessageDigest::sha256(), &bytes)
         .map(|digest| to_hex(&*digest))
         .map_err(|err| Sha256Error(Box::new(err)))
-}
-
-fn to_hex(bytes: &[u8]) -> String {
-    let mut buf = String::new();
-    for b in bytes {
-        write!(&mut buf, "{:0x}", b).expect("Unable to write to string");
-    }
-
-    buf
 }
 
 impl RestResourceProvider for AdminService {

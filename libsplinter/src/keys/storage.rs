@@ -19,9 +19,10 @@ use std::convert::TryInto;
 
 use serde_derive::{Deserialize, Serialize};
 
+use crate::hex::{parse_hex, to_hex};
 use crate::storage::get_storage;
 
-use super::{to_hex, KeyInfo, KeyRegistry, KeyRegistryError};
+use super::{KeyInfo, KeyRegistry, KeyRegistryError};
 
 /// A read-only KeyRegistry backed by the `storage` module.
 ///
@@ -109,8 +110,13 @@ impl TryInto<KeyInfo> for PersistedKeyInfo {
     type Error = KeyRegistryError;
 
     fn try_into(self) -> Result<KeyInfo, Self::Error> {
-        let mut builder =
-            KeyInfo::builder(parse_hex_key(&self.public_key)?, self.associated_node_id);
+        let mut builder = KeyInfo::builder(
+            parse_hex(&self.public_key).map_err(|err| KeyRegistryError {
+                context: format!("Unable to parse public key: {}", self.public_key),
+                source: Some(Box::new(err)),
+            })?,
+            self.associated_node_id,
+        );
 
         for (key, value) in self.metadata.into_iter() {
             builder = builder.with_metadata(key, value);
@@ -118,27 +124,6 @@ impl TryInto<KeyInfo> for PersistedKeyInfo {
 
         Ok(builder.build())
     }
-}
-
-fn parse_hex_key(hex: &str) -> Result<Vec<u8>, KeyRegistryError> {
-    if hex.len() % 2 != 0 {
-        return Err(KeyRegistryError {
-            context: format!("key {} is not valid hex: odd number of digits", hex),
-            source: None,
-        });
-    }
-
-    let mut res = vec![];
-    for i in (0..hex.len()).step_by(2) {
-        res.push(
-            u8::from_str_radix(&hex[i..i + 2], 16).map_err(|err| KeyRegistryError {
-                context: format!("key {} contains invalid hex", hex),
-                source: Some(Box::new(err)),
-            })?,
-        );
-    }
-
-    Ok(res)
 }
 
 #[cfg(test)]
@@ -149,44 +134,6 @@ mod tests {
     use tempdir::TempDir;
 
     use super::*;
-
-    /// Test the parse_hex_key function.
-    ///
-    /// * test positive cases
-    /// * test error cases
-    /// * test round trip
-    /// * test empty
-    #[test]
-    fn test_parse_hex_key() {
-        assert_eq!(
-            vec![00u8, 10u8],
-            parse_hex_key("000a").expect("unable to parse 000a")
-        );
-        assert_eq!(
-            vec![01u8, 99u8, 255u8],
-            parse_hex_key("0163ff").expect("unable to parse 0163ff")
-        );
-
-        // check that odd number of digits fails
-        assert!(parse_hex_key("0").is_err());
-
-        // check that invalid digits fails
-        assert!(parse_hex_key("0G").is_err());
-
-        // check round trip
-        assert_eq!(
-            "abcdef",
-            &to_hex(&parse_hex_key("abcdef").expect("unable to parse hex for round trip"))
-        );
-        assert_eq!(
-            "012345",
-            &to_hex(&parse_hex_key("012345").expect("unable to parse hex for round trip"))
-        );
-
-        // check empty parses
-        let empty: Vec<u8> = Vec::with_capacity(0);
-        assert_eq!(empty, parse_hex_key("").expect("unable to parse empty"));
-    }
 
     /// Test the reading of persisted key registry information via the KeyRegistry trait.
     ///
@@ -230,8 +177,8 @@ mod tests {
         )
         .expect("could not load file");
 
-        let public_key1 = parse_hex_key("abcdef").expect("unable to parse abcdef");
-        let public_key2 = parse_hex_key("012345").expect("unable to parse 012345");
+        let public_key1 = parse_hex("abcdef").expect("unable to parse abcdef");
+        let public_key2 = parse_hex("012345").expect("unable to parse 012345");
 
         let key_info = registry
             .get_key(&public_key1)
