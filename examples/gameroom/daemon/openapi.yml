@@ -320,33 +320,22 @@ paths:
                  $ref: '#/components/schemas/Vote'
 
         responses:
-          202:
-            description: Proposal vote has been accepted
+          200:
+            description: A serialized circuit management payload
             content:
-              application/json:
+              application/octet-stream:
                 schema:
+                  type: object
                   properties:
-                    message:
-                      type: string
-                      example: "The vote was accepted"
-          400:
-            description: The vote payload is invalid
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
-          404:
-            description: The proposal with {proposal_id} was not found
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Error'
+                    data:
+                      $ref: '#/components/schemas/BinaryData'
           500:
             description: Internal server error occurred
             content:
               application/json:
                 schema:
                   $ref: '#/components/schemas/Error'
+
   /submit:
       post:
         tags:
@@ -662,3 +651,10 @@ components:
           description: states whether the notification has been returned to the client
           type: boolean
           default: false
+
+    BinaryData:
+      type: object
+      properties:
+        payload_bytes:
+          type: string
+          format: binary
