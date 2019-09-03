@@ -21,6 +21,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 
+mod application_metadata;
 mod authorization_handler;
 mod config;
 mod error;
