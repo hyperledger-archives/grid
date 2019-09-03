@@ -48,6 +48,7 @@ pub fn run(
     bind_url: &str,
     splinterd_url: &str,
     database_connection: ConnectionPool,
+    public_key: String,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -72,6 +73,7 @@ pub fn run(
                     .data(Client::new())
                     .data(splinterd_url.to_owned())
                     .data(node.clone())
+                    .data(public_key.clone())
                     .data(
                         // change path extractor configuration
                         web::Path::<String>::configure(|cfg| {

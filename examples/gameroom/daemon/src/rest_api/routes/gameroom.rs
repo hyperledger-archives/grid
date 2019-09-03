@@ -52,7 +52,6 @@ pub struct GameroomMember {
 pub struct MemberMetadata {
     organization: String,
     endpoint: String,
-    public_key: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,6 +83,7 @@ pub fn propose_gameroom(
     pool: web::Data<ConnectionPool>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
+    public_key: web::Data<String>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let mut members = create_gameroom
         .member
@@ -108,23 +108,21 @@ pub fn propose_gameroom(
         acc
     });
 
-    let scabbard_admin_keys = match serde_json::to_string(
-        &create_gameroom
-            .member
-            .iter()
-            .map(|member| member.metadata.public_key.clone())
-            .collect::<Vec<_>>(),
-    ) {
-        Ok(s) => s,
-        Err(err) => {
-            debug!("Failed to serialize member public keys: {}", err);
-            return HttpResponse::InternalServerError()
-                .json(ErrorResponse::internal_error())
-                .into_future();
-        }
-    };
+    let scabbard_admin_keys = vec![public_key.get_ref().clone()];
+
     let mut scabbard_args = HashMap::new();
-    scabbard_args.insert("admin_keys".into(), scabbard_admin_keys);
+    scabbard_args.insert(
+        "admin_keys".into(),
+        match serde_json::to_string(&scabbard_admin_keys) {
+            Ok(s) => s,
+            Err(err) => {
+                debug!("Failed to serialize scabbard admin keys: {}", err);
+                return HttpResponse::InternalServerError()
+                    .json(ErrorResponse::internal_error())
+                    .into_future();
+            }
+        },
+    );
 
     let mut roster = vec![];
     for node in members.iter() {
@@ -161,7 +159,9 @@ pub fn propose_gameroom(
     }
 
     let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
-        Ok(()) => match ApplicationMetadata::new(&create_gameroom.alias).to_bytes() {
+        Ok(()) => match ApplicationMetadata::new(&create_gameroom.alias, &scabbard_admin_keys)
+            .to_bytes()
+        {
             Ok(bytes) => bytes,
             Err(err) => {
                 debug!("Failed to serialize application metadata: {}", err);

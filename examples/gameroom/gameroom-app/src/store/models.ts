@@ -46,7 +46,6 @@ export interface Node {
   metadata: {
     organization: string;
     endpoint: string;
-    public_key: string;
   };
 }
 

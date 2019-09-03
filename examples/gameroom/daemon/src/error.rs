@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+use sawtooth_sdk::signing::Error as KeyGenError;
+
 use crate::authorization_handler::AppAuthHandlerError;
 use crate::rest_api::RestApiServerError;
 use gameroom_database::DatabaseError;
@@ -26,6 +28,7 @@ pub enum GameroomDaemonError {
     DatabaseError(Box<DatabaseError>),
     RestApiError(RestApiServerError),
     AppAuthHandlerError(AppAuthHandlerError),
+    KeyGenError(KeyGenError),
 }
 
 impl Error for GameroomDaemonError {
@@ -36,6 +39,7 @@ impl Error for GameroomDaemonError {
             GameroomDaemonError::DatabaseError(err) => Some(&**err),
             GameroomDaemonError::RestApiError(err) => Some(err),
             GameroomDaemonError::AppAuthHandlerError(err) => Some(err),
+            GameroomDaemonError::KeyGenError(err) => Some(err),
         }
     }
 }
@@ -52,6 +56,11 @@ impl fmt::Display for GameroomDaemonError {
             GameroomDaemonError::AppAuthHandlerError(e) => write!(
                 f,
                 "The application authorization handler returned an error: {}",
+                e
+            ),
+            GameroomDaemonError::KeyGenError(e) => write!(
+                f,
+                "an error occurred while generating a new key pair: {}",
                 e
             ),
         }
@@ -79,6 +88,12 @@ impl From<RestApiServerError> for GameroomDaemonError {
 impl From<AppAuthHandlerError> for GameroomDaemonError {
     fn from(err: AppAuthHandlerError) -> GameroomDaemonError {
         GameroomDaemonError::AppAuthHandlerError(err)
+    }
+}
+
+impl From<KeyGenError> for GameroomDaemonError {
+    fn from(err: KeyGenError) -> GameroomDaemonError {
+        GameroomDaemonError::KeyGenError(err)
     }
 }
 

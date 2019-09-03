@@ -906,7 +906,7 @@ mod test {
     fn get_create_circuit_msg(circuit_id: &str) -> CreateCircuit {
         let mut arguments = HashMap::new();
         arguments.insert("test_key".to_string(), "test_value".to_string());
-        let application_metadata = ApplicationMetadata::new("test_gameroom")
+        let application_metadata = ApplicationMetadata::new("test_gameroom", vec![].as_slice())
             .to_bytes()
             .expect("Failed to serialize application_metadata");
         CreateCircuit {

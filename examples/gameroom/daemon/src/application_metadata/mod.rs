@@ -22,12 +22,14 @@ pub use error::ApplicationMetadataError;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApplicationMetadata {
     alias: String,
+    scabbard_admin_keys: Vec<String>,
 }
 
 impl ApplicationMetadata {
-    pub fn new(alias: &str) -> ApplicationMetadata {
+    pub fn new(alias: &str, scabbard_admin_keys: &[String]) -> ApplicationMetadata {
         ApplicationMetadata {
             alias: alias.to_string(),
+            scabbard_admin_keys: scabbard_admin_keys.to_vec(),
         }
     }
 
@@ -41,5 +43,9 @@ impl ApplicationMetadata {
 
     pub fn alias(&self) -> &str {
         &self.alias
+    }
+
+    pub fn scabbard_admin_keys(&self) -> &[String] {
+        &self.scabbard_admin_keys
     }
 }
