@@ -15,6 +15,7 @@
 [features]
 zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
+sawtooth-signing-compat = []
 
 [package]
 name = "libsplinter"

@@ -15,6 +15,8 @@
 //! Simple traits for signing messages and verifing signatures.
 pub mod error;
 pub mod hash;
+#[cfg(feature = "sawtooth-signing-compat")]
+pub mod sawtooth;
 #[cfg(feature = "ursa-compat")]
 pub mod ursa;
 
