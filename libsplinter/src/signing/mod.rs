@@ -14,6 +14,7 @@
 
 //! Simple traits for signing messages and verifing signatures.
 pub mod error;
+pub mod hash;
 #[cfg(feature = "ursa-compat")]
 pub mod ursa;
 
