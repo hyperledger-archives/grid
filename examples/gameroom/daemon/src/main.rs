@@ -79,8 +79,12 @@ fn run() -> Result<(), GameroomDaemonError> {
     // Get splinterd node information
     let node = get_node(config.splinterd_url())?;
 
-    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) =
-        authorization_handler::run(config.splinterd_url(), connection_pool.clone())?;
+    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) = authorization_handler::run(
+        config.splinterd_url().into(),
+        node.identity.clone(),
+        connection_pool.clone(),
+        private_key.as_hex(),
+    )?;
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),

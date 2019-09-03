@@ -17,6 +17,7 @@
 
 mod error;
 pub use error::AppAuthHandlerError;
+mod sabre;
 
 use std::fmt::Write;
 use std::sync::{
@@ -27,7 +28,6 @@ use std::time::SystemTime;
 
 use diesel::connection::Connection;
 
-use crate::application_metadata::ApplicationMetadata;
 use gameroom_database::{
     helpers,
     models::{
@@ -43,20 +43,27 @@ use libsplinter::{
     events::ws::{ShutdownHandle, WebSocketClient, WsResponse, WsRuntime},
 };
 
+use crate::application_metadata::ApplicationMetadata;
+
+use self::sabre::setup_xo;
+
 // number of consecutive invalid messages the client will accept before trying to reconnect
 static INVALID_MESSAGE_THRESHOLD: u32 = 10;
 
 pub fn run(
-    splinterd_url: &str,
+    splinterd_url: String,
+    node_id: String,
     db_conn: ConnectionPool,
+    private_key: String,
 ) -> Result<(ShutdownHandle, WsRuntime), AppAuthHandlerError> {
     let mut runtime = WsRuntime::new()?;
     let ws = WebSocketClient::new(&format!("{}/ws/admin/register/gameroom", splinterd_url));
     let invalid_message_counter = Arc::new(AtomicU32::new(0));
 
     let listen = ws.listen(move |message| {
-        let result =
-            parse_message_bytes(&message).and_then(|event| process_admin_event(event, &db_conn));
+        let result = parse_message_bytes(&message).and_then(|event| {
+            process_admin_event(event, &db_conn, &node_id, &private_key, &splinterd_url)
+        });
 
         if let Err(err) = result {
             error!("Failed to process request: {}", err);
@@ -93,6 +100,9 @@ fn parse_message_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, AppAuthHandler
 fn process_admin_event(
     admin_event: AdminServiceEvent,
     pool: &ConnectionPool,
+    node_id: &str,
+    private_key: &str,
+    url: &str,
 ) -> Result<(), AppAuthHandlerError> {
     match admin_event {
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
@@ -274,7 +284,43 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::CircuitReady(_msg_proposal) => Ok(()),
+        AdminServiceEvent::CircuitReady(msg_proposal) => {
+            // Now that the circuit is created, submit the Sabre transactions to run xo
+            let service_id = match msg_proposal.circuit.roster.iter().find_map(|service| {
+                if service.allowed_nodes.contains(&node_id.to_string()) {
+                    Some(service.service_id.clone())
+                } else {
+                    None
+                }
+            }) {
+                Some(id) => id,
+                None => {
+                    debug!(
+                        "New gameroom does not have any services for this node: {}",
+                        node_id
+                    );
+                    return Ok(());
+                }
+            };
+            let scabbard_admin_keys = match serde_json::from_slice::<ApplicationMetadata>(
+                msg_proposal.circuit.application_metadata.as_slice(),
+            ) {
+                Ok(metadata) => metadata.scabbard_admin_keys().to_vec(),
+                Err(err) => {
+                    return Err(AppAuthHandlerError::InvalidMessageError(format!(
+                        "unable to parse application metadata: {}",
+                        err
+                    )))
+                }
+            };
+            setup_xo(
+                private_key,
+                scabbard_admin_keys,
+                url,
+                &msg_proposal.circuit_id,
+                &service_id,
+            )
+        }
     }
 }
 
@@ -416,7 +462,7 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool).expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -443,7 +489,7 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool).expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
 
         let gamerooms = query_gameroom_table(&pool);
 
@@ -479,7 +525,7 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool).expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
 
         let members = query_gameroom_members_table(&pool);
 
@@ -503,7 +549,7 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool).expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
 
         let services = query_gameroom_service_table(&pool);
 
@@ -528,7 +574,7 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool).expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
 
         let notifications = query_gameroom_notification_table(&pool);
 
@@ -580,7 +626,7 @@ mod test {
         let accept_message = get_accept_proposal_msg("my_circuit");
 
         // accept proposal
-        process_admin_event(accept_message, &pool).expect("Error processing message");
+        process_admin_event(accept_message, &pool, "", "", "").expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -629,7 +675,7 @@ mod test {
         let accept_message = get_accept_proposal_msg("my_circuit");
 
         // accept proposal
-        match process_admin_event(accept_message, &pool) {
+        match process_admin_event(accept_message, &pool, "", "", "") {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -671,7 +717,7 @@ mod test {
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
         // reject proposal
-        process_admin_event(rejected_message, &pool).expect("Error processing message");
+        process_admin_event(rejected_message, &pool, "", "", "").expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -731,7 +777,7 @@ mod test {
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
         // reject proposal
-        match process_admin_event(rejected_message, &pool) {
+        match process_admin_event(rejected_message, &pool, "", "", "") {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -764,7 +810,7 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        process_admin_event(vote_message, &pool).expect("Error processing message");
+        process_admin_event(vote_message, &pool, "", "", "").expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -809,7 +855,7 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        process_admin_event(vote_message, &pool).expect("Error processing message");
+        process_admin_event(vote_message, &pool, "", "", "").expect("Error processing message");
 
         let notifications = query_gameroom_notification_table(&pool);
 
@@ -846,7 +892,7 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        match process_admin_event(vote_message, &pool) {
+        match process_admin_event(vote_message, &pool, "", "", "") {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));

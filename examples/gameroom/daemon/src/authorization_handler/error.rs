@@ -20,6 +20,13 @@ use std::fmt;
 
 use futures::future;
 use libsplinter::events::ws;
+use sabre_sdk::protocol::payload::{
+    CreateContractActionBuildError, CreateContractRegistryActionBuildError,
+    CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
+    SabrePayloadBuildError,
+};
+use sabre_sdk::protos::ProtoConversionError as SabreProtoConversionError;
+use sawtooth_sdk::signing::Error as SigningError;
 
 use crate::application_metadata::ApplicationMetadataError;
 
@@ -29,6 +36,10 @@ pub enum AppAuthHandlerError {
     InvalidMessageError(String),
     DatabaseError(String),
     WebSocketError(ws::Error),
+    SabreError(String),
+    SawtoothError(String),
+    SigningError(String),
+    BatchSubmitError(String),
 }
 
 impl Error for AppAuthHandlerError {
@@ -38,6 +49,10 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::InvalidMessageError(_) => None,
             AppAuthHandlerError::DatabaseError(_) => None,
             AppAuthHandlerError::WebSocketError(err) => Some(err),
+            AppAuthHandlerError::SabreError(_) => None,
+            AppAuthHandlerError::SawtoothError(_) => None,
+            AppAuthHandlerError::SigningError(_) => None,
+            AppAuthHandlerError::BatchSubmitError(_) => None,
         }
     }
 }
@@ -53,6 +68,24 @@ impl fmt::Display for AppAuthHandlerError {
                 write!(f, "The database returned an error: {}", msg)
             }
             AppAuthHandlerError::WebSocketError(msg) => write!(f, "WebSocket Error: {}", msg),
+            AppAuthHandlerError::SabreError(msg) => write!(
+                f,
+                "An error occurred while building a Sabre payload: {}",
+                msg
+            ),
+            AppAuthHandlerError::SawtoothError(msg) => write!(
+                f,
+                "An error occurred while building a transaction or batch: {}",
+                msg
+            ),
+            AppAuthHandlerError::SigningError(msg) => {
+                write!(f, "A signing error occurred: {}", msg)
+            }
+            AppAuthHandlerError::BatchSubmitError(msg) => write!(
+                f,
+                "An error occurred while submitting a batch to the scabbard service: {}",
+                msg
+            ),
         }
     }
 }
@@ -96,6 +129,33 @@ impl From<diesel::result::Error> for AppAuthHandlerError {
 impl From<ws::Error> for AppAuthHandlerError {
     fn from(err: ws::Error) -> Self {
         AppAuthHandlerError::WebSocketError(err)
+    }
+}
+
+macro_rules! impl_from_sabre_errors {
+    ($($x:ty),*) => {
+        $(
+            impl From<$x> for AppAuthHandlerError {
+                fn from(e: $x) -> Self {
+                    AppAuthHandlerError::SabreError(e.to_string())
+                }
+            }
+        )*
+    };
+}
+
+impl_from_sabre_errors!(
+    CreateContractActionBuildError,
+    CreateContractRegistryActionBuildError,
+    CreateNamespaceRegistryActionBuildError,
+    CreateNamespaceRegistryPermissionActionBuildError,
+    SabreProtoConversionError,
+    SabrePayloadBuildError
+);
+
+impl From<SigningError> for AppAuthHandlerError {
+    fn from(err: SigningError) -> Self {
+        AppAuthHandlerError::SigningError(err.to_string())
     }
 }
 
