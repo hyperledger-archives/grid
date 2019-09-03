@@ -21,7 +21,7 @@ limitations under the License.
     </toast>
     <div class="auth-wrapper">
       <form class="auth-form" @submit.prevent="register">
-        <label class= "form-label">
+        <label class="form-label">
           <div>Email</div>
           <input
             class="form-input"
@@ -29,6 +29,18 @@ limitations under the License.
             v-model="email"
             v-focus
           />
+        </label>
+        <label class="form-label">
+          <div>Private Key</div>
+            <div class="form-input-icon-wrapper">
+              <input
+                class="input"
+                type="text"
+                v-model="privateKey"/>
+              <button class="form-button" type="button" @click.prevent="generatePrivateKey">
+                <i class="icon material-icons-round">autorenew</i>
+              </button>
+            </div>
         </label>
         <label class="form-label">
           <div>Password</div>
@@ -66,12 +78,14 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import Toast from '../components/Toast.vue';
+import * as crypto from '@/utils/crypto';
 
 @Component({
   components: { Toast },
 })
 export default class Register extends Vue {
   email = '';
+  privateKey = '';
   password = '';
   confirmPassword = '';
   submitting = false;
@@ -80,6 +94,7 @@ export default class Register extends Vue {
   get canSubmit() {
     if (!this.submitting &&
         this.email !== '' &&
+        this.privateKey !== '' &&
         this.password !== '' &&
         this.confirmPassword !== '') {
       return true;
@@ -91,6 +106,11 @@ export default class Register extends Vue {
     this.error = '';
   }
 
+  generatePrivateKey() {
+    const privKey = crypto.createPrivateKey();
+    this.privateKey = privKey;
+  }
+
   async register() {
     if (this.password !== this.confirmPassword) {
       this.error = 'Passwords do not match.';
@@ -100,6 +120,7 @@ export default class Register extends Vue {
     try {
       await this.$store.dispatch('user/register', {
         email: this.email,
+        privateKey: this.privateKey,
         password: this.password,
       });
       this.$router.push({ name: 'dashboard' });

@@ -28,6 +28,12 @@ const userState = {
   },
 };
 
+interface Registration {
+  email: string;
+  privateKey: string;
+  password: string;
+}
+
 interface Creds {
   email: string;
   password: string;
@@ -46,18 +52,18 @@ const getters = {
 };
 
 const actions = {
-  async register({ commit }: any, creds: Creds) {
-    const keys = crypto.createKeyPair();
+  async register({ commit }: any, reg: Registration) {
+    const publicKey = crypto.getPublicKey(reg.privateKey);
     await userCreate({
-      email: creds.email,
-      hashedPassword: crypto.hashSHA256(creds.email, creds.password),
-      publicKey: keys.publicKey,
-      encryptedPrivateKey: crypto.encrypt(creds.password, keys.privateKey),
+      email: reg.email,
+      hashedPassword: crypto.hashSHA256(reg.email, reg.password),
+      publicKey,
+      encryptedPrivateKey: crypto.encrypt(reg.password, reg.privateKey),
     });
     commit('setUser', {
-      email: creds.email,
-      publicKey: keys.publicKey,
-      privateKey: keys.privateKey,
+      email: reg.email,
+      publicKey,
+      privateKey: reg.privateKey,
     });
   },
   async authenticate({ commit }: any, creds: Creds) {
