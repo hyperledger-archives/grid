@@ -156,7 +156,7 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
             };
 
             match scabbard.add_batches(batches) {
-                Ok(_) => Box::new(HttpResponse::Ok().finish().into_future()),
+                Ok(_) => Box::new(HttpResponse::Accepted().finish().into_future()),
                 Err(_) => Box::new(HttpResponse::InternalServerError().finish().into_future()),
             }
         }),
