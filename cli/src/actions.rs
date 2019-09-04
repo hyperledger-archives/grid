@@ -17,12 +17,13 @@ use libsplinter::protos::circuit::{
 };
 use libsplinter::protos::network::{NetworkEcho, NetworkMessage, NetworkMessageType};
 use protobuf::Message;
-use splinter_client::{error::SplinterError, Certs, SplinterClient};
+use splinter_client::{error::SplinterError, SplinterClient};
 
-use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+
+use crate::cert::get_certs;
 
 pub fn do_echo(url: &str, recipient: String, ttl: i32) -> Result<(), SplinterError> {
     let msg = {
@@ -128,26 +129,4 @@ pub fn do_send(
     let mut conn = SplinterClient::connect(url, get_certs())?;
 
     conn.send(&msg).map(|_| ())
-}
-
-fn get_certs() -> Certs {
-    let ca_certs = if let Ok(s) = env::var("SPLINTER_CA_CERTS") {
-        s.to_string()
-    } else {
-        "ca.crt".to_string()
-    };
-
-    let client_cert = if let Ok(s) = env::var("SPLINTER_CLIENT_CERTS") {
-        s.to_string()
-    } else {
-        "client.crt".to_string()
-    };
-
-    let client_priv = if let Ok(s) = env::var("SPLINTER_CLIENT_SECRET") {
-        s.to_string()
-    } else {
-        "client.key".to_string()
-    };
-
-    Certs::new(ca_certs, client_cert, client_priv)
 }

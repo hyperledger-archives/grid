@@ -16,6 +16,7 @@
 extern crate log;
 
 mod actions;
+mod cert;
 mod error;
 
 use crate::actions::{do_connect, do_disconnect, do_echo, do_send};
