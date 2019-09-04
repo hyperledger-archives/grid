@@ -17,14 +17,16 @@
   @include overlay(1);
   @include shadow(1);
   @include rounded-border;
-  padding: 1rem;
-  margin: 1rem;
-
+  height: 7rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
 
   .header {
     display: flex;
     border-right: 1px solid $color-border;
-    padding-right: 2rem;
+    padding: 1rem;
+    font-weight: $fw-bold;
   }
 
   .body {
@@ -32,7 +34,9 @@
     flex-direction: row;
 
     .data {
-      padding: .5rem 1rem 0;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
 
       .key {
         text-transform: uppercase;
@@ -47,11 +51,6 @@
         padding-left: .5rem;
         list-style: none;
 
-        &.breakable-value {
-          word-break: break-all;
-        }
-
-
         .list-value {
           padding-bottom: .5rem;
         }
@@ -60,12 +59,12 @@
   }
 
   .actions {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     margin-left: auto;
     border-left: 1px solid $color-border;
-    padding-left: 2rem;
-    & > :last-child {
-      margin-top: .5rem;
-    }
+    padding: 1rem;
   }
 
   &:hover {
