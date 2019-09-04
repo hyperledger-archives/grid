@@ -55,8 +55,9 @@ export interface NewGameroomProposal {
   member: [Node];
 }
 
-interface Member {
+export interface Member {
   node_id: string;
+  organization: string;
   endpoint: string;
 }
 

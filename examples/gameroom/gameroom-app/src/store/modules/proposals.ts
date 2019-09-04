@@ -46,10 +46,12 @@ class ProposalsModule extends VuexModule {
           {
             node_id: 'acme-node-000',
             endpoint: 'tls://splinterd-node-acme:8044',
+            organization: 'ACME Corporation'
           },
           {
             node_id: 'bubba-node-000',
             endpoint: 'tls://splinterd-node-bubba:8044',
+            organization: 'Bubba Bakery'
           },
         ],
         requester: '395acb89a89835ffd4ecaf92baeb83b74eea6e5ade10a5c570debfd12a772baa87',
@@ -64,10 +66,12 @@ class ProposalsModule extends VuexModule {
           {
             node_id: 'acme-node-000',
             endpoint: 'tls://splinterd-node-acme:8044',
+            organization: 'ACME Corporation'
           },
           {
             node_id: 'bubba-node-000',
             endpoint: 'tls://splinterd-node-bubba:8044',
+            organization: 'Bubba Bakery'
           },
         ],
         requester: '03473bfa98097f3e09b1d929c7830419ba372638af4c67ea23ac3e1f616fd85e9d',
@@ -82,10 +86,12 @@ class ProposalsModule extends VuexModule {
           {
             node_id: 'acme-node-000',
             endpoint: 'tls://splinterd-node-acme:8044',
+            organization: 'ACME Corporation'
           },
           {
             node_id: 'bubba-node-000',
             endpoint: 'tls://splinterd-node-bubba:8044',
+            organization: 'Bubba Bakery'
           },
         ],
         requester: '395acb89a89835ffd4ecaf92baeb83b74eea6e5ade10a5c570debfd12a772baa87',
