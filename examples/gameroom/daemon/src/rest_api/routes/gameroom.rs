@@ -221,20 +221,31 @@ fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiRespons
 
 pub fn list_gamerooms(
     pool: web::Data<ConnectionPool>,
-    query: web::Query<HashMap<String, usize>>,
+    query: web::Query<HashMap<String, String>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let mut base_link = "api/gamerooms?".to_string();
     let offset: usize = query
         .get("offset")
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| DEFAULT_OFFSET);
+        .unwrap_or_else(|| DEFAULT_OFFSET.to_string())
+        .parse()
+        .unwrap_or_else(|_| DEFAULT_OFFSET);
 
     let limit: usize = query
         .get("limit")
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| DEFAULT_LIMIT);
+        .unwrap_or_else(|| DEFAULT_LIMIT.to_string())
+        .parse()
+        .unwrap_or_else(|_| DEFAULT_LIMIT);
+
+    let status_optional = query.get("status").map(ToOwned::to_owned);
+
+    if let Some(status) = status_optional.clone() {
+        base_link.push_str(format!("status={}?", status).as_str());
+    }
 
     Box::new(
-        web::block(move || list_gamerooms_from_db(pool, limit, offset)).then(
+        web::block(move || list_gamerooms_from_db(pool, status_optional, limit, offset)).then(
             move |res| match res {
                 Ok((gamerooms, query_count)) => {
                     let paging_info = get_response_paging_info(
@@ -256,19 +267,30 @@ pub fn list_gamerooms(
 
 fn list_gamerooms_from_db(
     pool: web::Data<ConnectionPool>,
+    status_optional: Option<String>,
     limit: usize,
     offset: usize,
 ) -> Result<(Vec<ApiGameroom>, i64), RestApiResponseError> {
     let db_limit = limit as i64;
     let db_offset = offset as i64;
-
-    let gamerooms = helpers::list_gamerooms_with_paging(&*pool.get()?, db_limit, db_offset)?
+    if let Some(status) = status_optional {
+        let gamerooms = helpers::list_gamerooms_with_paging_and_status(
+            &*pool.get()?,
+            &status,
+            db_limit,
+            db_offset,
+        )?
         .into_iter()
         .map(ApiGameroom::from)
         .collect();
-    let gameroom_count = helpers::get_gameroom_count(&*pool.get()?)?;
-
-    Ok((gamerooms, gameroom_count))
+        Ok((gamerooms, helpers::get_gameroom_count(&*pool.get()?)?))
+    } else {
+        let gamerooms = helpers::list_gamerooms_with_paging(&*pool.get()?, db_limit, db_offset)?
+            .into_iter()
+            .map(ApiGameroom::from)
+            .collect();
+        Ok((gamerooms, helpers::get_gameroom_count(&*pool.get()?)?))
+    }
 }
 
 pub fn fetch_gameroom(
