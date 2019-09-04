@@ -27,7 +27,7 @@ limitations under the License.
       <div slot="body">
         <form class="modal-form" @submit.prevent="createGameroom">
           <label class="form-label">
-            <div class="multiselect-label">Member</div>
+            <div class="multiselect-label">Other organization</div>
           </label>
           <multiselect
             class="multiselect-input"
@@ -43,7 +43,7 @@ limitations under the License.
             :options="nodeList"
             :allow-empty="false" />
           <label class="form-label">
-            Alias
+            Gameroom name
             <input class="form-input" type="text" v-model="newGameroom.alias" />
           </label>
           <div class="flex-container button-container">
@@ -148,7 +148,13 @@ export default class Dashboard extends Vue {
   }
 
   getMemberLabel(node: Node) {
-    return node.metadata.organization;
+    let endpoint = node.metadata.endpoint;
+    if (process.env.VUE_APP_BRAND
+     && node.metadata.endpoint.includes(process.env.VUE_APP_BRAND)) {
+      endpoint = 'local';
+    }
+
+    return `${node.metadata.organization} (${endpoint})`;
   }
 
   showNewGameroomModal() {
