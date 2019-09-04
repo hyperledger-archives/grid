@@ -578,6 +578,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /ws/subscribe:
+    get:
+      tags:
+        - Gameroom Websocket
+      description: Connect to the gameroomd websocket to receive messages
+      responses:
+        200:
+          description: Registration request was successfully submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  namespace:
+                    type: string
+                    example: notifications
+                  action:
+                    type: string
+                    example: listNotifications
+        400:
+          description: The request to connect to the websocket was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
 components:
   schemas:
     Error:
