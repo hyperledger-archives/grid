@@ -16,7 +16,11 @@ use splinter_client::error::SplinterError;
 #[derive(Debug)]
 pub enum CliError {
     ClientError(SplinterError),
+    RequiresArgs,
+    InvalidArg(String),
+    MissingArg(String),
     InvalidSubcommand,
+    ActionError(String),
 }
 
 impl From<SplinterError> for CliError {

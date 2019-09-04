@@ -15,14 +15,12 @@
 #[macro_use]
 extern crate log;
 
-mod actions;
+mod action;
 mod cert;
 mod error;
 
-use crate::actions::{do_connect, do_disconnect, do_echo, do_send};
 use crate::error::CliError;
-
-use std::str::FromStr;
+use action::{network, service, Action, SubcommandActions};
 
 use clap::clap_app;
 use log::LogLevel;
@@ -36,7 +34,6 @@ fn run() -> Result<(), CliError> {
         (version: VERSION)
         (author: "Cargill")
         (about: "Command line to test Splinter")
-        (@arg url: --url  +takes_value "Splinter node url")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
         (@subcommand echo =>
@@ -48,16 +45,19 @@ fn run() -> Result<(), CliError> {
             (about: "Service messages")
             (@subcommand connect =>
                 (about: "Connect a service to circuit")
+                (@arg url: --url  +takes_value "Splinter node url")
                 (@arg circuit: +takes_value "The circuit name to connect to")
                 (@arg service: +takes_value "The id of the service connecting to the node")
             )
             (@subcommand disconnect =>
                 (about: "Disconnect a service from circuit")
+                (@arg url: --url  +takes_value "Splinter node url")
                 (@arg circuit: +takes_value "The circuit name to disconnect from")
                 (@arg service: +takes_value "The id of the service disconnecting from the node")
             )
             (@subcommand send =>
                 (about: "Connect a service to circuit")
+                (@arg url: --url  +takes_value "Splinter node url")
                 (@arg circuit: +takes_value "The circuit name to connect to")
                 (@arg sender: +takes_value "The id of the service sending the message")
                 (@arg recipient: +takes_value "The id of the service sending the message")
@@ -75,44 +75,16 @@ fn run() -> Result<(), CliError> {
 
     logger.expect("Failed to create logger");
 
-    let url = matches.value_of("url").unwrap_or("tcp://localhost:8045");
-
-    match matches.subcommand() {
-        ("echo", Some(m)) => do_echo(
-            url,
-            m.value_of("recipient").unwrap().to_string(),
-            FromStr::from_str(m.value_of("ttl").unwrap()).unwrap(),
+    SubcommandActions::new()
+        .with_command("echo", network::EchoAction)
+        .with_command(
+            "service",
+            SubcommandActions::new()
+                .with_command("connect", service::ConnectAction)
+                .with_command("disconnect", service::DisconnectAction)
+                .with_command("send", service::SendAction),
         )
-        .map_err(CliError::from),
-        ("service", Some(m)) => {
-            match m.subcommand() {
-                ("connect", Some(m)) => do_connect(
-                    url,
-                    m.value_of("circuit").unwrap().to_string(),
-                    m.value_of("service").unwrap().to_string(),
-                )
-                .map_err(CliError::from),
-                ("disconnect", Some(m)) => do_disconnect(
-                    url,
-                    m.value_of("circuit").unwrap().to_string(),
-                    m.value_of("service").unwrap().to_string(),
-                )
-                .map_err(CliError::from),
-                ("send", Some(m)) => do_send(
-                    url,
-                    m.value_of("circuit").unwrap().to_string(),
-                    m.value_of("sender").unwrap().to_string(),
-                    m.value_of("recipient").unwrap().to_string(),
-                    m.value_of("payload").unwrap().to_string(),
-                )
-                .map_err(CliError::from),
-                _ => Err(CliError::InvalidSubcommand),
-            }
-            .map_err(CliError::from)
-        }
-        .map_err(CliError::from),
-        _ => Err(CliError::InvalidSubcommand),
-    }
+        .run(Some(&matches))
 }
 
 fn main() {
