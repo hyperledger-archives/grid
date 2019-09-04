@@ -14,8 +14,14 @@
 
 import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-decorators';
 import store from '@/store';
-import { GameroomProposal } from '@/store/models';
-import { listProposals } from '@/store/api';
+import { GameroomProposal, Ballot } from '@/store/models';
+import { listProposals, proposalVote, submitPayload } from '@/store/api';
+import { signPayload } from '@/utils/crypto';
+
+interface Vote {
+  proposalID: string;
+  ballot: Ballot;
+}
 
 @Module({
   namespaced: true,
@@ -28,6 +34,20 @@ class ProposalsModule extends VuexModule {
 
   @Mutation
   setProposals(proposals: GameroomProposal[]) { this.proposals = proposals;  }
+
+  @Action({ rawError: true })
+  async vote(vote: Vote) {
+    const user = this.context.rootGetters['user/getUser'];
+    try {
+      const payload = await proposalVote(vote.ballot, vote.proposalID);
+      const signedPayload = signPayload(payload, user.privateKey);
+      const response = await submitPayload(signedPayload);
+      return response;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  }
 
   @Action({ commit: 'setProposals' })
   async listProposals() {

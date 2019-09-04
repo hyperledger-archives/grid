@@ -63,7 +63,7 @@ limitations under the License.
     <gameroom-sidebar
       v-on:show-new-gameroom-modal="showNewGameroomModal()"
       class="sidebar" />
-    <router-view class="dashboard-view" />
+    <router-view v-on:error="setError" v-on:success="setSuccess" class="dashboard-view" />
   </div>
 </template>
 
@@ -111,6 +111,14 @@ export default class Dashboard extends Vue {
       return true;
     }
     return false;
+  }
+
+  setError(message: string) {
+    this.error = message;
+  }
+
+  setSuccess(message: string) {
+    this.success = message;
   }
 
   clearError() {

@@ -90,3 +90,9 @@ export interface Section {
   action: boolean;
   actionIcon: string;
 }
+
+export interface Ballot {
+  circuit_id: string;
+  circuit_hash: string;
+  vote: string;
+}
