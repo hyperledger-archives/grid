@@ -70,7 +70,7 @@ fn run() -> Result<(), GameroomDaemonError> {
     let connection_pool: ConnectionPool =
         gameroom_database::create_connection_pool(config.database_url())?;
 
-    let (app_auth_handler_shutdown_handle, app_auth_handler_join_handle) =
+    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) =
         authorization_handler::run(config.splinterd_url(), connection_pool.clone())?;
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
@@ -85,7 +85,8 @@ fn run() -> Result<(), GameroomDaemonError> {
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
         }
-        if let Err(err) = app_auth_handler_shutdown_handle.shutdown() {
+
+        if let Err(err) = app_auth_handler_shutdown_handle.clone().shutdown() {
             error!(
                 "Unable to cleanly shutdown application authorization handler: {}",
                 err
@@ -94,8 +95,14 @@ fn run() -> Result<(), GameroomDaemonError> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    app_auth_handler_join_handle.join();
     let _ = rest_api_join_handle.join();
+
+    if let Err(err) = app_auth_handler_runtime.shutdown() {
+        error!(
+            "Unable to cleanly shutdown application authorization handler runtime: {}",
+            err
+        );
+    }
 
     Ok(())
 }
