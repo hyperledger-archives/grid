@@ -29,7 +29,9 @@ pub mod insecure;
 pub mod storage;
 
 use std::collections::HashMap;
-use std::fmt::{self, Write};
+use std::fmt;
+
+use crate::hex::to_hex;
 
 pub use error::{KeyPermissionError, KeyRegistryError};
 
@@ -189,13 +191,4 @@ pub trait KeyPermissionManager {
     /// Returns a `KeyPermissionError` if the underling implementation encountered an error while
     /// checking the permissions.
     fn is_permitted(&self, public_key: &[u8], role: &str) -> KeyPermissionResult<bool>;
-}
-
-fn to_hex(bytes: &[u8]) -> String {
-    let mut buf = String::new();
-    for b in bytes {
-        write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
-    }
-
-    buf
 }

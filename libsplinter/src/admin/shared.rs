@@ -15,11 +15,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
-#[cfg(feature = "ursa-compat")]
-use ursa::signatures::ed25519::EcdsaSecp256k1Sha256;
-#[cfg(feature = "ursa-compat")]
-use ursa::signatures::SignatureScheme;
-
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalId};
 use crate::network::{
@@ -36,8 +31,7 @@ use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 
-#[cfg(feature = "ursa-compat")]
-use crate::signing::{ursa::UrsaSecp256k1SignatureVerifier, SignatureVerifier};
+use crate::signing::SignatureVerifier;
 
 use super::error::{AdminSharedError, MarshallingError};
 use super::messages;
@@ -76,6 +70,9 @@ pub struct AdminServiceShared {
     event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
+
+    // signature verifier
+    signature_verifier: Box<dyn SignatureVerifier + Send>,
 }
 
 impl AdminServiceShared {
@@ -85,6 +82,7 @@ impl AdminServiceShared {
         peer_connector: PeerConnector,
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
         splinter_state: Arc<RwLock<SplinterState>>,
+        signature_verifier: Box<dyn SignatureVerifier + Send>,
     ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
@@ -101,6 +99,7 @@ impl AdminServiceShared {
             current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
             splinter_state,
+            signature_verifier,
         }
     }
 
@@ -284,7 +283,7 @@ impl AdminServiceShared {
     pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
         debug!("Payload submitted: {:?}", payload);
 
-        match verify_signature(&payload) {
+        match self.verify_signature(&payload) {
             Ok(_) => (),
             Err(ServiceError::UnableToHandleMessage(_)) => (),
             Err(err) => return Err(err),
@@ -509,30 +508,18 @@ impl AdminServiceShared {
 
         Ok(())
     }
-}
 
-#[cfg(feature = "ursa-compat")]
-fn verify_signature(payload: &CircuitManagementPayload) -> Result<bool, ServiceError> {
-    let scheme = EcdsaSecp256k1Sha256::new();
-    let ursa_signature_verifier = UrsaSecp256k1SignatureVerifier::new(&scheme);
+    fn verify_signature(&self, payload: &CircuitManagementPayload) -> Result<bool, ServiceError> {
+        let header =
+            protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
 
-    let header = protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.header())?;
+        let signature = payload.get_signature();
+        let public_key = header.get_requester();
 
-    let signature = payload.get_signature();
-    let public_key = header.get_requester();
-
-    ursa_signature_verifier
-        .verify(&payload.get_header(), &signature, &public_key)
-        .map_err(AdminShared::from)
-        .map_err(Box::new)
-        .map_err(ServiceError::UnableToHandleMessage)
-}
-
-#[cfg(not(feature = "ursa-compat"))]
-fn verify_signature(_: &CircuitManagementPayload) -> Result<bool, ServiceError> {
-    Err(ServiceError::UnableToHandleMessage(Box::new(
-        AdminSharedError::UndefinedSigner,
-    )))
+        self.signature_verifier
+            .verify(&payload.get_header(), &signature, &public_key)
+            .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+    }
 }
 
 #[cfg(test)]
@@ -552,6 +539,7 @@ mod tests {
     };
     use crate::protos::admin;
     use crate::protos::admin::{SplinterNode, SplinterService};
+    use crate::signing::hash::HashVerifier;
     use crate::storage::get_storage;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
@@ -581,6 +569,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -651,6 +640,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -707,6 +697,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let circuit = setup_test_circuit();
 
@@ -728,6 +719,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -755,6 +747,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
         circuit.set_roster(RepeatedField::from_vec(vec![]));
@@ -776,6 +769,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -799,6 +793,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -825,6 +820,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -847,6 +843,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -869,6 +866,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -891,6 +889,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 
@@ -913,6 +912,7 @@ mod tests {
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
+            Box::new(HashVerifier),
         );
         let mut circuit = setup_test_circuit();
 

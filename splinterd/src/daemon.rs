@@ -50,6 +50,7 @@ use libsplinter::rest_api::{
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::service::scabbard::ScabbardFactory;
 use libsplinter::service::{self, ServiceProcessor};
+use libsplinter::signing::sawtooth::SawtoothSecp256k1SignatureVeriifier;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{
     inproc::InprocTransport, multi::MultiTransport, AcceptError, ConnectError, Incoming,
@@ -286,12 +287,15 @@ impl SplinterDaemon {
         )?;
         let orchestrator_resources = orchestrator.resources();
 
+        let signature_verifier = SawtoothSecp256k1SignatureVeriifier::new();
+
         let admin_service = AdminService::new(
             &self.node_id,
             orchestrator,
             peer_connector.clone(),
             Box::new(auth_manager.clone()),
             state.clone(),
+            Box::new(signature_verifier),
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))

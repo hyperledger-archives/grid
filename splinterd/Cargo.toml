@@ -24,7 +24,7 @@ name = "splinterd"
 path = "src/main.rs"
 
 [dependencies]
-libsplinter = { path = "../libsplinter" }
+libsplinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
 clap = "2.32"
 crossbeam-channel = "0.3"
 ctrlc = "3.0"
