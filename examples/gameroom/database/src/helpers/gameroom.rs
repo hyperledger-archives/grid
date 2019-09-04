@@ -165,3 +165,40 @@ pub fn fetch_gameroom_proposal_with_status(
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
+
+pub fn list_gamerooms_with_paging(
+    conn: &PgConnection,
+    status: &str,
+    limit: i64,
+    offset: i64,
+) -> QueryResult<Vec<Gameroom>> {
+    gameroom::table
+        .select(gameroom::all_columns)
+        .filter(gameroom::status.eq(status))
+        .limit(limit)
+        .offset(offset)
+        .load::<Gameroom>(conn)
+}
+
+pub fn get_gameroom_count(conn: &PgConnection, status: &str) -> QueryResult<i64> {
+    gameroom::table
+        .filter(gameroom::status.eq(status))
+        .count()
+        .get_result(conn)
+}
+
+pub fn fetch_gameroom_with_status(
+    conn: &PgConnection,
+    status: &str,
+    circuit_id: &str,
+) -> QueryResult<Option<Gameroom>> {
+    gameroom::table
+        .filter(
+            gameroom::status
+                .eq(status)
+                .and(gameroom::circuit_id.eq(circuit_id)),
+        )
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
