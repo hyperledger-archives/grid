@@ -63,6 +63,7 @@ struct ApiGameroom {
     routes: String,
     circuit_management_type: String,
     alias: String,
+    status: String,
 }
 
 impl ApiGameroom {
@@ -74,6 +75,7 @@ impl ApiGameroom {
             routes: db_gameroom.routes.to_string(),
             circuit_management_type: db_gameroom.circuit_management_type.to_string(),
             alias: db_gameroom.alias.to_string(),
+            status: db_gameroom.status.to_string(),
         }
     }
 }
