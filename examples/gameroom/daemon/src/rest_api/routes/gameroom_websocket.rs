@@ -18,18 +18,35 @@ use actix::prelude::*;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use futures::{Future, IntoFuture};
+use gameroom_database::{helpers, ConnectionPool};
 
-pub struct GameroomWebSocket {}
+use crate::rest_api::RestApiResponseError;
+
+pub struct GameroomWebSocket {
+    db_pool: web::Data<ConnectionPool>,
+}
 
 impl GameroomWebSocket {
-    fn new() -> Self {
-        Self {}
+    fn new(pool: web::Data<ConnectionPool>) -> Self {
+        Self { db_pool: pool }
     }
 
     fn push_updates(&self, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(3), |_, ctx| {
-            ctx.ping("");
-            debug!("Gameroom wants to sock-et to you");
+        trace!("Gameroom wants to sock-et to you");
+        ctx.run_interval(Duration::from_secs(3), |ws, ctx| match check_notifications(
+            ws.db_pool.clone(),
+        ) {
+            Ok(true) => match serde_json::to_string(
+                &json!({"namespace": "notifications", "action": "listNotifications"}),
+            ) {
+                Ok(text) => ctx.text(text),
+                Err(err) => {
+                    debug!("Failed to serialize payload: {:?}", err);
+                }
+            },
+
+            Ok(false) => trace!("No new notifications"),
+            Err(err) => debug!("Error getting notification: {:?}", err),
         });
     }
 }
@@ -45,7 +62,6 @@ impl Actor for GameroomWebSocket {
 
 impl StreamHandler<ws::Message, ws::ProtocolError> for GameroomWebSocket {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        debug!("WS: {:?}", msg);
         match msg {
             ws::Message::Ping(msg) => ctx.ping(&msg),
             ws::Message::Pong(msg) => ctx.pong(&msg),
@@ -59,7 +75,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for GameroomWebSocket {
 
 pub fn connect_socket(
     req: HttpRequest,
+    pool: web::Data<ConnectionPool>,
     stream: web::Payload,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(ws::start(GameroomWebSocket::new(), &req, stream).into_future())
+    Box::new(ws::start(GameroomWebSocket::new(pool), &req, stream).into_future())
+}
+
+fn check_notifications(pool: web::Data<ConnectionPool>) -> Result<bool, RestApiResponseError> {
+    Ok(helpers::get_unread_notification_count(&*pool.get()?)? > 0)
 }
