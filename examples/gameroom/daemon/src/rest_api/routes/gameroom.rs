@@ -260,12 +260,11 @@ fn list_gamerooms_from_db(
     let db_limit = limit as i64;
     let db_offset = offset as i64;
 
-    let gamerooms =
-        helpers::list_gamerooms_with_paging(&*pool.get()?, "ACCECPTED", db_limit, db_offset)?
-            .into_iter()
-            .map(ApiGameroom::from)
-            .collect();
-    let gameroom_count = helpers::get_gameroom_count(&*pool.get()?, "ACCEPTED")?;
+    let gamerooms = helpers::list_gamerooms_with_paging(&*pool.get()?, db_limit, db_offset)?
+        .into_iter()
+        .map(ApiGameroom::from)
+        .collect();
+    let gameroom_count = helpers::get_gameroom_count(&*pool.get()?)?;
 
     Ok((gamerooms, gameroom_count))
 }
@@ -299,9 +298,7 @@ fn fetch_gameroom_from_db(
     pool: web::Data<ConnectionPool>,
     circuit_id: &str,
 ) -> Result<ApiGameroom, RestApiResponseError> {
-    if let Some(gameroom) =
-        helpers::fetch_gameroom_with_status(&*pool.get()?, "ACCECPTED", circuit_id)?
-    {
+    if let Some(gameroom) = helpers::fetch_gameroom(&*pool.get()?, circuit_id)? {
         return Ok(ApiGameroom::from(gameroom));
     }
     Err(RestApiResponseError::NotFound(format!(
