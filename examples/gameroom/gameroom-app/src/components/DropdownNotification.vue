@@ -16,14 +16,12 @@ limitations under the License.
 
 <template>
   <div :class="{ 'new' : !notification.read }"
-        class="dropdown-notification"
-        @click="markAsRead">
+       class="dropdown-notification"
+       @click="markAsRead">
     <div class="text-wrapper">
       <span class="text">
-        <span class="bold">{{ notification.org }}</span>
         <span>{{ formatText(notification) }}</span>
-        <span class="bold">{{ notification.target }}</span>
-        !
+        <span class="bold">{{ notification.target }}</span>.
       </span>
       <div class="meta-wrapper">
         <i class="icon material-icons-round">
@@ -52,6 +50,13 @@ export default class DropdownNotification extends Vue {
   @Prop()
   notification!: GameroomNotification;
 
+  get link() {
+    if (this.notification.notification_type === 'gameroom_proposal') {
+      return '/dashboard/invitations';
+    }
+    return '/dashboard/home';
+  }
+
   formatText(notification: GameroomNotification) {
     if (notification.notification_type === 'gameroom_proposal') {
       return 'Someone has invited you to a new gameroom: ';
@@ -65,6 +70,8 @@ export default class DropdownNotification extends Vue {
 
   markAsRead() {
     this.$store.dispatch('notifications/markRead', this.notification.id);
+    this.$router.push(this.link);
+    this.$emit('click');
   }
 }
 </script>

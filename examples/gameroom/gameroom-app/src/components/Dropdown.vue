@@ -37,12 +37,16 @@ limitations under the License.
         <div class="dropdown-header">
           <span class="title">{{ title }}</span>
         </div>
-        <div class="dropdown-body">
+        <div v-if="notifications.length > 0" class="dropdown-body">
           <dropdown-notification
             v-for="notification in notifications"
             :key="notification.id"
             :notification="notification"
+            v-on:click="toggleDropdown"
           />
+        </div>
+        <div v-else class="dropdown-body">
+          <h3>No notifications.</h3>
         </div>
       </div>
     </div>
