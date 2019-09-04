@@ -23,11 +23,15 @@ use gameroom_database::{
     ConnectionPool,
 };
 use libsplinter::admin::messages::CircuitProposalVote;
-
-use crate::authorization_handler;
-use crate::rest_api::RestApiResponseError;
+use libsplinter::protos::admin::{
+    CircuitManagementPayload, CircuitManagementPayload_Action as Action,
+    CircuitManagementPayload_Header as Header,
+};
+use openssl::hash::{hash, MessageDigest};
+use protobuf::Message;
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
+use crate::rest_api::RestApiResponseError;
 
 #[derive(Debug, Serialize)]
 struct ProposalListResponse {
@@ -193,22 +197,19 @@ pub fn proposal_vote(
     vote: web::Json<CircuitProposalVote>,
     proposal_id: web::Path<i64>,
     pool: web::Data<ConnectionPool>,
-    splinterd_url: web::Data<String>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     Box::new(
-        web::block(move || {
-            check_proposal_exists(*proposal_id, pool)?;
-            authorization_handler::submit_vote(&splinterd_url, &vote.into_inner()).map_err(|err| {
-                RestApiResponseError::InternalError(format!(
-                    "Ann error occurred while submitting vote: {}",
-                    err
-                ))
-            })
-        })
-        .then(|res| match res {
-            Ok(()) => {
-                Ok(HttpResponse::Accepted().json(json!({ "message": "The vote was accepted"})))
-            }
+        web::block(move || check_proposal_exists(*proposal_id, pool)).then(|res| match res {
+            Ok(()) => match make_payload(vote.into_inner()) {
+                Ok(bytes) => {
+                    Ok(HttpResponse::Ok().json(json!({ "data": { "payload_bytes": bytes } })))
+                }
+                Err(err) => {
+                    debug!("Failed to prepare circuit management payload {}", err);
+                    Ok(HttpResponse::InternalServerError()
+                        .json(json!({ "message": "Failed to submit vote" })))
+                }
+            },
             Err(err) => match err {
                 error::BlockingError::Error(err) => match err {
                     RestApiResponseError::NotFound(err) => {
@@ -246,4 +247,21 @@ fn check_proposal_exists(
         "Proposal with id {} not found.",
         proposal_id
     )))
+}
+
+fn make_payload(vote: CircuitProposalVote) -> Result<Vec<u8>, RestApiResponseError> {
+    let vote_proto = vote.into_proto();
+    let vote_bytes = vote_proto.write_to_bytes()?;
+    let hashed_bytes = hash(MessageDigest::sha512(), &vote_bytes)?;
+
+    let mut header = Header::new();
+    header.set_action(Action::CIRCUIT_PROPOSAL_VOTE);
+    header.set_payload_sha512(hashed_bytes.to_vec());
+    let header_bytes = header.write_to_bytes()?;
+
+    let mut circuit_management_payload = CircuitManagementPayload::new();
+    circuit_management_payload.set_header(header_bytes);
+    circuit_management_payload.set_circuit_proposal_vote(vote_proto);
+    let payload_bytes = circuit_management_payload.write_to_bytes()?;
+    Ok(payload_bytes)
 }
