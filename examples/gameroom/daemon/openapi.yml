@@ -523,6 +523,12 @@ paths:
         - Gamerooms
       description: List Gamerooms created from accepted gameroom proposals
       parameters:
+        - name: status
+          in: query
+          description: status of gamerooms to list
+          required: false
+          schema:
+            type: string
         - name: offset
           in: query
           description: paging offset
@@ -675,6 +681,10 @@ components:
           description: alias of the gameroom
           type: string
           example: Acme-Bubba-Gameroom
+        status:
+          description: status of the gameroom
+          type: string
+          example: 'ACCEPTED'
 
     Member:
       type: object
