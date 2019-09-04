@@ -21,6 +21,7 @@ pub enum CliError {
     MissingArg(String),
     InvalidSubcommand,
     ActionError(String),
+    EnvironmentError(String),
 }
 
 impl From<SplinterError> for CliError {

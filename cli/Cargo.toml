@@ -24,4 +24,6 @@ log = "0.3.8"
 protobuf = "2"
 simple_logger = "0.4.0"
 splinter-client = { path = "../client" }
+libc = "0.2"
 libsplinter = { path = "../libsplinter" }
+sawtooth-sdk = "0.3"

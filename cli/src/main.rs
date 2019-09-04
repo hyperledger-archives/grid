@@ -20,7 +20,7 @@ mod cert;
 mod error;
 
 use crate::error::CliError;
-use action::{network, service, Action, SubcommandActions};
+use action::{admin, network, service, Action, SubcommandActions};
 
 use clap::clap_app;
 use log::LogLevel;
@@ -36,6 +36,15 @@ fn run() -> Result<(), CliError> {
         (about: "Command line to test Splinter")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
+        (@subcommand admin =>
+            (about: "Administrative commands")
+            (@subcommand keygen =>
+                (about: "generates secp256k1 keys to use when signing circuit proposals")
+                (@arg key_name: +takes_value "name of the key to create; defaults to \"splinter\"")
+                (@arg key_dir: -d --("key-dir") +takes_value
+                 "name of the directory in which to create the keys; defaults to current working directory")
+                (@arg force: --force "overwrite files if they exist")
+                (@arg quiet: -q --quiet "do not display output")))
         (@subcommand echo =>
             (about: "Echo message")
             (@arg recipient: +takes_value "Splinter node id to send the message to")
@@ -76,6 +85,10 @@ fn run() -> Result<(), CliError> {
     logger.expect("Failed to create logger");
 
     SubcommandActions::new()
+        .with_command(
+            "admin",
+            SubcommandActions::new().with_command("keygen", admin::KeyGenAction),
+        )
         .with_command("echo", network::EchoAction)
         .with_command(
             "service",
