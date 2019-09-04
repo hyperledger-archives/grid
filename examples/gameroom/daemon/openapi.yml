@@ -635,11 +635,9 @@ components:
           type: string
         circuit_management_type:
           type: string
-        application_metadata:
-          description: serialized bytes of metadata
-          type: array
-          items:
-            type: integer
+        alias:
+          description: alias of the gameroom
+          type: string
 
     Member:
       type: object

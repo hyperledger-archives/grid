@@ -41,6 +41,7 @@ use tokio::{
     runtime::Runtime,
 };
 
+use crate::application_metadata::ApplicationMetadata;
 use gameroom_database::{
     helpers,
     models::{
@@ -448,7 +449,7 @@ fn process_admin_event(
 
             let proposal = parse_proposal(&msg_proposal, time);
 
-            let gameroom = parse_gameroom(&msg_proposal.circuit, time);
+            let gameroom = parse_gameroom(&msg_proposal.circuit, time)?;
 
             let services = parse_splinter_services(
                 &msg_proposal.circuit_id,
@@ -540,19 +541,24 @@ fn parse_proposal(proposal: &CircuitProposal, timestamp: SystemTime) -> NewGamer
     }
 }
 
-fn parse_gameroom(circuit: &CreateCircuit, timestamp: SystemTime) -> Gameroom {
-    Gameroom {
+fn parse_gameroom(
+    circuit: &CreateCircuit,
+    timestamp: SystemTime,
+) -> Result<Gameroom, AppAuthHandlerError> {
+    let application_metadata = ApplicationMetadata::from_bytes(&circuit.application_metadata)?;
+
+    Ok(Gameroom {
         circuit_id: circuit.circuit_id.clone(),
         authorization_type: format!("{:?}", circuit.authorization_type),
         persistence: format!("{:?}", circuit.persistence),
         durability: format!("{:?}", circuit.durability),
         routes: format!("{:?}", circuit.routes),
         circuit_management_type: circuit.circuit_management_type.clone(),
-        application_metadata: circuit.application_metadata.clone(),
+        alias: application_metadata.alias().to_string(),
         status: "Pending".to_string(),
         created_time: timestamp,
         updated_time: timestamp,
-    }
+    })
 }
 
 fn parse_splinter_services(
@@ -695,10 +701,7 @@ mod test {
             gameroom.circuit_management_type,
             expected_gameroom.circuit_management_type
         );
-        assert_eq!(
-            gameroom.application_metadata,
-            expected_gameroom.application_metadata
-        );
+        assert_eq!(gameroom.alias, expected_gameroom.alias);
         assert_eq!(gameroom.status, expected_gameroom.status);
     }
 
@@ -1040,7 +1043,8 @@ mod test {
     /// Tests if the admin message CreateCircuit to a database Gameroom is successful
     fn test_parse_gameroom() {
         let time = SystemTime::now();
-        let gameroom = parse_gameroom(&get_create_circuit_msg("my_circuit"), time);
+        let gameroom = parse_gameroom(&get_create_circuit_msg("my_circuit"), time)
+            .expect("Failed to parse gameroom");
 
         assert_eq!(gameroom, get_gameroom("my_circuit", time.clone()))
     }
@@ -1074,7 +1078,9 @@ mod test {
     fn get_create_circuit_msg(circuit_id: &str) -> CreateCircuit {
         let mut arguments = HashMap::new();
         arguments.insert("test_key".to_string(), "test_value".to_string());
-
+        let application_metadata = ApplicationMetadata::new("test_gameroom")
+            .to_bytes()
+            .expect("Failed to serialize application_metadata");
         CreateCircuit {
             circuit_id: circuit_id.to_string(),
             roster: vec![SplinterService {
@@ -1092,7 +1098,7 @@ mod test {
             durability: DurabilityType::NoDurabilty,
             routes: RouteType::Any,
             circuit_management_type: "gameroom".to_string(),
-            application_metadata: vec![],
+            application_metadata,
         }
     }
 
@@ -1157,7 +1163,7 @@ mod test {
             durability: "NoDurabilty".to_string(),
             routes: "Any".to_string(),
             circuit_management_type: "gameroom".to_string(),
-            application_metadata: vec![],
+            alias: "test_gameroom".to_string(),
             status: "Pending".to_string(),
             created_time: timestamp,
             updated_time: timestamp,

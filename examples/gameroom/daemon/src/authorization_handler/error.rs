@@ -20,6 +20,8 @@ use std::fmt;
 
 use futures::future;
 
+use crate::application_metadata::ApplicationMetadataError;
+
 #[derive(Debug)]
 pub enum AppAuthHandlerError {
     RequestError(String),
@@ -83,6 +85,12 @@ impl From<serde_json::error::Error> for AppAuthHandlerError {
 
 impl From<std::string::FromUtf8Error> for AppAuthHandlerError {
     fn from(err: std::string::FromUtf8Error) -> AppAuthHandlerError {
+        AppAuthHandlerError::InvalidMessageError(format!("{}", err))
+    }
+}
+
+impl From<ApplicationMetadataError> for AppAuthHandlerError {
+    fn from(err: ApplicationMetadataError) -> AppAuthHandlerError {
         AppAuthHandlerError::InvalidMessageError(format!("{}", err))
     }
 }

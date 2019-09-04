@@ -29,6 +29,7 @@ use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 use uuid::Uuid;
 
+use crate::application_metadata::ApplicationMetadata;
 use crate::rest_api::RestApiResponseError;
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
@@ -52,11 +53,6 @@ pub struct MemberMetadata {
     public_key: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApplicationMetadata {
-    alias: String,
-}
-
 #[derive(Debug, Serialize)]
 struct GameroomListResponse {
     data: Vec<ApiGameroom>,
@@ -70,7 +66,7 @@ struct ApiGameroom {
     persistence: String,
     routes: String,
     circuit_management_type: String,
-    application_metadata: Vec<u8>,
+    alias: String,
 }
 
 impl ApiGameroom {
@@ -81,7 +77,7 @@ impl ApiGameroom {
             persistence: db_gameroom.persistence.to_string(),
             routes: db_gameroom.routes.to_string(),
             circuit_management_type: db_gameroom.circuit_management_type.to_string(),
-            application_metadata: db_gameroom.application_metadata.to_vec(),
+            alias: db_gameroom.alias.to_string(),
         }
     }
 }
@@ -113,7 +109,7 @@ pub fn propose_gameroom(
         acc
     });
 
-    let application_metadata = match make_application_metadata(&create_gameroom.alias) {
+    let application_metadata = match ApplicationMetadata::new(&create_gameroom.alias).to_bytes() {
         Ok(bytes) => bytes,
         Err(err) => {
             debug!("Failed to serialize application metadata: {}", err);
@@ -198,13 +194,6 @@ pub fn propose_gameroom(
     HttpResponse::Ok()
         .json(json!({ "data": { "payload_bytes": payload_bytes } }))
         .into_future()
-}
-
-fn make_application_metadata(alias: &str) -> Result<Vec<u8>, RestApiResponseError> {
-    serde_json::to_vec(&ApplicationMetadata {
-        alias: alias.to_string(),
-    })
-    .map_err(|err| RestApiResponseError::InternalError(err.to_string()))
 }
 
 fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiResponseError> {

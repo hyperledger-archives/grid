@@ -32,7 +32,7 @@ table! {
         durability -> Text,
         routes -> Text,
         circuit_management_type -> Text,
-        application_metadata -> Bytea,
+        alias -> Text,
         status -> Text,
         created_time -> Timestamp,
         updated_time -> Timestamp,

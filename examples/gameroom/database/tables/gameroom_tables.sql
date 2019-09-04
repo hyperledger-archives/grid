@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS  gameroom (
   durability                TEXT        NOT NULL,
   routes                    TEXT        NOT NULL,
   circuit_management_type   TEXT        NOT NULL,
-  application_metadata      BYTEA       NOT NULL,
+  alias                     TEXT       NOT NULL,
   status                    TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   updated_time              TIMESTAMP   NOT NULL
