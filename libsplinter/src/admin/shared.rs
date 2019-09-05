@@ -729,13 +729,10 @@ impl AdminServiceShared {
 
     /// Initialize all services that this node should run on the created circuit using the service
     /// orchestrator.
-    pub fn initialize_services(
-        &mut self,
-        create_circuit: &messages::CreateCircuit,
-    ) -> Result<(), AdminSharedError> {
+    pub fn initialize_services(&mut self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         // Get all services this node is allowed to run
-        let services = create_circuit
-            .roster
+        let services = circuit
+            .get_roster()
             .iter()
             .filter(|service| service.allowed_nodes.contains(&self.node_id))
             .collect::<Vec<_>>();
@@ -743,13 +740,19 @@ impl AdminServiceShared {
         // Start all services
         for service in services {
             let service_definition = ServiceDefinition {
-                circuit: create_circuit.circuit_id.clone(),
+                circuit: circuit.circuit_id.clone(),
                 service_id: service.service_id.clone(),
                 service_type: service.service_type.clone(),
             };
 
+            let service_arguments = service
+                .arguments
+                .iter()
+                .map(|arg| (arg.key.clone(), arg.value.clone()))
+                .collect();
+
             self.orchestrator
-                .initialize_service(service_definition.clone(), service.arguments.clone())?;
+                .initialize_service(service_definition.clone(), service_arguments)?;
 
             self.running_services.insert(service_definition);
         }
