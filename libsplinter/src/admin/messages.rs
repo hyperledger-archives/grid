@@ -362,7 +362,7 @@ pub enum Vote {
 #[serde(tag = "eventType", content = "message")]
 pub enum AdminServiceEvent {
     ProposalSubmitted(CircuitProposal),
-    ProposalVote((CircuitProposalVote, Vec<u8>)),
-    ProposalAccepted(CircuitProposal),
-    ProposalRejected(CircuitProposal),
+    ProposalVote((CircuitProposal, Vec<u8>)),
+    ProposalAccepted((CircuitProposal, Vec<u8>)),
+    ProposalRejected((CircuitProposal, Vec<u8>)),
 }

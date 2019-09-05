@@ -483,8 +483,15 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::ProposalVote((msg_vote, signer_public_key)) => {
-            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_vote.circuit_id)?;
+        AdminServiceEvent::ProposalVote((msg_proposal, signer_public_key)) => {
+            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
+            let vote = msg_proposal
+                .votes
+                .iter()
+                .find(|vote| vote.public_key == signer_public_key)
+                .ok_or_else(|| {
+                    AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
+                })?;
             let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
@@ -509,7 +516,7 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::ProposalAccepted(msg_proposal) => {
+        AdminServiceEvent::ProposalAccepted((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
             let time = SystemTime::now();
             let conn = &*pool.get()?;
@@ -517,7 +524,7 @@ fn process_admin_event(
             debug!("Updated proposal to status 'Accepted'");
             Ok(())
         }
-        AdminServiceEvent::ProposalRejected(msg_proposal) => {
+        AdminServiceEvent::ProposalRejected((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
             let time = SystemTime::now();
             let conn = &*pool.get()?;
@@ -1114,26 +1121,40 @@ mod test {
         }
     }
 
-    fn get_msg_circuit_proposal_vote(circuit_id: &str) -> CircuitProposalVote {
-        CircuitProposalVote {
+    fn get_msg_proposal_with_vote(circuit_id: &str) -> CircuitProposal {
+        let vote = VoteRecord {
+            public_key: vec![73, 119, 65, 65, 65, 81],
+            vote: Vote::Accept,
+        };
+
+        CircuitProposal {
+            proposal_type: ProposalType::Create,
             circuit_id: circuit_id.to_string(),
             circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
                 .to_string(),
-            vote: Vote::Accept,
+            circuit: get_create_circuit_msg(circuit_id),
+            votes: vec![vote],
+            requester: b"IwAAAQ".to_vec(),
         }
     }
 
     fn get_reject_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalRejected(get_msg_proposal(circuit_id))
+        AdminServiceEvent::ProposalRejected((
+            get_msg_proposal_with_vote(circuit_id),
+            vec![73, 119, 65, 65, 65, 81],
+        ))
     }
 
     fn get_accept_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalAccepted(get_msg_proposal(circuit_id))
+        AdminServiceEvent::ProposalAccepted((
+            get_msg_proposal_with_vote(circuit_id),
+            vec![73, 119, 65, 65, 65, 81],
+        ))
     }
 
     fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
         AdminServiceEvent::ProposalVote((
-            get_msg_circuit_proposal_vote(circuit_id),
+            get_msg_proposal_with_vote(circuit_id),
             vec![73, 119, 65, 65, 65, 81],
         ))
     }
