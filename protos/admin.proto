@@ -196,8 +196,9 @@ message CircuitManagementPayload {
 
 message CircuitProposalVote {
     enum Vote {
-        ACCEPT = 0;
-        REJECT = 1;
+        UNSET_VOTE = 0;
+        ACCEPT = 1;
+        REJECT = 2;
     }
 
     // The id of the circuit being updated

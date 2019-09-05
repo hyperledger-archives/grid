@@ -313,6 +313,9 @@ impl CircuitProposalVote {
         let vote = match proto.get_vote() {
             admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
             admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
+            admin::CircuitProposalVote_Vote::UNSET_VOTE => {
+                return Err(MarshallingError::UnsetField("Unset vote".to_string()));
+            }
         };
 
         Ok(CircuitProposalVote {
@@ -346,6 +349,9 @@ impl VoteRecord {
         let vote = match proto.get_vote() {
             admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
             admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
+            admin::CircuitProposalVote_Vote::UNSET_VOTE => {
+                return Err(MarshallingError::UnsetField("Unset vote".to_string()));
+            }
         };
 
         Ok(Self {
