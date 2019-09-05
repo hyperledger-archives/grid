@@ -54,6 +54,8 @@ pub mod channel;
 pub mod circuit;
 pub mod collections;
 pub mod consensus;
+#[cfg(feature = "events")]
+pub mod events;
 mod hex;
 pub mod keys;
 pub mod mesh;

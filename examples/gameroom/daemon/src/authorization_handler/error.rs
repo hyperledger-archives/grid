@@ -19,30 +19,25 @@ use std::error::Error;
 use std::fmt;
 
 use futures::future;
+use libsplinter::events::ws;
 
 use crate::application_metadata::ApplicationMetadataError;
 
 #[derive(Debug)]
 pub enum AppAuthHandlerError {
-    RequestError(String),
     IOError(std::io::Error),
     InvalidMessageError(String),
     DatabaseError(String),
-    ShutdownError(String),
-    StartUpError(String),
-    ClientError(String),
+    WebSocketError(ws::Error),
 }
 
 impl Error for AppAuthHandlerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            AppAuthHandlerError::RequestError(_) => None,
             AppAuthHandlerError::IOError(err) => Some(err),
             AppAuthHandlerError::InvalidMessageError(_) => None,
             AppAuthHandlerError::DatabaseError(_) => None,
-            AppAuthHandlerError::ShutdownError(_) => None,
-            AppAuthHandlerError::StartUpError(_) => None,
-            AppAuthHandlerError::ClientError(_) => None,
+            AppAuthHandlerError::WebSocketError(err) => Some(err),
         }
     }
 }
@@ -50,7 +45,6 @@ impl Error for AppAuthHandlerError {
 impl fmt::Display for AppAuthHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AppAuthHandlerError::RequestError(msg) => write!(f, "Failed to build request, {}", msg),
             AppAuthHandlerError::IOError(msg) => write!(f, "An I/O error occurred: {}", msg),
             AppAuthHandlerError::InvalidMessageError(msg) => {
                 write!(f, "The client received an invalid message: {}", msg)
@@ -58,15 +52,7 @@ impl fmt::Display for AppAuthHandlerError {
             AppAuthHandlerError::DatabaseError(msg) => {
                 write!(f, "The database returned an error: {}", msg)
             }
-            AppAuthHandlerError::ShutdownError(msg) => {
-                write!(f, "An error occurred while shutting down: {}", msg)
-            }
-            AppAuthHandlerError::StartUpError(msg) => {
-                write!(f, "An error occurred while starting up: {}", msg)
-            }
-            AppAuthHandlerError::ClientError(msg) => {
-                write!(f, "The client returned an error: {}", msg)
-            }
+            AppAuthHandlerError::WebSocketError(msg) => write!(f, "WebSocket Error: {}", msg),
         }
     }
 }
@@ -104,6 +90,12 @@ impl From<gameroom_database::DatabaseError> for AppAuthHandlerError {
 impl From<diesel::result::Error> for AppAuthHandlerError {
     fn from(err: diesel::result::Error) -> Self {
         AppAuthHandlerError::DatabaseError(format!("Error performing query: {}", err))
+    }
+}
+
+impl From<ws::Error> for AppAuthHandlerError {
+    fn from(err: ws::Error) -> Self {
+        AppAuthHandlerError::WebSocketError(err)
     }
 }
 
