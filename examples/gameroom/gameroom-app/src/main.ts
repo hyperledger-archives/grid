@@ -26,7 +26,7 @@ new Vue({
   render: (h) => h(App),
 }).$mount('#app');
 
-Vue.use(VueNativeSock, `ws://${window.location.host}/ws`, {
+Vue.use(VueNativeSock, `ws://${window.location.host}/ws/subscribe`, {
   store,
   format: 'json',
   reconnection: true,

@@ -154,6 +154,9 @@ pub fn run(
                                     .route(web::get().to_async(routes::fetch_gameroom)),
                             ),
                     )
+                    .service(
+                        web::resource("/subscribe").route(web::get().to(routes::connect_socket)),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()
