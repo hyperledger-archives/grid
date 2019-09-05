@@ -213,6 +213,8 @@ impl AdminServiceShared {
                 circuit_proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
                 circuit_proposal.set_circuit_hash(sha256(&proposed_circuit)?);
                 circuit_proposal.set_circuit_proposal(proposed_circuit);
+                circuit_proposal.set_requester(header.get_requester().to_vec());
+                circuit_proposal.set_requester_node_id(header.get_requester_node_id().to_string());
 
                 let expected_hash = sha256(&circuit_proposal)?;
                 self.pending_changes = Some(circuit_proposal.clone());

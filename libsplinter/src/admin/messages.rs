@@ -255,7 +255,8 @@ pub struct CircuitProposal {
     pub circuit_hash: String,
     pub circuit: CreateCircuit,
     pub votes: Vec<VoteRecord>,
-    pub requester: String,
+    pub requester: Vec<u8>,
+    pub requester_node_id: String,
 }
 
 impl CircuitProposal {
@@ -286,6 +287,7 @@ impl CircuitProposal {
             circuit: CreateCircuit::from_proto(proto.take_circuit_proposal())?,
             votes,
             requester: proto.take_requester(),
+            requester_node_id: proto.take_requester_node_id(),
         })
     }
 }
@@ -297,12 +299,6 @@ pub enum ProposalType {
     AddNode,
     RemoveNode,
     Destroy,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct VoteRecord {
-    pub public_key: Vec<u8>,
-    pub vote: Vote,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -338,6 +334,13 @@ impl CircuitProposalVote {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct VoteRecord {
+    pub public_key: Vec<u8>,
+    pub vote: Vote,
+    pub voter_node_id: String,
+}
+
 impl VoteRecord {
     fn from_proto(mut proto: admin::CircuitProposal_VoteRecord) -> Result<Self, MarshallingError> {
         let vote = match proto.get_vote() {
@@ -348,6 +351,7 @@ impl VoteRecord {
         Ok(Self {
             public_key: proto.take_public_key(),
             vote,
+            voter_node_id: proto.take_voter_node_id(),
         })
     }
 }

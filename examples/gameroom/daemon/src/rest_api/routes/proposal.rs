@@ -42,6 +42,7 @@ struct ApiGameroomProposal {
     circuit_hash: String,
     members: Vec<ApiGameroomMember>,
     requester: String,
+    requester_node_id: String,
     created_time: u64,
     updated_time: u64,
 }
@@ -57,6 +58,7 @@ impl ApiGameroomProposal {
                 .map(ApiGameroomMember::from)
                 .collect(),
             requester: db_proposal.requester.to_string(),
+            requester_node_id: db_proposal.requester.to_string(),
             created_time: db_proposal
                 .created_time
                 .duration_since(SystemTime::UNIX_EPOCH)

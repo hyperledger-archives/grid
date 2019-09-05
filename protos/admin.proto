@@ -112,6 +112,9 @@ message CircuitProposal {
 
         // The voter's actual vote
         CircuitProposalVote.Vote vote = 2;
+
+        // the node the vote came from
+        string voter_node_id = 3;
     }
 
     // What is being changed
@@ -130,9 +133,12 @@ message CircuitProposal {
     // List of votes
     repeated VoteRecord votes = 5;
 
-    // The node that the request originated from
-    // a vote does not need to come from this node
-    string requester = 6;
+    // The public key that the request originated from a vote does not need to
+    // come from the node this public key is associated with
+    bytes requester = 6;
+
+    // the node the requester created the proposal for
+    string requester_node_id = 7;
 }
 
 // Contains all the circuit proposals up for a vote.
@@ -160,11 +166,14 @@ message CircuitManagementPayload {
     message Header {
          Action action = 1;
 
-         // Public key of agent submitting the payload 
+         // Public key of agent submitting the payload
          bytes requester = 2;
 
          // A hash of the circuit management payload action in bytes
          bytes payload_sha512 = 3;
+
+         // the node the requester is submitting the payload for
+         string requester_node_id = 4;
     }
 
     // Serialized header

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS gameroom_proposal (
   circuit_id                TEXT        NOT NULL,
   circuit_hash              TEXT        NOT NULL,
   requester                 TEXT        NOT NULL,
+  requester_node_id         TEXT        NOT NULL,
   status                    TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   updated_time              TIMESTAMP   NOT NULL,
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS proposal_vote_record(
   id                        BIGSERIAL   PRIMARY KEY,
   proposal_id               BIGSERIAL   NOT NULL,
   voter_public_key          TEXT        NOT NULL,
+  voter_node_id             TEXT        NOT NULL,
   vote                      TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   FOREIGN KEY (proposal_id) REFERENCES gameroom_proposal(id) ON DELETE CASCADE
@@ -83,6 +85,7 @@ CREATE TABLE IF NOT EXISTS gameroom_notification (
   id                        BIGSERIAL   PRIMARY KEY,
   notification_type         TEXT        NOT NULL,
   requester                 TEXT        NOT NULL,
+  requester_node_id         TEXT        NOT NULL,
   target                    TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   read                      BOOLEAN     NOT NULL

@@ -46,6 +46,7 @@ table! {
         circuit_id -> Text,
         circuit_hash -> Text,
         requester -> Text,
+        requester_node_id -> Text,
         status -> Text,
         created_time -> Timestamp,
         updated_time -> Timestamp,
@@ -57,6 +58,7 @@ table! {
         id -> Int8,
         proposal_id -> Int8,
         voter_public_key -> Text,
+        voter_node_id -> Text,
         vote -> Text,
         created_time -> Timestamp,
     }
@@ -93,6 +95,7 @@ table! {
         id -> Int8,
         notification_type -> Text,
         requester -> Text,
+        requester_node_id -> Text,
         target -> Text,
         created_time -> Timestamp,
         read -> Bool,
