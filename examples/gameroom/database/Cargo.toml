@@ -20,5 +20,5 @@ edition = "2018"
 license = "Apache-2.0"
 
 [dependencies]
-diesel = { version = "1.0.0", features = ["postgres", "r2d2"] }
+diesel = { version = "1.0.0", features = ["postgres", "r2d2", "serde_json"] }
 serde_json = "1.0"
