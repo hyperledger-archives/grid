@@ -25,7 +25,8 @@ use crate::network::{
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
     Circuit, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitManagementPayload_Header, CircuitProposal, CircuitProposal_ProposalType,
+    CircuitManagementPayload_Header, CircuitProposal, CircuitProposalVote,
+    CircuitProposalVote_Vote, CircuitProposal_ProposalType, CircuitProposal_VoteRecord,
     Circuit_AuthorizationType, Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
@@ -39,6 +40,18 @@ use super::messages;
 use super::{admin_service_id, sha256};
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
+
+enum CircuitProposalStatus {
+    Accepted,
+    Rejected,
+    Pending,
+}
+
+struct CircuitProposalContext {
+    pub circuit_proposal: CircuitProposal,
+    pub action: CircuitManagementPayload_Action,
+    pub signer_public_key: Vec<u8>,
+}
 
 pub struct AdminServiceShared {
     // the node id of the connected splinter node
@@ -64,7 +77,7 @@ pub struct AdminServiceShared {
     // The pending consensus proposals
     pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
-    pending_changes: Option<CircuitProposal>,
+    pending_changes: Option<CircuitProposalContext>,
     // the verifiers that should be broadcasted for the pending change
     current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
@@ -157,7 +170,9 @@ impl AdminServiceShared {
 
     pub fn commit(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
-            Some(circuit_proposal) => {
+            Some(circuit_proposal_context) => {
+                let circuit_proposal = circuit_proposal_context.circuit_proposal;
+                let action = circuit_proposal_context.action;
                 let circuit_id = circuit_proposal.get_circuit_id().to_string();
                 let mgmt_type = circuit_proposal
                     .get_circuit_proposal()
@@ -184,9 +199,10 @@ impl AdminServiceShared {
 
     pub fn rollback(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
-            Some(circuit_proposal) => {
-                info!("discarded change for {}", circuit_proposal.get_circuit_id())
-            }
+            Some(circuit_proposal_context) => info!(
+                "discarded change for {}",
+                circuit_proposal_context.circuit_proposal.get_circuit_id()
+            ),
             None => debug!("no changes to rollback"),
         }
 
@@ -223,7 +239,11 @@ impl AdminServiceShared {
                 circuit_proposal.set_requester_node_id(header.get_requester_node_id().to_string());
 
                 let expected_hash = sha256(&circuit_proposal)?;
-                self.pending_changes = Some(circuit_proposal.clone());
+                self.pending_changes = Some(CircuitProposalContext {
+                    circuit_proposal: circuit_proposal.clone(),
+                    signer_public_key: header.get_requester().to_vec(),
+                    action: CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST,
+                });
                 self.current_consensus_verifiers = verifiers;
 
                 Ok((expected_hash, circuit_proposal))
