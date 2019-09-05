@@ -520,11 +520,6 @@ mod tests {
 
         // reload storage and check that the circuit was written
         let storage = get_storage(&path, CircuitDirectory::new).unwrap();
-        std::io::Write::write_all(
-            &mut std::io::stderr(),
-            &serde_yaml::to_vec(&**storage.read()).unwrap(),
-        )
-        .unwrap();
 
         assert_eq!(storage.read().circuits().len(), 1);
         assert!(storage.read().circuits().contains_key("alpha"));
