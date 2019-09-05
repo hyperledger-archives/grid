@@ -64,11 +64,13 @@ pub fn insert_gameroom_notification(
 pub fn create_new_notification(
     notification_type: &str,
     requester: &str,
+    requester_node_id: &str,
     target: &str,
 ) -> NewGameroomNotification {
     NewGameroomNotification {
         notification_type: notification_type.to_string(),
         requester: requester.to_string(),
+        requester_node_id: requester_node_id.to_string(),
         target: target.to_string(),
         created_time: SystemTime::now(),
         read: false,

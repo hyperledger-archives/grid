@@ -255,7 +255,8 @@ pub struct CircuitProposal {
     pub circuit_hash: String,
     pub circuit: CreateCircuit,
     pub votes: Vec<VoteRecord>,
-    pub requester: String,
+    pub requester: Vec<u8>,
+    pub requester_node_id: String,
 }
 
 impl CircuitProposal {
@@ -286,6 +287,7 @@ impl CircuitProposal {
             circuit: CreateCircuit::from_proto(proto.take_circuit_proposal())?,
             votes,
             requester: proto.take_requester(),
+            requester_node_id: proto.take_requester_node_id(),
         })
     }
 }
@@ -300,12 +302,6 @@ pub enum ProposalType {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct VoteRecord {
-    pub public_key: Vec<u8>,
-    pub vote: Vote,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CircuitProposalVote {
     pub circuit_id: String,
     pub circuit_hash: String,
@@ -317,6 +313,9 @@ impl CircuitProposalVote {
         let vote = match proto.get_vote() {
             admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
             admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
+            admin::CircuitProposalVote_Vote::UNSET_VOTE => {
+                return Err(MarshallingError::UnsetField("Unset vote".to_string()));
+            }
         };
 
         Ok(CircuitProposalVote {
@@ -338,16 +337,27 @@ impl CircuitProposalVote {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct VoteRecord {
+    pub public_key: Vec<u8>,
+    pub vote: Vote,
+    pub voter_node_id: String,
+}
+
 impl VoteRecord {
     fn from_proto(mut proto: admin::CircuitProposal_VoteRecord) -> Result<Self, MarshallingError> {
         let vote = match proto.get_vote() {
             admin::CircuitProposalVote_Vote::ACCEPT => Vote::Accept,
             admin::CircuitProposalVote_Vote::REJECT => Vote::Reject,
+            admin::CircuitProposalVote_Vote::UNSET_VOTE => {
+                return Err(MarshallingError::UnsetField("Unset vote".to_string()));
+            }
         };
 
         Ok(Self {
             public_key: proto.take_public_key(),
             vote,
+            voter_node_id: proto.take_voter_node_id(),
         })
     }
 }
@@ -362,7 +372,7 @@ pub enum Vote {
 #[serde(tag = "eventType", content = "message")]
 pub enum AdminServiceEvent {
     ProposalSubmitted(CircuitProposal),
-    ProposalVote((CircuitProposalVote, Vec<u8>)),
-    ProposalAccepted(CircuitProposal),
-    ProposalRejected(CircuitProposal),
+    ProposalVote((CircuitProposal, Vec<u8>)),
+    ProposalAccepted((CircuitProposal, Vec<u8>)),
+    ProposalRejected((CircuitProposal, Vec<u8>)),
 }

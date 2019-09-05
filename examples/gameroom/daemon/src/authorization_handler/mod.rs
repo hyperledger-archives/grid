@@ -18,6 +18,7 @@
 mod error;
 pub use error::AppAuthHandlerError;
 
+use std::fmt::Write;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
@@ -97,7 +98,9 @@ fn process_admin_event(
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
             let time = SystemTime::now();
 
-            let proposal = parse_proposal(&msg_proposal, time);
+            // convert requester public key to hex
+            let requester = to_hex(&msg_proposal.requester);
+            let proposal = parse_proposal(&msg_proposal, time, requester);
 
             let gameroom = parse_gameroom(&msg_proposal.circuit, time)?;
 
@@ -120,6 +123,7 @@ fn process_admin_event(
                 let notification = helpers::create_new_notification(
                     "gameroom_proposal",
                     &proposal.requester,
+                    &proposal.requester_node_id,
                     &proposal.circuit_id,
                 );
                 helpers::insert_gameroom_notification(conn, &[notification])?;
@@ -133,13 +137,21 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::ProposalVote((msg_vote, signer_public_key)) => {
-            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_vote.circuit_id)?;
+        AdminServiceEvent::ProposalVote((msg_proposal, signer_public_key)) => {
+            let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
+            let vote = msg_proposal
+                .votes
+                .iter()
+                .find(|vote| vote.public_key == signer_public_key)
+                .ok_or_else(|| {
+                    AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
+                })?;
             let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
-                voter_public_key: String::from_utf8(signer_public_key)?,
-                vote: format!("{:?}", msg_vote.vote),
+                voter_public_key: to_hex(&signer_public_key),
+                voter_node_id: vote.voter_node_id.to_string(),
+                vote: "Accept".to_string(),
                 created_time: time,
             };
             let conn = &*pool.get()?;
@@ -149,6 +161,7 @@ fn process_admin_event(
                 let notification = helpers::create_new_notification(
                     "proposal_vote_record",
                     &vote.voter_public_key,
+                    &vote.voter_node_id,
                     &vote.proposal_id.to_string(),
                 );
                 helpers::insert_gameroom_notification(conn, &[notification])?;
@@ -159,32 +172,94 @@ fn process_admin_event(
                 Ok(())
             })
         }
-        AdminServiceEvent::ProposalAccepted(msg_proposal) => {
+        AdminServiceEvent::ProposalAccepted((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
             let time = SystemTime::now();
+            let vote = msg_proposal
+                .votes
+                .iter()
+                .find(|vote| vote.public_key == signer_public_key)
+                .ok_or_else(|| {
+                    AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
+                })?;
+
+            let vote = NewProposalVoteRecord {
+                proposal_id: proposal.id,
+                voter_public_key: to_hex(&signer_public_key),
+                voter_node_id: vote.voter_node_id.to_string(),
+                vote: "Accept".to_string(),
+                created_time: time,
+            };
             let conn = &*pool.get()?;
-            helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Accepted")?;
-            debug!("Updated proposal to status 'Accepted'");
-            Ok(())
+
+            // insert vote and update proposal in a single database transaction
+            conn.transaction::<_, _, _>(|| {
+                let notification = helpers::create_new_notification(
+                    "proposal_accepted",
+                    &vote.voter_public_key,
+                    &vote.voter_node_id,
+                    &vote.proposal_id.to_string(),
+                );
+                helpers::insert_gameroom_notification(conn, &[notification])?;
+                helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Accepted")?;
+                helpers::update_gameroom_status(conn, &msg_proposal.circuit_id, &time, "Accepted")?;
+                helpers::insert_proposal_vote_record(conn, &[vote])?;
+
+                debug!("Updated proposal to status 'Accepted'");
+                Ok(())
+            })
         }
-        AdminServiceEvent::ProposalRejected(msg_proposal) => {
+        AdminServiceEvent::ProposalRejected((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
             let time = SystemTime::now();
+            let vote = msg_proposal
+                .votes
+                .iter()
+                .find(|vote| vote.public_key == signer_public_key)
+                .ok_or_else(|| {
+                    AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
+                })?;
+
+            let vote = NewProposalVoteRecord {
+                proposal_id: proposal.id,
+                voter_public_key: to_hex(&signer_public_key),
+                voter_node_id: vote.voter_node_id.to_string(),
+                vote: "Reject".to_string(),
+                created_time: time,
+            };
             let conn = &*pool.get()?;
-            helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Rejected")?;
-            helpers::update_gameroom_status(conn, &proposal.circuit_id, &time, "Rejected")?;
-            debug!("Updated proposal to status 'Rejected'");
-            Ok(())
+
+            // insert vote and update proposal in a single database transaction
+            conn.transaction::<_, _, _>(|| {
+                let notification = helpers::create_new_notification(
+                    "proposal_rejected",
+                    &vote.voter_public_key,
+                    &vote.voter_node_id,
+                    &vote.proposal_id.to_string(),
+                );
+                helpers::insert_gameroom_notification(conn, &[notification])?;
+                helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Rejected")?;
+                helpers::update_gameroom_status(conn, &msg_proposal.circuit_id, &time, "Rejected")?;
+                helpers::insert_proposal_vote_record(conn, &[vote])?;
+                println!("SUCCESS");
+                debug!("Updated proposal to status 'Rejected'");
+                Ok(())
+            })
         }
     }
 }
 
-fn parse_proposal(proposal: &CircuitProposal, timestamp: SystemTime) -> NewGameroomProposal {
+fn parse_proposal(
+    proposal: &CircuitProposal,
+    timestamp: SystemTime,
+    requester_public_key: String,
+) -> NewGameroomProposal {
     NewGameroomProposal {
         proposal_type: format!("{:?}", proposal.proposal_type),
         circuit_id: proposal.circuit_id.clone(),
         circuit_hash: proposal.circuit_hash.to_string(),
-        requester: proposal.requester.clone(),
+        requester: requester_public_key,
+        requester_node_id: proposal.requester_node_id.to_string(),
         status: "Pending".to_string(),
         created_time: timestamp,
         updated_time: timestamp,
@@ -273,6 +348,15 @@ fn get_pending_proposal_with_circuit_id(
     )
 }
 
+pub fn to_hex(bytes: &[u8]) -> String {
+    let mut buf = String::new();
+    for b in bytes {
+        write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
+    }
+
+    buf
+}
+
 #[cfg(all(feature = "test-authorization-handler", test))]
 mod test {
     use super::*;
@@ -286,8 +370,8 @@ mod test {
     };
 
     use libsplinter::admin::messages::{
-        AuthorizationType, CircuitProposalVote, CreateCircuit, DurabilityType, PersistenceType,
-        ProposalType, RouteType, Vote,
+        AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, ProposalType, RouteType,
+        Vote, VoteRecord,
     };
 
     static DATABASE_URL: &str = "postgres://gameroom_test:gameroom_test@db-test:5432/gameroom_test";
@@ -684,9 +768,13 @@ mod test {
     /// Tests if the admin message CreateProposal to a database GameroomProposal is successful
     fn test_parse_proposal() {
         let time = SystemTime::now();
-        let proposal = parse_proposal(&get_msg_proposal("my_circuit"), time.clone());
+        let proposal = parse_proposal(
+            &get_msg_proposal("my_circuit"),
+            time.clone(),
+            to_hex(&public_key()),
+        );
 
-        assert_eq!(proposal, get_gameroom_proposal("my_circuit", time.clone()))
+        assert_eq!(proposal, get_gameroom_proposal("my_circuit", time.clone()));
     }
 
     #[test]
@@ -760,32 +848,40 @@ mod test {
                 .to_string(),
             circuit: get_create_circuit_msg(circuit_id),
             votes: vec![],
-            requester: "acme_corp".to_string(),
+            requester: public_key(),
+            requester_node_id: "acme_corp".to_string(),
         }
     }
 
-    fn get_msg_circuit_proposal_vote(circuit_id: &str) -> CircuitProposalVote {
-        CircuitProposalVote {
+    fn get_msg_proposal_with_vote(circuit_id: &str) -> CircuitProposal {
+        let vote = VoteRecord {
+            public_key: public_key(),
+            vote: Vote::Accept,
+            voter_node_id: "acme_corp".to_string(),
+        };
+
+        CircuitProposal {
+            proposal_type: ProposalType::Create,
             circuit_id: circuit_id.to_string(),
             circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
                 .to_string(),
-            vote: Vote::Accept,
+            circuit: get_create_circuit_msg(circuit_id),
+            votes: vec![vote],
+            requester: public_key(),
+            requester_node_id: "acme_corp".to_string(),
         }
     }
 
     fn get_reject_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalRejected(get_msg_proposal(circuit_id))
+        AdminServiceEvent::ProposalRejected((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_accept_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalAccepted(get_msg_proposal(circuit_id))
+        AdminServiceEvent::ProposalAccepted((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalVote((
-            get_msg_circuit_proposal_vote(circuit_id),
-            vec![73, 119, 65, 65, 65, 81],
-        ))
+        AdminServiceEvent::ProposalVote((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_submit_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
@@ -798,7 +894,8 @@ mod test {
             circuit_id: circuit_id.to_string(),
             circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
                 .to_string(),
-            requester: "acme_corp".to_string(),
+            requester: to_hex(&public_key()),
+            requester_node_id: "acme_corp".to_string(),
             status: "Pending".to_string(),
             created_time: timestamp,
             updated_time: timestamp,
@@ -823,7 +920,8 @@ mod test {
     fn get_new_vote_record(proposal_id: i64, timestamp: SystemTime) -> NewProposalVoteRecord {
         NewProposalVoteRecord {
             proposal_id,
-            voter_public_key: "IwAAAQ".to_string(),
+            voter_public_key: to_hex(&public_key()),
+            voter_node_id: "acme_corp".to_string(),
             vote: "Accept".to_string(),
             created_time: timestamp,
         }
@@ -862,7 +960,8 @@ mod test {
     ) -> NewGameroomNotification {
         NewGameroomNotification {
             notification_type: "gameroom_proposal".to_string(),
-            requester: "acme_corp".to_string(),
+            requester: to_hex(&public_key()),
+            requester_node_id: "acme_corp".to_string(),
             target: circuit_id.to_string(),
             created_time: timestamp,
             read: false,
@@ -875,7 +974,8 @@ mod test {
     ) -> NewGameroomNotification {
         NewGameroomNotification {
             notification_type: "proposal_vote_record".to_string(),
-            requester: "IwAAAQ".to_string(),
+            requester: to_hex(&public_key()),
+            requester_node_id: "acme_corp".to_string(),
             target: proposal_id.to_string(),
             created_time: timestamp,
             read: false,
@@ -980,5 +1080,9 @@ mod test {
         diesel::delete(gameroom_notification)
             .execute(conn)
             .expect("Error cleaning gameroom_notification table");
+    }
+
+    fn public_key() -> Vec<u8> {
+        vec![73, 119, 65, 65, 65, 81]
     }
 }

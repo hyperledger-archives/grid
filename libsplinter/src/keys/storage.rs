@@ -29,16 +29,14 @@ use super::{KeyInfo, KeyRegistry, KeyRegistryError};
 /// This KeyRegistry is backed by the storage module, and therefore supports the same formats
 /// available.
 pub struct StorageKeyRegistry {
-    _storage_location: String,
+    storage_location: String,
     persisted_key_registry: PersistedKeyRegistry,
 }
 
 impl KeyRegistry for StorageKeyRegistry {
-    fn save_key(&mut self, _key_info: KeyInfo) -> Result<(), KeyRegistryError> {
-        Err(KeyRegistryError {
-            context: "Operation not supported".into(),
-            source: None,
-        })
+    fn save_key(&mut self, key_info: KeyInfo) -> Result<(), KeyRegistryError> {
+        self.persisted_key_registry.add_key(key_info)?;
+        self.write_key_registry()
     }
 
     fn delete_key(&mut self, _public_key: &[u8]) -> Result<Option<KeyInfo>, KeyRegistryError> {
@@ -85,15 +83,52 @@ impl StorageKeyRegistry {
             .clone();
 
         Ok(Self {
-            _storage_location: storage_location,
+            storage_location,
             persisted_key_registry,
         })
+    }
+
+    pub fn storage_location(&self) -> &str {
+        &self.storage_location
+    }
+
+    fn write_key_registry(&self) -> Result<(), KeyRegistryError> {
+        // Replace stored key_registry with the current key registry
+        let mut storage = get_storage(self.storage_location(), || {
+            self.persisted_key_registry.clone()
+        })
+        .map_err(|err: String| KeyRegistryError {
+            context: format!("unable to load key registry: {}", err),
+            source: None,
+        })?;
+
+        // when this is dropped the new state will be written to storage
+        **storage.write() = self.persisted_key_registry.clone();
+        Ok(())
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 struct PersistedKeyRegistry {
     keys: BTreeMap<String, PersistedKeyInfo>,
+}
+
+impl PersistedKeyRegistry {
+    pub fn add_key(&mut self, key_info: KeyInfo) -> Result<(), KeyRegistryError> {
+        let hex_key = to_hex(key_info.public_key());
+
+        let persisted_key_info = PersistedKeyInfo {
+            public_key: hex_key.clone(),
+            associated_node_id: key_info.associated_node_id().into(),
+            metadata: key_info
+                .metadata()
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect::<BTreeMap<String, String>>(),
+        };
+        self.keys.insert(hex_key, persisted_key_info);
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

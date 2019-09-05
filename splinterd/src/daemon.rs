@@ -18,7 +18,6 @@ use std::time::Duration;
 
 use crossbeam_channel;
 
-use crate::node_registry;
 use libsplinter::admin::{admin_service_id, AdminService};
 use libsplinter::circuit::directory::CircuitDirectory;
 use libsplinter::circuit::handlers::{
@@ -27,6 +26,7 @@ use libsplinter::circuit::handlers::{
     ServiceDisconnectForwardHandler, ServiceDisconnectRequestHandler,
 };
 use libsplinter::circuit::SplinterState;
+use libsplinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
 use libsplinter::mesh::Mesh;
 use libsplinter::network::auth::handlers::{
     create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
@@ -57,6 +57,7 @@ use libsplinter::transport::{
     ListenError, Listener, Transport,
 };
 
+use crate::node_registry;
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
 
@@ -69,6 +70,7 @@ const ORCHESTRATOR_CHANNEL_CAPACITY: usize = 8;
 
 pub struct SplinterDaemon {
     storage_location: String,
+    key_registry_location: String,
     service_endpoint: String,
     network_endpoint: String,
     initial_peers: Vec<String>,
@@ -288,6 +290,8 @@ impl SplinterDaemon {
         let orchestrator_resources = orchestrator.resources();
 
         let signature_verifier = SawtoothSecp256k1SignatureVeriifier::new();
+        let key_registry = StorageKeyRegistry::new(self.key_registry_location.clone())
+            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
 
         let admin_service = AdminService::new(
             &self.node_id,
@@ -296,6 +300,8 @@ impl SplinterDaemon {
             Box::new(auth_manager.clone()),
             state.clone(),
             Box::new(signature_verifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
@@ -457,6 +463,7 @@ impl SplinterDaemon {
 #[derive(Default)]
 pub struct SplinterDaemonBuilder {
     storage_location: Option<String>,
+    key_registry_location: Option<String>,
     service_endpoint: Option<String>,
     network_endpoint: Option<String>,
     initial_peers: Option<Vec<String>>,
@@ -473,6 +480,11 @@ impl SplinterDaemonBuilder {
 
     pub fn with_storage_location(mut self, value: String) -> Self {
         self.storage_location = Some(value);
+        self
+    }
+
+    pub fn with_key_registry_location(mut self, value: String) -> Self {
+        self.key_registry_location = Some(value);
         self
     }
 
@@ -519,6 +531,10 @@ impl SplinterDaemonBuilder {
             CreateError::MissingRequiredField("Missing field: storage_location".to_string())
         })?;
 
+        let key_registry_location = self.key_registry_location.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: key_registry_location".to_string())
+        })?;
+
         let service_endpoint = self.service_endpoint.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: service_location".to_string())
         })?;
@@ -558,6 +574,7 @@ impl SplinterDaemonBuilder {
             node_id,
             rest_api_endpoint,
             registry_config,
+            key_registry_location,
         })
     }
 }

@@ -30,6 +30,7 @@ struct ApiNotification {
     id: i64,
     notification_type: String,
     org: String,
+    node_id: String,
     target: String,
     timestamp: u64,
     read: bool,
@@ -41,6 +42,7 @@ impl ApiNotification {
             id: db_notification.id,
             notification_type: db_notification.notification_type.to_string(),
             org: db_notification.requester.to_string(),
+            node_id: db_notification.requester_node_id.to_string(),
             target: db_notification.target.to_string(),
             timestamp: db_notification
                 .created_time

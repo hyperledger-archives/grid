@@ -38,7 +38,7 @@ pub use error::{KeyPermissionError, KeyRegistryError};
 /// Information associated with a public key.
 ///
 /// This struct contains information related to a public key, with the most specific information
-/// pertaining to the associated splinter node.  
+/// pertaining to the associated splinter node.
 ///
 /// It also provides metadata about the key, that maybe provided to the registry for
 /// application-specific details.  For example, the name of the person or organization of the key.
@@ -88,6 +88,11 @@ impl KeyInfo {
     pub fn get_metadata(&self, key: &str) -> Option<&String> {
         self.metadata.get(key)
     }
+
+    /// Get the metadata for the key info
+    pub fn metadata(&self) -> &HashMap<String, String> {
+        &self.metadata
+    }
 }
 
 impl fmt::Debug for KeyInfo {
@@ -133,7 +138,7 @@ type KeyRegistryResult<T> = Result<T, KeyRegistryError>;
 /// The key registry provides an interface for storing and retrieving key information. Key
 /// information helps to tie a public key to a particular splinter node, as well as associating
 /// application metadata with the public key.
-pub trait KeyRegistry {
+pub trait KeyRegistry: Send {
     /// Save a public key and its information.
     ///
     /// # Errors
@@ -183,7 +188,7 @@ type KeyPermissionResult<T> = Result<T, KeyPermissionError>;
 ///
 /// Note: the underlying implementation determines how those values are set and modified - these
 /// operations are not exposed via this interface.
-pub trait KeyPermissionManager {
+pub trait KeyPermissionManager: Send {
     /// Checks to see if a public key is permitted for the given role.
     ///
     /// # Errors

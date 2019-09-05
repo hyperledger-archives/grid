@@ -185,7 +185,7 @@ pub fn propose_gameroom(
         application_metadata,
     };
 
-    let payload_bytes = match make_payload(create_request) {
+    let payload_bytes = match make_payload(create_request, node_info.identity.to_string()) {
         Ok(bytes) => bytes,
         Err(err) => {
             debug!("Failed to make circuit management payload: {}", err);
@@ -202,7 +202,10 @@ pub fn propose_gameroom(
         .into_future()
 }
 
-fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiResponseError> {
+fn make_payload(
+    create_request: CreateCircuit,
+    local_node: String,
+) -> Result<Vec<u8>, RestApiResponseError> {
     let circuit_proto = create_request.into_proto()?;
     let circuit_bytes = circuit_proto.write_to_bytes()?;
     let hashed_bytes = hash(MessageDigest::sha512(), &circuit_bytes)?;
@@ -210,6 +213,7 @@ fn make_payload(create_request: CreateCircuit) -> Result<Vec<u8>, RestApiRespons
     let mut header = Header::new();
     header.set_action(Action::CIRCUIT_CREATE_REQUEST);
     header.set_payload_sha512(hashed_bytes.to_vec());
+    header.set_requester_node_id(local_node);
     let header_bytes = header.write_to_bytes()?;
 
     let mut circuit_management_payload = CircuitManagementPayload::new();

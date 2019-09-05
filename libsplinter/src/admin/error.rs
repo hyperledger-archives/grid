@@ -43,6 +43,8 @@ pub enum AdminSharedError {
     /// Returned if a signer is not specified currently only usra is supported
     /// and the feature flag "ursa-compat" must be supplied.
     UndefinedSigner,
+    // Returned if a circuit cannot be added to splinter state
+    CommitError(String),
 }
 
 impl Error for AdminSharedError {
@@ -56,6 +58,7 @@ impl Error for AdminSharedError {
             AdminSharedError::ValidationFailed(_) => None,
             AdminSharedError::SignerError(_) => None,
             AdminSharedError::UndefinedSigner => None,
+            AdminSharedError::CommitError(_) => None,
         }
     }
 }
@@ -79,6 +82,7 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
             AdminSharedError::SignerError(ref msg) => write!(f, "Signing error: {}", msg),
             AdminSharedError::UndefinedSigner => f.write_str("Signing method was not defined"),
+            AdminSharedError::CommitError(msg) => write!(f, "unable to commit circuit: {}", msg),
         }
     }
 }

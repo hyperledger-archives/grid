@@ -19,6 +19,7 @@ use serde_derive::{Deserialize, Serialize};
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 
 use crate::circuit::directory::CircuitDirectory;
@@ -382,9 +383,7 @@ impl SplinterState {
     fn write_circuit_directory(&self) -> Result<(), WriteError> {
         // Replace stored state with the current splinter state
         let mut storage = get_storage(self.storage_location(), || self.circuit_directory.clone())
-            .map_err(|err| {
-            WriteError::GetStorageError(format!("Unable to get storage: {}", err))
-        })?;
+            .map_err(|err| WriteError::GetStorageError(err.to_string()))?;
 
         // when this is dropped the new state will be written to storage
         **storage.write() = self.circuit_directory.clone();
@@ -453,6 +452,16 @@ impl SplinterState {
 #[derive(Debug)]
 pub enum WriteError {
     GetStorageError(String),
+}
+
+impl Error for WriteError {}
+
+impl std::fmt::Display for WriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            WriteError::GetStorageError(msg) => write!(f, "Unable to get storage: {}", msg),
+        }
+    }
 }
 
 #[cfg(test)]

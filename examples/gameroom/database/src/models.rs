@@ -52,6 +52,7 @@ pub struct GameroomProposal {
     pub circuit_id: String,
     pub circuit_hash: String,
     pub requester: String,
+    pub requester_node_id: String,
     pub status: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
@@ -64,6 +65,7 @@ pub struct NewGameroomProposal {
     pub circuit_id: String,
     pub circuit_hash: String,
     pub requester: String,
+    pub requester_node_id: String,
     pub status: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
@@ -76,6 +78,7 @@ pub struct ProposalVoteRecord {
     pub id: i64,
     pub proposal_id: i64,
     pub voter_public_key: String,
+    pub voter_node_id: String,
     pub vote: String,
     pub created_time: SystemTime,
 }
@@ -85,6 +88,7 @@ pub struct ProposalVoteRecord {
 pub struct NewProposalVoteRecord {
     pub proposal_id: i64,
     pub voter_public_key: String,
+    pub voter_node_id: String,
     pub vote: String,
     pub created_time: SystemTime,
 }
@@ -147,6 +151,7 @@ pub struct GameroomNotification {
     pub id: i64,
     pub notification_type: String,
     pub requester: String,
+    pub requester_node_id: String,
     pub target: String,
     pub created_time: SystemTime,
     pub read: bool,
@@ -157,6 +162,7 @@ pub struct GameroomNotification {
 pub struct NewGameroomNotification {
     pub notification_type: String,
     pub requester: String,
+    pub requester_node_id: String,
     pub target: String,
     pub created_time: SystemTime,
     pub read: bool,

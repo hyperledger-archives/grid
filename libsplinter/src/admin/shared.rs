@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
+use protobuf::RepeatedField;
+
 use crate::circuit::SplinterState;
+use crate::circuit::{
+    service::SplinterNode as StateNode, Circuit as StateCircuit,
+    ServiceDefinition as StateServiceDefinition,
+};
 use crate::consensus::{Proposal, ProposalId};
+use crate::hex::to_hex;
+use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
@@ -24,20 +32,34 @@ use crate::network::{
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
     Circuit, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitManagementPayload_Header, CircuitProposal, CircuitProposal_ProposalType,
+    CircuitManagementPayload_Header, CircuitProposal, CircuitProposalVote,
+    CircuitProposalVote_Vote, CircuitProposal_ProposalType, CircuitProposal_VoteRecord,
     Circuit_AuthorizationType, Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
-
 use crate::signing::SignatureVerifier;
 
 use super::error::{AdminSharedError, MarshallingError};
 use super::messages;
 use super::{admin_service_id, sha256};
 
+static VOTER_ROLE: &str = "voter";
+
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
+
+enum CircuitProposalStatus {
+    Accepted,
+    Rejected,
+    Pending,
+}
+
+struct CircuitProposalContext {
+    pub circuit_proposal: CircuitProposal,
+    pub action: CircuitManagementPayload_Action,
+    pub signer_public_key: Vec<u8>,
+}
 
 pub struct AdminServiceShared {
     // the node id of the connected splinter node
@@ -63,19 +85,21 @@ pub struct AdminServiceShared {
     // The pending consensus proposals
     pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
-    pending_changes: Option<CircuitProposal>,
+    pending_changes: Option<CircuitProposalContext>,
     // the verifiers that should be broadcasted for the pending change
     current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
     event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
-
     // signature verifier
     signature_verifier: Box<dyn SignatureVerifier + Send>,
+    key_registry: Box<dyn KeyRegistry>,
+    key_permission_manager: Box<dyn KeyPermissionManager>,
 }
 
 impl AdminServiceShared {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         node_id: String,
         orchestrator: ServiceOrchestrator,
@@ -83,6 +107,8 @@ impl AdminServiceShared {
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
         splinter_state: Arc<RwLock<SplinterState>>,
         signature_verifier: Box<dyn SignatureVerifier + Send>,
+        key_registry: Box<dyn KeyRegistry>,
+        key_permission_manager: Box<dyn KeyPermissionManager>,
     ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
@@ -100,6 +126,8 @@ impl AdminServiceShared {
             event_dealers: HashMap::new(),
             splinter_state,
             signature_verifier,
+            key_registry,
+            key_permission_manager,
         }
     }
 
@@ -151,26 +179,91 @@ impl AdminServiceShared {
 
     pub fn commit(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
-            Some(circuit_proposal) => {
+            Some(circuit_proposal_context) => {
+                let circuit_proposal = circuit_proposal_context.circuit_proposal;
+                let action = circuit_proposal_context.action;
                 let circuit_id = circuit_proposal.get_circuit_id().to_string();
                 let mgmt_type = circuit_proposal
                     .get_circuit_proposal()
                     .circuit_management_type
                     .clone();
 
-                self.add_proposal(circuit_proposal.clone());
+                match self.check_approved(&circuit_proposal) {
+                    Ok(CircuitProposalStatus::Accepted) => {
+                        // commit new circuit
+                        let circuit = circuit_proposal.get_circuit_proposal();
+                        self.update_splinter_state(circuit)?;
+                        // remove approved proposal
+                        self.remove_proposal(&circuit_id);
+                        // send message about circuit acceptance
 
-                // notify registered authorization application handlers of the commited circuit
-                // proposal
-                let event = messages::AdminServiceEvent::ProposalSubmitted(
-                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
-                        .map_err(AdminSharedError::InvalidMessageFormat)?,
-                );
-                self.send_event(&mgmt_type, event);
+                        let circuit_proposal_proto =
+                            messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                .map_err(AdminSharedError::InvalidMessageFormat)?;
+                        let event = messages::AdminServiceEvent::ProposalAccepted((
+                            circuit_proposal_proto,
+                            circuit_proposal_context.signer_public_key,
+                        ));
+                        self.send_event(&mgmt_type, event);
 
-                info!("committed change for circuit proposal {}", circuit_id,);
+                        Ok(())
+                    }
+                    Ok(CircuitProposalStatus::Pending) => {
+                        self.add_proposal(circuit_proposal.clone());
 
-                Ok(())
+                        match action {
+                            CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
+                                // notify registered application authorization handlers of the
+                                // committed circuit proposal
+                                let event = messages::AdminServiceEvent::ProposalSubmitted(
+                                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                        .map_err(AdminSharedError::InvalidMessageFormat)?,
+                                );
+                                self.send_event(&mgmt_type, event);
+
+                                info!("committed changes for new circuit proposal {}", circuit_id);
+                                Ok(())
+                            }
+
+                            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
+                                // notify registered application authorization handlers of the
+                                // committed circuit proposal
+                                let circuit_proposal_proto =
+                                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                        .map_err(AdminSharedError::InvalidMessageFormat)?;
+                                let event = messages::AdminServiceEvent::ProposalVote((
+                                    circuit_proposal_proto,
+                                    circuit_proposal_context.signer_public_key,
+                                ));
+                                self.send_event(&mgmt_type, event);
+
+                                info!("committed vote for circuit proposal {}", circuit_id);
+                                Ok(())
+                            }
+                            _ => Err(AdminSharedError::UnknownAction(format!(
+                                "Received unknown action: {:?}",
+                                action
+                            ))),
+                        }
+                    }
+                    Ok(CircuitProposalStatus::Rejected) => {
+                        // remove circuit
+                        self.remove_proposal(&circuit_id);
+
+                        let circuit_proposal_proto =
+                            messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                .map_err(AdminSharedError::InvalidMessageFormat)?;
+                        let event = messages::AdminServiceEvent::ProposalRejected((
+                            circuit_proposal_proto,
+                            circuit_proposal_context.signer_public_key,
+                        ));
+                        self.send_event(&mgmt_type, event);
+
+                        info!("circuit proposal for {} has been rejected", circuit_id);
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
+                }
             }
             None => Err(AdminSharedError::NoPendingChanges),
         }
@@ -178,9 +271,10 @@ impl AdminServiceShared {
 
     pub fn rollback(&mut self) -> Result<(), AdminSharedError> {
         match self.pending_changes.take() {
-            Some(circuit_proposal) => {
-                info!("discarded change for {}", circuit_proposal.get_circuit_id())
-            }
+            Some(circuit_proposal_context) => info!(
+                "discarded change for {}",
+                circuit_proposal_context.circuit_proposal.get_circuit_id()
+            ),
             None => debug!("no changes to rollback"),
         }
 
@@ -213,15 +307,63 @@ impl AdminServiceShared {
                 circuit_proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
                 circuit_proposal.set_circuit_hash(sha256(&proposed_circuit)?);
                 circuit_proposal.set_circuit_proposal(proposed_circuit);
+                circuit_proposal.set_requester(header.get_requester().to_vec());
+                circuit_proposal.set_requester_node_id(header.get_requester_node_id().to_string());
 
                 let expected_hash = sha256(&circuit_proposal)?;
-                self.pending_changes = Some(circuit_proposal.clone());
+                self.pending_changes = Some(CircuitProposalContext {
+                    circuit_proposal: circuit_proposal.clone(),
+                    signer_public_key: header.get_requester().to_vec(),
+                    action: CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST,
+                });
                 self.current_consensus_verifiers = verifiers;
 
                 Ok((expected_hash, circuit_proposal))
             }
-            unknown_action => Err(AdminSharedError::UnknownAction(format!(
-                "{:?}",
+            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
+                let proposal_vote = circuit_payload.get_circuit_proposal_vote();
+
+                // validate vote proposal
+                // check that the circuit proposal exists
+                let mut circuit_proposal = self
+                    .open_proposals
+                    .get(proposal_vote.get_circuit_id())
+                    .ok_or_else(|| {
+                        AdminSharedError::ValidationFailed(format!(
+                            "Received vote for a proposal that does not exist: circuit id {}",
+                            proposal_vote.circuit_id
+                        ))
+                    })?
+                    .clone();
+
+                let mut verifiers = vec![];
+                for member in circuit_proposal.get_circuit_proposal().get_members() {
+                    verifiers.push(admin_service_id(member.get_node_id()));
+                }
+                let signer_public_key = header.get_requester();
+
+                self.validate_circuit_vote(proposal_vote, signer_public_key, &circuit_proposal)?;
+                // add vote to circuit_proposal
+                let mut vote_record = CircuitProposal_VoteRecord::new();
+                vote_record.set_public_key(signer_public_key.to_vec());
+                vote_record.set_vote(proposal_vote.get_vote());
+                vote_record.set_voter_node_id(header.get_requester_node_id().to_string());
+
+                let mut votes = circuit_proposal.get_votes().to_vec();
+                votes.push(vote_record);
+                circuit_proposal.set_votes(RepeatedField::from_vec(votes));
+
+                let expected_hash = sha256(&circuit_proposal)?;
+                self.pending_changes = Some(CircuitProposalContext {
+                    circuit_proposal: circuit_proposal.clone(),
+                    signer_public_key: header.get_requester().to_vec(),
+                    action: CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE,
+                });
+                self.current_consensus_verifiers = verifiers;
+                Ok((expected_hash, circuit_proposal))
+            }
+            unknown_action => Err(AdminSharedError::ValidationFailed(format!(
+                "Unable to handle {:?}",
                 unknown_action
             ))),
         }
@@ -280,6 +422,16 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    pub fn propose_vote(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
+        debug!(
+            "received circuit vote for {}",
+            payload.get_circuit_proposal_vote().get_circuit_id()
+        );
+
+        self.pending_circuit_payloads.push_back(payload);
+        Ok(())
+    }
+
     pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
         debug!("Payload submitted: {:?}", payload);
 
@@ -296,6 +448,7 @@ impl AdminServiceShared {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 self.propose_circuit(payload)
             }
+            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => self.propose_vote(payload),
             _ => {
                 debug!("Unhandled action: {:?}", header.get_action());
                 Ok(())
@@ -369,6 +522,10 @@ impl AdminServiceShared {
         let circuit_id = circuit_proposal.get_circuit_id().to_string();
 
         self.open_proposals.insert(circuit_id, circuit_proposal);
+    }
+
+    fn remove_proposal(&mut self, circuit_id: &str) {
+        self.open_proposals.remove(circuit_id);
     }
 
     fn validate_create_circuit(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
@@ -479,6 +636,97 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    fn validate_circuit_vote(
+        &self,
+        proposal_vote: &CircuitProposalVote,
+        signer_public_key: &[u8],
+        circuit_proposal: &CircuitProposal,
+    ) -> Result<(), AdminSharedError> {
+        let circuit_hash = proposal_vote.get_circuit_hash();
+
+        let key_info = self
+            .key_registry
+            .get_key(signer_public_key)
+            .map_err(|err| AdminSharedError::ValidationFailed(err.to_string()))?
+            .ok_or_else(|| {
+                AdminSharedError::ValidationFailed(format!(
+                    "{} is not registered for a node",
+                    to_hex(signer_public_key)
+                ))
+            })?;
+
+        let signer_node = key_info.associated_node_id().to_string();
+
+        if circuit_proposal.get_requester_node_id() == signer_node {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Received vote from requester node: {}",
+                to_hex(circuit_proposal.get_requester())
+            )));
+        }
+
+        let voted_nodes: Vec<String> = circuit_proposal
+            .get_votes()
+            .iter()
+            .map(|vote| vote.get_voter_node_id().to_string())
+            .collect();
+
+        if voted_nodes.iter().any(|node| *node == signer_node) {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Received duplicate vote from {} for {}",
+                signer_node, proposal_vote.circuit_id
+            )));
+        }
+
+        self.key_permission_manager
+            .is_permitted(signer_public_key, VOTER_ROLE)
+            .map_err(|_| {
+                AdminSharedError::ValidationFailed(format!(
+                    "{} is not permitted to vote for node {}",
+                    to_hex(signer_public_key),
+                    signer_node
+                ))
+            })?;
+
+        // validate hash of circuit
+        if circuit_proposal.get_circuit_hash() != circuit_hash {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Hash of circuit does not match circuit proposal: {}",
+                proposal_vote.circuit_id
+            )));
+        }
+
+        Ok(())
+    }
+
+    fn check_approved(
+        &self,
+        proposal: &CircuitProposal,
+    ) -> Result<CircuitProposalStatus, AdminSharedError> {
+        let mut received_votes = HashSet::new();
+        for vote in proposal.get_votes() {
+            if vote.get_vote() == CircuitProposalVote_Vote::REJECT {
+                return Ok(CircuitProposalStatus::Rejected);
+            }
+            received_votes.insert(vote.get_voter_node_id().to_string());
+        }
+
+        let mut required_votes = proposal
+            .get_circuit_proposal()
+            .get_members()
+            .to_vec()
+            .iter()
+            .map(|member| member.get_node_id().to_string())
+            .collect::<HashSet<String>>();
+
+        required_votes.remove(proposal.get_requester_node_id());
+
+        if required_votes == received_votes {
+            Ok(CircuitProposalStatus::Accepted)
+        } else {
+            Ok(CircuitProposalStatus::Pending)
+        }
+    }
+
     /// Initialize all services that this node should run on the created circuit using the service
     /// orchestrator.
     pub fn initialize_services(
@@ -509,6 +757,122 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    fn update_splinter_state(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
+        let members: Vec<StateNode> = circuit
+            .get_members()
+            .iter()
+            .map(|node| {
+                StateNode::new(
+                    node.get_node_id().to_string(),
+                    vec![node.get_endpoint().to_string()],
+                )
+            })
+            .collect();
+
+        let roster = circuit.get_roster().iter().map(|service| {
+            StateServiceDefinition::builder(
+                service.get_service_id().to_string(),
+                service.get_service_type().to_string(),
+            )
+            .with_allowed_nodes(service.get_allowed_nodes().to_vec())
+            .with_arguments(
+                service
+                    .get_arguments()
+                    .iter()
+                    .map(|argument| {
+                        (
+                            argument.get_key().to_string(),
+                            argument.get_value().to_string(),
+                        )
+                    })
+                    .collect::<BTreeMap<String, String>>(),
+            )
+            .build()
+        });
+
+        let auth = match circuit.get_authorization_type() {
+            Circuit_AuthorizationType::TRUST_AUTHORIZATION => "trust".to_string(),
+            // This should never happen
+            Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing authorization type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let persistence = match circuit.get_persistence() {
+            Circuit_PersistenceType::ANY_PERSISTENCE => "any".to_string(),
+            // This should never happen
+            Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing persistence type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let durability = match circuit.get_durability() {
+            Circuit_DurabilityType::NO_DURABILITY => "none".to_string(),
+            // This should never happen
+            Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing durabilty type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let routes = match circuit.get_routes() {
+            Circuit_RouteType::ANY_ROUTE => "any".to_string(),
+            // This should never happen
+            Circuit_RouteType::UNSET_ROUTE_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing route type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let new_circuit = StateCircuit::builder()
+            .with_id(circuit.get_circuit_id().to_string())
+            .with_members(
+                members
+                    .iter()
+                    .map(|node| node.id().to_string())
+                    .collect::<Vec<String>>(),
+            )
+            .with_roster(roster)
+            .with_auth(auth)
+            .with_persistence(persistence)
+            .with_durability(durability)
+            .with_routes(routes)
+            .with_circuit_management_type(circuit.get_circuit_management_type().to_string())
+            .build()
+            .map_err(|err| {
+                AdminSharedError::CommitError(format!("Unable build new circuit: {}", err))
+            })?;
+
+        let mut splinter_state = self.splinter_state.write().map_err(|err| {
+            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
+        })?;
+        for member in members {
+            splinter_state
+                .add_node(member.id().to_string(), member)
+                .map_err(|err| {
+                    AdminSharedError::CommitError(format!(
+                        "Unable to add node to splinter state: {}",
+                        err
+                    ))
+                })?;
+        }
+        splinter_state
+            .add_circuit(new_circuit.id().to_string(), new_circuit)
+            .map_err(|err| {
+                AdminSharedError::CommitError(format!(
+                    "Unable to add circuit to splinter state: {}",
+                    err
+                ))
+            })?;
+        Ok(())
+    }
+
     fn verify_signature(&self, payload: &CircuitManagementPayload) -> Result<bool, ServiceError> {
         let header =
             protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
@@ -526,12 +890,12 @@ impl AdminServiceShared {
 mod tests {
     use super::*;
 
-    use std::path::PathBuf;
-
     use protobuf::RepeatedField;
-    use tempdir::TempDir;
 
     use crate::circuit::directory::CircuitDirectory;
+    use crate::keys::{
+        insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry, KeyInfo,
+    };
     use crate::mesh::Mesh;
     use crate::network::{
         auth::{AuthorizationCallback, AuthorizationCallbackError},
@@ -563,6 +927,7 @@ mod tests {
             .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
@@ -570,6 +935,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -634,6 +1001,7 @@ mod tests {
             .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
@@ -641,6 +1009,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -691,6 +1061,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -698,6 +1069,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let circuit = setup_test_circuit();
 
@@ -713,6 +1086,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -720,6 +1094,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -741,6 +1117,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -748,6 +1125,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
         circuit.set_roster(RepeatedField::from_vec(vec![]));
@@ -763,6 +1142,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -770,6 +1150,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -787,6 +1169,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -794,6 +1177,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -814,6 +1199,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -821,6 +1207,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -837,6 +1225,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -844,6 +1233,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -860,6 +1251,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -867,6 +1259,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -883,6 +1277,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -890,6 +1285,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -906,6 +1303,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -913,6 +1311,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -920,6 +1320,168 @@ mod tests {
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit) {
             panic!("Should have been invalid because route type is unset");
+        }
+    }
+
+    #[test]
+    // test that a valid circuit proposal comes back as valid
+    fn test_validate_proposal_vote_valid() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+        );
+        let circuit = setup_test_circuit();
+        let vote = setup_test_vote(&circuit);
+        let proposal = setup_test_proposal(&circuit);
+
+        if let Err(err) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+            panic!("Should have been valid: {}", err);
+        }
+    }
+
+    #[test]
+    // test that if the signer of the vote is not registered to a node the vote is invalid
+    fn test_validate_proposal_vote_node_not_registered() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+        );
+        let circuit = setup_test_circuit();
+        let vote = setup_test_vote(&circuit);
+        let proposal = setup_test_proposal(&circuit);
+
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+            panic!("Should have been invalid because signer is not registered for a node");
+        }
+    }
+
+    #[test]
+    // test if the voter is registered to the original requester node the vote is invalid
+    fn test_validate_proposal_vote_requester() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_b".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+        );
+        let circuit = setup_test_circuit();
+        let vote = setup_test_vote(&circuit);
+        let proposal = setup_test_proposal(&circuit);
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+            panic!("Should have been invalid because signer registered for the requester node");
+        }
+    }
+
+    #[test]
+    // test if a voter has aleady voted on a proposal the new vote is invalid
+    fn test_validate_proposal_vote_duplicate_vote() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+        );
+        let circuit = setup_test_circuit();
+        let vote = setup_test_vote(&circuit);
+        let mut proposal = setup_test_proposal(&circuit);
+
+        let mut vote_record = CircuitProposal_VoteRecord::new();
+        vote_record.set_vote(CircuitProposalVote_Vote::ACCEPT);
+        vote_record.set_public_key(b"test_signer_a".to_vec());
+        vote_record.set_voter_node_id("node_a".to_string());
+
+        proposal.set_votes(RepeatedField::from_vec(vec![vote_record]));
+
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+            panic!("Should have been invalid because node as already submited a vote");
+        }
+    }
+
+    #[test]
+    // test that if the circuit hash in the circuit proposal does not match the cirucit hash on
+    // the vote, the vote is invalid
+    fn test_validate_proposal_vote_circuit_hash_mismatch() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+        );
+        let circuit = setup_test_circuit();
+        let vote = setup_test_vote(&circuit);
+        let mut proposal = setup_test_proposal(&circuit);
+
+        proposal.set_circuit_hash("bad_hash".to_string());
+
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+            panic!("Should have been invalid becasue the circuit hash does not match");
         }
     }
 
@@ -956,17 +1518,33 @@ mod tests {
         circuit
     }
 
-    fn setup_splinter_state() -> Arc<RwLock<SplinterState>> {
-        // create temp directoy
-        let temp_dir = TempDir::new("test_circuit_write_file").unwrap();
-        let temp_dir = temp_dir.path().to_path_buf();
+    fn setup_test_vote(circuit: &Circuit) -> CircuitProposalVote {
+        let mut circuit_vote = CircuitProposalVote::new();
+        circuit_vote.set_vote(CircuitProposalVote_Vote::ACCEPT);
+        circuit_vote.set_circuit_id(circuit.get_circuit_id().to_string());
+        let circuit_hash = sha256(circuit).unwrap();
+        circuit_vote.set_circuit_hash(circuit_hash);
 
-        // setup empty state filename
-        let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
+        circuit_vote
+    }
+
+    fn setup_test_proposal(proposed_circuit: &Circuit) -> CircuitProposal {
+        let mut circuit_proposal = CircuitProposal::new();
+        circuit_proposal.set_proposal_type(CircuitProposal_ProposalType::CREATE);
+        circuit_proposal.set_circuit_id(proposed_circuit.get_circuit_id().into());
+        circuit_proposal.set_circuit_hash(sha256(proposed_circuit).unwrap());
+        circuit_proposal.set_circuit_proposal(proposed_circuit.clone());
+        circuit_proposal.set_requester(b"test_signer_b".to_vec());
+        circuit_proposal.set_requester_node_id("node_b".to_string());
+
+        circuit_proposal
+    }
+
+    fn setup_splinter_state() -> Arc<RwLock<SplinterState>> {
+        let mut storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
-            path.to_string(),
+            "memory".to_string(),
             circuit_directory,
         )));
         state
@@ -991,15 +1569,6 @@ mod tests {
             .expect("failed to create connection");
         ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
             .expect("failed to create orchestrator")
-    }
-
-    fn setup_storage(mut temp_dir: PathBuf) -> String {
-        // Creat the temp file
-        temp_dir.push("circuits.yaml");
-        let path = temp_dir.to_str().unwrap().to_string();
-
-        // Write out the mock state file to the temp directory
-        path
     }
 
     fn splinter_node(node_id: &str, endpoint: &str) -> admin::SplinterNode {

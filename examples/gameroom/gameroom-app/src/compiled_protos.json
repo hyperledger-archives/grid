@@ -140,8 +140,12 @@
           "id": 5
         },
         "requester": {
-          "type": "string",
+          "type": "bytes",
           "id": 6
+        },
+        "requesterNodeId": {
+          "type": "string",
+          "id": 7
         }
       },
       "nested": {
@@ -164,6 +168,10 @@
             "vote": {
               "type": "CircuitProposalVote.Vote",
               "id": 2
+            },
+            "voterNodeId": {
+              "type": "string",
+              "id": 3
             }
           }
         }
@@ -253,6 +261,10 @@
             "payloadSha512": {
               "type": "bytes",
               "id": 3
+            },
+            "requesterNodeId": {
+              "type": "string",
+              "id": 4
             }
           }
         }
@@ -276,8 +288,9 @@
       "nested": {
         "Vote": {
           "values": {
-            "ACCEPT": 0,
-            "REJECT": 1
+            "UNSET_VOTE": 0,
+            "ACCEPT": 1,
+            "REJECT": 2
           }
         }
       }
