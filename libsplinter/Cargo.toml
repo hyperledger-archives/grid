@@ -15,7 +15,7 @@
 [features]
 zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
-sawtooth-signing-compat = []
+sawtooth-signing-compat = ["sawtooth-sdk"]
 
 [package]
 name = "libsplinter"
@@ -38,7 +38,7 @@ url = "1.7.1"
 openssl = "0.10"
 mio = "0.6"
 sawtooth-sabre = "0.4"
-sawtooth-sdk = "0.3"
+sawtooth-sdk = { version = "0.3", optional = true }
 serde = "1.0"
 serde_yaml = "0.8"
 serde_derive = "1.0"

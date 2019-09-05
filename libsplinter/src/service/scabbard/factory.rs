@@ -64,11 +64,11 @@ impl ServiceFactory for ScabbardFactory {
         _service_type: &str,
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError> {
-        let initial_peers_str = args.get("peer_services").ok_or_else(|| {
+        let peer_services_str = args.get("peer_services").ok_or_else(|| {
             FactoryCreateError::InvalidArguments("peer_services argument not provided".into())
         })?;
-        let initial_peers = HashSet::from_iter(
-            serde_json::from_str::<Vec<_>>(initial_peers_str)
+        let peer_services = HashSet::from_iter(
+            serde_json::from_str::<Vec<_>>(peer_services_str)
                 .map_err(|err| {
                     FactoryCreateError::InvalidArguments(format!(
                         "failed to parse peer_services list: {}",
@@ -88,7 +88,7 @@ impl ServiceFactory for ScabbardFactory {
             ))
         })?;
 
-        let service = Scabbard::new(service_id, initial_peers, &db_dir, self.db_size, admin_keys)
+        let service = Scabbard::new(service_id, peer_services, &db_dir, self.db_size, admin_keys)
             .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 
         Ok(Box::new(service))
