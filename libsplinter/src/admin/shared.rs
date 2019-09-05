@@ -99,6 +99,7 @@ pub struct AdminServiceShared {
 }
 
 impl AdminServiceShared {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         node_id: String,
         orchestrator: ServiceOrchestrator,

@@ -54,6 +54,7 @@ pub struct AdminService {
 }
 
 impl AdminService {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         node_id: &str,
         orchestrator: ServiceOrchestrator,
