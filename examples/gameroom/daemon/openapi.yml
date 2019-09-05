@@ -103,7 +103,7 @@ paths:
                 schema:
                   $ref: '#/components/schemas/Error'
 
-  /api/users:
+  /users:
       post:
         tags:
           - Users
@@ -145,7 +145,10 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/AuthResponseData'
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AuthResponseData'
           400:
             description: Invalid request was made
             content:
@@ -154,10 +157,12 @@ paths:
                   $ref: '#/components/schemas/Error'
           500:
             description: Internal server error occurred
-          503:
-            description: Server unavailable
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
 
-  /api/users/authenticate:
+  /users/authenticate:
       post:
         tags:
           - Users
@@ -187,36 +192,43 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/AuthResponseData'
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AuthResponseData'
           401:
             description: Unauthorized request
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
           500:
             description: Internal server error occurred
-          503:
-            description: Server unavailable
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
+
 
 
   /gamerooms/propose:
       post:
         tags:
           - Gamerooms
-        description: Propose a new Gameroom
+        description: Propose a new gameroom
         requestBody:
           content:
             application/json:
               schema:
                 properties:
                   alias:
-                    description: Name of new Gameroom
+                    description: Name of new gameroom
+                    example: my_gameroom
                   member:
-                    description: Proposed members of the Gameroom
+                    $ref: '#/components/schemas/Member'
                 required:
                   - alias
                   - member
-                example:
-                  alias: My_Gameroom
-                  member:
-                    $ref: '#/components/schemas/Member'
 
         responses:
           200:
@@ -224,10 +236,16 @@ paths:
             content:
               application/octet-stream:
                 schema:
-                  type: string
-                  format: binary
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/BinaryData'
           500:
             description: Internal server error occurred
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
 
   /proposals:
     get:
@@ -265,8 +283,10 @@ paths:
                     $ref: '#/components/schemas/Paging'
         500:
           description: Internal server error occurred
-        503:
-          description: Server unavailable
+          content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
 
   /proposals/{proposal_id}:
     get:
@@ -350,7 +370,14 @@ paths:
 
         responses:
           202:
-            description: The payload was accepted
+            description:  The payload was accepted
+            content:
+              application/json:
+                schema:
+                  properties:
+                    data:
+                      type: string
+                      example: "The payload was submitted successfully"
           400:
             description: Request was malformed
             content:
@@ -583,10 +610,14 @@ components:
     Error:
       additionalProperties: false
       properties:
+        code:
+          description: The HTTP error code
+          type: string
+          example: 404
         message:
           description: A message describing the error that occurred
           type: string
-          example: DatabaseError({description})
+          example: Resource not found
       required:
         - message
 
@@ -627,23 +658,31 @@ components:
       properties:
         circuit_id:
           type: string
+          example: gameroom::acme-node-000::bubba-node-000::11bf5b37-e0b8-42e0-8dcf-dc8c4aefc000
         authorization_type:
           type: string
+          example: Trust
         persistence:
           type: string
+          example: Any
         routes:
           type: string
+          example: Any
         circuit_management_type:
           type: string
+          example: Gameroom
         alias:
           description: alias of the gameroom
           type: string
+          example: Acme-Bubba-Gameroom
 
     Member:
       type: object
+      description: Member of the gameroom
       properties:
         identity:
           type: string
+          example: acme-node-000
         metadata:
           $ref: '#/components/schemas/MemberMetadata'
 
@@ -653,8 +692,10 @@ components:
       properties:
         organization:
           type: string
+          example: Acme Corporation
         endpoint:
           type: string
+          example: tls://127.0.0.1:8080
         public_key:
           type: string
 
@@ -712,30 +753,17 @@ components:
     Vote:
       type: object
       properties:
-        ballot:
-          type: object
-          properties:
-            circuit_id:
-              type: string
-              example: circuit-000
-            circuit_hash:
-              type: string
-              example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
-            vote:
-              type: string
-              enum:
-                - Accept
-                - Reject
-        ballot_signature:
-          type: array
-          items:
-            type: integer
-          example: [65, 65, 65, 65, 66, 51, 78]
-        signer_public_key:
-          type: array
-          items:
-            type: integer
-          example: [73, 119, 65, 65, 65, 81]
+        circuit_id:
+          type: string
+          example: circuit-000
+        circuit_hash:
+          type: string
+          example: d2b1abbd57e8cd2bfcf3f4259b9785a723e19b4bb4d5cc0206e860890c403dc4
+        vote:
+          type: string
+          enum:
+            - Accept
+            - Reject
 
     ApiNotification:
       type: object

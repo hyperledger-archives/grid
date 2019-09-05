@@ -21,13 +21,9 @@ use gameroom_database::{helpers, models::GameroomNotification, ConnectionPool};
 
 use crate::rest_api::RestApiResponseError;
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
-
-#[derive(Debug, Serialize)]
-struct NotificationListResponse {
-    data: Vec<ApiNotification>,
-    paging: Paging,
-}
+use super::{
+    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+};
 
 #[derive(Debug, Serialize)]
 struct ApiNotification {
@@ -63,20 +59,19 @@ pub fn fetch_notificaiton(
     Box::new(
         web::block(move || get_notification_from_db(pool, *notification_id)).then(
             |res| match res {
-                Ok(notification) => Ok(HttpResponse::Ok().json(notification)),
+                Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
                 Err(err) => match err {
                     error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => {
-                            Ok(HttpResponse::NotFound().json(json!({
-                                "message": format!("Not Found error: {}", err.to_string())
-                            })))
-                        }
-                        _ => Ok(HttpResponse::BadRequest().json(json!({
-                            "message": format!("Bad Request error: {}", err.to_string())
-                        }))),
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        _ => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
                     },
-                    error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
-                        .json(json!({ "message": "Failed to fetch notification" }))),
+                    error::BlockingError::Canceled => {
+                        debug!("Internal Server Error: {}", err);
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
+                    }
                 },
             },
         ),
@@ -91,7 +86,7 @@ fn get_notification_from_db(
         return Ok(ApiNotification::from(notification));
     }
     Err(RestApiResponseError::NotFound(format!(
-        "Notification id: {}",
+        "Notification with id {} was not found",
         id
     )))
 }
@@ -120,14 +115,12 @@ pub fn list_unread_notifications(
                         "api/notifications?",
                         query_count as usize,
                     );
-                    Ok(HttpResponse::Ok().json(NotificationListResponse {
-                        data: notifications,
-                        paging: paging_info,
-                    }))
+                    Ok(HttpResponse::Ok().json(SuccessResponse::list(notifications, paging_info)))
                 }
-                Err(err) => Ok(HttpResponse::InternalServerError().json(json!({
-                    "message": format!("Internal Server Error: {}", err.to_string())
-                }))),
+                Err(err) => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         ),
     )
@@ -158,24 +151,20 @@ pub fn read_notification(
     Box::new(
         web::block(move || update_gameroom_notification(pool, *notification_id)).then(|res| {
             match res {
-                Ok(notification) => Ok(HttpResponse::Ok().json(notification)),
-                Err(err) => {
-                    match err {
-                        error::BlockingError::Error(err) => match err {
-                            RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                                .json(json!({
-                                    "message": format!("Not Found error: {}", err.to_string())
-                                }))),
-                            _ => Ok(HttpResponse::BadRequest().json(json!({
-                                "message": format!("Bad Request error: {}", err.to_string())
-                            }))),
-                        },
-                        error::BlockingError::Canceled => Ok(HttpResponse::InternalServerError()
-                            .json(json!({
-                                "message": format!("Internal Server error: {}", err.to_string())
-                            }))),
+                Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
+                Err(err) => match err {
+                    error::BlockingError::Error(err) => match err {
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        _ => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                    },
+                    error::BlockingError::Canceled => {
+                        debug!("Internal Server Error: {}", err);
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
                     }
-                }
+                },
             }
         }),
     )
@@ -190,7 +179,7 @@ fn update_gameroom_notification(
         return Ok(ApiNotification::from(notification));
     }
     Err(RestApiResponseError::NotFound(format!(
-        "Notification id: {}",
+        "Notification with id {} not found",
         id
     )))
 }

@@ -27,6 +27,7 @@ pub use proposal::*;
 pub use submit::*;
 
 use percent_encoding::{AsciiSet, CONTROLS};
+use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_LIMIT: usize = 100;
 pub const DEFAULT_OFFSET: usize = 0;
@@ -44,6 +45,62 @@ const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b']')
     .add(b':')
     .add(b',');
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    code: String,
+    message: String,
+}
+
+impl ErrorResponse {
+    pub fn internal_error() -> ErrorResponse {
+        ErrorResponse {
+            code: "500".to_string(),
+            message: "The server encountered an error".to_string(),
+        }
+    }
+
+    pub fn bad_request(message: &str) -> ErrorResponse {
+        ErrorResponse {
+            code: "400".to_string(),
+            message: message.to_string(),
+        }
+    }
+
+    pub fn not_found(message: &str) -> ErrorResponse {
+        ErrorResponse {
+            code: "404".to_string(),
+            message: message.to_string(),
+        }
+    }
+
+    pub fn unauthorized(message: &str) -> ErrorResponse {
+        ErrorResponse {
+            code: "401".to_string(),
+            message: message.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SuccessResponse<T: Serialize> {
+    data: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    paging: Option<Paging>,
+}
+
+impl<T: Serialize> SuccessResponse<T> {
+    pub fn new(data: T) -> SuccessResponse<T> {
+        SuccessResponse { data, paging: None }
+    }
+
+    pub fn list(data: T, paging: Paging) -> SuccessResponse<T> {
+        SuccessResponse {
+            data,
+            paging: Some(paging),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Paging {
