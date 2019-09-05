@@ -21,7 +21,7 @@ use std::os::linux::fs::MetadataExt;
 #[cfg(not(target_os = "linux"))]
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
 use libc;
@@ -47,80 +47,101 @@ impl Action for KeyGenAction {
         let private_key_path = key_dir.join(key_name).with_extension("priv");
         let public_key_path = key_dir.join(key_name).with_extension("pub");
 
-        if !args.is_present("force") {
-            if private_key_path.exists() {
-                return Err(CliError::EnvironmentError(format!(
-                    "file exists: {:?}",
-                    private_key_path
-                )));
-            }
-            if public_key_path.exists() {
-                return Err(CliError::EnvironmentError(format!(
-                    "file exists: {:?}",
-                    public_key_path
-                )));
-            }
+        create_key_pair(
+            &key_dir,
+            private_key_path,
+            public_key_path,
+            args.is_present("force"),
+            args.is_present("quiet"),
+        )
+    }
+}
+
+fn create_key_pair(
+    key_dir: &Path,
+    private_key_path: PathBuf,
+    public_key_path: PathBuf,
+    force_create: bool,
+    quiet: bool,
+) -> Result<(), CliError> {
+    if !force_create {
+        if private_key_path.exists() {
+            return Err(CliError::EnvironmentError(format!(
+                "file exists: {:?}",
+                private_key_path
+            )));
         }
+        if public_key_path.exists() {
+            return Err(CliError::EnvironmentError(format!(
+                "file exists: {:?}",
+                public_key_path
+            )));
+        }
+    }
 
-        let context = signing::create_context("secp256k1")
-            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    let context = signing::create_context("secp256k1")
+        .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        let private_key = context
-            .new_random_private_key()
-            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-        let public_key = context
-            .get_public_key(&*private_key)
-            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    let private_key = context
+        .new_random_private_key()
+        .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    let public_key = context
+        .get_public_key(&*private_key)
+        .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        let key_dir_info =
-            metadata(key_dir).map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    let key_dir_info =
+        metadata(key_dir).map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        #[cfg(not(target_os = "linux"))]
-        let (key_dir_uid, key_dir_gid) = (key_dir_info.uid(), key_dir_info.gid());
-        #[cfg(target_os = "linux")]
-        let (key_dir_uid, key_dir_gid) = (key_dir_info.st_uid(), key_dir_info.st_gid());
+    #[cfg(not(target_os = "linux"))]
+    let (key_dir_uid, key_dir_gid) = (key_dir_info.uid(), key_dir_info.gid());
+    #[cfg(target_os = "linux")]
+    let (key_dir_uid, key_dir_gid) = (key_dir_info.st_uid(), key_dir_info.st_gid());
 
-        {
+    {
+        if !quiet {
             if private_key_path.exists() {
                 println!("overwriting file: {:?}", private_key_path);
             } else {
                 println!("writing file: {:?}", private_key_path);
             }
-            let mut private_key_file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .mode(0o640)
-                .open(private_key_path.as_path())
-                .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-
-            private_key_file
-                .write(private_key.as_hex().as_bytes())
-                .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
         }
 
-        {
+        let mut private_key_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o640)
+            .open(private_key_path.as_path())
+            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+
+        private_key_file
+            .write(private_key.as_hex().as_bytes())
+            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    }
+
+    {
+        if !quiet {
             if public_key_path.exists() {
                 println!("overwriting file: {:?}", public_key_path);
             } else {
                 println!("writing file: {:?}", public_key_path);
             }
-            let mut public_key_file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .mode(0o644)
-                .open(public_key_path.as_path())
-                .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-
-            public_key_file
-                .write(public_key.as_hex().as_bytes())
-                .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
         }
+        let mut public_key_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o644)
+            .open(public_key_path.as_path())
+            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
-        chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
-
-        Ok(())
+        public_key_file
+            .write(public_key.as_hex().as_bytes())
+            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
     }
+
+    chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+    chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+
+    Ok(())
 }
 
 fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
