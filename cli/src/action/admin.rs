@@ -13,23 +13,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
+use std::env;
 use std::ffi::CString;
-use std::fs::{metadata, OpenOptions};
+use std::fs::{metadata, File, OpenOptions};
 use std::io::prelude::*;
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::{Path, PathBuf};
+
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
 #[cfg(not(target_os = "linux"))]
 use std::os::unix::fs::MetadataExt;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
 use libc;
+use libsplinter::keys::{storage::StorageKeyRegistry, KeyInfo, KeyRegistry};
 use sawtooth_sdk::signing;
+use serde::{Deserialize, Serialize};
 
 use crate::error::CliError;
 
 use super::Action;
+
+const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
+const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
 pub struct KeyGenAction;
 
@@ -53,17 +61,144 @@ impl Action for KeyGenAction {
             public_key_path,
             args.is_present("force"),
             args.is_present("quiet"),
-        )
+            true,
+        )?;
+
+        Ok(())
     }
 }
 
+pub struct KeyRegistryGenerationAction;
+
+impl Action for KeyRegistryGenerationAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let registry_spec_path = args
+            .value_of("registry_spec_path")
+            .or(Some("./key_registry_spec.yaml"))
+            .map(Path::new)
+            .unwrap();
+
+        let target_dir_path = args
+            .value_of("target_dir")
+            .map(ToOwned::to_owned)
+            .or_else(|| env::var(STATE_DIR_ENV).ok())
+            .or_else(|| Some(DEFAULT_STATE_DIR.to_string()))
+            .unwrap();
+        let target_dir = Path::new(&target_dir_path);
+
+        let registry_target_file = args
+            .value_of("registry_file")
+            .or(Some("keys.yaml"))
+            .unwrap();
+
+        let force_write = args.is_present("force");
+        let silent = args.is_present("quiet");
+
+        let target_registry_path = target_dir.join(registry_target_file);
+        if !force_write && target_registry_path.exists() {
+            return Err(CliError::EnvironmentError(format!(
+                "file exists: {}",
+                target_registry_path.display()
+            )));
+        }
+
+        let registry_spec_file = File::open(&registry_spec_path).map_err(|err| {
+            CliError::ActionError(format!(
+                "Unable to open key registry spec {}: {}",
+                registry_spec_path.display(),
+                err
+            ))
+        })?;
+
+        let registry_spec: KeyRegistrySpec =
+            serde_yaml::from_reader(registry_spec_file).map_err(|err| {
+                CliError::ActionError(format!(
+                    "Unable to read key registry {}: {}",
+                    registry_spec_path.display(),
+                    err
+                ))
+            })?;
+
+        let mut key_registry = StorageKeyRegistry::new(
+            target_registry_path
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| {
+                    CliError::EnvironmentError(format!(
+                        "Key registry output file {} contains invalid characters",
+                        target_registry_path.display()
+                    ))
+                })?
+                .to_string(),
+        )
+        .map_err(|err| {
+            CliError::EnvironmentError(format!(
+                "Unable to read {}: {}",
+                target_registry_path.display(),
+                err
+            ))
+        })?;
+
+        if !silent {
+            println!("writing file \"{}\"", target_registry_path.display());
+        }
+
+        for (key_name, key_spec) in registry_spec.keys.into_iter() {
+            let private_key_path = target_dir.join(&key_name).with_extension("priv");
+            let public_key_path = target_dir.join(&key_name).with_extension("pub");
+
+            let public_key = create_key_pair(
+                &target_dir,
+                private_key_path,
+                public_key_path,
+                force_write,
+                silent,
+                false,
+            )?;
+
+            let mut key_info_builder = KeyInfo::builder(public_key, key_spec.node_id);
+            for (meta_key, meta_value) in key_spec.metadata.into_iter() {
+                key_info_builder = key_info_builder.with_metadata(meta_key, meta_value);
+            }
+
+            key_registry
+                .save_key(key_info_builder.build())
+                .map_err(|err| {
+                    CliError::ActionError(format!("Unable to write key for {}: {}", key_name, err))
+                })?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct KeyRegistrySpec {
+    #[serde(flatten)]
+    keys: BTreeMap<String, KeySpec>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct KeySpec {
+    node_id: String,
+    #[serde(default = "BTreeMap::new")]
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    metadata: BTreeMap<String, String>,
+}
+
+/// Creates a public/private key pair.
+///
+/// Returns the public key in hex, if successful.
 fn create_key_pair(
     key_dir: &Path,
     private_key_path: PathBuf,
     public_key_path: PathBuf,
     force_create: bool,
     quiet: bool,
-) -> Result<(), CliError> {
+    change_permissions: bool,
+) -> Result<Vec<u8>, CliError> {
     if !force_create {
         if private_key_path.exists() {
             return Err(CliError::EnvironmentError(format!(
@@ -137,11 +272,12 @@ fn create_key_pair(
             .write(public_key.as_hex().as_bytes())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
     }
+    if change_permissions {
+        chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+        chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
+    }
 
-    chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
-    chown(public_key_path.as_path(), key_dir_uid, key_dir_gid)?;
-
-    Ok(())
+    Ok(public_key.as_slice().to_vec())
 }
 
 fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {

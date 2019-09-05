@@ -44,7 +44,25 @@ fn run() -> Result<(), CliError> {
                 (@arg key_dir: -d --("key-dir") +takes_value
                  "name of the directory in which to create the keys; defaults to current working directory")
                 (@arg force: --force "overwrite files if they exist")
-                (@arg quiet: -q --quiet "do not display output")))
+                (@arg quiet: -q --quiet "do not display output")
+            )
+            (@subcommand keyregistry =>
+                (about: "generates a key registry yaml file and keys, based on a registry \
+                 specification")
+                (@arg target_dir: -d --("target-dir") +takes_value
+                 "name of the directory in which to create the registry file and keys; \
+                 defaults to /var/lib/splinter or the value of SPLINTER_STATE_DIR environment \
+                 variable")
+                (@arg registry_file: -o --("registry-file") +takes_value
+                 "name of the target registry file (in the target directory); \
+                 defaults to \"keys.yaml\"")
+                (@arg registry_spec_path: -i --("input-registry-spec") +takes_value
+                 "name of the input key registry specification; \
+                 defaults to \"./key_registry_spec.yaml\"")
+                (@arg force: --force "overwrite files if they exist")
+                (@arg quiet: -q --quiet "do not display output")
+            )
+        )
         (@subcommand echo =>
             (about: "Echo message")
             (@arg recipient: +takes_value "Splinter node id to send the message to")
@@ -87,7 +105,9 @@ fn run() -> Result<(), CliError> {
     SubcommandActions::new()
         .with_command(
             "admin",
-            SubcommandActions::new().with_command("keygen", admin::KeyGenAction),
+            SubcommandActions::new()
+                .with_command("keygen", admin::KeyGenAction)
+                .with_command("keyregistry", admin::KeyRegistryGenerationAction),
         )
         .with_command("echo", network::EchoAction)
         .with_command(
