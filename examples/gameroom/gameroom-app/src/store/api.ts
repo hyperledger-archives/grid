@@ -21,6 +21,7 @@ import {
   UserCredentials,
   UserAuthResponse,
   NewGameroomProposal,
+  Member,
   Node,
 } from './models';
 
@@ -99,7 +100,23 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
   const response = await gameroomAPI.get('/proposals');
-  return response.data.data as GameroomProposal[];
+
+  const proposals = response.data.data.map((proposal: any) => {
+    const members = proposal.members.map(async (member: any) => {
+      const node = await getNode(member.identity);
+      member.organization = node.metadata.organization;
+      return member as Member;
+    });
+    proposal.members = members;
+    return proposal as GameroomProposal;
+  });
+
+  return proposals as GameroomProposal[];
+}
+
+async function getNode(id: string): Promise<Node> {
+    const response = await gameroomAPI.get(`/nodes/${id}`);
+    return response.data.data as Node;
 }
 
 
