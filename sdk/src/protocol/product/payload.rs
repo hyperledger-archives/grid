@@ -167,7 +167,7 @@ impl ProductPayloadBuilder {
     pub fn new() -> Self {
         ProductPayloadBuilder::default()
     }
-    pub fn with_action(mut self, action: Action) -> ProductPayloadBuilder {
+    pub fn with_action(mut self, action: Action) -> Self {
         self.action = Some(action);
         self
     }
@@ -187,7 +187,7 @@ impl ProductPayloadBuilder {
 }
 
 /// Native implementation for ProductCreateAction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductCreateAction {
     product_type: ProductType,
     product_id: String,
@@ -327,7 +327,7 @@ impl ProductCreateActionBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductUpdateAction {
     product_type: ProductType,
     product_id: String,
@@ -467,7 +467,7 @@ impl ProductUpdateActionBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductDeleteAction {
     product_type: ProductType,
     product_id: String,

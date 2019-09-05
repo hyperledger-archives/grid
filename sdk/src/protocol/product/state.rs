@@ -31,6 +31,12 @@ pub enum ProductType {
     GS1,
 }
 
+impl Default for ProductType {
+    fn default() -> Self {
+        ProductType::GS1
+    }
+}
+
 impl FromProto<protos::product_state::Product_ProductType> for ProductType {
     fn from_proto(
         product_type: protos::product_state::Product_ProductType,
