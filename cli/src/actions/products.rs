@@ -428,3 +428,127 @@ fn get_unix_utc_timestamp() -> Result<u64, SystemTimeError> {
         Err(err) => Err(err),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use grid_sdk::protocol::product::payload::{Action, ProductPayload};
+    use grid_sdk::protocol::product::state::ProductType;
+    use grid_sdk::protocol::schema::state::{DataType, PropertyValueBuilder};
+    use std::fs::{remove_file, File};
+    use std::io::Write;
+    use std::{env, panic, thread};
+
+    static EXAMPLE_PRODUCT_YAML: &[u8; 288] = br##"- product_type: "GS1"
+  product_id: "723382885088"
+  owner: "314156"
+  properties:
+    - name: "length"
+      data_type: "NUMBER"
+      number_value: 8
+    - name: "width"
+      data_type: "NUMBER"
+      number_value: 11
+    - name: "depth"
+      data_type: "NUMBER"
+      number_value: 1"##;
+
+    /*
+     * Verifies parse_product_yaml returns valids ProductPayload with ProductCreateAction set from a yaml
+     * containing a multiple Product definitions
+     */
+    #[test]
+    fn test_valid_yaml_create_product() {
+        run_test(|test_yaml_file_path| {
+            write_yaml_file(test_yaml_file_path);
+
+            let payload = parse_product_yaml(
+                test_yaml_file_path,
+                Action::ProductCreate(ProductCreateAction::default()),
+            )
+            .expect("Error parsing yaml");
+
+            assert_eq!(make_create_product_payload(), payload[0]);
+        })
+    }
+
+    /*
+     * Verifies parse_product_yaml returns valids ProductPayload with ProductUpdateAction set from a yaml
+     * containing a multiple Product definitions
+     */
+    #[test]
+    fn test_valid_yaml_update_multiple_products() {
+        run_test(|test_yaml_file_path| {
+            write_yaml_file(test_yaml_file_path);
+
+            let payload = parse_product_yaml(
+                test_yaml_file_path,
+                Action::ProductUpdate(ProductUpdateAction::default()),
+            )
+            .expect("Error parsing yaml");
+
+            assert_eq!(make_update_product_payload(), payload[0]);
+        })
+    }
+
+    fn write_yaml_file(file_path: &str) {
+        let mut file = File::create(file_path).expect("Error creating test product yaml file.");
+
+        file.write_all(EXAMPLE_PRODUCT_YAML)
+            .expect("Error writting example product yaml.");
+    }
+
+    fn make_update_product_payload() -> ProductPayload {
+        generate_update_product_payload(ProductType::GS1, "723382885088", &create_property_values())
+            .unwrap()
+    }
+
+    fn make_create_product_payload() -> ProductPayload {
+        generate_create_product_payload(
+            ProductType::GS1,
+            "723382885088",
+            "314156",
+            &create_property_values(),
+        )
+        .unwrap()
+    }
+
+    fn create_property_values() -> Vec<PropertyValue> {
+        vec![
+            make_number_property_value("length", 8),
+            make_number_property_value("width", 11),
+            make_number_property_value("depth", 1),
+        ]
+    }
+
+    fn make_number_property_value(name: &str, number_value: i64) -> PropertyValue {
+        PropertyValueBuilder::new()
+            .with_name(name.to_string())
+            .with_data_type(DataType::Number)
+            .with_number_value(number_value)
+            .build()
+            .unwrap()
+    }
+
+    fn run_test<T>(test: T) -> ()
+    where
+        T: FnOnce(&str) -> () + panic::UnwindSafe,
+    {
+        let test_yaml_file = temp_yaml_file_path();
+
+        let test_path = test_yaml_file.clone();
+        let result = panic::catch_unwind(move || test(&test_path));
+
+        remove_file(test_yaml_file).unwrap();
+
+        assert!(result.is_ok())
+    }
+
+    fn temp_yaml_file_path() -> String {
+        let mut temp_dir = env::temp_dir();
+
+        let thread_id = thread::current().id();
+        temp_dir.push(format!("test_parse_product-{:?}.yaml", thread_id));
+        temp_dir.to_str().unwrap().to_string()
+    }
+}
