@@ -12,10 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
+use protobuf::RepeatedField;
+
 use crate::circuit::SplinterState;
+use crate::circuit::{
+    service::SplinterNode as StateNode, Circuit as StateCircuit,
+    ServiceDefinition as StateServiceDefinition,
+};
 use crate::consensus::{Proposal, ProposalId};
 use crate::hex::to_hex;
 use crate::keys::{KeyPermissionManager, KeyRegistry};
@@ -181,19 +187,82 @@ impl AdminServiceShared {
                     .circuit_management_type
                     .clone();
 
-                self.add_proposal(circuit_proposal.clone());
+                match self.check_approved(&circuit_proposal) {
+                    Ok(CircuitProposalStatus::Accepted) => {
+                        // commit new circuit
+                        let circuit = circuit_proposal.get_circuit_proposal();
+                        self.update_splinter_state(circuit)?;
+                        // remove approved proposal
+                        self.remove_proposal(&circuit_id);
+                        // send message about circuit acceptance
 
-                // notify registered authorization application handlers of the commited circuit
-                // proposal
-                let event = messages::AdminServiceEvent::ProposalSubmitted(
-                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
-                        .map_err(AdminSharedError::InvalidMessageFormat)?,
-                );
-                self.send_event(&mgmt_type, event);
+                        let circuit_proposal_proto =
+                            messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                .map_err(AdminSharedError::InvalidMessageFormat)?;
+                        let event = messages::AdminServiceEvent::ProposalAccepted((
+                            circuit_proposal_proto,
+                            circuit_proposal_context.signer_public_key,
+                        ));
+                        self.send_event(&mgmt_type, event);
 
-                info!("committed change for circuit proposal {}", circuit_id,);
+                        Ok(())
+                    }
+                    Ok(CircuitProposalStatus::Pending) => {
+                        self.add_proposal(circuit_proposal.clone());
 
-                Ok(())
+                        match action {
+                            CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
+                                // notify registered application authorization handlers of the
+                                // committed circuit proposal
+                                let event = messages::AdminServiceEvent::ProposalSubmitted(
+                                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                        .map_err(AdminSharedError::InvalidMessageFormat)?,
+                                );
+                                self.send_event(&mgmt_type, event);
+
+                                info!("committed changes for new circuit proposal {}", circuit_id);
+                                Ok(())
+                            }
+
+                            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
+                                // notify registered application authorization handlers of the
+                                // committed circuit proposal
+                                let circuit_proposal_proto =
+                                    messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                        .map_err(AdminSharedError::InvalidMessageFormat)?;
+                                let event = messages::AdminServiceEvent::ProposalVote((
+                                    circuit_proposal_proto,
+                                    circuit_proposal_context.signer_public_key,
+                                ));
+                                self.send_event(&mgmt_type, event);
+
+                                info!("committed vote for circuit proposal {}", circuit_id);
+                                Ok(())
+                            }
+                            _ => Err(AdminSharedError::UnknownAction(format!(
+                                "Received unknown action: {:?}",
+                                action
+                            ))),
+                        }
+                    }
+                    Ok(CircuitProposalStatus::Rejected) => {
+                        // remove circuit
+                        self.remove_proposal(&circuit_id);
+
+                        let circuit_proposal_proto =
+                            messages::CircuitProposal::from_proto(circuit_proposal.clone())
+                                .map_err(AdminSharedError::InvalidMessageFormat)?;
+                        let event = messages::AdminServiceEvent::ProposalRejected((
+                            circuit_proposal_proto,
+                            circuit_proposal_context.signer_public_key,
+                        ));
+                        self.send_event(&mgmt_type, event);
+
+                        info!("circuit proposal for {} has been rejected", circuit_id);
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
+                }
             }
             None => Err(AdminSharedError::NoPendingChanges),
         }
@@ -454,6 +523,10 @@ impl AdminServiceShared {
         self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
+    fn remove_proposal(&mut self, circuit_id: &str) {
+        self.open_proposals.remove(circuit_id);
+    }
+
     fn validate_create_circuit(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         if self.has_proposal(circuit.get_circuit_id()) {
             return Err(AdminSharedError::ValidationFailed(format!(
@@ -624,6 +697,35 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    fn check_approved(
+        &self,
+        proposal: &CircuitProposal,
+    ) -> Result<CircuitProposalStatus, AdminSharedError> {
+        let mut received_votes = HashSet::new();
+        for vote in proposal.get_votes() {
+            if vote.get_vote() == CircuitProposalVote_Vote::REJECT {
+                return Ok(CircuitProposalStatus::Rejected);
+            }
+            received_votes.insert(vote.get_voter_node_id().to_string());
+        }
+
+        let mut required_votes = proposal
+            .get_circuit_proposal()
+            .get_members()
+            .to_vec()
+            .iter()
+            .map(|member| member.get_node_id().to_string())
+            .collect::<HashSet<String>>();
+
+        required_votes.remove(proposal.get_requester_node_id());
+
+        if required_votes == received_votes {
+            Ok(CircuitProposalStatus::Accepted)
+        } else {
+            Ok(CircuitProposalStatus::Pending)
+        }
+    }
+
     /// Initialize all services that this node should run on the created circuit using the service
     /// orchestrator.
     pub fn initialize_services(
@@ -651,6 +753,122 @@ impl AdminServiceShared {
             self.running_services.insert(service_definition);
         }
 
+        Ok(())
+    }
+
+    fn update_splinter_state(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
+        let members: Vec<StateNode> = circuit
+            .get_members()
+            .iter()
+            .map(|node| {
+                StateNode::new(
+                    node.get_node_id().to_string(),
+                    vec![node.get_endpoint().to_string()],
+                )
+            })
+            .collect();
+
+        let roster = circuit.get_roster().iter().map(|service| {
+            StateServiceDefinition::builder(
+                service.get_service_id().to_string(),
+                service.get_service_type().to_string(),
+            )
+            .with_allowed_nodes(service.get_allowed_nodes().to_vec())
+            .with_arguments(
+                service
+                    .get_arguments()
+                    .iter()
+                    .map(|argument| {
+                        (
+                            argument.get_key().to_string(),
+                            argument.get_value().to_string(),
+                        )
+                    })
+                    .collect::<BTreeMap<String, String>>(),
+            )
+            .build()
+        });
+
+        let auth = match circuit.get_authorization_type() {
+            Circuit_AuthorizationType::TRUST_AUTHORIZATION => "trust".to_string(),
+            // This should never happen
+            Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing authorization type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let persistence = match circuit.get_persistence() {
+            Circuit_PersistenceType::ANY_PERSISTENCE => "any".to_string(),
+            // This should never happen
+            Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing persistence type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let durability = match circuit.get_durability() {
+            Circuit_DurabilityType::NO_DURABILITY => "none".to_string(),
+            // This should never happen
+            Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing durabilty type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let routes = match circuit.get_routes() {
+            Circuit_RouteType::ANY_ROUTE => "any".to_string(),
+            // This should never happen
+            Circuit_RouteType::UNSET_ROUTE_TYPE => {
+                return Err(AdminSharedError::CommitError(
+                    "Missing route type on circuit commit".to_string(),
+                ))
+            }
+        };
+
+        let new_circuit = StateCircuit::builder()
+            .with_id(circuit.get_circuit_id().to_string())
+            .with_members(
+                members
+                    .iter()
+                    .map(|node| node.id().to_string())
+                    .collect::<Vec<String>>(),
+            )
+            .with_roster(roster)
+            .with_auth(auth)
+            .with_persistence(persistence)
+            .with_durability(durability)
+            .with_routes(routes)
+            .with_circuit_management_type(circuit.get_circuit_management_type().to_string())
+            .build()
+            .map_err(|err| {
+                AdminSharedError::CommitError(format!("Unable build new circuit: {}", err))
+            })?;
+
+        let mut splinter_state = self.splinter_state.write().map_err(|err| {
+            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
+        })?;
+        for member in members {
+            splinter_state
+                .add_node(member.id().to_string(), member)
+                .map_err(|err| {
+                    AdminSharedError::CommitError(format!(
+                        "Unable to add node to splinter state: {}",
+                        err
+                    ))
+                })?;
+        }
+        splinter_state
+            .add_circuit(new_circuit.id().to_string(), new_circuit)
+            .map_err(|err| {
+                AdminSharedError::CommitError(format!(
+                    "Unable to add circuit to splinter state: {}",
+                    err
+                ))
+            })?;
         Ok(())
     }
 
