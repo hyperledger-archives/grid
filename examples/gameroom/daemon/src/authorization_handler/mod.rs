@@ -18,6 +18,7 @@
 mod error;
 pub use error::AppAuthHandlerError;
 
+use std::fmt::Write;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, Sender, TryRecvError},
@@ -447,9 +448,8 @@ fn process_admin_event(
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
             let time = SystemTime::now();
 
-
             // convert requester public key to hex
-            let requester = String::from_utf8(msg_proposal.requester.clone())?;
+            let requester = to_hex(&msg_proposal.requester);
             let proposal = parse_proposal(&msg_proposal, time, requester);
 
             let gameroom = parse_gameroom(&msg_proposal.circuit, time)?;
@@ -499,7 +499,7 @@ fn process_admin_event(
             let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
-                voter_public_key: String::from_utf8(signer_public_key)?,
+                voter_public_key: to_hex(&signer_public_key),
                 voter_node_id: vote.voter_node_id.to_string(),
                 vote: "Accept".to_string(),
                 created_time: time,
@@ -535,7 +535,7 @@ fn process_admin_event(
 
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
-                voter_public_key: String::from_utf8(signer_public_key)?,
+                voter_public_key: to_hex(&signer_public_key),
                 voter_node_id: vote.voter_node_id.to_string(),
                 vote: "Accept".to_string(),
                 created_time: time,
@@ -572,7 +572,7 @@ fn process_admin_event(
 
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
-                voter_public_key: String::from_utf8(signer_public_key)?,
+                voter_public_key: to_hex(&signer_public_key),
                 voter_node_id: vote.voter_node_id.to_string(),
                 vote: "Reject".to_string(),
                 created_time: time,
@@ -696,6 +696,15 @@ fn get_pending_proposal_with_circuit_id(
             ))
         },
     )
+}
+
+pub fn to_hex(bytes: &[u8]) -> String {
+    let mut buf = String::new();
+    for b in bytes {
+        write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
+    }
+
+    buf
 }
 
 #[cfg(all(feature = "test-authorization-handler", test))]
@@ -1112,7 +1121,7 @@ mod test {
         let proposal = parse_proposal(
             &get_msg_proposal("my_circuit"),
             time.clone(),
-            "IwAAAQ".to_string(),
+            to_hex(&public_key()),
         );
 
         assert_eq!(proposal, get_gameroom_proposal("my_circuit", time.clone()));
@@ -1189,14 +1198,14 @@ mod test {
                 .to_string(),
             circuit: get_create_circuit_msg(circuit_id),
             votes: vec![],
-            requester: b"IwAAAQ".to_vec(),
+            requester: public_key(),
             requester_node_id: "acme_corp".to_string(),
         }
     }
 
     fn get_msg_proposal_with_vote(circuit_id: &str) -> CircuitProposal {
         let vote = VoteRecord {
-            public_key: vec![73, 119, 65, 65, 65, 81],
+            public_key: public_key(),
             vote: Vote::Accept,
             voter_node_id: "acme_corp".to_string(),
         };
@@ -1208,30 +1217,21 @@ mod test {
                 .to_string(),
             circuit: get_create_circuit_msg(circuit_id),
             votes: vec![vote],
-            requester: b"IwAAAQ".to_vec(),
+            requester: public_key(),
             requester_node_id: "acme_corp".to_string(),
         }
     }
 
     fn get_reject_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalRejected((
-            get_msg_proposal_with_vote(circuit_id),
-            vec![73, 119, 65, 65, 65, 81],
-        ))
+        AdminServiceEvent::ProposalRejected((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_accept_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalAccepted((
-            get_msg_proposal_with_vote(circuit_id),
-            vec![73, 119, 65, 65, 65, 81],
-        ))
+        AdminServiceEvent::ProposalAccepted((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalVote((
-            get_msg_proposal_with_vote(circuit_id),
-            vec![73, 119, 65, 65, 65, 81],
-        ))
+        AdminServiceEvent::ProposalVote((get_msg_proposal_with_vote(circuit_id), public_key()))
     }
 
     fn get_submit_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
@@ -1244,7 +1244,7 @@ mod test {
             circuit_id: circuit_id.to_string(),
             circuit_hash: "8e066d41911817a42ab098eda35a2a2b11e93c753bc5ecc3ffb3e99ed99ada0d"
                 .to_string(),
-            requester: "IwAAAQ".to_string(),
+            requester: to_hex(&public_key()),
             requester_node_id: "acme_corp".to_string(),
             status: "Pending".to_string(),
             created_time: timestamp,
@@ -1270,7 +1270,7 @@ mod test {
     fn get_new_vote_record(proposal_id: i64, timestamp: SystemTime) -> NewProposalVoteRecord {
         NewProposalVoteRecord {
             proposal_id,
-            voter_public_key: "IwAAAQ".to_string(),
+            voter_public_key: to_hex(&public_key()),
             voter_node_id: "acme_corp".to_string(),
             vote: "Accept".to_string(),
             created_time: timestamp,
@@ -1310,7 +1310,7 @@ mod test {
     ) -> NewGameroomNotification {
         NewGameroomNotification {
             notification_type: "gameroom_proposal".to_string(),
-            requester: "IwAAAQ".to_string(),
+            requester: to_hex(&public_key()),
             requester_node_id: "acme_corp".to_string(),
             target: circuit_id.to_string(),
             created_time: timestamp,
@@ -1324,7 +1324,7 @@ mod test {
     ) -> NewGameroomNotification {
         NewGameroomNotification {
             notification_type: "proposal_vote_record".to_string(),
-            requester: "IwAAAQ".to_string(),
+            requester: to_hex(&public_key()),
             requester_node_id: "acme_corp".to_string(),
             target: proposal_id.to_string(),
             created_time: timestamp,
@@ -1430,5 +1430,9 @@ mod test {
         diesel::delete(gameroom_notification)
             .execute(conn)
             .expect("Error cleaning gameroom_notification table");
+    }
+
+    fn public_key() -> Vec<u8> {
+        vec![73, 119, 65, 65, 65, 81]
     }
 }
