@@ -29,6 +29,7 @@ use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::futures::IntoFuture;
 use crate::hex::to_hex;
+use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
     auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
@@ -60,6 +61,8 @@ impl AdminService {
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
         splinter_state: Arc<RwLock<SplinterState>>,
         signature_verifier: Box<dyn SignatureVerifier + Send>,
+        key_registry: Box<dyn KeyRegistry>,
+        key_permission_manager: Box<dyn KeyPermissionManager>,
     ) -> Result<Self, ServiceError> {
         let new_service = Self {
             service_id: admin_service_id(node_id),
@@ -70,6 +73,8 @@ impl AdminService {
                 authorization_inquistor,
                 splinter_state,
                 signature_verifier,
+                key_registry,
+                key_permission_manager,
             ))),
             consensus: None,
         };
@@ -337,12 +342,11 @@ mod tests {
     use super::*;
 
     use std::collections::VecDeque;
-    use std::path::PathBuf;
     use std::sync::mpsc::{channel, Sender};
     use std::time::{Duration, Instant};
-    use tempdir::TempDir;
 
     use crate::circuit::{directory::CircuitDirectory, SplinterState};
+    use crate::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
     use crate::mesh::Mesh;
     use crate::network::{auth::AuthorizationCallback, Network};
     use crate::protos::admin;
@@ -364,16 +368,11 @@ mod tests {
             Ok(Box::new(MockConnection)),
         ]);
 
-        // create temp directory
-        let temp_dir = TempDir::new("test_circuit_write_file").unwrap();
-        let temp_dir = temp_dir.path().to_path_buf();
-
-        // setup empty state filename
-        let path = setup_storage(temp_dir);
-        let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
+        let mut storage = get_storage("memory", CircuitDirectory::new).unwrap();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let circuit_directory = storage.write().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
-            path.to_string(),
+            "memory".to_string(),
             circuit_directory,
         )));
 
@@ -391,6 +390,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         )
         .expect("Service should have been created correctly");
 
@@ -649,12 +650,4 @@ mod tests {
         }
     }
 
-    fn setup_storage(mut temp_dir: PathBuf) -> String {
-        // Creat the temp file
-        temp_dir.push("circuits.yaml");
-        let path = temp_dir.to_str().unwrap().to_string();
-
-        // Write out the mock state file to the temp directory
-        path
-    }
 }

@@ -180,7 +180,13 @@ fn main() {
     };
 
     let storage_location = match &storage_type as &str {
-        "yaml" => location + "/circuits.yaml",
+        "yaml" => format!("{}{}", location, "/circuits.yaml"),
+        "memory" => "memory".to_string(),
+        _ => panic!("Storage type is not supported: {}", storage_type),
+    };
+
+    let key_registry_location = match &storage_type as &str {
+        "yaml" => format!("{}{}", location, "/keys.yaml"),
         "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
@@ -204,6 +210,7 @@ fn main() {
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
+        .with_key_registry_location(key_registry_location)
         .with_network_endpoint(network_endpoint)
         .with_service_endpoint(service_endpoint)
         .with_initial_peers(initial_peers)

@@ -17,6 +17,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalId};
+use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
@@ -70,9 +71,10 @@ pub struct AdminServiceShared {
     event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
-
     // signature verifier
     signature_verifier: Box<dyn SignatureVerifier + Send>,
+    key_registry: Box<dyn KeyRegistry>,
+    key_permission_manager: Box<dyn KeyPermissionManager>,
 }
 
 impl AdminServiceShared {
@@ -83,6 +85,8 @@ impl AdminServiceShared {
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
         splinter_state: Arc<RwLock<SplinterState>>,
         signature_verifier: Box<dyn SignatureVerifier + Send>,
+        key_registry: Box<dyn KeyRegistry>,
+        key_permission_manager: Box<dyn KeyPermissionManager>,
     ) -> Self {
         AdminServiceShared {
             node_id: node_id.to_string(),
@@ -100,6 +104,8 @@ impl AdminServiceShared {
             event_dealers: HashMap::new(),
             splinter_state,
             signature_verifier,
+            key_registry,
+            key_permission_manager,
         }
     }
 
@@ -528,12 +534,12 @@ impl AdminServiceShared {
 mod tests {
     use super::*;
 
-    use std::path::PathBuf;
-
     use protobuf::RepeatedField;
-    use tempdir::TempDir;
 
     use crate::circuit::directory::CircuitDirectory;
+    use crate::keys::{
+        insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry, KeyInfo,
+    };
     use crate::mesh::Mesh;
     use crate::network::{
         auth::{AuthorizationCallback, AuthorizationCallbackError},
@@ -565,6 +571,7 @@ mod tests {
             .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
@@ -572,6 +579,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -636,6 +645,7 @@ mod tests {
             .expect("failed to create orchestrator");
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         let state = setup_splinter_state();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
@@ -643,6 +653,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
 
         let mut circuit = admin::Circuit::new();
@@ -693,6 +705,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -700,6 +713,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let circuit = setup_test_circuit();
 
@@ -715,6 +730,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -722,6 +738,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -743,6 +761,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -750,6 +769,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
         circuit.set_roster(RepeatedField::from_vec(vec![]));
@@ -765,6 +786,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -772,6 +794,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -789,6 +813,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -796,6 +821,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -816,6 +843,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -823,6 +851,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -839,6 +869,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -846,6 +877,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -862,6 +895,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -869,6 +903,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -885,6 +921,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -892,6 +929,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -908,6 +947,7 @@ mod tests {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
@@ -915,6 +955,8 @@ mod tests {
             Box::new(MockAuthInquisitor),
             state,
             Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
         );
         let mut circuit = setup_test_circuit();
 
@@ -968,7 +1010,7 @@ mod tests {
         let mut storage = get_storage(&path, CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
-            path.to_string(),
+            "memory".to_string(),
             circuit_directory,
         )));
         state
@@ -993,15 +1035,6 @@ mod tests {
             .expect("failed to create connection");
         ServiceOrchestrator::new(vec![], orchestrator_connection, 1, 1, 1)
             .expect("failed to create orchestrator")
-    }
-
-    fn setup_storage(mut temp_dir: PathBuf) -> String {
-        // Creat the temp file
-        temp_dir.push("circuits.yaml");
-        let path = temp_dir.to_str().unwrap().to_string();
-
-        // Write out the mock state file to the temp directory
-        path
     }
 
     fn splinter_node(node_id: &str, endpoint: &str) -> admin::SplinterNode {
