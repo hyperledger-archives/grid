@@ -38,7 +38,7 @@ pub use error::{KeyPermissionError, KeyRegistryError};
 /// Information associated with a public key.
 ///
 /// This struct contains information related to a public key, with the most specific information
-/// pertaining to the associated splinter node.  
+/// pertaining to the associated splinter node.
 ///
 /// It also provides metadata about the key, that maybe provided to the registry for
 /// application-specific details.  For example, the name of the person or organization of the key.
@@ -87,6 +87,11 @@ impl KeyInfo {
     /// Get a piece of metadata for the given key.
     pub fn get_metadata(&self, key: &str) -> Option<&String> {
         self.metadata.get(key)
+    }
+
+    /// Get the metadata for the key info
+    pub fn metadata(&self) -> &HashMap<String, String> {
+        &self.metadata
     }
 }
 
