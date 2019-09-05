@@ -375,4 +375,5 @@ pub enum AdminServiceEvent {
     ProposalVote((CircuitProposal, Vec<u8>)),
     ProposalAccepted((CircuitProposal, Vec<u8>)),
     ProposalRejected((CircuitProposal, Vec<u8>)),
+    CircuitReady(CircuitProposal),
 }

@@ -33,6 +33,7 @@ use crate::protos::two_phase::RequiredVerifiers;
 use crate::service::ServiceError;
 
 use super::error::AdminConsensusManagerError;
+use super::messages::{AdminServiceEvent, CircuitProposal};
 use super::shared::{AdminServiceShared, CircuitProposalStatus};
 use super::{admin_service_id, sha256};
 
@@ -101,12 +102,23 @@ impl AdminConsensusManager {
                             };
 
                             // If the proposal is approved, remove it from shared and initialize
-                            // the services for the circuit.
+                            // the services for the circuit, then notify the app auth handler that
+                            // the circuit is ready.
                             if is_approved {
                                 let proposal = shared.remove_proposal(circuit_id).unwrap();
                                 shared
                                     .initialize_services(proposal.get_circuit_proposal())
                                     .map_err(|err| err.to_string())?;
+
+                                let mgmt_type = proposal
+                                    .get_circuit_proposal()
+                                    .circuit_management_type
+                                    .clone();
+                                let event = AdminServiceEvent::CircuitReady(
+                                    CircuitProposal::from_proto(proposal)
+                                        .map_err(|err| err.to_string())?,
+                                );
+                                shared.send_event(&mgmt_type, event);
                             }
                         }
                     }

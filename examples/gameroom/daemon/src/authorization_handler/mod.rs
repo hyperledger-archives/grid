@@ -274,6 +274,7 @@ fn process_admin_event(
                 Ok(())
             })
         }
+        AdminServiceEvent::CircuitReady(_msg_proposal) => Ok(()),
     }
 }
 
