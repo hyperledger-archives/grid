@@ -94,8 +94,8 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
     return;
   })
   .catch((err) => {
-    console.log(err.message);
-    throw new Error("Failed to create gameroom. Contact administrator for help.");
+    console.error(err.message);
+    throw new Error('Failed to send request. Contact administrator for help.');
   });
 }
 
