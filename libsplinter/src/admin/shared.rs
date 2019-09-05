@@ -83,7 +83,7 @@ pub struct AdminServiceShared {
     // CircuitManagmentPayloads that still need to go through consensus
     pending_circuit_payloads: VecDeque<CircuitManagementPayload>,
     // The pending consensus proposals
-    pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
+    pending_consensus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
     pending_changes: Option<CircuitProposalContext>,
     // the verifiers that should be broadcasted for the pending change
@@ -120,7 +120,7 @@ impl AdminServiceShared {
             auth_inquisitor,
             unpeered_payloads: Vec::new(),
             pending_circuit_payloads: VecDeque::new(),
-            pending_consesus_proposals: HashMap::new(),
+            pending_consensus_proposals: HashMap::new(),
             pending_changes: None,
             current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
@@ -151,26 +151,26 @@ impl AdminServiceShared {
         self.pending_circuit_payloads.pop_front()
     }
 
-    pub fn pending_consesus_proposals(
+    pub fn pending_consensus_proposals(
         &self,
         id: &ProposalId,
     ) -> Option<&(Proposal, CircuitManagementPayload)> {
-        self.pending_consesus_proposals.get(id)
+        self.pending_consensus_proposals.get(id)
     }
 
-    pub fn remove_pending_consesus_proposals(
+    pub fn remove_pending_consensus_proposals(
         &mut self,
         id: &ProposalId,
     ) -> Option<(Proposal, CircuitManagementPayload)> {
-        self.pending_consesus_proposals.remove(id)
+        self.pending_consensus_proposals.remove(id)
     }
 
-    pub fn add_pending_consesus_proposal(
+    pub fn add_pending_consensus_proposal(
         &mut self,
         id: ProposalId,
         proposal: (Proposal, CircuitManagementPayload),
     ) {
-        self.pending_consesus_proposals.insert(id, proposal);
+        self.pending_consensus_proposals.insert(id, proposal);
     }
 
     pub fn current_consensus_verifiers(&self) -> &Vec<String> {

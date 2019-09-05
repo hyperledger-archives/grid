@@ -184,7 +184,7 @@ impl ProposalManager for AdminProposalManager {
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
             proposal.consensus_data = required_verifiers_bytes.clone();
 
-            shared.add_pending_consesus_proposal(
+            shared.add_pending_consensus_proposal(
                 proposal.id.clone(),
                 (proposal.clone(), circuit_payload.clone()),
             );
@@ -224,7 +224,7 @@ impl ProposalManager for AdminProposalManager {
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
         let (proposal, circuit_payload) = shared
-            .pending_consesus_proposals(id)
+            .pending_consensus_proposals(id)
             .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?
             .clone();
 
@@ -259,10 +259,10 @@ impl ProposalManager for AdminProposalManager {
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
-        match shared.pending_consesus_proposals(id) {
+        match shared.pending_consensus_proposals(id) {
             Some((proposal, _)) if &proposal.id == id => match shared.commit() {
                 Ok(_) => {
-                    shared.remove_pending_consesus_proposals(id);
+                    shared.remove_pending_consensus_proposals(id);
                     info!("Committed proposal {}", id);
                 }
                 Err(err) => {
@@ -291,7 +291,7 @@ impl ProposalManager for AdminProposalManager {
             .map_err(|_| ServiceError::PoisonedLock("the admin state lock was poisoned".into()))?;
 
         shared
-            .remove_pending_consesus_proposals(id)
+            .remove_pending_consensus_proposals(id)
             .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?;
 
         shared
