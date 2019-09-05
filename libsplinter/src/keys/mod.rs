@@ -133,7 +133,7 @@ type KeyRegistryResult<T> = Result<T, KeyRegistryError>;
 /// The key registry provides an interface for storing and retrieving key information. Key
 /// information helps to tie a public key to a particular splinter node, as well as associating
 /// application metadata with the public key.
-pub trait KeyRegistry {
+pub trait KeyRegistry: Send {
     /// Save a public key and its information.
     ///
     /// # Errors
@@ -183,7 +183,7 @@ type KeyPermissionResult<T> = Result<T, KeyPermissionError>;
 ///
 /// Note: the underlying implementation determines how those values are set and modified - these
 /// operations are not exposed via this interface.
-pub trait KeyPermissionManager {
+pub trait KeyPermissionManager: Send {
     /// Checks to see if a public key is permitted for the given role.
     ///
     /// # Errors
