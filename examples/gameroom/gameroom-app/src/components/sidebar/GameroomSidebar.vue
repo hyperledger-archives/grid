@@ -19,7 +19,10 @@ limitations under the License.
     <router-link to='/dashboard/home'>
       <sidebar-section :section="home" />
     </router-link>
-    <sidebar-section v-on:action="$emit('show-new-gameroom-modal')" :section="gamerooms" />
+    <sidebar-section
+      v-on:action="$emit('show-new-gameroom-modal')"
+      :section="gamerooms"
+      :items="gameroomList" />
     <router-link class="position-end" to='/dashboard/invitations'>
       <sidebar-section :section="invitations" />
     </router-link>
@@ -30,6 +33,7 @@ limitations under the License.
 import { Vue, Prop, Component } from 'vue-property-decorator';
 import SidebarSection from '@/components/sidebar/SidebarSection.vue';
 import { Section } from '@/store/models';
+import gamerooms from '@/store/modules/gamerooms';
 
 @Component({
   components: { SidebarSection },
@@ -41,26 +45,16 @@ export default class GameroomSidebar extends Vue {
     name: 'Home',
     icon: 'home',
     active: false,
-    items: [],
     link: 'home',
     dropdown: false,
     action: false,
     actionIcon: '',
   };
 
-  gameroom1 = {
-    name: 'gameroom1',
-  };
-
-  gameroom2 = {
-    name: 'gameroom2',
-  };
-
   gameroomsSection = {
     name: 'My Gamerooms',
     icon: 'games',
     active: false,
-    items: [this.gameroom1, this.gameroom2],
     link: '',
     dropdown: true,
     action: true,
@@ -71,12 +65,15 @@ export default class GameroomSidebar extends Vue {
     name: 'Invitations',
     icon: 'email',
     active: false,
-    items: [],
     link: '',
     dropdown: false,
     action: false,
     actionIcon: '',
   };
+
+  mounted() {
+    gamerooms.listGamerooms();
+  }
 
   get home() {
     this.homeSection.active = (this.$route.name === 'dashboard');
@@ -91,6 +88,15 @@ export default class GameroomSidebar extends Vue {
   get invitations() {
     this.invitationsSection.active = (this.$route.name === 'invitations');
     return this.invitationsSection;
+  }
+
+  get gameroomList() {
+    return gamerooms.acceptedGameroomList.map((gameroom) => {
+      return {
+        id: gameroom.circuit_id,
+        name: gameroom.alias,
+      };
+    });
   }
 }
 </script>

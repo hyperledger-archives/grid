@@ -72,10 +72,15 @@
 
       .link {
         cursor: pointer;
-        padding: .8rem 0 .8rem 3rem;
-        &.active {
+        padding: .8rem 0 .8rem 3.2rem;
+        color: $color-text-disabled;
+
+        &:hover {
           color: $color-text-high;
-          font-weight: $fw-bold;
+        }
+
+        &.active {
+          color: $color-primary-light;
         }
       }
     }

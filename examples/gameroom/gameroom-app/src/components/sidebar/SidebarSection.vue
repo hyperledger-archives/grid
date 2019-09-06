@@ -30,10 +30,10 @@ limitations under the License.
       <div class="items-container" v-if="section.dropdown">
         <router-link
           class="link"
-          v-for="(item, index) in section.items"
+          v-for="(item, index) in items"
           :key="index"
-          :class="{active: item.name === $route.params.id}"
-          :to="`/dashboard/gamerooms/${item.name}`">
+          :class="{active: item.id === $route.params.id}"
+          :to="`/dashboard/gamerooms/${item.id}`">
           {{ item.name }}
         </router-link>
       </div>
@@ -45,10 +45,15 @@ limitations under the License.
 import { Vue, Prop, Component } from 'vue-property-decorator';
 import { Section } from '@/store/models';
 
+interface SectionItem {
+  id: string;
+  name: string;
+}
+
 @Component
 export default class SidebarSection extends Vue {
   @Prop() section!: Section;
-  @Prop() items!: any[];
+  @Prop() items!: SectionItem[];
 }
 </script>
 
