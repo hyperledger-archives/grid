@@ -97,6 +97,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=BUILDER /build/splinterd/target/release/splinterd /usr/bin/splinterd
+RUN mkdir -p /var/lib/splinter
 
 EXPOSE 8043
 EXPOSE 8945
