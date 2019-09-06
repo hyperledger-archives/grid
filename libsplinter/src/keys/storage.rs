@@ -110,6 +110,7 @@ impl StorageKeyRegistry {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 struct PersistedKeyRegistry {
+    #[serde(flatten)]
     keys: BTreeMap<String, PersistedKeyInfo>,
 }
 
