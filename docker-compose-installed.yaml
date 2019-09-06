@@ -75,3 +75,10 @@ services:
         VUE_APP_BRAND: "bubba"
     image: gameroom-app-bubba:${ISOLATION_ID}
     container_name: gameroom-app-bubba
+
+  gameroom-database:
+    build:
+      context: .
+      dockerfile: examples/gameroom/database/Dockerfile-installed
+    image: gameroom-database:${ISOLATION_ID}
+    container_name: gameroom-database
