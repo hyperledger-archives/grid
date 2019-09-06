@@ -119,6 +119,50 @@ pub fn update_gameroom_status(
         .map(|_| ())
 }
 
+pub fn update_gameroom_member_status(
+    conn: &PgConnection,
+    circuit_id: &str,
+    updated_time: &SystemTime,
+    old_status: &str,
+    new_status: &str,
+) -> QueryResult<()> {
+    diesel::update(
+        gameroom_member::table.filter(
+            gameroom_member::circuit_id
+                .eq(circuit_id)
+                .and(gameroom_member::status.eq(old_status)),
+        ),
+    )
+    .set((
+        gameroom_member::updated_time.eq(updated_time),
+        gameroom_member::status.eq(new_status),
+    ))
+    .execute(conn)
+    .map(|_| ())
+}
+
+pub fn update_gameroom_service_status(
+    conn: &PgConnection,
+    circuit_id: &str,
+    updated_time: &SystemTime,
+    old_status: &str,
+    new_status: &str,
+) -> QueryResult<()> {
+    diesel::update(
+        gameroom_service::table.filter(
+            gameroom_service::circuit_id
+                .eq(circuit_id)
+                .and(gameroom_service::status.eq(old_status)),
+        ),
+    )
+    .set((
+        gameroom_service::updated_time.eq(updated_time),
+        gameroom_service::status.eq(new_status),
+    ))
+    .execute(conn)
+    .map(|_| ())
+}
+
 pub fn insert_proposal_vote_record(
     conn: &PgConnection,
     vote_records: &[NewProposalVoteRecord],
