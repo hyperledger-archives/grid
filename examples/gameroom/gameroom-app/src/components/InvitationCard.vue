@@ -28,10 +28,10 @@ limitations under the License.
           {{ fromNow(proposal.created_time) }}
         </div>
       </div>
-      <div class="data">
+      <div v-if="!isSelf(proposal.requester)" class="data">
         <div class="key">from:</div>
         <div class="value">
-          From placeholder
+          {{ proposal.requester_org }}
         </div>
       </div>
       <div class="data">
@@ -40,7 +40,7 @@ limitations under the License.
           <li class="list-value"
               v-for="(member, index) in proposal.members"
               :key="index">
-            {{ member.node_id }}
+            {{ member.organization }}
           </li>
         </div>
       </div>

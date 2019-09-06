@@ -105,6 +105,9 @@ export async function listProposals(): Promise<GameroomProposal[]> {
   const proposals = response.data.data.map((proposal: any) => {
     const members = proposal.members.map(async (member: any) => {
       const node = await getNode(member.node_id);
+      if (node.identity === proposal.requester_node_id) {
+        proposal.requester_org = node.metadata.organization;
+      }
       member.organization = node.metadata.organization;
       return member as Member;
     });

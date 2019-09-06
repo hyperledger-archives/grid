@@ -58,7 +58,7 @@ impl ApiGameroomProposal {
                 .map(ApiGameroomMember::from)
                 .collect(),
             requester: db_proposal.requester.to_string(),
-            requester_node_id: db_proposal.requester.to_string(),
+            requester_node_id: db_proposal.requester_node_id.to_string(),
             created_time: db_proposal
                 .created_time
                 .duration_since(SystemTime::UNIX_EPOCH)

@@ -46,7 +46,7 @@ limitations under the License.
           />
         </div>
         <div v-else class="dropdown-body">
-          <h3>No notifications.</h3>
+          <div class="placeholder"><h3>You have no notifications.</h3></div>
         </div>
       </div>
     </div>
