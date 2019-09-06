@@ -97,11 +97,22 @@ impl Action for KeyRegistryGenerationAction {
         let silent = args.is_present("quiet");
 
         let target_registry_path = target_dir.join(registry_target_file);
-        if !force_write && target_registry_path.exists() {
-            return Err(CliError::EnvironmentError(format!(
-                "file exists: {}",
-                target_registry_path.display()
-            )));
+        let registry_file_exists = target_registry_path.exists();
+        if registry_file_exists {
+            if !force_write {
+                return Err(CliError::EnvironmentError(format!(
+                    "file exists: {}",
+                    target_registry_path.display()
+                )));
+            } else {
+                std::fs::remove_file(&target_registry_path).map_err(|err| {
+                    CliError::EnvironmentError(format!(
+                        "Unable to overwrite {}: {}",
+                        target_registry_path.display(),
+                        err
+                    ))
+                })?;
+            }
         }
 
         let registry_spec_file = File::open(&registry_spec_path).map_err(|err| {
@@ -142,7 +153,11 @@ impl Action for KeyRegistryGenerationAction {
         })?;
 
         if !silent {
-            println!("writing file \"{}\"", target_registry_path.display());
+            if registry_file_exists {
+                println!("overwriting file \"{}\"", target_registry_path.display());
+            } else {
+                println!("writing file \"{}\"", target_registry_path.display());
+            }
         }
 
         for (key_name, key_spec) in registry_spec.keys.into_iter() {
