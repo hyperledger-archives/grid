@@ -39,8 +39,9 @@ const getters = {
 };
 
 const actions = {
-  async listNotifications({ commit }: any) {
-    const notifications = await listNotifications();
+  async listNotifications({ commit, rootGetters }: any) {
+    const publicKey = rootGetters['user/getPublicKey'];
+    const notifications = await listNotifications(publicKey);
     commit('setNotifications', notifications);
   },
   async markRead({ commit }: any, id: string) {
