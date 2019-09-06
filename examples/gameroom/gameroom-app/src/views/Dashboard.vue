@@ -23,7 +23,7 @@ limitations under the License.
       {{ success }}
     </toast>
     <modal v-if="displayModal" @close="closeNewGameroomModal">
-      <h3 slot="title">New Gameroom</h3>
+      <h4 slot="title">New Gameroom</h4>
       <div slot="body">
         <form class="modal-form" @submit.prevent="createGameroom">
           <label class="form-label">

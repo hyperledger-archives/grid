@@ -15,12 +15,21 @@ limitations under the License.
 -->
 
 <template>
-  <h1>{{ $route.params.id }}</h1>
+  <div class="gameroom-detail-container">
+      <h2>{{ $route.params.id }}</h2>
+  </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 
 @Component
-  export default class Home extends Vue {}
+export default class Home extends Vue {}
 </script>
+
+<style lang="scss" scoped>
+  .gameroom-detail-container {
+    display: flex;
+    padding: 2rem 4rem;
+  }
+</style>

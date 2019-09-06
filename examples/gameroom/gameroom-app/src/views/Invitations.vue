@@ -26,7 +26,7 @@ limitations under the License.
         :key="index"
         :proposal="proposal" />
     </div>
-    <h3 v-else class="tbl-placeholder">No pending proposals</h3>
+    <h3 class="placeholder" v-else>You have no invitations.</h3>
   </div>
 </template>
 
@@ -57,11 +57,21 @@ export default class Invitations extends Vue {
     padding: 2rem 4rem;
 
     .data-container {
+      display: flex;
+      width: 100%;
       border-top: 1px solid $color-border;
       padding: 1rem;
       margin-top: 2rem;
       overflow: auto;
       align-items: center;
+      justify-content: center;
+    }
+
+    .placeholder {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
     }
   }
 </style>

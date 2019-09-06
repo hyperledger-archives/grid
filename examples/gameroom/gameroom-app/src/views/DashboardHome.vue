@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 <template>
-  <h1>Home</h1>
+  <div class="home-container"><h2>Home</h2></div>
 </template>
 
 <script lang="ts">
@@ -26,4 +26,8 @@ export default class DashboardHome extends Vue {}
 </script>
 
 <style lang="scss" scoped>
+  .home-container {
+    display: flex;
+    padding: 2rem 4rem;
+  }
 </style>

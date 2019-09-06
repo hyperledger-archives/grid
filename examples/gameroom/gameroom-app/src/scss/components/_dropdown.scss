@@ -73,6 +73,17 @@
       .dropdown-body {
         overflow: auto;
         max-height: 80vh;
+        font-size: 1rem;
+
+        .placeholder {
+          @include overlay(1);
+          display: flex;
+          height: 40vh;
+          align-items: center;
+          justify-content: center;
+          border-bottom-left-radius: 5px;
+          border-bottom-right-radius: 5px;
+        }
       }
     }
   }
