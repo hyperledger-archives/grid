@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { VuexModule, Module, getModule, Action } from 'vuex-module-decorators';
+import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-decorators';
 import store from '@/store';
-import { NewGameroomProposal } from '@/store/models';
-import { gameroomPropose, submitPayload } from '@/store/api';
+import { NewGameroomProposal, Gameroom } from '@/store/models';
+import { gameroomPropose, submitPayload, listGamerooms } from '@/store/api';
 import { signPayload } from '@/utils/crypto';
 
 @Module({
@@ -25,7 +25,27 @@ import { signPayload } from '@/utils/crypto';
   dynamic: true,
 })
 class GameroomsModule extends VuexModule {
-  @Action({rawError: true})
+  gamerooms: Gameroom[] = [];
+
+  @Mutation
+  setGamerooms(gamerooms: Gameroom[]) { this.gamerooms = gamerooms; }
+
+  get gameroomList(): Gameroom[] {
+    return this.gamerooms;
+  }
+
+  get acceptedGameroomList(): Gameroom[] {
+    return this.gamerooms.filter(
+      (gameroom: Gameroom) => gameroom.status === 'Active');
+  }
+
+  @Action({ commit: 'setGamerooms' })
+  async listGamerooms() {
+    const gamerooms = await listGamerooms();
+    return gamerooms;
+  }
+
+  @Action({ rawError: true })
   async proposeGameroom(proposal: NewGameroomProposal) {
     const user = this.context.rootGetters['user/getUser'];
     try {

@@ -23,6 +23,7 @@ import {
   NewGameroomProposal,
   Member,
   Node,
+  Gameroom,
   Ballot,
 } from './models';
 
@@ -71,6 +72,11 @@ export async function gameroomPropose(
 ): Promise<Uint8Array> {
   const response = await gameroomAPI.post('/gamerooms/propose', gameroomProposal);
   return response.data.data.payload_bytes as Uint8Array;
+}
+
+export async function listGamerooms(): Promise<Gameroom[]> {
+  const response = await gameroomAPI.get('/gamerooms');
+  return response.data.data as Gameroom[];
 }
 
 // Nodes

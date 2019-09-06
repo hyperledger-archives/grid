@@ -85,7 +85,6 @@ export interface Section {
   name: string;
   icon: string;
   active: boolean;
-  items: any[];
   link: string;
   dropdown: boolean;
   action: boolean;
@@ -96,4 +95,14 @@ export interface Ballot {
   circuit_id: string;
   circuit_hash: string;
   vote: string;
+}
+
+export interface Gameroom {
+  circuit_id: string;
+  authorization_type: string;
+  persistence: string;
+  routes: string;
+  circuit_management_type: string;
+  alias: string;
+  status: string;
 }
