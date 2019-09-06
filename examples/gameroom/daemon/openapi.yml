@@ -829,6 +829,9 @@ components:
           type: string
         org:
           type: string
+        requester:
+          description: public key of user who that submitted the request
+          type: string
         target:
           type: string
         timestamp:
