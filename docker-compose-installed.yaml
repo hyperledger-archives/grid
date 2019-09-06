@@ -30,19 +30,14 @@ services:
     image: splinterd:${ISOLATION_ID}
     container_name: splinterd
 
+# ---==== examples ====---
+
   private_xo:
     build:
       context: .
       dockerfile: examples/private_xo/Dockerfile-installed-${DISTRO}
     image: private_xo:${ISOLATION_ID}
     container_name: private_xo
-
-  gameroomd:
-    build:
-      context: .
-      dockerfile: examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
-    image: gameroomd:${ISOLATION_ID}
-    container_name: gameroomd
 
   private_counter_cli:
     build:
@@ -57,6 +52,15 @@ services:
       dockerfile: examples/private_counter/service/Dockerfile-installed-${DISTRO}
     image: private_counter_service:${ISOLATION_ID}
     container_name: private_counter_service
+
+# ---==== gameroom components ====---
+
+  gameroomd:
+    build:
+      context: .
+      dockerfile: examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+    image: gameroomd:${ISOLATION_ID}
+    container_name: gameroomd
 
   gameroom-app-acme:
     build:
