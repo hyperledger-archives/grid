@@ -57,3 +57,21 @@ services:
       dockerfile: examples/private_counter/service/Dockerfile-installed-${DISTRO}
     image: private_counter_service:${ISOLATION_ID}
     container_name: private_counter_service
+
+  gameroom-app-acme:
+    build:
+      context: .
+      dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
+      args:
+        VUE_APP_BRAND: "acme"
+    image: gameroom-app-acme:${ISOLATION_ID}
+    container_name: gameroom-app-acme
+
+  gameroom-app-bubba:
+    build:
+      context: .
+      dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
+      args:
+        VUE_APP_BRAND: "bubba"
+    image: gameroom-app-bubba:${ISOLATION_ID}
+    container_name: gameroom-app-bubba
