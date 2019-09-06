@@ -18,7 +18,7 @@ limitations under the License.
   <div class="card-container">
     <div class="header">
       <div class="title">
-        Name placeholder
+        {{ alias }}
       </div>
     </div>
     <div class="body">
@@ -67,6 +67,7 @@ import { Vue, Prop, Component } from 'vue-property-decorator';
 import * as moment from 'moment';
 import { GameroomProposal } from '../store/models';
 import proposals from '@/store/modules/proposals';
+import gamerooms from '@/store/modules/gamerooms';
 
 @Component
 export default class InvitationCard extends Vue {
@@ -74,6 +75,15 @@ export default class InvitationCard extends Vue {
 
   acceptSubmitting = false;
   rejectSubmitting = false;
+
+  get alias(): string {
+    const gameroom = gamerooms.gameroomList.find(
+      (gr) => gr.circuit_id === this.proposal.circuit_id);
+    if (gameroom) {
+      return gameroom.alias;
+    }
+    return '';
+  }
 
   get canSubmit() {
     return !this.acceptSubmitting && !this.rejectSubmitting;
