@@ -203,3 +203,11 @@ pub fn fetch_gameroom(conn: &PgConnection, circuit_id: &str) -> QueryResult<Opti
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
+
+pub fn fetch_gameroom_by_alias(conn: &PgConnection, alias: &str) -> QueryResult<Option<Gameroom>> {
+    gameroom::table
+        .filter(gameroom::alias.eq(alias))
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
