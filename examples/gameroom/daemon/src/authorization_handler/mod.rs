@@ -203,6 +203,21 @@ fn process_admin_event(
                 helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Accepted")?;
                 helpers::update_gameroom_status(conn, &msg_proposal.circuit_id, &time, "Accepted")?;
+                helpers::update_gameroom_member_status(
+                    conn,
+                    &msg_proposal.circuit_id,
+                    &time,
+                    "Pending",
+                    "Accepted",
+                )?;
+                helpers::update_gameroom_service_status(
+                    conn,
+                    &msg_proposal.circuit_id,
+                    &time,
+                    "Pending",
+                    "Accepted",
+                )?;
+
                 helpers::insert_proposal_vote_record(conn, &[vote])?;
 
                 debug!("Updated proposal to status 'Accepted'");
@@ -240,8 +255,21 @@ fn process_admin_event(
                 helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Rejected")?;
                 helpers::update_gameroom_status(conn, &msg_proposal.circuit_id, &time, "Rejected")?;
+                helpers::update_gameroom_member_status(
+                    conn,
+                    &msg_proposal.circuit_id,
+                    &time,
+                    "Pending",
+                    "Rejected",
+                )?;
+                helpers::update_gameroom_service_status(
+                    conn,
+                    &msg_proposal.circuit_id,
+                    &time,
+                    "Pending",
+                    "Rejected",
+                )?;
                 helpers::insert_proposal_vote_record(conn, &[vote])?;
-                println!("SUCCESS");
                 debug!("Updated proposal to status 'Rejected'");
                 Ok(())
             })
@@ -539,6 +567,15 @@ mod test {
             get_gameroom_proposal("my_circuit", created_time.clone()),
         );
 
+        insert_member_table(
+            &pool,
+            get_new_gameroom_member("my_circuit", created_time.clone()),
+        );
+        insert_service_table(
+            &pool,
+            get_new_gameroom_service("my_circuit", created_time.clone()),
+        );
+
         let accept_message = get_accept_proposal_msg("my_circuit");
 
         // accept proposal
@@ -554,6 +591,28 @@ mod test {
         assert!(proposal.updated_time > created_time);
         // Check status was changed to accepted
         assert_eq!(proposal.status, "Accepted");
+
+        let members = query_gameroom_members_table(&pool);
+
+        assert_eq!(members.len(), 1);
+
+        let member = &members[0];
+
+        // Check member updated_time changed
+        assert!(member.updated_time > created_time);
+        // Check status was changed to accepted
+        assert_eq!(member.status, "Accepted");
+
+        let services = query_gameroom_service_table(&pool);
+
+        assert_eq!(services.len(), 1);
+
+        let service = &services[0];
+
+        // Check service updated_time changed
+        assert!(service.updated_time > created_time);
+        // Check status was changed to accepted
+        assert_eq!(service.status, "Accepted");
     }
 
     #[test]
@@ -599,6 +658,15 @@ mod test {
             get_gameroom_proposal("my_circuit", created_time.clone()),
         );
 
+        insert_member_table(
+            &pool,
+            get_new_gameroom_member("my_circuit", created_time.clone()),
+        );
+        insert_service_table(
+            &pool,
+            get_new_gameroom_service("my_circuit", created_time.clone()),
+        );
+
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
         // reject proposal
@@ -625,6 +693,28 @@ mod test {
         assert!(gameroom.updated_time > created_time);
         // Check status was changed to rejected
         assert_eq!(gameroom.status, "Rejected");
+
+        let members = query_gameroom_members_table(&pool);
+
+        assert_eq!(members.len(), 1);
+
+        let member = &members[0];
+
+        // Check member updated_time changed
+        assert!(member.updated_time > created_time);
+        // Check status was changed to rejected
+        assert_eq!(member.status, "Rejected");
+
+        let services = query_gameroom_service_table(&pool);
+
+        assert_eq!(services.len(), 1);
+
+        let service = &services[0];
+
+        // Check service updated_time changed
+        assert!(service.updated_time > created_time);
+        // Check status was changed to rejected
+        assert_eq!(service.status, "Rejected");
     }
 
     #[test]
@@ -1059,6 +1149,28 @@ mod test {
         let conn = &*pool.get().expect("Error getting db connection");
         insert_into(gameroom::table)
             .values(&vec![gameroom])
+            .execute(conn)
+            .map(|_| ())
+            .expect("Failed to insert proposal in table")
+    }
+
+    fn insert_member_table(pool: &ConnectionPool, member: NewGameroomMember) {
+        use gameroom_database::schema::gameroom_member;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        insert_into(gameroom_member::table)
+            .values(&vec![member])
+            .execute(conn)
+            .map(|_| ())
+            .expect("Failed to insert proposal in table")
+    }
+
+    fn insert_service_table(pool: &ConnectionPool, service: NewGameroomService) {
+        use gameroom_database::schema::gameroom_service;
+
+        let conn = &*pool.get().expect("Error getting db connection");
+        insert_into(gameroom_service::table)
+            .values(&vec![service])
             .execute(conn)
             .map(|_| ())
             .expect("Failed to insert proposal in table")
