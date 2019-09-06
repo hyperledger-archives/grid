@@ -103,6 +103,14 @@ impl ServiceOrchestrator {
         mesh.send(Envelope::new(mesh_id, connect_request))
             .map_err(|err| NewOrchestratorError(Box::new(err)))?;
 
+        // Wait for the auth response.  Currently, this is on an inproc transport, so this will be
+        // an "ok" response
+        let _authed_response = mesh
+            .recv()
+            .map_err(|err| NewOrchestratorError(Box::new(err)))?;
+
+        debug!("Orchestrator authorized");
+
         // Start thread that handles incoming messages from a splinter node.
         let incoming_mesh = mesh.clone();
         let incoming_running = running.clone();

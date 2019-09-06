@@ -163,7 +163,7 @@ impl Mesh {
     /// Create a new handle for sending to the existing connection with the given id.
     ///
     /// This may be faster if many sends on the same Connection are going to be performed because
-    // the internal lock around the pool of senders does not need to be reacquired.
+    /// the internal lock around the pool of senders does not need to be reacquired.
     pub fn outgoing(&self, id: usize) -> Option<Outgoing> {
         rwlock_read_unwrap!(self.outgoings).get(&id).cloned()
     }
