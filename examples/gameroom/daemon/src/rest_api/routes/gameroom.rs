@@ -81,6 +81,7 @@ impl ApiGameroom {
 }
 
 pub fn propose_gameroom(
+    pool: web::Data<ConnectionPool>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -106,16 +107,6 @@ pub fn propose_gameroom(
         acc.push_str(&format!("::{}", member.node_id));
         acc
     });
-
-    let application_metadata = match ApplicationMetadata::new(&create_gameroom.alias).to_bytes() {
-        Ok(bytes) => bytes,
-        Err(err) => {
-            debug!("Failed to serialize application metadata: {}", err);
-            return HttpResponse::InternalServerError()
-                .json(ErrorResponse::internal_error())
-                .into_future();
-        }
-    };
 
     let scabbard_admin_keys = match serde_json::to_string(
         &create_gameroom
@@ -169,6 +160,23 @@ pub fn propose_gameroom(
         });
     }
 
+    let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
+        Ok(()) => match ApplicationMetadata::new(&create_gameroom.alias).to_bytes() {
+            Ok(bytes) => bytes,
+            Err(err) => {
+                debug!("Failed to serialize application metadata: {}", err);
+                return HttpResponse::InternalServerError()
+                    .json(ErrorResponse::internal_error())
+                    .into_future();
+            }
+        },
+        Err(err) => {
+            return HttpResponse::BadRequest()
+                .json(ErrorResponse::bad_request(&err.to_string()))
+                .into_future();
+        }
+    };
+
     let create_request = CreateCircuit {
         circuit_id: format!(
             "gameroom{}::{}",
@@ -200,6 +208,19 @@ pub fn propose_gameroom(
             "payload_bytes": payload_bytes
         })))
         .into_future()
+}
+
+fn check_alias_uniqueness(
+    pool: web::Data<ConnectionPool>,
+    alias: &str,
+) -> Result<(), RestApiResponseError> {
+    if let Some(gameroom) = helpers::fetch_gameroom_by_alias(&*pool.get()?, alias)? {
+        return Err(RestApiResponseError::BadRequest(format!(
+            "Gameroom with alias {} already exists",
+            gameroom.alias
+        )));
+    }
+    Ok(())
 }
 
 fn make_payload(

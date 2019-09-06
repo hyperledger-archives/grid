@@ -240,6 +240,12 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/BinaryData'
+          400:
+            description: Gameroom proposal request is invalid
+            content:
+              application/json:
+                  schema:
+                    $ref: '#/components/schemas/Error'
           500:
             description: Internal server error occurred
             content:
