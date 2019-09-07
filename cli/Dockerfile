@@ -44,28 +44,50 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
 
-RUN mkdir /build
-
 # Copy dependencies
-COPY libsplinter/ /build/libsplinter/
 COPY protos/ /build/protos/
-COPY client/ /build/client/
 
-# Create empty cargo project
+# Create empty cargo project for libsplinter
+WORKDIR /build
+RUN USER=root cargo new --lib libsplinter
+
+# Copy over Cargo.toml and build.rs
+COPY libsplinter/build.rs /build/libsplinter/build.rs
+COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
+
+# Do a release build to cache libsplinter dependencies
+WORKDIR /build/libsplinter
+RUN cargo build --release
+
+# Create empty cargo project for client
+WORKDIR /build
+RUN USER=root cargo new --lib client
+
+# Copy over client Cargo.toml
+COPY client/Cargo.toml /build/client/Cargo.toml
+
+# Do a release build to cache client dependencies
+WORKDIR /build/client
+RUN cargo build --release
+
+# Create empty cargo project for cli
 WORKDIR /build
 RUN USER=root cargo new --bin cli
 
 # Copy over Cargo.toml file
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 
-# Do a release build to cache dependencies
+# Do a release build to cache cli dependencies
 WORKDIR /build/cli
 RUN cargo build --release
 
 # Remove the auto-generated .rs files and the built files
 WORKDIR /build
-RUN rm */src/*.rs
-RUN rm cli/target/release/splinter* cli/target/release/deps/splinter*
+RUN rm cli/target/release/deps/*splinter*
+RUN rm client/target/release/*splinter* \
+    client/target/release/deps/*splinter*
+RUN rm libsplinter/target/release/*splinter* \
+    libsplinter/target/release/deps/*splinter*
 
 # Copy over source files
 COPY cli/src /build/cli/src
