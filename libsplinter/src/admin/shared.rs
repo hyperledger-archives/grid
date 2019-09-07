@@ -731,7 +731,7 @@ impl AdminServiceShared {
         if self
             .splinter_state
             .read()
-            .expect("splinter state lock poisoned")
+            .map_err(|_| AdminSharedError::PoisonedLock("Splinter State Read Lock".into()))?
             .has_circuit(circuit.get_circuit_id())
         {
             return Err(AdminSharedError::ValidationFailed(format!(
