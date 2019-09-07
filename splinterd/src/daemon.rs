@@ -290,6 +290,7 @@ impl SplinterDaemon {
         let orchestrator_resources = orchestrator.resources();
 
         let signature_verifier = SawtoothSecp256k1SignatureVeriifier::new();
+
         let key_registry = StorageKeyRegistry::new(self.key_registry_location.clone())
             .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
 
@@ -300,7 +301,7 @@ impl SplinterDaemon {
             Box::new(auth_manager.clone()),
             state.clone(),
             Box::new(signature_verifier),
-            Box::new(key_registry),
+            key_registry,
             Box::new(AllowAllKeyPermissionManager),
         )
         .map_err(|err| {

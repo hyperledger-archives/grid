@@ -16,6 +16,7 @@
 
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use std::sync::{Arc, RwLock};
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -28,22 +29,43 @@ use super::{KeyInfo, KeyRegistry, KeyRegistryError};
 ///
 /// This KeyRegistry is backed by the storage module, and therefore supports the same formats
 /// available.
+#[derive(Clone)]
 pub struct StorageKeyRegistry {
     storage_location: String,
-    persisted_key_registry: PersistedKeyRegistry,
+    persisted_key_registry: Arc<RwLock<PersistedKeyRegistry>>,
 }
 
 impl KeyRegistry for StorageKeyRegistry {
     fn save_key(&mut self, key_info: KeyInfo) -> Result<(), KeyRegistryError> {
-        self.persisted_key_registry.add_key(key_info)?;
-        self.write_key_registry()
+        let mut key_registry =
+            self.persisted_key_registry
+                .write()
+                .map_err(|_| KeyRegistryError {
+                    context: "Persisted Key Registry lock was poisoned".into(),
+                    source: None,
+                })?;
+
+        key_registry.add_key(key_info)?;
+
+        self.write_key_registry(&key_registry)?;
+
+        Ok(())
     }
 
     fn save_keys(&mut self, key_infos: Vec<KeyInfo>) -> Result<(), KeyRegistryError> {
+        let mut key_registry =
+            self.persisted_key_registry
+                .write()
+                .map_err(|_| KeyRegistryError {
+                    context: "Persisted Key Registry lock was poisoned".into(),
+                    source: None,
+                })?;
+
         for key_info in key_infos.into_iter() {
-            self.persisted_key_registry.add_key(key_info)?;
+            key_registry.add_key(key_info)?;
         }
-        self.write_key_registry()
+
+        self.write_key_registry(&key_registry)
     }
 
     fn delete_key(&mut self, _public_key: &[u8]) -> Result<Option<KeyInfo>, KeyRegistryError> {
@@ -54,7 +76,15 @@ impl KeyRegistry for StorageKeyRegistry {
     }
 
     fn get_key(&self, public_key: &[u8]) -> Result<Option<KeyInfo>, KeyRegistryError> {
-        self.persisted_key_registry
+        let key_registry = self
+            .persisted_key_registry
+            .read()
+            .map_err(|_| KeyRegistryError {
+                context: "Persisted Key Registry lock was poisoned".into(),
+                source: None,
+            })?;
+
+        key_registry
             .keys
             .get(&to_hex(public_key))
             .cloned()
@@ -62,15 +92,58 @@ impl KeyRegistry for StorageKeyRegistry {
             .transpose()
     }
 
-    fn keys<'a>(&'a self) -> Result<Box<dyn Iterator<Item = KeyInfo> + 'a>, KeyRegistryError> {
-        Ok(Box::new(
-            self.persisted_key_registry
+    fn keys<'iter, 'a: 'iter>(
+        &'a self,
+    ) -> Result<Box<dyn Iterator<Item = KeyInfo> + 'iter>, KeyRegistryError> {
+        Ok(Box::new(KeyRegistryIter {
+            persisted_key_registry: self.persisted_key_registry.clone(),
+            current_key_info_index: 0,
+        }))
+    }
+
+    fn clone_box(&self) -> Box<dyn KeyRegistry> {
+        Box::new(self.clone())
+    }
+}
+
+struct KeyRegistryIter {
+    persisted_key_registry: Arc<RwLock<PersistedKeyRegistry>>,
+    current_key_info_index: usize,
+}
+
+impl Iterator for KeyRegistryIter {
+    type Item = KeyInfo;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let key_registry = match self.persisted_key_registry.read() {
+            Ok(readable) => readable,
+            Err(_) => {
+                error!("Lock was poisoned while iterating over keys; returning None");
+                return None;
+            }
+        };
+
+        while self.current_key_info_index < key_registry.keys.len() {
+            let res = key_registry
                 .keys
                 .iter()
-                .map(|(_, key_info)| key_info.clone().try_into())
-                .filter(Result::is_ok)
-                .map(Result::unwrap),
-        ))
+                .nth(self.current_key_info_index)
+                .map(|(_, key_info)| key_info.clone())
+                .map(PersistedKeyInfo::try_into)
+                .transpose();
+
+            self.current_key_info_index += 1;
+
+            match res {
+                Ok(res) => return res,
+                Err(err) => {
+                    warn!("Skipping bad persisted key info: {}", err);
+                    continue;
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -91,7 +164,7 @@ impl StorageKeyRegistry {
 
         Ok(Self {
             storage_location,
-            persisted_key_registry,
+            persisted_key_registry: Arc::new(RwLock::new(persisted_key_registry)),
         })
     }
 
@@ -99,22 +172,24 @@ impl StorageKeyRegistry {
         &self.storage_location
     }
 
-    fn write_key_registry(&self) -> Result<(), KeyRegistryError> {
+    fn write_key_registry(
+        &self,
+        key_registry: &PersistedKeyRegistry,
+    ) -> Result<(), KeyRegistryError> {
         // Replace stored key_registry with the current key registry
-        let mut storage = get_storage(self.storage_location(), || {
-            self.persisted_key_registry.clone()
-        })
-        .map_err(|err: String| KeyRegistryError {
-            context: format!("unable to load key registry: {}", err),
-            source: None,
-        })?;
+        let mut storage = get_storage(self.storage_location(), || key_registry.clone()).map_err(
+            |err: String| KeyRegistryError {
+                context: format!("unable to load key registry: {}", err),
+                source: None,
+            },
+        )?;
 
         // when this is dropped the new state will be written to storage
-        **storage.write() = self.persisted_key_registry.clone();
+        **storage.write() = key_registry.clone();
+
         Ok(())
     }
 }
-
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 struct PersistedKeyRegistry {
     #[serde(flatten)]
