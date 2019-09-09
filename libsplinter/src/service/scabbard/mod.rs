@@ -50,10 +50,11 @@ use state::ScabbardState;
 const SERVICE_TYPE: &str = "scabbard";
 
 /// A service for running Sawtooth Sabre smart contracts with two-phase commit consensus.
+#[derive(Clone)]
 pub struct Scabbard {
     service_id: String,
     shared: Arc<Mutex<ScabbardShared>>,
-    consensus: Option<ScabbardConsensusManager>,
+    consensus: Arc<Mutex<Option<ScabbardConsensusManager>>>,
 }
 
 impl Scabbard {
@@ -77,7 +78,7 @@ impl Scabbard {
         Ok(Scabbard {
             service_id,
             shared: Arc::new(Mutex::new(shared)),
-            consensus: None,
+            consensus: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -120,7 +121,12 @@ impl Service for Scabbard {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
-        if self.consensus.is_some() {
+        let mut consensus = self
+            .consensus
+            .lock()
+            .map_err(|_| ServiceStartError::PoisonedLock("consensus lock poisoned".into()))?;
+
+        if consensus.is_some() {
             return Err(ServiceStartError::AlreadyStarted);
         }
 
@@ -130,7 +136,7 @@ impl Service for Scabbard {
             .set_network_sender(service_registry.connect(self.service_id())?);
 
         // Setup consensus
-        self.consensus = Some(
+        consensus.replace(
             ScabbardConsensusManager::new(self.service_id().into(), self.shared.clone())
                 .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
         );
@@ -144,6 +150,8 @@ impl Service for Scabbard {
     ) -> Result<(), ServiceStopError> {
         // Shutdown consensus
         self.consensus
+            .lock()
+            .map_err(|_| ServiceStopError::PoisonedLock("consensus lock poisoned".into()))?
             .take()
             .ok_or_else(|| ServiceStopError::NotStarted)?
             .shutdown()
@@ -161,7 +169,12 @@ impl Service for Scabbard {
     }
 
     fn destroy(self: Box<Self>) -> Result<(), ServiceDestroyError> {
-        if self.consensus.is_some() {
+        if self
+            .consensus
+            .lock()
+            .map_err(|_| ServiceDestroyError::PoisonedLock("consensus lock poisoned".into()))?
+            .is_some()
+        {
             Err(ServiceDestroyError::NotStopped)
         } else {
             Ok(())
@@ -178,6 +191,8 @@ impl Service for Scabbard {
         match message.get_message_type() {
             ScabbardMessage_Type::CONSENSUS_MESSAGE => self
                 .consensus
+                .lock()
+                .map_err(|_| ServiceError::PoisonedLock("consensus lock poisoned".into()))?
                 .as_ref()
                 .ok_or_else(|| ServiceError::NotStarted)?
                 .handle_message(message.get_consensus_message())
@@ -195,6 +210,8 @@ impl Service for Scabbard {
                     .add_proposed_batch(proposal.id.clone(), batch);
 
                 self.consensus
+                    .lock()
+                    .map_err(|_| ServiceError::PoisonedLock("consensus lock poisoned".into()))?
                     .as_ref()
                     .ok_or_else(|| ServiceError::NotStarted)?
                     .send_update(ProposalUpdate::ProposalReceived(
