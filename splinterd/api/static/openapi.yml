@@ -105,6 +105,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /keys:
+    get:
+      tags:
+        - Key Registry
+      description: List public key information in the Key Registry
+      parameters:
+        - name: offset
+          in: query
+          description: paging offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: maximum number of items to return (max 100)
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        200:
+          description: list of public key data objects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicKeyInfo'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /keys/{public_key}:
+    get:
+      tags:
+        - Key Registry
+      description: Fetch public key information in the Key Registry by public key
+      parameters:
+        - name: public_key
+          in: path
+          description: public key to query, in hex
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Node
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PublicKeyInfo"
+        400:
+          description: {public_key} was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: The information for {public_key} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /nodes:
     get:
       tags:
@@ -259,6 +335,20 @@ components:
         identity: node-123123-asdf
         company: Cargill
         status: Up
+
+    PublicKeyInfo:
+      type: object
+      properties:
+        public_key:
+          type: string
+        node_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            name: Jane User
+            organization: Acme Corporation
 
     Paging:
       type: object
