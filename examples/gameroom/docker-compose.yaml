@@ -16,8 +16,28 @@ version: '3'
 
 volumes:
   cargo-registry:
+  key-registry:
 
 services:
+
+    generate-key-registry:
+        image: splinter-cli
+        build:
+          context: ../..
+          dockerfile: ./cli/Dockerfile
+        volumes:
+          - key-registry:/key_registry
+          - ./key_registry:/input
+        command: |
+          bash -c "
+            if [ ! -f /key_registry/keys.yaml ]
+            then
+              splinter-cli admin keyregistry \
+                -i /input/key_registry_spec.yaml \
+                -d /key_registry \
+                --force
+            fi
+          "
 
     db-acme:
       image: postgres:alpine
@@ -93,10 +113,18 @@ services:
         context: ../..
         dockerfile: splinterd/Dockerfile
       volumes:
+        - key-registry:/key_registry_shared
         - ./splinterd-config:/configs
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
+          # We need to wait for the generated key registry to be available
+          while [ ! -f /key_registry_shared/keys.yaml ]; do \
+            echo 'waiting for key registry'; \
+            sleep 1; \
+          done && \
+          # Copy the generated key registry to its expected location
+          cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
           splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \
@@ -178,10 +206,18 @@ services:
         context: ../..
         dockerfile: splinterd/Dockerfile
       volumes:
+        - key-registry:/key_registry_shared
         - ./splinterd-config:/configs
         - ./node_registry:/node_registry
       entrypoint: |
         bash -c "
+          # We need to wait for the generated key registry to be available
+          while [ ! -f /key_registry_shared/keys.yaml ]; do \
+            echo 'waiting for key registry'; \
+            sleep 1; \
+          done && \
+          # Copy the generated key registry to its expected location
+          cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
           splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \

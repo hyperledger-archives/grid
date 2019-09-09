@@ -1,0 +1,11 @@
+---
+alice:
+  node_id: node-001
+  metadata:
+    gameroom/first-name: alice
+    gameroom/organization: Acme
+bob:
+  node_id: node-002
+  metadata:
+    gameroom/first-name: bob
+    gameroom/organization: Bubba Bakery

@@ -27,7 +27,7 @@ peers = []
 
 # The type of storage that should be used to store circuit state. Option are
 # currently "yaml" or "memory"
-storage = "memory"
+storage = "yaml"
 
 # Which transport type this splinterd node supports. Options are "raw" or "tls"
 transport = "tls"
