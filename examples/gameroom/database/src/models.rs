@@ -167,3 +167,30 @@ pub struct NewGameroomNotification {
     pub created_time: SystemTime,
     pub read: bool,
 }
+
+#[derive(Queryable, Identifiable, Associations)]
+#[table_name = "xo_games"]
+pub struct XoGame {
+    pub id: i64,
+    pub circuit_id: String,
+    pub game_name: String,
+    pub player_1: String,
+    pub player_2: String,
+    pub game_status: String,
+    pub game_board: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Debug, Insertable)]
+#[table_name = "xo_games"]
+pub struct NewXoGame {
+    pub circuit_id: String,
+    pub game_name: String,
+    pub player_1: String,
+    pub player_2: String,
+    pub game_status: String,
+    pub game_board: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
