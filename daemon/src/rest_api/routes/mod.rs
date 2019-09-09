@@ -840,6 +840,7 @@ mod test {
 
         let test_product = body.first().unwrap();
         assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
         assert_eq!(test_product.owner, "phillips001".to_string());
         assert_eq!(test_product.properties.len(), 2);
@@ -867,6 +868,7 @@ mod test {
         let test_product: ProductSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
         assert_eq!(test_product.owner, "phillips001".to_string());
         assert_eq!(test_product.properties.len(), 2);
@@ -1785,6 +1787,7 @@ mod test {
     fn get_product() -> Vec<NewProduct> {
         vec![NewProduct {
             product_id: "041205707820".to_string(),
+            product_address: "test_address".to_string(),
             product_namespace: "Grid Product".to_string(),
             owner: "phillips001".to_string(),
             start_block_num: 0,
@@ -2289,6 +2292,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 product_id: "041205707820".to_string(),
+                product_address: "test_address".to_string(),
                 property_name: "Test Grid Product".to_string(),
                 data_type: "Lightbulb".to_string(),
                 bytes_value: None,
@@ -2303,6 +2307,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 product_id: "041205707820".to_string(),
+                product_address: "test_address".to_string(),
                 property_name: "Test Grid Product".to_string(),
                 data_type: "Lightbulb".to_string(),
                 bytes_value: None,

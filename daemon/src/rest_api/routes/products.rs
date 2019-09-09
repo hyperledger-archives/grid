@@ -31,6 +31,7 @@ use std::collections::HashMap;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProductSlice {
     pub product_id: String,
+    pub product_address: String,
     pub product_namespace: String,
     pub owner: String,
     pub properties: Vec<ProductPropertyValueSlice>,
@@ -40,6 +41,7 @@ impl ProductSlice {
     pub fn from_model(product: &Product, properties: Vec<ProductPropertyValue>) -> Self {
         Self {
             product_id: product.product_id.clone(),
+            product_address: product.product_address.clone(),
             product_namespace: product.product_namespace.clone(),
             owner: product.owner.clone(),
             properties: properties
