@@ -48,7 +48,7 @@ pub fn parse_hex(hex: &str) -> Result<Vec<u8>, HexError> {
 #[derive(Debug)]
 pub struct HexError {
     context: String,
-    source: Option<Box<dyn Error>>,
+    source: Option<Box<dyn Error + Send>>,
 }
 
 impl Error for HexError {

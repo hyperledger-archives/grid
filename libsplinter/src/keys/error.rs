@@ -21,7 +21,7 @@ use std::fmt;
 #[derive(Debug)]
 pub struct KeyRegistryError {
     pub context: String,
-    pub source: Option<Box<dyn Error>>,
+    pub source: Option<Box<dyn Error + Send>>,
 }
 
 impl Error for KeyRegistryError {
