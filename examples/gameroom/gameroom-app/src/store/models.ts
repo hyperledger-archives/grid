@@ -108,3 +108,15 @@ export interface Gameroom {
   alias: string;
   status: string;
 }
+
+export interface Game {
+  id: number;
+  game_name: string;
+  circuit_id: string;
+  player_1: string;
+  player_2: string;
+  game_status: string;
+  game_board: string;
+  created_time: number;
+  updated_time: number;
+}
