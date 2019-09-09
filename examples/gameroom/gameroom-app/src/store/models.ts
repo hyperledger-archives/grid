@@ -103,6 +103,7 @@ export interface Gameroom {
   authorization_type: string;
   persistence: string;
   routes: string;
+  members: Member[];
   circuit_management_type: string;
   alias: string;
   status: string;

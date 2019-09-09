@@ -76,6 +76,15 @@ export async function gameroomPropose(
 
 export async function listGamerooms(): Promise<Gameroom[]> {
   const response = await gameroomAPI.get('/gamerooms');
+  const gamerooms = response.data.data.map((gameroom: any) => {
+    const members = gameroom.members.map(async (member: any) => {
+      const node = await getNode(member.node_id);
+      member.organization = node.metadata.organization;
+      return member as Member;
+    });
+    Promise.all(members).then((m) => gameroom.members = m);
+    return gameroom as Gameroom;
+  });
   return response.data.data as Gameroom[];
 }
 
