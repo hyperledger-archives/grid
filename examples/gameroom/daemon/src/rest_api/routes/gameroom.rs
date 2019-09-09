@@ -15,7 +15,11 @@ use std::collections::HashMap;
 
 use actix_web::{error, web, Error, HttpResponse};
 use futures::{Future, IntoFuture};
-use gameroom_database::{helpers, models::Gameroom, ConnectionPool};
+use gameroom_database::{
+    helpers,
+    models::{Gameroom, GameroomMember as DbGameroomMember},
+    ConnectionPool,
+};
 use libsplinter::admin::messages::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
@@ -61,20 +65,40 @@ struct ApiGameroom {
     persistence: String,
     routes: String,
     circuit_management_type: String,
+    members: Vec<ApiGameroomMember>,
     alias: String,
     status: String,
 }
 
 impl ApiGameroom {
-    fn from(db_gameroom: Gameroom) -> Self {
+    fn from(db_gameroom: Gameroom, db_members: Vec<DbGameroomMember>) -> Self {
         Self {
             circuit_id: db_gameroom.circuit_id.to_string(),
             authorization_type: db_gameroom.authorization_type.to_string(),
             persistence: db_gameroom.persistence.to_string(),
             routes: db_gameroom.routes.to_string(),
             circuit_management_type: db_gameroom.circuit_management_type.to_string(),
+            members: db_members
+                .into_iter()
+                .map(ApiGameroomMember::from)
+                .collect(),
             alias: db_gameroom.alias.to_string(),
             status: db_gameroom.status.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct ApiGameroomMember {
+    node_id: String,
+    endpoint: String,
+}
+
+impl ApiGameroomMember {
+    fn from(db_circuit_member: DbGameroomMember) -> Self {
+        ApiGameroomMember {
+            node_id: db_circuit_member.node_id.to_string(),
+            endpoint: db_circuit_member.endpoint.to_string(),
         }
     }
 }
@@ -298,6 +322,7 @@ fn list_gamerooms_from_db(
 ) -> Result<(Vec<ApiGameroom>, i64), RestApiResponseError> {
     let db_limit = limit as i64;
     let db_offset = offset as i64;
+
     if let Some(status) = status_optional {
         let gamerooms = helpers::list_gamerooms_with_paging_and_status(
             &*pool.get()?,
@@ -306,14 +331,40 @@ fn list_gamerooms_from_db(
             db_offset,
         )?
         .into_iter()
-        .map(ApiGameroom::from)
-        .collect();
+        .map(|gameroom| {
+            let circuit_id = gameroom.circuit_id.to_string();
+            let member_status = match gameroom.status.as_str() {
+                "Pending" => "Pending",
+                "Rejected" => "Rejected",
+                _ => "Accepted",
+            };
+            let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
+                &*pool.get()?,
+                &circuit_id,
+                member_status,
+            )?;
+            Ok(ApiGameroom::from(gameroom, members))
+        })
+        .collect::<Result<Vec<ApiGameroom>, RestApiResponseError>>()?;
         Ok((gamerooms, helpers::get_gameroom_count(&*pool.get()?)?))
     } else {
         let gamerooms = helpers::list_gamerooms_with_paging(&*pool.get()?, db_limit, db_offset)?
             .into_iter()
-            .map(ApiGameroom::from)
-            .collect();
+            .map(|gameroom| {
+                let circuit_id = gameroom.circuit_id.to_string();
+                let member_status = match gameroom.status.as_str() {
+                    "Pending" => "Pending",
+                    "Rejected" => "Rejected",
+                    _ => "Accepted",
+                };
+                let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
+                    &*pool.get()?,
+                    &circuit_id,
+                    member_status,
+                )?;
+                Ok(ApiGameroom::from(gameroom, members))
+            })
+            .collect::<Result<Vec<ApiGameroom>, RestApiResponseError>>()?;
         Ok((gamerooms, helpers::get_gameroom_count(&*pool.get()?)?))
     }
 }
@@ -348,7 +399,17 @@ fn fetch_gameroom_from_db(
     circuit_id: &str,
 ) -> Result<ApiGameroom, RestApiResponseError> {
     if let Some(gameroom) = helpers::fetch_gameroom(&*pool.get()?, circuit_id)? {
-        return Ok(ApiGameroom::from(gameroom));
+        let member_status = match gameroom.status.as_str() {
+            "Pending" => "Pending",
+            "Rejected" => "Rejected",
+            _ => "Accepted",
+        };
+        let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
+            &*pool.get()?,
+            &gameroom.circuit_id,
+            member_status,
+        )?;
+        return Ok(ApiGameroom::from(gameroom, members));
     }
     Err(RestApiResponseError::NotFound(format!(
         "Gameroom with id {} not found",
