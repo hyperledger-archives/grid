@@ -291,8 +291,10 @@ impl SplinterDaemon {
 
         let signature_verifier = SawtoothSecp256k1SignatureVeriifier::new();
 
-        let key_registry = StorageKeyRegistry::new(self.key_registry_location.clone())
-            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
+        let key_registry = Box::new(
+            StorageKeyRegistry::new(self.key_registry_location.clone())
+                .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?,
+        );
 
         let admin_service = AdminService::new(
             &self.node_id,
@@ -301,12 +303,13 @@ impl SplinterDaemon {
             Box::new(auth_manager.clone()),
             state.clone(),
             Box::new(signature_verifier),
-            key_registry,
+            key_registry.clone(),
             Box::new(AllowAllKeyPermissionManager),
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
         })?;
+        let key_registry_manager = routes::KeyRegistryManager::new(key_registry);
 
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
@@ -321,6 +324,7 @@ impl SplinterDaemon {
                 routes::get_status(node_id.clone(), service_endpoint.clone())
             }))
             .add_resources(node_registry_manager.resources())
+            .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources)
             .build()?
