@@ -41,6 +41,12 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
 
+# Fetch the XO smart contract
+RUN curl -OLsS https://build.sawtooth.me/job/Sawtooth-Hyperledger/job/sawtooth-sdk-rust/job/master/lastSuccessfulBuild/artifact/build/scar/*zip*/scar.zip \
+    && unzip -oj scar.zip \
+    && tar -xvf xo_*.scar \
+    && rm scar.zip xo_*.scar
+
 # Copy dependencies
 COPY examples/gameroom/database /build/examples/gameroom/database
 COPY protos /build/protos
@@ -97,3 +103,4 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=BUILDER /build/examples/gameroom/daemon/target/release/gameroomd /usr/bin/gameroomd
+COPY --from=BUILDER /xo-tp-rust.wasm /var/lib/gameroomd/xo-tp-rust.wasm

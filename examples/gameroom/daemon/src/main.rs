@@ -29,8 +29,9 @@ mod rest_api;
 
 use flexi_logger::{LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
+use sawtooth_sdk::signing::create_context;
 
-use crate::config::GameroomConfigBuilder;
+use crate::config::{get_node, GameroomConfigBuilder};
 use crate::error::GameroomDaemonError;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -70,13 +71,27 @@ fn run() -> Result<(), GameroomDaemonError> {
     let connection_pool: ConnectionPool =
         gameroom_database::create_connection_pool(config.database_url())?;
 
-    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) =
-        authorization_handler::run(config.splinterd_url(), connection_pool.clone())?;
+    // Generate a public/private key pair
+    let context = create_context("secp256k1")?;
+    let private_key = context.new_random_private_key()?;
+    let public_key = context.get_public_key(&*private_key)?;
+
+    // Get splinterd node information
+    let node = get_node(config.splinterd_url())?;
+
+    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) = authorization_handler::run(
+        config.splinterd_url().into(),
+        node.identity.clone(),
+        connection_pool.clone(),
+        private_key.as_hex(),
+    )?;
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
         config.splinterd_url(),
+        node,
         connection_pool.clone(),
+        public_key.as_hex(),
     )?;
 
     ctrlc::set_handler(move || {

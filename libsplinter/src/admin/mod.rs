@@ -219,7 +219,7 @@ impl Service for AdminService {
                     ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
                 })?;
 
-                admin_service_shared.add_pending_consesus_proposal(
+                admin_service_shared.add_pending_consensus_proposal(
                     proposal.id.clone(),
                     (proposal.clone(), circuit_payload.clone()),
                 );
@@ -659,5 +659,4 @@ mod tests {
             Ok(())
         }
     }
-
 }

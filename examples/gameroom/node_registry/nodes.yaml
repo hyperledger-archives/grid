@@ -17,9 +17,7 @@
   metadata:
     organization: 'Bubba Bakery'
     endpoint: 'tls://splinterd-node-bubba:8044'
-    public_key: '036c63fc7f99c62fe310d286b1cb91d00cc92c3edf09fb6cb031ca49e783a05b75'
 - identity: 'acme-node-000'
   metadata:
     organization: 'ACME Corporation'
     endpoint: 'tls://splinterd-node-acme:8044'
-    public_key: '02784a1e17ac64bae3ed16ba8a32f0b120f37c4ef2066f89cb1be92c85f1a0b37b'

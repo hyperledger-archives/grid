@@ -40,7 +40,3 @@ registry_backend = "FILE"
 
 # Node Registry file
 registry_file = "/node_registry/nodes.yaml"
-
-# Public/private key pair for this node
-public_key = "02784a1e17ac64bae3ed16ba8a32f0b120f37c4ef2066f89cb1be92c85f1a0b37b"
-private_key = "54a6083f6dd66e9cdca6de483a661c7dd676436eeecac9b8357506aa8d4664ca"

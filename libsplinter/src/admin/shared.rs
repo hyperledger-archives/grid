@@ -50,7 +50,7 @@ static PROPOSER_ROLE: &str = "proposer";
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
 
-enum CircuitProposalStatus {
+pub enum CircuitProposalStatus {
     Accepted,
     Rejected,
     Pending,
@@ -84,7 +84,7 @@ pub struct AdminServiceShared {
     // CircuitManagmentPayloads that still need to go through consensus
     pending_circuit_payloads: VecDeque<CircuitManagementPayload>,
     // The pending consensus proposals
-    pending_consesus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
+    pending_consensus_proposals: HashMap<ProposalId, (Proposal, CircuitManagementPayload)>,
     // the pending changes for the current proposal
     pending_changes: Option<CircuitProposalContext>,
     // the verifiers that should be broadcasted for the pending change
@@ -121,7 +121,7 @@ impl AdminServiceShared {
             auth_inquisitor,
             unpeered_payloads: Vec::new(),
             pending_circuit_payloads: VecDeque::new(),
-            pending_consesus_proposals: HashMap::new(),
+            pending_consensus_proposals: HashMap::new(),
             pending_changes: None,
             current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
@@ -152,26 +152,26 @@ impl AdminServiceShared {
         self.pending_circuit_payloads.pop_front()
     }
 
-    pub fn pending_consesus_proposals(
+    pub fn pending_consensus_proposals(
         &self,
         id: &ProposalId,
     ) -> Option<&(Proposal, CircuitManagementPayload)> {
-        self.pending_consesus_proposals.get(id)
+        self.pending_consensus_proposals.get(id)
     }
 
-    pub fn remove_pending_consesus_proposals(
+    pub fn remove_pending_consensus_proposals(
         &mut self,
         id: &ProposalId,
     ) -> Option<(Proposal, CircuitManagementPayload)> {
-        self.pending_consesus_proposals.remove(id)
+        self.pending_consensus_proposals.remove(id)
     }
 
-    pub fn add_pending_consesus_proposal(
+    pub fn add_pending_consensus_proposal(
         &mut self,
         id: ProposalId,
         proposal: (Proposal, CircuitManagementPayload),
     ) {
-        self.pending_consesus_proposals.insert(id, proposal);
+        self.pending_consensus_proposals.insert(id, proposal);
     }
 
     pub fn current_consensus_verifiers(&self) -> &Vec<String> {
@@ -194,10 +194,7 @@ impl AdminServiceShared {
                         // commit new circuit
                         let circuit = circuit_proposal.get_circuit_proposal();
                         self.update_splinter_state(circuit)?;
-                        // remove approved proposal
-                        self.remove_proposal(&circuit_id);
                         // send message about circuit acceptance
-
                         let circuit_proposal_proto =
                             messages::CircuitProposal::from_proto(circuit_proposal.clone())
                                 .map_err(AdminSharedError::InvalidMessageFormat)?;
@@ -532,8 +529,12 @@ impl AdminServiceShared {
         self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
-    fn remove_proposal(&mut self, circuit_id: &str) {
-        self.open_proposals.remove(circuit_id);
+    pub fn get_proposal(&self, circuit_id: &str) -> Option<&CircuitProposal> {
+        self.open_proposals.get(circuit_id)
+    }
+
+    pub fn remove_proposal(&mut self, circuit_id: &str) -> Option<CircuitProposal> {
+        self.open_proposals.remove(circuit_id)
     }
 
     fn validate_create_circuit(
@@ -739,7 +740,7 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    fn check_approved(
+    pub fn check_approved(
         &self,
         proposal: &CircuitProposal,
     ) -> Result<CircuitProposalStatus, AdminSharedError> {
@@ -770,13 +771,10 @@ impl AdminServiceShared {
 
     /// Initialize all services that this node should run on the created circuit using the service
     /// orchestrator.
-    pub fn initialize_services(
-        &mut self,
-        create_circuit: &messages::CreateCircuit,
-    ) -> Result<(), AdminSharedError> {
+    pub fn initialize_services(&mut self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         // Get all services this node is allowed to run
-        let services = create_circuit
-            .roster
+        let services = circuit
+            .get_roster()
             .iter()
             .filter(|service| service.allowed_nodes.contains(&self.node_id))
             .collect::<Vec<_>>();
@@ -784,13 +782,19 @@ impl AdminServiceShared {
         // Start all services
         for service in services {
             let service_definition = ServiceDefinition {
-                circuit: create_circuit.circuit_id.clone(),
+                circuit: circuit.circuit_id.clone(),
                 service_id: service.service_id.clone(),
                 service_type: service.service_type.clone(),
             };
 
+            let service_arguments = service
+                .arguments
+                .iter()
+                .map(|arg| (arg.key.clone(), arg.value.clone()))
+                .collect();
+
             self.orchestrator
-                .initialize_service(service_definition.clone(), service.arguments.clone())?;
+                .initialize_service(service_definition.clone(), service_arguments)?;
 
             self.running_services.insert(service_definition);
         }
