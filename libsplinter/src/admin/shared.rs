@@ -954,7 +954,7 @@ impl AdminServiceShared {
 mod tests {
     use super::*;
 
-    use protobuf::RepeatedField;
+    use protobuf::{Message, RepeatedField};
 
     use crate::circuit::directory::CircuitDirectory;
     use crate::keys::{
@@ -967,6 +967,10 @@ mod tests {
     };
     use crate::protos::admin;
     use crate::protos::admin::{SplinterNode, SplinterService};
+    use crate::protos::authorization::{
+        AuthorizationMessage, AuthorizationMessageType, AuthorizedMessage,
+    };
+    use crate::protos::network::{NetworkMessage, NetworkMessageType};
     use crate::signing::hash::HashVerifier;
     use crate::storage::get_storage;
     use crate::transport::{
@@ -980,9 +984,9 @@ mod tests {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
         let mut transport = MockConnectingTransport::expect_connections(vec![
-            Ok(Box::new(MockConnection)),
-            Ok(Box::new(MockConnection)),
-            Ok(Box::new(MockConnection)),
+            Ok(Box::new(MockConnection::new())),
+            Ok(Box::new(MockConnection::new())),
+            Ok(Box::new(MockConnection::new())),
         ]);
         let orchestrator_connection = transport
             .connect("inproc://admin-service")
@@ -1054,9 +1058,9 @@ mod tests {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
         let mut transport = MockConnectingTransport::expect_connections(vec![
-            Ok(Box::new(MockConnection)),
-            Ok(Box::new(MockConnection)),
-            Ok(Box::new(MockConnection)),
+            Ok(Box::new(MockConnection::new())),
+            Ok(Box::new(MockConnection::new())),
+            Ok(Box::new(MockConnection::new())),
         ]);
         let orchestrator_connection = transport
             .connect("inproc://admin-service")
@@ -1702,8 +1706,8 @@ mod tests {
         let mesh = Mesh::new(4, 16);
         let network = Network::new(mesh.clone());
         let transport = MockConnectingTransport::expect_connections(vec![
-            Ok(Box::new(MockConnection)),
-            Ok(Box::new(MockConnection)),
+            Ok(Box::new(MockConnection::new())),
+            Ok(Box::new(MockConnection::new())),
         ]);
         let peer_connector = PeerConnector::new(network.clone(), Box::new(transport));
         peer_connector
@@ -1711,7 +1715,7 @@ mod tests {
 
     fn setup_orchestrator() -> ServiceOrchestrator {
         let mut transport =
-            MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
+            MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection::new()))]);
         let orchestrator_connection = transport
             .connect("inproc://admin-service")
             .expect("failed to create connection");
@@ -1779,7 +1783,19 @@ mod tests {
         }
     }
 
-    struct MockConnection;
+    struct MockConnection {
+        auth_response: Option<Vec<u8>>,
+        evented: MockEvented,
+    }
+
+    impl MockConnection {
+        fn new() -> Self {
+            Self {
+                auth_response: Some(authorized_response()),
+                evented: MockEvented::new(),
+            }
+        }
+    }
 
     impl Connection for MockConnection {
         fn send(&mut self, _message: &[u8]) -> Result<(), SendError> {
@@ -1787,7 +1803,7 @@ mod tests {
         }
 
         fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
-            panic!("MockConnection.recv unexpectedly called")
+            Ok(self.auth_response.take().unwrap_or_else(|| vec![]))
         }
 
         fn remote_endpoint(&self) -> String {
@@ -1803,35 +1819,72 @@ mod tests {
         }
 
         fn evented(&self) -> &dyn mio::Evented {
-            &MockEvented
+            &self.evented
         }
     }
 
-    struct MockEvented;
+    struct MockEvented {
+        registration: mio::Registration,
+        set_readiness: mio::SetReadiness,
+    }
+
+    impl MockEvented {
+        fn new() -> Self {
+            let (registration, set_readiness) = mio::Registration::new2();
+
+            Self {
+                registration,
+                set_readiness,
+            }
+        }
+    }
 
     impl mio::Evented for MockEvented {
         fn register(
             &self,
-            _poll: &mio::Poll,
-            _token: mio::Token,
-            _interest: mio::Ready,
-            _opts: mio::PollOpt,
+            poll: &mio::Poll,
+            token: mio::Token,
+            interest: mio::Ready,
+            opts: mio::PollOpt,
         ) -> std::io::Result<()> {
+            self.registration.register(poll, token, interest, opts)?;
+            self.set_readiness.set_readiness(mio::Ready::readable())?;
+
             Ok(())
         }
 
         fn reregister(
             &self,
-            _poll: &mio::Poll,
-            _token: mio::Token,
-            _interest: mio::Ready,
-            _opts: mio::PollOpt,
+            poll: &mio::Poll,
+            token: mio::Token,
+            interest: mio::Ready,
+            opts: mio::PollOpt,
         ) -> std::io::Result<()> {
-            Ok(())
+            self.registration.reregister(poll, token, interest, opts)
         }
 
-        fn deregister(&self, _poll: &mio::Poll) -> std::io::Result<()> {
-            Ok(())
+        fn deregister(&self, poll: &mio::Poll) -> std::io::Result<()> {
+            poll.deregister(&self.registration)
         }
+    }
+
+    fn authorized_response() -> Vec<u8> {
+        let msg_type = AuthorizationMessageType::AUTHORIZE;
+        let auth_msg = AuthorizedMessage::new();
+        let mut auth_msg_env = AuthorizationMessage::new();
+        auth_msg_env.set_message_type(msg_type);
+        auth_msg_env.set_payload(auth_msg.write_to_bytes().expect("unable to write to bytes"));
+
+        let mut network_msg = NetworkMessage::new();
+        network_msg.set_message_type(NetworkMessageType::AUTHORIZATION);
+        network_msg.set_payload(
+            auth_msg_env
+                .write_to_bytes()
+                .expect("unable to write to bytes"),
+        );
+
+        network_msg
+            .write_to_bytes()
+            .expect("unable to write to bytes")
     }
 }

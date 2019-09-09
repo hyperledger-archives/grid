@@ -221,7 +221,17 @@ impl Handler<AuthorizationMessageType, ConnectRequest> for ConnectRequestHandler
                     )?,
                 ))?;
             }
-            Ok(AuthorizationState::Internal) => (),
+            Ok(AuthorizationState::Internal) => {
+                debug!(
+                    "Sending Authorized message to internal peer {}",
+                    context.source_peer_id()
+                );
+                let auth_msg = AuthorizedMessage::new();
+                sender.send(SendRequest::new(
+                    context.source_peer_id().to_string(),
+                    wrap_in_network_auth_envelopes(AuthorizationMessageType::AUTHORIZE, auth_msg)?,
+                ))?;
+            }
             Ok(next_state) => panic!("Should not have been able to transition to {}", next_state),
         }
 
