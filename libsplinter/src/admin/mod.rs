@@ -375,7 +375,7 @@ mod tests {
 
         // set up key registry
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(b"test_signer".to_vec(), "test_node".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let circuit_directory = storage.write().clone();
@@ -431,8 +431,8 @@ mod tests {
 
         let mut header = admin::CircuitManagementPayload_Header::new();
         header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        header.set_requester(b"test_signer_a".to_vec());
-        header.set_requester_node_id("node_a".to_string());
+        header.set_requester(b"test_signer".to_vec());
+        header.set_requester_node_id("test_node".to_string());
 
         let mut payload = admin::CircuitManagementPayload::new();
 
