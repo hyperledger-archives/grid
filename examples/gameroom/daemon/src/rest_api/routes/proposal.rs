@@ -23,6 +23,7 @@ use gameroom_database::{
     ConnectionPool,
 };
 use libsplinter::admin::messages::CircuitProposalVote;
+use libsplinter::node_registry::Node;
 use libsplinter::protos::admin::{
     CircuitManagementPayload, CircuitManagementPayload_Action as Action,
     CircuitManagementPayload_Header as Header,
@@ -203,10 +204,12 @@ pub fn proposal_vote(
     vote: web::Json<CircuitProposalVote>,
     proposal_id: web::Path<i64>,
     pool: web::Data<ConnectionPool>,
+    node_info: web::Data<Node>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let node_identity = node_info.identity.to_string();
     Box::new(
         web::block(move || check_proposal_exists(*proposal_id, pool)).then(|res| match res {
-            Ok(()) => match make_payload(vote.into_inner()) {
+            Ok(()) => match make_payload(vote.into_inner(), node_identity) {
                 Ok(bytes) => Ok(HttpResponse::Ok()
                     .json(SuccessResponse::new(json!({ "payload_bytes": bytes })))),
                 Err(err) => {
@@ -255,7 +258,10 @@ fn check_proposal_exists(
     )))
 }
 
-fn make_payload(vote: CircuitProposalVote) -> Result<Vec<u8>, RestApiResponseError> {
+fn make_payload(
+    vote: CircuitProposalVote,
+    local_node: String,
+) -> Result<Vec<u8>, RestApiResponseError> {
     let vote_proto = vote.into_proto();
     let vote_bytes = vote_proto.write_to_bytes()?;
     let hashed_bytes = hash(MessageDigest::sha512(), &vote_bytes)?;
@@ -263,6 +269,7 @@ fn make_payload(vote: CircuitProposalVote) -> Result<Vec<u8>, RestApiResponseErr
     let mut header = Header::new();
     header.set_action(Action::CIRCUIT_PROPOSAL_VOTE);
     header.set_payload_sha512(hashed_bytes.to_vec());
+    header.set_requester_node_id(local_node);
     let header_bytes = header.write_to_bytes()?;
 
     let mut circuit_management_payload = CircuitManagementPayload::new();
