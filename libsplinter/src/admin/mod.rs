@@ -347,7 +347,9 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use crate::circuit::{directory::CircuitDirectory, SplinterState};
-    use crate::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
+    use crate::keys::{
+        insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry, KeyInfo,
+    };
     use crate::mesh::Mesh;
     use crate::network::{auth::AuthorizationCallback, Network};
     use crate::protos::admin;
@@ -370,7 +372,12 @@ mod tests {
         ]);
 
         let mut storage = get_storage("memory", CircuitDirectory::new).unwrap();
-        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
         let circuit_directory = storage.write().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
             "memory".to_string(),
@@ -424,6 +431,8 @@ mod tests {
 
         let mut header = admin::CircuitManagementPayload_Header::new();
         header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+        header.set_requester(b"test_signer_a".to_vec());
+        header.set_requester_node_id("node_a".to_string());
 
         let mut payload = admin::CircuitManagementPayload::new();
 
