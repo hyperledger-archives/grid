@@ -101,6 +101,18 @@ impl KeyRegistry for StorageKeyRegistry {
         }))
     }
 
+    fn count(&self) -> Result<usize, KeyRegistryError> {
+        Ok(self
+            .persisted_key_registry
+            .read()
+            .map_err(|_| KeyRegistryError {
+                context: "Persisted Key Registry lock was poisoned".into(),
+                source: None,
+            })?
+            .keys
+            .len())
+    }
+
     fn clone_box(&self) -> Box<dyn KeyRegistry> {
         Box::new(self.clone())
     }

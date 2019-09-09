@@ -189,6 +189,9 @@ pub trait KeyRegistry: Send + Sync {
         &'a self,
     ) -> KeyRegistryResult<Box<dyn Iterator<Item = KeyInfo> + 'iter>>;
 
+    /// Return the total count of keys in the registry.
+    fn count(&self) -> KeyRegistryResult<usize>;
+
     /// Clones this instance and returns a boxed, dynamic version.
     fn clone_box(&self) -> Box<dyn KeyRegistry>;
 }
