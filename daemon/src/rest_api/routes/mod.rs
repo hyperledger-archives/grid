@@ -15,12 +15,14 @@
 mod agents;
 mod batches;
 mod organizations;
+mod products;
 mod records;
 mod schemas;
 
 pub use agents::*;
 pub use batches::*;
 pub use organizations::*;
+pub use products::*;
 pub use records::*;
 pub use schemas::*;
 
@@ -65,11 +67,12 @@ mod test {
         helpers::MAX_BLOCK_NUM,
         models::{
             LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
-            NewOrganization, NewProperty, NewProposal, NewRecord, NewReportedValue, NewReporter,
+            NewOrganization, NewProduct, NewProductPropertyValue, NewProperty, NewProposal,
+            NewRecord, NewReportedValue, NewReporter,
         },
         schema::{
-            associated_agent, grid_property_definition, grid_schema, property, proposal, record,
-            reported_value, reporter,
+            associated_agent, grid_property_definition, grid_schema, product,
+            product_property_value, property, proposal, record, reported_value, reporter,
         },
     };
     use crate::rest_api::{
@@ -223,6 +226,12 @@ mod test {
             })
             .resource("/organization/{id}", |r| {
                 r.method(Method::GET).with_async(fetch_organization)
+            })
+            .resource("/product", |r| {
+                r.method(Method::GET).with_async(list_products)
+            })
+            .resource("/product/{id}", |r| {
+                r.method(Method::GET).with_async(fetch_product)
             })
             .resource("/schema", |r| {
                 r.method(Method::GET).with_async(list_grid_schemas)
@@ -796,6 +805,85 @@ mod test {
         clear_grid_schema_table(&test_pool.get().unwrap());
         let request = srv
             .client(http::Method::GET, "/schema/not_in_database")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    /// Verifies a GET /product responds with an OK response with a
+    ///     list_products request.
+    ///
+    ///     The TestServer will receive a request with no parameters,
+    ///         then will respond with an Ok status and a list of Products.
+    #[test]
+    fn test_list_products() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        // Clears the product table in the test database
+        clear_product_table(&test_pool.get().unwrap());
+        let request = srv.client(http::Method::GET, "/product").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<ProductSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_product_table(&test_pool.get().unwrap(), &get_product());
+        let request = srv.client(http::Method::GET, "/product").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<ProductSlice> =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_product = body.first().unwrap();
+        assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_namespace, "Grid Product".to_string());
+        assert_eq!(test_product.owner, "phillips001".to_string());
+        assert_eq!(test_product.properties.len(), 2);
+    }
+
+    ///
+    /// Verifies a GET /product/{id} responds with an OK response
+    ///     and the Product with the specified id
+    ///
+    #[test]
+    fn test_fetch_product_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        populate_product_table(&test_pool.get().unwrap(), &get_product());
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/product/{}", "041205707820".to_string()),
+            )
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        let test_product: ProductSlice =
+            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_namespace, "Grid Product".to_string());
+        assert_eq!(test_product.owner, "phillips001".to_string());
+        assert_eq!(test_product.properties.len(), 2);
+    }
+
+    ///
+    /// Verifies a GET /product/{id} responds with a Not Found error
+    ///     when there is no Product with the specified id
+    ///
+    #[test]
+    fn test_fetch_product_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        clear_product_table(&test_pool.get().unwrap());
+        let request = srv
+            .client(http::Method::GET, "/product/not_in_database")
             .finish()
             .unwrap();
         let response = srv.execute(request.send()).unwrap();
@@ -1694,6 +1782,16 @@ mod test {
         }]
     }
 
+    fn get_product() -> Vec<NewProduct> {
+        vec![NewProduct {
+            product_id: "041205707820".to_string(),
+            product_namespace: "Grid Product".to_string(),
+            owner: "phillips001".to_string(),
+            start_block_num: 0,
+            end_block_num: MAX_BLOCK_NUM,
+        }]
+    }
+
     fn get_associated_agents() -> Vec<NewAssociatedAgent> {
         vec![
             NewAssociatedAgent {
@@ -1868,6 +1966,16 @@ mod test {
         populate_property_definition_table(conn, &get_property_definition());
         insert_into(grid_schema::table)
             .values(schemas)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn populate_product_table(conn: &PgConnection, products: &[NewProduct]) {
+        clear_product_table(conn);
+        populate_product_property_value_table(conn, &get_product_property_value());
+        insert_into(product::table)
+            .values(products)
             .execute(conn)
             .map(|_| ())
             .unwrap();
@@ -2061,6 +2169,11 @@ mod test {
         diesel::delete(grid_schema).execute(conn).unwrap();
     }
 
+    fn clear_product_table(conn: &PgConnection) {
+        use crate::database::schema::product::dsl::*;
+        diesel::delete(product).execute(conn).unwrap();
+    }
+
     fn clear_tnt_reported_value_table(conn: &PgConnection) {
         use crate::database::schema::reported_value::dsl::*;
         diesel::delete(reported_value).execute(conn).unwrap();
@@ -2166,6 +2279,58 @@ mod test {
     fn clear_property_definition_table(conn: &PgConnection) {
         use crate::database::schema::grid_property_definition::dsl::*;
         diesel::delete(grid_property_definition)
+            .execute(conn)
+            .unwrap();
+    }
+
+    fn get_product_property_value() -> Vec<NewProductPropertyValue> {
+        vec![
+            NewProductPropertyValue {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                product_id: "041205707820".to_string(),
+                property_name: "Test Grid Product".to_string(),
+                data_type: "Lightbulb".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(0),
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+            NewProductPropertyValue {
+                start_block_num: 0,
+                end_block_num: MAX_BLOCK_NUM,
+                product_id: "041205707820".to_string(),
+                property_name: "Test Grid Product".to_string(),
+                data_type: "Lightbulb".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(0),
+                string_value: None,
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+            },
+        ]
+    }
+
+    fn populate_product_property_value_table(
+        conn: &PgConnection,
+        properties: &[NewProductPropertyValue],
+    ) {
+        clear_product_property_value_table(conn);
+        insert_into(product_property_value::table)
+            .values(properties)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn clear_product_property_value_table(conn: &PgConnection) {
+        use crate::database::schema::product_property_value::dsl::*;
+        diesel::delete(product_property_value)
             .execute(conn)
             .unwrap();
     }
