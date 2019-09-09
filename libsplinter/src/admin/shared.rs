@@ -347,7 +347,12 @@ impl AdminServiceShared {
                 }
                 let signer_public_key = header.get_requester();
 
-                self.validate_circuit_vote(proposal_vote, signer_public_key, &circuit_proposal)?;
+                self.validate_circuit_vote(
+                    proposal_vote,
+                    signer_public_key,
+                    &circuit_proposal,
+                    header.get_requester_node_id(),
+                )?;
                 // add vote to circuit_proposal
                 let mut vote_record = CircuitProposal_VoteRecord::new();
                 vote_record.set_public_key(signer_public_key.to_vec());
@@ -543,6 +548,12 @@ impl AdminServiceShared {
         signer_public_key: &[u8],
         requester_node_id: &str,
     ) -> Result<(), AdminSharedError> {
+        if requester_node_id.is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "requester_node_id is empty".to_string(),
+            ));
+        }
+
         let key_info = self
             .key_registry
             .get_key(signer_public_key)
@@ -683,6 +694,7 @@ impl AdminServiceShared {
         proposal_vote: &CircuitProposalVote,
         signer_public_key: &[u8],
         circuit_proposal: &CircuitProposal,
+        node_id: &str,
     ) -> Result<(), AdminSharedError> {
         let circuit_hash = proposal_vote.get_circuit_hash();
 
@@ -698,6 +710,13 @@ impl AdminServiceShared {
             })?;
 
         let signer_node = key_info.associated_node_id().to_string();
+
+        if signer_node != node_id {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "Payload requester node id does not match the node the key is registered to: {}",
+                to_hex(circuit_proposal.get_requester())
+            )));
+        }
 
         if circuit_proposal.get_requester_node_id() == signer_node {
             return Err(AdminSharedError::ValidationFailed(format!(
@@ -1468,7 +1487,9 @@ mod tests {
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
 
-        if let Err(err) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+        if let Err(err) =
+            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
+        {
             panic!("Should have been valid: {}", err);
         }
     }
@@ -1497,7 +1518,9 @@ mod tests {
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
 
-        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+        if let Ok(_) =
+            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
+        {
             panic!("Should have been invalid because signer is not registered for a node");
         }
     }
@@ -1527,7 +1550,9 @@ mod tests {
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
-        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+        if let Ok(_) =
+            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
+        {
             panic!("Should have been invalid because signer registered for the requester node");
         }
     }
@@ -1565,7 +1590,9 @@ mod tests {
 
         proposal.set_votes(RepeatedField::from_vec(vec![vote_record]));
 
-        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+        if let Ok(_) =
+            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
+        {
             panic!("Should have been invalid because node as already submited a vote");
         }
     }
@@ -1599,7 +1626,9 @@ mod tests {
 
         proposal.set_circuit_hash("bad_hash".to_string());
 
-        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal) {
+        if let Ok(_) =
+            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
+        {
             panic!("Should have been invalid becasue the circuit hash does not match");
         }
     }
