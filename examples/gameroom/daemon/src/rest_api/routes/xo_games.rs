@@ -14,7 +14,13 @@
 
 use std::time::{Duration, SystemTime};
 
-use gameroom_database::models::XoGame;
+use actix_web::{error, web, Error, HttpResponse};
+use futures::Future;
+use gameroom_database::{helpers, models::XoGame, ConnectionPool};
+
+use crate::rest_api::RestApiResponseError;
+
+use super::{ErrorResponse, SuccessResponse};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiXoGame {
@@ -49,4 +55,45 @@ impl From<XoGame> for ApiXoGame {
                 .as_secs(),
         }
     }
+}
+
+pub fn fetch_xo(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: web::Path<String>,
+    game_name: web::Path<String>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        web::block(move || fetch_xo_game_from_db(pool, &circuit_id, &game_name)).then(|res| {
+            match res {
+                Ok(xo_game) => Ok(HttpResponse::Ok().json(SuccessResponse::new(xo_game))),
+                Err(err) => match err {
+                    error::BlockingError::Error(err) => match err {
+                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        _ => Ok(HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                    },
+                    error::BlockingError::Canceled => {
+                        debug!("Internal Server Error: {}", err);
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
+                    }
+                },
+            }
+        }),
+    )
+}
+
+fn fetch_xo_game_from_db(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: &str,
+    game_name: &str,
+) -> Result<ApiXoGame, RestApiResponseError> {
+    if let Some(xo_game) = helpers::fetch_xo_game(&*pool.get()?, circuit_id, game_name)? {
+        return Ok(ApiXoGame::from(xo_game));
+    }
+    Err(RestApiResponseError::NotFound(format!(
+        "XO Game with name {} not found",
+        game_name
+    )))
 }
