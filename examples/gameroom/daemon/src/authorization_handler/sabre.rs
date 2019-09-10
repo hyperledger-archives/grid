@@ -20,6 +20,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
+use std::thread;
 use std::time::Instant;
 
 use crypto::digest::Digest;
@@ -39,6 +40,7 @@ use sawtooth_sdk::messages::batch::{Batch, BatchHeader, BatchList};
 use sawtooth_sdk::messages::transaction::{Transaction, TransactionHeader};
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
 use sawtooth_sdk::signing::{create_context, CryptoFactory, Signer};
+use tokio::runtime::Runtime;
 
 use super::AppAuthHandlerError;
 
@@ -104,7 +106,6 @@ pub fn setup_xo(
     let payload = batch_list.write_to_bytes().map_err(|err| {
         AppAuthHandlerError::SawtoothError(format!("failed to serialize batch list: {}", err))
     })?;
-
     // Submit the batch to the scabbard service
     let body_stream = futures::stream::once::<_, std::io::Error>(Ok(payload));
     let req = Request::builder()
@@ -116,37 +117,47 @@ pub fn setup_xo(
         .body(Body::wrap_stream(body_stream))
         .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))?;
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
-    let client = Client::new();
-    runtime.block_on(client.request(req).then(|response| match response {
-        Ok(res) => {
-            let status = res.status();
-            let body = res
-                .into_body()
-                .concat2()
-                .wait()
-                .map_err(|err| {
-                    AppAuthHandlerError::BatchSubmitError(format!(
-                        "The client encountered an error {}",
-                        err
-                    ))
-                })?
-                .to_vec();
+    let join_handle = thread::spawn(move || {
+        let mut runtime = Runtime::new()
+            .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))?;
 
-            match status {
-                StatusCode::ACCEPTED => Ok(()),
-                _ => Err(AppAuthHandlerError::BatchSubmitError(format!(
-                    "The server returned an error. Status: {}, {}",
-                    status,
-                    String::from_utf8(body)?
+        let client = Client::new();
+        runtime
+            .block_on(client.request(req).then(|response| match response {
+                Ok(res) => {
+                    let status = res.status();
+                    let body = res
+                        .into_body()
+                        .concat2()
+                        .wait()
+                        .map_err(|err| {
+                            AppAuthHandlerError::BatchSubmitError(format!(
+                                "The client encountered an error {}",
+                                err
+                            ))
+                        })?
+                        .to_vec();
+
+                    match status {
+                        StatusCode::ACCEPTED => Ok(()),
+                        _ => Err(AppAuthHandlerError::BatchSubmitError(format!(
+                            "The server returned an error. Status: {}, {}",
+                            status,
+                            String::from_utf8(body)?
+                        ))),
+                    }
+                }
+                Err(err) => Err(AppAuthHandlerError::BatchSubmitError(format!(
+                    "The client encountered an error {}",
+                    err
                 ))),
-            }
-        }
-        Err(err) => Err(AppAuthHandlerError::BatchSubmitError(format!(
-            "The client encountered an error {}",
-            err
-        ))),
-    }))
+            }))
+            .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))
+    });
+
+    join_handle
+        .join()
+        .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{:?}", err)))?
 }
 
 fn create_contract_registry_txn(
