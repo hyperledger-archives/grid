@@ -41,6 +41,7 @@ class ProposalsModule extends VuexModule {
     try {
       const payload = await proposalVote(vote.ballot, vote.proposalID);
       const signedPayload = signPayload(payload, user.privateKey);
+      this.context.dispatch('votes/vote', vote.proposalID, {root: true});
       const response = await submitPayload(signedPayload);
       return response;
     } catch (e) {

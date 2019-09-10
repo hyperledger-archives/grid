@@ -16,6 +16,7 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import userModule from '@/store/modules/user';
 import notificationsModule from '@/store/modules/notifications';
+import votesModule from '@/store/modules/votes';
 import VuexPersistence from 'vuex-persist';
 
 Vue.use(Vuex);
@@ -29,6 +30,7 @@ export default new Vuex.Store({
   modules: {
     user: userModule,
     notifications: notificationsModule,
+    votes: votesModule,
   },
   plugins: [vuexLocal.plugin],
   mutations: {
