@@ -159,10 +159,14 @@ pub fn run(
                     )
                     .service(
                         web::scope("/xo/{circuit_id}").service(
-                            web::scope("/games").service(
-                                web::resource("/{game_id}")
-                                    .route(web::get().to_async(routes::fetch_xo)),
-                            ),
+                            web::scope("/games")
+                                .service(
+                                    web::resource("/{game_id}")
+                                        .route(web::get().to_async(routes::fetch_xo)),
+                                )
+                                .service(
+                                    web::resource("").route(web::get().to_async(routes::list_xo)),
+                                ),
                         ),
                     )
             })

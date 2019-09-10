@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use actix_web::{error, web, Error, HttpResponse};
@@ -20,7 +21,9 @@ use gameroom_database::{helpers, models::XoGame, ConnectionPool};
 
 use crate::rest_api::RestApiResponseError;
 
-use super::{ErrorResponse, SuccessResponse};
+use super::{
+    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiXoGame {
@@ -96,4 +99,55 @@ fn fetch_xo_game_from_db(
         "XO Game with name {} not found",
         game_name
     )))
+}
+
+pub fn list_xo(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: web::Path<String>,
+    query: web::Query<HashMap<String, usize>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let offset: usize = query
+        .get("offset")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_OFFSET);
+
+    let limit: usize = query
+        .get("limit")
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| DEFAULT_LIMIT);
+    let base_link = format!("api/xo/games/{}", &circuit_id);
+
+    Box::new(
+        web::block(move || list_xo_games_from_db(pool, &circuit_id.clone(), limit, offset)).then(
+            move |res| match res {
+                Ok((games, query_count)) => {
+                    let paging_info =
+                        get_response_paging_info(limit, offset, &base_link, query_count as usize);
+                    Ok(HttpResponse::Ok().json(SuccessResponse::list(games, paging_info)))
+                }
+                Err(err) => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
+            },
+        ),
+    )
+}
+
+fn list_xo_games_from_db(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: &str,
+    limit: usize,
+    offset: usize,
+) -> Result<(Vec<ApiXoGame>, i64), RestApiResponseError> {
+    let db_limit = limit as i64;
+    let db_offset = offset as i64;
+
+    let xo_games = helpers::list_xo_games(&*pool.get()?, circuit_id, db_limit, db_offset)?
+        .into_iter()
+        .map(ApiXoGame::from)
+        .collect();
+    let game_count = helpers::get_xo_game_count(&*pool.get()?)?;
+
+    Ok((xo_games, game_count))
 }
