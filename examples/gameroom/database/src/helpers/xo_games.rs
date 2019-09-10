@@ -80,3 +80,7 @@ pub fn update_xo_game(
     .execute(conn)
     .map(|_| ())
 }
+
+pub fn get_xo_game_count(conn: &PgConnection) -> QueryResult<i64> {
+    xo_games::table.count().get_result(conn)
+}
