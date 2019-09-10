@@ -277,12 +277,14 @@ message AdminMessage {
         UNSET = 0;
         CONSENSUS_MESSAGE = 1;
         PROPOSED_CIRCUIT = 2;
+        MEMBER_READY = 3;
     }
 
     Type message_type = 1;
 
     bytes consensus_message = 2;
     ProposedCircuit proposed_circuit = 3;
+    MemberReady member_ready = 4;
 }
 
 message ProposedCircuit {
@@ -294,4 +296,9 @@ message ProposedCircuit {
     bytes expected_hash = 2;
 
     bytes required_verifiers = 3;
+}
+
+message MemberReady {
+    string circuit_id = 1;
+    string member_node_id = 2;
 }
