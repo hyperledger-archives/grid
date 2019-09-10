@@ -71,7 +71,7 @@ export default class Invitations extends Vue {
   }
 
   get proposals() {
-    const props = proposals.proposalList;
+    const props = proposals.proposalList.filter((p) => p.status === 'Pending');
     if (this.currentTab === 1) {
       return props.filter((p) => !this.isSelf(p.requester));
     } else if (this.currentTab === 2) {
