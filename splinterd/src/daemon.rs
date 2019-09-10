@@ -78,6 +78,7 @@ pub struct SplinterDaemon {
     node_id: String,
     rest_api_endpoint: String,
     registry_config: RegistryConfig,
+    storage_type: String,
 }
 
 impl SplinterDaemon {
@@ -302,6 +303,7 @@ impl SplinterDaemon {
             Box::new(signature_verifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
+            &self.storage_type,
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
@@ -471,6 +473,7 @@ pub struct SplinterDaemonBuilder {
     rest_api_endpoint: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
+    storage_type: Option<String>,
 }
 
 impl SplinterDaemonBuilder {
@@ -523,6 +526,11 @@ impl SplinterDaemonBuilder {
         self
     }
 
+    pub fn with_storage_type(mut self, value: String) -> Self {
+        self.storage_type = Some(value);
+        self
+    }
+
     pub fn build(self) -> Result<SplinterDaemon, CreateError> {
         let mesh = Mesh::new(512, 128);
         let network = Network::new(mesh.clone());
@@ -555,6 +563,10 @@ impl SplinterDaemonBuilder {
             CreateError::MissingRequiredField("Missing field: rest_api_endpoint".to_string())
         })?;
 
+        let storage_type = self.storage_type.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: storage_type".to_string())
+        })?;
+
         let mut registry_config_builder = RegistryConfigBuilder::default();
         registry_config_builder =
             registry_config_builder.with_registry_backend(self.registry_backend);
@@ -575,6 +587,7 @@ impl SplinterDaemonBuilder {
             rest_api_endpoint,
             registry_config,
             key_registry_location,
+            storage_type,
         })
     }
 }

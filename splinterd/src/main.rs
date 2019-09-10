@@ -216,7 +216,8 @@ fn main() {
         .with_initial_peers(initial_peers)
         .with_node_id(node_id)
         .with_rest_api_endpoint(rest_api_endpoint)
-        .with_registry_backend(registry_backend.clone());
+        .with_registry_backend(registry_backend.clone())
+        .with_storage_type(storage_type);
 
     if let Some(registry_file) = registry_file {
         daemon_builder = daemon_builder.with_registry_file(registry_file);
