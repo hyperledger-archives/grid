@@ -39,6 +39,13 @@ impl KeyRegistry for StorageKeyRegistry {
         self.write_key_registry()
     }
 
+    fn save_keys(&mut self, key_infos: Vec<KeyInfo>) -> Result<(), KeyRegistryError> {
+        for key_info in key_infos.into_iter() {
+            self.persisted_key_registry.add_key(key_info)?;
+        }
+        self.write_key_registry()
+    }
+
     fn delete_key(&mut self, _public_key: &[u8]) -> Result<Option<KeyInfo>, KeyRegistryError> {
         Err(KeyRegistryError {
             context: "Operation not supported".into(),

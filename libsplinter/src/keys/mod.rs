@@ -147,6 +147,14 @@ pub trait KeyRegistry: Send {
     /// information.
     fn save_key(&mut self, key_info: KeyInfo) -> KeyRegistryResult<()>;
 
+    /// Save a collection of public keys and their information.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `KeyRegistryError` if the underling implementation could not save the key
+    /// information.
+    fn save_keys(&mut self, key_infos: Vec<KeyInfo>) -> KeyRegistryResult<()>;
+
     /// Delete a public key and its information.
     ///
     /// Returns the existing key information, if it exists.
