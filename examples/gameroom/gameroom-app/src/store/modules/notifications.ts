@@ -39,9 +39,11 @@ const getters = {
 };
 
 const actions = {
-  async listNotifications({ commit, rootGetters }: any) {
+  async listNotifications({ commit, rootGetters, dispatch }: any) {
     const publicKey = rootGetters['user/getPublicKey'];
     const notifications = await listNotifications(publicKey);
+    await dispatch('proposals/listProposals', null, {root: true});
+    await dispatch('gamerooms/listGamerooms', null, {root: true});
     commit('setNotifications', notifications);
   },
   async markRead({ commit }: any, id: string) {
