@@ -160,6 +160,7 @@ impl Action for KeyRegistryGenerationAction {
             }
         }
 
+        let mut key_infos = vec![];
         for (key_name, key_spec) in registry_spec.keys.into_iter() {
             let private_key_path = target_dir.join(&key_name).with_extension("priv");
             let public_key_path = target_dir.join(&key_name).with_extension("pub");
@@ -178,12 +179,12 @@ impl Action for KeyRegistryGenerationAction {
                 key_info_builder = key_info_builder.with_metadata(meta_key, meta_value);
             }
 
-            key_registry
-                .save_key(key_info_builder.build())
-                .map_err(|err| {
-                    CliError::ActionError(format!("Unable to write key for {}: {}", key_name, err))
-                })?;
+            key_infos.push(key_info_builder.build());
         }
+
+        key_registry
+            .save_keys(key_infos)
+            .map_err(|err| CliError::ActionError(format!("Unable to write keys: {}", err)))?;
 
         Ok(())
     }
