@@ -110,8 +110,8 @@ pub fn propose_gameroom(
 
     let scabbard_admin_keys = vec![public_key.get_ref().public_key.clone()];
 
-    let mut scabbard_args = HashMap::new();
-    scabbard_args.insert(
+    let mut scabbard_args = vec![];
+    scabbard_args.push((
         "admin_keys".into(),
         match serde_json::to_string(&scabbard_admin_keys) {
             Ok(s) => s,
@@ -122,7 +122,7 @@ pub fn propose_gameroom(
                     .into_future();
             }
         },
-    );
+    ));
 
     let mut roster = vec![];
     for node in members.iter() {
@@ -148,7 +148,7 @@ pub fn propose_gameroom(
         };
 
         let mut service_args = scabbard_args.clone();
-        service_args.insert("peer_services".into(), peer_services);
+        service_args.push(("peer_services".into(), peer_services));
 
         roster.push(SplinterService {
             service_id: format!("gameroom_{}", node.node_id),
