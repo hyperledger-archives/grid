@@ -75,6 +75,7 @@ export interface GameroomNotification {
   id: number;
   notification_type: string;
   org: string;
+  requester: string;
   target: string;
   timestamp: number;
   read: boolean;

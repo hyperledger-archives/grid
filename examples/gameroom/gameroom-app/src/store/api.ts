@@ -136,10 +136,14 @@ export async function proposalVote(ballot: Ballot, proposalID: string,
 }
 
 // Notifications
-export async function listNotifications(): Promise<GameroomNotification[]> {
+export async function listNotifications(publicKey: string): Promise<GameroomNotification[]> {
   try {
     const response = await gameroomAPI.get('/notifications');
-    return response.data.data as GameroomNotification[];
+    const notifications = response.data.data as GameroomNotification[];
+    const filtered = notifications.filter(
+      (notification) => !(notification.notification_type === 'gameroom_proposal'
+                          && notification.requester === publicKey));
+    return filtered as GameroomNotification[];
   } catch (e) {
     alert(e);
   }
