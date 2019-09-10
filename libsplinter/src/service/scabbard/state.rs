@@ -84,12 +84,15 @@ impl ScabbardState {
 
         // Initialize transact
         let context_manager = ContextManager::new(Box::new(MerkleState::new(db.clone())));
-        let executor = Executor::new(vec![Box::new(StaticExecutionAdapter::new_adapter(
+        let mut executor = Executor::new(vec![Box::new(StaticExecutionAdapter::new_adapter(
             vec![Box::new(SawtoothToTransactHandlerAdapter::new(
                 SabreTransactionHandler::new(),
             ))],
             context_manager.clone(),
         )?)]);
+        executor
+            .start()
+            .map_err(|err| ScabbardStateError(format!("failed to start executor: {}", err)))?;
 
         let event_dealer = EventDealer::new();
 
