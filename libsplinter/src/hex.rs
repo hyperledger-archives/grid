@@ -15,6 +15,9 @@
 use std::error::Error;
 use std::fmt::{self, Write};
 
+use serde::de;
+use serde::{Deserializer, Serializer};
+
 pub fn to_hex(bytes: &[u8]) -> String {
     let mut buf = String::new();
     for b in bytes {
@@ -43,6 +46,49 @@ pub fn parse_hex(hex: &str) -> Result<Vec<u8>, HexError> {
     }
 
     Ok(res)
+}
+
+pub fn as_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut buf = String::new();
+    for b in data {
+        write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
+    }
+
+    serializer.serialize_str(&buf)
+}
+
+pub fn deserialize_hex<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct DeserializeHex;
+    impl<'de> de::Visitor<'de> for DeserializeHex {
+        /// Return type of this visitor. This visitor computes the max of a
+        /// sequence of values of type T, so the type of the maximum is T.
+        type Value = Vec<u8>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a hex string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match parse_hex(v) {
+                Ok(vec) => Ok(vec),
+                Err(err) => Err(de::Error::custom(err)),
+            }
+        }
+    }
+
+    // Create the visitor and ask the deserializer to drive it. The
+    // deserializer will call visitor.visit_seq() if a seq is present in
+    // the input data.
+    deserializer.deserialize_any(DeserializeHex)
 }
 
 #[derive(Debug)]
