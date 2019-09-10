@@ -20,22 +20,10 @@ limitations under the License.
       <div class="title">
         {{ alias }}
       </div>
+      <div class="secondary-text">{{ getSecondaryText(proposal) }}</div>
     </div>
     <div class="body">
       <div class="data">
-        <div class="key">{{ getTimestampLabel(proposal.requester) }}</div>
-        <div class="value">
-          {{ fromNow(proposal.created_time) }}
-        </div>
-      </div>
-      <div v-if="!isSelf(proposal.requester)" class="data">
-        <div class="key">from:</div>
-        <div class="value">
-          {{ proposal.requester_org }}
-        </div>
-      </div>
-      <div class="data">
-        <div class="key">members:</div>
         <div class="value">
           <li class="list-value"
               v-for="(member, index) in proposal.members"
@@ -45,7 +33,7 @@ limitations under the License.
         </div>
       </div>
     </div>
-    <div v-if="!isSelf(proposal.requester)" class="actions">
+    <div v-if="!isSelf(proposal.requester) && !hasVoted()" class="actions">
       <button :disabled="!canSubmit"
               class="btn-action table"
               @click="acceptInvitation">
@@ -57,6 +45,18 @@ limitations under the License.
               @click="rejectInvitation">
         <div v-if="rejectSubmitting" class="spinner" />
         <div class="btn-text">Reject</div>
+      </button>
+    </div>
+    <div v-if="!isSelf(proposal.requester) && hasVoted()" class="actions">
+      <button disabled
+              class="btn-action table">
+        <div class="btn-text">Vote submitted</div>
+      </button>
+    </div>
+    <div v-if="isSelf(proposal.requester)" class="actions">
+      <button disabled
+              class="btn-action table">
+        <div class="btn-text">Invitation sent</div>
       </button>
     </div>
   </div>
@@ -89,6 +89,11 @@ export default class InvitationCard extends Vue {
     return !this.acceptSubmitting && !this.rejectSubmitting;
   }
 
+  hasVoted(): boolean {
+    const votes = this.$store.getters['votes/voteList'];
+    return votes[this.proposal.proposal_id];
+  }
+
   fromNow(timestamp: number): string {
     return moment.unix(timestamp).fromNow();
   }
@@ -98,12 +103,14 @@ export default class InvitationCard extends Vue {
     return (key === publicKey);
   }
 
-  getTimestampLabel(key: string) {
-    if (this.isSelf(key)) {
-      return 'sent:';
+  getSecondaryText(proposal: GameroomProposal) {
+    let secondaryText = this.fromNow(proposal.created_time);
+    if (this.isSelf(proposal.requester)) {
+      secondaryText += ' - Sent';
     } else {
-      return 'received:';
+      secondaryText += ` - Invited by ${proposal.requester_org}`;
     }
+    return secondaryText;
   }
 
   async acceptInvitation() {

@@ -14,46 +14,60 @@
 
 .card-container {
   display: flex;
-  width: 100%;
+  flex-direction: column;
   @include overlay(1);
   @include shadow(1);
   @include rounded-border;
-  height: 7rem;
   margin-bottom: 1rem;
   overflow: hidden;
   white-space: nowrap;
+  padding: 1rem;
 
   .header {
     display: flex;
-    border-right: 1px solid $color-border;
-    padding: 1rem;
-    font-weight: $fw-bold;
+    flex-direction: column;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid $color-border;
+
+    .title {
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      font-weight: $fw-bold;
+      padding-bottom: .2rem;
+    }
+
+    .secondary-text {
+      font-size: .9rem;
+      color: $color-text-disabled;
+    }
   }
 
   .body {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
+    padding: 1rem;
 
     .data {
       display: flex;
-      flex-direction: column;
-      padding: 1rem;
-
-      .key {
-        text-transform: uppercase;
-        font-weight: $fw-bold;
-        font-size: .8rem;
-        color: $color-text-med;
-        padding-bottom: .5rem;
-      }
 
       .value {
         font-size: .9rem;
-        padding-left: .5rem;
-        list-style: none;
 
         .list-value {
-          padding-bottom: .5rem;
+          border-radius: 1rem;
+          list-style: none;
+          display: inline;
+          padding: .3rem .5rem;
+          margin-right: 1rem;
+        }
+
+        .list-value:nth-child(even) {
+          color: white;
+          background-color: #d32f2f;
+        }
+        .list-value:nth-child(odd) {
+          color: white;
+          background-color: #2d9ee0;
         }
       }
     }
@@ -61,11 +75,12 @@
 
   .actions {
     display: flex;
-    flex-direction: column;
     justify-content: space-between;
     margin-left: auto;
-    border-left: 1px solid $color-border;
-    padding: 1rem;
+
+    .btn-action {
+      margin-right: 1rem;
+    }
   }
 
   &:hover {
