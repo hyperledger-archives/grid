@@ -50,7 +50,7 @@ static PROPOSER_ROLE: &str = "proposer";
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
 
-pub enum CircuitProposalStatus {
+enum CircuitProposalStatus {
     Accepted,
     Rejected,
     Pending,
@@ -194,7 +194,10 @@ impl AdminServiceShared {
                         // commit new circuit
                         let circuit = circuit_proposal.get_circuit_proposal();
                         self.update_splinter_state(circuit)?;
+                        // remove approved proposal
+                        self.remove_proposal(&circuit_id);
                         // send message about circuit acceptance
+
                         let circuit_proposal_proto =
                             messages::CircuitProposal::from_proto(circuit_proposal.clone())
                                 .map_err(AdminSharedError::InvalidMessageFormat)?;
@@ -534,12 +537,8 @@ impl AdminServiceShared {
         self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
-    pub fn get_proposal(&self, circuit_id: &str) -> Option<&CircuitProposal> {
-        self.open_proposals.get(circuit_id)
-    }
-
-    pub fn remove_proposal(&mut self, circuit_id: &str) -> Option<CircuitProposal> {
-        self.open_proposals.remove(circuit_id)
+    fn remove_proposal(&mut self, circuit_id: &str) {
+        self.open_proposals.remove(circuit_id);
     }
 
     fn validate_create_circuit(
@@ -759,7 +758,7 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    pub fn check_approved(
+    fn check_approved(
         &self,
         proposal: &CircuitProposal,
     ) -> Result<CircuitProposalStatus, AdminSharedError> {
