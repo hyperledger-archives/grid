@@ -179,6 +179,7 @@ impl From<ServiceDisconnectionError> for ServiceStopError {
 pub enum ServiceDestroyError {
     NotStopped,
     Internal(Box<dyn Error + Send>),
+    PoisonedLock(String),
 }
 
 impl Error for ServiceDestroyError {
@@ -186,6 +187,7 @@ impl Error for ServiceDestroyError {
         match self {
             ServiceDestroyError::NotStopped => None,
             ServiceDestroyError::Internal(err) => Some(&**err),
+            ServiceDestroyError::PoisonedLock(_) => None,
         }
     }
 }
@@ -195,6 +197,7 @@ impl std::fmt::Display for ServiceDestroyError {
         match self {
             ServiceDestroyError::NotStopped => write!(f, "service not stopped"),
             ServiceDestroyError::Internal(err) => write!(f, "unable to destroy service: {}", err),
+            ServiceDestroyError::PoisonedLock(msg) => write!(f, "a lock was poisoned: {}", msg),
         }
     }
 }

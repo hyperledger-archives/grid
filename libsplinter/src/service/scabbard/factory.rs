@@ -134,31 +134,29 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                 None => {
                     return Box::new(HttpResponse::InternalServerError().finish().into_future())
                 }
-            };
-
-            let body = match payload
-                .map_err(ActixError::from)
-                .fold(web::BytesMut::new(), move |mut body, chunk| {
-                    body.extend_from_slice(&chunk);
-                    Ok::<_, ActixError>(body)
-                })
-                .wait()
-            {
-                Ok(b) => b,
-                Err(_) => {
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
-                }
-            };
-
-            let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
-                Ok(b) => b,
-                Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
-            };
-
-            match scabbard.add_batches(batches) {
-                Ok(_) => Box::new(HttpResponse::Accepted().finish().into_future()),
-                Err(_) => Box::new(HttpResponse::InternalServerError().finish().into_future()),
             }
+            .clone();
+
+            Box::new(
+                payload
+                    .from_err::<ActixError>()
+                    .fold(web::BytesMut::new(), move |mut body, chunk| {
+                        body.extend_from_slice(&chunk);
+                        Ok::<_, ActixError>(body)
+                    })
+                    .into_future()
+                    .and_then(move |body| {
+                        let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
+                            Ok(b) => b,
+                            Err(_) => return HttpResponse::BadRequest().finish().into_future(),
+                        };
+
+                        match scabbard.add_batches(batches) {
+                            Ok(_) => HttpResponse::Accepted().finish().into_future(),
+                            Err(_) => HttpResponse::InternalServerError().finish().into_future(),
+                        }
+                    }),
+            )
         }),
     }
 }

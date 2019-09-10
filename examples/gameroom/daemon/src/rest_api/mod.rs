@@ -27,6 +27,11 @@ use libsplinter::node_registry::Node;
 pub use error::{RestApiResponseError, RestApiServerError};
 use routes::ErrorResponse;
 
+#[derive(Clone)]
+pub struct GameroomdData {
+    pub public_key: String,
+}
+
 pub struct RestApiShutdownHandle {
     do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
 }
@@ -52,6 +57,7 @@ pub fn run(
 > {
     let bind_url = bind_url.to_owned();
     let splinterd_url = splinterd_url.to_owned();
+    let gameroomd_data = GameroomdData { public_key };
     let (tx, rx) = mpsc::channel();
     let join_handle = thread::Builder::new()
         .name("GameroomdRestApi".into())
@@ -64,7 +70,7 @@ pub fn run(
                     .data(Client::new())
                     .data(splinterd_url.to_owned())
                     .data(node.clone())
-                    .data(public_key.clone())
+                    .data(gameroomd_data.clone())
                     .data(
                         // change path extractor configuration
                         web::Path::<String>::configure(|cfg| {

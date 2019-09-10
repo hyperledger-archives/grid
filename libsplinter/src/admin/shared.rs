@@ -191,6 +191,10 @@ impl AdminServiceShared {
 
                 match self.check_approved(&circuit_proposal) {
                     Ok(CircuitProposalStatus::Accepted) => {
+                        // add the approved proposal because it will be needed by the
+                        // on_proposal_accept callback later
+                        self.add_proposal(circuit_proposal.clone());
+
                         // commit new circuit
                         let circuit = circuit_proposal.get_circuit_proposal();
                         self.update_splinter_state(circuit)?;
