@@ -52,12 +52,7 @@ pub fn as_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let mut buf = String::new();
-    for b in data {
-        write!(&mut buf, "{:02x}", b).expect("Unable to write to string");
-    }
-
-    serializer.serialize_str(&buf)
+    serializer.serialize_str(&to_hex(data))
 }
 
 pub fn deserialize_hex<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>

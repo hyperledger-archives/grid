@@ -20,6 +20,7 @@ use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
 #[cfg(feature = "events")]
 use crate::events::{ParseBytes, ParseError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::hex::{as_hex, deserialize_hex};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
 use super::error::MarshallingError;
@@ -34,6 +35,8 @@ pub struct CreateCircuit {
     pub durability: DurabilityType,
     pub routes: RouteType,
     pub circuit_management_type: String,
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
     pub application_metadata: Vec<u8>,
 }
 
@@ -255,6 +258,8 @@ pub struct CircuitProposal {
     pub circuit_hash: String,
     pub circuit: CreateCircuit,
     pub votes: Vec<VoteRecord>,
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
     pub requester: Vec<u8>,
     pub requester_node_id: String,
 }
