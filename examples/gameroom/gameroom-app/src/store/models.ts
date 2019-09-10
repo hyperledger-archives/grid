@@ -69,6 +69,7 @@ export interface GameroomProposal {
   created_time: number;
   updated_time: number;
   requester_org: string;
+  status: string;
 }
 
 export interface GameroomNotification {

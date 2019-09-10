@@ -79,6 +79,11 @@ export async function listGamerooms(): Promise<Gameroom[]> {
   return response.data.data as Gameroom[];
 }
 
+export async function fetchGameroom(circuitID: string): Promise<Gameroom> {
+  const response = await gameroomAPI.get(`/gamerooms/${circuitID}`);
+  return response.data as Gameroom;
+}
+
 // Nodes
 export async function listNodes(): Promise<Node[]> {
   const response = await gameroomAPI.get('/nodes');
@@ -108,20 +113,28 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
   const response = await gameroomAPI.get('/proposals');
-  const proposals = response.data.data.map((proposal: any) => {
-    const members = proposal.members.map(async (member: any) => {
-      const node = await getNode(member.node_id);
-      if (node.identity === proposal.requester_node_id) {
-        proposal.requester_org = node.metadata.organization;
-      }
-      member.organization = node.metadata.organization;
-      return member as Member;
-    });
-    Promise.all(members).then((m) => proposal.members = m);
-    return proposal as GameroomProposal;
-  });
 
-  return proposals as GameroomProposal[];
+  const getMembers = async (member: any) => {
+    const node = await getNode(member.node_id);
+    member.organization = node.metadata.organization;
+    return member as Member;
+  };
+
+  const combineProposal = async (proposal: any) => {
+    const gameroom = await fetchGameroom(proposal.circuit_id);
+    proposal.status = gameroom.status;
+
+    const requester = await getNode(proposal.requester_node_id);
+    proposal.requester_org = requester.metadata.organization;
+
+    const members = await Promise.all(
+      proposal.members.map((member: any) => getMembers(member)));
+    proposal.members = members;
+    return proposal;
+  };
+
+  return await Promise.all(
+    response.data.data.map((proposal: GameroomProposal) => combineProposal(proposal)));
 }
 
 async function getNode(id: string): Promise<Node> {
