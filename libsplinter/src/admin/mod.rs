@@ -15,6 +15,7 @@
 mod consensus;
 pub mod error;
 pub mod messages;
+mod open_proposals;
 mod shared;
 
 use std::any::Any;
@@ -64,6 +65,7 @@ impl AdminService {
         signature_verifier: Box<dyn SignatureVerifier + Send>,
         key_registry: Box<dyn KeyRegistry>,
         key_permission_manager: Box<dyn KeyPermissionManager>,
+        storage_type: &str,
     ) -> Result<Self, ServiceError> {
         let new_service = Self {
             service_id: admin_service_id(node_id),
@@ -76,7 +78,8 @@ impl AdminService {
                 signature_verifier,
                 key_registry,
                 key_permission_manager,
-            ))),
+                storage_type,
+            )?)),
             consensus: None,
         };
 
@@ -417,6 +420,7 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
+            "memory",
         )
         .expect("Service should have been created correctly");
 

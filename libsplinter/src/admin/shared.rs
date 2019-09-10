@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::env;
 use std::iter::FromIterator;
+
 use std::sync::{Arc, RwLock};
 
 use protobuf::{Message, RepeatedField};
@@ -45,8 +47,11 @@ use crate::signing::SignatureVerifier;
 
 use super::error::{AdminSharedError, MarshallingError};
 use super::messages;
+use super::open_proposals::OpenProposals;
 use super::{admin_service_id, sha256};
 
+const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
+const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 static VOTER_ROLE: &str = "voter";
 static PROPOSER_ROLE: &str = "proposer";
 
@@ -73,7 +78,7 @@ pub struct AdminServiceShared {
     // the node id of the connected splinter node
     node_id: String,
     // the list of circuit proposal that are being voted on by members of a circuit
-    open_proposals: HashMap<String, CircuitProposal>,
+    open_proposals: OpenProposals,
     // the list of circuit that have been committed to splinter state but whose services haven't
     // been initialized
     uninitialized_circuits: HashMap<String, UninitializedCircuit>,
@@ -120,11 +125,29 @@ impl AdminServiceShared {
         signature_verifier: Box<dyn SignatureVerifier + Send>,
         key_registry: Box<dyn KeyRegistry>,
         key_permission_manager: Box<dyn KeyPermissionManager>,
-    ) -> Self {
-        AdminServiceShared {
+        storage_type: &str,
+    ) -> Result<Self, ServiceError> {
+        let location = {
+            if let Ok(s) = env::var(STATE_DIR_ENV) {
+                s.to_string()
+            } else {
+                DEFAULT_STATE_DIR.to_string()
+            }
+        };
+
+        let storage_location = match storage_type {
+            "yaml" => format!("{}{}", location, "/circuit_proposals.yaml"),
+            "memory" => "memory".to_string(),
+            _ => panic!("Storage type is not supported: {}", storage_type),
+        };
+
+        let open_proposals = OpenProposals::new(storage_location)
+            .map_err(|err| ServiceError::UnableToCreate(Box::new(err)))?;;
+
+        Ok(AdminServiceShared {
             node_id: node_id.to_string(),
             network_sender: None,
-            open_proposals: Default::default(),
+            open_proposals,
             uninitialized_circuits: Default::default(),
             orchestrator,
             running_services: HashSet::new(),
@@ -140,7 +163,7 @@ impl AdminServiceShared {
             signature_verifier,
             key_registry,
             key_permission_manager,
-        }
+        })
     }
 
     pub fn node_id(&self) -> &str {
@@ -194,7 +217,7 @@ impl AdminServiceShared {
             Some(circuit_proposal_context) => {
                 let circuit_proposal = circuit_proposal_context.circuit_proposal;
                 let action = circuit_proposal_context.action;
-                let circuit_id = circuit_proposal.get_circuit_id().to_string();
+                let circuit_id = circuit_proposal.get_circuit_id();
                 let mgmt_type = circuit_proposal
                     .get_circuit_proposal()
                     .circuit_management_type
@@ -206,7 +229,7 @@ impl AdminServiceShared {
                         let circuit = circuit_proposal.get_circuit_proposal();
                         self.update_splinter_state(circuit)?;
                         // remove approved proposal
-                        self.remove_proposal(&circuit_id);
+                        self.remove_proposal(&circuit_id)?;
                         // send message about circuit acceptance
 
                         let circuit_proposal_proto =
@@ -243,7 +266,7 @@ impl AdminServiceShared {
                         self.add_uninitialized_circuit(circuit_proposal.clone())
                     }
                     Ok(CircuitProposalStatus::Pending) => {
-                        self.add_proposal(circuit_proposal.clone());
+                        self.add_proposal(circuit_proposal.clone())?;
 
                         match action {
                             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
@@ -282,7 +305,7 @@ impl AdminServiceShared {
                     }
                     Ok(CircuitProposalStatus::Rejected) => {
                         // remove circuit
-                        self.remove_proposal(&circuit_id);
+                        self.remove_proposal(&circuit_id)?;
 
                         let circuit_proposal_proto =
                             messages::CircuitProposal::from_proto(circuit_proposal.clone())
@@ -367,8 +390,13 @@ impl AdminServiceShared {
                 // validate vote proposal
                 // check that the circuit proposal exists
                 let mut circuit_proposal = self
-                    .open_proposals
-                    .get(proposal_vote.get_circuit_id())
+                    .get_proposal(proposal_vote.get_circuit_id())
+                    .map_err(|err| {
+                        AdminSharedError::ValidationFailed(format!(
+                            "error occured when trying to get proposal {}",
+                            err
+                        ))
+                    })?
                     .ok_or_else(|| {
                         AdminSharedError::ValidationFailed(format!(
                             "Received vote for a proposal that does not exist: circuit id {}",
@@ -416,7 +444,7 @@ impl AdminServiceShared {
     }
 
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
-        self.open_proposals.contains_key(circuit_id)
+        self.open_proposals.has_proposal(circuit_id)
     }
 
     /// Propose a new circuit
@@ -564,14 +592,25 @@ impl AdminServiceShared {
         }
     }
 
-    fn add_proposal(&mut self, circuit_proposal: CircuitProposal) {
-        let circuit_id = circuit_proposal.get_circuit_id().to_string();
-
-        self.open_proposals.insert(circuit_id, circuit_proposal);
+    pub fn get_proposal(
+        &self,
+        circuit_id: &str,
+    ) -> Result<Option<CircuitProposal>, AdminSharedError> {
+        Ok(self.open_proposals.get_proposal(circuit_id)?)
     }
 
-    fn remove_proposal(&mut self, circuit_id: &str) {
-        self.open_proposals.remove(circuit_id);
+    pub fn remove_proposal(
+        &mut self,
+        circuit_id: &str,
+    ) -> Result<Option<CircuitProposal>, AdminSharedError> {
+        Ok(self.open_proposals.remove_proposal(circuit_id)?)
+    }
+
+    pub fn add_proposal(
+        &mut self,
+        circuit_proposal: CircuitProposal,
+    ) -> Result<Option<CircuitProposal>, AdminSharedError> {
+        Ok(self.open_proposals.add_proposal(circuit_proposal)?)
     }
 
     /// Add a circuit definition as an uninitialized circuit. If all members are ready, initialize
@@ -1144,7 +1183,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
 
         let mut circuit = admin::Circuit::new();
         circuit.set_circuit_id("test_propose_circuit".into());
@@ -1218,7 +1259,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
 
         let mut circuit = admin::Circuit::new();
         circuit.set_circuit_id("test_propose_circuit".into());
@@ -1282,7 +1325,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
 
         if let Err(err) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a")
@@ -1309,7 +1354,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         let mut service_bad = SplinterService::new();
@@ -1345,7 +1392,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         let mut service_bad = SplinterService::new();
@@ -1380,7 +1429,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
         circuit.set_roster(RepeatedField::from_vec(vec![]));
 
@@ -1409,7 +1460,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_members(RepeatedField::from_vec(vec![]));
@@ -1440,7 +1493,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         let mut node_b = SplinterNode::new();
@@ -1474,7 +1529,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_authorization_type(Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE);
@@ -1504,7 +1561,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_persistence(Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE);
@@ -1534,7 +1593,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_durability(Circuit_DurabilityType::UNSET_DURABILITY_TYPE);
@@ -1564,7 +1625,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_routes(Circuit_RouteType::UNSET_ROUTE_TYPE);
@@ -1594,7 +1657,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let mut circuit = setup_test_circuit();
 
         circuit.set_circuit_management_type("".to_string());
@@ -1625,7 +1690,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
@@ -1656,7 +1723,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
@@ -1689,7 +1758,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
@@ -1721,7 +1792,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let mut proposal = setup_test_proposal(&circuit);
@@ -1762,7 +1835,9 @@ mod tests {
             Box::new(HashVerifier),
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
-        );
+            "memory",
+        )
+        .unwrap();
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let mut proposal = setup_test_proposal(&circuit);
