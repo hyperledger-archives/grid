@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod ws;
 mod error;
+mod reactor;
+mod ws;
 
 pub use error::{ParseError, ReactorError, WebSocketError};
+pub use reactor::{Igniter, Reactor};
+pub use ws::{ParseBytes, WebSocketClient, WsResponse};
