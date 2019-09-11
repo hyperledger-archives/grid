@@ -42,8 +42,6 @@ const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 5000; // 5 seconds
 const MESSAGE_TIMEOUT_MILLIS: u64 = 100;
 const PROPOSAL_TIMEOUT_MILLIS: u64 = 100;
 
-type ProposalAcceptCallback = Box<dyn Fn(ProposalId) -> Result<(), String> + Send>;
-
 #[derive(Debug)]
 enum State {
     Idle,
@@ -102,7 +100,6 @@ pub struct TwoPhaseEngine {
     coordinator_timeout: Timeout,
     proposal_backlog: VecDeque<TwoPhaseProposal>,
     verification_request_backlog: VecDeque<ProposalId>,
-    proposal_accept_callback: Option<ProposalAcceptCallback>,
 }
 
 impl Default for TwoPhaseEngine {
@@ -120,12 +117,7 @@ impl TwoPhaseEngine {
             coordinator_timeout: Timeout::new(coordinator_timeout_duration),
             proposal_backlog: VecDeque::new(),
             verification_request_backlog: VecDeque::new(),
-            proposal_accept_callback: None,
         }
-    }
-
-    pub fn on_proposal_accept(&mut self, callback: ProposalAcceptCallback) {
-        self.proposal_accept_callback = Some(callback);
     }
 
     fn handle_consensus_msg(
@@ -236,11 +228,6 @@ impl TwoPhaseEngine {
                         debug!("Accepting proposal {}", proposal_id);
                         proposal_manager.accept_proposal(&proposal_id, None)?;
                         self.state = State::Idle;
-                        if let Some(ref callback) = self.proposal_accept_callback {
-                            (callback)(proposal_id).unwrap_or_else(|err| {
-                                error!("Proposal accept callback returned an error: {}", err);
-                            });
-                        }
                     } else {
                         warn!(
                             "Received unexpected apply result for proposal {}",
@@ -441,16 +428,10 @@ impl TwoPhaseEngine {
 
         let mut result = TwoPhaseMessage::new();
         result.set_message_type(TwoPhaseMessage_Type::PROPOSAL_RESULT);
-        result.set_proposal_id(proposal_id.clone().into());
+        result.set_proposal_id(proposal_id.into());
         result.set_proposal_result(proposal_result);
 
         network_sender.broadcast(result.write_to_bytes()?)?;
-
-        if let Some(ref callback) = self.proposal_accept_callback {
-            (callback)(proposal_id).unwrap_or_else(|err| {
-                error!("Proposal accept callback returned an error: {}", err);
-            });
-        }
 
         Ok(())
     }
@@ -775,13 +756,6 @@ pub mod tests {
         };
 
         let mut engine = TwoPhaseEngine::default();
-        let (on_accept_tx, on_accept_rx) = channel();
-        engine.on_proposal_accept(Box::new(move |id| {
-            on_accept_tx
-                .send(id)
-                .expect("failed to send on proposal accept");
-            Ok(())
-        }));
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -853,13 +827,6 @@ pub mod tests {
                 break;
             }
         }
-
-        assert_eq!(
-            ProposalId::from(vec![1]),
-            on_accept_rx
-                .recv_timeout(Duration::from_secs(1))
-                .expect("proposal accept callback was not called")
-        );
 
         // Check that verification request is sent for the second proposal
         loop {
@@ -1127,13 +1094,6 @@ pub mod tests {
         };
 
         let mut engine = TwoPhaseEngine::default();
-        let (on_accept_tx, on_accept_rx) = channel();
-        engine.on_proposal_accept(Box::new(move |id| {
-            on_accept_tx
-                .send(id)
-                .expect("failed to send on proposal accept");
-            Ok(())
-        }));
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -1206,13 +1166,6 @@ pub mod tests {
                 break;
             }
         }
-
-        assert_eq!(
-            ProposalId::from(vec![1]),
-            on_accept_rx
-                .recv_timeout(Duration::from_secs(1))
-                .expect("proposal accept callback was not called")
-        );
 
         // Receive the second proposal
         let mut proposal = Proposal::default();

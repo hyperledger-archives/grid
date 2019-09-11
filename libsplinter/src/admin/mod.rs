@@ -233,6 +233,19 @@ impl Service for AdminService {
                     ))
                     .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
             }
+            AdminMessage_Type::MEMBER_READY => {
+                let member_ready = admin_message.get_member_ready();
+                let circuit_id = member_ready.get_circuit_id();
+                let member_node_id = member_ready.get_member_node_id();
+
+                let mut shared = self.admin_service_shared.lock().map_err(|_| {
+                    ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
+                })?;
+
+                shared
+                    .add_ready_member(circuit_id, member_node_id.into())
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+            }
             AdminMessage_Type::UNSET => Err(ServiceError::InvalidMessageFormat(Box::new(
                 AdminError::MessageTypeUnset,
             ))),

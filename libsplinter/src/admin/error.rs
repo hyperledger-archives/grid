@@ -17,7 +17,7 @@ use std::fmt;
 
 use crate::consensus::error::ProposalManagerError;
 use crate::orchestrator::InitializeServiceError;
-use crate::service::error::ServiceError;
+use crate::service::error::{ServiceError, ServiceSendError};
 use crate::signing;
 
 use protobuf::error;
@@ -34,6 +34,7 @@ pub enum AdminSharedError {
     InvalidMessageFormat(MarshallingError),
     NoPendingChanges,
     ServiceInitializationFailed(InitializeServiceError),
+    ServiceSendError(ServiceSendError),
     UnknownAction(String),
     ValidationFailed(String),
 
@@ -54,6 +55,7 @@ impl Error for AdminSharedError {
             AdminSharedError::InvalidMessageFormat(err) => Some(err),
             AdminSharedError::NoPendingChanges => None,
             AdminSharedError::ServiceInitializationFailed(err) => Some(err),
+            AdminSharedError::ServiceSendError(err) => Some(err),
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
             AdminSharedError::SignerError(_) => None,
@@ -76,6 +78,9 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::ServiceInitializationFailed(err) => {
                 write!(f, "failed to initialize service: {}", err)
             }
+            AdminSharedError::ServiceSendError(err) => {
+                write!(f, "failed to send service message: {}", err)
+            }
             AdminSharedError::UnknownAction(msg) => {
                 write!(f, "received message with unknown action: {}", msg)
             }
@@ -90,6 +95,11 @@ impl fmt::Display for AdminSharedError {
 impl From<InitializeServiceError> for AdminSharedError {
     fn from(err: InitializeServiceError) -> Self {
         AdminSharedError::ServiceInitializationFailed(err)
+    }
+}
+impl From<ServiceSendError> for AdminSharedError {
+    fn from(err: ServiceSendError) -> Self {
+        AdminSharedError::ServiceSendError(err)
     }
 }
 

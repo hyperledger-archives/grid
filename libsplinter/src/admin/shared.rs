@@ -13,9 +13,10 @@
 // limitations under the License.
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::iter::FromIterator;
 use std::sync::{Arc, RwLock};
 
-use protobuf::RepeatedField;
+use protobuf::{Message, RepeatedField};
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
@@ -31,10 +32,11 @@ use crate::network::{
 };
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
 use crate::protos::admin::{
-    Circuit, CircuitManagementPayload, CircuitManagementPayload_Action,
-    CircuitManagementPayload_Header, CircuitProposal, CircuitProposalVote,
-    CircuitProposalVote_Vote, CircuitProposal_ProposalType, CircuitProposal_VoteRecord,
-    Circuit_AuthorizationType, Circuit_DurabilityType, Circuit_PersistenceType, Circuit_RouteType,
+    AdminMessage, AdminMessage_Type, Circuit, CircuitManagementPayload,
+    CircuitManagementPayload_Action, CircuitManagementPayload_Header, CircuitProposal,
+    CircuitProposalVote, CircuitProposalVote_Vote, CircuitProposal_ProposalType,
+    CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
+    Circuit_PersistenceType, Circuit_RouteType, MemberReady,
 };
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
@@ -50,7 +52,7 @@ static PROPOSER_ROLE: &str = "proposer";
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
 
-pub enum CircuitProposalStatus {
+enum CircuitProposalStatus {
     Accepted,
     Rejected,
     Pending,
@@ -62,11 +64,19 @@ struct CircuitProposalContext {
     pub signer_public_key: Vec<u8>,
 }
 
+struct UninitializedCircuit {
+    pub circuit: Option<CircuitProposal>,
+    pub ready_members: HashSet<String>,
+}
+
 pub struct AdminServiceShared {
     // the node id of the connected splinter node
     node_id: String,
     // the list of circuit proposal that are being voted on by members of a circuit
     open_proposals: HashMap<String, CircuitProposal>,
+    // the list of circuit that have been committed to splinter state but whose services haven't
+    // been initialized
+    uninitialized_circuits: HashMap<String, UninitializedCircuit>,
     // orchestrator used to initialize and shutdown services
     orchestrator: ServiceOrchestrator,
     // list of services that have been initialized using the orchestrator
@@ -115,6 +125,7 @@ impl AdminServiceShared {
             node_id: node_id.to_string(),
             network_sender: None,
             open_proposals: Default::default(),
+            uninitialized_circuits: Default::default(),
             orchestrator,
             running_services: HashSet::new(),
             peer_connector,
@@ -191,14 +202,13 @@ impl AdminServiceShared {
 
                 match self.check_approved(&circuit_proposal) {
                     Ok(CircuitProposalStatus::Accepted) => {
-                        // add the approved proposal because it will be needed by the
-                        // on_proposal_accept callback later
-                        self.add_proposal(circuit_proposal.clone());
-
                         // commit new circuit
                         let circuit = circuit_proposal.get_circuit_proposal();
                         self.update_splinter_state(circuit)?;
+                        // remove approved proposal
+                        self.remove_proposal(&circuit_id);
                         // send message about circuit acceptance
+
                         let circuit_proposal_proto =
                             messages::CircuitProposal::from_proto(circuit_proposal.clone())
                                 .map_err(AdminSharedError::InvalidMessageFormat)?;
@@ -208,7 +218,29 @@ impl AdminServiceShared {
                         ));
                         self.send_event(&mgmt_type, event);
 
-                        Ok(())
+                        // send MEMBER_READY message to all other members' admin services
+                        if let Some(ref network_sender) = self.network_sender {
+                            let mut member_ready = MemberReady::new();
+                            member_ready.set_circuit_id(circuit.circuit_id.clone());
+                            member_ready.set_member_node_id(self.node_id.clone());
+                            let mut msg = AdminMessage::new();
+                            msg.set_message_type(AdminMessage_Type::MEMBER_READY);
+                            msg.set_member_ready(member_ready);
+
+                            let envelope_bytes =
+                                msg.write_to_bytes().map_err(MarshallingError::from)?;
+                            for member in circuit.members.iter() {
+                                if member.get_node_id() != self.node_id {
+                                    network_sender.send(
+                                        &admin_service_id(member.get_node_id()),
+                                        &envelope_bytes,
+                                    )?;
+                                }
+                            }
+                        }
+
+                        // add circuit as pending initialization
+                        self.add_uninitialized_circuit(circuit_proposal.clone())
                     }
                     Ok(CircuitProposalStatus::Pending) => {
                         self.add_proposal(circuit_proposal.clone());
@@ -538,12 +570,115 @@ impl AdminServiceShared {
         self.open_proposals.insert(circuit_id, circuit_proposal);
     }
 
-    pub fn get_proposal(&self, circuit_id: &str) -> Option<&CircuitProposal> {
-        self.open_proposals.get(circuit_id)
+    fn remove_proposal(&mut self, circuit_id: &str) {
+        self.open_proposals.remove(circuit_id);
     }
 
-    pub fn remove_proposal(&mut self, circuit_id: &str) -> Option<CircuitProposal> {
-        self.open_proposals.remove(circuit_id)
+    /// Add a circuit definition as an uninitialized circuit. If all members are ready, initialize
+    /// services.
+    fn add_uninitialized_circuit(
+        &mut self,
+        circuit: CircuitProposal,
+    ) -> Result<(), AdminSharedError> {
+        let circuit_id = circuit.get_circuit_id().to_string();
+
+        // If uninitialized circuit already exists, add the circuit definition; if not, create the
+        // uninitialized circuit.
+        match self.uninitialized_circuits.get_mut(&circuit_id) {
+            Some(uninit_circuit) => uninit_circuit.circuit = Some(circuit),
+            None => {
+                self.uninitialized_circuits.insert(
+                    circuit_id.to_string(),
+                    UninitializedCircuit {
+                        circuit: Some(circuit),
+                        ready_members: HashSet::new(),
+                    },
+                );
+            }
+        }
+
+        // Add self as ready
+        self.uninitialized_circuits
+            .get_mut(&circuit_id)
+            .expect("Uninitialized circuit not set")
+            .ready_members
+            .insert(self.node_id.clone());
+
+        self.initialize_services_if_members_ready(&circuit_id)
+    }
+
+    /// Mark member node as ready to initialize services on the given circuit. If all members are
+    /// now ready, initialize services.
+    pub fn add_ready_member(
+        &mut self,
+        circuit_id: &str,
+        member_node_id: String,
+    ) -> Result<(), AdminSharedError> {
+        // If uninitialized circuit does not already exist, create it
+        if self.uninitialized_circuits.get(circuit_id).is_none() {
+            self.uninitialized_circuits.insert(
+                circuit_id.to_string(),
+                UninitializedCircuit {
+                    circuit: None,
+                    ready_members: HashSet::new(),
+                },
+            );
+        }
+
+        self.uninitialized_circuits
+            .get_mut(circuit_id)
+            .expect("Uninitialized circuit not set")
+            .ready_members
+            .insert(member_node_id);
+
+        self.initialize_services_if_members_ready(circuit_id)
+    }
+
+    /// If all members of an uninitialized circuit are ready, initialize services. Also send
+    /// CircuitReady notification to application authorization handler.
+    fn initialize_services_if_members_ready(
+        &mut self,
+        circuit_id: &str,
+    ) -> Result<(), AdminSharedError> {
+        let ready = {
+            if let Some(uninitialized_circuit) = self.uninitialized_circuits.get(circuit_id) {
+                if let Some(ref circuit_proposal) = uninitialized_circuit.circuit {
+                    let all_members = HashSet::from_iter(
+                        circuit_proposal
+                            .get_circuit_proposal()
+                            .members
+                            .iter()
+                            .map(|node| node.node_id.clone()),
+                    );
+                    all_members.is_subset(&uninitialized_circuit.ready_members)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        if ready {
+            let circuit_proposal = self
+                .uninitialized_circuits
+                .remove(circuit_id)
+                .expect("Uninitialized circuit not set")
+                .circuit
+                .expect("Uninitialized circuit's circuit proposal not set");
+            self.initialize_services(circuit_proposal.get_circuit_proposal())?;
+
+            let mgmt_type = circuit_proposal
+                .get_circuit_proposal()
+                .circuit_management_type
+                .clone();
+            let event = messages::AdminServiceEvent::CircuitReady(
+                messages::CircuitProposal::from_proto(circuit_proposal)?,
+            );
+            self.send_event(&mgmt_type, event);
+        }
+
+        Ok(())
     }
 
     fn validate_create_circuit(
@@ -763,7 +898,7 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    pub fn check_approved(
+    fn check_approved(
         &self,
         proposal: &CircuitProposal,
     ) -> Result<CircuitProposalStatus, AdminSharedError> {

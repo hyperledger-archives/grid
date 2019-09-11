@@ -18,7 +18,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{Builder, JoinHandle};
 
-use protobuf::{parse_from_bytes, Message, RepeatedField};
+use protobuf::{Message, RepeatedField};
 
 use crate::consensus::two_phase::TwoPhaseEngine;
 use crate::consensus::{
@@ -28,13 +28,11 @@ use crate::consensus::{
 };
 use crate::consensus::{ConsensusEngine, StartupState};
 use crate::protos::admin::{AdminMessage, AdminMessage_Type, ProposedCircuit};
-use crate::protos::admin::{CircuitManagementPayload_Action, CircuitManagementPayload_Header};
 use crate::protos::two_phase::RequiredVerifiers;
 use crate::service::ServiceError;
 
 use super::error::AdminConsensusManagerError;
-use super::messages::{AdminServiceEvent, CircuitProposal};
-use super::shared::{AdminServiceShared, CircuitProposalStatus};
+use super::shared::AdminServiceShared;
 use super::{admin_service_id, sha256};
 
 /// Component used by the service to manage and interact with consensus
@@ -56,75 +54,17 @@ impl AdminConsensusManager {
 
         let proposal_manager =
             AdminProposalManager::new(proposal_update_tx.clone(), shared.clone());
-        let consensus_network_sender =
-            AdminConsensusNetworkSender::new(service_id.clone(), shared.clone());
+        let consensus_network_sender = AdminConsensusNetworkSender::new(service_id.clone(), shared);
         let startup_state = StartupState {
             id: service_id.as_bytes().into(),
             peer_ids: vec![],
             last_proposal: None,
         };
 
-        let shared_clone = shared.clone();
-
         let thread_handle = Builder::new()
             .name(format!("consensus-{}", service_id))
             .spawn(move || {
                 let mut two_phase_engine = TwoPhaseEngine::default();
-                // Services can't be initialized until after 2PC has finished committing the last
-                // circuit proposal vote because the circuit must be setup on all nodes for service
-                // registration to work properly. This is a workaround until service registration
-                // can handle the circuit being created on each node independently.
-                two_phase_engine.on_proposal_accept(Box::new(move |id| {
-                    let mut shared = shared_clone.lock().map_err(|err| err.to_string())?;
-
-                    // Remove the consensus proposal that just completed and keep the circuit
-                    // management payload.
-                    if let Some((_, mgmt_payload)) = shared.remove_pending_consensus_proposals(&id)
-                    {
-                        // Check if this is a circuit proposal vote.
-                        let header: CircuitManagementPayload_Header =
-                            parse_from_bytes(mgmt_payload.get_header())
-                                .map_err(|err| err.to_string())?;
-                        if let CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE =
-                            header.get_action()
-                        {
-                            // Check if the proposal is approved (this was the last necessary vote).
-                            let circuit_id =
-                                mgmt_payload.get_circuit_proposal_vote().get_circuit_id();
-                            let is_approved = {
-                                match shared.get_proposal(circuit_id) {
-                                    Some(proposal) => match shared.check_approved(proposal) {
-                                        Ok(CircuitProposalStatus::Accepted) => true,
-                                        _ => false,
-                                    },
-                                    None => false,
-                                }
-                            };
-
-                            // If the proposal is approved, remove it from shared and initialize
-                            // the services for the circuit, then notify the app auth handler that
-                            // the circuit is ready.
-                            if is_approved {
-                                let proposal = shared.remove_proposal(circuit_id).unwrap();
-                                shared
-                                    .initialize_services(proposal.get_circuit_proposal())
-                                    .map_err(|err| err.to_string())?;
-
-                                let mgmt_type = proposal
-                                    .get_circuit_proposal()
-                                    .circuit_management_type
-                                    .clone();
-                                let event = AdminServiceEvent::CircuitReady(
-                                    CircuitProposal::from_proto(proposal)
-                                        .map_err(|err| err.to_string())?,
-                                );
-                                shared.send_event(&mgmt_type, event);
-                            }
-                        }
-                    }
-                    Ok(())
-                }));
-
                 two_phase_engine
                     .run(
                         consensus_msg_rx,
@@ -321,7 +261,10 @@ impl ProposalManager for AdminProposalManager {
 
         match shared.pending_consensus_proposals(id) {
             Some((proposal, _)) if &proposal.id == id => match shared.commit() {
-                Ok(_) => info!("Committed proposal {}", id),
+                Ok(_) => {
+                    shared.remove_pending_consensus_proposals(id);
+                    info!("Committed proposal {}", id);
+                }
                 Err(err) => {
                     self.proposal_update_sender
                         .send(ProposalUpdate::ProposalAcceptFailed(
