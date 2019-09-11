@@ -106,17 +106,37 @@ impl ShutdownHandle {
 }
 
 /// WebSocket client. Configures Websocket connection and produces `Listen` future.
-pub struct WebSocketClient {
+pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     url: String,
+    on_message: Arc<dyn Fn(T) -> WsResponse + Send + Sync + 'static>,
     on_open: Option<Arc<dyn Fn() -> WsResponse + Send + Sync + 'static>>,
 }
 
-impl WebSocketClient {
-    pub fn new(url: &str) -> Self {
+impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
+    fn clone(&self) -> Self {
+        WebSocketClient {
+            url: self.url.clone(),
+            on_message: self.on_message.clone(),
+            on_open: self.on_open.clone(),
+            on_error: self.on_error.clone(),
+        }
+    }
+}
+
+impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
+    pub fn new<F>(url: &str, on_message: F) -> Self
+    where
+        F: Fn(T) -> WsResponse + Send + Sync + 'static,
+    {
         Self {
             url: url.to_string(),
+            on_message: Arc::new(on_message),
             on_open: None,
         }
+    }
+
+    pub fn url(&self) -> String {
+        self.url.clone()
     }
 
     /// Adds optional `on_open` closure. This closer is called after a connection is initially
@@ -133,12 +153,26 @@ impl WebSocketClient {
     /// callback `f` is called.
     pub fn listen<F>(self, f: F) -> Result<Listen, Error>
     where
-        F: Fn(Vec<u8>) -> WsResponse + Send + Sync + 'static,
+        F: Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
+            + Send
+            + Sync
+            + 'static,
     {
+        self.on_error = Some(Arc::new(on_error));
+    }
+
+    /// Returns `Listen` for WebSocket.
+    pub fn listen(&self) -> Result<Listen, WebSocketError> {
         let url = self.url.clone();
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
-        let on_open = self.on_open.clone();
+        let on_open = self
+            .on_open
+            .clone()
+            .unwrap_or_else(|| Arc::new(|| WsResponse::Empty));
+        let on_message = self.on_message.clone();
+        let ws_clone = self.clone();
+
         let (sender, receiver) = bounded(1);
 
         debug!("starting: {}", url);
@@ -174,13 +208,11 @@ impl WebSocketClient {
 
                     let mut blocking_sink = sink.wait();
 
-                    if let Some(f) = on_open {
-                        if let Err(err) = handle_response(&mut blocking_sink, f()) {
-                            if let Err(err) = sender.send(Err(err)) {
-                                error!("Failed to send response to shutdown handle: {}", err);
-                            }
-                            return Either::A(future::ok(()));
+                    if let Err(err) = handle_response(&mut blocking_sink, on_open()) {
+                        if let Err(err) = sender.send(Err(err)) {
+                            error!("Failed to send response to shutdown handle: {}", err);
                         }
+                        return Either::A(future::ok(()));
                     }
 
                     Either::B(
@@ -197,7 +229,33 @@ impl WebSocketClient {
                                         } else {
                                             Vec::new()
                                         };
-                                        let result = handle_response(&mut blocking_sink, f(bytes));
+                                        let result = T::from_bytes(&bytes)
+                                            .map_err(|parse_error| {
+                                                error!(
+                                                    "Failed to parse server message {}",
+                                                    parse_error
+                                                );
+                                                if let Err(protocol_error) = do_shutdown(
+                                                    &mut blocking_sink,
+                                                    CloseCode::Protocol,
+                                                ) {
+                                                    WebSocketError::ParserError {
+                                                        parse_error,
+                                                        shutdown_error: Some(protocol_error),
+                                                    }
+                                                } else {
+                                                    WebSocketError::ParserError {
+                                                        parse_error,
+                                                        shutdown_error: None,
+                                                    }
+                                                }
+                                            })
+                                            .and_then(|message| {
+                                                handle_response(
+                                                    &mut blocking_sink,
+                                                    on_message(message),
+                                                )
+                                            });
 
                                         if let Err(err) = result {
                                             ConnectionStatus::UnexpectedClose(err)
@@ -360,4 +418,14 @@ pub enum WsResponse {
     Pong(String),
     Text(String),
     Bytes(Vec<u8>),
+}
+
+pub trait ParseBytes<T: 'static>: Send + Sync + Clone {
+    fn from_bytes(bytes: &[u8]) -> Result<T, ParseError>;
+}
+
+impl ParseBytes<Vec<u8>> for Vec<u8> {
+    fn from_bytes(bytes: &[u8]) -> Result<Vec<u8>, ParseError> {
+        Ok(bytes.to_vec())
+    }
 }
