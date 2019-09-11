@@ -64,39 +64,8 @@ use futures::{
 };
 use hyper::{self, header, upgrade::Upgraded, Body, Client, Request, StatusCode};
 use tokio::codec::{Decoder, Framed};
-use tokio::io;
 use tokio::prelude::*;
-use tokio::runtime::Runtime;
 
-/// Thread pool for Websocket listeners. The pool uses `tokio::runtime` to
-/// handle threads.
-pub struct WsRuntime {
-    runtime: Runtime,
-}
-
-impl WsRuntime {
-    pub fn new() -> Result<Self, Error> {
-        Ok(Self {
-            runtime: Runtime::new()?,
-        })
-    }
-
-    /// Executes `Listen` future. Returns `ShutdownHandle` that can be
-    /// used to monitor or shutdown Websocket connection.
-    pub fn start(&mut self, listen: Listen) -> ShutdownHandle {
-        let (future, handle) = listen.into_shutdown_handle();
-        self.runtime.spawn(futures::lazy(|| future.map_err(|_| ())));
-
-        handle
-    }
-
-    pub fn shutdown(self) -> Result<(), Error> {
-        self.runtime
-            .shutdown_now()
-            .wait()
-            .map_err(|_| Error::RuntimeShutdownError)
-    }
-}
 
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `WsRuntime::start`
