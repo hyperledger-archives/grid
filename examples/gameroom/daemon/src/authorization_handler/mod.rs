@@ -20,14 +20,9 @@ pub use error::AppAuthHandlerError;
 mod sabre;
 
 use std::fmt::Write;
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
-};
 use std::time::SystemTime;
 
 use diesel::connection::Connection;
-
 use gameroom_database::{
     helpers,
     models::{
@@ -40,61 +35,52 @@ use libsplinter::{
     admin::messages::{
         AdminServiceEvent, CircuitProposal, CreateCircuit, SplinterNode, SplinterService,
     },
-    events::ws::{ShutdownHandle, WebSocketClient, WsResponse, WsRuntime},
+    events::{Igniter, WebSocketClient, WebSocketError, WsResponse},
 };
 
 use crate::application_metadata::ApplicationMetadata;
 
 use self::sabre::setup_xo;
 
-// number of consecutive invalid messages the client will accept before trying to reconnect
-static INVALID_MESSAGE_THRESHOLD: u32 = 10;
-
 pub fn run(
     splinterd_url: String,
     node_id: String,
     db_conn: ConnectionPool,
     private_key: String,
-) -> Result<(ShutdownHandle, WsRuntime), AppAuthHandlerError> {
-    let mut runtime = WsRuntime::new()?;
-    let ws = WebSocketClient::new(&format!("{}/ws/admin/register/gameroom", splinterd_url));
-    let invalid_message_counter = Arc::new(AtomicU32::new(0));
+    igniter: Igniter,
+) -> Result<(), AppAuthHandlerError> {
+    let on_message_igniter = igniter.clone();
+    let on_error_igniter = igniter.clone();
 
-    let listen = ws.listen(move |message| {
-        let result = parse_message_bytes(&message).and_then(|event| {
-            process_admin_event(event, &db_conn, &node_id, &private_key, &splinterd_url)
-        });
-
-        if let Err(err) = result {
-            error!("Failed to process request: {}", err);
-            let counter = invalid_message_counter.load(Ordering::SeqCst);
-            if counter < INVALID_MESSAGE_THRESHOLD {
-                invalid_message_counter.store(counter + 1, Ordering::SeqCst);
-                WsResponse::Empty
-            } else {
-                error!("Invalid Message threshold exceeded");
-                WsResponse::Close
+    let mut ws = WebSocketClient::new(
+        &format!("{}/ws/admin/register/gameroom", splinterd_url),
+        move |event| {
+            if let Err(err) = process_admin_event(
+                event,
+                &db_conn,
+                &node_id,
+                &private_key,
+                &splinterd_url,
+                on_message_igniter.clone(),
+            ) {
+                error!("Failed to process admin event: {}", err);
             }
-        } else {
-            invalid_message_counter.store(0, Ordering::SeqCst);
             WsResponse::Empty
+        },
+    );
+
+    ws.on_error(move |err, ws| {
+        error!("An error occured while listening for admin events {}", err);
+        if let WebSocketError::ParserError { .. } = err {
+            debug!("Protocol error, closing connection");
+            Ok(())
+        } else {
+            debug!("Attempting to restart connection");
+            on_error_igniter.clone().start_ws(&ws)
         }
-    })?;
+    });
 
-    let handle = runtime.start(listen);
-
-    Ok((handle, runtime))
-}
-
-fn parse_message_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, AppAuthHandlerError> {
-    if bytes.is_empty() {
-        error!("Received empty message");
-        return Err(AppAuthHandlerError::InvalidMessageError(
-            "Received empty message".to_string(),
-        ));
-    };
-    let admin_event: AdminServiceEvent = serde_json::from_slice(bytes)?;
-    Ok(admin_event)
+    igniter.start_ws(&ws).map_err(AppAuthHandlerError::from)
 }
 
 fn process_admin_event(
@@ -103,6 +89,7 @@ fn process_admin_event(
     node_id: &str,
     private_key: &str,
     url: &str,
+    igniter: Igniter,
 ) -> Result<(), AppAuthHandlerError> {
     match admin_event {
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
@@ -313,13 +300,15 @@ fn process_admin_event(
                     )))
                 }
             };
-            setup_xo(
-                private_key,
-                scabbard_admin_keys,
-                url,
-                &msg_proposal.circuit_id,
-                &service_id,
-            )
+            igniter
+                .send(setup_xo(
+                    private_key,
+                    scabbard_admin_keys,
+                    url,
+                    &msg_proposal.circuit_id,
+                    &service_id,
+                )?)
+                .map_err(AppAuthHandlerError::from)
         }
     }
 }
@@ -435,6 +424,7 @@ pub fn to_hex(bytes: &[u8]) -> String {
 #[cfg(all(feature = "test-authorization-handler", test))]
 mod test {
     use super::*;
+    use libsplinter::events::Reactor;
 
     use std::collections::HashMap;
 
@@ -455,6 +445,7 @@ mod test {
     /// Tests if when receiving an admin message to CreateProposal the gameroom_proposal
     /// table is updated as expected
     fn test_process_proposal_submitted_message_update_proposal_table() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -462,7 +453,8 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -482,6 +474,8 @@ mod test {
     /// Tests if when receiving an admin message to CreateProposal the gameroom
     /// table is updated as expected
     fn test_process_proposal_submitted_message_update_gameroom_table() {
+        let reactor = Reactor::new();
+
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -489,7 +483,8 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let gamerooms = query_gameroom_table(&pool);
 
@@ -518,6 +513,7 @@ mod test {
     /// Tests if when receiving an admin message to CreateProposal the gameroom_member
     /// table is updated as expected
     fn test_process_proposal_submitted_message_update_member_table() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -525,7 +521,8 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let members = query_gameroom_members_table(&pool);
 
@@ -542,6 +539,7 @@ mod test {
     /// Tests if when receiving an admin message to CreateProposal the gameroom_service
     /// table is updated as expected
     fn test_process_proposal_submitted_message_update_service_table() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -549,7 +547,8 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let services = query_gameroom_service_table(&pool);
 
@@ -567,6 +566,7 @@ mod test {
     /// Tests if when receiving an admin message to CreateProposal the gameroom_notification
     /// table is updated as expected
     fn test_process_proposal_submitted_message_update_notification_table() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -574,7 +574,8 @@ mod test {
         clear_gameroom_notification_table(&pool);
 
         let message = get_submit_proposal_msg("my_circuit");
-        process_admin_event(message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let notifications = query_gameroom_notification_table(&pool);
 
@@ -597,6 +598,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalAccepted the gameroom_proposal
     /// table is updated as expected
     fn test_process_proposal_accepted_message_ok() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -626,7 +628,8 @@ mod test {
         let accept_message = get_accept_proposal_msg("my_circuit");
 
         // accept proposal
-        process_admin_event(accept_message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(accept_message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -666,6 +669,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalAccepted an error is returned
     /// if a pending proposal for that circuit is not found
     fn test_process_proposal_accepted_message_err() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -675,7 +679,7 @@ mod test {
         let accept_message = get_accept_proposal_msg("my_circuit");
 
         // accept proposal
-        match process_admin_event(accept_message, &pool, "", "", "") {
+        match process_admin_event(accept_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -688,6 +692,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalRejected the gameroom_proposal and
     /// gameroom tables are updated as expected
     fn test_process_proposal_rejected_message_ok() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -717,7 +722,8 @@ mod test {
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
         // reject proposal
-        process_admin_event(rejected_message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(rejected_message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -768,6 +774,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalRejected an error is returned
     /// if a pending proposal for that circuit is not found
     fn test_process_proposal_rejected_message_err() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -777,7 +784,7 @@ mod test {
         let rejected_message = get_reject_proposal_msg("my_circuit");
 
         // reject proposal
-        match process_admin_event(rejected_message, &pool, "", "", "") {
+        match process_admin_event(rejected_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
@@ -790,6 +797,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalVote the gameroom_proposal and
     /// proposal_vote_record tables are updated as expected
     fn test_process_proposal_vote_message_ok() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -810,7 +818,8 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        process_admin_event(vote_message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(vote_message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let proposals = query_proposals_table(&pool);
 
@@ -835,6 +844,7 @@ mod test {
     /// Tests if when receiving an admin message to ProposalVote the gameroom_notification
     /// table is updated as expected
     fn test_process_proposal_vote_message_update_notification_table() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -855,7 +865,8 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        process_admin_event(vote_message, &pool, "", "", "").expect("Error processing message");
+        process_admin_event(vote_message, &pool, "", "", "", reactor.igniter())
+            .expect("Error processing message");
 
         let notifications = query_gameroom_notification_table(&pool);
 
@@ -883,6 +894,7 @@ mod test {
     /// Tests if when receiving an admin message ProposalVote an error is returned
     /// if a pending proposal for that circuit is not found
     fn test_process_proposal_vote_message_err() {
+        let reactor = Reactor::new();
         let pool: ConnectionPool = gameroom_database::create_connection_pool(DATABASE_URL)
             .expect("Failed to get database connection pool");
 
@@ -892,7 +904,7 @@ mod test {
         let vote_message = get_vote_proposal_msg("my_circuit");
 
         // vote proposal
-        match process_admin_event(vote_message, &pool, "", "", "") {
+        match process_admin_event(vote_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
                 assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
