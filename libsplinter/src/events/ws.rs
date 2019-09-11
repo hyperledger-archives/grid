@@ -99,21 +99,6 @@ pub struct ShutdownHandle {
 }
 
 impl ShutdownHandle {
-    /// Polls websocket for unexpected shutdowns
-    /// and returns result.
-    pub fn monitor(self) -> Result<(), Error> {
-        loop {
-            match self.receiver.try_recv() {
-                Ok(res) => return res,
-                Err(TryRecvError::Empty) => {
-                    thread::sleep(time::Duration::from_secs(1));
-                    continue;
-                }
-                Err(err) => return Err(Error::PollingError(err)),
-            }
-        }
-    }
-
     /// Sends shutdown message to websocket
     pub fn shutdown(self) -> Result<(), Error> {
         self.running.store(false, Ordering::SeqCst);
