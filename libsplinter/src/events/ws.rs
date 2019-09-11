@@ -207,13 +207,11 @@ impl WebSocketClient {
                                     }
                                     Frame::Ping(msg) => {
                                         debug!("Received Ping {} sending pong", msg);
-                                        let result = handle_response(
+                                        if let Err(err) = handle_response(
                                             &mut blocking_sink,
-                                            WsResponse::Text(msg.to_string()),
-                                        );
-
-                                        if result.is_err() {
-                                            ConnectionStatus::Closed(result)
+                                            WsResponse::Pong(msg.to_string()),
+                                        ) {
+                                            ConnectionStatus::UnexpectedClose(err)
                                         } else {
                                             ConnectionStatus::Open(result)
                                         }
@@ -311,7 +309,22 @@ fn handle_response(
                     Err(WebSocketError::from(protocol_error))
                 }
             }),
-        WsResponse::Close => do_shutdown(wait_sink, CloseCode::Normal).map_err(Error::from),
+        WsResponse::Pong(msg) => wait_sink
+            .send(Message::Pong(msg))
+            .or_else(|protocol_error| {
+                error!("Error occurred while handling message {:?}", protocol_error);
+                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
+                    Err(WebSocketError::AbnormalShutdownError {
+                        protocol_error,
+                        shutdown_error,
+                    })
+                } else {
+                    Err(WebSocketError::from(protocol_error))
+                }
+            }),
+        WsResponse::Close => {
+            do_shutdown(wait_sink, CloseCode::Normal).map_err(WebSocketError::from)
+        }
         WsResponse::Empty => Ok(()),
     }
 }
@@ -340,6 +353,7 @@ enum ConnectionStatus {
 pub enum WsResponse {
     Empty,
     Close,
+    Pong(String),
     Text(String),
     Bytes(Vec<u8>),
 }
