@@ -18,33 +18,40 @@
 //!
 //!```
 //! use std::{thread::sleep, time};
-//! use libsplinter::events::ws::{WsResponse, WebSocketClient, WsRuntime};
+//! use libsplinter::events::{WsResponse, WebSocketClient, Reactor, ParseBytes};
 //!
-//! let mut ws = WebSocketClient::new("http://echo.websocket.org");
+//! let reactor = Reactor::new();
 //!
-//! ws.on_open(|| {
-//!    println!("sending message");
-//!    WsResponse::Text("hello, world".to_string())
-//! });
-//!
-//! let listen = ws.listen(|msg| {
+//! let mut ws = WebSocketClient::new(
+//!    "http://echo.websocket.org", |msg: Vec<u8>| {
 //!    if let Ok(s) = String::from_utf8(msg.clone()) {
 //!         println!("Recieved {}", s);
 //!    } else {
 //!       println!("malformed message: {:?}", msg);
 //!    };
-//!
 //!    WsResponse::Text("welcome to earth!!!".to_string())
-//! }).unwrap();
+//! });
 //!
-//! let mut runtime = WsRuntime::new().unwrap();
+//! // Optional callback for when connection is established
+//! ws.on_open(|| {
+//!    println!("sending message");
+//!    WsResponse::Text("hello, world".to_string())
+//! });
 //!
-//! let handle = runtime.start(listen);
+//! let igniter = reactor.igniter();
+//!
+//! ws.on_error(move |err, ws| {
+//!     println!("Error!: {:?}", err);
+//!     // ws instance can be used to restart websocket
+//!     igniter.clone().start_ws(&ws).unwrap();
+//!     Ok(())
+//! });
+//!
+//! reactor.igniter().start_ws(&ws).unwrap();
 //!
 //! sleep(time::Duration::from_secs(1));
 //! println!("stopping");
-//! handle.shutdown().unwrap();
-//! runtime.shutdown().unwrap();
+//! reactor.shutdown().unwrap();
 //! ```
 
 use std::sync::{
@@ -67,7 +74,7 @@ use tokio::prelude::*;
 use crate::events::{ParseError, WebSocketError};
 
 /// Wrapper around future created by `WebSocketClient`. In order for
-/// the future to run it must be passed to `WsRuntime::start`
+/// the future to run it must be passed to `Igniter::start_ws`
 pub struct Listen {
     future: Box<dyn Future<Item = (), Error = WebSocketError> + Send + 'static>,
     running: Arc<AtomicBool>,
