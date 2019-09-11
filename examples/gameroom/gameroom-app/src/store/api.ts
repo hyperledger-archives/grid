@@ -159,17 +159,20 @@ export async function proposalVote(ballot: Ballot, proposalID: string,
 
 // Notifications
 export async function listNotifications(publicKey: string): Promise<GameroomNotification[]> {
-  try {
-    const response = await gameroomAPI.get('/notifications');
-    const notifications = response.data.data as GameroomNotification[];
-    const filtered = notifications.filter(
-      (notification) => !(notification.notification_type === 'gameroom_proposal'
-                          && notification.requester === publicKey));
-    return filtered as GameroomNotification[];
-  } catch (e) {
-    alert(e);
-  }
-  return [];
+  const isDisplayed = (value: GameroomNotification): boolean => {
+    const displayedNotifs = ['gameroom_proposal'];
+    if (displayedNotifs.includes(value.notification_type)) {
+      if (value.notification_type === 'gameroom_proposal' && value.requester === publicKey) {
+        return false;
+      }
+      return true;
+    } else { return false; }
+  };
+
+  const response = await gameroomAPI.get('/notifications');
+  const notifications = response.data.data as GameroomNotification[];
+  const filtered = notifications.filter(isDisplayed);
+  return filtered as GameroomNotification[];
 }
 
 export async function markRead(id: string): Promise<GameroomNotification|undefined> {
