@@ -51,12 +51,10 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::{error, fmt};
-use std::{thread, time};
 
 use actix_http::ws;
 use awc::ws::{CloseCode, CloseReason, Codec, Frame, Message};
-use crossbeam_channel::{bounded, Receiver, RecvError, TryRecvError};
+use crossbeam_channel::{bounded, Receiver};
 use futures::{
     future::{self, Either},
     sink::Wait,
@@ -66,20 +64,21 @@ use hyper::{self, header, upgrade::Upgraded, Body, Client, Request, StatusCode};
 use tokio::codec::{Decoder, Framed};
 use tokio::prelude::*;
 
+use crate::events::{ParseError, WebSocketError};
 
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `WsRuntime::start`
 pub struct Listen {
-    future: Box<dyn Future<Item = (), Error = Error> + Send + 'static>,
+    future: Box<dyn Future<Item = (), Error = WebSocketError> + Send + 'static>,
     running: Arc<AtomicBool>,
-    receiver: Receiver<Result<(), Error>>,
+    receiver: Receiver<Result<(), WebSocketError>>,
 }
 
 impl Listen {
-    fn into_shutdown_handle(
+    pub fn into_shutdown_handle(
         self,
     ) -> (
-        Box<dyn Future<Item = (), Error = Error> + Send + 'static>,
+        Box<dyn Future<Item = (), Error = WebSocketError> + Send + 'static>,
         ShutdownHandle,
     ) {
         (
@@ -95,12 +94,12 @@ impl Listen {
 #[derive(Clone)]
 pub struct ShutdownHandle {
     running: Arc<AtomicBool>,
-    receiver: Receiver<Result<(), Error>>,
+    receiver: Receiver<Result<(), WebSocketError>>,
 }
 
 impl ShutdownHandle {
     /// Sends shutdown message to websocket
-    pub fn shutdown(self) -> Result<(), Error> {
+    pub fn shutdown(self) -> Result<(), WebSocketError> {
         self.running.store(false, Ordering::SeqCst);
         self.receiver.recv()?
     }
@@ -151,7 +150,7 @@ impl WebSocketClient {
             .header(header::SEC_WEBSOCKET_VERSION, "13")
             .header(header::SEC_WEBSOCKET_KEY, "13")
             .body(Body::empty())
-            .map_err(|err| Error::RequestBuilderError(format!("{:?}", err)))?;
+            .map_err(|err| WebSocketError::RequestBuilderError(format!("{:?}", err)))?;
 
         let future = Box::new(
             Client::new()
@@ -166,7 +165,7 @@ impl WebSocketClient {
                 })
                 .map_err(|err| {
                     error!("Client Error: {:?}", err);
-                    Error::from(err)
+                    WebSocketError::from(err)
                 })
                 .and_then(move |upgraded| {
                     let codec = Codec::new().client_mode();
@@ -188,7 +187,7 @@ impl WebSocketClient {
                         stream
                             .map_err(|err| {
                                 error!("Protocol Error: {:?}", err);
-                                Error::from(err)
+                                WebSocketError::from(err)
                             })
                             .take_while(move |message| {
                                 let status = match message {
@@ -227,8 +226,8 @@ impl WebSocketClient {
                                         debug!("Received close message {:?}", msg);
                                         let result =
                                             do_shutdown(&mut blocking_sink, CloseCode::Normal)
-                                                .map_err(Error::from);
-                                        ConnectionStatus::Closed(result)
+                                                .map_err(WebSocketError::from);
+                                        ConnectionStatus::Close(result)
                                     }
                                 };
 
@@ -282,7 +281,7 @@ impl WebSocketClient {
 fn handle_response(
     wait_sink: &mut Wait<stream::SplitSink<Framed<Upgraded, Codec>>>,
     res: WsResponse,
-) -> Result<(), Error> {
+) -> Result<(), WebSocketError> {
     match res {
         WsResponse::Text(msg) => wait_sink
             .send(Message::Text(msg))
@@ -290,12 +289,12 @@ fn handle_response(
             .or_else(|protocol_error| {
                 error!("Error occurred while handling message {:?}", protocol_error);
                 if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
-                    Err(Error::AbnormalShutdownError {
+                    Err(WebSocketError::AbnormalShutdownError {
                         protocol_error,
                         shutdown_error,
                     })
                 } else {
-                    Err(Error::from(protocol_error))
+                    Err(WebSocketError::from(protocol_error))
                 }
             }),
         WsResponse::Bytes(bytes) => wait_sink
@@ -304,12 +303,12 @@ fn handle_response(
             .or_else(|protocol_error| {
                 error!("Error occurred while handling message {:?}", protocol_error);
                 if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
-                    Err(Error::AbnormalShutdownError {
+                    Err(WebSocketError::AbnormalShutdownError {
                         protocol_error,
                         shutdown_error,
                     })
                 } else {
-                    Err(Error::from(protocol_error))
+                    Err(WebSocketError::from(protocol_error))
                 }
             }),
         WsResponse::Close => do_shutdown(wait_sink, CloseCode::Normal).map_err(Error::from),
@@ -343,82 +342,4 @@ pub enum WsResponse {
     Close,
     Text(String),
     Bytes(Vec<u8>),
-}
-
-#[derive(Debug)]
-pub enum Error {
-    HyperError(hyper::error::Error),
-    /// Error returned when the client is attempting to communicate to
-    /// the server using an unrecognized protocol. An example of this
-    /// would be sending bytes to a server expecting text responses.
-    ///
-    /// The client usually cannot not recover from these errors because
-    /// they are usually caused by runtime error encountered in the
-    /// listener or on open callbacks.
-    ProtocolError(ws::ProtocolError),
-    RequestBuilderError(String),
-    IoError(io::Error),
-    ShutdownHandleError(RecvError),
-    PollingError(TryRecvError),
-    RuntimeShutdownError,
-    /// Error returned when Websocket fails to shutdown gracefully after
-    /// encountering a protocol error.
-    AbnormalShutdownError {
-        protocol_error: ws::ProtocolError,
-        shutdown_error: ws::ProtocolError,
-    },
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::HyperError(err) => Some(err),
-            Error::ProtocolError(_) => None,
-            Error::RequestBuilderError(_) => None,
-            Error::IoError(err) => Some(err),
-            Error::ShutdownHandleError(err) => Some(err),
-            Error::PollingError(err) => Some(err),
-            Error::RuntimeShutdownError => None,
-            Error::AbnormalShutdownError { .. } => None,
-        }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::HyperError(err) => write!(f, "Hyper Error: {}", err),
-            Error::ProtocolError(err) => write!(f, "Protocol Error: {}", err),
-            Error::RequestBuilderError(s) => write!(f, "Failed to build request: {}", s),
-            Error::IoError(err) => write!(f, "IO Error: {}", err),
-            Error::ShutdownHandleError(err) => write!(f, "Failed to retrieve listener shutdown: {}", err),
-            Error::PollingError(err) => write!(f, "Polling Error: {}", err),
-            Error::RuntimeShutdownError => write!(f, "Failed to gracefully shutdown Websocket runtime"),
-            Error::AbnormalShutdownError { protocol_error, shutdown_error } => write!(f, "A shutdown error occurred while handling protocol error: protocol error {}, shutdown error {}", protocol_error, shutdown_error)
-        }
-    }
-}
-
-impl From<hyper::error::Error> for Error {
-    fn from(err: hyper::error::Error) -> Self {
-        Error::HyperError(err)
-    }
-}
-
-impl From<ws::ProtocolError> for Error {
-    fn from(err: ws::ProtocolError) -> Self {
-        Error::ProtocolError(err)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::IoError(err)
-    }
-}
-
-impl From<RecvError> for Error {
-    fn from(err: RecvError) -> Self {
-        Error::ShutdownHandleError(err)
-    }
 }
