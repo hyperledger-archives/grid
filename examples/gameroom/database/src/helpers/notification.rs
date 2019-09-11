@@ -44,11 +44,15 @@ pub fn list_unread_notifications_with_paging(
         .load::<GameroomNotification>(conn)
 }
 
-pub fn update_gameroom_notification(conn: &PgConnection, notification_id: i64) -> QueryResult<()> {
+pub fn update_gameroom_notification(
+    conn: &PgConnection,
+    notification_id: i64,
+) -> QueryResult<Option<GameroomNotification>> {
     diesel::update(gameroom_notification::table.find(notification_id))
         .set(gameroom_notification::read.eq(true))
-        .execute(conn)
-        .map(|_| ())
+        .get_result(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
 pub fn insert_gameroom_notification(
