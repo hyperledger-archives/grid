@@ -34,7 +34,7 @@ class GameroomsModule extends VuexModule {
     return this.gamerooms;
   }
 
-  get acceptedGameroomList(): Gameroom[] {
+  get activeGameroomList(): Gameroom[] {
     return this.gamerooms.filter(
       (gameroom: Gameroom) => gameroom.status === 'Active');
   }

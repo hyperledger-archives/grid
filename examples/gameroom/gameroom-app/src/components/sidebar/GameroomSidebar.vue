@@ -91,7 +91,7 @@ export default class GameroomSidebar extends Vue {
   }
 
   get gameroomList() {
-    return gamerooms.acceptedGameroomList.map((gameroom) => {
+    return gamerooms.activeGameroomList.map((gameroom) => {
       return {
         id: gameroom.circuit_id,
         name: gameroom.alias,
