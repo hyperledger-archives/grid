@@ -176,10 +176,6 @@ export async function listNotifications(publicKey: string): Promise<GameroomNoti
 }
 
 export async function markRead(id: string): Promise<GameroomNotification|undefined> {
-  try {
-    const response = await gameroomAPI.patch(`/notifications/${id}/read`);
-    return response.data as GameroomNotification;
-  } catch (e) {
-    alert(e);
-  }
+  const response = await gameroomAPI.patch(`/notifications/${id}/read`);
+  return response.data.data as GameroomNotification;
 }
