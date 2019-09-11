@@ -13,3 +13,6 @@
 // limitations under the License.
 
 pub mod ws;
+mod error;
+
+pub use error::{ParseError, ReactorError, WebSocketError};
