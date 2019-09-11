@@ -158,9 +158,15 @@ export async function proposalVote(ballot: Ballot, proposalID: string,
 }
 
 // Notifications
+const getOrgName = async (notif: any) => {
+  const node = await getNode(notif.node_id);
+  notif.requester_org = node.metadata.organization;
+  return notif as GameroomNotification;
+};
+
 export async function listNotifications(publicKey: string): Promise<GameroomNotification[]> {
   const isDisplayed = (value: GameroomNotification): boolean => {
-    const displayedNotifs = ['gameroom_proposal'];
+    const displayedNotifs = ['gameroom_proposal', 'circuit_active'];
     if (displayedNotifs.includes(value.notification_type)) {
       if (value.notification_type === 'gameroom_proposal' && value.requester === publicKey) {
         return false;
@@ -172,10 +178,13 @@ export async function listNotifications(publicKey: string): Promise<GameroomNoti
   const response = await gameroomAPI.get('/notifications');
   const notifications = response.data.data as GameroomNotification[];
   const filtered = notifications.filter(isDisplayed);
-  return filtered as GameroomNotification[];
+  return await Promise.all(filtered.map((notif: any) => getOrgName(notif)));
 }
 
-export async function markRead(id: string): Promise<GameroomNotification|undefined> {
+export async function markRead(id: string): Promise<GameroomNotification> {
   const response = await gameroomAPI.patch(`/notifications/${id}/read`);
-  return response.data.data as GameroomNotification;
+  const notif = response.data.data;
+  const node = await getNode(notif.node_id);
+  notif.requester_org = node.metadata.organization;
+  return notif as GameroomNotification;
 }

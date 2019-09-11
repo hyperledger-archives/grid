@@ -57,6 +57,7 @@ limitations under the License.
 import { Vue, Component } from 'vue-property-decorator';
 import { mixin as clickaway } from 'vue-clickaway';
 import DropdownNotification from '@/components/DropdownNotification.vue';
+import { GameroomNotification } from '../store/models';
 
 @Component({
   mixins: [ clickaway ],

@@ -80,6 +80,8 @@ export interface GameroomNotification {
   target: string;
   timestamp: number;
   read: boolean;
+  node_id: string;
+  requester_org: string;
 }
 
 export interface Section {

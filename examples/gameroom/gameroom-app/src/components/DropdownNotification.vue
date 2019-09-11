@@ -21,7 +21,6 @@ limitations under the License.
     <div class="text-wrapper">
       <span class="text">
         <span>{{ formatText(notification) }}</span>
-        <span class="bold">{{ notification.target }}</span>.
       </span>
       <div class="meta-wrapper">
         <i class="icon material-icons-round">
@@ -38,7 +37,7 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component, Prop } from 'vue-property-decorator';
 import * as moment from 'moment';
-import { GameroomNotification } from '@/store/models';
+import { GameroomNotification, Gameroom } from '@/store/models';
 
 
 @Component
@@ -51,17 +50,29 @@ export default class DropdownNotification extends Vue {
   notification!: GameroomNotification;
 
   get link() {
-    if (this.notification.notification_type === 'gameroom_proposal') {
-      return '/dashboard/invitations';
+    switch (this.notification.notification_type) {
+      case('gameroom_proposal'): return '/dashboard/invitations';
+      case('circuit_active'): return `/dashboard/gamerooms/${this.notification.target}`;
+      default: return '';
     }
-    return '/dashboard/home';
+  }
+
+  getName(): string {
+    const gamerooms = this.$store.getters['gamerooms/gameroomList'];
+    const gameroom = gamerooms.find((g: Gameroom) => g.circuit_id === this.notification.target);
+    return gameroom.alias;
   }
 
   formatText(notification: GameroomNotification) {
-    if (notification.notification_type === 'gameroom_proposal') {
-      return 'Someone has invited you to a new gameroom: ';
+    switch (notification.notification_type) {
+      case('gameroom_proposal'): {
+        return `${notification.requester_org} has invited you to a new gameroom: ${this.getName()}`;
+      }
+      case('circuit_active'): {
+        return `A new gameroom is ready: ${this.getName()}`;
+      }
+      default: return '';
     }
-    return '';
   }
 
   fromNow(timestamp: number): string {
