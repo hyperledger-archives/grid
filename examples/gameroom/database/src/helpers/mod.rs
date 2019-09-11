@@ -15,6 +15,7 @@
 mod gameroom;
 mod gameroom_user;
 mod notification;
+mod xo_games;
 
 pub use gameroom::{
     fetch_gameroom, fetch_gameroom_by_alias, fetch_gameroom_members_by_circuit_id_and_status,
@@ -31,3 +32,4 @@ pub use notification::{
     insert_gameroom_notification, list_unread_notifications_with_paging,
     update_gameroom_notification,
 };
+pub use xo_games::{fetch_xo_game, insert_xo_game, list_xo_games, update_xo_game};

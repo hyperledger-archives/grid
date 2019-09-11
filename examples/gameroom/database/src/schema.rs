@@ -101,3 +101,17 @@ table! {
         read -> Bool,
     }
 }
+
+table! {
+    xo_games (id) {
+        id -> Int8,
+        circuit_id -> Text,
+        game_name -> Text,
+        player_1 -> Text,
+        player_2 -> Text,
+        game_status -> Text,
+        game_board -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
