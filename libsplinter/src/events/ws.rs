@@ -199,10 +199,10 @@ impl WebSocketClient {
                                         };
                                         let result = handle_response(&mut blocking_sink, f(bytes));
 
-                                        if result.is_err() {
-                                            ConnectionStatus::Closed(result)
+                                        if let Err(err) = result {
+                                            ConnectionStatus::UnexpectedClose(err)
                                         } else {
-                                            ConnectionStatus::Open(result)
+                                            ConnectionStatus::Open
                                         }
                                     }
                                     Frame::Ping(msg) => {
@@ -213,12 +213,12 @@ impl WebSocketClient {
                                         ) {
                                             ConnectionStatus::UnexpectedClose(err)
                                         } else {
-                                            ConnectionStatus::Open(result)
+                                            ConnectionStatus::Open
                                         }
                                     }
                                     Frame::Pong(msg) => {
                                         debug!("Received Pong {}", msg);
-                                        ConnectionStatus::Open(Ok(()))
+                                        ConnectionStatus::Open
                                     }
                                     Frame::Close(msg) => {
                                         debug!("Received close message {:?}", msg);
@@ -230,9 +230,12 @@ impl WebSocketClient {
                                 };
 
                                 match (running_clone.load(Ordering::SeqCst), status) {
-                                    (true, ConnectionStatus::Open(_)) => future::ok(true),
-                                    (true, ConnectionStatus::Closed(res)) => {
-                                        if let Err(err) = sender.send(res) {
+                                    (true, ConnectionStatus::Open) => future::ok(true),
+                                    (false, ConnectionStatus::Open) => {
+                                        let shutdown_result =
+                                            do_shutdown(&mut blocking_sink, CloseCode::Normal)
+                                                .map_err(WebSocketError::from);
+                                        if let Err(err) = sender.send(shutdown_result) {
                                             error!(
                                                 "Failed to send response to shutdown handle: {}",
                                                 err
@@ -240,7 +243,7 @@ impl WebSocketClient {
                                         }
                                         future::ok(false)
                                     }
-                                    (false, ConnectionStatus::Open(_)) => {
+                                    (false, ConnectionStatus::Open) => {
                                         let shutdown_result =
                                             do_shutdown(&mut blocking_sink, CloseCode::Normal)
                                                 .map_err(Error::from);
@@ -252,7 +255,7 @@ impl WebSocketClient {
                                         }
                                         future::ok(false)
                                     }
-                                    (false, ConnectionStatus::Closed(res)) => {
+                                    (_, ConnectionStatus::Close(res)) => {
                                         if let Err(err) = sender.send(res) {
                                             error!(
                                                 "Failed to send response to shutdown handle: {}",
@@ -344,8 +347,9 @@ fn do_shutdown(
 }
 
 enum ConnectionStatus {
-    Open(Result<(), Error>),
-    Closed(Result<(), Error>),
+    Open,
+    UnexpectedClose(WebSocketError),
+    Close(Result<(), WebSocketError>),
 }
 
 /// Response object returned by `WebSocket` client callbacks.
