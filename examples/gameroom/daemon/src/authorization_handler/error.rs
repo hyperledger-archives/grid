@@ -19,7 +19,7 @@ use std::error::Error;
 use std::fmt;
 
 use futures::future;
-use libsplinter::events::ws;
+use libsplinter::events;
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuildError, CreateContractRegistryActionBuildError,
     CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
@@ -35,7 +35,8 @@ pub enum AppAuthHandlerError {
     IOError(std::io::Error),
     InvalidMessageError(String),
     DatabaseError(String),
-    WebSocketError(ws::Error),
+    ReactorError(events::ReactorError),
+    WebSocketError(events::WebSocketError),
     SabreError(String),
     SawtoothError(String),
     SigningError(String),
@@ -48,11 +49,12 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::IOError(err) => Some(err),
             AppAuthHandlerError::InvalidMessageError(_) => None,
             AppAuthHandlerError::DatabaseError(_) => None,
-            AppAuthHandlerError::WebSocketError(err) => Some(err),
+            AppAuthHandlerError::ReactorError(err) => Some(err),
             AppAuthHandlerError::SabreError(_) => None,
             AppAuthHandlerError::SawtoothError(_) => None,
             AppAuthHandlerError::SigningError(_) => None,
             AppAuthHandlerError::BatchSubmitError(_) => None,
+            AppAuthHandlerError::WebSocketError(err) => Some(err),
         }
     }
 }
@@ -67,7 +69,7 @@ impl fmt::Display for AppAuthHandlerError {
             AppAuthHandlerError::DatabaseError(msg) => {
                 write!(f, "The database returned an error: {}", msg)
             }
-            AppAuthHandlerError::WebSocketError(msg) => write!(f, "WebSocket Error: {}", msg),
+            AppAuthHandlerError::ReactorError(msg) => write!(f, "Reactor Error: {}", msg),
             AppAuthHandlerError::SabreError(msg) => write!(
                 f,
                 "An error occurred while building a Sabre payload: {}",
@@ -86,6 +88,7 @@ impl fmt::Display for AppAuthHandlerError {
                 "An error occurred while submitting a batch to the scabbard service: {}",
                 msg
             ),
+            AppAuthHandlerError::WebSocketError(msg) => write!(f, "WebsocketError {}", msg),
         }
     }
 }
@@ -126,8 +129,14 @@ impl From<diesel::result::Error> for AppAuthHandlerError {
     }
 }
 
-impl From<ws::Error> for AppAuthHandlerError {
-    fn from(err: ws::Error) -> Self {
+impl From<events::ReactorError> for AppAuthHandlerError {
+    fn from(err: events::ReactorError) -> Self {
+        AppAuthHandlerError::ReactorError(err)
+    }
+}
+
+impl From<events::WebSocketError> for AppAuthHandlerError {
+    fn from(err: events::WebSocketError) -> Self {
         AppAuthHandlerError::WebSocketError(err)
     }
 }
