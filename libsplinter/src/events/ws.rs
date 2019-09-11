@@ -110,6 +110,14 @@ pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     url: String,
     on_message: Arc<dyn Fn(T) -> WsResponse + Send + Sync + 'static>,
     on_open: Option<Arc<dyn Fn() -> WsResponse + Send + Sync + 'static>>,
+    on_error: Option<
+        Arc<
+            dyn Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
+                + Send
+                + Sync
+                + 'static,
+        >,
+    >,
 }
 
 impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
@@ -132,6 +140,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             url: url.to_string(),
             on_message: Arc::new(on_message),
             on_open: None,
+            on_error: None,
         }
     }
 
@@ -149,9 +158,10 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
         self.on_open = Some(Arc::new(on_open));
     }
 
-    /// Starts listener as a separate thread. Whenever a message is received from the server
-    /// callback `f` is called.
-    pub fn listen<F>(self, f: F) -> Result<Listen, Error>
+    /// Adds optional `on_error` closure. This closure would be called when the Websocket has closed due to
+    /// an unexpected error. This callback should be used to shutdown any IO resources being used by the
+    /// Websocket or to reestablish the connection if appropriate.
+    pub fn on_error<F>(&mut self, on_error: F)
     where
         F: Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
             + Send
@@ -171,6 +181,10 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             .clone()
             .unwrap_or_else(|| Arc::new(|| WsResponse::Empty));
         let on_message = self.on_message.clone();
+        let on_error = self
+            .on_error
+            .clone()
+            .unwrap_or_else(|| Arc::new(|_, _| Ok(())));
         let ws_clone = self.clone();
 
         let (sender, receiver) = bounded(1);
@@ -301,11 +315,13 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         }
                                         future::ok(false)
                                     }
-                                    (false, ConnectionStatus::Open) => {
-                                        let shutdown_result =
-                                            do_shutdown(&mut blocking_sink, CloseCode::Normal)
-                                                .map_err(Error::from);
-                                        if let Err(err) = sender.send(shutdown_result) {
+                                    (_, ConnectionStatus::UnexpectedClose(original_error)) => {
+                                        let result = on_error(&original_error, ws_clone.clone())
+                                            .map_err(|on_fail_error| WebSocketError::OnFailError {
+                                                original_error: Box::new(original_error),
+                                                on_fail_error: Box::new(on_fail_error),
+                                            });
+                                        if let Err(err) = sender.send(result) {
                                             error!(
                                                 "Failed to send response to shutdown handle: {}",
                                                 err
