@@ -1,6 +1,6 @@
 [package]
 name = "splinter-client"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 

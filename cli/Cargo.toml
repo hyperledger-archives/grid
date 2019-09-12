@@ -14,7 +14,7 @@
 
 [package]
 name = "splinter-cli"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 

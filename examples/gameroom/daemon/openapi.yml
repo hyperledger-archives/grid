@@ -15,7 +15,7 @@
 openapi: '3.0.0'
 
 info:
-  version: 0.3.1
+  version: 0.3.2
   title: Gameroomd API
   description: REST API for Gameroomd
 
