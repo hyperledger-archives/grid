@@ -100,6 +100,6 @@ CREATE TABLE IF NOT EXISTS xo_games (
   game_status               TEXT        NOT NULL,
   game_board                TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
-  updated_time              TIMESTAMP   NOT NULL
+  updated_time              TIMESTAMP   NOT NULL,
   FOREIGN KEY (circuit_id) REFERENCES gameroom(circuit_id) ON DELETE CASCADE
 );
