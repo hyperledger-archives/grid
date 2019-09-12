@@ -55,6 +55,9 @@ limitations under the License.
         </div>
         <div class="filter-container">
           <input class="form-input form-filter"  :disabled="gameroom.status !== 'Active'" v-model="gameNameFilter" type="text" placeholder="Filter name..." @input="filterGamesByName" />
+          <button  :disabled="gameroom.status !== 'Active'" class="btn-action small new-game-btn">
+            <div class="btn-text">New Game</div>
+          </button>
         </div>
        </div>
   </div>

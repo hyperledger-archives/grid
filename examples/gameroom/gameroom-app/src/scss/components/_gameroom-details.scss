@@ -38,6 +38,22 @@
     margin-top: 1rem;
   }
 
+  /* Gameroom new game button styling */
+ .new-game-btn {
+     width: 7rem;
+     height: 2.5rem;
+     float: right;
+     font-weight: normal;
+     padding: 0.1rem;
+     margin-left: auto;
+     margin-right: 1rem;
+
+     .btn-text {
+       margin:0;
+       padding:0;
+     }
+ }
+
   /* Filters styling */
   .form-filter {
     background: none;
