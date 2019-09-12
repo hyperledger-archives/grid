@@ -18,6 +18,7 @@ limitations under the License.
   <div class="gameroom-detail-container">
     <div class="gameroom-information">
       <h2 class="gameroom-name">{{ gameroom.alias }}</h2>
+      <span> {{ gemeroomMembers }} </span>
     </div>
   </div>
 </template>
@@ -41,6 +42,13 @@ import { Gameroom, Member, Game } from '@/store/models';
               (gameroom) => gameroom.circuit_id ===  this.$route.params.id) || {} as Gameroom;
         }
         return this.cachedGameroom;
+      }
+
+      get gemeroomMembers() {
+        if (this.gameroom.members) {
+          const organizations = this.gameroom.members.map((member) => member.organization);
+          return organizations.join(', ');
+        }
       }
 
   }
