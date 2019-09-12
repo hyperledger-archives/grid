@@ -1,5 +1,68 @@
 # Release Notes
 
+## Changes in Splinter 0.3.1
+
+### Highlights
+
+* Completion of circuit proposal validation, voting, and dynamic circuit creation
+* Addition of key generation and management, as well as role-based permissions
+* Continued progress towards proposing, accepting, and creating a gameroom in the
+  Gameroom example application
+
+### libsplinter
+
+* Add AdminService, with support for:
+  * Accepting and verifying votes on circuit proposals
+  * Committing approved circuit proposals to SplinterState
+* Add notification to be sent to application authorization handlers when a
+  circuit is ready
+* Update scabbard to properly set up Sabre state by adding admin keys
+* Add support for exposing service endpoints using the orchestrator and service
+  factories
+* Add WebSocketClient for consuming Splinter service events
+* Add KeyRegistry trait for managing key information with a StorageKeyRegistry
+  implementation, backed by the storage module
+* Add KeyPermissionsManager trait for accessing simple, role-based permissions
+  using public keys and an insecure AllowAllKeyPermissionManager implementation
+* Add SHA512 hash implementation of signing traits, for test cases
+* Add Sawtooth-compatible signing trait implementations behind the
+  "sawtooth-signing-compat" feature flag.
+
+### splinterd
+
+* Add package metadata and license field to Cargo.toml file
+* Add example configuration files, systemd files, and postinst script to Debian
+  package
+* Reorder internal service startup to ensure that the admin service and
+  orchestrator can appropriately connect and start up
+* Use SawtoothSecp256k1SignatureVerifier for admin service
+
+### splinter-cli
+
+* Add "splinter-cli admin keygen" command to generate secp256k1 public/private
+  key pairs
+* Add "splinter-cli admin keyregistry" command to generate a key registry and
+  key pairs based on a YAML specification
+
+### Private XO and Private Counter Examples
+* Add license field to all Cargo.toml files
+* Rename private-xo package to private-xo-service-<version>.deb
+* Rename private-counter packages to private-counter-cli-<version>.deb and
+  private-counter-service-<version>.deb
+
+### Gameroom Example
+* Add package metadata and license field to gameroomd Cargo.toml file
+* Add example configs, systemd files, and postinst script to gameroomd Debian
+  package; rename package to gameroom-<version>.deb
+* Implement notification retrieval using WebSocket subscription and
+  notifications endpoints
+* Show pending and accepted gamerooms in the Gameroom UI
+* Add full support for signing CircuitManagementPayloads with the user's
+  private key and submitting it to splinterd
+* Update gameroomd to specify itself as the scabbard admin and submit the XO
+  smart contract when the circuit is ready
+* Make various UI enhancements
+
 ## Changes in Splinter 0.3.0
 
 ### Highlights
