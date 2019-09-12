@@ -29,7 +29,17 @@ impl Handler<NetworkMessageType, CircuitMessage> for CircuitMessageHandler {
         context: &MessageContext<NetworkMessageType>,
         _: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
-        debug!("Handle CircuitMessage: {:?}", msg);
+        debug!(
+            "Handle CircuitMessage {:?} from {} [{} byte{}]",
+            msg.get_message_type(),
+            context.source_peer_id(),
+            msg.get_payload().len(),
+            if msg.get_payload().len() == 1 {
+                ""
+            } else {
+                "s"
+            }
+        );
         let dispatch_msg = DispatchMessage::new(
             msg.get_message_type(),
             msg.get_payload().to_vec(),
