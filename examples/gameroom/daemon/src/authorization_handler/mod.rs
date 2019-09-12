@@ -172,7 +172,7 @@ fn process_admin_event(
                     "proposal_vote_record",
                     &vote.voter_public_key,
                     &vote.voter_node_id,
-                    &vote.proposal_id.to_string(),
+                    &msg_proposal.circuit_id,
                 );
                 helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Pending")?;
@@ -208,7 +208,7 @@ fn process_admin_event(
                     "proposal_accepted",
                     &vote.voter_public_key,
                     &vote.voter_node_id,
-                    &vote.proposal_id.to_string(),
+                    &msg_proposal.circuit_id,
                 );
                 helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Accepted")?;
@@ -260,7 +260,7 @@ fn process_admin_event(
                     "proposal_rejected",
                     &vote.voter_public_key,
                     &vote.voter_node_id,
-                    &vote.proposal_id.to_string(),
+                    &msg_proposal.circuit_id,
                 );
                 helpers::insert_gameroom_notification(conn, &[notification])?;
                 helpers::update_gameroom_proposal_status(conn, proposal.id, &time, "Rejected")?;
@@ -868,7 +868,7 @@ mod test {
 
         let notification = &notifications[0];
         let expected_notification =
-            get_new_gameroom_notification_vote(vote.proposal_id, SystemTime::now());
+            get_new_gameroom_notification_vote("my_circuit", SystemTime::now());
 
         assert_eq!(
             notification.notification_type,
@@ -1106,14 +1106,14 @@ mod test {
     }
 
     fn get_new_gameroom_notification_vote(
-        proposal_id: i64,
+        circuit_id: &str,
         timestamp: SystemTime,
     ) -> NewGameroomNotification {
         NewGameroomNotification {
             notification_type: "proposal_vote_record".to_string(),
             requester: to_hex(&public_key()),
             requester_node_id: "acme_corp".to_string(),
-            target: proposal_id.to_string(),
+            target: circuit_id.to_string(),
             created_time: timestamp,
             read: false,
         }
