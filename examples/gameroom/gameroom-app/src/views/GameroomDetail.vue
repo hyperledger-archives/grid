@@ -16,20 +16,36 @@ limitations under the License.
 
 <template>
   <div class="gameroom-detail-container">
-      <h2>{{ $route.params.id }}</h2>
+    <div class="gameroom-information">
+      <h2 class="gameroom-name">{{ gameroom.alias }}</h2>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
+import gamerooms from '@/store/modules/gamerooms';
+import { Gameroom, Member, Game } from '@/store/models';
 
 @Component
-export default class Home extends Vue {}
+  export default class GameroomDetails extends Vue {
+      cachedGameroom: Gameroom = {} as Gameroom;
+
+      mounted() {
+        gamerooms.listGamerooms();
+      }
+
+      get gameroom(): Gameroom {
+        if (!this.cachedGameroom.circuit_id) {
+            this.cachedGameroom = gamerooms.gameroomList.find(
+              (gameroom) => gameroom.circuit_id ===  this.$route.params.id) || {} as Gameroom;
+        }
+        return this.cachedGameroom;
+      }
+
+  }
 </script>
 
 <style lang="scss" scoped>
-  .gameroom-detail-container {
-    display: flex;
-    padding: 2rem 4rem;
-  }
+@import '@/scss/components/_gameroom-details.scss';
 </style>
