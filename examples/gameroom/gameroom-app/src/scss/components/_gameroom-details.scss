@@ -33,4 +33,87 @@
       margin-right: 1rem;
     }
   }
+
+  /* games list styling */
+  .data-container {
+    @include overlay(1);
+    @include rounded-border;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .tbl-placeholder {
+    margin-top: 1rem;
+    text-align:center;
+    font-size: 1.5em;
+    display: table-row;
+  }
+
+  .tab-buttons {
+    display: flex;
+    margin-top: 1rem;
+    padding-bottom: .4rem;
+    align-items: center;
+
+   .tab-button {
+     @include rounded-border;
+     display: flex;
+     height: 1.5rem;
+     background: none;
+     border: none;
+     margin-right: 1rem;
+     color: $color-text-med;
+     font-weight: $fw-bold;
+     font-size: .9rem;
+     &:hover:enabled {
+       color: $color-text-high;
+     }
+     .btn-text {
+       position: relative;
+       text-decoration: none;
+       text-transform: uppercase;
+     }
+
+     .btn-text:after {
+       @include rounded-border;
+       position: absolute;
+       content: '';
+       height: 3px;
+       background: transparent;
+       bottom: -.2rem;
+       margin: 0 auto;
+       left: 0;
+       right: 0;
+       width: 50%;
+       -o-transition:.5s;
+       -ms-transition:.5s;
+       -moz-transition:.5s;
+       -webkit-transition:.5s;
+       transition:.5s;
+
+     }
+     .btn-text:hover:after:enabled {
+       width: 80%;
+       background: $color-primary-light;
+     }
+     &.is-active:enabled {
+       color: $color-text-high;
+       .btn-text:after  {
+         background: $color-primary;
+         width: 50%;
+       }
+     }
+     &.is-active:disabled {
+       color: $color-text-high;
+       .btn-text:after  {
+         background: $color-text-disabled;
+         width: 50%;
+       }
+     }
+   }
+  }
 }

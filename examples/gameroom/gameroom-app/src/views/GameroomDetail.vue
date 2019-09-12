@@ -20,6 +20,40 @@ limitations under the License.
       <h2 class="gameroom-name">{{ gameroom.alias }}</h2>
       <span> {{ gemeroomMembers }} </span>
     </div>
+        <div class="data-container">
+          <div class="tab-buttons">
+          <button class="tab-button"
+                  @click="selectTab(1)"
+                  :disabled="gameroom.status !== 'Active'"
+                  :class="{ 'is-active' : currentTab === 1 }">
+            <div class="btn-text">all</div>
+          </button >
+          <button class="tab-button"
+                  @click="selectTab(2)"
+                  :disabled="gameroom.status !== 'Active'"
+                  :class="{ 'is-active' : currentTab === 2 }">
+            <div class="btn-text">your games</div>
+          </button>
+          <button class="tab-button"
+                  @click="selectTab(3)"
+                  :disabled="gameroom.status !== 'Active'"
+                  :class="{ 'is-active' : currentTab === 3 }">
+            <div class="btn-text">join</div>
+          </button>
+          <button class="tab-button"
+                  @click="selectTab(4)"
+                  :disabled="gameroom.status !== 'Active'"
+                  :class="{ 'is-active' : currentTab === 4 }">
+            <div class="btn-text">watch</div>
+          </button>
+          <button class="tab-button"
+                  @click="selectTab(5)"
+                  :disabled="gameroom.status !== 'Active'"
+                  :class="{ 'is-active' : currentTab === 5 }">
+            <div class="btn-text">archived</div>
+          </button>
+        </div>
+       </div>
   </div>
 </template>
 
@@ -30,6 +64,10 @@ import { Gameroom, Member, Game } from '@/store/models';
 
 @Component
   export default class GameroomDetails extends Vue {
+      games: Game[] = [];
+      filteredGamesByState = this.games;
+      currentTab = 1;
+
       cachedGameroom: Gameroom = {} as Gameroom;
 
       mounted() {
@@ -51,7 +89,49 @@ import { Gameroom, Member, Game } from '@/store/models';
         }
       }
 
+       selectTab(tab: number) {
+         this.currentTab = tab;
+         this.filterGamesByState(tab);
+       }
+
+      filterGamesByState(tab: number) {
+        const publicKey = this.$store.getters['user/getPublicKey'];
+        let filteredGames: Game[] = [];
+        switch (tab) {
+          case 5:
+             filteredGames = this.games.filter((game, index, array) => gameIsOver(game.game_status));
+             break;
+           case 3:
+              filteredGames = this.games.filter((game, index, array) =>
+                !userIsInGame(game, publicKey) && userCanJoinGame(game, publicKey));
+              break;
+           case 2:
+              filteredGames = this.games.filter((game, index, array) =>
+                !gameIsOver(game.game_status) && userIsInGame(game, publicKey));
+              break;
+           case 4:
+              filteredGames = this.games.filter((game, index, array) =>
+                !gameIsOver(game.game_status) && !userIsInGame(game, publicKey) && !userCanJoinGame(game, publicKey));
+              break;
+           default:
+            filteredGames =  this.games;
+        }
+        this.filteredGamesByState = filteredGames;
+    }
   }
+
+function gameIsOver(gameStatus: string) {
+  return gameStatus === 'P1-WIN' || gameStatus === 'P2-WIN' || gameStatus === 'TIE';
+}
+
+function userIsInGame(game: Game, publicKey: string) {
+  return game.player_1 === publicKey || game.player_2 === publicKey;
+}
+
+function userCanJoinGame(game: Game, publicKey: string) {
+  return game.player_1 === '' || (game.player_2 === '' && game.player_1 !== publicKey);
+}
+
 </script>
 
 <style lang="scss" scoped>
