@@ -64,9 +64,14 @@ use crate::routes;
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
 const ADMIN_SERVICE_ADDRESS: &str = "inproc://admin-service";
+
 const ORCHESTRATOR_INCOMING_CAPACITY: usize = 8;
 const ORCHESTRATOR_OUTGOING_CAPACITY: usize = 8;
 const ORCHESTRATOR_CHANNEL_CAPACITY: usize = 8;
+
+const ADMIN_SERVICE_PROCESSOR_INCOMING_CAPACITY: usize = 8;
+const ADMIN_SERVICE_PROCESSOR_OUTGOING_CAPACITY: usize = 8;
+const ADMIN_SERVICE_PROCESSOR_CHANNEL_CAPACITY: usize = 8;
 
 pub struct SplinterDaemon {
     storage_location: String,
@@ -422,15 +427,20 @@ impl SplinterDaemon {
                     err
                 ))
             })?;
-            let mut admin_service_processor =
-                ServiceProcessor::new(connection, "admin".into(), 1, 1, 128, running).map_err(
-                    |err| {
-                        StartError::AdminServiceError(format!(
-                            "unable to create admin service processor: {}",
-                            err
-                        ))
-                    },
-                )?;
+            let mut admin_service_processor = ServiceProcessor::new(
+                connection,
+                "admin".into(),
+                ADMIN_SERVICE_PROCESSOR_INCOMING_CAPACITY,
+                ADMIN_SERVICE_PROCESSOR_OUTGOING_CAPACITY,
+                ADMIN_SERVICE_PROCESSOR_CHANNEL_CAPACITY,
+                running,
+            )
+            .map_err(|err| {
+                StartError::AdminServiceError(format!(
+                    "unable to create admin service processor: {}",
+                    err
+                ))
+            })?;
 
             admin_service_processor
                 .add_service(Box::new(admin_service))
