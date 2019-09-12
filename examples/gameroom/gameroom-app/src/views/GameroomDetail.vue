@@ -53,6 +53,9 @@ limitations under the License.
             <div class="btn-text">archived</div>
           </button>
         </div>
+        <div class="filter-container">
+          <input class="form-input form-filter"  :disabled="gameroom.status !== 'Active'" v-model="gameNameFilter" type="text" placeholder="Filter name..." @input="filterGamesByName" />
+        </div>
        </div>
   </div>
 </template>
@@ -65,7 +68,11 @@ import { Gameroom, Member, Game } from '@/store/models';
 @Component
   export default class GameroomDetails extends Vue {
       games: Game[] = [];
+      filteredGamesByName = this.games;
       filteredGamesByState = this.games;
+
+      gameNameFilter = '';
+
       currentTab = 1;
 
       cachedGameroom: Gameroom = {} as Gameroom;
@@ -93,6 +100,11 @@ import { Gameroom, Member, Game } from '@/store/models';
          this.currentTab = tab;
          this.filterGamesByState(tab);
        }
+
+      filterGamesByName() {
+        this.filteredGamesByName = this.games.filter((game, index, array) =>
+          game.game_name.toUpperCase().indexOf(this.gameNameFilter.toUpperCase()) > -1);
+      }
 
       filterGamesByState(tab: number) {
         const publicKey = this.$store.getters['user/getPublicKey'];

@@ -34,7 +34,42 @@
     }
   }
 
-  /* games list styling */
+  .filter-container {
+    margin-top: 1rem;
+  }
+
+  /* Filters styling */
+  .form-filter {
+    background: none;
+    border-width: 0 0 1px 0;
+    border-color: $color-text-disabled;
+    padding: 0.5rem;
+    margin: 0 0 0 1rem;
+    width: 8rem;
+  }
+
+  .form-filter:focus {
+    border-color: $color-primary;
+  }
+
+  input[type=text] {
+    color: $color-text-med
+  }
+
+  ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: $color-text-disabled;
+    opacity: 1; /* Firefox */
+  }
+
+  :-ms-input-placeholder { /* Internet Explorer 10-11 */
+    color: $color-text-disabled;
+  }
+
+  ::-ms-input-placeholder { /* Microsoft Edge */
+    color: $color-text-disabled;
+  }
+
+    /* games list styling */
   .data-container {
     @include overlay(1);
     @include rounded-border;
