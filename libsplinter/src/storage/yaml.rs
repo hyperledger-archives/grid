@@ -15,13 +15,11 @@
 
 use std::fmt;
 use std::fs::File;
-use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_yaml::{from_str, to_string};
 
 use super::{Storage, StorageReadGuard, StorageWriteGuard};
 
@@ -72,13 +70,7 @@ impl<'a, T: Serialize + DeserializeOwned> Drop for YamlStorageWriteGuard<'a, T> 
     fn drop(&mut self) {
         self.storage
             .file
-            .write(|f| {
-                f.write_all(
-                    to_string(&self.storage.data)
-                        .expect("Couldn't convert value to string!")
-                        .as_bytes(),
-                )
-            })
+            .write(|f| serde_yaml::to_writer(f, &self.storage.data))
             .expect("File write failed while dropping YamlStorageWriteGuard!");
     }
 }
@@ -126,20 +118,13 @@ impl<T: Serialize + DeserializeOwned> YamlStorage<T> {
 
         // Read the file first, to see if there's any existing data
         let data = match File::open(file.path()) {
-            Ok(mut f) => {
-                let mut contents = String::new();
-
-                f.read_to_string(&mut contents)
-                    .map_err(|err| format!("Couldn't read file: {}", err))?;
-
-                from_str(&contents).map_err(|err| format!("Couldn't read file: {}", err))?
+            Ok(f) => {
+                serde_yaml::from_reader(f).map_err(|err| format!("Couldn't read file: {}", err))?
             }
             Err(_) => {
                 let data = default();
-                let data_string =
-                    to_string(&data).map_err(|err| format!("File write failed: {}", err))?;
 
-                file.write(|f| f.write_all(data_string.as_bytes()))
+                file.write(|f| serde_yaml::to_writer(f, &data))
                     .map_err(|err| format!("File write failed: {}", err))?;
 
                 data
@@ -171,6 +156,7 @@ impl<T: Serialize + DeserializeOwned> Storage for YamlStorage<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
     use std::path::PathBuf;
 
     use tempdir::TempDir;
