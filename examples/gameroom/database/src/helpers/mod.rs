@@ -28,8 +28,8 @@ pub use gameroom::{
 };
 pub use gameroom_user::{fetch_user_by_email, insert_user};
 pub use notification::{
-    create_new_notification, fetch_notification, get_unread_notification_count,
-    insert_gameroom_notification, list_unread_notifications_with_paging,
-    update_gameroom_notification,
+    create_new_notification, fetch_notification, fetch_notifications_by_time,
+    get_unread_notification_count, insert_gameroom_notification,
+    list_unread_notifications_with_paging, update_gameroom_notification,
 };
 pub use xo_games::{fetch_xo_game, insert_xo_game, list_xo_games, update_xo_game};
