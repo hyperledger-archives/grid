@@ -83,7 +83,7 @@ pub fn propose_gameroom(
     pool: web::Data<ConnectionPool>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
-    public_key: web::Data<GameroomdData>,
+    gameroomd_data: web::Data<GameroomdData>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let mut members = create_gameroom
         .member
@@ -108,7 +108,7 @@ pub fn propose_gameroom(
         acc
     });
 
-    let scabbard_admin_keys = vec![public_key.get_ref().public_key.clone()];
+    let scabbard_admin_keys = vec![gameroomd_data.get_ref().public_key.clone()];
 
     let mut scabbard_args = HashMap::new();
     scabbard_args.insert(
