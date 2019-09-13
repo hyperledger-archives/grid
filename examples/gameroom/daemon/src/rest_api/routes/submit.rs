@@ -14,6 +14,7 @@
 
 use actix_web::{client::Client, dev::Body, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
+use libsplinter::node_registry::Node;
 
 use super::{ErrorResponse, SuccessResponse};
 
@@ -49,6 +50,51 @@ pub fn submit_signed_payload(
                             resp.status(),
                         );
 
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
+                    }
+                }
+            }),
+    )
+}
+
+pub fn submit_scabbard_payload(
+    client: web::Data<Client>,
+    splinterd_url: web::Data<String>,
+    circuit_id: web::Path<String>,
+    node_info: web::Data<Node>,
+    signed_payload: web::Bytes,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let service_id = format!("gameroom_{}", node_info.identity);
+    Box::new(
+        client
+            .post(format!(
+                "{}/scabbard/{}/{}/batches",
+                *splinterd_url, &circuit_id, &service_id
+            ))
+            .send_body(Body::Bytes(signed_payload))
+            .map_err(Error::from)
+            .and_then(|mut resp| {
+                let status = resp.status();
+                let body = resp.body().wait()?;
+
+                match status {
+                    StatusCode::ACCEPTED => Ok(HttpResponse::Accepted().json(
+                        SuccessResponse::new("The payload was submitted successfully"),
+                    )),
+                    StatusCode::BAD_REQUEST => {
+                        let body_value: serde_json::Value = serde_json::from_slice(&body)?;
+                        let message = match body_value.get("message") {
+                            Some(value) => value.as_str().unwrap_or("Request was malformed."),
+                            None => "Request malformed.",
+                        };
+                        Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message)))
+                    }
+                    _ => {
+                        debug!(
+                            "Internal Server Error. Gameroom service responded with an error {}",
+                            resp.status()
+                        );
                         Ok(HttpResponse::InternalServerError()
                             .json(ErrorResponse::internal_error()))
                     }

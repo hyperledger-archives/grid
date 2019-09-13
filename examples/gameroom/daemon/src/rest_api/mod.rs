@@ -150,8 +150,14 @@ pub fn run(
                                     .route(web::get().to_async(routes::list_gamerooms)),
                             )
                             .service(
-                                web::resource("/{circuit_id}")
-                                    .route(web::get().to_async(routes::fetch_gameroom)),
+                                web::scope("/{circuit_id}")
+                                    .service(
+                                        web::resource("")
+                                            .route(web::get().to_async(routes::fetch_gameroom)),
+                                    )
+                                    .service(web::resource("/batches").route(
+                                        web::post().to_async(routes::submit_scabbard_payload),
+                                    )),
                             ),
                     )
                     .service(
