@@ -63,7 +63,7 @@ const PIKE_PREFIX: &str = "cad11d";
 
 const XO_NAME: &str = "xo";
 const XO_VERSION: &str = "0.3.3";
-const XO_PREFIX: &str = "5b7349";
+pub const XO_PREFIX: &str = "5b7349";
 
 const XO_CONTRACT_PATH: &str = "/var/lib/gameroomd/xo-tp-rust.wasm";
 
@@ -369,6 +369,10 @@ pub fn create_batch_list_from_one(batch: Batch) -> BatchList {
     let mut batch_list = BatchList::new();
     batch_list.set_batches(protobuf::RepeatedField::from_vec(vec![batch]));
     batch_list
+}
+
+pub fn get_xo_contract_address() -> String {
+    compute_contract_address(XO_NAME, XO_VERSION)
 }
 
 /// Creates a nonce appropriate for a TransactionHeader
