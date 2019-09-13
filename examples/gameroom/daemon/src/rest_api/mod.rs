@@ -21,6 +21,7 @@ use std::thread;
 use actix_web::{
     client::Client, error as ActixError, web, App, FromRequest, HttpResponse, HttpServer, Result,
 };
+use futures::future::Future;
 use gameroom_database::ConnectionPool;
 use libsplinter::node_registry::Node;
 
@@ -178,7 +179,9 @@ pub fn run(
 
     let do_shutdown = Box::new(move || {
         debug!("Shutting down Rest API");
-        addr.stop(true);
+        if let Err(err) = addr.stop(true).wait() {
+            error!("Failed to shutdown rest api cleanly: {:?}", err);
+        }
         debug!("Graceful signal sent to Rest API");
 
         Ok(())

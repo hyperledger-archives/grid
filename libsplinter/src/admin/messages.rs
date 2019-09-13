@@ -19,6 +19,8 @@ use serde::de::DeserializeOwned;
 use serde_json;
 
 use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
+#[cfg(feature = "events")]
+use crate::events::{ParseBytes, ParseError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
@@ -376,4 +378,13 @@ pub enum AdminServiceEvent {
     ProposalAccepted((CircuitProposal, Vec<u8>)),
     ProposalRejected((CircuitProposal, Vec<u8>)),
     CircuitReady(CircuitProposal),
+}
+
+#[cfg(feature = "events")]
+impl ParseBytes<AdminServiceEvent> for AdminServiceEvent {
+    fn from_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, ParseError> {
+        serde_json::from_slice(bytes)
+            .map_err(Box::new)
+            .map_err(|err| ParseError::MalformedMessage(err))
+    }
 }

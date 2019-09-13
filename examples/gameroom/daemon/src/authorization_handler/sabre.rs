@@ -20,12 +20,11 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::thread;
 use std::time::Instant;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
-use futures::future::Future;
+use futures::future::{self, Future};
 use futures::stream::Stream;
 use hyper::{Body, Client, Request, StatusCode};
 use protobuf::Message;
@@ -40,7 +39,6 @@ use sawtooth_sdk::messages::batch::{Batch, BatchHeader, BatchList};
 use sawtooth_sdk::messages::transaction::{Transaction, TransactionHeader};
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
 use sawtooth_sdk::signing::{create_context, CryptoFactory, Signer};
-use tokio::runtime::Runtime;
 
 use super::AppAuthHandlerError;
 
@@ -76,7 +74,7 @@ pub fn setup_xo(
     splinterd_url: &str,
     circuit_id: &str,
     service_id: &str,
-) -> Result<(), AppAuthHandlerError> {
+) -> Result<Box<dyn Future<Item = (), Error = ()> + Send + 'static>, AppAuthHandlerError> {
     let context = create_context("secp256k1")?;
     let factory = CryptoFactory::new(&*context);
     let private_key = Secp256k1PrivateKey::from_hex(private_key)?;
@@ -89,7 +87,7 @@ pub fn setup_xo(
         None => false,
     };
     if !is_submitter {
-        return Ok(());
+        return Ok(Box::new(future::ok(())));
     }
 
     // Create the transactions and batch them
@@ -117,13 +115,12 @@ pub fn setup_xo(
         .body(Body::wrap_stream(body_stream))
         .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))?;
 
-    let join_handle = thread::spawn(move || {
-        let mut runtime = Runtime::new()
-            .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))?;
+    let client = Client::new();
 
-        let client = Client::new();
-        runtime
-            .block_on(client.request(req).then(|response| match response {
+    Ok(Box::new(
+        client
+            .request(req)
+            .then(|response| match response {
                 Ok(res) => {
                     let status = res.status();
                     let body = res
@@ -151,13 +148,9 @@ pub fn setup_xo(
                     "The client encountered an error {}",
                     err
                 ))),
-            }))
-            .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))
-    });
-
-    join_handle
-        .join()
-        .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{:?}", err)))?
+            })
+            .map_err(|_| ()),
+    ))
 }
 
 fn create_contract_registry_txn(

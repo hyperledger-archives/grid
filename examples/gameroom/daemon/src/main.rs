@@ -29,6 +29,7 @@ mod rest_api;
 
 use flexi_logger::{LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
+use libsplinter::events::Reactor;
 use sawtooth_sdk::signing::create_context;
 
 use crate::config::{get_node, GameroomConfigBuilder};
@@ -79,11 +80,14 @@ fn run() -> Result<(), GameroomDaemonError> {
     // Get splinterd node information
     let node = get_node(config.splinterd_url())?;
 
-    let (app_auth_handler_shutdown_handle, app_auth_handler_runtime) = authorization_handler::run(
+    let reactor = Reactor::new();
+
+    authorization_handler::run(
         config.splinterd_url().into(),
         node.identity.clone(),
         connection_pool.clone(),
         private_key.as_hex(),
+        reactor.igniter(),
     )?;
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
@@ -100,21 +104,14 @@ fn run() -> Result<(), GameroomDaemonError> {
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
         }
-
-        if let Err(err) = app_auth_handler_shutdown_handle.clone().shutdown() {
-            error!(
-                "Unable to cleanly shutdown application authorization handler: {}",
-                err
-            );
-        }
     })
     .expect("Error setting Ctrl-C handler");
 
     let _ = rest_api_join_handle.join();
 
-    if let Err(err) = app_auth_handler_runtime.shutdown() {
+    if let Err(err) = reactor.shutdown() {
         error!(
-            "Unable to cleanly shutdown application authorization handler runtime: {}",
+            "Unable to cleanly shutdown application authorization handler reactor: {}",
             err
         );
     }
