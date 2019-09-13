@@ -97,6 +97,13 @@
     margin-top: 1rem;
   }
 
+  .spinner-gameroom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-color: $color-primary-light;
+  }
+
   .tbl-placeholder {
     margin-top: 1rem;
     text-align:center;
@@ -166,5 +173,16 @@
        }
      }
    }
+  }
+  .cards-container {
+    padding-top: 1rem;
+    overflow: auto;
+  }
+  .placeholder-wrapper {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 }

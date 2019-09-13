@@ -59,6 +59,17 @@ limitations under the License.
             <div class="btn-text">New Game</div>
           </button>
         </div>
+        <div class="cards-container" v-if="filteredGames.length > 0">
+          <ul id="example-1">
+            <li v-for="game in filteredGames">
+              {{ game.game_name }}
+            </li>
+          </ul>
+         </div>
+         <div class="placeholder-wrapper" v-else>
+           <h3 class="tbl-placeholder"> {{ placeholderText }} </h3>
+           <div v-if="gameroom.status !== 'Active'" class="spinner-gameroom spinner" />
+         </div>
        </div>
   </div>
 </template>
@@ -97,6 +108,19 @@ import { Gameroom, Member, Game } from '@/store/models';
           const organizations = this.gameroom.members.map((member) => member.organization);
           return organizations.join(', ');
         }
+      }
+
+      get placeholderText(): string {
+       if (this.gameroom.status === 'Active') {
+         return 'No games to show.';
+       } else {
+         return 'Please wait while your gameroom finishes setting up.';
+       }
+     }
+
+      // intersection of filteredGamesByName and filteredGamesByState
+      get filteredGames() {
+        return this.filteredGamesByName.filter((game, index, array) => this.filteredGamesByState.indexOf(game) !== -1);
       }
 
        selectTab(tab: number) {
