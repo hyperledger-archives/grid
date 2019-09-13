@@ -617,6 +617,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /gamerooms/{circuit_id}/batches:
+    post:
+      tags:
+        - Gamerooms
+      description: Submit signed serialized Sabre payload to Gameroom service
+      parameters:
+        - name: circuit_id
+          in: path
+          description: identity of the Gameroom circuit
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+          202:
+            description:  The payload was accepted
+            content:
+              application/json:
+                schema:
+                  properties:
+                    data:
+                      type: string
+                      example: "The payload was submitted successfully"
+          400:
+            description: Request was malformed
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          500:
+            description: Internal server error
+
   /ws/subscribe:
     get:
       tags:
