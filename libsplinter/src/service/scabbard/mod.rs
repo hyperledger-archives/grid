@@ -46,6 +46,7 @@ use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
 use state::ScabbardState;
+pub use state::StateChangeEvent;
 
 const SERVICE_TYPE: &str = "scabbard";
 

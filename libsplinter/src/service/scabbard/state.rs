@@ -212,7 +212,7 @@ fn into_writable_state_change(
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "eventType", content = "message")]
-enum StateChangeEvent {
+pub enum StateChangeEvent {
     Set { key: String, value: Vec<u8> },
     Delete { key: String },
 }
