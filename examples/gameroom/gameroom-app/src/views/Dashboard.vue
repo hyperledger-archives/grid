@@ -115,10 +115,16 @@ export default class Dashboard extends Vue {
 
   setError(message: string) {
     this.error = message;
+    setTimeout(() => {
+      this.clearError();
+    }, 6000);
   }
 
   setSuccess(message: string) {
     this.success = message;
+    setTimeout(() => {
+      this.clearSuccess();
+    }, 6000);
   }
 
   clearError() {
@@ -137,10 +143,10 @@ export default class Dashboard extends Vue {
             alias: this.newGameroom.alias,
             member: [this.newGameroom.member as Node],
           });
-          this.success = 'Your invitation has been sent!';
+          this.setSuccess('Your invitation has been sent!');
         } catch (e) {
           console.error(e);
-          this.error = e.message;
+          this.setError(e.message);
         }
         this.submitting = false;
         this.closeNewGameroomModal();

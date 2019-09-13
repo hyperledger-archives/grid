@@ -77,6 +77,13 @@ export default class Login extends Vue {
     return false;
   }
 
+  setError(message: string) {
+    this.error = message;
+    setTimeout(() => {
+      this.clearError();
+    }, 6000);
+  }
+
   clearError() {
     this.error = '';
   }
@@ -91,7 +98,7 @@ export default class Login extends Vue {
 
       this.$router.push({ name: 'dashboard' });
     } catch (e) {
-      this.error = e.message;
+      this.setError(e.message);
     }
     this.submitting = false;
   }
