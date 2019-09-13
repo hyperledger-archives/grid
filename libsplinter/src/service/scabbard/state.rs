@@ -17,6 +17,7 @@ use std::path::Path;
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
+use serde_json;
 use transact::context::manager::sync::ContextManager;
 use transact::database::{
     lmdb::{LmdbContext, LmdbDatabase},
@@ -31,6 +32,8 @@ use transact::state::{
     StateChange, Write,
 };
 
+#[cfg(feature = "events")]
+use crate::events::{ParseBytes, ParseError};
 use crate::protos::scabbard::{Setting, Setting_Entry};
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 
@@ -223,5 +226,23 @@ impl StateChangeEvent {
             StateChange::Set { key, value } => StateChangeEvent::Set { key, value },
             StateChange::Delete { key } => StateChangeEvent::Delete { key },
         }
+    }
+}
+
+#[cfg(feature = "events")]
+impl ParseBytes<StateChangeEvent> for StateChangeEvent {
+    fn from_bytes(bytes: &[u8]) -> Result<StateChangeEvent, ParseError> {
+        serde_json::from_slice(bytes)
+            .map_err(Box::new)
+            .map_err(|err| ParseError::MalformedMessage(err))
+    }
+}
+
+#[cfg(feature = "events")]
+impl ParseBytes<Vec<StateChangeEvent>> for Vec<StateChangeEvent> {
+    fn from_bytes(bytes: &[u8]) -> Result<Vec<StateChangeEvent>, ParseError> {
+        serde_json::from_slice(bytes)
+            .map_err(Box::new)
+            .map_err(|err| ParseError::MalformedMessage(err))
     }
 }
