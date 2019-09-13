@@ -73,6 +73,9 @@ use tokio::prelude::*;
 
 use crate::events::{ParseError, WebSocketError};
 
+type OnErrorHandle<T> =
+    Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
+
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `Igniter::start_ws`
 pub struct Listen {
@@ -117,14 +120,7 @@ pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     url: String,
     on_message: Arc<dyn Fn(T) -> WsResponse + Send + Sync + 'static>,
     on_open: Option<Arc<dyn Fn() -> WsResponse + Send + Sync + 'static>>,
-    on_error: Option<
-        Arc<
-            dyn Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
-                + Send
-                + Sync
-                + 'static,
-        >,
-    >,
+    on_error: Option<Arc<OnErrorHandle<T>>>,
 }
 
 impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
