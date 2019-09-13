@@ -178,8 +178,7 @@ fn update_gameroom_notification(
     pool: web::Data<ConnectionPool>,
     id: i64,
 ) -> Result<ApiNotification, RestApiResponseError> {
-    if let Some(notification) = helpers::fetch_notification(&*pool.get()?, id)? {
-        helpers::update_gameroom_notification(&*pool.get()?, id)?;
+    if let Some(notification) = helpers::update_gameroom_notification(&*pool.get()?, id)? {
         return Ok(ApiNotification::from(notification));
     }
     Err(RestApiResponseError::NotFound(format!(
