@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use actix::prelude::*;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
@@ -82,5 +82,15 @@ pub fn connect_socket(
 }
 
 fn check_notifications(pool: web::Data<ConnectionPool>) -> Result<bool, RestApiResponseError> {
-    Ok(helpers::get_unread_notification_count(&*pool.get()?)? > 0)
+    let now = SystemTime::now();
+    if let Some(earlier) = now.checked_sub(Duration::new(3, 0)) {
+        let new_notifications = helpers::fetch_notifications_by_time(&*pool.get()?, now, earlier)?;
+        return Ok(!new_notifications.is_empty());
+    }
+    Err(RestApiResponseError::InternalError(format!(
+        "Unable to find new notifications since last check from now: {:?}",
+        now.duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_else(|_| Duration::new(0, 0))
+            .as_secs(),
+    )))
 }

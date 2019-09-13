@@ -87,3 +87,17 @@ pub fn get_unread_notification_count(conn: &PgConnection) -> QueryResult<i64> {
         .count()
         .get_result(conn)
 }
+
+pub fn fetch_notifications_by_time(
+    conn: &PgConnection,
+    current_check_time: SystemTime,
+    previous_check_time: SystemTime,
+) -> QueryResult<Vec<GameroomNotification>> {
+    gameroom_notification::table
+        .filter(
+            gameroom_notification::created_time
+                .ge(previous_check_time)
+                .and(gameroom_notification::created_time.le(current_check_time)),
+        )
+        .load::<GameroomNotification>(conn)
+}
