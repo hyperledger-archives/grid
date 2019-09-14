@@ -17,7 +17,6 @@ use std::path::Path;
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
-use serde_json;
 use transact::context::manager::sync::ContextManager;
 use transact::database::{
     lmdb::{LmdbContext, LmdbDatabase},
