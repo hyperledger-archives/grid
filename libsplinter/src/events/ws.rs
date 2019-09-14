@@ -76,6 +76,8 @@ use crate::events::{ParseError, WebSocketError};
 type OnErrorHandle<T> =
     Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
 
+const MAX_FRAME_SIZE: usize = 10_000_000;
+
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `Igniter::start_ws`
 pub struct Listen {
@@ -219,7 +221,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                     WebSocketError::from(err)
                 })
                 .and_then(move |upgraded| {
-                    let codec = Codec::new().client_mode();
+                    let codec = Codec::new().max_size(MAX_FRAME_SIZE).client_mode();
                     let framed = codec.framed(upgraded);
                     let (sink, stream) = framed.split();
 
