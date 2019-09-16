@@ -56,7 +56,7 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
-                trace!("Message sent: {:#?}", msg);
+                trace!("Message sent: {:?}", msg);
                 true
             }
         });
@@ -120,7 +120,6 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
     for EventDealerWebSocket<T>
 {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        debug!("WS: {:?}", msg);
         match msg {
             ws::Message::Ping(msg) => ctx.ping(&msg),
             ws::Message::Pong(msg) => ctx.pong(&msg),
