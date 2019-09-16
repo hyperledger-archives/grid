@@ -115,7 +115,7 @@ pub fn list_xo(
         .get("limit")
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| DEFAULT_LIMIT);
-    let base_link = format!("api/xo/games/{}", &circuit_id);
+    let base_link = format!("api/xo/{}/games?", &circuit_id);
 
     Box::new(
         web::block(move || list_xo_games_from_db(pool, &circuit_id.clone(), limit, offset)).then(
