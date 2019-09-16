@@ -738,8 +738,10 @@ components:
       properties:
         node_id:
           type: string
+          example: acme-node-000
         endpoint:
           type: string
+          example: tls://127.0.0.1:8080
 
     ApiGameroom:
       type: object
@@ -759,6 +761,10 @@ components:
         circuit_management_type:
           type: string
           example: Gameroom
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiCircuitMember'
         alias:
           description: alias of the gameroom
           type: string

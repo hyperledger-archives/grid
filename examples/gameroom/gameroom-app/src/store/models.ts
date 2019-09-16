@@ -103,7 +103,20 @@ export interface Gameroom {
   authorization_type: string;
   persistence: string;
   routes: string;
+  members: Member[];
   circuit_management_type: string;
   alias: string;
   status: string;
+}
+
+export interface Game {
+  id: number;
+  game_name: string;
+  circuit_id: string;
+  player_1: string;
+  player_2: string;
+  game_status: string;
+  game_board: string;
+  created_time: number;
+  updated_time: number;
 }
