@@ -27,6 +27,7 @@ use crate::consensus::{
     ProposalUpdate,
 };
 use crate::consensus::{ConsensusEngine, StartupState};
+use crate::hex::to_hex;
 use crate::protos::admin::{AdminMessage, AdminMessage_Type, ProposedCircuit};
 use crate::protos::two_phase::RequiredVerifiers;
 use crate::service::ServiceError;
@@ -235,8 +236,9 @@ impl ProposalManager for AdminProposalManager {
         // check if hash is the expected hash stored in summary
         if hash.as_bytes().to_vec() != proposal.summary {
             warn!(
-                "Hash mismatch: expected {:?} but was {}",
-                proposal.summary, hash
+                "Hash mismatch: expected {} but was {}",
+                to_hex(&proposal.summary),
+                to_hex(hash.as_bytes())
             );
 
             self.proposal_update_sender

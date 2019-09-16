@@ -47,6 +47,7 @@ pub enum AdminSharedError {
     UndefinedSigner,
     // Returned if a circuit cannot be added to splinter state
     CommitError(String),
+    UpdateProposalsError(OpenProposalError),
 }
 
 impl Error for AdminSharedError {
@@ -63,6 +64,7 @@ impl Error for AdminSharedError {
             AdminSharedError::SignerError(_) => None,
             AdminSharedError::UndefinedSigner => None,
             AdminSharedError::CommitError(_) => None,
+            AdminSharedError::UpdateProposalsError(err) => Some(err),
         }
     }
 }
@@ -91,6 +93,9 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::SignerError(ref msg) => write!(f, "Signing error: {}", msg),
             AdminSharedError::UndefinedSigner => f.write_str("Signing method was not defined"),
             AdminSharedError::CommitError(msg) => write!(f, "unable to commit circuit: {}", msg),
+            AdminSharedError::UpdateProposalsError(err) => {
+                write!(f, "received error while update open proposal: {}", err)
+            }
         }
     }
 }
@@ -115,6 +120,12 @@ impl From<signing::error::Error> for AdminSharedError {
 impl From<MarshallingError> for AdminSharedError {
     fn from(err: MarshallingError) -> Self {
         AdminSharedError::InvalidMessageFormat(err)
+    }
+}
+
+impl From<OpenProposalError> for AdminSharedError {
+    fn from(err: OpenProposalError) -> Self {
+        AdminSharedError::UpdateProposalsError(err)
     }
 }
 
@@ -211,5 +222,39 @@ impl std::fmt::Display for MarshallingError {
 impl From<error::ProtobufError> for MarshallingError {
     fn from(err: error::ProtobufError) -> Self {
         MarshallingError::ProtobufError(err)
+    }
+}
+
+#[derive(Debug)]
+pub enum OpenProposalError {
+    WriteError(String),
+    InvalidMessageFormat(MarshallingError),
+}
+
+impl std::error::Error for OpenProposalError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            OpenProposalError::WriteError(_) => None,
+            OpenProposalError::InvalidMessageFormat(err) => Some(err),
+        }
+    }
+}
+
+impl std::fmt::Display for OpenProposalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OpenProposalError::WriteError(msg) => {
+                write!(f, "Unable to write to persisted storage: {}", msg)
+            }
+            OpenProposalError::InvalidMessageFormat(err) => {
+                write!(f, "Unable to convert circuit proposal: {}", err)
+            }
+        }
+    }
+}
+
+impl From<MarshallingError> for OpenProposalError {
+    fn from(err: MarshallingError) -> Self {
+        OpenProposalError::InvalidMessageFormat(err)
     }
 }

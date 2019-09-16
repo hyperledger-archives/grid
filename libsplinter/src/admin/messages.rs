@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
-
 use protobuf::{self, RepeatedField};
 use serde::de::DeserializeOwned;
 use serde_json;
@@ -22,6 +20,7 @@ use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
 #[cfg(feature = "events")]
 use crate::events::{ParseBytes, ParseError};
 use crate::futures::{stream::Stream, Future, IntoFuture};
+use crate::hex::{as_hex, deserialize_hex};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
 use super::error::MarshallingError;
@@ -36,6 +35,8 @@ pub struct CreateCircuit {
     pub durability: DurabilityType,
     pub routes: RouteType,
     pub circuit_management_type: String,
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
     pub application_metadata: Vec<u8>,
 }
 
@@ -208,7 +209,7 @@ pub struct SplinterService {
     pub service_id: String,
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
-    pub arguments: HashMap<String, String>,
+    pub arguments: Vec<(String, String)>,
 }
 
 impl SplinterService {
@@ -257,6 +258,8 @@ pub struct CircuitProposal {
     pub circuit_hash: String,
     pub circuit: CreateCircuit,
     pub votes: Vec<VoteRecord>,
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
     pub requester: Vec<u8>,
     pub requester_node_id: String,
 }
@@ -291,6 +294,35 @@ impl CircuitProposal {
             requester: proto.take_requester(),
             requester_node_id: proto.take_requester_node_id(),
         })
+    }
+
+    pub fn into_proto(self) -> Result<admin::CircuitProposal, MarshallingError> {
+        let proposal_type = match self.proposal_type {
+            ProposalType::Create => admin::CircuitProposal_ProposalType::CREATE,
+            ProposalType::UpdateRoster => admin::CircuitProposal_ProposalType::UPDATE_ROSTER,
+            ProposalType::AddNode => admin::CircuitProposal_ProposalType::ADD_NODE,
+            ProposalType::RemoveNode => admin::CircuitProposal_ProposalType::REMOVE_NODE,
+            ProposalType::Destroy => admin::CircuitProposal_ProposalType::DESTROY,
+        };
+
+        let votes = self
+            .votes
+            .into_iter()
+            .map(|vote| vote.into_proto())
+            .collect::<Vec<admin::CircuitProposal_VoteRecord>>();
+
+        let mut circuit_request = self.circuit.into_proto()?;
+
+        let mut proposal = admin::CircuitProposal::new();
+        proposal.set_proposal_type(proposal_type);
+        proposal.set_circuit_id(self.circuit_id.to_string());
+        proposal.set_circuit_hash(self.circuit_hash.to_string());
+        proposal.set_circuit_proposal(circuit_request.take_circuit());
+        proposal.set_votes(RepeatedField::from_vec(votes));
+        proposal.set_requester(self.requester.to_vec());
+        proposal.set_requester_node_id(self.requester_node_id.to_string());
+
+        Ok(proposal)
     }
 }
 
@@ -361,6 +393,20 @@ impl VoteRecord {
             vote,
             voter_node_id: proto.take_voter_node_id(),
         })
+    }
+
+    fn into_proto(self) -> admin::CircuitProposal_VoteRecord {
+        let vote = match self.vote {
+            Vote::Accept => admin::CircuitProposalVote_Vote::ACCEPT,
+            Vote::Reject => admin::CircuitProposalVote_Vote::REJECT,
+        };
+
+        let mut vote_record = admin::CircuitProposal_VoteRecord::new();
+        vote_record.set_vote(vote);
+        vote_record.set_public_key(self.public_key);
+        vote_record.set_voter_node_id(self.voter_node_id);
+
+        vote_record
     }
 }
 

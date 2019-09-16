@@ -518,8 +518,6 @@ mod test {
     use super::*;
     use libsplinter::events::Reactor;
 
-    use std::collections::HashMap;
-
     use diesel::{dsl::insert_into, prelude::*, RunQueryDsl};
     use gameroom_database::models::{
         GameroomMember, GameroomNotification, GameroomService, NewGameroomNotification,
@@ -1055,8 +1053,8 @@ mod test {
     }
 
     fn get_create_circuit_msg(circuit_id: &str) -> CreateCircuit {
-        let mut arguments = HashMap::new();
-        arguments.insert("test_key".to_string(), "test_value".to_string());
+        let mut arguments = vec![];
+        arguments.push(("test_key".to_string(), "test_value".to_string()));
         let application_metadata = ApplicationMetadata::new("test_gameroom", vec![].as_slice())
             .to_bytes()
             .expect("Failed to serialize application_metadata");

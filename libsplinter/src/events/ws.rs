@@ -73,8 +73,10 @@ use tokio::prelude::*;
 
 use crate::events::{ParseError, WebSocketError};
 
-type OnErrorHandle<T> =
-    Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
+type OnErrorHandle<T> = dyn Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
+    + Send
+    + Sync
+    + 'static;
 
 const MAX_FRAME_SIZE: usize = 10_000_000;
 
