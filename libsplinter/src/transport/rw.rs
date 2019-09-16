@@ -1,4 +1,4 @@
-// Copyright 2018 Cargill Incorporated
+// Copyright 2018-2019 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,73 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Portions of read() and write() in this module are derived from the Rust
+// std::io implementation which is licensed under the Apache 2.0 license. For
+// specific copyright information on those functions, see additionally the
+// following: https://github.com/rust-lang/rust/blob/master/COPYRIGHT
+
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Read, Write};
 use std::mem;
+use std::thread;
+use std::time::Duration;
 
 use crate::transport::{RecvError, SendError};
 
 pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
-    let len = reader.read_u32::<BigEndian>()?;
+    let len = loop {
+        match reader.read_u32::<BigEndian>() {
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(100));
+                continue;
+            }
+            Err(e) => return Err(RecvError::IoError(e)),
+            Ok(n) => break n,
+        };
+    };
+
     let mut buffer = vec![0; len as usize];
-    reader.read_exact(&mut buffer[..])?;
-    Ok(buffer)
+    let mut remaining = &mut buffer[..];
+
+    while !remaining.is_empty() {
+        match reader.read(remaining) {
+            Ok(0) => break,
+            Ok(n) => {
+                let tmp = remaining;
+                remaining = &mut tmp[n..];
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => return Err(RecvError::IoError(e)),
+        }
+    }
+    if !remaining.is_empty() {
+        Err(RecvError::Disconnected)
+    } else {
+        Ok(buffer)
+    }
 }
 
 pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
-    let packed = pack(buffer)?;
-    writer.write_all(&packed)?;
+    let mut packed = &pack(buffer)?[..];
+    while !packed.is_empty() {
+        match writer.write(packed) {
+            Ok(0) => {
+                return Err(SendError::IoError(std::io::Error::new(
+                    std::io::ErrorKind::WriteZero,
+                    "failed to write whole buffer",
+                )))
+            }
+            Ok(n) => packed = &packed[n..],
+            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => return Err(SendError::IoError(e)),
+        }
+    }
     writer.flush()?;
     Ok(())
 }
