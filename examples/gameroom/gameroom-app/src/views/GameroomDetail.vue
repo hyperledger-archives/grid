@@ -54,7 +54,7 @@ limitations under the License.
           </button>
         </div>
         <div class="filter-container">
-          <input class="form-input form-filter"  :disabled="gameroom.status !== 'Active'" v-model="gameNameFilter" type="text" placeholder="Filter name..." @input="filterGamesByName" />
+          <input class="form-input form-filter"  :disabled="gameroom.status !== 'Active'" v-model="gameNameFilter" type="text" placeholder="Filter name..." />
           <button  :disabled="gameroom.status !== 'Active'" class="btn-action small new-game-btn">
             <div class="btn-text">New Game</div>
           </button>
@@ -77,23 +77,20 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import gamerooms from '@/store/modules/gamerooms';
+import games from '@/store/modules/gamerooms';
 import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
 
 @Component
   export default class GameroomDetails extends Vue {
-      games: Game[] = [];
-      filteredGamesByName = this.games;
-      filteredGamesByState = this.games;
-
       gameNameFilter = '';
-
       currentTab = 1;
 
       cachedGameroom: Gameroom = {} as Gameroom;
 
       mounted() {
         gamerooms.listGamerooms();
+        this.$store.dispatch('games/listGames', this.$route.params.id);
       }
 
       get gameroom(): Gameroom {
@@ -102,6 +99,10 @@ import { Gameroom, Member, Game } from '@/store/models';
               (gameroom) => gameroom.circuit_id ===  this.$route.params.id) || {} as Gameroom;
         }
         return this.cachedGameroom;
+      }
+
+      get games(): Game[] {
+        return this.$store.getters['games/getGames'];
       }
 
       get gemeroomMembers() {
@@ -121,42 +122,37 @@ import { Gameroom, Member, Game } from '@/store/models';
 
       // intersection of filteredGamesByName and filteredGamesByState
       get filteredGames() {
-        return this.filteredGamesByName.filter((game, index, array) => this.filteredGamesByState.indexOf(game) !== -1);
+        const filteredGamesByState = this.filterGamesByState;
+        return this.filterGamesByName.filter((game, index, array) => filteredGamesByState.indexOf(game) !== -1);
       }
 
-       selectTab(tab: number) {
-         this.currentTab = tab;
-         this.filterGamesByState(tab);
-       }
-
-      filterGamesByName() {
-        this.filteredGamesByName = this.games.filter((game, index, array) =>
+      get filterGamesByName() {
+        return this.games.filter((game, index, array) =>
           game.game_name.toUpperCase().indexOf(this.gameNameFilter.toUpperCase()) > -1);
       }
 
-      filterGamesByState(tab: number) {
+
+      get filterGamesByState() {
         const publicKey = this.$store.getters['user/getPublicKey'];
-        let filteredGames: Game[] = [];
-        switch (tab) {
+        switch (this.currentTab) {
           case 5:
-             filteredGames = this.games.filter((game, index, array) => gameIsOver(game.game_status));
-             break;
+             return this.games.filter((game, index, array) => gameIsOver(game.game_status));
            case 3:
-              filteredGames = this.games.filter((game, index, array) =>
+              return this.games.filter((game, index, array) =>
                 !userIsInGame(game, publicKey) && userCanJoinGame(game, publicKey));
-              break;
            case 2:
-              filteredGames = this.games.filter((game, index, array) =>
+              return this.games.filter((game, index, array) =>
                 !gameIsOver(game.game_status) && userIsInGame(game, publicKey));
-              break;
            case 4:
-              filteredGames = this.games.filter((game, index, array) =>
+              return this.games.filter((game, index, array) =>
                 !gameIsOver(game.game_status) && !userIsInGame(game, publicKey) && !userCanJoinGame(game, publicKey));
-              break;
            default:
-            filteredGames =  this.games;
+            return this.games;
         }
-        this.filteredGamesByState = filteredGames;
+    }
+
+    selectTab(tab: number) {
+      this.currentTab = tab;
     }
   }
 
