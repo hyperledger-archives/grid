@@ -692,6 +692,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /xo/{circuit_id}/games:
+    get:
+      tags:
+        - XO Games
+      description: List all XO games within the specified circuit
+      parameters:
+        - name: circuit_id
+          in: path
+          description: Circuit id of the XO games to list
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: list of XO games
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiXoGame'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /xo/{circuit_id}/games/{game_name}:
+    get:
+      tags:
+        - XO Games
+      description: Fetch the XO game within the specified circuit and with the specified game name
+      parameters:
+        - name: circuit_id
+          in: path
+          description: Circuit id of the XO games to fetch
+          required: true
+          schema:
+            type: string
+        - name: game_name
+          in: path
+          description: Name of the XO game to fetch
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: XO game
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiXoGame'
+        404:
+          description: The XO game with {circuit_id} and {game_name} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -891,3 +976,26 @@ components:
         payload_bytes:
           type: string
           format: binary
+
+    ApiXoGame:
+      type: object
+      properties:
+        circuit_id:
+          type: string
+        game_name:
+          type: string
+        player_1:
+          type: string
+        player_2:
+          type: string
+        game_status:
+          type: string
+        game_board:
+          description: string representation of game board, using comma-separated values format
+          type: string
+        created_time:
+          description: time in seconds since the unix epoch the XO game was created
+          type: integer
+        updated_time:
+          description: time in seconds since the unix epoch the XO game was updated
+          type: integer

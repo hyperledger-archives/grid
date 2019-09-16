@@ -163,6 +163,18 @@ pub fn run(
                     .service(
                         web::resource("/subscribe").route(web::get().to(routes::connect_socket)),
                     )
+                    .service(
+                        web::scope("/xo/{circuit_id}").service(
+                            web::scope("/games")
+                                .service(
+                                    web::resource("/{game_id}")
+                                        .route(web::get().to_async(routes::fetch_xo)),
+                                )
+                                .service(
+                                    web::resource("").route(web::get().to_async(routes::list_xo)),
+                                ),
+                        ),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()

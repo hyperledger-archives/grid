@@ -32,4 +32,6 @@ pub use notification::{
     get_unread_notification_count, insert_gameroom_notification,
     list_unread_notifications_with_paging, update_gameroom_notification,
 };
-pub use xo_games::{fetch_xo_game, insert_xo_game, list_xo_games, update_xo_game};
+pub use xo_games::{
+    fetch_xo_game, get_xo_game_count, insert_xo_game, list_xo_games, update_xo_game,
+};
