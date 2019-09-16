@@ -13,9 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod keys;
 mod node;
 mod status;
 
+pub use keys::KeyRegistryManager;
 pub use node::*;
 use percent_encoding::{AsciiSet, CONTROLS};
 pub use status::*;

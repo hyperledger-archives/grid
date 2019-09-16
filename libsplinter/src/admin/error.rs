@@ -30,6 +30,7 @@ impl From<ServiceError> for ProposalManagerError {
 
 #[derive(Debug)]
 pub enum AdminSharedError {
+    PoisonedLock(String),
     HashError(Sha256Error),
     InvalidMessageFormat(MarshallingError),
     NoPendingChanges,
@@ -51,6 +52,7 @@ pub enum AdminSharedError {
 impl Error for AdminSharedError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            AdminSharedError::PoisonedLock(_) => None,
             AdminSharedError::HashError(err) => Some(err),
             AdminSharedError::InvalidMessageFormat(err) => Some(err),
             AdminSharedError::NoPendingChanges => None,
@@ -68,6 +70,7 @@ impl Error for AdminSharedError {
 impl fmt::Display for AdminSharedError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AdminSharedError::PoisonedLock(details) => write!(f, "lock was poisoned: {}", details),
             AdminSharedError::HashError(err) => write!(f, "received error while hashing: {}", err),
             AdminSharedError::InvalidMessageFormat(err) => {
                 write!(f, "invalid message format: {}", err)

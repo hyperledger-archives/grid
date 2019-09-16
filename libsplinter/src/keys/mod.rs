@@ -42,6 +42,7 @@ pub use error::{KeyPermissionError, KeyRegistryError};
 ///
 /// It also provides metadata about the key, that maybe provided to the registry for
 /// application-specific details.  For example, the name of the person or organization of the key.
+#[derive(Clone)]
 pub struct KeyInfo {
     public_key: Vec<u8>,
     associated_node_id: String,
@@ -138,7 +139,7 @@ type KeyRegistryResult<T> = Result<T, KeyRegistryError>;
 /// The key registry provides an interface for storing and retrieving key information. Key
 /// information helps to tie a public key to a particular splinter node, as well as associating
 /// application metadata with the public key.
-pub trait KeyRegistry: Send {
+pub trait KeyRegistry: Send + Sync {
     /// Save a public key and its information.
     ///
     /// # Errors
@@ -184,7 +185,21 @@ pub trait KeyRegistry: Send {
     ///
     /// Returns a `KeyRegistryError` if the underling implementation could not provide the
     /// iterator.
-    fn keys<'a>(&'a self) -> KeyRegistryResult<Box<dyn Iterator<Item = KeyInfo> + 'a>>;
+    fn keys<'iter, 'a: 'iter>(
+        &'a self,
+    ) -> KeyRegistryResult<Box<dyn Iterator<Item = KeyInfo> + 'iter>>;
+
+    /// Return the total count of keys in the registry.
+    fn count(&self) -> KeyRegistryResult<usize>;
+
+    /// Clones this instance and returns a boxed, dynamic version.
+    fn clone_box(&self) -> Box<dyn KeyRegistry>;
+}
+
+impl Clone for Box<dyn KeyRegistry> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 type KeyPermissionResult<T> = Result<T, KeyPermissionError>;
