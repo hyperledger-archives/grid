@@ -73,8 +73,10 @@ use tokio::prelude::*;
 
 use crate::events::{ParseError, WebSocketError};
 
-type OnErrorHandle<T> =
-    Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
+type OnErrorHandle<T> = dyn Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
+    + Send
+    + Sync
+    + 'static;
 
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `Igniter::start_ws`
