@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
@@ -31,6 +31,8 @@ use transact::state::{
     StateChange, Write,
 };
 
+#[cfg(feature = "events")]
+use crate::events::{ParseBytes, ParseError};
 use crate::protos::scabbard::{Setting, Setting_Entry};
 use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 
@@ -212,7 +214,7 @@ fn into_writable_state_change(
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "eventType", content = "message")]
-enum StateChangeEvent {
+pub enum StateChangeEvent {
     Set { key: String, value: Vec<u8> },
     Delete { key: String },
 }
@@ -223,5 +225,34 @@ impl StateChangeEvent {
             StateChange::Set { key, value } => StateChangeEvent::Set { key, value },
             StateChange::Delete { key } => StateChangeEvent::Delete { key },
         }
+    }
+}
+
+impl fmt::Display for StateChangeEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StateChangeEvent::Set { key, value } => {
+                write!(f, "Set(key: {}, payload_size: {})", key, value.len())
+            }
+            StateChangeEvent::Delete { key } => write!(f, "Delete(key: {})", key),
+        }
+    }
+}
+
+#[cfg(feature = "events")]
+impl ParseBytes<StateChangeEvent> for StateChangeEvent {
+    fn from_bytes(bytes: &[u8]) -> Result<StateChangeEvent, ParseError> {
+        serde_json::from_slice(bytes)
+            .map_err(Box::new)
+            .map_err(|err| ParseError::MalformedMessage(err))
+    }
+}
+
+#[cfg(feature = "events")]
+impl ParseBytes<Vec<StateChangeEvent>> for Vec<StateChangeEvent> {
+    fn from_bytes(bytes: &[u8]) -> Result<Vec<StateChangeEvent>, ParseError> {
+        serde_json::from_slice(bytes)
+            .map_err(Box::new)
+            .map_err(|err| ParseError::MalformedMessage(err))
     }
 }

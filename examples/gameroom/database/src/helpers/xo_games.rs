@@ -59,15 +59,24 @@ pub fn insert_xo_game(conn: &PgConnection, game: NewXoGame) -> QueryResult<()> {
 
 pub fn update_xo_game(
     conn: &PgConnection,
+    circuit_id: &str,
     name: &str,
     game_board: &str,
+    status: &str,
     updated_time: &SystemTime,
 ) -> QueryResult<()> {
-    diesel::update(xo_games::table.filter(xo_games::game_name.eq(name)))
-        .set((
-            xo_games::game_board.eq(game_board),
-            xo_games::updated_time.eq(updated_time),
-        ))
-        .execute(conn)
-        .map(|_| ())
+    diesel::update(
+        xo_games::table.filter(
+            xo_games::game_name
+                .eq(name)
+                .and(xo_games::circuit_id.eq(circuit_id)),
+        ),
+    )
+    .set((
+        xo_games::game_board.eq(game_board),
+        xo_games::game_status.eq(status),
+        xo_games::updated_time.eq(updated_time),
+    ))
+    .execute(conn)
+    .map(|_| ())
 }

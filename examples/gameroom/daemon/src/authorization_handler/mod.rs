@@ -17,7 +17,8 @@
 
 mod error;
 pub use error::AppAuthHandlerError;
-mod sabre;
+pub mod sabre;
+mod state_delta;
 
 use std::fmt::Write;
 use std::time::SystemTime;
@@ -37,6 +38,7 @@ use libsplinter::{
     },
     events::{Igniter, WebSocketClient, WebSocketError, WsResponse},
 };
+use state_delta::XoStateDeltaProcessor;
 
 use crate::application_metadata::ApplicationMetadata;
 
@@ -300,15 +302,105 @@ fn process_admin_event(
                     )))
                 }
             };
-            igniter
-                .send(setup_xo(
-                    private_key,
-                    scabbard_admin_keys,
-                    url,
+
+            let conn = &*pool.get()?;
+
+            let time = SystemTime::now();
+            let requester = to_hex(&msg_proposal.requester);
+            let proposal = parse_proposal(&msg_proposal, time, requester);
+
+            conn.transaction::<_, AppAuthHandlerError, _>(|| {
+                let notification = helpers::create_new_notification(
+                    "circuit_ready",
+                    &proposal.requester,
+                    &proposal.requester_node_id,
+                    &proposal.circuit_id,
+                );
+                helpers::insert_gameroom_notification(conn, &[notification])?;
+                helpers::update_gameroom_status(conn, &msg_proposal.circuit_id, &time, "Ready")?;
+                helpers::update_gameroom_member_status(
+                    conn,
                     &msg_proposal.circuit_id,
-                    &service_id,
-                )?)
-                .map_err(AppAuthHandlerError::from)
+                    &time,
+                    "Accepted",
+                    "Ready",
+                )?;
+                helpers::update_gameroom_service_status(
+                    conn,
+                    &msg_proposal.circuit_id,
+                    &time,
+                    "Accepted",
+                    "Ready",
+                )?;
+
+                debug!("Updated proposal to status 'Ready'");
+
+                Ok(())
+            })?;
+
+            let processor = XoStateDeltaProcessor::new(
+                &msg_proposal.circuit_id,
+                &proposal.requester_node_id,
+                &proposal.requester,
+                &pool,
+            );
+
+            let mut xo_ws = WebSocketClient::new(
+                &format!(
+                    "{}/scabbard/{}/{}/ws/subscribe",
+                    url, msg_proposal.circuit_id, service_id
+                ),
+                move |changes| {
+                    if let Err(err) = processor.handle_state_changes(changes) {
+                        error!("An error occurred while handling state changes {:?}", err);
+                    }
+                    WsResponse::Empty
+                },
+            );
+
+            let on_open_igniter = igniter.clone();
+            let url_to_string = url.to_string();
+            let private_key_to_string = private_key.to_string();
+            xo_ws.on_open(move || {
+                debug!("Starting XO State Delta Export");
+                let future = match setup_xo(
+                    &private_key_to_string,
+                    scabbard_admin_keys.clone(),
+                    &url_to_string,
+                    &msg_proposal.circuit_id.clone(),
+                    &service_id.clone(),
+                ) {
+                    Ok(f) => f,
+                    Err(err) => {
+                        error!("{}", err);
+                        return WsResponse::Close;
+                    }
+                };
+
+                if let Err(err) = on_open_igniter.send(future) {
+                    error!("Failed to setup scabbard: {}", err);
+                    WsResponse::Close
+                } else {
+                    WsResponse::Empty
+                }
+            });
+
+            let on_error_igniter = igniter.clone();
+            xo_ws.on_error(move |err, ws| {
+                error!(
+                    "An error occured while listening for scabbard events {}",
+                    err
+                );
+                if let WebSocketError::ParserError { .. } = err {
+                    debug!("Protocol error, closing connection");
+                    Ok(())
+                } else {
+                    debug!("Attempting to restart connection");
+                    on_error_igniter.clone().start_ws(&ws)
+                }
+            });
+
+            igniter.start_ws(&xo_ws).map_err(AppAuthHandlerError::from)
         }
     }
 }
