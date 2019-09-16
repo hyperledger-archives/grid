@@ -77,6 +77,7 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import gamerooms from '@/store/modules/gamerooms';
+import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
 
 @Component
@@ -158,18 +159,6 @@ import { Gameroom, Member, Game } from '@/store/models';
         this.filteredGamesByState = filteredGames;
     }
   }
-
-function gameIsOver(gameStatus: string) {
-  return gameStatus === 'P1-WIN' || gameStatus === 'P2-WIN' || gameStatus === 'TIE';
-}
-
-function userIsInGame(game: Game, publicKey: string) {
-  return game.player_1 === publicKey || game.player_2 === publicKey;
-}
-
-function userCanJoinGame(game: Game, publicKey: string) {
-  return game.player_1 === '' || (game.player_2 === '' && game.player_1 !== publicKey);
-}
 
 </script>
 
