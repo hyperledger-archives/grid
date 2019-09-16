@@ -100,7 +100,7 @@ services:
               -b gameroomd-acme:8000 --splinterd-url http://splinterd-node-acme:8085
           "
     splinterd-node-acme:
-      image: spliterd-node
+      image: splinterd-node
       container_name: splinterd-node-acme
       expose:
         - 8080
@@ -193,7 +193,7 @@ services:
           "
 
     splinterd-node-bubba:
-      image: spliterd-node
+      image: splinterd-node
       container_name: splinterd-node-bubba
       expose:
         - 8080
