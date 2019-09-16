@@ -62,6 +62,10 @@ assets = [
     ["packaging/systemd/gameroomd", "/etc/default/gameroomd", "644"],
     ["target/release/gameroomd", "/usr/bin/gameroomd", "755"]
 ]
+conf-files = [
+    "/etc/default/gameroomd",
+    "/lib/systemd/system/gameroomd.service"
+]
 maintainer-scripts = "packaging/ubuntu"
 extended-description = """\
 Gameroom is a demo Splinter application that allows you to set up dynamic \
