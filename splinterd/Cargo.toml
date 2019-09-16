@@ -51,6 +51,10 @@ assets = [
     ["packaging/systemd/splinterd.service", "/lib/systemd/system/splinterd.service", "644"],
     ["target/release/splinterd", "/usr/bin/splinterd", "755"]
 ]
+conf-files = [
+    "/etc/default/splinterd",
+    "/lib/systemd/system/splinterd.service"
+]
 maintainer-scripts = "packaging/ubuntu"
 extended-description = """\
 Splinter is a blockchain-inspired networking platform for distributed \
