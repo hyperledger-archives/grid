@@ -25,6 +25,7 @@ import {
   Node,
   Gameroom,
   Ballot,
+  Game,
 } from './models';
 
 export const gameroomAPI = axios.create({
@@ -97,6 +98,11 @@ export async function fetchGameroom(circuitID: string): Promise<Gameroom> {
 export async function listNodes(): Promise<Node[]> {
   const response = await gameroomAPI.get('/nodes');
   return response.data.data as Node[];
+}
+
+export async function listGames(circuitID: string): Promise<Game[]> {
+  const response = await gameroomAPI.get(`/xo/${circuitID}/games`);
+  return response.data.data as Game[];
 }
 
 // Payloads
