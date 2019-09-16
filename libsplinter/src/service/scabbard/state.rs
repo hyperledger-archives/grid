@@ -116,9 +116,9 @@ impl ScabbardState {
             self.current_state_root.clone(),
         )?;
         scheduler.set_result_callback(Box::new(move |batch_result| {
-            result_tx
-                .send(batch_result)
-                .expect("Unable to send batch result")
+            if result_tx.send(batch_result).is_err() {
+                error!("Unable to send batch result; receiver must have dropped");
+            }
         }))?;
 
         // Add the batch to, finalize, and execute the scheduler

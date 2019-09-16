@@ -39,7 +39,20 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
         context: &MessageContext<CircuitMessageType>,
         sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
-        debug!("Handle Circuit Direct Message {:?}", msg);
+        debug!(
+            "Handle Circuit Direct Message {} on {} ({} => {}) [{} byte{}]",
+            msg.get_correlation_id(),
+            msg.get_circuit(),
+            msg.get_sender(),
+            msg.get_recipient(),
+            msg.get_payload().len(),
+            if msg.get_payload().len() == 1 {
+                ""
+            } else {
+                "s"
+            }
+        );
+
         let circuit_name = msg.get_circuit();
         let msg_sender = msg.get_sender();
         let recipient = msg.get_recipient();

@@ -40,7 +40,19 @@ impl Handler<CircuitMessageType, AdminDirectMessage> for AdminDirectMessageHandl
         context: &MessageContext<CircuitMessageType>,
         sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
-        debug!("Handle Admin Direct Message {:?}", msg);
+        debug!(
+            "Handle Admin Direct Message {} on {} ({} => {}) [{} byte{}]",
+            msg.get_correlation_id(),
+            msg.get_circuit(),
+            msg.get_sender(),
+            msg.get_recipient(),
+            msg.get_payload().len(),
+            if msg.get_payload().len() == 1 {
+                ""
+            } else {
+                "s"
+            }
+        );
 
         // msg bytes will either be message bytes of a direct message or an error message
         // the msg_recipient is either the service/node id to send the message to or is the

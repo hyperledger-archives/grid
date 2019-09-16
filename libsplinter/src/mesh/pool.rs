@@ -286,12 +286,20 @@ impl Entry {
         payload: Vec<u8>,
         poll: &Poll,
     ) -> Result<(), TryEventError> {
-        match self.connection.borrow_mut().send(&payload) {
+        let mut connection = match self.connection.try_borrow_mut() {
+            Ok(conn) => conn,
+            Err(_) => {
+                error!("Attempting to mutably borrow connection {} again", self.id);
+                return Ok(());
+            }
+        };
+
+        match connection.send(&payload) {
             Ok(()) => {
                 // Return to readable only.
                 if self.write_evented_guard.replace(false) {
                     poll.reregister(
-                        self.connection.borrow().evented(),
+                        connection.evented(),
                         self.connection_token,
                         Ready::readable(),
                         PollOpt::level(),
@@ -304,7 +312,7 @@ impl Entry {
                 self.cached.replace(Some(payload));
                 if !*self.write_evented_guard.borrow() {
                     poll.reregister(
-                        self.connection.borrow().evented(),
+                        connection.evented(),
                         self.connection_token,
                         Ready::readable() | Ready::writable(),
                         PollOpt::level(),
@@ -327,7 +335,14 @@ impl Entry {
         incoming_tx: &crossbeam_channel::Sender<Envelope>,
     ) -> Result<(), TryEventError> {
         if !incoming_tx.is_full() {
-            match self.connection.borrow_mut().recv() {
+            let mut connection = match self.connection.try_borrow_mut() {
+                Ok(conn) => conn,
+                Err(_) => {
+                    error!("Attempting to mutably borrow connection {} again", self.id);
+                    return Ok(());
+                }
+            };
+            match connection.recv() {
                 Ok(payload) => match incoming_tx.try_send(Envelope::new(self.id, payload)) {
                     Err(TrySendError::Full(_)) => {
                         warn!("Dropped message due to full incoming queue");
