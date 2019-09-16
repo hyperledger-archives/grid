@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
@@ -224,6 +224,17 @@ impl StateChangeEvent {
         match state_change {
             StateChange::Set { key, value } => StateChangeEvent::Set { key, value },
             StateChange::Delete { key } => StateChangeEvent::Delete { key },
+        }
+    }
+}
+
+impl fmt::Display for StateChangeEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StateChangeEvent::Set { key, value } => {
+                write!(f, "Set(key: {}, payload_size: {})", key, value.len())
+            }
+            StateChangeEvent::Delete { key } => write!(f, "Delete(key: {})", key),
         }
     }
 }
