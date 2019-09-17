@@ -69,7 +69,7 @@ export default class DropdownNotification extends Vue {
         return `${notification.requester_org} has invited you to a new gameroom: ${this.getName()}`;
       }
       case('circuit_active'): {
-        return `A new gameroom is ready: ${this.getName()}`;
+        return `A new gameroom has been created: ${this.getName()}`;
       }
       default: return '';
     }
