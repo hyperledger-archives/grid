@@ -15,16 +15,15 @@
 pub mod inproc;
 pub mod multi;
 pub mod raw;
+mod rw;
 pub mod tls;
 #[cfg(feature = "zmq-transport")]
 pub mod zmq;
 
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use mio::Evented;
 
 use std::error::Error;
-use std::io::{self, Read, Write};
-use std::mem;
+use std::io;
 
 pub enum Status {
     Connected,
@@ -212,30 +211,6 @@ impl_from_io_error!(ListenError);
 
 #[derive(Debug)]
 pub enum PollError {}
-
-pub fn read<T: Read>(reader: &mut T) -> Result<Vec<u8>, RecvError> {
-    let len = reader.read_u32::<BigEndian>()?;
-    let mut buffer = vec![0; len as usize];
-    reader.read_exact(&mut buffer[..])?;
-    Ok(buffer)
-}
-
-pub fn write<T: Write>(writer: &mut T, buffer: &[u8]) -> Result<(), SendError> {
-    let packed = pack(buffer)?;
-    writer.write_all(&packed)?;
-    writer.flush()?;
-    Ok(())
-}
-
-fn pack(buffer: &[u8]) -> Result<Vec<u8>, io::Error> {
-    let capacity: usize = buffer.len() + mem::size_of::<u32>();
-    let mut packed = Vec::with_capacity(capacity);
-
-    packed.write_u32::<BigEndian>(buffer.len() as u32)?;
-    packed.write_all(&buffer)?;
-
-    Ok(packed)
-}
 
 #[cfg(test)]
 pub mod tests {

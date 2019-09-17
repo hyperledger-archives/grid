@@ -25,9 +25,10 @@ use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
+use crate::transport::rw::{read, write};
 use crate::transport::{
-    read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
-    RecvError, SendError, Transport,
+    AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
+    SendError, Transport,
 };
 
 const PROTOCOL_PREFIX: &str = "tls://";

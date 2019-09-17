@@ -16,9 +16,10 @@ use mio::{net::TcpStream as MioTcpStream, Evented};
 
 use std::net::{Shutdown, TcpListener, TcpStream};
 
+use crate::transport::rw::{read, write};
 use crate::transport::{
-    read, write, AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener,
-    RecvError, SendError, Transport,
+    AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
+    SendError, Transport,
 };
 
 const PROTOCOL_PREFIX: &str = "tcp://";
