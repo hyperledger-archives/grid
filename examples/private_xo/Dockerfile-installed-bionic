@@ -67,7 +67,9 @@ COPY protos/ /build/protos/
 RUN cargo install cargo-deb
 
 # Build the package
-RUN cargo deb
+ARG REPO_VERSION
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
+RUN cargo deb --deb-version $REPO_VERSION
 
 # -------------=== private_xo docker build ===-------------
 FROM ubuntu:bionic

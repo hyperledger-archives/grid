@@ -24,9 +24,8 @@ ARG VUE_APP_BRAND
 RUN npm run build-${VUE_APP_BRAND}
 COPY VERSION .
 WORKDIR ./dist
-RUN VERSION=$(cat ../VERSION); \
-    export VERSION; \
-    tar c -z . -f ../gameroom_ui_${VUE_APP_BRAND}_v${VERSION}.tar.gz
+ARG REPO_VERSION
+RUN tar c -z . -f ../gameroom_ui_${VUE_APP_BRAND}_v${REPO_VERSION}.tar.gz
 
 # prod stage
 FROM httpd:2.4 as prod-stage

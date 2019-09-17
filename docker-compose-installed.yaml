@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: cli/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: splinter-cli:${ISOLATION_ID}
     container_name: splinter-cli
 
@@ -27,6 +29,8 @@ services:
     build:
       context: .
       dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: splinterd:${ISOLATION_ID}
     container_name: splinterd
 
@@ -36,6 +40,8 @@ services:
     build:
       context: .
       dockerfile: examples/private_xo/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: private_xo:${ISOLATION_ID}
     container_name: private_xo
 
@@ -43,6 +49,8 @@ services:
     build:
       context: .
       dockerfile: examples/private_counter/cli/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: private_counter_cli:${ISOLATION_ID}
     container_name: private_counter_cli
 
@@ -50,6 +58,8 @@ services:
     build:
       context: .
       dockerfile: examples/private_counter/service/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: private_counter_service:${ISOLATION_ID}
     container_name: private_counter_service
 
@@ -59,6 +69,8 @@ services:
     build:
       context: .
       dockerfile: examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: gameroomd:${ISOLATION_ID}
     container_name: gameroomd
 
@@ -67,7 +79,8 @@ services:
       context: .
       dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
       args:
-        VUE_APP_BRAND: "acme"
+        - VUE_APP_BRAND=acme
+        - REPO_VERSION=${REPO_VERSION}
     image: gameroom-app-acme:${ISOLATION_ID}
     container_name: gameroom-app-acme
 
@@ -76,7 +89,8 @@ services:
       context: .
       dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
       args:
-        VUE_APP_BRAND: "bubba"
+        - VUE_APP_BRAND=bubba
+        - REPO_VERSION=${REPO_VERSION}
     image: gameroom-app-bubba:${ISOLATION_ID}
     container_name: gameroom-app-bubba
 
@@ -84,5 +98,7 @@ services:
     build:
       context: .
       dockerfile: examples/gameroom/database/Dockerfile-installed
+      args:
+      - REPO_VERSION=${REPO_VERSION}
     image: gameroom-database:${ISOLATION_ID}
     container_name: gameroom-database
