@@ -74,6 +74,10 @@ input:focus {
         border: none;
         .icon {
           color: $color-text-form;
+
+          &:hover {
+            color: $color-text-link-hover;
+          }
         }
       }
     }

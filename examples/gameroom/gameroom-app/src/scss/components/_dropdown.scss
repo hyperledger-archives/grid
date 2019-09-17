@@ -29,6 +29,10 @@
       .icon {
         color: $color-text-med;
         font-size: 2rem;
+
+        &:hover {
+          color: $color-text-link-hover;
+        }
       }
 
       .icon-active {
