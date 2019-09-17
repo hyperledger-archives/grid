@@ -1,5 +1,41 @@
 # Release Notes
 
+## Changes in Splinter 0.3.2
+
+### Highlights
+* Completed the code to propose, accept, and create a gameroom in the Gameroom
+  example application
+
+### libsplinter
+* Persist AdminService state that includes the pending circuits
+* Replace the WebSocketClient with a new events module, which improves
+  multi-threaded capabilities of the clients (libsplinter::events; requires the
+  use of "events" feature flag)
+* Improve log messages by logging the length of the bytes instead of the bytes
+  themselves
+* Fix issue with sending and receiving large messages (greater than 64k)
+* Fix issues with threads exiting without reporting the error
+* Removed inaccurate warn log message that said signature verification was not
+  turned off
+
+### splinterd
+* Add Key Registry REST API resources
+* Increase message queue sizes for the admin service's ServiceProcessor.
+
+### splinter-cli
+* Remove outdated CLI commands
+
+### Gameroom Example
+* Add XoStateDeltaProcessor to Gameroom application authorization handler
+* Add route to gameroom REST API to submit batches to scabbard service
+* Set six-second timeout for toast notifications in the UI
+* Add notification in the UI for newly active gamerooms
+* Enhance invitation UI and add tabs for viewing sent, received, or all
+  invitations
+* Fix bug that caused read notifications to not appear as read in the UI
+* Fix bug where the Gameroom WebSocket was sending notifications to the UI
+  every 3 seconds instead of when a new notification was added
+
 ## Changes in Splinter 0.3.1
 
 ### Highlights
