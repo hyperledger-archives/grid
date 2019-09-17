@@ -86,19 +86,14 @@ import { Gameroom, Member, Game } from '@/store/models';
       gameNameFilter = '';
       currentTab = 1;
 
-      cachedGameroom: Gameroom = {} as Gameroom;
-
       mounted() {
         gamerooms.listGamerooms();
         this.$store.dispatch('games/listGames', this.$route.params.id);
       }
 
       get gameroom(): Gameroom {
-        if (!this.cachedGameroom.circuit_id) {
-            this.cachedGameroom = gamerooms.gameroomList.find(
+        return gamerooms.gameroomList.find(
               (gameroom) => gameroom.circuit_id ===  this.$route.params.id) || {} as Gameroom;
-        }
-        return this.cachedGameroom;
       }
 
       get games(): Game[] {
