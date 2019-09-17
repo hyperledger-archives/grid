@@ -21,6 +21,7 @@ limitations under the License.
       <span> {{ gemeroomMembers }} </span>
     </div>
         <div class="data-container">
+          <div class="header">
           <div class="tab-buttons">
           <button class="tab-button"
                   @click="selectTab(1)"
@@ -53,15 +54,20 @@ limitations under the License.
             <div class="btn-text">archived</div>
           </button>
         </div>
+        <button  :disabled="gameroom.status !== 'Active'" class="btn-action right">
+          <div class="btn-text">New Game</div>
+        </button>
+        </div>
         <div class="filter-container">
-          <input class="form-input form-filter"  :disabled="gameroom.status !== 'Active'" v-model="gameNameFilter" type="text" placeholder="Filter name..." />
-          <button  :disabled="gameroom.status !== 'Active'" class="btn-action small new-game-btn">
-            <div class="btn-text">New Game</div>
-          </button>
+          <input class="form-input form-filter"
+                  :disabled="gameroom.status !== 'Active'"
+                  v-model="gameNameFilter" type="text"
+                  placeholder="Filter name..."
+                  @input="filterGamesByName" />
         </div>
         <div class="cards-container" v-if="filteredGames.length > 0">
           <ul id="example-1">
-            <li v-for="game in filteredGames">
+            <li v-for="(index, game) in filteredGames" :key="index">
               {{ game.game_name }}
             </li>
           </ul>
