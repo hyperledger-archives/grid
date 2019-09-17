@@ -61,7 +61,7 @@ input:focus {
       padding-left: .5em;
       margin-top: .25rem;
       font-size: 1.2rem;
-      outline: none;
+      border: 1px solid $color-border;
       @include rounded-border;
 
       .input {
