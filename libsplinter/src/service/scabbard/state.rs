@@ -212,7 +212,7 @@ fn into_writable_state_change(
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "eventType", content = "message")]
 pub enum StateChangeEvent {
     Set { key: String, value: Vec<u8> },
@@ -236,6 +236,12 @@ impl fmt::Display for StateChangeEvent {
             }
             StateChangeEvent::Delete { key } => write!(f, "Delete(key: {})", key),
         }
+    }
+}
+
+impl fmt::Debug for StateChangeEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
