@@ -100,8 +100,11 @@ services:
               -b gameroomd-acme:8000 --splinterd-url http://splinterd-node-acme:8085
           "
     splinterd-node-acme:
-      image: spliterd-node
+      image: splinterd-node
       container_name: splinterd-node-acme
+      build:
+        context: ../..
+        dockerfile: splinterd/Dockerfile
       expose:
         - 8080
         - 8044
@@ -109,9 +112,6 @@ services:
         - 8085
       ports:
         - 8088:8085
-      build:
-        context: ../..
-        dockerfile: splinterd/Dockerfile
       volumes:
         - key-registry:/key_registry_shared
         - ./splinterd-config:/configs
@@ -193,8 +193,11 @@ services:
           "
 
     splinterd-node-bubba:
-      image: spliterd-node
+      image: splinterd-node
       container_name: splinterd-node-bubba
+      build:
+        context: ../..
+        dockerfile: splinterd/Dockerfile
       expose:
         - 8080
         - 8044
@@ -202,9 +205,6 @@ services:
         - 8085
       ports:
         - 8089:8085
-      build:
-        context: ../..
-        dockerfile: splinterd/Dockerfile
       volumes:
         - key-registry:/key_registry_shared
         - ./splinterd-config:/configs
