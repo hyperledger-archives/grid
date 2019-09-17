@@ -14,7 +14,7 @@
 use crate::channel::Sender;
 use crate::circuit::handlers::create_message;
 use crate::circuit::service::{Service, ServiceId, SplinterNode};
-use crate::circuit::SplinterState;
+use crate::circuit::{ServiceDefinition, SplinterState};
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::circuit::{
@@ -62,31 +62,56 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
             if circuit.roster().contains(&service_id.to_string())
                 && !state.service_directory.contains_key(&unique_id)
             {
-                let mut forward_message = ServiceConnectForward::new();
-                forward_message.set_circuit(circuit_name.into());
-                forward_message.set_service_id(service_id.into());
-                forward_message.set_node_id(self.node_id.to_string());
-                forward_message.set_node_endpoint(self.endpoint.to_string());
-                let forward_bytes = forward_message.write_to_bytes()?;
-                let network_msg_bytes =
-                    create_message(forward_bytes, CircuitMessageType::SERVICE_CONNECT_FORWARD)?;
-
-                for member in circuit.members() {
-                    if member != &self.node_id {
-                        let send_request =
-                            SendRequest::new(member.to_string(), network_msg_bytes.clone());
-                        sender.send(send_request)?;
+                // This should never return None since we just checked if it exists.
+                // If admin service create a service defination for the admin service
+                let service = {
+                    if !service_id.starts_with("admin::") {
+                        circuit
+                            .roster()
+                            .iter()
+                            .find(|service| service.service_id == service_id)
+                            .expect("Cannot find service in circuit")
+                            .clone()
+                    } else {
+                        ServiceDefinition::builder(service_id.into(), "admin".into())
+                            .with_allowed_nodes(vec![self.node_id.to_string()])
+                            .build()
                     }
+                };
+
+                if !service.allowed_nodes.contains(&self.node_id) && service.allowed_nodes != ["*"]
+                {
+                    response.set_status(ServiceConnectResponse_Status::ERROR_NOT_AN_ALLOWED_NODE);
+                    response.set_error_message(format!("{} is not allowed on this node", unique_id))
+                } else {
+                    let mut forward_message = ServiceConnectForward::new();
+                    forward_message.set_circuit(circuit_name.into());
+                    forward_message.set_service_id(service_id.into());
+                    forward_message.set_node_id(self.node_id.to_string());
+                    forward_message.set_node_endpoint(self.endpoint.to_string());
+                    let forward_bytes = forward_message.write_to_bytes()?;
+                    let network_msg_bytes =
+                        create_message(forward_bytes, CircuitMessageType::SERVICE_CONNECT_FORWARD)?;
+
+                    for member in circuit.members() {
+                        if member != &self.node_id {
+                            let send_request =
+                                SendRequest::new(member.to_string(), network_msg_bytes.clone());
+                            sender.send(send_request)?;
+                        }
+                    }
+                    let node = SplinterNode::new(
+                        self.node_id.to_string(),
+                        vec![self.endpoint.to_string()],
+                    );
+                    let service = Service::new(
+                        service_id.to_string(),
+                        Some(context.source_peer_id().to_string()),
+                        node,
+                    );
+                    state.add_service(unique_id, service);
+                    response.set_status(ServiceConnectResponse_Status::OK);
                 }
-                let node =
-                    SplinterNode::new(self.node_id.to_string(), vec![self.endpoint.to_string()]);
-                let service = Service::new(
-                    service_id.to_string(),
-                    Some(context.source_peer_id().to_string()),
-                    node,
-                );
-                state.add_service(unique_id, service);
-                response.set_status(ServiceConnectResponse_Status::OK);
             // If the circuit exists and has the service in the roster but the service is already
             // connected, return an error response
             } else if circuit.roster().contains(&service_id.to_string())
@@ -246,7 +271,7 @@ impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwar
         debug!("Handle Service Connect Forward {:?}", msg);
         let circuit_name = msg.get_circuit();
         let service_id = msg.get_service_id();
-        let node_id = msg.get_node_id();
+        let node_id = msg.get_node_id().to_string();
         let node_endpoint = msg.get_node_endpoint();
 
         let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
@@ -260,9 +285,33 @@ impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwar
             if circuit.roster().contains(&service_id.to_string())
                 && !state.service_directory.contains_key(&unique_id)
             {
-                let node = SplinterNode::new(node_id.to_string(), vec![node_endpoint.to_string()]);
-                let service = Service::new(service_id.to_string(), None, node);
-                state.add_service(unique_id, service);
+                // This should never return None since we just checked if it exists.
+                // If admin service create a service defination for the admin service
+                let service = {
+                    if !service_id.starts_with("admin::") {
+                        circuit
+                            .roster()
+                            .iter()
+                            .find(|service| service.service_id == service_id)
+                            .expect("Cannot find service in circuit")
+                            .clone()
+                    } else {
+                        ServiceDefinition::builder(service_id.into(), "admin".into())
+                            .with_allowed_nodes(vec![node_id.to_string()])
+                            .build()
+                    }
+                };
+
+                if !service.allowed_nodes.contains(&node_id) && service.allowed_nodes != ["*"] {
+                    warn!(
+                        "Service {} is not allowed to connect to {}",
+                        service_id, node_id
+                    );
+                } else {
+                    let node = SplinterNode::new(node_id, vec![node_endpoint.to_string()]);
+                    let service = Service::new(service_id.to_string(), None, node);
+                    state.add_service(unique_id, service);
+                }
             } else if circuit.roster().contains(&service_id.to_string())
                 && state.service_directory.contains_key(&unique_id)
             {
@@ -420,17 +469,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -489,11 +528,102 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
+        let circuit = build_circuit();
+
+        let mut circuit_directory = CircuitDirectory::new();
+        circuit_directory.add_circuit("alpha".to_string(), circuit);
+
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            "memory".to_string(),
+            circuit_directory,
+        )));
+        let handler = ServiceConnectRequestHandler::new(
+            "123".to_string(),
+            "127.0.0.1:0".to_string(),
+            state.clone(),
+        );
+
+        dispatcher.set_handler(
+            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            Box::new(handler),
+        );
+        let mut connect_request = ServiceConnectRequest::new();
+        connect_request.set_circuit("alpha".into());
+        connect_request.set_service_id("abc".into());
+        let connect_bytes = connect_request.write_to_bytes().unwrap();
+
+        dispatcher
+            .dispatch(
+                "PEER",
+                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                connect_bytes.clone(),
+            )
+            .unwrap();
+        let send_requests = sender.sent();
+        assert_eq!(send_requests.len(), 2);
+        let send_request = send_requests.get(0).unwrap().clone();
+        let network_msg: NetworkMessage =
+            protobuf::parse_from_bytes(send_request.payload()).unwrap();
+        let circuit_msg: CircuitMessage =
+            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
+        let forward_connect: ServiceConnectForward =
+            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
+        assert_eq!(
+            circuit_msg.get_message_type(),
+            CircuitMessageType::SERVICE_CONNECT_FORWARD
+        );
+        assert_eq!(forward_connect.get_circuit(), "alpha");
+        assert_eq!(forward_connect.get_service_id(), "abc");
+        assert_eq!(forward_connect.get_node_id(), "123");
+
+        let send_request = send_requests.get(1).unwrap().clone();
+
+        assert_eq!(send_request.recipient(), "PEER");
+
+        let network_msg: NetworkMessage =
+            protobuf::parse_from_bytes(send_request.payload()).unwrap();
+        let circuit_msg: CircuitMessage =
+            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
+        let connect_response: ServiceConnectResponse =
+            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
+
+        assert_eq!(
+            circuit_msg.get_message_type(),
+            CircuitMessageType::SERVICE_CONNECT_RESPONSE
+        );
+        assert_eq!(connect_response.get_circuit(), "alpha");
+        assert_eq!(connect_response.get_service_id(), "abc");
+        assert_eq!(
+            connect_response.get_status(),
+            ServiceConnectResponse_Status::OK
+        );
+
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        assert!(state.read().unwrap().service_directory().get(&id).is_some());
+    }
+
+    #[test]
+    // Test that if the service is in a circuit and not connected, a ServiceConnectResponse is
+    // returned with an OK, also test that ServiceConnectForward are sent to other nodes on the
+    // circuit. If services have a * in there allowed nodes they can connect to any node on the
+    // circiut.
+    fn test_service_connect_request_handler_service_any_node() {
+        let sender = Box::new(MockSender::default());
+        let mut dispatcher = Dispatcher::new(sender.box_clone());
+
+        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
+            .with_allowed_nodes(vec!["*".to_string()])
+            .build();
+
+        let service_def = ServiceDefinition::builder("def".into(), "test".into())
+            .with_allowed_nodes(vec!["*".to_string()])
+            .build();
+
         let circuit = Circuit::builder()
             .with_id("alpha".into())
             .with_auth("trust".into())
             .with_members(vec!["123".into(), "345".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
+            .with_roster(vec![service_abc, service_def])
             .with_persistence("any".into())
             .with_durability("none".into())
             .with_routes("require_direct".into())
@@ -580,17 +710,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -653,17 +773,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -695,6 +805,108 @@ mod tests {
 
         let id = ServiceId::new("alpha".into(), "abc".into());
         assert!(state.read().unwrap().service_directory().get(&id).is_some());
+    }
+
+    #[test]
+    // Test that if the service is in a circuit, it is not yet connected, and allowed to
+    // connect to all nodes, add the service to splinter state
+    fn test_service_connect_forward_handler_all_node() {
+        let sender = Box::new(MockSender::default());
+        let mut dispatcher = Dispatcher::new(sender.box_clone());
+
+        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
+            .with_allowed_nodes(vec!["*".to_string()])
+            .build();
+
+        let service_def = ServiceDefinition::builder("def".into(), "test".into())
+            .with_allowed_nodes(vec!["*".to_string()])
+            .build();
+
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into(), "345".into()])
+            .with_roster(vec![service_abc, service_def])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("service_connect_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
+
+        let mut circuit_directory = CircuitDirectory::new();
+        circuit_directory.add_circuit("alpha".to_string(), circuit);
+
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            "memory".to_string(),
+            circuit_directory,
+        )));
+        let handler = ServiceConnectForwardHandler::new(state.clone());
+
+        dispatcher.set_handler(
+            CircuitMessageType::SERVICE_CONNECT_FORWARD,
+            Box::new(handler),
+        );
+        let mut connect_request = ServiceConnectForward::new();
+        connect_request.set_circuit("alpha".into());
+        connect_request.set_service_id("abc".into());
+        // abc can connect to any node
+        connect_request.set_node_id("345".into());
+        connect_request.set_node_endpoint("127.0.0.1:0".into());
+        let connect_bytes = connect_request.write_to_bytes().unwrap();
+
+        dispatcher
+            .dispatch(
+                "PEER",
+                &CircuitMessageType::SERVICE_CONNECT_FORWARD,
+                connect_bytes.clone(),
+            )
+            .unwrap();
+
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        assert!(state.read().unwrap().service_directory().get(&id).is_some());
+    }
+
+    #[test]
+    // Test that if the service is in a circuit and it is not yet connect but the service is
+    // trying to connect to a node not in there allowed nodes list, ignore.
+    fn test_service_connect_forward_handler_wrong_node() {
+        let sender = Box::new(MockSender::default());
+        let mut dispatcher = Dispatcher::new(sender.box_clone());
+
+        let circuit = build_circuit();
+
+        let mut circuit_directory = CircuitDirectory::new();
+        circuit_directory.add_circuit("alpha".to_string(), circuit);
+
+        let state = Arc::new(RwLock::new(SplinterState::new(
+            "memory".to_string(),
+            circuit_directory,
+        )));
+        let handler = ServiceConnectForwardHandler::new(state.clone());
+
+        dispatcher.set_handler(
+            CircuitMessageType::SERVICE_CONNECT_FORWARD,
+            Box::new(handler),
+        );
+        let mut connect_request = ServiceConnectForward::new();
+        connect_request.set_circuit("alpha".into());
+        connect_request.set_service_id("abc".into());
+        // abc is only allowed to connect to 123
+        connect_request.set_node_id("345".into());
+        connect_request.set_node_endpoint("127.0.0.1:0".into());
+        let connect_bytes = connect_request.write_to_bytes().unwrap();
+
+        dispatcher
+            .dispatch(
+                "PEER",
+                &CircuitMessageType::SERVICE_CONNECT_FORWARD,
+                connect_bytes.clone(),
+            )
+            .unwrap();
+
+        let id = ServiceId::new("alpha".into(), "abc".into());
+        assert!(state.read().unwrap().service_directory().get(&id).is_none());
     }
 
     #[test]
@@ -758,17 +970,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_disconnect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -826,17 +1028,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into(), "345".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_disconnect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -918,17 +1110,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_disconnect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -986,17 +1168,7 @@ mod tests {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth("trust".into())
-            .with_members(vec!["123".into()])
-            .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
-            .with_circuit_management_type("service_disconnect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
+        let circuit = build_circuit();
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
@@ -1032,5 +1204,29 @@ mod tests {
             .unwrap();
 
         assert!(state.read().unwrap().service_directory().get(&id).is_none());
+    }
+
+    fn build_circuit() -> Circuit {
+        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
+            .with_allowed_nodes(vec!["123".to_string()])
+            .build();
+
+        let service_def = ServiceDefinition::builder("def".into(), "test".into())
+            .with_allowed_nodes(vec!["345".to_string()])
+            .build();
+
+        let circuit = Circuit::builder()
+            .with_id("alpha".into())
+            .with_auth("trust".into())
+            .with_members(vec!["123".into(), "345".into()])
+            .with_roster(vec![service_abc, service_def])
+            .with_persistence("any".into())
+            .with_durability("none".into())
+            .with_routes("require_direct".into())
+            .with_circuit_management_type("service_connect_test_app".into())
+            .build()
+            .expect("Should have built a correct circuit");
+
+        circuit
     }
 }
