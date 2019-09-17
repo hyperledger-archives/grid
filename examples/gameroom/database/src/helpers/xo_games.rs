@@ -28,7 +28,7 @@ pub fn list_xo_games(
     offset: i64,
 ) -> QueryResult<Vec<XoGame>> {
     xo_games::table
-        .filter(xo_games::game_name.eq(circuit_id))
+        .filter(xo_games::circuit_id.eq(circuit_id))
         .limit(limit)
         .offset(offset)
         .load::<XoGame>(conn)
