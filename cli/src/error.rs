@@ -17,8 +17,6 @@ use splinter_client::error::SplinterError;
 pub enum CliError {
     ClientError(SplinterError),
     RequiresArgs,
-    InvalidArg(String),
-    MissingArg(String),
     InvalidSubcommand,
     ActionError(String),
     EnvironmentError(String),

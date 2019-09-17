@@ -16,11 +16,10 @@
 extern crate log;
 
 mod action;
-mod cert;
 mod error;
 
 use crate::error::CliError;
-use action::{admin, network, service, Action, SubcommandActions};
+use action::{admin, Action, SubcommandActions};
 
 use clap::clap_app;
 use log::LogLevel;
@@ -33,7 +32,7 @@ fn run() -> Result<(), CliError> {
         (name: APP_NAME)
         (version: VERSION)
         (author: "Cargill")
-        (about: "Command line to test Splinter")
+        (about: "Command line for Splinter")
         (@arg verbose: -v +multiple "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
         (@subcommand admin =>
@@ -63,34 +62,6 @@ fn run() -> Result<(), CliError> {
                 (@arg quiet: -q --quiet "do not display output")
             )
         )
-        (@subcommand echo =>
-            (about: "Echo message")
-            (@arg recipient: +takes_value "Splinter node id to send the message to")
-            (@arg ttl: +takes_value "Number of times to echo the message")
-        )
-        (@subcommand service =>
-            (about: "Service messages")
-            (@subcommand connect =>
-                (about: "Connect a service to circuit")
-                (@arg url: --url  +takes_value "Splinter node url")
-                (@arg circuit: +takes_value "The circuit name to connect to")
-                (@arg service: +takes_value "The id of the service connecting to the node")
-            )
-            (@subcommand disconnect =>
-                (about: "Disconnect a service from circuit")
-                (@arg url: --url  +takes_value "Splinter node url")
-                (@arg circuit: +takes_value "The circuit name to disconnect from")
-                (@arg service: +takes_value "The id of the service disconnecting from the node")
-            )
-            (@subcommand send =>
-                (about: "Connect a service to circuit")
-                (@arg url: --url  +takes_value "Splinter node url")
-                (@arg circuit: +takes_value "The circuit name to connect to")
-                (@arg sender: +takes_value "The id of the service sending the message")
-                (@arg recipient: +takes_value "The id of the service sending the message")
-                (@arg payload: +takes_value "Path to a payload file")
-            )
-        )
     )
     .get_matches();
 
@@ -108,14 +79,6 @@ fn run() -> Result<(), CliError> {
             SubcommandActions::new()
                 .with_command("keygen", admin::KeyGenAction)
                 .with_command("keyregistry", admin::KeyRegistryGenerationAction),
-        )
-        .with_command("echo", network::EchoAction)
-        .with_command(
-            "service",
-            SubcommandActions::new()
-                .with_command("connect", service::ConnectAction)
-                .with_command("disconnect", service::DisconnectAction)
-                .with_command("send", service::SendAction),
         )
         .run(Some(&matches))
 }

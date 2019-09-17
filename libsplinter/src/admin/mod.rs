@@ -127,10 +127,6 @@ impl Service for AdminService {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
-        if !cfg!(feature = "ursa-compat") {
-            warn!("Payload signature verfication disabled");
-        }
-
         if self.consensus.is_some() {
             return Err(ServiceStartError::AlreadyStarted);
         }
