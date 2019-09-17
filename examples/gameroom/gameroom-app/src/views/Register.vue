@@ -35,7 +35,7 @@ limitations under the License.
             <div class="form-input-icon-wrapper">
               <input
                 class="input"
-                type="text"
+                type="password"
                 v-model="privateKey"/>
               <button class="form-button" type="button" @click.prevent="generatePrivateKey">
                 <i class="icon material-icons-round">autorenew</i>
