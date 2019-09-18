@@ -129,6 +129,10 @@
      font-size: .9rem;
      &:hover:enabled {
        color: $color-text-high;
+       .btn-text:hover:after {
+        width: 80%;
+        background: $color-primary-light;
+      }
      }
      .btn-text {
        position: relative;
@@ -154,10 +158,7 @@
        transition:.5s;
 
      }
-     .btn-text:hover:after:enabled {
-       width: 80%;
-       background: $color-primary-light;
-     }
+
      &.is-active:enabled {
        color: $color-text-high;
        .btn-text:after  {
