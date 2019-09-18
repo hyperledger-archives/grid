@@ -59,17 +59,6 @@ COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
 WORKDIR /build/libsplinter
 RUN cargo build --release
 
-# Create empty cargo project for client
-WORKDIR /build
-RUN USER=root cargo new --lib client
-
-# Copy over client Cargo.toml
-COPY client/Cargo.toml /build/client/Cargo.toml
-
-# Do a release build to cache client dependencies
-WORKDIR /build/client
-RUN cargo build --release
-
 # Create empty cargo project for cli
 WORKDIR /build
 RUN USER=root cargo new --bin cli
@@ -84,14 +73,11 @@ RUN cargo build --release
 # Remove the auto-generated .rs files and the built files
 WORKDIR /build
 RUN rm cli/target/release/deps/*splinter*
-RUN rm client/target/release/*splinter* \
-    client/target/release/deps/*splinter*
 RUN rm libsplinter/target/release/*splinter* \
     libsplinter/target/release/deps/*splinter*
 
 # Copy over source files
 COPY cli/src /build/cli/src
-COPY client/src /build/client/src
 COPY libsplinter/src /build/libsplinter/src
 COPY protos/ /build/protos/
 
