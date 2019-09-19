@@ -562,6 +562,10 @@ impl AdminServiceShared {
         }
     }
 
+    pub fn shutdown_event_dealers(&mut self) {
+        self.event_dealers.values().for_each(EventDealer::stop);
+    }
+
     pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {
         let mut unpeered_payloads = std::mem::replace(&mut self.unpeered_payloads, vec![]);
         for (ref mut peers, _) in unpeered_payloads.iter_mut() {
