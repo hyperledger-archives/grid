@@ -62,6 +62,14 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         });
     }
 
+    pub fn stop(&self) {
+        self.senders.iter().for_each(|sender| {
+            if let Err(err) = sender.send(MessageWrapper::Shutdown) {
+                error!("Failed to shutdown webocket: {:?}", err);
+            }
+        });
+    }
+
     fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) {
         self.senders.push(sender);
     }
