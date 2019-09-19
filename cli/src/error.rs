@@ -11,19 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use splinter_client::error::SplinterError;
-
 #[derive(Debug)]
 pub enum CliError {
-    ClientError(SplinterError),
     RequiresArgs,
     InvalidSubcommand,
     ActionError(String),
     EnvironmentError(String),
-}
-
-impl From<SplinterError> for CliError {
-    fn from(e: SplinterError) -> Self {
-        CliError::ClientError(e)
-    }
 }
