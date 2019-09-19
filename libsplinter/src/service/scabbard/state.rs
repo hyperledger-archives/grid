@@ -197,6 +197,10 @@ impl ScabbardState {
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
         self.event_dealer.subscribe(request)
     }
+
+    pub fn shutdown_event_dealer(&self) {
+        self.event_dealer.stop();
+    }
 }
 
 fn into_writable_state_change(
