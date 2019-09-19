@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::time::Duration;
 
 use actix::prelude::*;
-use actix_web_actors::ws;
+use actix_web_actors::ws::{self, CloseCode, CloseReason};
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use serde::ser::Serialize;
 use serde_json;
@@ -28,7 +28,7 @@ use crate::rest_api::{errors::ResponseError, Request, Response};
 /// push messages to a web based client.
 #[derive(Debug, Clone)]
 pub struct EventDealer<T: Serialize + Debug + Clone + 'static> {
-    senders: Vec<Sender<T>>,
+    senders: Vec<Sender<MessageWrapper<T>>>,
 }
 
 impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
@@ -52,7 +52,7 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
     /// Send message to all created WebSockets
     pub fn dispatch(&mut self, msg: T) {
         self.senders.retain(|sender| {
-            if let Err(err) = sender.send(msg.clone()) {
+            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
@@ -62,7 +62,7 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         });
     }
 
-    fn add_sender(&mut self, sender: Sender<T>) {
+    fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) {
         self.senders.push(sender);
     }
 }
@@ -76,18 +76,18 @@ impl<T: Serialize + Debug + Clone + 'static> Default for EventDealer<T> {
 }
 
 struct EventDealerWebSocket<T: Serialize + Debug + 'static> {
-    recv: Receiver<T>,
+    recv: Receiver<MessageWrapper<T>>,
 }
 
 impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
-    fn new(recv: Receiver<T>) -> Self {
+    fn new(recv: Receiver<MessageWrapper<T>>) -> Self {
         Self { recv }
     }
 
-    fn push_updates(&self, recv: Receiver<T>, ctx: &mut <Self as Actor>::Context) {
+    fn push_updates(&self, recv: Receiver<MessageWrapper<T>>, ctx: &mut <Self as Actor>::Context) {
         ctx.run_interval(Duration::from_secs(5), move |_, ctx| {
             match recv.try_recv() {
-                Ok(msg) => {
+                Ok(MessageWrapper::Message(msg)) => {
                     debug!("Received a message: {:?}", msg);
                     match serde_json::to_string(&msg) {
                         Ok(text) => ctx.text(text),
@@ -96,9 +96,21 @@ impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
                         }
                     }
                 }
+                Ok(MessageWrapper::Shutdown) => {
+                    debug!("Shutting down websocket");
+                    ctx.close(Some(CloseReason {
+                        description: None,
+                        code: CloseCode::Away,
+                    }));
+                    ctx.stop()
+                }
                 Err(TryRecvError::Empty) => (),
                 Err(TryRecvError::Disconnected) => {
                     debug!("Received channel disconnect");
+                    ctx.close(Some(CloseReason {
+                        description: Some("Unexpected disconnect from service".into()),
+                        code: CloseCode::Error,
+                    }));
                     ctx.stop();
                 }
             };
@@ -125,8 +137,20 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
             ws::Message::Pong(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => ctx.text(text),
             ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(_) => ctx.stop(),
+            ws::Message::Close(_) => {
+                ctx.close(Some(CloseReason {
+                    description: Some("Received close frame closing normally".into()),
+                    code: CloseCode::Normal,
+                }));
+                ctx.stop()
+            }
             ws::Message::Nop => (),
         };
     }
+}
+
+#[derive(Debug)]
+enum MessageWrapper<T: Serialize + Debug + 'static> {
+    Message(T),
+    Shutdown,
 }
