@@ -778,6 +778,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /keys/{public_key}:
+    get:
+      tags:
+        - Splinter Key Registry
+      description: Fetch information in the Key Registry by public key
+      parameters:
+        - name: public_key
+          in: path
+          description: public key to query, in hex
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Public Key Info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PublicKeyInfo"
+        400:
+          description: The public key was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Information for the public key was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        503:
+          description: Server unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Error:
@@ -999,3 +1046,17 @@ components:
         updated_time:
           description: time in seconds since the unix epoch the XO game was updated
           type: integer
+
+    PublicKeyInfo:
+      type: object
+      properties:
+        public_key:
+          type: string
+        node_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            name: Jane User
+            organization: Acme Corporation

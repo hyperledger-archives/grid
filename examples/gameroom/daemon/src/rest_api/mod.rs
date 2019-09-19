@@ -175,6 +175,12 @@ pub fn run(
                                 ),
                         ),
                     )
+                    .service(
+                        web::scope("/keys").service(
+                            web::resource("/{public_key}")
+                                .route(web::get().to_async(routes::fetch_key_info)),
+                        ),
+                    )
             })
             .bind(bind_url)?
             .disable_signals()
