@@ -40,7 +40,7 @@ use crate::protos::admin::{
     CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
     Circuit_PersistenceType, Circuit_RouteType, MemberReady,
 };
-use crate::rest_api::{EventDealer, Request, Response, ResponseError};
+use crate::rest_api::{EventDealer, LocalEventHistory, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 use crate::signing::SignatureVerifier;
@@ -105,7 +105,10 @@ pub struct AdminServiceShared {
     // the verifiers that should be broadcasted for the pending change
     current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
-    event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
+    event_dealers: HashMap<
+        String,
+        EventDealer<messages::AdminServiceEvent, LocalEventHistory<messages::AdminServiceEvent>>,
+    >,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
     // signature verifier
@@ -552,13 +555,18 @@ impl AdminServiceShared {
         circuit_management_type: &str,
         event: messages::AdminServiceEvent,
     ) {
-        if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
-            dealer.dispatch(event);
+        let dealer = if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
+            dealer
         } else {
             warn!(
                 "No event dealer for circuit management type {}",
                 circuit_management_type
             );
+            return;
+        };
+
+        if let Err(err) = dealer.dispatch(event) {
+            error!("Failed to dispatch events: {}", err);
         }
     }
 

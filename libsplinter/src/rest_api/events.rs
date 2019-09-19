@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Debug;
 use std::time::Duration;
@@ -22,16 +23,25 @@ use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use serde::ser::Serialize;
 use serde_json;
 
-use crate::rest_api::{errors::ResponseError, Request, Response};
+use crate::rest_api::{
+    errors::{EventHistoryError, ResponseError},
+    Request, Response,
+};
 
 /// `EventDealer` is responsible for creating and managing WebSockets for Services that need to
 /// push messages to a web based client.
 #[derive(Debug, Clone)]
-pub struct EventDealer<T: Serialize + Debug + Clone + 'static> {
+pub struct EventDealer<
+    T: Serialize + Debug + Clone + 'static,
+    H: EventHistory<T> + Send + Sync + Default,
+> {
     senders: Vec<Sender<MessageWrapper<T>>>,
+    history: H,
 }
 
-impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
+impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default>
+    EventDealer<T, H>
+{
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,13 +54,14 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         let res = ws::start(EventDealerWebSocket::new(recv), &request, payload)
             .map_err(ResponseError::from)?;
 
-        self.add_sender(send);
+        self.add_sender(send)?;
 
         Ok(Response::from(res))
     }
 
     /// Send message to all created WebSockets
-    pub fn dispatch(&mut self, msg: T) {
+    pub fn dispatch(&mut self, msg: T) -> Result<(), EventHistoryError> {
+        self.history.store(msg.clone())?;
         self.senders.retain(|sender| {
             if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
@@ -60,6 +71,7 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
                 true
             }
         });
+        Ok(())
     }
 
     pub fn stop(&self) {
@@ -70,15 +82,28 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         });
     }
 
-    fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) {
+    fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) -> Result<(), EventHistoryError> {
+        debug!("Catching up new connection");
+        self.history.events()?.into_iter().for_each(|msg| {
+            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
+                error!(
+                    "Failed to send message to Websocket Message: {:?}, Error: {}",
+                    msg, err
+                );
+            }
+        });
         self.senders.push(sender);
+        Ok(())
     }
 }
 
-impl<T: Serialize + Debug + Clone + 'static> Default for EventDealer<T> {
+impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default> Default
+    for EventDealer<T, H>
+{
     fn default() -> Self {
         Self {
             senders: Vec::new(),
+            history: H::default(),
         }
     }
 }
@@ -161,4 +186,61 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
 enum MessageWrapper<T: Serialize + Debug + 'static> {
     Message(T),
     Shutdown,
+}
+
+/// A trait used for implementing different schemes for
+/// storing events.
+pub trait EventHistory<T: Clone + Debug>: Clone + Debug {
+    /// Add an event to the event history
+    fn store(&mut self, event: T) -> Result<(), EventHistoryError>;
+
+    /// Retrieves a list of events
+    fn events(&self) -> Result<Vec<T>, EventHistoryError>;
+}
+
+/// An implementation of EventHistory for storing
+/// events in memory. Only the n most recent events
+/// are stored.
+#[derive(Clone, Debug)]
+pub struct LocalEventHistory<T: Clone + Debug> {
+    history: VecDeque<T>,
+    limit: usize,
+}
+
+impl<T: Clone + Debug> LocalEventHistory<T> {
+    pub fn with_limit(limit: usize) -> Self {
+        Self {
+            history: VecDeque::new(),
+            limit,
+        }
+    }
+
+    /// Creates a LocalEventHistory with a default limit
+    /// of 100 events.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<T: Clone + Debug> EventHistory<T> for LocalEventHistory<T> {
+    fn store(&mut self, event: T) -> Result<(), EventHistoryError> {
+        self.history.push_back(event);
+        if self.history.len() > self.limit {
+            self.history.pop_front();
+        }
+        Ok(())
+    }
+
+    fn events(&self) -> Result<Vec<T>, EventHistoryError> {
+        Ok(self.history.clone().into_iter().collect())
+    }
+}
+
+impl<T: Clone + Debug> Default for LocalEventHistory<T> {
+    fn default() -> Self {
+        Self {
+            history: VecDeque::new(),
+            limit: 100,
+        }
+    }
 }

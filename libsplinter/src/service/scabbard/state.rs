@@ -34,7 +34,7 @@ use transact::state::{
 #[cfg(feature = "events")]
 use crate::events::{ParseBytes, ParseError};
 use crate::protos::scabbard::{Setting, Setting_Entry};
-use crate::rest_api::{EventDealer, Request, Response, ResponseError};
+use crate::rest_api::{EventDealer, LocalEventHistory, Request, Response, ResponseError};
 
 use super::error::ScabbardStateError;
 
@@ -46,7 +46,7 @@ pub struct ScabbardState {
     executor: Executor,
     current_state_root: String,
     pending_changes: Option<Vec<StateChange>>,
-    event_dealer: EventDealer<Vec<StateChangeEvent>>,
+    event_dealer: EventDealer<Vec<StateChangeEvent>, LocalEventHistory<Vec<StateChangeEvent>>>,
 }
 
 impl ScabbardState {
@@ -178,7 +178,10 @@ impl ScabbardState {
                     .map(StateChangeEvent::from_state_change)
                     .collect();
 
-                self.event_dealer.dispatch(events);
+                if let Err(err) = self.event_dealer.dispatch(events) {
+                    error!("An error occured while dispatching events {}", err);
+                }
+
                 Ok(())
             }
             None => Err(ScabbardStateError("no pending changes to commit".into())),

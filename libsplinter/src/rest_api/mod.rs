@@ -66,7 +66,7 @@ use std::thread;
 
 pub use errors::{EventHistoryError, ResponseError, RestApiServerError};
 
-pub use events::EventDealer;
+pub use events::{EventDealer, EventHistory, LocalEventHistory};
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
