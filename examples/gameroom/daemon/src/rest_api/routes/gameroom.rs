@@ -333,15 +333,10 @@ fn list_gamerooms_from_db(
         .into_iter()
         .map(|gameroom| {
             let circuit_id = gameroom.circuit_id.to_string();
-            let member_status = match gameroom.status.as_str() {
-                "Pending" => "Pending",
-                "Rejected" => "Rejected",
-                _ => "Accepted",
-            };
             let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
                 &*pool.get()?,
                 &circuit_id,
-                member_status,
+                &gameroom.status,
             )?;
             Ok(ApiGameroom::from(gameroom, members))
         })
@@ -352,15 +347,10 @@ fn list_gamerooms_from_db(
             .into_iter()
             .map(|gameroom| {
                 let circuit_id = gameroom.circuit_id.to_string();
-                let member_status = match gameroom.status.as_str() {
-                    "Pending" => "Pending",
-                    "Rejected" => "Rejected",
-                    _ => "Accepted",
-                };
                 let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
                     &*pool.get()?,
                     &circuit_id,
-                    member_status,
+                    &gameroom.status,
                 )?;
                 Ok(ApiGameroom::from(gameroom, members))
             })
@@ -399,15 +389,10 @@ fn fetch_gameroom_from_db(
     circuit_id: &str,
 ) -> Result<ApiGameroom, RestApiResponseError> {
     if let Some(gameroom) = helpers::fetch_gameroom(&*pool.get()?, circuit_id)? {
-        let member_status = match gameroom.status.as_str() {
-            "Pending" => "Pending",
-            "Rejected" => "Rejected",
-            _ => "Accepted",
-        };
         let members = helpers::fetch_gameroom_members_by_circuit_id_and_status(
             &*pool.get()?,
             &gameroom.circuit_id,
-            member_status,
+            &gameroom.status,
         )?;
         return Ok(ApiGameroom::from(gameroom, members));
     }
