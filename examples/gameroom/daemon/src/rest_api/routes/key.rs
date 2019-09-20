@@ -14,9 +14,8 @@
 
 use actix_web::{client::Client, dev::Body, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
-use std::collections::BTreeMap;
 
-use super::{ErrorResponse, SuccessResponse};
+use super::ErrorResponse;
 
 pub fn fetch_key_info(
     client: web::Data<Client>,
