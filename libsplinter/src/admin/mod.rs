@@ -171,6 +171,9 @@ impl Service for AdminService {
 
         admin_service_shared.set_network_sender(None);
 
+        // Shutdown event dealers and disconnect active websocket connections
+        admin_service_shared.shutdown_event_dealers();
+
         info!("Admin service stopped and disconnected");
 
         Ok(())

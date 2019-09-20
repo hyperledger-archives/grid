@@ -12,26 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Debug;
 use std::time::Duration;
 
 use actix::prelude::*;
-use actix_web_actors::ws;
+use actix_web_actors::ws::{self, CloseCode, CloseReason};
 use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 use serde::ser::Serialize;
 use serde_json;
 
-use crate::rest_api::{errors::ResponseError, Request, Response};
+use crate::rest_api::{
+    errors::{EventHistoryError, ResponseError},
+    Request, Response,
+};
 
 /// `EventDealer` is responsible for creating and managing WebSockets for Services that need to
 /// push messages to a web based client.
 #[derive(Debug, Clone)]
-pub struct EventDealer<T: Serialize + Debug + Clone + 'static> {
-    senders: Vec<Sender<T>>,
+pub struct EventDealer<
+    T: Serialize + Debug + Clone + 'static,
+    H: EventHistory<T> + Send + Sync + Default,
+> {
+    senders: Vec<Sender<MessageWrapper<T>>>,
+    history: H,
 }
 
-impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
+impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default>
+    EventDealer<T, H>
+{
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,15 +54,16 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         let res = ws::start(EventDealerWebSocket::new(recv), &request, payload)
             .map_err(ResponseError::from)?;
 
-        self.add_sender(send);
+        self.add_sender(send)?;
 
         Ok(Response::from(res))
     }
 
     /// Send message to all created WebSockets
-    pub fn dispatch(&mut self, msg: T) {
+    pub fn dispatch(&mut self, msg: T) -> Result<(), EventHistoryError> {
+        self.history.store(msg.clone())?;
         self.senders.retain(|sender| {
-            if let Err(err) = sender.send(msg.clone()) {
+            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
@@ -60,34 +71,56 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
                 true
             }
         });
+        Ok(())
     }
 
-    fn add_sender(&mut self, sender: Sender<T>) {
+    pub fn stop(&self) {
+        self.senders.iter().for_each(|sender| {
+            if let Err(err) = sender.send(MessageWrapper::Shutdown) {
+                error!("Failed to shutdown webocket: {:?}", err);
+            }
+        });
+    }
+
+    fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) -> Result<(), EventHistoryError> {
+        debug!("Catching up new connection");
+        self.history.events()?.into_iter().for_each(|msg| {
+            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
+                error!(
+                    "Failed to send message to Websocket Message: {:?}, Error: {}",
+                    msg, err
+                );
+            }
+        });
         self.senders.push(sender);
+        Ok(())
     }
 }
 
-impl<T: Serialize + Debug + Clone + 'static> Default for EventDealer<T> {
+impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default> Default
+    for EventDealer<T, H>
+{
     fn default() -> Self {
         Self {
             senders: Vec::new(),
+            history: H::default(),
         }
     }
 }
 
 struct EventDealerWebSocket<T: Serialize + Debug + 'static> {
-    recv: Receiver<T>,
+    recv: Receiver<MessageWrapper<T>>,
 }
 
 impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
-    fn new(recv: Receiver<T>) -> Self {
+    fn new(recv: Receiver<MessageWrapper<T>>) -> Self {
         Self { recv }
     }
 
-    fn push_updates(&self, recv: Receiver<T>, ctx: &mut <Self as Actor>::Context) {
+    fn push_updates(&self, recv: Receiver<MessageWrapper<T>>, ctx: &mut <Self as Actor>::Context) {
         ctx.run_interval(Duration::from_secs(5), move |_, ctx| {
             match recv.try_recv() {
-                Ok(msg) => {
+                Ok(MessageWrapper::Message(msg)) => {
                     debug!("Received a message: {:?}", msg);
                     match serde_json::to_string(&msg) {
                         Ok(text) => ctx.text(text),
@@ -96,9 +129,21 @@ impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
                         }
                     }
                 }
+                Ok(MessageWrapper::Shutdown) => {
+                    debug!("Shutting down websocket");
+                    ctx.close(Some(CloseReason {
+                        description: None,
+                        code: CloseCode::Away,
+                    }));
+                    ctx.stop()
+                }
                 Err(TryRecvError::Empty) => (),
                 Err(TryRecvError::Disconnected) => {
                     debug!("Received channel disconnect");
+                    ctx.close(Some(CloseReason {
+                        description: Some("Unexpected disconnect from service".into()),
+                        code: CloseCode::Error,
+                    }));
                     ctx.stop();
                 }
             };
@@ -125,8 +170,77 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
             ws::Message::Pong(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => ctx.text(text),
             ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(_) => ctx.stop(),
+            ws::Message::Close(_) => {
+                ctx.close(Some(CloseReason {
+                    description: Some("Received close frame closing normally".into()),
+                    code: CloseCode::Normal,
+                }));
+                ctx.stop()
+            }
             ws::Message::Nop => (),
         };
+    }
+}
+
+#[derive(Debug)]
+enum MessageWrapper<T: Serialize + Debug + 'static> {
+    Message(T),
+    Shutdown,
+}
+
+/// A trait used for implementing different schemes for
+/// storing events.
+pub trait EventHistory<T: Clone + Debug>: Clone + Debug {
+    /// Add an event to the event history
+    fn store(&mut self, event: T) -> Result<(), EventHistoryError>;
+
+    /// Retrieves a list of events
+    fn events(&self) -> Result<Vec<T>, EventHistoryError>;
+}
+
+/// An implementation of EventHistory for storing
+/// events in memory. Only the n most recent events
+/// are stored.
+#[derive(Clone, Debug)]
+pub struct LocalEventHistory<T: Clone + Debug> {
+    history: VecDeque<T>,
+    limit: usize,
+}
+
+impl<T: Clone + Debug> LocalEventHistory<T> {
+    pub fn with_limit(limit: usize) -> Self {
+        Self {
+            history: VecDeque::new(),
+            limit,
+        }
+    }
+
+    /// Creates a LocalEventHistory with a default limit
+    /// of 100 events.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<T: Clone + Debug> EventHistory<T> for LocalEventHistory<T> {
+    fn store(&mut self, event: T) -> Result<(), EventHistoryError> {
+        self.history.push_back(event);
+        if self.history.len() > self.limit {
+            self.history.pop_front();
+        }
+        Ok(())
+    }
+
+    fn events(&self) -> Result<Vec<T>, EventHistoryError> {
+        Ok(self.history.clone().into_iter().collect())
+    }
+}
+
+impl<T: Clone + Debug> Default for LocalEventHistory<T> {
+    fn default() -> Self {
+        Self {
+            history: VecDeque::new(),
+            limit: 100,
+        }
     }
 }

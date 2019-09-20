@@ -54,10 +54,60 @@ impl fmt::Display for RestApiServerError {
 }
 
 #[derive(Debug)]
-pub struct ResponseError(ActixError);
+pub enum ResponseError {
+    ActixError(ActixError),
+    CatchUpWsError(EventHistoryError),
+}
+
+impl Error for ResponseError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ResponseError::ActixError(err) => Some(err),
+            ResponseError::CatchUpWsError(err) => Some(err),
+        }
+    }
+}
+
+impl fmt::Display for ResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ResponseError::ActixError(err) => write!(
+                f,
+                "Failed to get response when setting up websocket: {}",
+                err
+            ),
+            ResponseError::CatchUpWsError(err) => write!(f, "{}", err),
+        }
+    }
+}
 
 impl From<ActixError> for ResponseError {
     fn from(err: ActixError) -> Self {
-        Self(err)
+        ResponseError::ActixError(err)
+    }
+}
+
+impl From<EventHistoryError> for ResponseError {
+    fn from(err: EventHistoryError) -> Self {
+        ResponseError::CatchUpWsError(err)
+    }
+}
+
+#[derive(Debug)]
+pub struct EventHistoryError(pub Box<dyn Error + 'static>);
+
+impl Error for EventHistoryError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&*self.0)
+    }
+}
+
+impl fmt::Display for EventHistoryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "An error occured while send a new socket event history {}",
+            self.0
+        )
     }
 }
