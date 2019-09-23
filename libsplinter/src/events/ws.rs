@@ -23,7 +23,7 @@
 //! let reactor = Reactor::new();
 //!
 //! let mut ws = WebSocketClient::new(
-//!    "http://echo.websocket.org", |msg: Vec<u8>| {
+//!    "http://echo.websocket.org", |ctx, msg: Vec<u8>| {
 //!    if let Ok(s) = String::from_utf8(msg.clone()) {
 //!         println!("Recieved {}", s);
 //!    } else {
@@ -33,17 +33,15 @@
 //! });
 //!
 //! // Optional callback for when connection is established
-//! ws.on_open(|| {
+//! ws.on_open(|_| {
 //!    println!("sending message");
 //!    WsResponse::Text("hello, world".to_string())
 //! });
 //!
-//! let igniter = reactor.igniter();
-//!
-//! ws.on_error(move |err, ws| {
+//! ws.on_error(move |err, ctx| {
 //!     println!("Error!: {:?}", err);
 //!     // ws instance can be used to restart websocket
-//!     igniter.clone().start_ws(&ws).unwrap();
+//!     ctx.start_ws().unwrap();
 //!     Ok(())
 //! });
 //!
@@ -71,12 +69,10 @@ use hyper::{self, header, upgrade::Upgraded, Body, Client, Request, StatusCode};
 use tokio::codec::{Decoder, Framed};
 use tokio::prelude::*;
 
-use crate::events::{ParseError, WebSocketError};
+use crate::events::{Igniter, ParseError, WebSocketError};
 
-type OnErrorHandle<T> = dyn Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
-    + Send
-    + Sync
-    + 'static;
+type OnErrorHandle<T> =
+    dyn Fn(&WebSocketError, Context<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
 
 const MAX_FRAME_SIZE: usize = 10_000_000;
 
@@ -122,8 +118,8 @@ impl ShutdownHandle {
 /// WebSocket client. Configures Websocket connection and produces `Listen` future.
 pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     url: String,
-    on_message: Arc<dyn Fn(T) -> WsResponse + Send + Sync + 'static>,
-    on_open: Option<Arc<dyn Fn() -> WsResponse + Send + Sync + 'static>>,
+    on_message: Arc<dyn Fn(Context<T>, T) -> WsResponse + Send + Sync + 'static>,
+    on_open: Option<Arc<dyn Fn(Context<T>) -> WsResponse + Send + Sync + 'static>>,
     on_error: Option<Arc<OnErrorHandle<T>>>,
 }
 
@@ -141,7 +137,7 @@ impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
 impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
     pub fn new<F>(url: &str, on_message: F) -> Self
     where
-        F: Fn(T) -> WsResponse + Send + Sync + 'static,
+        F: Fn(Context<T>, T) -> WsResponse + Send + Sync + 'static,
     {
         Self {
             url: url.to_string(),
@@ -160,7 +156,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
     /// messages to server if necessary.
     pub fn on_open<F>(&mut self, on_open: F)
     where
-        F: Fn() -> WsResponse + Send + Sync + 'static,
+        F: Fn(Context<T>) -> WsResponse + Send + Sync + 'static,
     {
         self.on_open = Some(Arc::new(on_open));
     }
@@ -170,29 +166,27 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
     /// Websocket or to reestablish the connection if appropriate.
     pub fn on_error<F>(&mut self, on_error: F)
     where
-        F: Fn(&WebSocketError, WebSocketClient<T>) -> Result<(), WebSocketError>
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(&WebSocketError, Context<T>) -> Result<(), WebSocketError> + Send + Sync + 'static,
     {
         self.on_error = Some(Arc::new(on_error));
     }
 
     /// Returns `Listen` for WebSocket.
-    pub fn listen(&self) -> Result<Listen, WebSocketError> {
+    pub fn listen(&self, igniter: Igniter) -> Result<Listen, WebSocketError> {
         let url = self.url.clone();
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
         let on_open = self
             .on_open
             .clone()
-            .unwrap_or_else(|| Arc::new(|| WsResponse::Empty));
+            .unwrap_or_else(|| Arc::new(|_| WsResponse::Empty));
         let on_message = self.on_message.clone();
         let on_error = self
             .on_error
             .clone()
             .unwrap_or_else(|| Arc::new(|_, _| Ok(())));
-        let ws_clone = self.clone();
+
+        let context = Context::new(igniter, self.clone());
 
         let (sender, receiver) = bounded(1);
 
@@ -229,7 +223,8 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
                     let mut blocking_sink = sink.wait();
 
-                    if let Err(err) = handle_response(&mut blocking_sink, on_open()) {
+                    if let Err(err) = handle_response(&mut blocking_sink, on_open(context.clone()))
+                    {
                         if let Err(err) = sender.send(Err(err)) {
                             error!("Failed to send response to shutdown handle: {}", err);
                         }
@@ -274,7 +269,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                             .and_then(|message| {
                                                 handle_response(
                                                     &mut blocking_sink,
-                                                    on_message(message),
+                                                    on_message(context.clone(), message),
                                                 )
                                             });
 
@@ -323,7 +318,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         future::ok(false)
                                     }
                                     (_, ConnectionStatus::UnexpectedClose(original_error)) => {
-                                        let result = on_error(&original_error, ws_clone.clone())
+                                        let result = on_error(&original_error, context.clone())
                                             .map_err(|on_fail_error| WebSocketError::OnFailError {
                                                 original_error: Box::new(original_error),
                                                 on_fail_error: Box::new(on_fail_error),
@@ -425,6 +420,31 @@ fn do_shutdown(
             blocking_sink.close()
         })
         .or_else(|_| blocking_sink.close())
+}
+
+/// Websocket context object. It contains an Igniter pointing
+/// to the Reactor on which the websocket future is running and
+/// a copy of the WebSocketClient object.
+#[derive(Clone)]
+pub struct Context<T: ParseBytes<T> + 'static> {
+    igniter: Igniter,
+    ws: WebSocketClient<T>,
+}
+
+impl<T: ParseBytes<T> + 'static> Context<T> {
+    pub fn new(igniter: Igniter, ws: WebSocketClient<T>) -> Self {
+        Self { igniter, ws }
+    }
+
+    /// Starts an instance of the Context's websocket.
+    pub fn start_ws(&self) -> Result<(), WebSocketError> {
+        self.igniter.start_ws(&self.ws)
+    }
+
+    /// Returns a copy of the igniter used to start the websocket.
+    pub fn igniter(&self) -> Igniter {
+        self.igniter.clone()
+    }
 }
 
 enum ConnectionStatus {
