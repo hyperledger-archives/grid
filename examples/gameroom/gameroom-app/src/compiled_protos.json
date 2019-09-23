@@ -394,6 +394,10 @@
         "proposedCircuit": {
           "type": "ProposedCircuit",
           "id": 3
+        },
+        "memberReady": {
+          "type": "MemberReady",
+          "id": 4
         }
       },
       "nested": {
@@ -401,7 +405,8 @@
           "values": {
             "UNSET": 0,
             "CONSENSUS_MESSAGE": 1,
-            "PROPOSED_CIRCUIT": 2
+            "PROPOSED_CIRCUIT": 2,
+            "MEMBER_READY": 3
           }
         }
       }
@@ -419,6 +424,311 @@
         "requiredVerifiers": {
           "type": "bytes",
           "id": 3
+        }
+      }
+    },
+    "MemberReady": {
+      "fields": {
+        "circuitId": {
+          "type": "string",
+          "id": 1
+        },
+        "memberNodeId": {
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "SabrePayload": {
+      "fields": {
+        "action": {
+          "type": "Action",
+          "id": 1
+        },
+        "createContract": {
+          "type": "CreateContractAction",
+          "id": 2
+        },
+        "deleteContract": {
+          "type": "DeleteContractAction",
+          "id": 3
+        },
+        "executeContract": {
+          "type": "ExecuteContractAction",
+          "id": 4
+        },
+        "createContractRegistry": {
+          "type": "CreateContractRegistryAction",
+          "id": 5
+        },
+        "deleteContractRegistry": {
+          "type": "DeleteContractRegistryAction",
+          "id": 6
+        },
+        "updateContractRegistryOwners": {
+          "type": "UpdateContractRegistryOwnersAction",
+          "id": 7
+        },
+        "createNamespaceRegistry": {
+          "type": "CreateNamespaceRegistryAction",
+          "id": 8
+        },
+        "deleteNamespaceRegistry": {
+          "type": "DeleteNamespaceRegistryAction",
+          "id": 9
+        },
+        "updateNamespaceRegistryOwners": {
+          "type": "UpdateNamespaceRegistryOwnersAction",
+          "id": 10
+        },
+        "createNamespaceRegistryPermission": {
+          "type": "CreateNamespaceRegistryPermissionAction",
+          "id": 11
+        },
+        "deleteNamespaceRegistryPermission": {
+          "type": "DeleteNamespaceRegistryPermissionAction",
+          "id": 12
+        },
+        "createSmartPermission": {
+          "type": "CreateSmartPermissionAction",
+          "id": 13
+        },
+        "updateSmartPermission": {
+          "type": "UpdateSmartPermissionAction",
+          "id": 14
+        },
+        "deleteSmartPermission": {
+          "type": "DeleteSmartPermissionAction",
+          "id": 15
+        }
+      },
+      "nested": {
+        "Action": {
+          "values": {
+            "ACTION_UNSET": 0,
+            "CREATE_CONTRACT": 1,
+            "DELETE_CONTRACT": 2,
+            "EXECUTE_CONTRACT": 3,
+            "CREATE_CONTRACT_REGISTRY": 4,
+            "DELETE_CONTRACT_REGISTRY": 5,
+            "UPDATE_CONTRACT_REGISTRY_OWNERS": 6,
+            "CREATE_NAMESPACE_REGISTRY": 7,
+            "DELETE_NAMESPACE_REGISTRY": 8,
+            "UPDATE_NAMESPACE_REGISTRY_OWNERS": 9,
+            "CREATE_NAMESPACE_REGISTRY_PERMISSION": 10,
+            "DELETE_NAMESPACE_REGISTRY_PERMISSION": 11,
+            "CREATE_SMART_PERMISSION": 12,
+            "UPDATE_SMART_PERMISSION": 13,
+            "DELETE_SMART_PERMISSION": 14
+          }
+        }
+      }
+    },
+    "CreateContractAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "version": {
+          "type": "string",
+          "id": 2
+        },
+        "inputs": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 3
+        },
+        "outputs": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 4
+        },
+        "contract": {
+          "type": "bytes",
+          "id": 5
+        }
+      }
+    },
+    "DeleteContractAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "version": {
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "ExecuteContractAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "version": {
+          "type": "string",
+          "id": 2
+        },
+        "inputs": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 3
+        },
+        "outputs": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 4
+        },
+        "payload": {
+          "type": "bytes",
+          "id": 5
+        }
+      }
+    },
+    "CreateContractRegistryAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "owners": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "DeleteContractRegistryAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        }
+      }
+    },
+    "UpdateContractRegistryOwnersAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "owners": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "CreateNamespaceRegistryAction": {
+      "fields": {
+        "namespace": {
+          "type": "string",
+          "id": 1
+        },
+        "owners": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "DeleteNamespaceRegistryAction": {
+      "fields": {
+        "namespace": {
+          "type": "string",
+          "id": 1
+        }
+      }
+    },
+    "UpdateNamespaceRegistryOwnersAction": {
+      "fields": {
+        "namespace": {
+          "type": "string",
+          "id": 1
+        },
+        "owners": {
+          "rule": "repeated",
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "CreateNamespaceRegistryPermissionAction": {
+      "fields": {
+        "namespace": {
+          "type": "string",
+          "id": 1
+        },
+        "contractName": {
+          "type": "string",
+          "id": 2
+        },
+        "read": {
+          "type": "bool",
+          "id": 3
+        },
+        "write": {
+          "type": "bool",
+          "id": 4
+        }
+      }
+    },
+    "DeleteNamespaceRegistryPermissionAction": {
+      "fields": {
+        "namespace": {
+          "type": "string",
+          "id": 1
+        },
+        "contractName": {
+          "type": "string",
+          "id": 2
+        }
+      }
+    },
+    "CreateSmartPermissionAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "orgId": {
+          "type": "string",
+          "id": 2
+        },
+        "function": {
+          "type": "bytes",
+          "id": 3
+        }
+      }
+    },
+    "UpdateSmartPermissionAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "orgId": {
+          "type": "string",
+          "id": 2
+        },
+        "function": {
+          "type": "bytes",
+          "id": 3
+        }
+      }
+    },
+    "DeleteSmartPermissionAction": {
+      "fields": {
+        "name": {
+          "type": "string",
+          "id": 1
+        },
+        "orgId": {
+          "type": "string",
+          "id": 2
         }
       }
     }

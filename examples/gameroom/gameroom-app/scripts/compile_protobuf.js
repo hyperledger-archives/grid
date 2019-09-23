@@ -31,6 +31,10 @@ let files = fs.readdirSync(proto_dir)
   .filter(f => include.includes(f))
   .map(f => path.resolve(proto_dir, f));
 
+let sabre_proto = path.resolve('./sabre_proto/sabre_payload.proto');
+
+files.push(sabre_proto);
+
 try {
   root = root.loadSync(files);
 } catch (e) {
