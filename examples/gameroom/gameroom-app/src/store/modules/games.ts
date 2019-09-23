@@ -13,7 +13,10 @@
 // limitations under the License.
 
 import { Game } from '@/store/models';
-import { listGames } from '@/store/api';
+import { listGames, submitBatch } from '@/store/api';
+import { createTransaction, createBatch } from '@/utils/transactions';
+import { calculateGameAddress } from '@/utils/addressing';
+
 
 export interface GameState {
   games: Game[];
@@ -37,6 +40,19 @@ const actions = {
   async listGames({ commit }: any, circuitID: string) {
      const games = await listGames(circuitID);
      commit('setGames', games);
+  },
+  async createGame({ commit, rootGetters }: any, {gameName, circuitID}: any) {
+     const user = rootGetters['user/getUser'];
+     const payload = new Buffer(`${gameName},create,`, 'utf-8');
+     const gameAdress = calculateGameAddress(gameName);
+     const transaction = createTransaction(payload, [gameAdress], [gameAdress], user);
+     const batchBytes = createBatch([transaction], user);
+     try {
+       const response = submitBatch(batchBytes, circuitID);
+       return response;
+     } catch (err) {
+       throw err;
+     }
   },
 };
 
