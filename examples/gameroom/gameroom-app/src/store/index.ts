@@ -16,6 +16,7 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import userModule from '@/store/modules/user';
 import notificationsModule from '@/store/modules/notifications';
+import selectedGameroomModule from '@/store/modules/selectedGameroom';
 import votesModule from '@/store/modules/votes';
 import gamesModule from '@/store/modules/games';
 import VuexPersistence from 'vuex-persist';
@@ -33,6 +34,7 @@ export default new Vuex.Store({
     notifications: notificationsModule,
     votes: votesModule,
     games: gamesModule,
+    selectedGameroom: selectedGameroomModule,
   },
   plugins: [vuexLocal.plugin],
   mutations: {
