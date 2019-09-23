@@ -140,7 +140,8 @@ message ServiceConnectResponse {
         ERROR_CIRCUIT_DOES_NOT_EXIST = 2;
         ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY = 3;
         ERROR_SERVICE_ALREADY_REGISTERED = 4;
-        ERROR_QUEUE_FULL = 5;
+        ERROR_NOT_AN_ALLOWED_NODE = 5;
+        ERROR_QUEUE_FULL = 6;
     }
 
     Status status = 3;
