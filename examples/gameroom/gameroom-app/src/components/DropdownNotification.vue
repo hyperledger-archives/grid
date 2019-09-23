@@ -49,10 +49,14 @@ export default class DropdownNotification extends Vue {
   @Prop()
   notification!: GameroomNotification;
 
-  get link() {
-    switch (this.notification.notification_type) {
-      case('gameroom_proposal'): return '/dashboard/invitations';
-      case('circuit_active'): return `/dashboard/gamerooms/${this.notification.target}`;
+  get link(): any {
+    const regex = RegExp('^new_game_created');
+    const notification: string =
+        regex.test(this.notification.notification_type) ? 'new_game_created' : this.notification.notification_type;
+    switch (notification) {
+      case('gameroom_proposal'): return {name: 'invitations'};
+      case('circuit_active'): return {name: 'gamerooms', params: {id: `${this.notification.target}`}};
+      case('new_game_created'): return {name: 'games', params: {id: `${this.notification.target}`, gameName: `${this.getGameName(this.notification.notification_type)}`}};
       default: return '';
     }
   }
@@ -64,6 +68,11 @@ export default class DropdownNotification extends Vue {
   }
 
   formatText(notification: GameroomNotification) {
+    const regex = RegExp('new_game_created:');
+    if (regex.test(notification.notification_type)) {
+      const gameName = this.getGameName(notification.notification_type);
+      return  `A new game is available in gameroom ${this.getName()}: ${gameName}`;
+    }
     switch (notification.notification_type) {
       case('gameroom_proposal'): {
         return `${notification.requester_org} has invited you to a new gameroom: ${this.getName()}`;
@@ -72,6 +81,16 @@ export default class DropdownNotification extends Vue {
         return `A new gameroom has been created: ${this.getName()}`;
       }
       default: return '';
+    }
+  }
+
+  getGameName(notificationType: string): string {
+    const regex = RegExp('new_game_created:');
+    if (regex.test(notificationType)) {
+      const gameName = notificationType.split('new_game_created:')[1];
+      return  gameName;
+    } else {
+      return '';
     }
   }
 

@@ -192,8 +192,9 @@ const getOrgName = async (notif: any) => {
 export async function listNotifications(publicKey: string): Promise<GameroomNotification[]> {
   const isDisplayed = (value: GameroomNotification): boolean => {
     const displayedNotifs = ['gameroom_proposal', 'circuit_active'];
-    if (displayedNotifs.includes(value.notification_type)) {
-      if (value.notification_type === 'gameroom_proposal' && value.requester === publicKey) {
+    if (displayedNotifs.includes(value.notification_type) || value.notification_type.match('^new_game_created')) {
+      if (value.notification_type === 'gameroom_proposal'
+          && value.requester === publicKey) {
         return false;
       }
       return true;
