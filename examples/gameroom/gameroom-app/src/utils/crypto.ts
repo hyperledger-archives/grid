@@ -96,3 +96,17 @@ export function signPayload(payload: Uint8Array, privateKey: string): Uint8Array
   const signedPayload = protos.CircuitManagementPayload.encode(message).finish();
   return signedPayload;
 }
+
+/**
+ * Signs an XO Transaction.
+ *
+ * @param payload - The payload bytes to be signed.
+ * @param signer - Wrapper containing the user's keys.
+ */
+export function signXOPayload(payload: Uint8Array, privateKey: string): Uint8Array {
+  const privKey = Secp256k1PrivateKey.fromHex(privateKey);
+  const signer = CRYPTO_FACTORY.newSigner(privKey);
+  const pubKey = signer.getPublicKey().asBytes();
+  return signer.sign(payload);
+
+}
