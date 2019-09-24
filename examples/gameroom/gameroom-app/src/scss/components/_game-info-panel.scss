@@ -1,0 +1,65 @@
+// Copyright 2019 Cargill Incorporated
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+.game-info-wrapper {
+  padding: 1rem;
+  @include overlay(1);
+  @include shadow(1);
+  @include rounded-border;
+  display: flex;
+  flex-direction: column;
+  min-width: 20rem;
+  min-height: 14rem;
+  margin: 1rem;
+  font-size: .9rem;
+  width: 100%;
+
+  .header {
+    display: flex;
+    border-bottom: 3px solid $color-border;
+    padding-bottom: 1rem;
+
+    .game-icon {
+      font-size: 2rem;
+      margin-right: 1rem;
+    }
+
+    .info {
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .players {
+    padding-top: 1rem;
+    border-bottom: 3px solid $color-border;
+
+    .player {
+      display: flex;
+      align-items: center;
+      padding-bottom: 1rem;
+
+      .icon {
+        margin-right: .5rem;
+      }
+    }
+  }
+
+  .status {
+    padding-top: 1rem;
+    font-size: 1rem;
+    margin: 0 auto;
+  }
+}

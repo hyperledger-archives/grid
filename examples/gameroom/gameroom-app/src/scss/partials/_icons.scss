@@ -24,5 +24,13 @@
   height: 1.5em;
   border: .15em solid transparent;
   border-top: .15em solid $color-text-disabled;
-  border-radius: 50%
+  border-radius: 50%;
+
+  &.large {
+    width: 4rem;
+    height: 4rem;
+    border: .3rem solid transparent;
+    border-top: .3rem solid $color-text-disabled;
+    margin: auto;
+  }
 }
