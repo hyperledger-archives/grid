@@ -22,8 +22,8 @@ use protobuf::{Message, RepeatedField};
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
-    service::SplinterNode as StateNode, Circuit as StateCircuit,
-    ServiceDefinition as StateServiceDefinition,
+    service::SplinterNode as StateNode, AuthorizationType, Circuit as StateCircuit, DurabilityType,
+    PersistenceType, RouteType, ServiceDefinition as StateServiceDefinition,
 };
 use crate::consensus::{Proposal, ProposalId};
 use crate::hex::to_hex;
@@ -1045,7 +1045,7 @@ impl AdminServiceShared {
         });
 
         let auth = match circuit.get_authorization_type() {
-            Circuit_AuthorizationType::TRUST_AUTHORIZATION => "trust".to_string(),
+            Circuit_AuthorizationType::TRUST_AUTHORIZATION => AuthorizationType::Trust,
             // This should never happen
             Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE => {
                 return Err(AdminSharedError::CommitError(
@@ -1055,7 +1055,7 @@ impl AdminServiceShared {
         };
 
         let persistence = match circuit.get_persistence() {
-            Circuit_PersistenceType::ANY_PERSISTENCE => "any".to_string(),
+            Circuit_PersistenceType::ANY_PERSISTENCE => PersistenceType::Any,
             // This should never happen
             Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE => {
                 return Err(AdminSharedError::CommitError(
@@ -1065,7 +1065,7 @@ impl AdminServiceShared {
         };
 
         let durability = match circuit.get_durability() {
-            Circuit_DurabilityType::NO_DURABILITY => "none".to_string(),
+            Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurabilty,
             // This should never happen
             Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
                 return Err(AdminSharedError::CommitError(
@@ -1075,7 +1075,7 @@ impl AdminServiceShared {
         };
 
         let routes = match circuit.get_routes() {
-            Circuit_RouteType::ANY_ROUTE => "any".to_string(),
+            Circuit_RouteType::ANY_ROUTE => RouteType::Any,
             // This should never happen
             Circuit_RouteType::UNSET_ROUTE_TYPE => {
                 return Err(AdminSharedError::CommitError(

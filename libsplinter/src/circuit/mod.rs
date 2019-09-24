@@ -30,12 +30,12 @@ use crate::storage::get_storage;
 pub struct Circuit {
     #[serde(skip)]
     id: String,
-    auth: String,
+    auth: AuthorizationType,
     members: Vec<String>,
     roster: Roster,
-    persistence: String,
-    durability: String,
-    routes: String,
+    persistence: PersistenceType,
+    durability: DurabilityType,
+    routes: RouteType,
 
     #[serde(default = "Circuit::default_management_type")]
     circuit_management_type: String,
@@ -53,12 +53,12 @@ impl Circuit {
     pub fn new_admin() -> Self {
         Circuit {
             id: "admin".into(),
-            auth: "".into(),
+            auth: AuthorizationType::Trust,
             members: vec![],
             roster: Roster::Admin,
-            persistence: "".into(),
-            durability: "".into(),
-            routes: "".into(),
+            persistence: PersistenceType::Any,
+            durability: DurabilityType::NoDurabilty,
+            routes: RouteType::Any,
             circuit_management_type: "".into(),
         }
     }
@@ -67,7 +67,7 @@ impl Circuit {
         &self.id
     }
 
-    pub fn auth(&self) -> &str {
+    pub fn auth(&self) -> &AuthorizationType {
         &self.auth
     }
 
@@ -79,15 +79,15 @@ impl Circuit {
         &self.roster
     }
 
-    pub fn persistence(&self) -> &str {
+    pub fn persistence(&self) -> &PersistenceType {
         &self.persistence
     }
 
-    pub fn durability(&self) -> &str {
+    pub fn durability(&self) -> &DurabilityType {
         &self.durability
     }
 
-    pub fn routes(&self) -> &str {
+    pub fn routes(&self) -> &RouteType {
         &self.routes
     }
 
@@ -99,12 +99,12 @@ impl Circuit {
 #[derive(Default)]
 pub struct CircuitBuilder {
     id: Option<String>,
-    auth: Option<String>,
+    auth: Option<AuthorizationType>,
     members: Vec<String>,
     roster: Vec<ServiceDefinition>,
-    persistence: Option<String>,
-    durability: Option<String>,
-    routes: Option<String>,
+    persistence: Option<PersistenceType>,
+    durability: Option<DurabilityType>,
+    routes: Option<RouteType>,
 
     circuit_management_type: Option<String>,
 }
@@ -128,26 +128,25 @@ impl CircuitBuilder {
         self
     }
 
-    pub fn with_auth(mut self, auth: String) -> Self {
+    pub fn with_auth(mut self, auth: AuthorizationType) -> Self {
         self.auth = Some(auth);
-
         self
     }
 
-    pub fn with_persistence(mut self, persistence: String) -> Self {
+    pub fn with_persistence(mut self, persistence: PersistenceType) -> Self {
         self.persistence = Some(persistence);
 
         self
     }
 
-    pub fn with_durability(mut self, durability: String) -> Self {
+    pub fn with_durability(mut self, durability: DurabilityType) -> Self {
         self.durability = Some(durability);
 
         self
     }
 
-    pub fn with_routes(mut self, id: String) -> Self {
-        self.routes = Some(id);
+    pub fn with_routes(mut self, route: RouteType) -> Self {
+        self.routes = Some(route);
 
         self
     }
@@ -333,6 +332,26 @@ impl Roster {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum AuthorizationType {
+    Trust,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum PersistenceType {
+    Any,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum DurabilityType {
+    NoDurabilty,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum RouteType {
+    Any,
+}
+
 pub enum RosterIter<'r> {
     Standard(std::slice::Iter<'r, ServiceDefinition>),
     Admin,
@@ -505,12 +524,12 @@ mod tests {
 
         let circuit = Circuit::builder()
             .with_id("alpha".into())
-            .with_auth("trust".into())
+            .with_auth(AuthorizationType::Trust)
             .with_members(vec!["123".into()])
             .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurabilty)
+            .with_routes(RouteType::Any)
             .with_circuit_management_type("test_app".into())
             .build()
             .expect("Should have built a correct circuit");
