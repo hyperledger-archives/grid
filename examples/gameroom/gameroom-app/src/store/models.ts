@@ -115,10 +115,17 @@ export interface Game {
   id: number;
   game_name: string;
   circuit_id: string;
-  player_1: string;
-  player_2: string;
+  player_1: Player;
+  player_2: Player;
   game_status: string;
   game_board: string;
   created_time: number;
   updated_time: number;
+  commited: boolean;
+}
+
+export interface Player {
+  name: string
+  publicKey: string
+  organization: string
 }

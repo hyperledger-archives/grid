@@ -15,13 +15,13 @@
 import { Game } from '@/store/models';
 
 export function gameIsOver(gameStatus: string) {
-  return gameStatus === 'P1-WIN' || gameStatus === 'P2-WIN' || gameStatus === 'TIE';
-}
+    return gameStatus === 'P1-WIN' || gameStatus === 'P2-WIN' || gameStatus === 'TIE';
+  }
 
 export function userIsInGame(game: Game, publicKey: string) {
-  return game.player_1 === publicKey || game.player_2 === publicKey;
-}
+   return game.player_1.publicKey === publicKey || game.player_2.publicKey === publicKey;
+ }
 
 export function userCanJoinGame(game: Game, publicKey: string) {
-  return game.player_1 === '' || (game.player_2 === '' && game.player_1 !== publicKey);
+    return !game.player_1 || (!game.player_2 && game.player_1.publicKey !== publicKey);
 }
