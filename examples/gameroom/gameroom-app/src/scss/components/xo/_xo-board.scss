@@ -12,17 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const whitelabelConfig = {
-  'bubba': {
-    'brand': 'bubba',
-    'scssVariables': './src/scss/modules/themes/bubba',
-    'assets': './src/assets/bubba',
-  },
-  'acme': {
-    'brand': 'acme',
-    'scssVariables': './src/scss/modules/themes/acme',
-    'assets': './src/assets/acme',
-  },
-}
+$board-height: calc(100vh - 76px - 10rem);
+$board-width: calc(100vw - 49rem);
 
-module.exports = whitelabelConfig;
+.xo-board-wrapper {
+  border-spacing: .5em;
+  max-height: $board-height;
+  max-width: $board-height;
+  height: $board-width;
+  width: $board-width;
+  min-width: 10rem;
+  min-height: 10rem;
+
+  @media screen and (max-width: 74rem) {
+    $board-height: calc(100vh - 76px - 26rem);
+    $board-width: calc(100vw - 30rem);
+    max-height: $board-height;
+    max-width: $board-height;
+    height: $board-width;
+    width: $board-width;
+  }
+}
