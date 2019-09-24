@@ -78,6 +78,14 @@ const router = new Router({
             requiresAuth: true,
           },
         },
+        {
+          path: 'gamerooms/:id/games/:gameName',
+          name: 'games',
+          component: () => import('@/views/GameDetail.vue'),
+          meta: {
+            requiresAuth: true,
+          },
+        },
       ],
     },
   ],

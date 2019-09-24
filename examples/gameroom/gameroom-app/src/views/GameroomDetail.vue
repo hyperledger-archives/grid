@@ -16,6 +16,28 @@ limitations under the License.
 
 <template>
   <div class="gameroom-detail-container">
+    <modal v-if="displayModal" @close="closeNewGameModal">
+      <h4 slot="title">New Game</h4>
+      <div slot="body">
+        <form class="modal-form" @submit.prevent="createGame">
+          <label class="form-label">
+            Game name
+            <input class="form-input" type="text" v-model="newGameName" />
+          </label>
+          <div class="flex-container button-container">
+            <button class="btn-action outline small"
+                    type="reset"
+                    @click.prevent="closeNewGameModal">
+              <div class="btn-text">Cancel</div>
+            </button>
+            <button class="btn-action small" type="submit" :disabled="!canSubmitNewGame">
+              <div v-if="submitting" class="spinner" />
+              <div class="btn-text" v-else>Send</div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </modal>
     <div class="gameroom-information">
       <h2 class="gameroom-name">{{ gameroom.alias }}</h2>
       <span> {{ gemeroomMembers }} </span>
@@ -54,20 +76,20 @@ limitations under the License.
             <div class="btn-text">archived</div>
           </button>
         </div>
-        <button  :disabled="gameroom.status !== 'Active'" class="btn-action right">
+        <button  :disabled="gameroom.status !== 'Active'" class="btn-action right" @click="showNewGameModal()">
           <div class="btn-text">New Game</div>
         </button>
         </div>
         <div class="filter-container">
-          <input class="form-input form-filter"
-                  :disabled="gameroom.status !== 'Active'"
-                  v-model="gameNameFilter" type="text"
-                  placeholder="Filter name..."
-                  @input="filterGamesByName" />
+          <input class="form-filter"
+                :disabled="gameroom.status !== 'Active'"
+                v-model="gameNameFilter" type="text"
+                placeholder="Filter name..." />
+
         </div>
         <div class="cards-container" v-if="filteredGames.length > 0">
           <ul id="example-1">
-            <li v-for="(index, game) in filteredGames" :key="index">
+            <li v-for="game in filteredGames" >
               {{ game.game_name }}
             </li>
           </ul>
@@ -83,23 +105,42 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import gamerooms from '@/store/modules/gamerooms';
-import games from '@/store/modules/gamerooms';
+import selectedGameroom from '@/store/modules/selectedGameroom';
+import games from '@/store/modules/games';
 import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
+import Modal from '@/components/Modal.vue';
 
-@Component
+@Component({
+  components: { Modal },
+})
   export default class GameroomDetails extends Vue {
       gameNameFilter = '';
       currentTab = 1;
+      newGameName = '';
+      displayModal = false;
+      submitting = false;
 
       mounted() {
-        gamerooms.listGamerooms();
+        gamerooms.listGamerooms().then(() => {
+          this.$store.dispatch('selectedGameroom/updateSelectedGameroom', this.$route.params.id);
+        });
         this.$store.dispatch('games/listGames', this.$route.params.id);
       }
 
+      beforeRouteUpdate(to: any, from: any , next: any) {
+        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id);
+        this.$store.dispatch('games/listGames', to.params.id);
+        next();
+      }
+
+      beforeRouteLeave(to: any, from: any , next: any) {
+        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', '');
+        next();
+      }
+
       get gameroom(): Gameroom {
-        return gamerooms.gameroomList.find(
-              (gameroom) => gameroom.circuit_id ===  this.$route.params.id) || {} as Gameroom;
+         return this.$store.getters['selectedGameroom/getGameroom'];
       }
 
       get games(): Game[] {
@@ -119,6 +160,14 @@ import { Gameroom, Member, Game } from '@/store/models';
        } else {
          return 'Please wait while your gameroom finishes setting up.';
        }
+     }
+
+     get canSubmitNewGame() {
+       if (!this.submitting &&
+           this.newGameName !== '') {
+         return true;
+       }
+       return false;
      }
 
       // intersection of filteredGamesByName and filteredGamesByState
@@ -152,9 +201,37 @@ import { Gameroom, Member, Game } from '@/store/models';
         }
     }
 
+    async createGame() {
+      if (this.canSubmitNewGame) {
+          this.submitting = true;
+          try {
+            await
+              this.$store.dispatch(
+                'games/createGame',
+                {gameName: this.newGameName, circuitID: this.$route.params.id},
+              );
+          } catch (e) {
+            console.error(e);
+            this.$emit('error', e.message);
+          }
+          this.submitting = false;
+          this.closeNewGameModal();
+      }
+    }
+
     selectTab(tab: number) {
       this.currentTab = tab;
     }
+
+    showNewGameModal() {
+      this.displayModal = true;
+    }
+
+    closeNewGameModal() {
+      this.displayModal = false;
+      this.newGameName = '';
+    }
+
   }
 
 </script>

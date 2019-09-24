@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import './class-component-hooks';
+
 import Vue from 'vue';
 import App from '@/App.vue';
 import router from '@/router';

@@ -125,6 +125,25 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
   });
 }
 
+export async function submitBatch(payload: Uint8Array, circuitID: string): Promise<void> {
+  const options = {
+    method: 'POST',
+    url: `http://${window.location.host}/api/gamerooms/${circuitID}/batches`,
+    body: payload,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+  };
+
+  await rp(options).then((body) => {
+    return;
+  })
+  .catch((err) => {
+    console.error(err.message);
+    throw new Error('Failed to send request. Contact administrator for help.');
+  });
+}
+
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
   const response = await gameroomAPI.get('/proposals');
@@ -173,8 +192,9 @@ const getOrgName = async (notif: any) => {
 export async function listNotifications(publicKey: string): Promise<GameroomNotification[]> {
   const isDisplayed = (value: GameroomNotification): boolean => {
     const displayedNotifs = ['gameroom_proposal', 'circuit_active'];
-    if (displayedNotifs.includes(value.notification_type)) {
-      if (value.notification_type === 'gameroom_proposal' && value.requester === publicKey) {
+    if (displayedNotifs.includes(value.notification_type) || value.notification_type.match('^new_game_created')) {
+      if (value.notification_type === 'gameroom_proposal'
+          && value.requester === publicKey) {
         return false;
       }
       return true;
