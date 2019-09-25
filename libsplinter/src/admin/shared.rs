@@ -979,16 +979,23 @@ impl AdminServiceShared {
     }
 
     /// Initialize all services that this node should run on the created circuit using the service
-    /// orchestrator.
+    /// orchestrator. This may not include all services if they are not supported locally. It is
+    /// expected that some services will be started externally.
     pub fn initialize_services(&mut self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         // Get all services this node is allowed to run
         let services = circuit
             .get_roster()
             .iter()
-            .filter(|service| service.allowed_nodes.contains(&self.node_id))
+            .filter(|service| {
+                service.allowed_nodes.contains(&self.node_id)
+                    && self
+                        .orchestrator
+                        .supported_service_types()
+                        .contains(&service.get_service_type().to_string())
+            })
             .collect::<Vec<_>>();
 
-        // Start all services
+        // Start all services the orchestrator has a factory for
         for service in services {
             let service_definition = ServiceDefinition {
                 circuit: circuit.circuit_id.clone(),
