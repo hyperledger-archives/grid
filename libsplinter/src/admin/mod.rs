@@ -146,6 +146,14 @@ impl Service for AdminService {
             AdminConsensusManager::new(self.service_id().into(), self.admin_service_shared.clone())
                 .map_err(|err| ServiceStartError::Internal(Box::new(err)))?,
         );
+
+        self.admin_service_shared
+            .lock()
+            .map_err(|_| {
+                ServiceStartError::PoisonedLock("the admin shared lock was poisoned".into())
+            })?
+            .restart_services()
+            .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
         Ok(())
     }
 
