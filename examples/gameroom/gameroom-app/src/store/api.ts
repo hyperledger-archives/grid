@@ -126,8 +126,9 @@ export async function listGames(circuitID: string): Promise<Game[]> {
       const player2 = await fetchPlayerInformation(game.player_2);
       Promise.all([player2]).then((p2) => game.player_2 = player2);
     }
-    game.commited = true;
+    game.committed = true;
     game.game_name_hash = hashGameName(game.game_name);
+
     return game as Game;
   });
   return Promise.all(games);

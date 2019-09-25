@@ -209,6 +209,10 @@ import Modal from '@/components/Modal.vue';
             console.error(e);
             this.$emit('error', e.message);
           }
+          this.$store.commit(
+            'games/setUncommittedGame',
+            {gameName: this.newGameName, circuitID: this.$route.params.id},
+          );
           this.submitting = false;
           this.closeNewGameModal();
       }

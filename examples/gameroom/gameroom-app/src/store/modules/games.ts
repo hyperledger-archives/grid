@@ -20,19 +20,21 @@ import { calculateGameAddress } from '@/utils/addressing';
 
 export interface GameState {
   games: Game[];
+  uncommittedGames: Game[];
 }
 
 const gameState = {
   games: ([] as Game[]),
+  uncommittedGames: ([] as Game[]),
 };
 
 const getters = {
   getGames(state: GameState): Game[] {
-    return state.games.sort(
-      (a: Game, b: Game) => {
-        return (b.updated_time - a.updated_time);  // Newest first
-      },
-    );
+    return state.uncommittedGames.concat(state.games).sort(
+        (a: Game, b: Game) => {
+          return (b.updated_time - a.updated_time);  // Newest first
+        },
+      );
   },
 };
 
@@ -72,7 +74,23 @@ const actions = {
 
 const mutations = {
   setGames(state: GameState, games: Game[]) {
-    state.games = games;
+      state.games = games;
+
+      // remove game from uncommittedGames games list if it has been committed.
+      state.uncommittedGames = state.uncommittedGames.filter((game, index, array) => {
+        return state.games.indexOf(game) !== -1;
+      });
+  },
+  setUncommittedGame(state: GameState, {gameName, circuitID}: any) {
+      const time = new Date().getTime() / 1000;
+      const game =  {
+        game_name: gameName,
+        committed: false,
+        circuit_id: circuitID,
+        created_time: time,
+        updated_time: time,
+      } as Game;
+      state.uncommittedGames.push(game);
   },
   setPendingTake(state: GameState, {gameName, cellIndex}: any) {
     const index = state.games.findIndex((g) => g.game_name === gameName);
