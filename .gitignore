@@ -16,12 +16,13 @@
 
 /examples/private_xo/target
 /examples/private_xo/Cargo.lock
+/examples/private_xo/demo_state/keys.yaml
+/examples/private_xo/demo_state/circuit_proposals.yaml
 
 /examples/private_counter/service/target
 /examples/private_counter/service/Cargo.lock
-
-/examples/private_counter/cli/target
-/examples/private_counter/cli/Cargo.lock
+/examples/private_counter/demo_state/keys.yaml
+/examples/private_counter/demo_state/circuit_proposals.yaml
 
 /examples/gameroom/database/target
 /examples/gameroom/database/Cargo.lock
