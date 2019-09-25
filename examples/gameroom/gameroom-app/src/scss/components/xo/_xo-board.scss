@@ -15,6 +15,9 @@
 $board-height: calc(100vh - 76px - 10rem);
 $board-width: calc(100vw - 49rem);
 
+$board-height-small: 13rem;
+$board-width-small: 13rem;
+
 .xo-board-wrapper {
   border-spacing: .5em;
   max-height: $board-height;
@@ -31,5 +34,12 @@ $board-width: calc(100vw - 49rem);
     max-width: $board-height;
     height: $board-width;
     width: $board-width;
+  }
+
+  &.small {
+    max-height: $board-height-small;
+    max-width: $board-height-small;
+    height: $board-width-small;
+    width: $board-width-small;
   }
 }

@@ -88,11 +88,11 @@ limitations under the License.
 
         </div>
         <div class="cards-container" v-if="filteredGames.length > 0">
-          <ul id="example-1">
-            <li v-for="game in filteredGames" >
-              {{ game.game_name }}
-            </li>
-          </ul>
+          <game-card
+            class="card-container"
+            v-for="(game, index) in filteredGames"
+            :key="index"
+            :game="game" />
          </div>
          <div class="placeholder-wrapper" v-else>
            <h3 class="tbl-placeholder"> {{ placeholderText }} </h3>
@@ -110,9 +110,11 @@ import games from '@/store/modules/games';
 import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
 import Modal from '@/components/Modal.vue';
+import GameCard from '@/components/GameCard.vue';
+
 
 @Component({
-  components: { Modal },
+  components: { Modal, GameCard },
 })
   export default class GameroomDetails extends Vue {
       gameNameFilter = '';
