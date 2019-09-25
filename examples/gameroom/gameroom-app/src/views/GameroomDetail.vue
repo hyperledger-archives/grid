@@ -96,7 +96,7 @@ limitations under the License.
          </div>
          <div class="placeholder-wrapper" v-else>
            <h3 class="tbl-placeholder"> {{ placeholderText }} </h3>
-           <div v-if="gameroom.status !== 'Active'" class="spinner-gameroom spinner" />
+           <div v-if="gameroom.status !== 'Active' || loadingGames || loadingGameroom" class="spinner-gameroom spinner" />
          </div>
        </div>
   </div>
@@ -120,17 +120,39 @@ import Modal from '@/components/Modal.vue';
       newGameName = '';
       displayModal = false;
       submitting = false;
+      loadingGames = false;
+      loadingGameroom = false;
 
       mounted() {
+        this.loadingGameroom = true;
         gamerooms.listGamerooms().then(() => {
-          this.$store.dispatch('selectedGameroom/updateSelectedGameroom', this.$route.params.id);
+          this.setSelectedGameroom(this.$route.params.id);
         });
-        this.$store.dispatch('games/listGames', this.$route.params.id);
+        this.listGames(this.$route.params.id);
       }
 
       beforeRouteUpdate(to: any, from: any , next: any) {
-        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id);
-        this.$store.dispatch('games/listGames', to.params.id);
+        this.setSelectedGameroom(to.params.id);
+        this.listGames(to.params.id);
+        next();
+      }
+
+      async listGames(circuitID: string) {
+        this.loadingGames = true;
+        await this.$store.dispatch('games/listGames', circuitID).then(() => {
+          this.loadingGames = false;
+        });
+      }
+
+      async setSelectedGameroom(circuitID: string) {
+        this.loadingGameroom = true;
+        await this.$store.dispatch('selectedGameroom/updateSelectedGameroom', circuitID).then(() => {
+          this.loadingGameroom = false;
+        });
+      }
+
+      beforeRouteLeave(to: any, from: any , next: any) {
+        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', '');
         next();
       }
 
@@ -150,8 +172,14 @@ import Modal from '@/components/Modal.vue';
       }
 
       get placeholderText(): string {
-       if (this.gameroom.status === 'Active') {
-         return 'No games to show.';
+       if (this.loadingGameroom) {
+         return 'Loading gameroom information...';
+       } else if (this.gameroom.status === 'Active') {
+         if (this.loadingGames) {
+           return 'Loading games...';
+         } else {
+           return 'No games to show.';
+         }
        } else {
          return 'Please wait while your gameroom finishes setting up.';
        }
