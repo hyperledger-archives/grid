@@ -181,7 +181,7 @@ mod tests {
 
         let factory = ScabbardFactory::new(Some("/tmp".into()), Some(1024 * 1024));
         let service = factory
-            .create("0".into(), "", args)
+            .create("0".into(), "", "", args)
             .expect("failed to create service");
 
         assert_eq!(service.service_id(), "0");

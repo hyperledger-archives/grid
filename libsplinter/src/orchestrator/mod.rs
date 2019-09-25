@@ -220,6 +220,7 @@ impl ServiceOrchestrator {
         let mut service = factory.create(
             service_definition.service_id.clone(),
             service_definition.service_type.as_str(),
+            service_definition.circuit.as_str(),
             args,
         )?;
 

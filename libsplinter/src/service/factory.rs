@@ -45,11 +45,13 @@ pub trait ServiceFactory: Send {
     /// Return the available service types that this factory can create.
     fn available_service_types(&self) -> &[String];
 
-    /// Create a Service instance with the given ID, of the given type, with the given arguments.
+    /// Create a Service instance with the given ID, of the given type, the given circuit_id,
+    /// with the given arguments.
     fn create(
         &self,
         service_id: String,
         service_type: &str,
+        circuit_id: &str,
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError>;
 
