@@ -29,6 +29,8 @@
 /examples/gameroom/daemon/target
 /examples/gameroom/daemon/Cargo.lock
 
+/examples/gameroom/gameroom-app/src/compiled_protos.json
+
 /tests/Cargo.lock
 /tests/target
 
