@@ -125,7 +125,7 @@ export interface Game {
 }
 
 export interface Player {
-  name: string
-  publicKey: string
-  organization: string
+  name: string;
+  publicKey: string;
+  organization: string;
 }
