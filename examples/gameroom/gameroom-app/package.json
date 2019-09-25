@@ -6,11 +6,11 @@
   "license": "Apache-2.0",
   "scripts": {
     "serve": "npm run serve-acme",
-    "serve-acme": "cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service serve",
-    "serve-bubba": "cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service serve",
+    "serve-acme": "npm run generate-proto-files ../../../protos && cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service serve",
+    "serve-bubba": "npm run generate-proto-files ../../../protos && cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service serve",
     "build": "npm run build-acme",
-    "build-acme": "cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service build",
-    "build-bubba": "cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service build",
+    "build-acme": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service build",
+    "build-bubba": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service build",
     "lint": "vue-cli-service lint",
     "generate-proto-files": "node scripts/compile_protobuf.js > src/compiled_protos.json"
   },

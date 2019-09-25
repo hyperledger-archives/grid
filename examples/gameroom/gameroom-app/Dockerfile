@@ -17,9 +17,12 @@ FROM node:lts-alpine as build-stage
 
 RUN apk update && apk add python g++ make && rm -rf /var/cache/apk/*
 WORKDIR /app
-COPY package*.json ./
+
+COPY /examples/gameroom/gameroom-app/package*.json ./
 RUN npm install
-COPY . .
+COPY /examples/gameroom/gameroom-app .
+COPY /protos ./protos
+
 ARG VUE_APP_BRAND
 RUN npm run build-${VUE_APP_BRAND}
 
