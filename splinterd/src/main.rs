@@ -45,6 +45,16 @@ use std::io;
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
+fn load_toml_config(config_file_path: &str) -> Config {
+    File::open(config_file_path)
+        .map_err(ConfigError::from)
+        .and_then(Config::from_file)
+        .unwrap_or_else(|err| {
+            warn!("Unable to load {}: {}", config_file_path, err);
+            Config::default()
+        })
+}
+
 fn main() {
     let matches = clap_app!(splinterd =>
         (version: crate_version!())
@@ -104,20 +114,12 @@ fn main() {
 
     debug!("Loading configuration file");
 
-    let config = {
-        // get provided config file or search default location
-        let config_file_path = matches
-            .value_of("config")
-            .unwrap_or("/etc/splinter/splinterd.toml");
+    // get provided config file or search default location
+    let config_file_path = matches
+        .value_of("config")
+        .unwrap_or("/etc/splinter/splinterd.toml");
 
-        File::open(config_file_path)
-            .map_err(ConfigError::from)
-            .and_then(Config::from_file)
-            .unwrap_or_else(|err| {
-                warn!("Unable to load {}: {}", config_file_path, err);
-                Config::default()
-            })
-    };
+    let config = load_toml_config(config_file_path);
 
     debug!("Configuration: {:?}", config);
 
