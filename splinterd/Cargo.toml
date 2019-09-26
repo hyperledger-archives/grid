@@ -46,9 +46,11 @@ default = []
 
 experimental = [
     "config-builder",
+    "config-toml",
 ]
 
 config-builder = []
+config-toml = ["config-builder"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

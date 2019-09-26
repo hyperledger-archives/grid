@@ -15,15 +15,23 @@
 #[cfg(feature = "config-builder")]
 mod builder;
 mod error;
+#[cfg(feature = "config-toml")]
+mod toml;
 
+#[cfg(feature = "config-toml")]
+pub use crate::config::toml::TomlConfig;
 #[cfg(feature = "config-builder")]
 pub use builder::ConfigBuilder;
 pub use error::ConfigError;
 
+#[cfg(not(feature = "config-toml"))]
 use std::fs::File;
+#[cfg(not(feature = "config-toml"))]
 use std::io::Read;
 
+#[cfg(not(feature = "config-toml"))]
 use serde_derive::Deserialize;
+#[cfg(not(feature = "config-toml"))]
 use toml;
 
 #[derive(Deserialize, Default, Debug)]
@@ -45,6 +53,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[cfg(not(feature = "config-toml"))]
     pub fn from_file(mut f: File) -> Result<Config, ConfigError> {
         let mut toml = String::new();
         f.read_to_string(&mut toml)?;
