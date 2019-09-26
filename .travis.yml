@@ -31,6 +31,9 @@ addons:
 
 jobs:
   include:
+    - stage: Lint Gameroom Client
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-gameroom-client
     - stage: Lint Splinter
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
