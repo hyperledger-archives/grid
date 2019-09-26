@@ -168,8 +168,8 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                         };
 
                         match scabbard.add_batches(batches) {
-                            Ok(true) => HttpResponse::Accepted().finish().into_future(),
-                            Ok(false) => HttpResponse::BadRequest().finish().into_future(),
+                            Ok(Some(link)) => HttpResponse::Accepted().json(link).into_future(),
+                            Ok(None) => HttpResponse::BadRequest().finish().into_future(),
                             Err(_) => HttpResponse::InternalServerError().finish().into_future(),
                         }
                     }),
