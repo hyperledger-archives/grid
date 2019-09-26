@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "config-builder")]
+mod builder;
 mod error;
 
+#[cfg(feature = "config-builder")]
+pub use builder::ConfigBuilder;
 pub use error::ConfigError;
 
 use std::fs::File;
