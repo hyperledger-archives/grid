@@ -69,7 +69,8 @@ services:
 
   gameroom-app-test:
     build:
-      context: ../gameroom-app
+      context: ../../..
+      dockerfile: examples/gameroom/gameroom-app/Dockerfile
       args:
         VUE_APP_BRAND: "acme"
     image: gameroom-app-test
