@@ -24,7 +24,7 @@ use crate::service::{ServiceError, ServiceNetworkSender};
 use crate::signing::hash::HashVerifier;
 use crate::signing::SignatureVerifier;
 
-use super::state::ScabbardState;
+use super::state::{BatchHistory, ScabbardState};
 
 /// Data structure used to store information that's shared between components in this service
 pub struct ScabbardShared {
@@ -102,6 +102,10 @@ impl ScabbardShared {
 
     pub fn state_mut(&mut self) -> &mut ScabbardState {
         &mut self.state
+    }
+
+    pub fn batch_history(&mut self) -> &mut BatchHistory {
+        self.state.batch_history()
     }
 
     pub fn verify_batches(&self, batches: &[BatchPair]) -> Result<bool, ServiceError> {
