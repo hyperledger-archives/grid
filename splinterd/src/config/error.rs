@@ -16,12 +16,12 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
-use toml::de;
+use toml::de::Error as TomlError;
 
 #[derive(Debug)]
 pub enum ConfigError {
     ReadError(io::Error),
-    TomlParseError(de::Error),
+    TomlParseError(TomlError),
 }
 
 impl From<io::Error> for ConfigError {
@@ -30,8 +30,8 @@ impl From<io::Error> for ConfigError {
     }
 }
 
-impl From<de::Error> for ConfigError {
-    fn from(e: de::Error) -> Self {
+impl From<TomlError> for ConfigError {
+    fn from(e: TomlError) -> Self {
         ConfigError::TomlParseError(e)
     }
 }
