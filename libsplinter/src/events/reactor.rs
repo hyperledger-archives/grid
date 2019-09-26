@@ -58,13 +58,7 @@ impl Reactor {
             let shutdown_errors = connections
                 .into_iter()
                 .map(|connection| connection.shutdown())
-                .filter_map(|res| {
-                    if res.is_err() {
-                        Some(res.unwrap_err())
-                    } else {
-                        None
-                    }
-                })
+                .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
                 .collect::<Vec<WebSocketError>>();
 
             runtime
