@@ -79,7 +79,7 @@ const router = new Router({
           },
         },
         {
-          path: 'gamerooms/:id/games/:gameName',
+          path: 'gamerooms/:id/games/:gameNameHash',
           name: 'games',
           component: () => import('@/views/GameDetail.vue'),
           meta: {

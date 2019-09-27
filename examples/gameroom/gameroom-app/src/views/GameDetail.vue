@@ -47,7 +47,7 @@ export default class GameDetail extends Vue {
 
   get game() {
     return this.$store.getters['games/getGames'].find(
-      (game: Game) => game.game_name === this.$route.params.gameName);
+      (game: Game) => game.game_name_hash === this.$route.params.gameNameHash);
   }
 
   get gameroomLink() {

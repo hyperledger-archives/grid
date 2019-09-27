@@ -114,6 +114,7 @@ export interface Gameroom {
 export interface Game {
   id: number;
   game_name: string;
+  game_name_hash: string;
   circuit_id: string;
   player_1: Player;
   player_2: Player;

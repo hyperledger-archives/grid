@@ -14,6 +14,8 @@
 
 import { Game } from '@/store/models';
 
+const crypto = require('crypto');
+
 export function gameIsOver(gameStatus: string) {
     return gameStatus === 'P1-WIN' || gameStatus === 'P2-WIN' || gameStatus === 'TIE';
   }
@@ -24,4 +26,8 @@ export function userIsInGame(game: Game, publicKey: string) {
 
 export function userCanJoinGame(game: Game, publicKey: string) {
     return !game.player_1 || (!game.player_2 && game.player_1.publicKey !== publicKey);
+}
+
+export function hashGameName(gameName: string) {
+  return crypto.createHash('md5').update(gameName).digest('hex');
 }
