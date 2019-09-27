@@ -18,7 +18,11 @@
 use std::{error::Error, fmt, time::SystemTime};
 
 use diesel::connection::Connection;
-use gameroom_database::{error, helpers, models::NewXoGame, ConnectionPool};
+use gameroom_database::{
+    error, helpers,
+    models::{NewXoGame, XoGame},
+    ConnectionPool,
+};
 use libsplinter::service::scabbard::StateChangeEvent;
 
 use crate::authorization_handler::sabre::{get_xo_contract_address, XO_PREFIX};
@@ -94,14 +98,19 @@ impl XoStateDeltaProcessor {
 
                 let conn = &*self.db_pool.get()?;
                 conn.transaction::<_, error::DatabaseError, _>(|| {
-                    if helpers::fetch_xo_game(&conn, &self.circuit_id, &game_state[0])?.is_some() {
+                    if let Some(game) =
+                        helpers::fetch_xo_game(&conn, &self.circuit_id, &game_state[0])?
+                    {
                         helpers::update_xo_game(
                             &conn,
-                            &self.circuit_id,
-                            &game_state[0],
-                            &game_state[1],
-                            &game_state[2],
-                            &time,
+                            XoGame {
+                                game_board: game_state[1].clone(),
+                                game_status: game_state[2].clone(),
+                                player_1: game_state[3].clone(),
+                                player_2: game_state[4].clone(),
+                                updated_time: time,
+                                ..game
+                            },
                         )?;
 
                         let notification = helpers::create_new_notification(
@@ -119,8 +128,8 @@ impl XoStateDeltaProcessor {
                                 game_name: game_state[0].clone(),
                                 game_board: game_state[1].clone(),
                                 game_status: game_state[2].clone(),
-                                player_1: "".into(),
-                                player_2: "".into(),
+                                player_1: game_state[3].clone(),
+                                player_2: game_state[4].clone(),
                                 created_time: time,
                                 updated_time: time,
                             },
@@ -180,13 +189,4 @@ impl From<error::DatabaseError> for StateDeltaError {
     fn from(err: error::DatabaseError) -> Self {
         StateDeltaError::DatabaseError(err)
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct XoGame {
-    name: String,
-    board: String,
-    status: String,
-    player1: String,
-    player2: String,
 }

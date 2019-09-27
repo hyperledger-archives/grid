@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::SystemTime;
-
 use crate::models::{NewXoGame, XoGame};
 use crate::schema::xo_games;
 
@@ -57,26 +55,15 @@ pub fn insert_xo_game(conn: &PgConnection, game: NewXoGame) -> QueryResult<()> {
         .map(|_| ())
 }
 
-pub fn update_xo_game(
-    conn: &PgConnection,
-    circuit_id: &str,
-    name: &str,
-    game_board: &str,
-    status: &str,
-    updated_time: &SystemTime,
-) -> QueryResult<()> {
+pub fn update_xo_game(conn: &PgConnection, updated_game: XoGame) -> QueryResult<()> {
     diesel::update(
         xo_games::table.filter(
             xo_games::game_name
-                .eq(name)
-                .and(xo_games::circuit_id.eq(circuit_id)),
+                .eq(&updated_game.game_name)
+                .and(xo_games::circuit_id.eq(&updated_game.circuit_id)),
         ),
     )
-    .set((
-        xo_games::game_board.eq(game_board),
-        xo_games::game_status.eq(status),
-        xo_games::updated_time.eq(updated_time),
-    ))
+    .set(updated_game.clone())
     .execute(conn)
     .map(|_| ())
 }
