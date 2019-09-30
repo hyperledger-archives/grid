@@ -173,7 +173,7 @@ mod tests {
 
     use crate::channel::{SendError, Sender};
     use crate::circuit::directory::CircuitDirectory;
-    use crate::circuit::Circuit;
+    use crate::circuit::{AuthorizationType, Circuit, DurabilityType, PersistenceType, RouteType};
     use crate::network::dispatch::Dispatcher;
     use crate::protos::circuit::CircuitMessage;
     use crate::protos::network::NetworkMessage;
@@ -189,12 +189,12 @@ mod tests {
         // Add circuit and service to splinter state
         let circuit = Circuit::builder()
             .with_id("alpha".into())
-            .with_auth("trust".into())
+            .with_auth(AuthorizationType::Trust)
             .with_members(vec!["1234".into(), "5678".into()])
             .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurabilty)
+            .with_routes(RouteType::Any)
             .with_circuit_management_type("admin_test_app".into())
             .build()
             .expect("Should have built a correct circuit");
@@ -255,12 +255,12 @@ mod tests {
         // Add circuit and service to splinter state
         let circuit = Circuit::builder()
             .with_id("alpha".into())
-            .with_auth("trust".into())
+            .with_auth(AuthorizationType::Trust)
             .with_members(vec!["1234".into(), "5678".into()])
             .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurabilty)
+            .with_routes(RouteType::Any)
             .with_circuit_management_type("admin_test_app".into())
             .build()
             .expect("Should have built a correct circuit");
@@ -321,12 +321,12 @@ mod tests {
         // Add circuit and service to splinter state
         let circuit = Circuit::builder()
             .with_id("alpha".into())
-            .with_auth("trust".into())
+            .with_auth(AuthorizationType::Trust)
             .with_members(vec!["1234".into(), "5678".into()])
             .with_roster(vec!["abc".into(), "def".into()])
-            .with_persistence("any".into())
-            .with_durability("none".into())
-            .with_routes("require_direct".into())
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurabilty)
+            .with_routes(RouteType::Any)
             .with_circuit_management_type("admin_test_app".into())
             .build()
             .expect("Should have built a correct circuit");
