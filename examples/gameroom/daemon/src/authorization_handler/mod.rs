@@ -51,19 +51,16 @@ pub fn run(
     private_key: String,
     igniter: Igniter,
 ) -> Result<(), AppAuthHandlerError> {
-    let on_message_igniter = igniter.clone();
-    let on_error_igniter = igniter.clone();
-
     let mut ws = WebSocketClient::new(
         &format!("{}/ws/admin/register/gameroom", splinterd_url),
-        move |event| {
+        move |ctx, event| {
             if let Err(err) = process_admin_event(
                 event,
                 &db_conn,
                 &node_id,
                 &private_key,
                 &splinterd_url,
-                on_message_igniter.clone(),
+                ctx.igniter(),
             ) {
                 error!("Failed to process admin event: {}", err);
             }
@@ -71,14 +68,14 @@ pub fn run(
         },
     );
 
-    ws.on_error(move |err, ws| {
+    ws.on_error(move |err, ctx| {
         error!("An error occured while listening for admin events {}", err);
         if let WebSocketError::ParserError { .. } = err {
             debug!("Protocol error, closing connection");
             Ok(())
         } else {
             debug!("Attempting to restart connection");
-            on_error_igniter.clone().start_ws(&ws)
+            ctx.start_ws()
         }
     });
 
@@ -350,7 +347,7 @@ fn process_admin_event(
                     "{}/scabbard/{}/{}/ws/subscribe",
                     url, msg_proposal.circuit_id, service_id
                 ),
-                move |changes| {
+                move |_, changes| {
                     if let Err(err) = processor.handle_state_changes(changes) {
                         error!("An error occurred while handling state changes {:?}", err);
                     }
@@ -358,10 +355,9 @@ fn process_admin_event(
                 },
             );
 
-            let on_open_igniter = igniter.clone();
             let url_to_string = url.to_string();
             let private_key_to_string = private_key.to_string();
-            xo_ws.on_open(move || {
+            xo_ws.on_open(move |ctx| {
                 debug!("Starting XO State Delta Export");
                 let future = match setup_xo(
                     &private_key_to_string,
@@ -377,7 +373,7 @@ fn process_admin_event(
                     }
                 };
 
-                if let Err(err) = on_open_igniter.send(future) {
+                if let Err(err) = ctx.igniter().send(future) {
                     error!("Failed to setup scabbard: {}", err);
                     WsResponse::Close
                 } else {
@@ -385,8 +381,7 @@ fn process_admin_event(
                 }
             });
 
-            let on_error_igniter = igniter.clone();
-            xo_ws.on_error(move |err, ws| {
+            xo_ws.on_error(move |err, ctx| {
                 error!(
                     "An error occured while listening for scabbard events {}",
                     err
@@ -396,7 +391,7 @@ fn process_admin_event(
                     Ok(())
                 } else {
                     debug!("Attempting to restart connection");
-                    on_error_igniter.clone().start_ws(&ws)
+                    ctx.start_ws()
                 }
             });
 

@@ -119,7 +119,7 @@ impl Igniter {
         ws: &WebSocketClient<T>,
     ) -> Result<(), WebSocketError> {
         self.sender
-            .send(ReactorMessage::StartWs(ws.listen()?))
+            .send(ReactorMessage::StartWs(ws.listen(self.clone())?))
             .map_err(|err| {
                 WebSocketError::ListenError(format!("Failed to start ws {}: {}", ws.url(), err))
             })
