@@ -54,11 +54,34 @@ const actions = {
        throw err;
      }
   },
+  async take({ commit, rootGetters }: any, {gameName, cellIndex, circuitID}: any) {
+    const user = rootGetters['user/getUser'];
+    const payload = new Buffer(`${gameName},take,${cellIndex + 1}`, 'utf-8');
+    const gameAdress = calculateGameAddress(gameName);
+    const transaction = createTransaction(payload, [gameAdress], [gameAdress], user);
+    const batchBytes = createBatch([transaction], user);
+    try {
+      const response = await submitBatch(batchBytes, circuitID);
+      commit('setPendingTake', {gameName, cellIndex});
+      return response;
+    } catch (err) {
+      throw err;
+    }
+  },
 };
 
 const mutations = {
   setGames(state: GameState, games: Game[]) {
     state.games = games;
+  },
+  setPendingTake(state: GameState, {gameName, cellIndex}: any) {
+    const index = state.games.findIndex((g) => g.game_name === gameName);
+    if (index !== -1) {
+      const update = state.games[index];
+      const gameBoard = update.game_board;
+      update.game_board = `${gameBoard.substr(0, cellIndex)}?${gameBoard.substr(cellIndex + 1)}`;
+      state.games.splice(index, 1, update);
+    }
   },
 };
 

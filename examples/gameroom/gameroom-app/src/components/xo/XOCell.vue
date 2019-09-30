@@ -30,7 +30,6 @@ const whitelabel = require('@/../whitelabel.config')[process.env.VUE_APP_BRAND!]
 @Component
 export default class XOCell extends Vue {
   @Prop() value!: string;
-  @Prop() submitting!: boolean;
 
   get isVisible(): boolean {
     if (this.value === '-') {
@@ -39,8 +38,12 @@ export default class XOCell extends Vue {
     return true;
   }
 
+  get submitting() {
+    return (this.value === '?');
+  }
+
   getMarker(): string {
-    if (this.value === 'x') {
+    if (this.value === 'X') {
       return require(`@/assets/${whitelabel.brand}/xo/xmark.svg`);
     }
     return require(`@/assets/${whitelabel.brand}/xo/omark.svg`);

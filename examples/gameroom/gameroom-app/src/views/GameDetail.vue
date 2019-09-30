@@ -23,7 +23,7 @@ limitations under the License.
       </router-link>
     </div>
     <div v-if="game" class="xo-container">
-      <xo-board :game="game" />
+      <xo-board :game="game"  v-on:error="$emit('error', $event)" />
       <game-info-panel :gameInfo="gameInfo" />
     </div>
     <div v-else class="spinner large" />

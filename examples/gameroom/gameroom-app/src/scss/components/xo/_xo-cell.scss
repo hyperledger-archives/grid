@@ -13,18 +13,41 @@
 // limitations under the License.
 
 .xo-cell {
-  @include overlay(4);
+  @include overlay(24);
   @include rounded-border;
   width: calc(100% / 3);
   height: calc(100% / 3);
 
   &.unmarked {
-    color: transparent;
-    &:hover {
-      background:$color-primary-light;
-      cursor: pointer;
+    @include overlay(4)
+  }
+
+  &.has-perspective {
+    background-color: $color-primary-light;
+
+    &.is-winning {
+      background-color: $color-green-success;
     }
   }
+
+  &.is-winning {
+    background-color: $color-red-alert;
+  }
+
+  &.can-select {
+    cursor: pointer;
+
+    .icon {
+      cursor: pointer;
+    }
+
+    &:hover {
+      @include overlay(8);
+      @include shadow(2);
+    }
+  }
+
+
 
   .marker {
     display: flex;
