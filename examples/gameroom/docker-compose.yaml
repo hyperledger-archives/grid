@@ -56,7 +56,8 @@ services:
 
     gameroom-app-acme:
       build:
-        context: ./gameroom-app
+        context: ../..
+        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile
         args:
           VUE_APP_BRAND: "acme"
       image: gameroom-app-acme
@@ -148,7 +149,8 @@ services:
 
     gameroom-app-bubba:
       build:
-        context: ./gameroom-app
+        context: ../..
+        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile
         args:
           VUE_APP_BRAND: "bubba"
       image: gameroom-app-bubba

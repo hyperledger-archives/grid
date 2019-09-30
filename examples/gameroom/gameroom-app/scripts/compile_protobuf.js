@@ -15,11 +15,12 @@
 'use strict'
 
 const protobuf = require('protobufjs');
+const process = require('process');
 
 const path = require('path');
 const fs = require('fs');
 
-const proto_dir = '../../../protos/';
+const proto_dir = process.argv[2];
 
 const include = [
   'admin.proto',
