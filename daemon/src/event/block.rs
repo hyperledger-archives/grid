@@ -32,7 +32,7 @@ use protobuf;
 use sawtooth_sdk::messages::{
     events::Event,
     events::Event_Attribute,
-    transaction_receipt::{StateChange, StateChangeList},
+    transaction_receipt::{StateChange, StateChangeList, StateChange_Type},
 };
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -398,36 +398,45 @@ fn state_change_to_db_operation(
 
             Ok(DbInsertOperation::Records(records, associated_agents))
         }
-        GRID_PRODUCT => {
-            let product_tuple = ProductList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
-                .products()
-                .iter()
-                .fold((Vec::new(), Vec::new()), |mut acc, product| {
-                    let new_product = NewProduct {
-                        product_id: product.product_id().to_string(),
-                        product_namespace: format!("{:?}", product.product_type()),
-                        owner: product.owner().to_string(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
-                    };
-                    acc.0.push(new_product);
+        GRID_PRODUCT => match &state_change.field_type {
+            StateChange_Type::TYPE_UNSET => Err(EventError("Not implement".to_owned())),
+            StateChange_Type::SET => {
+                let product_tuple = ProductList::from_bytes(&state_change.value)
+                    .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
+                    .products()
+                    .iter()
+                    .fold((Vec::new(), Vec::new()), |mut acc, product| {
+                        let new_product = NewProduct {
+                            product_id: product.product_id().to_string(),
+                            product_address: state_change.address.to_string(),
+                            product_namespace: format!("{:?}", product.product_type()),
+                            owner: product.owner().to_string(),
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                        };
+                        acc.0.push(new_product);
 
-                    let mut properties = make_product_property_values(
-                        block_num,
-                        product.product_id(),
-                        product.properties(),
-                    );
-                    acc.1.append(&mut properties);
+                        let mut properties = make_product_property_values(
+                            block_num,
+                            product.product_id(),
+                            &state_change.address.to_string(),
+                            product.properties(),
+                        );
+                        acc.1.append(&mut properties);
 
-                    acc
-                });
+                        acc
+                    });
 
-            Ok(DbInsertOperation::Products(
-                product_tuple.0,
-                product_tuple.1,
-            ))
-        }
+                Ok(DbInsertOperation::Products(
+                    product_tuple.0,
+                    product_tuple.1,
+                ))
+            }
+            StateChange_Type::DELETE => Ok(DbInsertOperation::RemoveProduct(
+                state_change.address.to_string(),
+                block_num,
+            )),
+        },
         _ => Err(EventError(format!(
             "Could not handle state change unknown address: {}",
             &state_change.address
@@ -445,6 +454,7 @@ enum DbInsertOperation {
     Proposals(Vec<NewProposal>),
     Records(Vec<NewRecord>, Vec<NewAssociatedAgent>),
     Products(Vec<NewProduct>, Vec<NewProductPropertyValue>),
+    RemoveProduct(String, i64),
 }
 
 impl DbInsertOperation {
@@ -471,6 +481,10 @@ impl DbInsertOperation {
             DbInsertOperation::Products(ref products, ref properties) => {
                 db::insert_products(conn, products)?;
                 db::insert_product_property_values(conn, properties)
+            }
+            DbInsertOperation::RemoveProduct(ref address, current_block_num) => {
+                db::delete_product(conn, address, current_block_num)?;
+                db::delete_product_property_values(conn, address, current_block_num)
             }
         }
     }
@@ -600,6 +614,7 @@ fn make_property_definitions(
 fn make_product_property_values(
     start_block_num: i64,
     product_id: &str,
+    product_address: &str,
     values: &[PropertyValue],
 ) -> Vec<NewProductPropertyValue> {
     let mut properties = Vec::new();
@@ -608,6 +623,7 @@ fn make_product_property_values(
         properties.push(NewProductPropertyValue {
             property_name: val.name().to_string(),
             product_id: product_id.to_string(),
+            product_address: product_address.to_string(),
             data_type: format!("{:?}", val.data_type()),
             bytes_value: Some(val.bytes_value().to_vec()),
             boolean_value: Some(*val.boolean_value()),
@@ -632,6 +648,7 @@ fn make_product_property_values(
             properties.append(&mut make_product_property_values(
                 start_block_num,
                 product_id,
+                product_address,
                 val.struct_values(),
             ));
         }

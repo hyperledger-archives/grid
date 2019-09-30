@@ -101,6 +101,7 @@ table! {
     product (id) {
         id -> Int8,
         product_id -> Varchar,
+        product_address -> Varchar,
         product_namespace -> Text,
         owner -> Varchar,
         start_block_num -> Int8,
@@ -114,6 +115,7 @@ table! {
     product_property_value (id) {
         id -> Int8,
         product_id -> Varchar,
+        product_address -> Varchar,
         property_name -> Text,
         data_type -> Text,
         bytes_value -> Nullable<Bytea>,

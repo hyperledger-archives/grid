@@ -95,6 +95,7 @@ pub struct Organization {
 #[table_name = "product"]
 pub struct NewProduct {
     pub product_id: String,
+    pub product_address: String,
     pub product_namespace: String,
     pub owner: String,
 
@@ -108,6 +109,7 @@ pub struct Product {
     ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
     pub product_id: String,
+    pub product_address: String,
     pub product_namespace: String,
     pub owner: String,
 
@@ -120,6 +122,7 @@ pub struct Product {
 #[table_name = "product_property_value"]
 pub struct NewProductPropertyValue {
     pub product_id: String,
+    pub product_address: String,
     pub property_name: String,
     pub data_type: String,
     pub bytes_value: Option<Vec<u8>>,
@@ -141,6 +144,7 @@ pub struct ProductPropertyValue {
     ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
     pub product_id: String,
+    pub product_address: String,
     pub property_name: String,
     pub data_type: String,
     pub bytes_value: Option<Vec<u8>>,

@@ -16,6 +16,7 @@
 CREATE TABLE IF NOT EXISTS product (
     id BIGSERIAL PRIMARY KEY,
     product_id VARCHAR(256) NOT NULL,
+    product_address VARCHAR(70) NOT NULL,
     product_namespace TEXT NOT NULL,
     owner VARCHAR(256) NOT NULL
 ) INHERITS (chain_record);
