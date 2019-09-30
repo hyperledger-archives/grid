@@ -29,6 +29,8 @@ import {
   Player,
 } from './models';
 
+import { hashGameName } from '@/utils/xo-games';
+
 export const gameroomAPI = axios.create({
   baseURL: '/api',
 });
@@ -125,6 +127,7 @@ export async function listGames(circuitID: string): Promise<Game[]> {
       Promise.all([player2]).then((p2) => game.player_2 = player2);
     }
     game.commited = true;
+    game.game_name_hash = hashGameName(game.game_name);
     return game as Game;
   });
   return Promise.all(games);

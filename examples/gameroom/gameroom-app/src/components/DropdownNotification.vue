@@ -38,6 +38,7 @@ limitations under the License.
 import { Vue, Component, Prop } from 'vue-property-decorator';
 import * as moment from 'moment';
 import { GameroomNotification, Gameroom } from '@/store/models';
+import { hashGameName } from '@/utils/xo-games';
 
 
 @Component
@@ -56,7 +57,7 @@ export default class DropdownNotification extends Vue {
     switch (notification) {
       case('gameroom_proposal'): return {name: 'invitations'};
       case('circuit_active'): return {name: 'gamerooms', params: {id: `${this.notification.target}`}};
-      case('new_game_created'): return {name: 'games', params: {id: `${this.notification.target}`, gameName: `${this.getGameName(this.notification.notification_type)}`}};
+      case('new_game_created'): return {name: 'games', params: {id: `${this.notification.target}`, gameNameHash: `${hashGameName(this.getGameName(this.notification.notification_type))}`}};
       default: return '';
     }
   }
