@@ -42,6 +42,7 @@ import games from '@/store/modules/gamerooms';
 })
 export default class GameDetail extends Vue {
   mounted() {
+    this.$store.dispatch('selectedGameroom/updateSelectedGameroom', this.$route.params.id);
     this.$store.dispatch('games/listGames', this.$route.params.id);
   }
 

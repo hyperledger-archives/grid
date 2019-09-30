@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Gameroom } from '@/store/models';
+import { fetchGameroom } from '@/store/api';
 
 export interface SelectedGameroom {
   gameroom: Gameroom;
@@ -29,14 +30,13 @@ const getters = {
 };
 
 const actions = {
-  async updateSelectedGameroom({ commit, rootGetters}: any, circuitID: string) {
-      let gameroom: Gameroom = ({} as Gameroom) ;
-      if (circuitID !== '') {
-        const gamerooms: Gameroom[] = rootGetters['gamerooms/gameroomList'];
-        gameroom =  gamerooms.find(
-              (gr) => gr.circuit_id ===  circuitID) || {} as Gameroom;
-      }
+  async updateSelectedGameroom({ commit }: any, circuitID: string) {
+    try {
+      const gameroom = await fetchGameroom(circuitID);
       commit('setSelectedGameroom', {gameroom});
+    } catch (e) {
+      console.error(e.message);
+    }
   },
 };
 

@@ -134,11 +134,6 @@ import Modal from '@/components/Modal.vue';
         next();
       }
 
-      beforeRouteLeave(to: any, from: any , next: any) {
-        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', '');
-        next();
-      }
-
       get gameroom(): Gameroom {
          return this.$store.getters['selectedGameroom/getGameroom'];
       }
