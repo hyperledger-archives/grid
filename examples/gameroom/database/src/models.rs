@@ -168,7 +168,7 @@ pub struct NewGameroomNotification {
     pub read: bool,
 }
 
-#[derive(Queryable, Identifiable, Associations)]
+#[derive(Clone, Queryable, Identifiable, Associations, Insertable, AsChangeset)]
 #[table_name = "xo_games"]
 pub struct XoGame {
     pub id: i64,
