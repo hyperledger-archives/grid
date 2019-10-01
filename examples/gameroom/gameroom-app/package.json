@@ -11,7 +11,7 @@
     "build": "npm run build-acme",
     "build-acme": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service build",
     "build-bubba": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service build",
-    "lint": "vue-cli-service lint",
+    "lint": "cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service lint",
     "generate-proto-files": "node scripts/compile_protobuf.js > src/compiled_protos.json"
   },
   "dependencies": {

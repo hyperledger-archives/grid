@@ -41,3 +41,12 @@ services:
     volumes:
       - ../../:/project/splinter
     command:  cargo clippy -- -D clippy::all
+
+  lint-gameroom-client:
+    build:
+      context: ../../examples/gameroom/gameroom-app
+      dockerfile: ../../../docker/lint-client
+    image: lint-gameroom-client:${ISOLATION_ID}
+    volumes:
+      - ../../:/project/splinter/examples/gameroom/gameroom-app
+    command: npm run lint
