@@ -136,6 +136,18 @@ impl Scabbard {
         }
     }
 
+    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ServiceError> {
+        let mut shared = self
+            .shared
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+
+        ids.iter()
+            .map(|signature| shared.batch_history().get_batch_info(signature))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
+    }
+
     pub fn subscribe_to_state(
         &self,
         request: Request,

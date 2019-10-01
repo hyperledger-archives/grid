@@ -114,6 +114,7 @@ impl ServiceFactory for ScabbardFactory {
         vec![
             make_add_batches_to_queue_endpoint(),
             make_subscribe_endpoint(),
+            make_get_batch_status_endpoint(),
         ]
     }
 }
@@ -174,6 +175,53 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                         }
                     }),
             )
+        }),
+    }
+}
+
+fn make_get_batch_status_endpoint() -> ServiceEndpoint {
+    ServiceEndpoint {
+        service_type: SERVICE_TYPE.into(),
+        route: "/batch_statuses".into(),
+        method: Method::Get,
+        handler: Arc::new(move |req, _, service| {
+            let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
+                Some(s) => s,
+                None => {
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                }
+            }
+            .clone();
+            let query: web::Query<HashMap<String, String>> =
+                if let Ok(q) = web::Query::from_query(req.query_string()) {
+                    q
+                } else {
+                    return Box::new(
+                        HttpResponse::BadRequest()
+                            .json(json!({
+                                "message": "Invalid query"
+                            }))
+                            .into_future(),
+                    );
+                };
+
+            let ids = if let Some(ids) = query.get("ids") {
+                ids.split(',').map(String::from).collect()
+            } else {
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": "No batch IDs specified"
+                        }))
+                        .into_future(),
+                );
+            };
+
+            if let Ok(status) = scabbard.get_batch_info(ids) {
+                Box::new(HttpResponse::Ok().json(status).into_future())
+            } else {
+                Box::new(HttpResponse::InternalServerError().finish().into_future())
+            }
         }),
     }
 }
