@@ -39,12 +39,12 @@ const getters = {
 };
 
 const actions = {
-  async listNotifications({ commit, rootGetters, dispatch, context }: any) {
+  async listNotifications({ commit, rootGetters, dispatch }: any) {
     const publicKey = rootGetters['user/getPublicKey'];
     const notifications = await listNotifications(publicKey);
-    await dispatch('proposals/listProposals', null, {root: true});
-    await dispatch('gamerooms/listGamerooms', null, {root: true});
     const selectedGameroom = rootGetters['selectedGameroom/getGameroom'];
+    await dispatch('gamerooms/listGamerooms', null, {root: true});
+    await dispatch('proposals/listProposals', null, {root: true});
     if (selectedGameroom) {
       await dispatch('games/listGames', selectedGameroom.circuit_id, {root: true});
     }

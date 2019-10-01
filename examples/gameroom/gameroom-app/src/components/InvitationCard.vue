@@ -66,7 +66,6 @@ limitations under the License.
 import { Vue, Prop, Component } from 'vue-property-decorator';
 import * as moment from 'moment';
 import { GameroomProposal } from '../store/models';
-import proposals from '@/store/modules/proposals';
 import gamerooms from '@/store/modules/gamerooms';
 
 @Component
@@ -116,7 +115,7 @@ export default class InvitationCard extends Vue {
   async acceptInvitation() {
     this.acceptSubmitting = true;
     try {
-      await proposals.vote({
+      await this.$store.dispatch('proposals/vote', {
         proposalID: this.proposal.proposal_id,
         ballot: {
           circuit_id: this.proposal.circuit_id,
@@ -135,7 +134,7 @@ export default class InvitationCard extends Vue {
   async rejectInvitation() {
     this.rejectSubmitting = true;
     try {
-      await proposals.vote({
+      await this.$store.dispatch('proposals/vote', {
         proposalID: this.proposal.proposal_id,
         ballot: {
           circuit_id: this.proposal.circuit_id,

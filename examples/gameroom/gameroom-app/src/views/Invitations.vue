@@ -54,8 +54,7 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import InvitationCard from '@/components/InvitationCard.vue';
-import proposals from '@/store/modules/proposals';
-import { getModule } from 'vuex-module-decorators';
+import { GameroomProposal } from '@/store/models';
 @Component({
   components: { InvitationCard },
 })
@@ -67,15 +66,17 @@ export default class Invitations extends Vue {
   }
 
   mounted() {
-    proposals.listProposals();
+    this.$store.dispatch('proposals/listProposals');
   }
 
   get proposals() {
-    const props = proposals.proposalList.filter((p) => p.status === 'Pending');
+    const props = this.$store.getters['proposals/getProposalList'].filter(
+      (p: GameroomProposal) => p.status === 'Pending');
+
     if (this.currentTab === 1) {
-      return props.filter((p) => !this.isSelf(p.requester));
+      return props.filter((p: GameroomProposal) => !this.isSelf(p.requester));
     } else if (this.currentTab === 2) {
-      return props.filter((p) => this.isSelf(p.requester));
+      return props.filter((p: GameroomProposal) => this.isSelf(p.requester));
     } else {
       return props;
     }

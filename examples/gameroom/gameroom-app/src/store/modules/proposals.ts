@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-decorators';
-import store from '@/store';
 import { GameroomProposal, Ballot } from '@/store/models';
 import { listProposals, proposalVote, submitPayload } from '@/store/api';
 import { signPayload } from '@/utils/crypto';
@@ -23,41 +21,51 @@ interface Vote {
   ballot: Ballot;
 }
 
-@Module({
-  namespaced: true,
-  name: 'proposals',
-  store,
-  dynamic: true,
-})
-class ProposalsModule extends VuexModule {
-  proposals: GameroomProposal[] = [];
+export interface ProposalState {
+  proposals: GameroomProposal[];
+}
 
-  @Mutation
-  setProposals(proposals: GameroomProposal[]) { this.proposals = proposals;  }
+const proposalState = {
+  proposals: ([] as GameroomProposal[]),
+};
 
-  @Action({ rawError: true })
-  async vote(vote: Vote) {
-    const user = this.context.rootGetters['user/getUser'];
+const getters = {
+  getProposalList(state: ProposalState) {
+    return proposalState.proposals;
+  },
+};
+
+const actions = {
+  async vote({ dispatch, rootGetters }: any, vote: Vote) {
+    const user = rootGetters['user/getUser'];
     try {
       const payload = await proposalVote(vote.ballot, vote.proposalID);
       const signedPayload = signPayload(payload, user.privateKey);
-      this.context.dispatch('votes/vote', vote.proposalID, {root: true});
+      await dispatch('votes/vote', vote.proposalID, {root: true});
       const response = await submitPayload(signedPayload);
       return response;
-    } catch (e) {
-      console.error(e);
-      throw e;
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
-  }
-
-  @Action({ commit: 'setProposals' })
-  async listProposals() {
+  },
+  async listProposals({ commit }: any) {
     const proposals = await listProposals();
-    return proposals;
-  }
+    commit('setProposals', proposals);
+  },
+};
 
-  get proposalList() {
-    return this.proposals;
-  }
-}
-export default getModule(ProposalsModule);
+const mutations = {
+  setProposals(state: ProposalState, proposals: GameroomProposal[]) {
+    proposalState.proposals = proposals;
+  },
+};
+
+export default {
+  namespaced: true,
+  name: 'proposals',
+  state: proposalState,
+  getters,
+  actions,
+  mutations,
+};
