@@ -746,5 +746,4 @@ mod tests {
         let created_from_bytes = from_bytes(&bytes).unwrap();
         assert_eq!(under_test, created_from_bytes);
     }
-
 }
