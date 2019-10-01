@@ -122,7 +122,7 @@ export interface Game {
   game_board: string;
   created_time: number;
   updated_time: number;
-  commited: boolean;
+  committed: boolean;
 }
 
 export interface Player {

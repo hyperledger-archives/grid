@@ -51,6 +51,7 @@ import { Game } from '@/store/models';
 })
 export default class XOBoard extends Vue {
   @Prop() game!: Game;
+  @Prop({ default: false }) disabled!: boolean;
 
   submitting: boolean = false;
 
@@ -128,6 +129,9 @@ export default class XOBoard extends Vue {
   }
 
   canSelect(cell: string): boolean {
+    if (this.disabled) {
+      return false;
+    }
     if (this.submitting) {
       return false;
     }

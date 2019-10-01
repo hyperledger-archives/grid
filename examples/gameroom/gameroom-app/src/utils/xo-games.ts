@@ -31,3 +31,13 @@ export function userCanJoinGame(game: Game, publicKey: string) {
 export function hashGameName(gameName: string) {
   return crypto.createHash('md5').update(gameName).digest('hex');
 }
+
+export function isUserTurn(game: Game, publicKey: string): boolean {
+  if (userIsInGame(game, publicKey)) {
+    if ((game.game_status === 'P1-NEXT' && game.player_1.publicKey === publicKey)
+        || (game.game_status === 'P2-NEXT' && game.player_2.publicKey === publicKey)) {
+      return true;
+    }
+  }
+  return false;
+}
