@@ -332,5 +332,4 @@ mod tests {
         let schema = schema_result.unwrap();
         assert_eq!(schema.description(), "New Description");
     }
-
 }
