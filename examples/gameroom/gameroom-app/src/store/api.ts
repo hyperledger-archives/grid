@@ -94,7 +94,14 @@ export async function listGamerooms(): Promise<Gameroom[]> {
 
 export async function fetchGameroom(circuitID: string): Promise<Gameroom> {
   const response = await gameroomAPI.get(`/gamerooms/${circuitID}`);
-  return response.data as Gameroom;
+  const gameroom = response.data;
+  const members = gameroom.members.map(async (member: any) => {
+    const node = await getNode(member.node_id);
+    member.organization = node.metadata.organization;
+    return member as Member;
+  });
+  Promise.all(members).then((m) => gameroom.members = m);
+  return gameroom as Gameroom;
 }
 
 // Nodes

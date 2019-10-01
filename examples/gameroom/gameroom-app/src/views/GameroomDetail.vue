@@ -127,9 +127,7 @@ import GameCard from '@/components/GameCard.vue';
 
       mounted() {
         this.loadingGameroom = true;
-        gamerooms.listGamerooms().then(() => {
-          this.setSelectedGameroom(this.$route.params.id);
-        });
+        this.setSelectedGameroom(this.$route.params.id);
         this.listGames(this.$route.params.id);
       }
 

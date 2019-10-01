@@ -33,7 +33,7 @@ const actions = {
   async updateSelectedGameroom({ commit }: any, circuitID: string) {
     try {
       const gameroom = await fetchGameroom(circuitID);
-      commit('setSelectedGameroom', {gameroom});
+      commit('setSelectedGameroom', gameroom);
     } catch (e) {
       console.error(e.message);
     }
@@ -41,7 +41,7 @@ const actions = {
 };
 
 const mutations = {
-  setSelectedGameroom(state: SelectedGameroom, {circuitID, gameroom}: any) {
+  setSelectedGameroom(state: SelectedGameroom, gameroom: Gameroom) {
     state.gameroom = gameroom;
   },
 };

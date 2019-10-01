@@ -45,7 +45,7 @@ const actions = {
     await dispatch('proposals/listProposals', null, {root: true});
     await dispatch('gamerooms/listGamerooms', null, {root: true});
     const selectedGameroom = rootGetters['selectedGameroom/getGameroom'];
-    if (selectedGameroom.circuit_id) {
+    if (selectedGameroom) {
       await dispatch('games/listGames', selectedGameroom.circuit_id, {root: true});
     }
     commit('setNotifications', notifications);
