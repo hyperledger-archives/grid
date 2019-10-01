@@ -68,6 +68,7 @@ pub struct ServiceOrchestrator {
     services: Arc<Mutex<HashMap<ServiceDefinition, ManagedService>>>,
     /// Factories used to create new services.
     service_factories: Vec<Box<dyn ServiceFactory>>,
+    supported_service_types: Vec<String>,
     /// `network_sender` and `inbound_router` are used to create services' senders.
     network_sender: Sender<Vec<u8>>,
     inbound_router: InboundRouter<CircuitMessageType>,
@@ -172,9 +173,20 @@ impl ServiceOrchestrator {
             })
             .map_err(|err| NewOrchestratorError(Box::new(err)))?;
 
+        let supported_service_types_vec = service_factories
+            .iter()
+            .map(|factory| factory.available_service_types().to_vec())
+            .collect::<Vec<Vec<String>>>();
+
+        let mut supported_service_types = vec![];
+        for mut service_types in supported_service_types_vec {
+            supported_service_types.append(&mut service_types);
+        }
+
         Ok(Self {
             services,
             service_factories,
+            supported_service_types,
             network_sender,
             inbound_router,
             running,
@@ -208,6 +220,7 @@ impl ServiceOrchestrator {
         let mut service = factory.create(
             service_definition.service_id.clone(),
             service_definition.service_type.as_str(),
+            service_definition.circuit.as_str(),
             args,
         )?;
 
@@ -279,6 +292,10 @@ impl ServiceOrchestrator {
             })
             .cloned()
             .collect())
+    }
+
+    pub fn supported_service_types(&self) -> &[String] {
+        &self.supported_service_types
     }
 
     pub fn destroy(self) -> Result<(), OrchestratorError> {

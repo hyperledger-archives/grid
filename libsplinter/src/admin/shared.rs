@@ -979,16 +979,23 @@ impl AdminServiceShared {
     }
 
     /// Initialize all services that this node should run on the created circuit using the service
-    /// orchestrator.
+    /// orchestrator. This may not include all services if they are not supported locally. It is
+    /// expected that some services will be started externally.
     pub fn initialize_services(&mut self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         // Get all services this node is allowed to run
         let services = circuit
             .get_roster()
             .iter()
-            .filter(|service| service.allowed_nodes.contains(&self.node_id))
+            .filter(|service| {
+                service.allowed_nodes.contains(&self.node_id)
+                    && self
+                        .orchestrator
+                        .supported_service_types()
+                        .contains(&service.get_service_type().to_string())
+            })
             .collect::<Vec<_>>();
 
-        // Start all services
+        // Start all services the orchestrator has a factory for
         for service in services {
             let service_definition = ServiceDefinition {
                 circuit: circuit.circuit_id.clone(),
@@ -1008,6 +1015,55 @@ impl AdminServiceShared {
             self.running_services.insert(service_definition);
         }
 
+        Ok(())
+    }
+
+    /// On restart of a splinter node, all services that this node should run on the existing
+    /// circuits should be intialized using the service orchestrator. This may not include all
+    /// services if they are not supported locally. It is expected that some services will be
+    /// started externally.
+    pub fn restart_services(&mut self) -> Result<(), AdminSharedError> {
+        let circuits = self
+            .splinter_state
+            .read()
+            .map_err(|_| AdminSharedError::PoisonedLock("Splinter State Read Lock".into()))?
+            .circuits()
+            .clone();
+        // start all services of the supported types
+        for (circuit_name, circuit) in circuits.iter() {
+            // Get all services this node is allowed to run and the orchestrator has a factory for
+            let services = circuit
+                .roster()
+                .iter()
+                .filter(|service| {
+                    service.allowed_nodes().contains(&self.node_id)
+                        && self
+                            .orchestrator
+                            .supported_service_types()
+                            .contains(&service.service_type().to_string())
+                })
+                .collect::<Vec<_>>();
+
+            // Start all services
+            for service in services {
+                let service_definition = ServiceDefinition {
+                    circuit: circuit_name.into(),
+                    service_id: service.service_id().into(),
+                    service_type: service.service_type().into(),
+                };
+
+                let service_arguments = service
+                    .arguments()
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect();
+
+                self.orchestrator
+                    .initialize_service(service_definition.clone(), service_arguments)?;
+
+                self.running_services.insert(service_definition);
+            }
+        }
         Ok(())
     }
 

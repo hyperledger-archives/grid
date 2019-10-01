@@ -30,7 +30,6 @@ use std::sync::{Arc, Mutex};
 
 use transact::protocol::batch::BatchPair;
 use transact::protos::FromBytes;
-use uuid::Uuid;
 
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
@@ -62,6 +61,7 @@ impl Scabbard {
     /// Generate a new Scabbard service.
     pub fn new(
         service_id: String,
+        circuit_id: &str,
         // List of other scabbard services on the same circuit that this service shares state with
         peer_services: HashSet<String>,
         // The directory in which to create sabre's LMDB database
@@ -71,7 +71,7 @@ impl Scabbard {
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
-        let db_path = db_dir.join(format!("{}.lmdb", Uuid::new_v4()));
+        let db_path = db_dir.join(format!("{}::{}.lmdb", service_id, circuit_id));
         let state = ScabbardState::new(db_path.as_path(), db_size, admin_keys)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, state);
@@ -250,6 +250,7 @@ pub mod tests {
     fn new_scabbard() {
         let service = Scabbard::new(
             "new_scabbard".into(),
+            "test_circuit",
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
@@ -266,6 +267,7 @@ pub mod tests {
     fn thread_cleanup() {
         let mut service = Scabbard::new(
             "thread_cleanup".into(),
+            "test_circuit",
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
@@ -282,6 +284,7 @@ pub mod tests {
     fn connect_and_disconnect() {
         let mut service = Scabbard::new(
             "connect_and_disconnect".into(),
+            "test_circuit",
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,

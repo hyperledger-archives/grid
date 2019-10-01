@@ -62,6 +62,7 @@ impl ServiceFactory for ScabbardFactory {
         &self,
         service_id: String,
         _service_type: &str,
+        circuit_id: &str,
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError> {
         let peer_services_str = args.get("peer_services").ok_or_else(|| {
@@ -88,8 +89,15 @@ impl ServiceFactory for ScabbardFactory {
             ))
         })?;
 
-        let service = Scabbard::new(service_id, peer_services, &db_dir, self.db_size, admin_keys)
-            .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
+        let service = Scabbard::new(
+            service_id,
+            circuit_id,
+            peer_services,
+            &db_dir,
+            self.db_size,
+            admin_keys,
+        )
+        .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 
         Ok(Box::new(service))
     }
@@ -181,7 +189,7 @@ mod tests {
 
         let factory = ScabbardFactory::new(Some("/tmp".into()), Some(1024 * 1024));
         let service = factory
-            .create("0".into(), "", args)
+            .create("0".into(), "", "", args)
             .expect("failed to create service");
 
         assert_eq!(service.service_id(), "0");
