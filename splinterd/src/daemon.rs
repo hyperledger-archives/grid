@@ -287,7 +287,11 @@ impl SplinterDaemon {
                     ))
                 })?;
         let orchestrator = ServiceOrchestrator::new(
-            vec![Box::new(ScabbardFactory::new(None, None))],
+            vec![Box::new(ScabbardFactory::new(
+                None,
+                None,
+                Box::new(SawtoothSecp256k1SignatureVerifier::new()),
+            ))],
             orchestrator_connection,
             ORCHESTRATOR_INCOMING_CAPACITY,
             ORCHESTRATOR_OUTGOING_CAPACITY,

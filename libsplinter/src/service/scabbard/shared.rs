@@ -15,9 +15,14 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use transact::protocol::batch::BatchPair;
+use transact::protocol::transaction::{HashMethod, TransactionHeader};
+use transact::protos::FromBytes;
 
 use crate::consensus::ProposalId;
-use crate::service::ServiceNetworkSender;
+use crate::hex::parse_hex;
+use crate::service::{ServiceError, ServiceNetworkSender};
+use crate::signing::hash::HashVerifier;
+use crate::signing::SignatureVerifier;
 
 use super::state::ScabbardState;
 
@@ -33,6 +38,7 @@ pub struct ScabbardShared {
     peer_services: HashSet<String>,
     /// Tracks which batches are currently being evaluated, indexed by corresponding proposal IDs.
     proposed_batches: HashMap<ProposalId, BatchPair>,
+    signature_verifier: Box<dyn SignatureVerifier>,
     state: ScabbardState,
 }
 
@@ -41,6 +47,7 @@ impl ScabbardShared {
         batch_queue: VecDeque<BatchPair>,
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
         peer_services: HashSet<String>,
+        signature_verifier: Box<dyn SignatureVerifier>,
         state: ScabbardState,
     ) -> Self {
         ScabbardShared {
@@ -48,6 +55,7 @@ impl ScabbardShared {
             network_sender,
             peer_services,
             proposed_batches: HashMap::new(),
+            signature_verifier,
             state,
         }
     }
@@ -94,5 +102,80 @@ impl ScabbardShared {
 
     pub fn state_mut(&mut self) -> &mut ScabbardState {
         &mut self.state
+    }
+
+    pub fn verify_batches(&self, batches: &[BatchPair]) -> Result<bool, ServiceError> {
+        for batch in batches {
+            let batch_pub_key = batch.header().signer_public_key();
+
+            // Verify batch signature
+            if !self
+                .signature_verifier
+                .verify(
+                    batch.batch().header(),
+                    parse_hex(batch.batch().header_signature())
+                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                        .as_slice(),
+                    batch_pub_key,
+                )
+                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+            {
+                warn!(
+                    "Batch failed signature verification: {}",
+                    batch.batch().header_signature()
+                );
+                return Ok(false);
+            }
+
+            // Verify all transactions in batch
+            for txn in batch.batch().transactions() {
+                let header = TransactionHeader::from_bytes(txn.header())
+                    .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
+
+                if header.batcher_public_key() != batch_pub_key {
+                    warn!(
+                        "Transaction batcher public key does not match batch signer public key -
+                         txn: {}, batch: {}",
+                        txn.header_signature(),
+                        batch.batch().header_signature(),
+                    );
+                    return Ok(false);
+                }
+
+                if !self
+                    .signature_verifier
+                    .verify(
+                        txn.header(),
+                        parse_hex(txn.header_signature())
+                            .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                            .as_slice(),
+                        header.signer_public_key(),
+                    )
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                {
+                    warn!(
+                        "Transaction failed signature verification - txn: {}, batch: {}",
+                        txn.header_signature(),
+                        batch.batch().header_signature()
+                    );
+                    return Ok(false);
+                }
+
+                if !match header.payload_hash_method() {
+                    HashMethod::SHA512 => HashVerifier
+                        .verify(txn.payload(), header.payload_hash(), &[])
+                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?,
+                } {
+                    warn!(
+                        "Transaction payload hash doesn't match payload - txn: {}, batch: {}",
+                        txn.header_signature(),
+                        batch.batch().header_signature()
+                    );
+                    return Ok(false);
+                }
+            }
+        }
+
+        Ok(true)
     }
 }
