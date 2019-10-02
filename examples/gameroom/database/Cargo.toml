@@ -14,7 +14,7 @@
 
 [package]
 name = "gameroom-database"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
