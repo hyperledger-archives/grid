@@ -28,6 +28,7 @@ $board-width-small: 13rem;
   min-height: 10rem;
 
   @media screen and (max-width: 74rem) {
+    align-self: center;
     $board-height: calc(100vh - 76px - 26rem);
     $board-width: calc(100vw - 30rem);
     max-height: $board-height;

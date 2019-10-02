@@ -15,32 +15,34 @@ limitations under the License.
 -->
 
 <template>
-  <div class="game-info-wrapper">
-    <div class="header">
-      <div class="game-icon">
-        XO
-      </div>
-      <div class="info">
-        <div>
-          Game started: {{ fromNow(gameInfo.createdTimestamp) }}
+  <div class="game-info-panel">
+    <div class="game-info-container">
+      <div class="header">
+        <div class="game-icon">
+          XO
         </div>
-        <div v-if="gameInfo.playerOne">
-          Last move: {{ fromNow(gameInfo.lastTurnTimestamp) }}
+        <div class="info">
+          <div>
+            Created: {{ fromNow(gameInfo.createdTimestamp) }}
+          </div>
+          <div v-if="gameInfo.playerOne">
+            Last move: {{ fromNow(gameInfo.lastTurnTimestamp) }}
+          </div>
         </div>
       </div>
-    </div>
-    <div class="players">
-      <div class="player">
-        <i class="icon material-icons-round">{{ playerOneIcon }}</i>
-        {{ formatPlayerName(gameInfo.playerOne) }}
+      <div class="players">
+        <div class="player" :class="{active: playerOneActive}">
+          <i class="icon material-icons-round">{{ playerOneIcon }}</i>
+          {{ formatPlayerName(gameInfo.playerOne) }}
+        </div>
+        <div class="player" :class="{active: playerTwoActive}">
+          <i class="icon material-icons-round">{{ playerTwoIcon }}</i>
+          {{ formatPlayerName(gameInfo.playerTwo) }}
+        </div>
       </div>
-      <div class="player">
-        <i class="icon material-icons-round">{{ playerTwoIcon }}</i>
-        {{ formatPlayerName(gameInfo.playerTwo) }}
+      <div class="status">
+        {{ status }}
       </div>
-    </div>
-    <div class="status">
-      {{ status }}
     </div>
   </div>
 </template>
@@ -72,30 +74,64 @@ export default class GameInfoPanel extends Vue {
   @Prop() gameInfo!: GameInfo;
 
   get status(): string {
+    const publicKey = this.$store.getters['user/getPublicKey'];
     if (!this.gameInfo.playerOne) {
       return 'Take a space to join the game as X';
     } else if (!this.gameInfo.playerTwo) {
+      if (publicKey === this.gameInfo.playerOne.publicKey) {
+        return 'Waiting for another player';
+      }
       return 'Take a space to join the game as O';
     }
 
+
     switch (this.gameInfo.status) {
-      case(GameStatus.PlayerOneWin): return `${this.gameInfo.playerOne.name} was victorious`;
-      case(GameStatus.PlayerTwoWin): return `${this.gameInfo.playerTwo.name} was victorious`;
+      case(GameStatus.PlayerOneNext):
+        if (publicKey === this.gameInfo.playerOne.publicKey) {
+          return 'Your turn';
+        } else {
+          return `${this.gameInfo.playerOne.name}'s turn`;
+        }
+      case(GameStatus.PlayerTwoNext):
+        if (publicKey === this.gameInfo.playerTwo.publicKey) {
+          return 'Your turn';
+        } else {
+          return `${this.gameInfo.playerTwo.name}'s turn`;
+        }
+      case(GameStatus.PlayerOneWin):
+        if (publicKey === this.gameInfo.playerOne.publicKey) {
+          return 'You won';
+        } else {
+          return `${this.gameInfo.playerOne.name} won`;
+        }
+      case(GameStatus.PlayerTwoWin):
+        if (publicKey === this.gameInfo.playerTwo.publicKey) {
+          return 'You won';
+        } else {
+          return `${this.gameInfo.playerTwo.name} won`;
+        }
       case(GameStatus.Tie): return 'Game resulted in a draw';
-      default: return 'Game in progress';
     }
   }
 
+  get playerOneActive(): boolean {
+    return [GameStatus.PlayerOneNext, GameStatus.PlayerOneWin].includes(this.gameInfo.status);
+  }
+
+  get playerTwoActive(): boolean {
+    return [GameStatus.PlayerTwoNext, GameStatus.PlayerTwoWin].includes(this.gameInfo.status);
+  }
+
   get playerOneIcon(): string {
-    if (this.gameInfo.status === GameStatus.PlayerOneNext) {
-      return 'radio_button_checked';
-    } else { return 'radio_button_unchecked'; }
+    if (this.playerOneActive) {
+      return 'person';
+    } else { return 'person_outline'; }
   }
 
   get playerTwoIcon(): string {
-    if (this.gameInfo.status === GameStatus.PlayerTwoNext) {
-      return 'radio_button_checked';
-    } else { return 'radio_button_unchecked'; }
+    if (this.playerTwoActive) {
+      return 'person';
+    } else { return 'person_outline'; }
   }
 
   fromNow(timestamp: number): string {
@@ -104,7 +140,7 @@ export default class GameInfoPanel extends Vue {
 
   formatPlayerName(player: Player) {
     if (!player) {
-      return 'Waiting for player to join';
+      return '';
     }
     return `${player.name} (${player.organization})`;
   }
