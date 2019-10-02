@@ -34,6 +34,10 @@ For example, to build only the Private XO demo, navigate to
 
 Splinter includes example applications that you can run as demos.
 
+- Private Counter demo: Three services communicate over a circuit to increment
+  a shared counter. See the
+  [Private Counter README](examples/private_counter/README.md).
+
 - Private XO demo: Two services talk over a circuit to play a private game of
   tic tac toe. See the [Private XO README](examples/private_xo/README.md).
 
