@@ -1,5 +1,60 @@
 # Release Notes
 
+## Changes in Splinter 0.3.3
+
+### Highlights
+* Add functionality to create and play XO games
+
+### libsplinter
+* Add EventHistory trait to EventDealer to allow for new event subscribers to catch
+  up on previous events. This trait describes how events are stored.
+* Add LocalEventHistory, a basic implementation of EventHistory that stores events
+  locally in a queue.
+* Add MessageWrapper to be consumed by EventDealerWebsockets, to allow for
+  shutdown messages to be sent by the EventDealer
+* Enforce that a Splinter service may only be added to Splinter state if the
+  connecting node is in its list of allowed nodes
+* Add Context object for WebSocket callbacks to assist in restarting WebSocket
+  connections
+* Add specified supported service types to the service orchestrator to determine
+  which service types are locally supported versus externally supported
+* Only allow initialization of the orchestrator’s supported service
+* On restart, reuse the services of circuits which are stored locally
+* Add circuit ID when creating a service factory, in case it is needed by the
+  service
+* Replace UUID with service_id::circuit_id, which is guaranteed to be unique on
+  a Splinter node, to name the Scabbard database
+* Fix clippy error in events reactor
+* Fix tests to match updated cargo args format
+* Change certain circuit fields from strings to enums
+* Remove Splinter client from CLI to decrease build time
+
+### Gameroom Example
+* Add ability in the UI to fetch and list XO games
+* Correct arguments used to fetch the members of an existing gameroom, allowing
+  the members to be included in the /gamerooms endpoint response
+* Add GET /keys/{public_key} endpoint to gameroomd, to fetch key information
+  associated with a public key
+* Add UI functionality to create a new XO game:
+* Add ability to calculate addresses
+* Add methods to build and sign XO transactions and batches
+* Add methods to submit XO transactions and batches
+* Add form for user to create new game
+* Add new game notification to UI and gameroomd
+* Add player information displayed for a game in UI
+* Implement XO game board in UI
+* Implement XO take functionality and state styling in UI
+* Add component to show game information in the Gameroom details page in the UI
+* Use md5 hash of game name when creating a game, rather than URL-encoded name
+  that handles special characters
+* Add player information when updating an XO game from exported data (from state
+  delta export)
+* Add auto-generated protos for the UI
+* Remove the explicit caching in the Gameroom Detail view in the UI, because Vue
+  does this automatically
+* Make various UI styling fixes
+* Remove unused imports to avoid cargo compilation warnings
+
 ## Changes in Splinter 0.3.2
 
 ### Highlights
