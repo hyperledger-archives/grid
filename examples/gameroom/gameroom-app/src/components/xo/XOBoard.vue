@@ -69,6 +69,11 @@ export default class XOBoard extends Vue {
     return [];
   }
 
+  get gameOver() {
+    const status = this.game.game_status;
+    return (status === 'P1-WIN' || status === 'P2-WIN' || status === 'TIE');
+  }
+
   get cellStyles() {
     return this.boardArray.map((cell, index) => {
       return ({
@@ -76,6 +81,7 @@ export default class XOBoard extends Vue {
         'can-select': this.canSelect(cell),
         'is-winning': this.winningCells.includes(index),
         'has-perspective': this.hasPerspective(cell),
+        'game-over': this.gameOver,
       });
     });
   }

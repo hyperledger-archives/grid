@@ -18,20 +18,27 @@
   width: calc(100% / 3);
   height: calc(100% / 3);
 
-  &.unmarked {
-    @include overlay(4)
-  }
-
   &.has-perspective {
     background-color: $color-primary-light;
+  }
+
+  &.game-over {
+    @include overlay(24);
 
     &.is-winning {
-      background-color: $color-green-success;
+      background-color: $color-red-alert;
+    }
+
+    &.has-perspective {
+
+      &.is-winning {
+        background-color: $color-green-success;
+      }
     }
   }
 
-  &.is-winning {
-    background-color: $color-red-alert;
+  &.unmarked {
+    @include overlay(4)
   }
 
   &.can-select {
@@ -46,8 +53,6 @@
       @include shadow(2);
     }
   }
-
-
 
   .marker {
     display: flex;
