@@ -71,19 +71,19 @@ impl<'c> Signer for SawtoothSecp256k1RefSigner<'c> {
 
 /// A Sawtooth Secp256k SignatureVerifier that references a context.
 ///
-/// The SawtoothSecp256k1RefSignatureVeriifier provides an implementation of the SignatureVerifier
+/// The SawtoothSecp256k1RefSignatureVerifier provides an implementation of the SignatureVerifier
 /// trait, that uses a provided Secp256k1Context.
-pub struct SawtoothSecp256k1RefSignatureVeriifier<'c> {
+pub struct SawtoothSecp256k1RefSignatureVerifier<'c> {
     context: &'c secp256k1::Secp256k1Context,
 }
 
-impl<'c> SawtoothSecp256k1RefSignatureVeriifier<'c> {
+impl<'c> SawtoothSecp256k1RefSignatureVerifier<'c> {
     pub fn new(context: &'c secp256k1::Secp256k1Context) -> Self {
         Self { context }
     }
 }
 
-impl<'c> SignatureVerifier for SawtoothSecp256k1RefSignatureVeriifier<'c> {
+impl<'c> SignatureVerifier for SawtoothSecp256k1RefSignatureVerifier<'c> {
     fn verify(&self, message: &[u8], signature: &[u8], public_key: &[u8]) -> Result<bool, Error> {
         let public_key_hex = hex::to_hex(public_key);
         let public_key =
@@ -107,22 +107,22 @@ impl<'c> SignatureVerifier for SawtoothSecp256k1RefSignatureVeriifier<'c> {
 
 /// A Sawtooth Secp256k SignatureVerifier that owns a context.
 ///
-/// The SawtoothSecp256k1RefSignatureVeriifier provides an implementation of the SignatureVerifier
+/// The SawtoothSecp256k1RefSignatureVerifier provides an implementation of the SignatureVerifier
 /// trait, that uses its own Secp256k1Context.
 #[derive(Default)]
-pub struct SawtoothSecp256k1SignatureVeriifier {
+pub struct SawtoothSecp256k1SignatureVerifier {
     context: secp256k1::Secp256k1Context,
 }
 
-impl SawtoothSecp256k1SignatureVeriifier {
+impl SawtoothSecp256k1SignatureVerifier {
     pub fn new() -> Self {
-        SawtoothSecp256k1SignatureVeriifier::default()
+        SawtoothSecp256k1SignatureVerifier::default()
     }
 }
 
-impl SignatureVerifier for SawtoothSecp256k1SignatureVeriifier {
+impl SignatureVerifier for SawtoothSecp256k1SignatureVerifier {
     fn verify(&self, message: &[u8], signature: &[u8], public_key: &[u8]) -> Result<bool, Error> {
-        SawtoothSecp256k1RefSignatureVeriifier::new(&self.context)
+        SawtoothSecp256k1RefSignatureVerifier::new(&self.context)
             .verify(message, signature, public_key)
     }
 }
@@ -143,7 +143,7 @@ mod tests {
 
         let sawtooth_signer = SawtoothSecp256k1RefSigner::new(&context, private_key)
             .expect("Unable to create signer");
-        let sawtooth_verifier = SawtoothSecp256k1RefSignatureVeriifier::new(&context);
+        let sawtooth_verifier = SawtoothSecp256k1RefSignatureVerifier::new(&context);
 
         test_signer_implementation(&sawtooth_signer, &sawtooth_verifier);
     }
