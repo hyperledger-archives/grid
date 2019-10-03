@@ -28,10 +28,12 @@ use std::convert::TryFrom;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use openssl::hash::{hash, MessageDigest};
 use transact::protocol::batch::BatchPair;
 use transact::protos::FromBytes;
 
 use crate::consensus::{Proposal, ProposalUpdate};
+use crate::hex::to_hex;
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
 use crate::rest_api::{Request, Response, ResponseError};
 
@@ -71,7 +73,13 @@ impl Scabbard {
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
-        let db_path = db_dir.join(format!("{}::{}.lmdb", service_id, circuit_id));
+        let hash = hash(
+            MessageDigest::sha256(),
+            format!("{}::{}", service_id, circuit_id).as_bytes(),
+        )
+        .map(|digest| to_hex(&*digest))
+        .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
+        let db_path = db_dir.join(format!("{}.lmdb", hash));
         let state = ScabbardState::new(db_path.as_path(), db_size, admin_keys)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, state);
