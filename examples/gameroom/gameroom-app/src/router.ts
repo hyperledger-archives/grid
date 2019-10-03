@@ -86,6 +86,11 @@ const router = new Router({
             requiresAuth: true,
           },
         },
+        {
+          path: '/not-found',
+          name: 'not-found',
+          component: () => import('@/views/NotFound.vue'),
+        },
       ],
     },
   ],
