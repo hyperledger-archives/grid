@@ -16,13 +16,13 @@ limitations under the License.
 
 <template>
   <div class="data-container">
-    <div v-if="game" class="header">
+    <div v-if="game.circuit_id" class="header">
       <h2 class="title">{{ game.game_name }}</h2>
       <router-link class="close" :to="gameroomLink">
         <i class="icon material-icons-round">close</i>
       </router-link>
     </div>
-    <div v-if="game" class="xo-container">
+    <div v-if="game.circuit_id" class="xo-container">
       <xo-board :game="game"  v-on:error="$emit('error', $event)" />
       <game-info-panel :gameInfo="gameInfo" />
     </div>
@@ -36,34 +36,45 @@ import { Game } from '@/store/models';
 import XOBoard from '@/components/xo/XOBoard.vue';
 import GameInfoPanel, { GameInfo, GameStatus } from '@/components/GameInfoPanel.vue';
 import games from '@/store/modules/gamerooms';
+import store from '@/store';
+
 
 @Component({
-  components: { 'xo-board': XOBoard, GameInfoPanel },
+  components: { 'xo-board': XOBoard, GameInfoPanel},
 })
 export default class GameDetail extends Vue {
-  mounted() {
-    this.$store.dispatch('selectedGameroom/updateSelectedGameroom', this.$route.params.id);
-    this.$store.dispatch('games/listGames', this.$route.params.id);
+
+  beforeRouteEnter(to: any, from: any , next: any) {
+    setSelectedGameroom(to, next);
+    listGames(to, next);
   }
 
-  get game() {
-    return this.$store.getters['games/getGames'].find(
-      (game: Game) => game.game_name_hash === this.$route.params.gameNameHash);
+  beforeRouteUpdate(to: any, from: any , next: any) {
+    setSelectedGameroom(to, next);
+    listGames(to, next);
   }
 
   get gameroomLink() {
     return `/dashboard/gamerooms/${this.$route.params.id}`;
   }
 
+  get game() {
+    return store.getters['games/getGames'].find(
+      (game: Game) => game.game_name_hash === this.$route.params.gameNameHash);
+  }
+
   get gameInfo() {
-    return {
-      gameType: 'XO',
-      playerOne: this.game.player_1,
-      playerTwo: this.game.player_2,
-      status: this.getStatus(this.game.game_status),
-      createdTimestamp: this.game.created_time,
-      lastTurnTimestamp: this.game.updated_time,
-    };
+    if (this.game) {
+      return {
+        gameType: 'XO',
+        playerOne: this.game.player_1,
+        playerTwo: this.game.player_2,
+        status: this.getStatus(this.game.game_status),
+        createdTimestamp: this.game.created_time,
+        lastTurnTimestamp: this.game.updated_time,
+      };
+    }
+
   }
 
   getStatus(status: string) {
@@ -76,6 +87,35 @@ export default class GameDetail extends Vue {
     }
   }
 }
+
+function setPageLoading(loading: boolean) {
+  store.commit('pageLoading/setPageLoading', loading);
+}
+
+function setSelectedGameroom(to: any, next: any) {
+  setPageLoading(true);
+
+  store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
+      setPageLoading(false);
+      next({ name: 'not-found' });
+  });
+}
+
+function listGames(to: any, next: any) {
+  store.dispatch('games/listGames', to.params.id).then(() => {
+      const selectedGame = store.getters['games/getGames'].find(
+        (game: Game) => game.game_name_hash === to.params.gameNameHash);
+
+      setPageLoading(false);
+
+      if (selectedGame) {
+        next();
+      } else {
+        next({ name: 'not-found' });
+      }
+  });
+}
+
 </script>
 
 <style lang="scss" scoped>
