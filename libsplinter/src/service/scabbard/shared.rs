@@ -127,10 +127,34 @@ impl ScabbardShared {
                 return Ok(false);
             }
 
+            // Verify list of txn IDs in the batch header matches the txns in the batch (verify
+            // length here, then verify IDs as each txn is verified)
+            if batch.header().transaction_ids().len() != batch.batch().transactions().len() {
+                warn!(
+                    "Number of transactions in batch header does not match number of transactions
+                     in batch: {}",
+                    batch.batch().header_signature(),
+                );
+                return Ok(false);
+            }
+
             // Verify all transactions in batch
-            for txn in batch.batch().transactions() {
+            for (i, txn) in batch.batch().transactions().iter().enumerate() {
                 let header = TransactionHeader::from_bytes(txn.header())
                     .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
+
+                // Verify this transaction matches the corresponding ID in the batch header
+                let header_signature_bytes = parse_hex(txn.header_signature())
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+                if header_signature_bytes != batch.header().transaction_ids()[i] {
+                    warn!(
+                        "Transaction at index {} does not match corresponding transaction ID in
+                         batch header: {}",
+                        i,
+                        batch.batch().header_signature(),
+                    );
+                    return Ok(false);
+                }
 
                 if header.batcher_public_key() != batch_pub_key {
                     warn!(
