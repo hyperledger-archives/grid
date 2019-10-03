@@ -33,6 +33,10 @@ pub trait SignatureVerifier: Send {
     fn verify(&self, message: &[u8], signature: &[u8], pk: &[u8]) -> Result<bool, Error>;
 }
 
+pub trait SignatureVerifierFactory: Send {
+    fn create_verifier(&self) -> Box<dyn SignatureVerifier>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -19,7 +19,7 @@ use sawtooth_sdk::signing::{secp256k1, Context};
 
 use crate::hex;
 
-use super::{error::Error, SignatureVerifier, Signer};
+use super::{error::Error, SignatureVerifier, SignatureVerifierFactory, Signer};
 
 /// A Sawtooth Secp256k Signer that references a context.
 ///
@@ -124,6 +124,12 @@ impl SignatureVerifier for SawtoothSecp256k1SignatureVerifier {
     fn verify(&self, message: &[u8], signature: &[u8], public_key: &[u8]) -> Result<bool, Error> {
         SawtoothSecp256k1RefSignatureVerifier::new(&self.context)
             .verify(message, signature, public_key)
+    }
+}
+
+impl SignatureVerifierFactory for SawtoothSecp256k1SignatureVerifier {
+    fn create_verifier(&self) -> Box<dyn SignatureVerifier> {
+        Box::new(SawtoothSecp256k1SignatureVerifier::new())
     }
 }
 
