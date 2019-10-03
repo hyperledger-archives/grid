@@ -12,29 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-.dashboard-container {
-  display: flex;
-  height: 100vh;
-  width: 100%;
-
-  .sidebar {
-    flex: 0 0 auto;
-  }
-
-  .dashboard-view {
-    flex: 1 1 auto;
-    overflow: hidden;
-  }
-
-  .loading-spinner {
-    align-self: flex-end;
-    margin: 0 1rem 1rem 0;
-    border-top-color: $color-text-primary;
-    visibility: hidden;
-    z-index: 10;
-
-    &.loading {
-      visibility: visible;
-    }
-  }
+export interface PageLoading {
+  pageLoading: boolean;
 }
+
+const pageLoading = {
+  pageLoading: false,
+
+};
+
+const getters = {
+  isPageLoading(state: PageLoading): boolean {
+    return state.pageLoading;
+  },
+};
+
+const mutations = {
+  setPageLoading(state: PageLoading, loading: boolean) {
+    state.pageLoading = loading;
+  },
+};
+
+export default {
+  namespaced: true,
+  name: 'pageLoading',
+  state: pageLoading,
+  getters,
+  mutations,
+};

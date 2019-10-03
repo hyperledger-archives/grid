@@ -64,6 +64,7 @@ limitations under the License.
       v-on:show-new-gameroom-modal="showNewGameroomModal()"
       class="sidebar" />
     <router-view v-on:error="setError" v-on:success="setSuccess" class="dashboard-view" />
+    <div class='spinner loading-spinner'  :class="[{'loading': loading}]"  ></div>
   </div>
 </template>
 
@@ -111,6 +112,10 @@ export default class Dashboard extends Vue {
       return true;
     }
     return false;
+  }
+
+  get loading() {
+    return this.$store.getters['pageLoading/isPageLoading'];
   }
 
   setError(message: string) {
