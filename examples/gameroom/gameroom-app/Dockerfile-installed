@@ -20,6 +20,7 @@ WORKDIR /app
 COPY examples/gameroom/gameroom-app/package*.json ./
 RUN npm install
 COPY examples/gameroom/gameroom-app/ .
+COPY /protos ./protos
 ARG VUE_APP_BRAND
 RUN npm run build-${VUE_APP_BRAND}
 COPY VERSION .
