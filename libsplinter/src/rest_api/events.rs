@@ -15,11 +15,10 @@
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Debug;
-use std::time::Duration;
 
 use actix::prelude::*;
 use actix_web_actors::ws::{self, CloseCode, CloseReason};
-use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+use futures::sync::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use serde::ser::Serialize;
 use serde_json;
 
@@ -35,7 +34,7 @@ pub struct EventDealer<
     T: Serialize + Debug + Clone + 'static,
     H: EventHistory<T> + Send + Sync + Default,
 > {
-    senders: Vec<Sender<MessageWrapper<T>>>,
+    senders: Vec<UnboundedSender<MessageWrapper<T>>>,
     history: H,
 }
 
@@ -63,7 +62,7 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
     pub fn dispatch(&mut self, msg: T) -> Result<(), EventHistoryError> {
         self.history.store(msg.clone())?;
         self.senders.retain(|sender| {
-            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
+            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
@@ -76,16 +75,19 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
 
     pub fn stop(&self) {
         self.senders.iter().for_each(|sender| {
-            if let Err(err) = sender.send(MessageWrapper::Shutdown) {
+            if let Err(err) = sender.unbounded_send(MessageWrapper::Shutdown) {
                 error!("Failed to shutdown webocket: {:?}", err);
             }
         });
     }
 
-    fn add_sender(&mut self, sender: Sender<MessageWrapper<T>>) -> Result<(), EventHistoryError> {
+    fn add_sender(
+        &mut self,
+        sender: UnboundedSender<MessageWrapper<T>>,
+    ) -> Result<(), EventHistoryError> {
         debug!("Catching up new connection");
         self.history.events()?.into_iter().for_each(|msg| {
-            if let Err(err) = sender.send(MessageWrapper::Message(msg.clone())) {
+            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
                 error!(
                     "Failed to send message to Websocket Message: {:?}, Error: {}",
                     msg, err
@@ -109,45 +111,48 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
 }
 
 struct EventDealerWebSocket<T: Serialize + Debug + 'static> {
-    recv: Receiver<MessageWrapper<T>>,
+    recv: Option<UnboundedReceiver<MessageWrapper<T>>>,
 }
 
 impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
-    fn new(recv: Receiver<MessageWrapper<T>>) -> Self {
-        Self { recv }
+    fn new(recv: UnboundedReceiver<MessageWrapper<T>>) -> Self {
+        Self { recv: Some(recv) }
     }
+}
 
-    fn push_updates(&self, recv: Receiver<MessageWrapper<T>>, ctx: &mut <Self as Actor>::Context) {
-        ctx.run_interval(Duration::from_secs(5), move |_, ctx| {
-            match recv.try_recv() {
-                Ok(MessageWrapper::Message(msg)) => {
-                    debug!("Received a message: {:?}", msg);
-                    match serde_json::to_string(&msg) {
-                        Ok(text) => ctx.text(text),
-                        Err(err) => {
-                            debug!("Failed to serialize payload: {:?}", err);
-                        }
+impl<T: Serialize + Debug + 'static> StreamHandler<MessageWrapper<T>, ()>
+    for EventDealerWebSocket<T>
+{
+    fn handle(&mut self, msg: MessageWrapper<T>, ctx: &mut Self::Context) {
+        match msg {
+            MessageWrapper::Message(msg) => {
+                debug!("Received a message: {:?}", msg);
+                match serde_json::to_string(&msg) {
+                    Ok(text) => ctx.text(text),
+                    Err(err) => {
+                        debug!("Failed to serialize payload: {:?}", err);
                     }
                 }
-                Ok(MessageWrapper::Shutdown) => {
-                    debug!("Shutting down websocket");
-                    ctx.close(Some(CloseReason {
-                        description: None,
-                        code: CloseCode::Away,
-                    }));
-                    ctx.stop()
-                }
-                Err(TryRecvError::Empty) => (),
-                Err(TryRecvError::Disconnected) => {
-                    debug!("Received channel disconnect");
-                    ctx.close(Some(CloseReason {
-                        description: Some("Unexpected disconnect from service".into()),
-                        code: CloseCode::Error,
-                    }));
-                    ctx.stop();
-                }
-            };
-        });
+            }
+            MessageWrapper::Shutdown => {
+                debug!("Shutting down websocket");
+                ctx.close(Some(CloseReason {
+                    description: None,
+                    code: CloseCode::Away,
+                }));
+                ctx.stop();
+            }
+        }
+    }
+
+    fn error(&mut self, _: (), ctx: &mut Self::Context) -> Running {
+        debug!("Received channel disconnect");
+        ctx.close(Some(CloseReason {
+            description: None,
+            code: CloseCode::Error,
+        }));
+
+        Running::Stop
     }
 }
 
@@ -155,9 +160,12 @@ impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
     type Context = ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        debug!("Starting Event Websocket");
-        let recv = self.recv.clone();
-        self.push_updates(recv, ctx)
+        if let Some(recv) = self.recv.take() {
+            debug!("Starting Event Websocket");
+            ctx.add_stream(recv);
+        } else {
+            warn!("Event dealer websocket was unexpectedly started twice; ignoring");
+        }
     }
 }
 
@@ -182,7 +190,7 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Message)]
 enum MessageWrapper<T: Serialize + Debug + 'static> {
     Message(T),
     Shutdown,
