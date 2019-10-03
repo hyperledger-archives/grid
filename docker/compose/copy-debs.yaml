@@ -34,17 +34,10 @@ services:
         cp /tmp/*.deb /build/debs
       "
 
+# ---==== examples ====---
+
   private_xo:
     image: private_xo:${ISOLATION_ID}
-    volumes:
-      - ../../build/debs:/build/debs
-    command: |
-      bash -c "
-        cp /tmp/*.deb /build/debs
-      "
-
-  gameroomd:
-    image: gameroomd:${ISOLATION_ID}
     volumes:
       - ../../build/debs:/build/debs
     command: |
@@ -68,4 +61,33 @@ services:
     command: |
       bash -c "
         cp /tmp/*.deb /build/debs
+      "
+
+# ---==== gameroom components ====---
+
+  gameroomd:
+    image: gameroomd:${ISOLATION_ID}
+    volumes:
+      - ../../build/debs:/build/debs
+    command: |
+      bash -c "
+        cp /tmp/*.deb /build/debs
+      "
+
+  gameroom-app-acme:
+    image: gameroom-app-acme:${ISOLATION_ID}
+    volumes:
+      - ../../build/html:/build/html
+    command: |
+      bash -c "
+        cp /tmp/*.tar.gz /build/html
+      "
+
+  gameroom-app-bubba:
+    image: gameroom-app-bubba:${ISOLATION_ID}
+    volumes:
+      - ../../build/html:/build/html
+    command: |
+      bash -c "
+        cp /tmp/*.tar.gz /build/html
       "

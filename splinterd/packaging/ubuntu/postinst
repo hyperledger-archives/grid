@@ -32,11 +32,15 @@ case "$1" in
 
         # Create some required directories and make sure permissions
         # are correct
+        mkdir /var/lib/splinter
+        chown root:$group /var/lib/splinter
+        chmod 775 /var/lib/splinter
         mkdir -p /etc/splinter/certs/private
         chown -R root:root /etc/splinter
         chmod 755 /etc/splinter
         chmod 640 /etc/splinter/*.toml*
         chmod 640 /etc/splinter/*.yaml*
+        chmod 660 /etc/splinter/nodes.yaml.example
         chown root:$group /etc/splinter/*.toml*
         chown root:$group /etc/splinter/*.yaml*
         chown -R root:$group /etc/splinter/certs

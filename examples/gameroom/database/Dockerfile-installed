@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ISOLATION_ID=latest
-DISTRO=bionic
-REPO_VERSION=0.3.3-dev
+FROM postgres:alpine
+
+COPY examples/gameroom/database/tables/gameroom_tables.sql \
+     /docker-entrypoint-initdb.d/

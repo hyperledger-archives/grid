@@ -52,7 +52,9 @@ COPY examples/private_counter/cli/src src
 RUN cargo install cargo-deb
 
 # Build the project
-RUN cargo deb
+ARG REPO_VERSION
+RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
+RUN cargo deb --deb-version $REPO_VERSION
 
 # -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic

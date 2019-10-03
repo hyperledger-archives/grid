@@ -29,6 +29,13 @@ case "$1" in
         if ! getent passwd $user >/dev/null; then
             adduser --quiet --system --ingroup $group $user
         fi
+
+        # Create some required directories and make sure permissions
+        # are correct
+        mkdir /var/lib/gameroomd
+        chown root:$group /var/lib/gameroomd/
+        chmod 775 /var/lib/gameroomd/
+
     else
         true
     fi

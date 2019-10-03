@@ -73,7 +73,9 @@ COPY splinterd/packaging/ ./packaging
 RUN cargo install cargo-deb
 
 # Build the package
-RUN cargo deb
+ARG REPO_VERSION
+RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
+RUN cargo deb --deb-version $REPO_VERSION
 
 # -------------=== splinterd docker build ===-------------
 
