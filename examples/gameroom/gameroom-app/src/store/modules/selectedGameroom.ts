@@ -31,8 +31,12 @@ const getters = {
 
 const actions = {
   async updateSelectedGameroom({ commit }: any, circuitID: string) {
-    const gameroom = await fetchGameroom(circuitID);
-    commit('setSelectedGameroom', gameroom);
+    try {
+      const gameroom = await fetchGameroom(circuitID);
+      commit('setSelectedGameroom', gameroom);
+    } catch (e) {
+      throw e;
+    }
   },
 };
 
