@@ -29,7 +29,7 @@ pub trait Signer {
 }
 
 // Verifies that the provided signature is valid for the message and public_key
-pub trait SignatureVerifier {
+pub trait SignatureVerifier: Send {
     fn verify(&self, message: &[u8], signature: &[u8], pk: &[u8]) -> Result<bool, Error>;
 }
 
