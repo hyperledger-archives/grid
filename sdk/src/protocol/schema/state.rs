@@ -109,6 +109,68 @@ impl FromNative<LatLong> for protos::schema_state::LatLong {
 impl IntoProto<protos::schema_state::LatLong> for LatLong {}
 impl IntoNative<LatLong> for protos::schema_state::LatLong {}
 
+#[derive(Debug)]
+pub enum LatLongBuildError {
+    InvalidLatitude(i64),
+    InvalidLongitude(i64),
+}
+
+impl StdError for LatLongBuildError {}
+
+impl std::fmt::Display for LatLongBuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            LatLongBuildError::InvalidLatitude(ref s) => write!(
+                f,
+                "Invalid latitude - must in the range of \
+                 -90000000 < lat < 90000000, but received: {}",
+                s
+            ),
+            LatLongBuildError::InvalidLongitude(ref s) => write!(
+                f,
+                "Invalid longitude - must in the range of \
+                 -180000000 < lat < 180000000, but received: {}",
+                s
+            ),
+        }
+    }
+}
+
+/// Builder used to create a LatLong
+#[derive(Default, Clone, PartialEq)]
+pub struct LatLongBuilder {
+    pub latitude: i64,
+    pub longitude: i64,
+}
+
+impl LatLongBuilder {
+    pub fn new() -> Self {
+        LatLongBuilder::default()
+    }
+
+    pub fn with_lat_long(mut self, latitude: i64, longitude: i64) -> LatLongBuilder {
+        self.latitude = latitude;
+        self.longitude = longitude;
+        self
+    }
+
+    pub fn build(self) -> Result<LatLong, LatLongBuildError> {
+        let latitude = self.latitude;
+        let longitude = self.longitude;
+
+        if latitude < -90_000_000 || latitude > 90_000_000 {
+            Err(LatLongBuildError::InvalidLatitude(latitude))
+        } else if longitude < -180_000_000 || longitude > 180_000_000 {
+            Err(LatLongBuildError::InvalidLongitude(longitude))
+        } else {
+            Ok(LatLong {
+                latitude,
+                longitude,
+            })
+        }
+    }
+}
+
 /// Native implementation of PropertyDefinition
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyDefinition {

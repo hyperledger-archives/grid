@@ -25,6 +25,7 @@ mod error;
 mod http;
 mod key;
 mod transaction;
+mod yaml_parser;
 
 use clap::ArgMatches;
 use grid_sdk::protocol::pike::{
@@ -38,7 +39,7 @@ use simple_logger;
 
 use crate::error::CliError;
 
-use actions::{agents, database, keygen, organizations as orgs, schemas};
+use actions::{agents, database, keygen, organizations as orgs, products, schemas};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -128,6 +129,30 @@ fn run() -> Result<(), CliError> {
            (@arg key_name: +takes_value "Name of the key to create")
            (@arg force: --force "Overwrite files if they exist")
            (@arg key_dir: -d --key_dir +takes_value "Specify the directory for the key files")
+        )
+        (@subcommand product =>
+            (about: "Create, update, or delete products")
+            (@setting SubcommandRequiredElseHelp)
+            (@subcommand create =>
+                (about: "Create products from a yaml file")
+                (@arg path: +takes_value +required "Path to yaml file containing a list of products")
+            )
+            (@subcommand update =>
+                (about: "Update products from a yaml file")
+                (@arg path: +takes_value +required "Path to yaml file containing a list of products")
+            )
+            (@subcommand delete =>
+                (about: "Delete a product")
+                (@arg product_id: +required +takes_value "Unique ID for a product")
+                (@arg product_type: +required +takes_value "Type of product (e.g. GS1")
+            )
+            (@subcommand list =>
+                (about: "List currently defined products")
+            )
+            (@subcommand show =>
+                (about: "Show product specified by ID argument")
+                (@arg product_id: +takes_value +required "ID of product")
+            )
         )
     )
     .get_matches();
@@ -230,6 +255,26 @@ fn run() -> Result<(), CliError> {
             m.is_present("force"),
             m.value_of("key_dir"),
         )?,
+        ("product", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) => {
+                products::do_create_products(&url, key, wait, m.value_of("path").unwrap())?
+            }
+            ("update", Some(m)) => {
+                products::do_update_products(&url, key, wait, m.value_of("path").unwrap())?
+            }
+            ("delete", Some(m)) => products::do_delete_products(
+                &url,
+                key,
+                wait,
+                m.value_of("product_id").unwrap(),
+                m.value_of("product_type").unwrap(),
+            )?,
+            ("list", Some(_)) => products::do_list_products(&url)?,
+            ("show", Some(m)) => {
+                products::do_show_products(&url, m.value_of("product_id").unwrap())?
+            }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
     }
 
