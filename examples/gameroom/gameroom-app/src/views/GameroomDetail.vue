@@ -96,7 +96,7 @@ limitations under the License.
          </div>
          <div class="placeholder-wrapper" v-else>
            <h3 class="tbl-placeholder"> {{ placeholderText }} </h3>
-           <div v-if="gameroom.status !== 'Active' || loadingGames || loadingGameroom" class="spinner-gameroom spinner" />
+           <div v-if="gameroom.status !== 'Active' || loadingGames" class="spinner-gameroom spinner" />
          </div>
        </div>
   </div>
@@ -111,7 +111,7 @@ import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
 import Modal from '@/components/Modal.vue';
 import GameCard from '@/components/GameCard.vue';
-
+import store from '@/store';
 
 @Component({
   components: { Modal, GameCard },
@@ -123,18 +123,30 @@ import GameCard from '@/components/GameCard.vue';
       displayModal = false;
       submitting = false;
       loadingGames = false;
-      loadingGameroom = false;
 
-      mounted() {
-        this.loadingGameroom = true;
-        this.setSelectedGameroom(this.$route.params.id);
-        this.listGames(this.$route.params.id);
+      beforeRouteEnter(to: any, from: any , next: any) {
+        setPageLoading(true);
+
+        store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
+            setPageLoading(false);
+            next({ name: 'not-found' });
+        }).then(() => {
+            setPageLoading(false);
+            next((vm: any) => vm.listGames(to.params.id));
+        });
       }
 
       beforeRouteUpdate(to: any, from: any , next: any) {
-        this.setSelectedGameroom(to.params.id);
-        this.listGames(to.params.id);
-        next();
+        setPageLoading(true);
+        store.commit('pageLoading/setPageLoading', true);
+        store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
+            setPageLoading(false);
+            next({ name: 'not-found' });
+        }).then(() => {
+            setPageLoading(false);
+            this.listGames(to.params.id);
+            next();
+        });
       }
 
       async listGames(circuitID: string) {
@@ -142,18 +154,6 @@ import GameCard from '@/components/GameCard.vue';
         await this.$store.dispatch('games/listGames', circuitID).then(() => {
           this.loadingGames = false;
         });
-      }
-
-      async setSelectedGameroom(circuitID: string) {
-        this.loadingGameroom = true;
-        await this.$store.dispatch('selectedGameroom/updateSelectedGameroom', circuitID).then(() => {
-          this.loadingGameroom = false;
-        });
-      }
-
-      beforeRouteLeave(to: any, from: any , next: any) {
-        this.$store.dispatch('selectedGameroom/updateSelectedGameroom', '');
-        next();
       }
 
       get gameroom(): Gameroom {
@@ -172,17 +172,15 @@ import GameCard from '@/components/GameCard.vue';
       }
 
       get placeholderText(): string {
-       if (this.loadingGameroom) {
-         return 'Loading gameroom information...';
-       } else if (this.gameroom.status === 'Active') {
+        if (this.gameroom.status === 'Active') {
          if (this.loadingGames) {
            return 'Loading games...';
          } else {
            return 'No games to show.';
          }
-       } else {
+        } else {
          return 'Please wait while your gameroom finishes setting up.';
-       }
+        }
      }
 
      get canSubmitNewGame() {
@@ -260,6 +258,10 @@ import GameCard from '@/components/GameCard.vue';
     }
 
   }
+
+function setPageLoading(loading: boolean) {
+  store.commit('pageLoading/setPageLoading', loading);
+}
 
 </script>
 
