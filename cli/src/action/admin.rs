@@ -28,7 +28,7 @@ use std::os::unix::fs::MetadataExt;
 
 use clap::ArgMatches;
 use libc;
-use libsplinter::keys::{storage::StorageKeyRegistry, KeyInfo, KeyRegistry};
+use splinter::keys::{storage::StorageKeyRegistry, KeyInfo, KeyRegistry};
 use sawtooth_sdk::signing;
 use serde::{Deserialize, Serialize};
 

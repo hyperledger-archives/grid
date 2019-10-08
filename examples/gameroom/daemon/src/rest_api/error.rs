@@ -18,7 +18,7 @@ use std::error::Error;
 use std::fmt;
 
 use gameroom_database::DatabaseError;
-use libsplinter::admin::error::MarshallingError;
+use splinter::admin::error::MarshallingError;
 use protobuf::error::ProtobufError;
 
 #[derive(Debug)]

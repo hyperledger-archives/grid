@@ -1,6 +1,6 @@
-use libsplinter::protos::network::NetworkMessage;
-use libsplinter::transport::tls::TlsConnection;
-use libsplinter::transport::Connection;
+use splinter::protos::network::NetworkMessage;
+use splinter::transport::tls::TlsConnection;
+use splinter::transport::Connection;
 use openssl::ssl::{SslConnector, SslFiletype, SslMethod};
 use protobuf;
 use url;

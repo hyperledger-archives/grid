@@ -19,7 +19,7 @@ sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
 
 [package]
-name = "libsplinter"
+name = "splinter"
 version = "0.3.5"
 authors = ["Cargill Incorporated"]
 edition = "2018"

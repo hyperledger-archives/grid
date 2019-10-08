@@ -18,7 +18,7 @@
 //!
 //!```
 //! use std::{thread::sleep, time};
-//! use libsplinter::events::{WsResponse, WebSocketClient, Reactor, ParseBytes};
+//! use splinter::events::{WsResponse, WebSocketClient, Reactor, ParseBytes};
 //!
 //! let reactor = Reactor::new();
 //!

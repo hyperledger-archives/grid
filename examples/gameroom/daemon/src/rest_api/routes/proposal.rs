@@ -22,9 +22,9 @@ use gameroom_database::{
     models::{GameroomMember, GameroomProposal},
     ConnectionPool,
 };
-use libsplinter::admin::messages::CircuitProposalVote;
-use libsplinter::node_registry::Node;
-use libsplinter::protos::admin::{
+use splinter::admin::messages::CircuitProposalVote;
+use splinter::node_registry::Node;
+use splinter::protos::admin::{
     CircuitManagementPayload, CircuitManagementPayload_Action as Action,
     CircuitManagementPayload_Header as Header,
 };

@@ -53,7 +53,7 @@ impl KeyInfo {
     /// Build a key info
     ///
     /// ```
-    /// # use libsplinter::keys::KeyInfo;
+    /// # use splinter::keys::KeyInfo;
     ///
     /// let key = KeyInfo::builder(b"some pub key".to_vec(), "my node".into())
     ///     .with_metadata("username", "Alice")

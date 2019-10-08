@@ -23,7 +23,7 @@ use gameroom_database::{
     models::{NewXoGame, XoGame},
     ConnectionPool,
 };
-use libsplinter::service::scabbard::StateChangeEvent;
+use splinter::service::scabbard::StateChangeEvent;
 
 use crate::authorization_handler::sabre::{get_xo_contract_address, XO_PREFIX};
 

@@ -33,7 +33,7 @@ tokio = "0.1"
 gameroom-database = { path = "../database" }
 log = "0.4"
 flexi_logger = "0.14"
-libsplinter = { path = "../../../libsplinter", features = ["events"]}
+splinter = { path = "../../../libsplinter", features = ["events"]}
 futures = "0.1"
 rust-crypto = "0.2"
 sabre-sdk = "0.4"

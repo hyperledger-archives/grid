@@ -14,7 +14,7 @@
 
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
-use libsplinter::node_registry::Node;
+use splinter::node_registry::Node;
 use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
 

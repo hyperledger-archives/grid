@@ -19,7 +19,7 @@ use std::error::Error;
 use std::fmt;
 
 use futures::future;
-use libsplinter::events;
+use splinter::events;
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuildError, CreateContractRegistryActionBuildError,
     CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,

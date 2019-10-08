@@ -13,9 +13,9 @@
 // limitations under the License.
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
-use libsplinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use libsplinter::futures::{future::IntoFuture, Future};
-use libsplinter::{
+use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use splinter::futures::{future::IntoFuture, Future};
+use splinter::{
     node_registry::{error::NodeRegistryError, Node, NodeRegistry},
     rest_api::{Method, Resource, RestResourceProvider},
 };
@@ -213,14 +213,14 @@ fn query_list_nodes(
 mod tests {
     use super::*;
     use crate::node_registry::yaml::YamlNodeRegistry;
-    use libsplinter::node_registry::Node;
+    use splinter::node_registry::Node;
     use std::collections::HashMap;
     use std::env;
     use std::fs::{remove_file, File};
     use std::panic;
     use std::thread;
 
-    use libsplinter::actix_web::{
+    use splinter::actix_web::{
         http::{header, StatusCode},
         test, web, App,
     };

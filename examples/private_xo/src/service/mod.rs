@@ -25,20 +25,20 @@ use std::time::Duration;
 use crossbeam_channel;
 use protobuf::Message;
 
-use libsplinter::consensus::{ConsensusMessage, Proposal, ProposalUpdate};
-use libsplinter::network::{
+use splinter::consensus::{ConsensusMessage, Proposal, ProposalUpdate};
+use splinter::network::{
     sender::{NetworkMessageSender, SendRequest},
     Network, RecvTimeoutError,
 };
-use libsplinter::protos::authorization::{
+use splinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
     ConnectResponse, ConnectResponse_AuthorizationType, TrustRequest,
 };
-use libsplinter::protos::circuit::{
+use splinter::protos::circuit::{
     CircuitDirectMessage, CircuitMessage, CircuitMessageType, ServiceConnectRequest,
     ServiceConnectResponse, ServiceConnectResponse_Status, ServiceDisconnectRequest,
 };
-use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
+use splinter::protos::network::{NetworkMessage, NetworkMessageType};
 use transact::protos::batch::Batch;
 
 use crate::protos::private_xo::{PrivateXoMessage, PrivateXoMessage_Type};

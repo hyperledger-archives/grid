@@ -23,7 +23,7 @@ use actix_web::{
 };
 use futures::future::Future;
 use gameroom_database::ConnectionPool;
-use libsplinter::node_registry::Node;
+use splinter::node_registry::Node;
 
 pub use error::{RestApiResponseError, RestApiServerError};
 use routes::ErrorResponse;
