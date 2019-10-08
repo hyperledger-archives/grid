@@ -120,10 +120,10 @@ impl ProductTransactionHandler {
             )));
         }
 
-        // Check if the product type is a GS1 product
+        // Check if the product namespace is a GS1 product
         if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 
@@ -217,10 +217,10 @@ impl ProductTransactionHandler {
             )));
         }
 
-        // Check if the product type is a GS1 product
+        // Check if the product namespace is a GS1 product
         if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 
@@ -286,10 +286,10 @@ impl ProductTransactionHandler {
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_delete_product")?;
 
-        // Check if the product type is a GS1 product
+        // Check if the product namespace is a GS1 product
         if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 

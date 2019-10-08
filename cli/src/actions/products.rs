@@ -71,7 +71,7 @@ pub struct LatLong {
  */
 pub fn display_product(product: &GridProduct) {
     println!(
-        "Product Id: {:?}\n Product Type: {:?}\n Owner: {:?}\n Properties:",
+        "Product Id: {:?}\n product namespace: {:?}\n Owner: {:?}\n Properties:",
         product.product_id, product.product_namespace, product.owner,
     );
     display_product_property_definitions(&product.properties);
