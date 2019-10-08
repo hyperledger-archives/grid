@@ -29,8 +29,8 @@ use crate::error::CliError;
 use serde::Deserialize;
 
 use crate::yaml_parser::{
-    parse_value_as_product_namespace, parse_value_as_repeated_property_values, parse_value_as_sequence,
-    parse_value_as_string,
+    parse_value_as_product_namespace, parse_value_as_repeated_property_values,
+    parse_value_as_sequence, parse_value_as_string,
 };
 
 use sawtooth_sdk::messages::batch::BatchList;

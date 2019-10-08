@@ -449,7 +449,10 @@ mod tests {
 
         // Test product 1
         assert_eq!(product_list.products[0].product_id(), "688955434684");
-        assert_eq!(*product_list.products[0].product_namespace(), ProductType::GS1);
+        assert_eq!(
+            *product_list.products[0].product_namespace(),
+            ProductType::GS1
+        );
         assert_eq!(product_list.products[0].owner(), "Target");
         assert_eq!(
             product_list.products[0].properties()[0].name(),
@@ -472,7 +475,10 @@ mod tests {
 
         // Test product 2
         assert_eq!(product_list.products[1].product_id(), "688955434685");
-        assert_eq!(*product_list.products[1].product_namespace(), ProductType::GS1);
+        assert_eq!(
+            *product_list.products[1].product_namespace(),
+            ProductType::GS1
+        );
         assert_eq!(product_list.products[1].owner(), "Cargill");
         assert_eq!(
             product_list.products[1].properties()[0].name(),
