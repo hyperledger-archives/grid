@@ -78,7 +78,7 @@ mod tests {
         let mut action = ProductCreateActionProto::new();
         action.set_product_id("688955434684".to_string());
         action.set_owner("my_owner".to_string());
-        action.set_product_type(Product_ProductType::GS1);
+        action.set_product_namespace(Product_ProductType::GS1);
         payload_proto.set_product_create(action);
         let payload = payload_proto.clone().into_native().unwrap();
         assert!(
@@ -98,7 +98,7 @@ mod tests {
         payload_proto.set_action(ActionProto::PRODUCT_CREATE);
         payload_proto.set_timestamp(2);
         let mut action = ProductCreateActionProto::new();
-        action.set_product_type(Product_ProductType::GS1);
+        action.set_product_namespace(Product_ProductType::GS1);
         payload_proto.set_product_create(action.clone());
         let payload = payload_proto.clone().into_native().unwrap();
         match validate_payload(&payload) {
@@ -122,7 +122,7 @@ mod tests {
         payload_proto.set_action(ActionProto::PRODUCT_CREATE);
         payload_proto.set_timestamp(2);
         let mut action = ProductCreateActionProto::new();
-        action.set_product_type(Product_ProductType::GS1);
+        action.set_product_namespace(Product_ProductType::GS1);
         action.set_product_id("688955434684".to_string());
         payload_proto.set_product_create(action.clone());
         let payload = payload_proto.clone().into_native().unwrap();

@@ -26,12 +26,12 @@ message Product {
   string product_id = 1;
 
   // What type of product is this (GS1)
-  ProductType product_type = 2;
+  ProductType product_namespace = 2;
 
   // Who owns this product (pike organization id)
   string owner = 3;
 
-  // Addition attributes for custom configurations 
+  // Addition attributes for custom configurations
   repeated PropertyValue properties = 4;
 }
 

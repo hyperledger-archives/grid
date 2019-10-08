@@ -29,7 +29,7 @@ use crate::error::CliError;
 use serde::Deserialize;
 
 use crate::yaml_parser::{
-    parse_value_as_product_type, parse_value_as_repeated_property_values, parse_value_as_sequence,
+    parse_value_as_product_namespace, parse_value_as_repeated_property_values, parse_value_as_sequence,
     parse_value_as_string,
 };
 
@@ -182,11 +182,11 @@ pub fn do_delete_products(
     key: Option<String>,
     wait: u64,
     product_id: &str,
-    product_type: &str,
+    product_namespace: &str,
 ) -> Result<(), CliError> {
-    let parsed_product_type = parse_value_as_product_type(product_type)?;
+    let parsed_product_namespace = parse_value_as_product_namespace(product_namespace)?;
     let payloads = vec![generate_delete_product_payload(
-        parsed_product_type,
+        parsed_product_namespace,
         product_id,
     )?];
     let batch_list = build_batches_from_payloads(payloads, key)?;
@@ -240,10 +240,10 @@ fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>,
                         )
                     })?;
 
-                let product_type = parse_value_as_product_type(
-                    &parse_value_as_string(product_yaml, "product_type")?.ok_or_else(|| {
+                let product_namespace = parse_value_as_product_namespace(
+                    &parse_value_as_string(product_yaml, "product_namespace")?.ok_or_else(|| {
                         CliError::InvalidYamlError(
-                            "Missing `product_type` field for property definition.".to_string(),
+                            "Missing `product_namespace` field for property definition.".to_string(),
                         )
                     })?,
                 )?;
@@ -261,7 +261,7 @@ fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>,
 
                 let property_values = parse_value_as_repeated_property_values(&properties)?;
 
-                generate_create_product_payload(product_type, &product_id, &owner, &property_values)
+                generate_create_product_payload(product_namespace, &product_id, &owner, &property_values)
             })
             .collect::<Result<Vec<ProductPayload>, _>>(),
         Action::ProductUpdate(_) => products_yaml
@@ -274,10 +274,10 @@ fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>,
                         )
                     })?;
 
-                let product_type = parse_value_as_product_type(
-                    &parse_value_as_string(product_yaml, "product_type")?.ok_or_else(|| {
+                let product_namespace = parse_value_as_product_namespace(
+                    &parse_value_as_string(product_yaml, "product_namespace")?.ok_or_else(|| {
                         CliError::InvalidYamlError(
-                            "Missing `product_type` field for property definition.".to_string(),
+                            "Missing `product_namespace` field for property definition.".to_string(),
                         )
                     })?,
                 )?;
@@ -291,7 +291,7 @@ fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>,
 
                 let property_values = parse_value_as_repeated_property_values(&properties)?;
 
-                generate_update_product_payload(product_type, &product_id, &property_values)
+                generate_update_product_payload(product_namespace, &product_id, &property_values)
             })
             .collect::<Result<Vec<ProductPayload>, _>>(),
         Action::ProductDelete(_) => Err(CliError::UserError("To delete a product pass the arguments to the command line directly rather than using a Yaml file.".to_string()))
@@ -301,13 +301,13 @@ fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>,
 /**
  * Generate the payload needed to create a new product
  *
- * product_type - e.g. GS1
+ * product_namespace - e.g. GS1
  * product_id - e.g. GTIN
  * owner - Identifier of the organization responsible for maintaining the product
  * properties - One or more property values
  */
 fn generate_create_product_payload(
-    product_type: ProductType,
+    product_namespace: ProductType,
     product_id: &str,
     owner: &str,
     properties: &[PropertyValue],
@@ -316,7 +316,7 @@ fn generate_create_product_payload(
 
     let product_create_action_builder = ProductCreateActionBuilder::new()
         .with_product_id(product_id.to_string())
-        .with_product_type(product_type)
+        .with_product_namespace(product_namespace)
         .with_owner(owner.to_string())
         .with_properties(properties.to_vec());
 
@@ -344,12 +344,12 @@ fn generate_create_product_payload(
 /**
  * Generate the payload needed to update an existing product
  *
- * product_type - e.g. GS1
+ * product_namespace - e.g. GS1
  * product_id - e.g. GTIN
  * properties - One or more property values
  */
 fn generate_update_product_payload(
-    product_type: ProductType,
+    product_namespace: ProductType,
     product_id: &str,
     properties: &[PropertyValue],
 ) -> Result<ProductPayload, CliError> {
@@ -357,7 +357,7 @@ fn generate_update_product_payload(
 
     let product_update_action_builder = ProductUpdateActionBuilder::new()
         .with_product_id(product_id.to_string())
-        .with_product_type(product_type)
+        .with_product_namespace(product_namespace)
         .with_properties(properties.to_vec());
 
     let product_update_action = product_update_action_builder.build().map_err(|err| {
@@ -386,18 +386,18 @@ fn generate_update_product_payload(
 /**
  * Generate the payload needed to delete an existing product
  *
- * product_type - e.g. GS1
+ * product_namespace - e.g. GS1
  * product_id - e.g. GTIN
  */
 fn generate_delete_product_payload(
-    product_type: ProductType,
+    product_namespace: ProductType,
     product_id: &str,
 ) -> Result<ProductPayload, CliError> {
     let product_payload = ProductPayloadBuilder::new();
 
     let product_delete_action_builder = ProductDeleteActionBuilder::new()
         .with_product_id(product_id.to_string())
-        .with_product_type(product_type);
+        .with_product_namespace(product_namespace);
 
     let product_delete_action = product_delete_action_builder.build().map_err(|err| {
         CliError::PayloadError(format!("Failed to build product delete payload: {}", err))
@@ -439,7 +439,7 @@ mod test {
     use std::io::Write;
     use std::{env, panic, thread};
 
-    static EXAMPLE_PRODUCT_YAML: &[u8; 288] = br##"- product_type: "GS1"
+    static EXAMPLE_PRODUCT_YAML: &[u8; 288] = br##"- product_namespace: "GS1"
   product_id: "723382885088"
   owner: "314156"
   properties:

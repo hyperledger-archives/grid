@@ -409,7 +409,7 @@ fn state_change_to_db_operation(
                         let new_product = NewProduct {
                             product_id: product.product_id().to_string(),
                             product_address: state_change.address.to_string(),
-                            product_namespace: format!("{:?}", product.product_type()),
+                            product_namespace: format!("{:?}", product.product_namespace()),
                             owner: product.owner().to_string(),
                             start_block_num: block_num,
                             end_block_num: db::MAX_BLOCK_NUM,

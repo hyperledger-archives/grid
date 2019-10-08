@@ -262,14 +262,14 @@ pub fn parse_value_as_vec_string(
 /**
  * Given a yaml object, parse it as a Product ProductType
  *
- * product_type - Yaml object we wish to parse in as a Product ProductType
+ * product_namespace - Yaml object we wish to parse in as a Product ProductType
  */
-pub fn parse_value_as_product_type(product_type: &str) -> Result<ProductType, CliError> {
-    match product_type.to_uppercase().as_ref() {
+pub fn parse_value_as_product_namespace(product_namespace: &str) -> Result<ProductType, CliError> {
+    match product_namespace.to_uppercase().as_ref() {
         "GS1" => Ok(ProductType::GS1),
         _ => Err(CliError::InvalidYamlError(format!(
-            "Invalid product_type for value: {}",
-            product_type
+            "Invalid product_namespace for value: {}",
+            product_namespace
         ))),
     }
 }
@@ -652,12 +652,12 @@ mod test {
     }
 
     /*
-     * Verifies parse_value_as_product_type can parse Values as PropertyType for valid inputs
+     * Verifies parse_value_as_product_namespace can parse Values as PropertyType for valid inputs
      */
     #[test]
-    fn test_parse_value_as_product_type() {
+    fn test_parse_value_as_product_namespace() {
         assert_eq!(
-            parse_value_as_product_type("GS1").unwrap(),
+            parse_value_as_product_namespace("GS1").unwrap(),
             ProductType::GS1
         );
     }

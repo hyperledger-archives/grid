@@ -37,24 +37,23 @@ message ProductPayload {
 }
 
 message ProductCreateAction {
-    // product_type and product_id are used in deriving the state address
-    Product.ProductType product_type = 1;
+    // product_namespace and product_id are used in deriving the state address
+    Product.ProductType product_namespace = 1;
     string product_id = 2;
     string owner = 3;
     repeated PropertyValue properties = 4;
 }
 
 message ProductUpdateAction {
-    // product_type and product_id are used in deriving the state address
-    Product.ProductType product_type = 1;
+    // product_namespace and product_id are used in deriving the state address
+    Product.ProductType product_namespace = 1;
     string product_id = 2;
     // this will replace all properties currently defined
     repeated PropertyValue properties = 3;
 }
 
 message ProductDeleteAction {
-    // product_type and product_id are used in deriving the state address
-    Product.ProductType product_type = 1;
+    // product_namespace and product_id are used in deriving the state address
+    Product.ProductType product_namespace = 1;
     string product_id = 2;
  }
- 

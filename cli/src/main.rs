@@ -144,7 +144,7 @@ fn run() -> Result<(), CliError> {
             (@subcommand delete =>
                 (about: "Delete a product")
                 (@arg product_id: +required +takes_value "Unique ID for a product")
-                (@arg product_type: +required +takes_value "Type of product (e.g. GS1")
+                (@arg product_namespace: +required +takes_value "Type of product (e.g. GS1")
             )
             (@subcommand list =>
                 (about: "List currently defined products")
@@ -267,7 +267,7 @@ fn run() -> Result<(), CliError> {
                 key,
                 wait,
                 m.value_of("product_id").unwrap(),
-                m.value_of("product_type").unwrap(),
+                m.value_of("product_namespace").unwrap(),
             )?,
             ("list", Some(_)) => products::do_list_products(&url)?,
             ("show", Some(m)) => {

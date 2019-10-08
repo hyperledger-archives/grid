@@ -354,7 +354,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner("some_owner".to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build new_product")

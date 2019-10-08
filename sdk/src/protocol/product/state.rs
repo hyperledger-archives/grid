@@ -39,9 +39,9 @@ impl Default for ProductType {
 
 impl FromProto<protos::product_state::Product_ProductType> for ProductType {
     fn from_proto(
-        product_type: protos::product_state::Product_ProductType,
+        product_namespace: protos::product_state::Product_ProductType,
     ) -> Result<Self, ProtoConversionError> {
-        match product_type {
+        match product_namespace {
             protos::product_state::Product_ProductType::GS1 => Ok(ProductType::GS1),
             protos::product_state::Product_ProductType::UNSET_TYPE => {
                 Err(ProtoConversionError::InvalidTypeError(
@@ -53,8 +53,8 @@ impl FromProto<protos::product_state::Product_ProductType> for ProductType {
 }
 
 impl FromNative<ProductType> for protos::product_state::Product_ProductType {
-    fn from_native(product_type: ProductType) -> Result<Self, ProtoConversionError> {
-        match product_type {
+    fn from_native(product_namespace: ProductType) -> Result<Self, ProtoConversionError> {
+        match product_namespace {
             ProductType::GS1 => Ok(protos::product_state::Product_ProductType::GS1),
         }
     }
@@ -67,7 +67,7 @@ impl IntoNative<ProductType> for protos::product_state::Product_ProductType {}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Product {
     product_id: String,
-    product_type: ProductType,
+    product_namespace: ProductType,
     owner: String,
     properties: Vec<PropertyValue>,
 }
@@ -77,8 +77,8 @@ impl Product {
         &self.product_id
     }
 
-    pub fn product_type(&self) -> &ProductType {
-        &self.product_type
+    pub fn product_namespace(&self) -> &ProductType {
+        &self.product_namespace
     }
 
     pub fn owner(&self) -> &str {
@@ -92,7 +92,7 @@ impl Product {
     pub fn into_builder(self) -> ProductBuilder {
         ProductBuilder::new()
             .with_product_id(self.product_id)
-            .with_product_type(self.product_type)
+            .with_product_namespace(self.product_namespace)
             .with_owner(self.owner)
             .with_properties(self.properties)
     }
@@ -102,7 +102,7 @@ impl FromProto<protos::product_state::Product> for Product {
     fn from_proto(product: protos::product_state::Product) -> Result<Self, ProtoConversionError> {
         Ok(Product {
             product_id: product.get_product_id().to_string(),
-            product_type: ProductType::from_proto(product.get_product_type())?,
+            product_namespace: ProductType::from_proto(product.get_product_namespace())?,
             owner: product.get_owner().to_string(),
             properties: product
                 .get_properties()
@@ -118,7 +118,7 @@ impl FromNative<Product> for protos::product_state::Product {
     fn from_native(product: Product) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::product_state::Product::new();
         proto.set_product_id(product.product_id().to_string());
-        proto.set_product_type(product.product_type().clone().into_proto()?);
+        proto.set_product_namespace(product.product_namespace().clone().into_proto()?);
         proto.set_owner(product.owner().to_string());
         proto.set_properties(RepeatedField::from_vec(
             product
@@ -192,7 +192,7 @@ impl std::fmt::Display for ProductBuildError {
 #[derive(Default, Clone, PartialEq)]
 pub struct ProductBuilder {
     pub product_id: Option<String>,
-    pub product_type: Option<ProductType>,
+    pub product_namespace: Option<ProductType>,
     pub owner: Option<String>,
     pub properties: Option<Vec<PropertyValue>>,
 }
@@ -207,8 +207,8 @@ impl ProductBuilder {
         self
     }
 
-    pub fn with_product_type(mut self, product_type: ProductType) -> Self {
-        self.product_type = Some(product_type);
+    pub fn with_product_namespace(mut self, product_namespace: ProductType) -> Self {
+        self.product_namespace = Some(product_namespace);
         self
     }
 
@@ -227,8 +227,8 @@ impl ProductBuilder {
             ProductBuildError::MissingField("'product_id' field is required".to_string())
         })?;
 
-        let product_type = self.product_type.ok_or_else(|| {
-            ProductBuildError::MissingField("'product_type' field is required".to_string())
+        let product_namespace = self.product_namespace.ok_or_else(|| {
+            ProductBuildError::MissingField("'product_namespace' field is required".to_string())
         })?;
 
         let owner = self.owner.ok_or_else(|| {
@@ -242,7 +242,7 @@ impl ProductBuilder {
 
         Ok(Product {
             product_id,
-            product_type,
+            product_namespace,
             owner,
             properties,
         })
@@ -399,7 +399,7 @@ mod tests {
         let product = build_product();
 
         assert_eq!(product.product_id(), "688955434684");
-        assert_eq!(*product.product_type(), ProductType::GS1);
+        assert_eq!(*product.product_namespace(), ProductType::GS1);
         assert_eq!(product.owner(), "Target");
         assert_eq!(product.properties()[0].name(), "description");
         assert_eq!(*product.properties()[0].data_type(), DataType::String);
@@ -420,7 +420,7 @@ mod tests {
         let builder = product.into_builder();
 
         assert_eq!(builder.product_id, Some("688955434684".to_string()));
-        assert_eq!(builder.product_type, Some(ProductType::GS1));
+        assert_eq!(builder.product_namespace, Some(ProductType::GS1));
         assert_eq!(builder.owner, Some("Target".to_string()));
         assert_eq!(builder.properties, Some(make_properties()));
     }
@@ -431,7 +431,7 @@ mod tests {
         let builder = ProductBuilder::new();
         let original = builder
             .with_product_id("688955434684".into())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -449,7 +449,7 @@ mod tests {
 
         // Test product 1
         assert_eq!(product_list.products[0].product_id(), "688955434684");
-        assert_eq!(*product_list.products[0].product_type(), ProductType::GS1);
+        assert_eq!(*product_list.products[0].product_namespace(), ProductType::GS1);
         assert_eq!(product_list.products[0].owner(), "Target");
         assert_eq!(
             product_list.products[0].properties()[0].name(),
@@ -472,7 +472,7 @@ mod tests {
 
         // Test product 2
         assert_eq!(product_list.products[1].product_id(), "688955434685");
-        assert_eq!(*product_list.products[1].product_type(), ProductType::GS1);
+        assert_eq!(*product_list.products[1].product_namespace(), ProductType::GS1);
         assert_eq!(product_list.products[1].owner(), "Cargill");
         assert_eq!(
             product_list.products[1].properties()[0].name(),
@@ -516,7 +516,7 @@ mod tests {
     fn build_product() -> Product {
         ProductBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -554,14 +554,14 @@ mod tests {
         vec![
             ProductBuilder::new()
                 .with_product_id("688955434684".into()) // GTIN-12
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductType::GS1)
                 .with_owner("Target".into())
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build test product"),
             ProductBuilder::new()
                 .with_product_id("688955434685".into()) // GTIN-12
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductType::GS1)
                 .with_owner("Cargill".into())
                 .with_properties(make_properties())
                 .build()

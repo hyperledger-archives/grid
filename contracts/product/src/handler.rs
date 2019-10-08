@@ -87,7 +87,7 @@ impl ProductTransactionHandler {
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
         let owner = payload.owner();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
         // Check that the agent submitting the transactions exists in state
@@ -121,7 +121,7 @@ impl ProductTransactionHandler {
         }
 
         // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
@@ -172,7 +172,7 @@ impl ProductTransactionHandler {
         let new_product = ProductBuilder::new()
             .with_product_id(product_id.to_string())
             .with_owner(owner.to_string())
-            .with_product_type(product_type.clone())
+            .with_product_namespace(product_namespace.clone())
             .with_properties(properties.to_vec())
             .build()
             .map_err(|err| {
@@ -192,7 +192,7 @@ impl ProductTransactionHandler {
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
         // Check that the agent submitting the transactions exists in state
@@ -218,7 +218,7 @@ impl ProductTransactionHandler {
         }
 
         // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
@@ -250,7 +250,7 @@ impl ProductTransactionHandler {
         let updated_product = ProductBuilder::new()
             .with_product_id(product_id.to_string())
             .with_owner(product.owner().to_string())
-            .with_product_type(product_type.clone())
+            .with_product_namespace(product_namespace.clone())
             .with_properties(properties.to_vec())
             .build()
             .map_err(|err| {
@@ -270,7 +270,7 @@ impl ProductTransactionHandler {
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
 
         // Check that the agent submitting the transactions exists in state
         let agent = match state.get_agent(signer)? {
@@ -287,7 +287,7 @@ impl ProductTransactionHandler {
         check_permission(perm_checker, signer, "can_delete_product")?;
 
         // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        if product_namespace != &ProductType::GS1 {
             return Err(ApplyError::InvalidTransaction(
                 "Invalid product type enum for product".to_string(),
             ));
@@ -972,7 +972,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build new_product")
@@ -983,14 +983,14 @@ mod tests {
             ProductBuilder::new()
                 .with_product_id(product_ids[0].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductType::GS1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
             ProductBuilder::new()
                 .with_product_id(product_ids[1].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductType::GS1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
@@ -1001,7 +1001,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build new_product")
@@ -1051,7 +1051,7 @@ mod tests {
         ProductCreateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build ProductCreateAction")
@@ -1060,7 +1060,7 @@ mod tests {
     fn make_product_update_action() -> ProductUpdateAction {
         ProductUpdateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build ProductUpdateAction")
@@ -1069,7 +1069,7 @@ mod tests {
     fn make_product_delete_action(product_id: &str) -> ProductDeleteAction {
         ProductDeleteActionBuilder::new()
             .with_product_id(product_id.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductType::GS1)
             .build()
             .expect("Failed to build ProductDeleteAction")
     }
