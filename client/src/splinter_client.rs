@@ -1,8 +1,8 @@
+use openssl::ssl::{SslConnector, SslFiletype, SslMethod};
+use protobuf;
 use splinter::protos::network::NetworkMessage;
 use splinter::transport::tls::TlsConnection;
 use splinter::transport::Connection;
-use openssl::ssl::{SslConnector, SslFiletype, SslMethod};
-use protobuf;
 use url;
 
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};

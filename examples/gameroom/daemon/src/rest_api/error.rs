@@ -18,8 +18,8 @@ use std::error::Error;
 use std::fmt;
 
 use gameroom_database::DatabaseError;
-use splinter::admin::error::MarshallingError;
 use protobuf::error::ProtobufError;
+use splinter::admin::error::MarshallingError;
 
 #[derive(Debug)]
 pub enum RestApiServerError {

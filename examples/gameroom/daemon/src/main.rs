@@ -29,8 +29,8 @@ mod rest_api;
 
 use flexi_logger::{LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
-use splinter::events::Reactor;
 use sawtooth_sdk::signing::create_context;
+use splinter::events::Reactor;
 
 use crate::config::{get_node, GameroomConfigBuilder};
 use crate::error::GameroomDaemonError;

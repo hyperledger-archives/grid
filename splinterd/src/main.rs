@@ -34,10 +34,10 @@ use crate::config::{Config, ConfigError};
 use crate::config::{ConfigBuilder, TomlConfig};
 use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
+use openssl::error::ErrorStack;
 use splinter::transport::raw::RawTransport;
 use splinter::transport::tls::{TlsInitError, TlsTransport};
 use splinter::transport::Transport;
-use openssl::error::ErrorStack;
 use tempdir::TempDir;
 
 use std::env;

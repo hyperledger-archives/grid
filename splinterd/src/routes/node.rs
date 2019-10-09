@@ -13,13 +13,13 @@
 // limitations under the License.
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
+use percent_encoding::utf8_percent_encode;
 use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use splinter::futures::{future::IntoFuture, Future};
 use splinter::{
     node_registry::{error::NodeRegistryError, Node, NodeRegistry},
     rest_api::{Method, Resource, RestResourceProvider},
 };
-use percent_encoding::utf8_percent_encode;
 use std::collections::HashMap;
 
 type Filter = HashMap<String, (String, String)>;

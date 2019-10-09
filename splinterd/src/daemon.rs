@@ -36,9 +36,7 @@ use splinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
 use splinter::network::handlers::NetworkEchoHandler;
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
-use splinter::network::{
-    ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
-};
+use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
 use splinter::node_registry::NodeRegistry;
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;

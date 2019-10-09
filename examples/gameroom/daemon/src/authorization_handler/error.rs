@@ -19,7 +19,6 @@ use std::error::Error;
 use std::fmt;
 
 use futures::future;
-use splinter::events;
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuildError, CreateContractRegistryActionBuildError,
     CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
@@ -27,6 +26,7 @@ use sabre_sdk::protocol::payload::{
 };
 use sabre_sdk::protos::ProtoConversionError as SabreProtoConversionError;
 use sawtooth_sdk::signing::Error as SigningError;
+use splinter::events;
 
 use crate::application_metadata::ApplicationMetadataError;
 
