@@ -12,15 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::error::Error;
-use std::fmt;
+#[cfg(feature = "config-builder")]
+mod builder;
+mod error;
+#[cfg(feature = "config-toml")]
+mod toml;
+
+#[cfg(feature = "config-toml")]
+pub use crate::config::toml::TomlConfig;
+#[cfg(feature = "config-builder")]
+pub use builder::ConfigBuilder;
+pub use error::ConfigError;
+
+#[cfg(not(feature = "config-toml"))]
 use std::fs::File;
-use std::io;
+#[cfg(not(feature = "config-toml"))]
 use std::io::Read;
 
+#[cfg(not(feature = "config-toml"))]
 use serde_derive::Deserialize;
+#[cfg(not(feature = "config-toml"))]
 use toml;
-use toml::de;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct Config {
@@ -41,6 +53,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[cfg(not(feature = "config-toml"))]
     pub fn from_file(mut f: File) -> Result<Config, ConfigError> {
         let mut toml = String::new();
         f.read_to_string(&mut toml)?;
@@ -102,41 +115,5 @@ impl Config {
 
     pub fn registry_file(&self) -> Option<String> {
         self.registry_file.clone()
-    }
-}
-
-#[derive(Debug)]
-pub enum ConfigError {
-    ReadError(io::Error),
-    TomlParseError(de::Error),
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(e: io::Error) -> Self {
-        ConfigError::ReadError(e)
-    }
-}
-
-impl From<de::Error> for ConfigError {
-    fn from(e: de::Error) -> Self {
-        ConfigError::TomlParseError(e)
-    }
-}
-
-impl Error for ConfigError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            ConfigError::ReadError(source) => Some(source),
-            ConfigError::TomlParseError(source) => Some(source),
-        }
-    }
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ConfigError::ReadError(source) => source.fmt(f),
-            ConfigError::TomlParseError(source) => write!(f, "Invalid File Format: {}", source),
-        }
     }
 }

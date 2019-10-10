@@ -41,6 +41,17 @@ protobuf = "2"
 openssl = "0.10"
 tempdir = "0.3"
 
+[features]
+default = []
+
+experimental = [
+    "config-builder",
+    "config-toml",
+]
+
+config-builder = []
+config-toml = ["config-builder"]
+
 [package.metadata.deb]
 maintainer = "The Splinter Team"
 depends = "$auto"

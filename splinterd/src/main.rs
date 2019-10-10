@@ -30,6 +30,8 @@ use flexi_logger::{LogSpecBuilder, Logger};
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
+#[cfg(feature = "config-toml")]
+use crate::config::{ConfigBuilder, TomlConfig};
 use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
 use libsplinter::transport::raw::RawTransport;
@@ -39,11 +41,44 @@ use openssl::error::ErrorStack;
 use tempdir::TempDir;
 
 use std::env;
+#[cfg(feature = "config-toml")]
+use std::fs;
+#[cfg(not(feature = "config-toml"))]
 use std::fs::File;
 use std::io;
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
+
+#[cfg(not(feature = "config-toml"))]
+fn load_toml_config(config_file_path: &str) -> Config {
+    File::open(config_file_path)
+        .map_err(ConfigError::from)
+        .and_then(Config::from_file)
+        .unwrap_or_else(|err| {
+            warn!("Unable to load {}: {}", config_file_path, err);
+            Config::default()
+        })
+}
+
+#[cfg(feature = "config-toml")]
+fn load_toml_config(config_file_path: &str) -> Config {
+    let mut config_builder = ConfigBuilder::new();
+
+    match fs::read_to_string(config_file_path)
+        .map_err(ConfigError::from)
+        .and_then(TomlConfig::new)
+    {
+        Ok(toml_config) => {
+            config_builder = toml_config.apply_to_builder(config_builder);
+        }
+        Err(err) => {
+            warn!("Unable to load {}: {}", config_file_path, err);
+        }
+    };
+
+    config_builder.build()
+}
 
 fn main() {
     let matches = clap_app!(splinterd =>
@@ -104,20 +139,12 @@ fn main() {
 
     debug!("Loading configuration file");
 
-    let config = {
-        // get provided config file or search default location
-        let config_file_path = matches
-            .value_of("config")
-            .unwrap_or("/etc/splinter/splinterd.toml");
+    // get provided config file or search default location
+    let config_file_path = matches
+        .value_of("config")
+        .unwrap_or("/etc/splinter/splinterd.toml");
 
-        File::open(config_file_path)
-            .map_err(ConfigError::from)
-            .and_then(Config::from_file)
-            .unwrap_or_else(|err| {
-                warn!("Unable to load {}: {}", config_file_path, err);
-                Config::default()
-            })
-    };
+    let config = load_toml_config(config_file_path);
 
     debug!("Configuration: {:?}", config);
 
