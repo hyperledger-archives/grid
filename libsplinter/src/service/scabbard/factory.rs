@@ -26,6 +26,7 @@ use crate::actix_web::{web, Error as ActixError, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::rest_api::{Method, Request};
 use crate::service::{FactoryCreateError, Service, ServiceEndpoint, ServiceFactory};
+use crate::signing::SignatureVerifierFactory;
 
 use super::{Scabbard, SERVICE_TYPE};
 
@@ -36,14 +37,20 @@ pub struct ScabbardFactory {
     service_types: Vec<String>,
     db_dir: String,
     db_size: usize,
+    signature_verifier_factory: Box<dyn SignatureVerifierFactory>,
 }
 
 impl ScabbardFactory {
-    pub fn new(db_dir: Option<String>, db_size: Option<usize>) -> Self {
+    pub fn new(
+        db_dir: Option<String>,
+        db_size: Option<usize>,
+        signature_verifier_factory: Box<dyn SignatureVerifierFactory>,
+    ) -> Self {
         ScabbardFactory {
             service_types: vec![SERVICE_TYPE.into()],
             db_dir: db_dir.unwrap_or_else(|| DEFAULT_DB_DIR.into()),
             db_size: db_size.unwrap_or(DEFAULT_DB_SIZE),
+            signature_verifier_factory,
         }
     }
 }
@@ -95,6 +102,7 @@ impl ServiceFactory for ScabbardFactory {
             peer_services,
             &db_dir,
             self.db_size,
+            self.signature_verifier_factory.create_verifier(),
             admin_keys,
         )
         .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
@@ -160,7 +168,8 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                         };
 
                         match scabbard.add_batches(batches) {
-                            Ok(_) => HttpResponse::Accepted().finish().into_future(),
+                            Ok(true) => HttpResponse::Accepted().finish().into_future(),
+                            Ok(false) => HttpResponse::BadRequest().finish().into_future(),
                             Err(_) => HttpResponse::InternalServerError().finish().into_future(),
                         }
                     }),
@@ -172,6 +181,8 @@ fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::signing::hash::HashVerifier;
 
     #[test]
     fn scabbard_factory() {
@@ -187,7 +198,11 @@ mod tests {
             serde_json::to_string(&admin_keys).expect("failed to serialize admin_keys"),
         );
 
-        let factory = ScabbardFactory::new(Some("/tmp".into()), Some(1024 * 1024));
+        let factory = ScabbardFactory::new(
+            Some("/tmp".into()),
+            Some(1024 * 1024),
+            Box::new(HashVerifier),
+        );
         let service = factory
             .create("0".into(), "", "", args)
             .expect("failed to create service");

@@ -36,6 +36,7 @@ use crate::consensus::{Proposal, ProposalUpdate};
 use crate::hex::to_hex;
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
 use crate::rest_api::{Request, Response, ResponseError};
+use crate::signing::SignatureVerifier;
 
 use super::{
     Service, ServiceDestroyError, ServiceError, ServiceMessageContext, ServiceNetworkRegistry,
@@ -70,6 +71,7 @@ impl Scabbard {
         db_dir: &Path,
         // The size of sabre's LMDB database
         db_size: usize,
+        signature_verifier: Box<dyn SignatureVerifier>,
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
@@ -82,7 +84,13 @@ impl Scabbard {
         let db_path = db_dir.join(format!("{}.lmdb", hash));
         let state = ScabbardState::new(db_path.as_path(), db_size, admin_keys)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
-        let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, state);
+        let shared = ScabbardShared::new(
+            VecDeque::new(),
+            None,
+            peer_services,
+            signature_verifier,
+            state,
+        );
 
         Ok(Scabbard {
             service_id,
@@ -91,17 +99,20 @@ impl Scabbard {
         })
     }
 
-    pub fn add_batches(&self, batches: Vec<BatchPair>) -> Result<(), ServiceError> {
+    pub fn add_batches(&self, batches: Vec<BatchPair>) -> Result<bool, ServiceError> {
         let mut shared = self
             .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
 
-        for batch in batches {
-            shared.add_batch_to_queue(batch);
+        if shared.verify_batches(&batches)? {
+            for batch in batches {
+                shared.add_batch_to_queue(batch);
+            }
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 
     pub fn subscribe_to_state(
@@ -252,6 +263,7 @@ pub mod tests {
     use super::*;
 
     use crate::service::tests::*;
+    use crate::signing::hash::HashVerifier;
 
     /// Tests that a new scabbard service is properly instantiated.
     #[test]
@@ -262,6 +274,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            Box::new(HashVerifier),
             vec![],
         )
         .expect("failed to create service");
@@ -279,6 +292,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            Box::new(HashVerifier),
             vec![],
         )
         .expect("failed to create service");
@@ -296,6 +310,7 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            Box::new(HashVerifier),
             vec![],
         )
         .expect("failed to create service");

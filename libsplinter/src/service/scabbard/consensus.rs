@@ -369,6 +369,7 @@ mod tests {
 
     use crate::service::scabbard::state::ScabbardState;
     use crate::service::tests::*;
+    use crate::signing::hash::HashVerifier;
 
     /// Tests that the network sender properly creates messages and sends them using the
     /// `ServiceNetworkSender`.
@@ -383,6 +384,7 @@ mod tests {
             VecDeque::new(),
             Some(Box::new(service_sender.clone())),
             peer_services.clone(),
+            Box::new(HashVerifier),
             ScabbardState::new(Path::new("/tmp/network_sender.lmdb"), 1024 * 1024, vec![])
                 .expect("failed to create state"),
         )));

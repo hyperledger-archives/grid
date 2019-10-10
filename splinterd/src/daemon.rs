@@ -50,7 +50,7 @@ use libsplinter::rest_api::{
 use libsplinter::rwlock_read_unwrap;
 use libsplinter::service::scabbard::ScabbardFactory;
 use libsplinter::service::{self, ServiceProcessor};
-use libsplinter::signing::sawtooth::SawtoothSecp256k1SignatureVeriifier;
+use libsplinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
 use libsplinter::storage::get_storage;
 use libsplinter::transport::{
     inproc::InprocTransport, multi::MultiTransport, AcceptError, ConnectError, Incoming,
@@ -287,7 +287,11 @@ impl SplinterDaemon {
                     ))
                 })?;
         let orchestrator = ServiceOrchestrator::new(
-            vec![Box::new(ScabbardFactory::new(None, None))],
+            vec![Box::new(ScabbardFactory::new(
+                None,
+                None,
+                Box::new(SawtoothSecp256k1SignatureVerifier::new()),
+            ))],
             orchestrator_connection,
             ORCHESTRATOR_INCOMING_CAPACITY,
             ORCHESTRATOR_OUTGOING_CAPACITY,
@@ -295,7 +299,7 @@ impl SplinterDaemon {
         )?;
         let orchestrator_resources = orchestrator.resources();
 
-        let signature_verifier = SawtoothSecp256k1SignatureVeriifier::new();
+        let signature_verifier = SawtoothSecp256k1SignatureVerifier::new();
 
         let key_registry = Box::new(
             StorageKeyRegistry::new(self.key_registry_location.clone())

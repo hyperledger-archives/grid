@@ -16,7 +16,7 @@
 
 use openssl::hash::{hash, MessageDigest};
 
-use super::{error::Error, SignatureVerifier, Signer};
+use super::{error::Error, SignatureVerifier, SignatureVerifierFactory, Signer};
 
 pub struct HashSigner;
 
@@ -41,6 +41,12 @@ impl SignatureVerifier for HashVerifier {
             .map_err(|err| Error::SigningError(err.to_string()))?;
 
         Ok(expected_hash == signature)
+    }
+}
+
+impl SignatureVerifierFactory for HashVerifier {
+    fn create_verifier(&self) -> Box<dyn SignatureVerifier> {
+        Box::new(HashVerifier)
     }
 }
 
