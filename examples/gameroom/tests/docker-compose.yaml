@@ -66,14 +66,3 @@ services:
       POSTGRES_DB: gameroom_test
     volumes:
       - "../database/tables:/docker-entrypoint-initdb.d"
-
-  gameroom-app-test:
-    build:
-      context: ../../..
-      dockerfile: examples/gameroom/gameroom-app/Dockerfile
-      args:
-        VUE_APP_BRAND: "acme"
-    image: gameroom-app-test
-    container_name: gameroom-app-test
-    environment:
-      - VUE_APP_BRAND=acme

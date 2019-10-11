@@ -42,6 +42,13 @@ export default new Vuex.Store({
     pageLoading: pageLoadingModule,
   },
   plugins: [vuexLocal.plugin],
+  state: {
+    socket: {
+      isConnected: false,
+      message: '',
+      reconnectError: false,
+    },
+  },
   mutations: {
     SOCKET_ONOPEN(state, event)  {
       Vue.prototype.$socket = event.currentTarget;
