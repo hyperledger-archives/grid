@@ -47,14 +47,15 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
-use state::ScabbardState;
 pub use state::StateChangeEvent;
+use state::{BatchInfo, ScabbardState};
 
 const SERVICE_TYPE: &str = "scabbard";
 
 /// A service for running Sawtooth Sabre smart contracts with two-phase commit consensus.
 #[derive(Clone)]
 pub struct Scabbard {
+    circuit_id: String,
     service_id: String,
     shared: Arc<Mutex<ScabbardShared>>,
     consensus: Arc<Mutex<Option<ScabbardConsensusManager>>>,
@@ -93,26 +94,58 @@ impl Scabbard {
         );
 
         Ok(Scabbard {
+            circuit_id: circuit_id.to_string(),
             service_id,
             shared: Arc::new(Mutex::new(shared)),
             consensus: Arc::new(Mutex::new(None)),
         })
     }
 
-    pub fn add_batches(&self, batches: Vec<BatchPair>) -> Result<bool, ServiceError> {
+    pub fn add_batches(
+        &self,
+        batches: Vec<BatchPair>,
+    ) -> Result<Option<BatchListPath>, ServiceError> {
         let mut shared = self
             .shared
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
 
         if shared.verify_batches(&batches)? {
+            let mut link = format!(
+                "/scabbard/{}/{}/batch_statuses?ids=",
+                self.circuit_id, self.service_id
+            );
+
             for batch in batches {
+                shared
+                    .batch_history()
+                    .add_batch(&batch.batch().header_signature())
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+
+                link.push_str(&format!("{},", batch.batch().header_signature()));
                 shared.add_batch_to_queue(batch);
             }
-            Ok(true)
+
+            // Remove trailing comma
+            link.pop();
+
+            debug!("Batch Status Link Created: {}", link);
+            Ok(Some(BatchListPath { link }))
         } else {
-            Ok(false)
+            Ok(None)
         }
+    }
+
+    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ServiceError> {
+        let mut shared = self
+            .shared
+            .lock()
+            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+
+        ids.iter()
+            .map(|signature| shared.batch_history().get_batch_info(signature))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
     }
 
     pub fn subscribe_to_state(
@@ -256,6 +289,10 @@ impl Service for Scabbard {
     fn as_any(&self) -> &dyn Any {
         self
     }
+}
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BatchListPath {
+    link: String,
 }
 
 #[cfg(test)]

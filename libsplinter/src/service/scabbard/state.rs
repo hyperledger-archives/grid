@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt, path::Path};
+use std::{collections::HashMap, fmt, path::Path, time::SystemTime};
 
 use protobuf::Message;
 use sawtooth_sabre::handler::SabreTransactionHandler;
@@ -22,13 +22,18 @@ use transact::database::{
     lmdb::{LmdbContext, LmdbDatabase},
     Database,
 };
-use transact::execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor};
-use transact::protocol::batch::BatchPair;
 use transact::sawtooth::SawtoothToTransactHandlerAdapter;
-use transact::scheduler::{serial::SerialScheduler, Scheduler, TransactionExecutionResult};
+use transact::scheduler::{
+    serial::SerialScheduler, BatchExecutionResult, InvalidTransactionResult, Scheduler,
+    TransactionExecutionResult,
+};
 use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, INDEXES},
     StateChange, Write,
+};
+use transact::{
+    execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor},
+    protocol::{batch::BatchPair, receipt::TransactionReceipt},
 };
 
 #[cfg(feature = "events")]
@@ -45,8 +50,9 @@ pub struct ScabbardState {
     context_manager: ContextManager,
     executor: Executor,
     current_state_root: String,
-    pending_changes: Option<Vec<StateChange>>,
+    pending_changes: Option<(String, Vec<StateChange>)>,
     event_dealer: EventDealer<Vec<StateChangeEvent>, LocalEventHistory<Vec<StateChangeEvent>>>,
+    batch_history: BatchHistory,
 }
 
 impl ScabbardState {
@@ -105,6 +111,7 @@ impl ScabbardState {
             current_state_root,
             pending_changes: None,
             event_dealer,
+            batch_history: BatchHistory::new(),
         })
     }
 
@@ -122,7 +129,7 @@ impl ScabbardState {
         }))?;
 
         // Add the batch to, finalize, and execute the scheduler
-        scheduler.add_batch(batch)?;
+        scheduler.add_batch(batch.clone())?;
         scheduler.finalize()?;
         self.executor
             .execute(scheduler.take_task_iterator()?, scheduler.new_notifier()?)?;
@@ -132,6 +139,12 @@ impl ScabbardState {
             .recv_timeout(std::time::Duration::from_secs(EXECUTION_TIMEOUT))
             .map_err(|_| ScabbardStateError("failed to receive result in reasonable time".into()))?
             .ok_or_else(|| ScabbardStateError("no result returned from executor".into()))?;
+
+        let batch_status = batch_result.clone().into();
+        let signature = batch.batch().header_signature();
+        self.batch_history
+            .update_batch_status(&signature, batch_status);
+
         let txn_results = batch_result
             .results
             .into_iter()
@@ -142,6 +155,7 @@ impl ScabbardState {
                 )),
             })
             .collect::<Result<Vec<_>, _>>()?;
+
         let state_changes = txn_results
             .into_iter()
             .flat_map(|txn_result| {
@@ -154,16 +168,16 @@ impl ScabbardState {
         scheduler.shutdown();
 
         // Save the results and compute the resulting state root
-        self.pending_changes = Some(state_changes);
+        self.pending_changes = Some((signature.to_string(), state_changes.clone()));
         Ok(MerkleState::new(self.db.clone()).compute_state_id(
             &self.current_state_root,
-            self.pending_changes.as_ref().unwrap().as_slice(),
+            self.pending_changes.as_ref().unwrap().1.as_slice(),
         )?)
     }
 
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some(state_changes) => {
+            Some((signature, state_changes)) => {
                 self.current_state_root = MerkleState::new(self.db.clone())
                     .commit(&self.current_state_root, state_changes.as_slice())?;
 
@@ -182,6 +196,8 @@ impl ScabbardState {
                     error!("An error occured while dispatching events {}", err);
                 }
 
+                self.batch_history.commit(&signature);
+
                 Ok(())
             }
             None => Err(ScabbardStateError("no pending changes to commit".into())),
@@ -190,11 +206,15 @@ impl ScabbardState {
 
     pub fn rollback(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some(state_changes) => info!("discarded {} change(s)", state_changes.len()),
+            Some((_, state_changes)) => info!("discarded {} change(s)", state_changes.len()),
             None => debug!("no changes to rollback"),
         }
 
         Ok(())
+    }
+
+    pub fn batch_history(&mut self) -> &mut BatchHistory {
+        &mut self.batch_history
     }
 
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
@@ -267,5 +287,158 @@ impl ParseBytes<Vec<StateChangeEvent>> for Vec<StateChangeEvent> {
         serde_json::from_slice(bytes)
             .map_err(Box::new)
             .map_err(|err| ParseError::MalformedMessage(err))
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "statusType", content = "message")]
+pub enum BatchStatus {
+    Unknown,
+    Pending,
+    Invalid(Vec<InvalidTransaction>),
+    Valid(Vec<ValidTransaction>),
+    Committed(Vec<ValidTransaction>),
+}
+
+impl From<BatchExecutionResult> for BatchStatus {
+    fn from(batch_result: BatchExecutionResult) -> Self {
+        let mut valid = Vec::new();
+        let mut invalid = Vec::new();
+
+        for result in batch_result.results.into_iter() {
+            match result {
+                TransactionExecutionResult::Valid(r) => {
+                    valid.push(ValidTransaction::from(r));
+                }
+                TransactionExecutionResult::Invalid(r) => {
+                    invalid.push(InvalidTransaction::from(r));
+                }
+            }
+        }
+
+        if !invalid.is_empty() {
+            BatchStatus::Invalid(invalid)
+        } else {
+            BatchStatus::Valid(valid)
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+pub struct ValidTransaction {
+    transaction_id: String,
+}
+
+impl From<TransactionReceipt> for ValidTransaction {
+    fn from(receipt: TransactionReceipt) -> Self {
+        Self {
+            transaction_id: receipt.transaction_id,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+pub struct InvalidTransaction {
+    transaction_id: String,
+    error_message: String,
+    error_data: Vec<u8>,
+}
+
+impl From<InvalidTransactionResult> for InvalidTransaction {
+    fn from(result: InvalidTransactionResult) -> Self {
+        Self {
+            transaction_id: result.transaction_id,
+            error_message: result.error_message,
+            error_data: result.error_data,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BatchInfo {
+    pub id: String,
+    pub status: BatchStatus,
+    #[serde(skip_serializing)]
+    pub timestamp: SystemTime,
+}
+
+impl BatchInfo {
+    fn set_status(&mut self, status: BatchStatus) {
+        self.status = status;
+    }
+}
+
+/// BatchHistory keeps track of batches submitted to scabbard
+pub struct BatchHistory {
+    history: HashMap<String, BatchInfo>,
+    limit: usize,
+}
+
+impl BatchHistory {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_batch(&mut self, signature: &str) -> Result<(), ScabbardStateError> {
+        self.history.insert(
+            signature.to_string(),
+            BatchInfo {
+                id: signature.to_string(),
+                status: BatchStatus::Pending,
+                timestamp: SystemTime::now(),
+            },
+        );
+
+        if self.history.len() > self.limit {
+            self.history
+                .clone()
+                .into_iter()
+                .min_by_key(|(_, v)| v.timestamp)
+                .and_then(|(k, _)| self.history.remove(&k));
+        }
+
+        Ok(())
+    }
+
+    fn update_batch_status(&mut self, signature: &str, status: BatchStatus) {
+        match self.history.get_mut(signature) {
+            Some(ref mut batch) if batch.status == BatchStatus::Pending => {
+                batch.set_status(status);
+            }
+            _ => (),
+        };
+    }
+
+    fn commit(&mut self, signature: &str) {
+        let info = if let Some(info) = self.history.get_mut(signature) {
+            info
+        } else {
+            return;
+        };
+
+        if let BatchStatus::Valid(t) = info.status.clone() {
+            info.set_status(BatchStatus::Committed(t));
+        }
+    }
+
+    pub fn get_batch_info(&self, signature: &str) -> Result<BatchInfo, ScabbardStateError> {
+        if let Some(info) = self.history.get(signature) {
+            Ok(info.clone())
+        } else {
+            Ok(BatchInfo {
+                id: signature.to_string(),
+                status: BatchStatus::Unknown,
+                timestamp: SystemTime::now(),
+            })
+        }
+    }
+}
+
+impl Default for BatchHistory {
+    fn default() -> Self {
+        Self {
+            history: HashMap::new(),
+            limit: 100,
+        }
     }
 }
