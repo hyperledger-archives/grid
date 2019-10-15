@@ -1,5 +1,39 @@
 # Release Notes
 
+## Changes in Splinter 0.3.4
+
+### Highlights
+* Implement a batch status endpoint for scabbard
+* Set up the Cypress integration test framework for the Gameroom UI
+
+### Gameroom example
+* Copy Splinter .proto files into installed client builds
+* Redirect the user to a “Not Found” page if the page does not exist
+* Set up integration tests using Cypress
+* Add XO smart contract to installed gameroomd builds
+
+### libsplinter
+* Reduce latency of events by replacing run_interval in EventDealerWebSocket
+  with streams
+
+### scabbard
+* Change the scabbard database name to be the sha256 hash of
+  service_id::circuit_id to ensure that it will be a valid file name
+* Add signature and structure verification to the scabbard service when it
+  receives batches submitted via the REST API
+* Add /batch_statuses endpoint to scabbard and update /batches endpoint to
+  return a /batch_statuses link for the submitted batch IDs
+
+### splinterd
+* Add config builder with toml loading (experimental feature)
+
+### Packaging
+* Add Dockerfile to package gameroom UI
+* Update packaging for gameroomd and splinterd so modified systemd files are
+  not overwritten
+* Modify gameroomd and splinterd postinst scripts to add data directories
+* Add plumbing to properly version deb packages
+
 ## Changes in Splinter 0.3.3
 
 ### Highlights
