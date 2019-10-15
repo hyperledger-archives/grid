@@ -224,8 +224,12 @@ paths:
                   alias:
                     description: Name of new gameroom
                     example: my_gameroom
-                  member:
-                    $ref: '#/components/schemas/Member'
+                  members:
+                    description: List of node ids that will be part of the circuit, not including own node.
+                    type: array
+                    items:
+                      type: string
+                      example: acme-node-000
                 required:
                   - alias
                   - member
@@ -905,30 +909,6 @@ components:
           description: status of the gameroom
           type: string
           example: 'ACCEPTED'
-
-    Member:
-      type: object
-      description: Member of the gameroom
-      properties:
-        identity:
-          type: string
-          example: acme-node-000
-        metadata:
-          $ref: '#/components/schemas/MemberMetadata'
-
-
-    MemberMetadata:
-      type: object
-      properties:
-        organization:
-          type: string
-          example: Acme Corporation
-        endpoint:
-          type: string
-          example: tls://127.0.0.1:8080
-        public_key:
-          type: string
-
 
     AuthResponseData:
       type: object
