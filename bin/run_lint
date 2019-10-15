@@ -16,61 +16,47 @@
 
 top_dir=$(cd $(dirname $(dirname $0)) && pwd)
 
-dirs="
-    $top_dir/sdk
-    $top_dir/cli
-    $top_dir/contracts/schema
-    $top_dir/contracts/pike
-    $top_dir/contracts/product
-    $top_dir/contracts/track_and_trace
-    $top_dir/daemon
-"
-
 exitcode=0
 
-for dir in $dirs; do
-    cd $dir
-    echo "$dir"
+cd $top_dir
 
-    echo "-- rustfmt"
+echo "-- rustfmt"
 
-    diff=$(cargo fmt -- --check)
-    rustfmt_exit=$?
+diff=$(cargo fmt -- --check)
+rustfmt_exit=$?
 
-    # cargo fmt -- --check returns the following exit codes:
-    #
-    # 0 = No errors
-    # 1 = Formatted code differs from existing code (check only)
+# cargo fmt -- --check returns the following exit codes:
+#
+# 0 = No errors
+# 1 = Formatted code differs from existing code (check only)
 
-    if [[ $rustfmt_exit != 0 ]]; then
-        exitcode=1
-        if [[ $rustfmt_exit == 1 ]]; then
-            echo "Incorrect formatting: $dir (error code: $rustfmt_exit)"
-            echo "$diff"
-        else
-            echo "rustfmt encountered an operational error"
-        fi
+if [[ $rustfmt_exit != 0 ]]; then
+    exitcode=1
+    if [[ $rustfmt_exit == 1 ]]; then
+        echo "Incorrect formatting: (error code: $rustfmt_exit)"
+        echo "$diff"
+    else
+        echo "rustfmt encountered an operational error"
     fi
+fi
 
-    echo "-- Clippy"
+echo "-- Clippy"
 
-    cargo clippy -- -D warnings
-    clippy_exit=$?
+cargo clippy -- -D warnings
+clippy_exit=$?
 
-    # cargo clippy -- -D warnings returns the following exit codes:
-    #
-    # 0 = No errors or warnings
-    # 101 = rustc or clippy has found errors or warnings in the code
+# cargo clippy -- -D warnings returns the following exit codes:
+#
+# 0 = No errors or warnings
+# 101 = rustc or clippy has found errors or warnings in the code
 
-    if [[ $clippy_exit != 0 ]]; then
-        exitcode=1
-        if [[ $clippy_exit == 101 ]]; then
-            echo "Clippy errors were found: $dir (error code: $clippy_exit)"
-        else
-            echo "Clippy encountered an operational error"
-        fi
+if [[ $clippy_exit != 0 ]]; then
+    exitcode=1
+    if [[ $clippy_exit == 101 ]]; then
+        echo "Clippy errors were found: (error code: $clippy_exit)"
+    else
+        echo "Clippy encountered an operational error"
     fi
-
-done
+fi
 
 exit $exitcode
