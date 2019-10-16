@@ -178,7 +178,7 @@ mod tests {
     use crate::protos::circuit::CircuitMessage;
     use crate::protos::network::NetworkMessage;
 
-    /// Send an message from a non-admin service.  Expect that the message is ignored and an error
+    /// Send a message from a non-admin service. Expect that the message is ignored and an error
     /// is returned to sender.
     #[test]
     fn test_ignore_non_admin_sender() {
@@ -244,7 +244,7 @@ mod tests {
         )
     }
 
-    /// Send an message to a non-admin service.  Expect that the message is ignored and an error is
+    /// Send a message to a non-admin service. Expect that the message is ignored and an error is
     /// returned to sender.
     #[test]
     fn test_ignore_non_admin_recipient() {
@@ -310,8 +310,8 @@ mod tests {
         )
     }
 
-    /// Send an message to an admin service via the standard circuit.  Expect that the message is
-    /// sent to the appropriate node that hosts the target admin service.
+    /// Send a message to an admin service via the standard circuit. Expect that the message is
+    /// sent to the current node's target admin service.
     #[test]
     fn test_send_admin_direct_message_via_standard_circuit() {
         // Set up dispatcher and mock sender
@@ -375,7 +375,7 @@ mod tests {
         )
     }
 
-    /// Send an message to an admin service via the standard circuit.  Expect that the message is
+    /// Send a message to an admin service via the admin circuit. Expect that the message is
     /// sent to the appropriate node that hosts the target admin service.
     #[test]
     fn test_send_admin_direct_message_via_admin_circuit() {
@@ -426,7 +426,7 @@ mod tests {
         )
     }
 
-    /// Send an message to an admin service via the standard circuit.  Expect that the message is
+    /// Send a message to an admin service via the standard circuit.  Expect that the message is
     /// sent to the current node's target admin service.
     #[test]
     fn test_send_admin_direct_message_via_admin_circuit_to_local_service() {

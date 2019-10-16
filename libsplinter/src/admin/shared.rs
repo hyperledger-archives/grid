@@ -1731,7 +1731,7 @@ mod tests {
     }
 
     #[test]
-    // test that a valid circuit proposal comes back as valid
+    // test that a valid circuit proposal vote comes back as valid
     fn test_validate_proposal_vote_valid() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
@@ -1833,7 +1833,7 @@ mod tests {
     }
 
     #[test]
-    // test if a voter has aleady voted on a proposal the new vote is invalid
+    // test if a voter has already voted on a proposal the new vote is invalid
     fn test_validate_proposal_vote_duplicate_vote() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
@@ -1875,7 +1875,7 @@ mod tests {
     }
 
     #[test]
-    // test that if the circuit hash in the circuit proposal does not match the cirucit hash on
+    // test that if the circuit hash in the circuit proposal does not match the circuit hash on
     // the vote, the vote is invalid
     fn test_validate_proposal_vote_circuit_hash_mismatch() {
         let state = setup_splinter_state();
