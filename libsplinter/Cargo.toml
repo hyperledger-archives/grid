@@ -20,7 +20,7 @@ events = ["hyper", "tokio", "awc"]
 
 [package]
 name = "libsplinter"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 
