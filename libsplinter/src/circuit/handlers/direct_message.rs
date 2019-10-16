@@ -254,7 +254,7 @@ mod tests {
         // Add direct message handler to the the dispatcher
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -271,7 +271,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -344,7 +344,7 @@ mod tests {
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
 
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -361,7 +361,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -430,7 +430,7 @@ mod tests {
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
 
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -447,7 +447,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -517,7 +517,7 @@ mod tests {
         let handler = CircuitDirectMessageHandler::new("123".to_string(), state);
 
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -534,7 +534,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -601,7 +601,7 @@ mod tests {
         // add handler to dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -618,7 +618,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -684,7 +684,7 @@ mod tests {
         // add direct message handler
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -701,7 +701,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
@@ -748,7 +748,7 @@ mod tests {
         // add direct message handler to the dispatcher
         let handler = CircuitDirectMessageHandler::new("345".to_string(), state);
         dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
+            CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
             Box::new(handler),
         );
 
@@ -765,7 +765,7 @@ mod tests {
         dispatcher
             .dispatch(
                 "def",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
+                &CircuitMessageType::CIRCUIT_DIRECT_MESSAGE,
                 direct_bytes.clone(),
             )
             .unwrap();
