@@ -365,12 +365,12 @@ mod tests {
             send_request,
             "5678",
             CircuitMessageType::ADMIN_DIRECT_MESSAGE,
-            |error_msg: AdminDirectMessage| {
-                assert_eq!(error_msg.get_circuit(), "alpha");
-                assert_eq!(error_msg.get_sender(), "admin::1234");
-                assert_eq!(error_msg.get_recipient(), "admin::5678");
-                assert_eq!(error_msg.get_payload(), b"test");
-                assert_eq!(error_msg.get_correlation_id(), "random_corr_id");
+            |msg: AdminDirectMessage| {
+                assert_eq!(msg.get_circuit(), "alpha");
+                assert_eq!(msg.get_sender(), "admin::1234");
+                assert_eq!(msg.get_recipient(), "admin::5678");
+                assert_eq!(msg.get_payload(), b"test");
+                assert_eq!(msg.get_correlation_id(), "random_corr_id");
             },
         )
     }
@@ -416,12 +416,12 @@ mod tests {
             send_request,
             "5678",
             CircuitMessageType::ADMIN_DIRECT_MESSAGE,
-            |error_msg: AdminDirectMessage| {
-                assert_eq!(error_msg.get_circuit(), "admin");
-                assert_eq!(error_msg.get_sender(), "admin::1234");
-                assert_eq!(error_msg.get_recipient(), "admin::5678");
-                assert_eq!(error_msg.get_payload(), b"test");
-                assert_eq!(error_msg.get_correlation_id(), "random_corr_id");
+            |msg: AdminDirectMessage| {
+                assert_eq!(msg.get_circuit(), "admin");
+                assert_eq!(msg.get_sender(), "admin::1234");
+                assert_eq!(msg.get_recipient(), "admin::5678");
+                assert_eq!(msg.get_payload(), b"test");
+                assert_eq!(msg.get_correlation_id(), "random_corr_id");
             },
         )
     }
@@ -467,12 +467,12 @@ mod tests {
             send_request,
             "admin::1234",
             CircuitMessageType::ADMIN_DIRECT_MESSAGE,
-            |error_msg: AdminDirectMessage| {
-                assert_eq!(error_msg.get_circuit(), "admin");
-                assert_eq!(error_msg.get_sender(), "admin::5678");
-                assert_eq!(error_msg.get_recipient(), "admin::1234");
-                assert_eq!(error_msg.get_payload(), b"test");
-                assert_eq!(error_msg.get_correlation_id(), "random_corr_id");
+            |msg: AdminDirectMessage| {
+                assert_eq!(msg.get_circuit(), "admin");
+                assert_eq!(msg.get_sender(), "admin::5678");
+                assert_eq!(msg.get_recipient(), "admin::1234");
+                assert_eq!(msg.get_payload(), b"test");
+                assert_eq!(msg.get_correlation_id(), "random_corr_id");
             },
         )
     }
