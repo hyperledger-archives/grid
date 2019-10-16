@@ -311,7 +311,7 @@ mod tests {
         let circuit = Circuit::builder()
             .with_id("alpha".into())
             .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["123".into()])
+            .with_members(vec!["123".into(), "345".into()])
             .with_roster(vec!["abc".into(), "def".into()])
             .with_persistence(PersistenceType::Any)
             .with_durability(DurabilityType::NoDurabilty)
@@ -329,7 +329,7 @@ mod tests {
         )));
 
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
+        let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:0".to_string()]);
 
         let service_abc =
             Service::new("abc".to_string(), Some("abc_network".to_string()), node_123);
@@ -592,7 +592,7 @@ mod tests {
             circuit_directory,
         )));
 
-        let node_345 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
+        let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service_def =
             Service::new("def".to_string(), Some("def_network".to_string()), node_345);
         let id = ServiceId::new("alpha".into(), "def".into());
