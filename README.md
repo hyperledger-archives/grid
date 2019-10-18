@@ -6,20 +6,22 @@ between organizations. Splinter lets you combine blockchain-related technologies
 -- such as smart contracts and consensus engines -- to build a wide variety
 of architectural patterns.
 
- &hercon; [Features](#features) &hercon; [Building Splinter](#building-splinter) &hercon; [Demos](#demos) &hercon; [License](#license) &hercon;
+ &hercon; [Features](#features-and-concepts) &hercon; [Building Splinter](#building-splinter) &hercon; [Demos](#demos) &hercon; [License](#license) &hercon;
 
-## Features
-
+## Features and Concepts
 
 Splinter allows the same network to do two-party private communication,
 multi-party private communication, and network-wide multi-party shared state,
 all managed with consensus. A Splinter network enables multi-party or two-party
-private conversations using circuits and services.
+private conversations between nodes using circuits and services.
 
-- A _**circuit**_ is a virtual network within the Splinter network that safely
-  and securely enforces privacy boundaries.
+  - A _**node**_ is the foundational runtime that allows an organization to 
+  participate in the network.
 
-- A _**service**_ is an endpoint within a circuit that sends and receives
+  - A _**circuit**_ is a virtual network within the broader Splinter network that 
+  safely and securely enforces privacy scope boundaries.
+
+  - A _**service**_ is an endpoint within a circuit that sends and receives
   private messages.
 
 A Splinter application provides a set of distributed services that can
@@ -29,25 +31,26 @@ communicate with each other across a Splinter circuit.
 
 **Splinter is designed for privacy**
 
-   - _**Circuits**_ define visibility domains.
-   - _**Services**_ run inside circuits and handle the communication between
-     organizations.
+The key concepts of Splinter are fundamentally anchored to privacy.
+
+   - _**Circuits**_ define scope and visibility domains.
    - _**Shared state**_, a database updated by smart contracts, is visible only
      to the services within a circuit.
-   - A _**node**_ is an organization's system that runs software to enforce good
-     behavior.
 
-**Splinter is distributed**
+**Splinter is distributed and flexible**
 
-   - _**Connections**_ are dynamically constructed between nodes as circuits are
-     created.
+Splinter works across a network 
+
+   - _**State agreement**_ is achieved via the Merkle-radix tree in
+     [Hyperledger Transact](https://github.com/hyperledger/transact/),
+     allowing multiple services to prove they have the same data down to the 
+	 last bit, cryptographically.
    - _**Consensus**_ is provided for creating real distributed applications.
      Splinter currently includes **two-phase commit** for 2- or 3-party
      conversations.
-   - _**State agreement**_, via the Merkle-radix tree in
-     [Hyperledger Transact](https://github.com/hyperledger/transact/),
-     allows multiple services to prove they have the same data down to the last
-     bit, cryptographically.
+   - _**Connections**_ are dynamically constructed between nodes as circuits are
+     created.
+
 
 ![Splinter smart contract deployment at runtime](assets/diagram-splinter-smartcontractdeployment.svg)
 
@@ -58,11 +61,11 @@ communicate with each other across a Splinter circuit.
      Splinter software stack to add business logic.
    - _**Sandboxed WebAssembly smart contracts**_ keep the network safe and
      ensure determinism.
-   - _**Scabbard**_, a built-in Splinter service, runs
+   - _**Scabbard**_, an out-of-the-box Splinter service that runs
      [Sawtooth Sabre](https://github.com/hyperledger/sawtooth-sabre)
      smart contracts across nodes, coordinated with consensus.
 
-**Splinter is designed for web applications**
+**Splinter is designed for applications**
 
    - _**State delta export**_ allows an application to materialize the
      Merkle-radix tree database to another database such as PostgreSQL.
