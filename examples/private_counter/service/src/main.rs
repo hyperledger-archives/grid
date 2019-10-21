@@ -39,25 +39,25 @@ use sha2::{Digest, Sha256};
 use threadpool::ThreadPool;
 use uuid::Uuid;
 
-use libsplinter::consensus::two_phase::TwoPhaseEngine;
-use libsplinter::consensus::{
+use splinter::consensus::two_phase::TwoPhaseEngine;
+use splinter::consensus::{
     ConsensusEngine, ConsensusMessage, Proposal, ProposalUpdate, StartupState,
 };
-use libsplinter::mesh::Mesh;
-use libsplinter::network::{
+use splinter::mesh::Mesh;
+use splinter::network::{
     sender::{NetworkMessageSender, NetworkMessageSenderError, SendRequest},
     Network, RecvTimeoutError,
 };
-use libsplinter::protos::authorization::{
+use splinter::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
     ConnectResponse, ConnectResponse_AuthorizationType, TrustRequest,
 };
-use libsplinter::protos::circuit::{
+use splinter::protos::circuit::{
     CircuitDirectMessage, CircuitMessage, CircuitMessageType, ServiceConnectRequest,
     ServiceConnectResponse, ServiceConnectResponse_Status, ServiceDisconnectRequest,
 };
-use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
-use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
+use splinter::protos::network::{NetworkMessage, NetworkMessageType};
+use splinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::consensus::{PrivateCounterNetworkSender, PrivateCounterProposalManager};
 use crate::error::{HandleError, ServiceError};

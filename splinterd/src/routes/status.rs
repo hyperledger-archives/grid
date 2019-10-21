@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use libsplinter::actix_web::{web, Error, HttpRequest, HttpResponse};
-use libsplinter::futures::{Future, IntoFuture};
+use splinter::actix_web::{web, Error, HttpRequest, HttpResponse};
+use splinter::futures::{Future, IntoFuture};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Status {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::error::YamlNodeRegistryError;
-use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use splinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;

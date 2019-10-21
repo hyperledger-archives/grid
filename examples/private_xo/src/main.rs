@@ -33,11 +33,11 @@ use iron::prelude::*;
 use iron::status;
 use router::Router;
 
-use libsplinter::consensus::two_phase::TwoPhaseEngine;
-use libsplinter::consensus::{ConsensusEngine, StartupState};
-use libsplinter::mesh::Mesh;
-use libsplinter::network::Network;
-use libsplinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
+use splinter::consensus::two_phase::TwoPhaseEngine;
+use splinter::consensus::{ConsensusEngine, StartupState};
+use splinter::mesh::Mesh;
+use splinter::network::Network;
+use splinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
 
 use crate::error::CliError;
 use crate::routes::{batches, state, State};

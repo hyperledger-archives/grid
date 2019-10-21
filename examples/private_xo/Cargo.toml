@@ -24,7 +24,7 @@ name = "private-xo"
 path = "src/main.rs"
 
 [dependencies]
-libsplinter = { path = "../../libsplinter" }
+splinter = { path = "../../libsplinter" }
 base64 = "0.10"
 clap = "2.32"
 crossbeam-channel = "0.3"

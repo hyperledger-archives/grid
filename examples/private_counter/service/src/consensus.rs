@@ -18,12 +18,12 @@ use std::sync::{Arc, Mutex};
 use protobuf::Message;
 use uuid::Uuid;
 
-use libsplinter::consensus::{
+use splinter::consensus::{
     error::{ConsensusSendError, ProposalManagerError},
     ConsensusMessage, ConsensusNetworkSender, PeerId, Proposal, ProposalId, ProposalManager,
     ProposalUpdate,
 };
-use libsplinter::network::sender::SendRequest;
+use splinter::network::sender::SendRequest;
 
 use crate::error::ServiceError;
 use crate::protos::private_counter::{

@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use libsplinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use splinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
 
 /// The NoOpNodeRegistry is an empty-list implementation of the NodeRegistry trait.
 ///

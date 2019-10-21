@@ -24,7 +24,7 @@ name = "private-counter"
 path = "src/main.rs"
 
 [dependencies]
-libsplinter = { path = "../../../libsplinter" }
+splinter = { path = "../../../libsplinter" }
 clap = "2.32"
 crossbeam-channel = "0.3"
 ctrlc = "3.0"

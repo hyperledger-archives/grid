@@ -15,7 +15,7 @@
 use std::error::Error;
 use std::fmt;
 
-use libsplinter::consensus::error::ProposalManagerError;
+use splinter::consensus::error::ProposalManagerError;
 
 #[derive(Debug)]
 pub struct ServiceError(pub String);

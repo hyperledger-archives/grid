@@ -20,7 +20,7 @@
 //! to a running instance of `RestApi`.
 //!
 //! ```
-//! use libsplinter::rest_api::{Resource, Method, RestApiBuilder, RestResourceProvider};
+//! use splinter::rest_api::{Resource, Method, RestApiBuilder, RestResourceProvider};
 //! use actix_web::HttpResponse;
 //! use futures::IntoFuture;
 //!
@@ -145,7 +145,7 @@ pub enum Method {
 ///
 /// ```
 ///
-/// use libsplinter::rest_api::{Resource, Method};
+/// use splinter::rest_api::{Resource, Method};
 /// use actix_web::HttpResponse;
 /// use futures::IntoFuture;
 ///

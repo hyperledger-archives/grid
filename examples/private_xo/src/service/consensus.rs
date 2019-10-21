@@ -20,12 +20,12 @@ use std::sync::{Arc, Mutex};
 use protobuf::Message;
 use uuid::Uuid;
 
-use libsplinter::consensus::{
+use splinter::consensus::{
     error::{ConsensusSendError, ProposalManagerError},
     ConsensusMessage, ConsensusNetworkSender, PeerId, Proposal, ProposalId, ProposalManager,
     ProposalUpdate,
 };
-use libsplinter::network::sender::SendRequest;
+use splinter::network::sender::SendRequest;
 use transact::protos::batch::Batch;
 
 use crate::protos::private_xo::{PrivateXoMessage, PrivateXoMessage_Type, ProposedBatch};

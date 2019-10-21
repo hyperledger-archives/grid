@@ -21,8 +21,8 @@ use futures::{
     Future, Stream,
 };
 use hyper::{Client as HyperClient, StatusCode, Uri};
-use libsplinter::node_registry::Node;
 use serde_json::Value;
+use splinter::node_registry::Node;
 use tokio::runtime::Runtime;
 
 use crate::error::{ConfigurationError, GetNodeError};

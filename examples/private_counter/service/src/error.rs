@@ -16,7 +16,7 @@ use std::error::Error;
 use std::fmt;
 use std::io::Error as IoError;
 
-use libsplinter::consensus::error::ProposalManagerError;
+use splinter::consensus::error::ProposalManagerError;
 
 #[derive(Clone, Debug)]
 pub enum HandleError {

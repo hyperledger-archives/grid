@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 log = "0.3.8"
-libsplinter = { path = "../libsplinter" }
+splinter = { path = "../libsplinter" }
 protobuf = "2"
 url = "1.7.1"
 openssl = "0.10"

@@ -15,7 +15,7 @@
 //! Mesh is an asynchronous Connection handler that sends and receives across many Connections in a
 //! background thread.
 //!
-//!     use libsplinter::{mesh::{Envelope, Mesh}, transport::{Transport, raw::RawTransport}};
+//!     use splinter::{mesh::{Envelope, Mesh}, transport::{Transport, raw::RawTransport}};
 //!
 //!     let mut transport = RawTransport::default();
 //!     let mesh = Mesh::new(1, 1);

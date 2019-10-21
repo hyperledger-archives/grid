@@ -127,7 +127,7 @@ impl RawBytes {
     ///
     /// Note, this same value may be returned by using `as_ref()`:
     ///
-    ///     # use libsplinter::network::dispatch::RawBytes;
+    ///     # use splinter::network::dispatch::RawBytes;
     ///     let raw_bytes = RawBytes::from("Value".as_bytes());
     ///     assert_eq!(raw_bytes.bytes(), raw_bytes.as_ref());
     pub fn bytes(&self) -> &[u8] {

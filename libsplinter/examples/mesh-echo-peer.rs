@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate libsplinter;
+extern crate splinter;
 
 use std::env;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use libsplinter::{
+use splinter::{
     mesh::{Envelope, Mesh},
     transport::{raw::RawTransport, Listener, Transport},
 };

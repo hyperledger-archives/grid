@@ -20,17 +20,17 @@ use gameroom_database::{
     models::{Gameroom, GameroomMember as DbGameroomMember},
     ConnectionPool,
 };
-use libsplinter::admin::messages::{
+use openssl::hash::{hash, MessageDigest};
+use protobuf::Message;
+use splinter::admin::messages::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
 };
-use libsplinter::node_registry::Node;
-use libsplinter::protos::admin::{
+use splinter::node_registry::Node;
+use splinter::protos::admin::{
     CircuitManagementPayload, CircuitManagementPayload_Action as Action,
     CircuitManagementPayload_Header as Header,
 };
-use openssl::hash::{hash, MessageDigest};
-use protobuf::Message;
 use uuid::Uuid;
 
 use crate::application_metadata::ApplicationMetadata;

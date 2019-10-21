@@ -17,13 +17,13 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 
-use libsplinter::actix_web::{error::BlockingError, web, HttpResponse};
-use libsplinter::futures::{future::IntoFuture, Future};
-use libsplinter::{
+use serde::Serializer;
+use splinter::actix_web::{error::BlockingError, web, HttpResponse};
+use splinter::futures::{future::IntoFuture, Future};
+use splinter::{
     keys::{KeyInfo, KeyRegistry, KeyRegistryError},
     rest_api::{Method, Resource, RestResourceProvider},
 };
-use serde::Serializer;
 
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
 

@@ -14,7 +14,7 @@
 
 use actix_web::{client::Client, dev::Body, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
-use libsplinter::node_registry::Node;
+use splinter::node_registry::Node;
 
 use super::{ErrorResponse, SuccessResponse};
 

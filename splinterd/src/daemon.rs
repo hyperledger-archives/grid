@@ -18,41 +18,39 @@ use std::time::Duration;
 
 use crossbeam_channel;
 
-use libsplinter::admin::{admin_service_id, AdminService};
-use libsplinter::circuit::directory::CircuitDirectory;
-use libsplinter::circuit::handlers::{
+use splinter::admin::{admin_service_id, AdminService};
+use splinter::circuit::directory::CircuitDirectory;
+use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
     CircuitMessageHandler, ServiceConnectForwardHandler, ServiceConnectRequestHandler,
     ServiceDisconnectForwardHandler, ServiceDisconnectRequestHandler,
 };
-use libsplinter::circuit::SplinterState;
-use libsplinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
-use libsplinter::mesh::Mesh;
-use libsplinter::network::auth::handlers::{
+use splinter::circuit::SplinterState;
+use splinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
+use splinter::mesh::Mesh;
+use splinter::network::auth::handlers::{
     create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
 };
-use libsplinter::network::auth::AuthorizationManager;
-use libsplinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
-use libsplinter::network::handlers::NetworkEchoHandler;
-use libsplinter::network::peer::PeerConnector;
-use libsplinter::network::sender::{NetworkMessageSender, SendRequest};
-use libsplinter::network::{
-    ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError,
-};
-use libsplinter::node_registry::NodeRegistry;
-use libsplinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
-use libsplinter::protos::authorization::AuthorizationMessageType;
-use libsplinter::protos::circuit::CircuitMessageType;
-use libsplinter::protos::network::{NetworkMessage, NetworkMessageType};
-use libsplinter::rest_api::{
+use splinter::network::auth::AuthorizationManager;
+use splinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
+use splinter::network::handlers::NetworkEchoHandler;
+use splinter::network::peer::PeerConnector;
+use splinter::network::sender::{NetworkMessageSender, SendRequest};
+use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
+use splinter::node_registry::NodeRegistry;
+use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
+use splinter::protos::authorization::AuthorizationMessageType;
+use splinter::protos::circuit::CircuitMessageType;
+use splinter::protos::network::{NetworkMessage, NetworkMessageType};
+use splinter::rest_api::{
     Method, Resource, RestApiBuilder, RestApiServerError, RestResourceProvider,
 };
-use libsplinter::rwlock_read_unwrap;
-use libsplinter::service::scabbard::ScabbardFactory;
-use libsplinter::service::{self, ServiceProcessor};
-use libsplinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
-use libsplinter::storage::get_storage;
-use libsplinter::transport::{
+use splinter::rwlock_read_unwrap;
+use splinter::service::scabbard::ScabbardFactory;
+use splinter::service::{self, ServiceProcessor};
+use splinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
+use splinter::storage::get_storage;
+use splinter::transport::{
     inproc::InprocTransport, multi::MultiTransport, AcceptError, ConnectError, Incoming,
     ListenError, Listener, Transport,
 };

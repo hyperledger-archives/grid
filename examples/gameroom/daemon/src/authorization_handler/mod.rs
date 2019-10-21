@@ -32,7 +32,7 @@ use gameroom_database::{
     },
     ConnectionPool,
 };
-use libsplinter::{
+use splinter::{
     admin::messages::{
         AdminServiceEvent, CircuitProposal, CreateCircuit, SplinterNode, SplinterService,
     },
@@ -511,7 +511,7 @@ pub fn to_hex(bytes: &[u8]) -> String {
 #[cfg(all(feature = "test-authorization-handler", test))]
 mod test {
     use super::*;
-    use libsplinter::events::Reactor;
+    use splinter::events::Reactor;
 
     use diesel::{dsl::insert_into, prelude::*, RunQueryDsl};
     use gameroom_database::models::{
@@ -519,7 +519,7 @@ mod test {
         ProposalVoteRecord,
     };
 
-    use libsplinter::admin::messages::{
+    use splinter::admin::messages::{
         AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, ProposalType, RouteType,
         Vote, VoteRecord,
     };
