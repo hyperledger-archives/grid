@@ -64,6 +64,7 @@ pub fn make_ca_cert() -> Result<(PKey<Private>, X509), CertError> {
 pub fn make_ca_signed_cert(
     ca_cert: &X509Ref,
     ca_privkey: &PKeyRef<Private>,
+    common_name: &str,
 ) -> Result<(PKey<Private>, X509), CertError> {
     // generate private key
     let rsa = Rsa::generate(2048)?;
@@ -71,7 +72,7 @@ pub fn make_ca_signed_cert(
 
     // build x509_name
     let mut x509_name = X509NameBuilder::new()?;
-    x509_name.append_entry_by_text("CN", "localhost")?;
+    x509_name.append_entry_by_text("CN", &common_name)?;
     let x509_name = x509_name.build();
 
     // build x509 cert

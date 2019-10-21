@@ -111,6 +111,8 @@ fn main() {
           "if set tls should accept all peer certificates")
         (@arg generate_certs:  --("generate-certs")
           "if set, the certs will be generated and insecure will be false, only use for development")
+        (@arg common_name: --("common-name") +takes_value
+          "the common name that should be used in the generated cert, defaults to localhost")
         (@arg bind: --("bind") +takes_value
             "connection endpoint for REST API")
         (@arg registry_backend: --("registry-backend") +takes_value
@@ -273,6 +275,12 @@ fn get_transport(
         "tls" => {
             if matches.is_present("generate_certs") {
                 info!("Generating Certs for TLS Transport");
+
+                let common_name = matches
+                    .value_of("common_name")
+                    .map(String::from)
+                    .unwrap_or_else(|| String::from("localhost"));
+
                 // Generate Certificate Authority keys and certificate
                 let (ca_key, ca_cert) = make_ca_cert()?;
 
@@ -281,8 +289,10 @@ fn get_transport(
                 let temp_dir_path = temp_dir.path();
 
                 // Generate client and server keys and certificates
-                let (client_key, client_cert) = make_ca_signed_cert(&ca_cert, &ca_key)?;
-                let (server_key, server_cert) = make_ca_signed_cert(&ca_cert, &ca_key)?;
+                let (client_key, client_cert) =
+                    make_ca_signed_cert(&ca_cert, &ca_key, &common_name)?;
+                let (server_key, server_cert) =
+                    make_ca_signed_cert(&ca_cert, &ca_key, &common_name)?;
 
                 let client_cert = write_file(
                     temp_dir_path.to_path_buf(),
