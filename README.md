@@ -106,3 +106,7 @@ README in each directory explains how to run the demo.
 ## License
 
 Splinter software is licensed under the [Apache License Version 2.0](LICENSE) software license.
+
+## Code of Conduct
+
+Splinter operates under the [Cargill Code of Conduct](https://github.com/Cargill/code-of-conduct/blob/master/code-of-conduct.md).
