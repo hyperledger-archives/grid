@@ -434,14 +434,14 @@ mod tests {
 
         dispatcher
             .dispatch(
-                "PEER",
+                "abc",
                 &CircuitMessageType::SERVICE_CONNECT_REQUEST,
                 connect_bytes.clone(),
             )
             .unwrap();
         let send_request = sender.sent().get(0).unwrap().clone();
 
-        assert_eq!(send_request.recipient(), "PEER");
+        assert_eq!(send_request.recipient(), "abc");
 
         let network_msg: NetworkMessage =
             protobuf::parse_from_bytes(send_request.payload()).unwrap();
@@ -487,19 +487,19 @@ mod tests {
         );
         let mut connect_request = ServiceConnectRequest::new();
         connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("ABC".into());
+        connect_request.set_service_id("BAD".into());
         let connect_bytes = connect_request.write_to_bytes().unwrap();
 
         dispatcher
             .dispatch(
-                "PEER",
+                "BAD",
                 &CircuitMessageType::SERVICE_CONNECT_REQUEST,
                 connect_bytes.clone(),
             )
             .unwrap();
         let send_request = sender.sent().get(0).unwrap().clone();
 
-        assert_eq!(send_request.recipient(), "PEER");
+        assert_eq!(send_request.recipient(), "BAD");
 
         let network_msg: NetworkMessage =
             protobuf::parse_from_bytes(send_request.payload()).unwrap();
@@ -513,7 +513,7 @@ mod tests {
             CircuitMessageType::SERVICE_CONNECT_RESPONSE
         );
         assert_eq!(connect_response.get_circuit(), "alpha");
-        assert_eq!(connect_response.get_service_id(), "ABC");
+        assert_eq!(connect_response.get_service_id(), "BAD");
         assert_eq!(
             connect_response.get_status(),
             ServiceConnectResponse_Status::ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY
@@ -935,14 +935,14 @@ mod tests {
 
         dispatcher
             .dispatch(
-                "PEER",
+                "abc",
                 &CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
                 disconnect_bytes.clone(),
             )
             .unwrap();
         let send_request = sender.sent().get(0).unwrap().clone();
 
-        assert_eq!(send_request.recipient(), "PEER");
+        assert_eq!(send_request.recipient(), "abc");
 
         let network_msg: NetworkMessage =
             protobuf::parse_from_bytes(send_request.payload()).unwrap();
@@ -987,19 +987,19 @@ mod tests {
         );
         let mut disconnect_request = ServiceDisconnectRequest::new();
         disconnect_request.set_circuit("alpha".into());
-        disconnect_request.set_service_id("ABC".into());
+        disconnect_request.set_service_id("BAD".into());
         let disconnect_bytes = disconnect_request.write_to_bytes().unwrap();
 
         dispatcher
             .dispatch(
-                "PEER",
+                "BAD",
                 &CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
                 disconnect_bytes.clone(),
             )
             .unwrap();
         let send_request = sender.sent().get(0).unwrap().clone();
 
-        assert_eq!(send_request.recipient(), "PEER");
+        assert_eq!(send_request.recipient(), "BAD");
 
         let network_msg: NetworkMessage =
             protobuf::parse_from_bytes(send_request.payload()).unwrap();
@@ -1013,7 +1013,7 @@ mod tests {
             CircuitMessageType::SERVICE_DISCONNECT_RESPONSE
         );
         assert_eq!(disconnect_response.get_circuit(), "alpha");
-        assert_eq!(disconnect_response.get_service_id(), "ABC");
+        assert_eq!(disconnect_response.get_service_id(), "BAD");
         assert_eq!(
             disconnect_response.get_status(),
             ServiceDisconnectResponse_Status::ERROR_SERVICE_NOT_IN_CIRCUIT_REGISTRY

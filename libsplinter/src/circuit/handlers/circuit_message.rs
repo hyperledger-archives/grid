@@ -78,7 +78,7 @@ mod tests {
         let handler = CircuitMessageHandler::new(circuit_sender.box_clone());
         network_dispatcher.set_handler(NetworkMessageType::CIRCUIT, Box::new(handler));
 
-        // Create a CircuitMessage wrapped in a NetworkMessage to be dispatched
+        // Create a CircuitMessage
         let mut circuit_msg = CircuitMessage::new();
         circuit_msg.set_message_type(CircuitMessageType::SERVICE_CONNECT_REQUEST);
         circuit_msg.set_payload(b"test".to_vec());

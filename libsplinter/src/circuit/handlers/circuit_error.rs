@@ -111,7 +111,7 @@ mod tests {
     use crate::protos::circuit::{CircuitError_Error, CircuitMessage};
     use crate::protos::network::NetworkMessage;
 
-    // Test that if an error message recieved is meant for the service connected to a node,
+    // Test that if an error message received is meant for the service connected to a node,
     // the error message is sent to the service
     #[test]
     fn test_circuit_error_handler_service() {
@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(circuit_error.get_correlation_id(), "1234");
     }
 
-    // Test that if an error message recieved is meant for the service not connected to this node,
+    // Test that if an error message received is meant for the service not connected to this node,
     // the error message is sent to the node the service is connected to
     #[test]
     fn test_circuit_error_handler_node() {

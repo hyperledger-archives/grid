@@ -1425,14 +1425,7 @@ mod tests {
             "memory",
         )
         .unwrap();
-        let mut circuit = setup_test_circuit();
-
-        let mut service_bad = SplinterService::new();
-        service_bad.set_service_id("service_b".to_string());
-        service_bad.set_service_type("type_a".to_string());
-        service_bad.set_allowed_nodes(RepeatedField::from_vec(vec!["node_b".to_string()]));
-
-        circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
+        let circuit = setup_test_circuit();
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
             panic!("Should have been invalid due to signer not being registered to a node");
@@ -1738,7 +1731,7 @@ mod tests {
     }
 
     #[test]
-    // test that a valid circuit proposal comes back as valid
+    // test that a valid circuit proposal vote comes back as valid
     fn test_validate_proposal_vote_valid() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
@@ -1840,7 +1833,7 @@ mod tests {
     }
 
     #[test]
-    // test if a voter has aleady voted on a proposal the new vote is invalid
+    // test if a voter has already voted on a proposal the new vote is invalid
     fn test_validate_proposal_vote_duplicate_vote() {
         let state = setup_splinter_state();
         let peer_connector = setup_peer_connector();
@@ -1882,7 +1875,7 @@ mod tests {
     }
 
     #[test]
-    // test that if the circuit hash in the circuit proposal does not match the cirucit hash on
+    // test that if the circuit hash in the circuit proposal does not match the circuit hash on
     // the vote, the vote is invalid
     fn test_validate_proposal_vote_circuit_hash_mismatch() {
         let state = setup_splinter_state();
