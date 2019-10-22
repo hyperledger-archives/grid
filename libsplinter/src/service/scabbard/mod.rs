@@ -47,8 +47,8 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
-pub use state::StateChangeEvent;
-use state::{BatchInfo, ScabbardState};
+use state::ScabbardState;
+pub use state::{BatchInfo, BatchStatus, StateChangeEvent};
 
 const SERVICE_TYPE: &str = "scabbard";
 

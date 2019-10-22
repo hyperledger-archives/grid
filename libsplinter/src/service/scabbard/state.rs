@@ -405,7 +405,7 @@ impl From<InvalidTransactionResult> for InvalidTransaction {
 pub struct BatchInfo {
     pub id: String,
     pub status: BatchStatus,
-    #[serde(skip_serializing)]
+    #[serde(skip, default = "SystemTime::now")]
     pub timestamp: SystemTime,
 }
 
