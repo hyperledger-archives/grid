@@ -23,6 +23,7 @@ name = "splinter"
 version = "0.3.5"
 authors = ["Cargill Incorporated"]
 edition = "2018"
+license = "Apache-2.0"
 
 [dependencies]
 actix = { version = "0.8", default-features = false }
