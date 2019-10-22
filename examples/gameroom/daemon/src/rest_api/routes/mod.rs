@@ -55,37 +55,53 @@ const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b',');
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
+pub struct ErrorResponse<T: Serialize> {
     code: String,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<T>,
 }
 
-impl ErrorResponse {
-    pub fn internal_error() -> ErrorResponse {
+impl ErrorResponse<String> {
+    pub fn internal_error() -> ErrorResponse<String> {
         ErrorResponse {
             code: "500".to_string(),
             message: "The server encountered an error".to_string(),
+            data: None,
         }
     }
 
-    pub fn bad_request(message: &str) -> ErrorResponse {
+    pub fn bad_request(message: &str) -> ErrorResponse<String> {
         ErrorResponse {
             code: "400".to_string(),
             message: message.to_string(),
+            data: None,
         }
     }
 
-    pub fn not_found(message: &str) -> ErrorResponse {
+    pub fn not_found(message: &str) -> ErrorResponse<String> {
         ErrorResponse {
             code: "404".to_string(),
             message: message.to_string(),
+            data: None,
         }
     }
 
-    pub fn unauthorized(message: &str) -> ErrorResponse {
+    pub fn unauthorized(message: &str) -> ErrorResponse<String> {
         ErrorResponse {
             code: "401".to_string(),
             message: message.to_string(),
+            data: None,
+        }
+    }
+}
+
+impl<T: Serialize> ErrorResponse<T> {
+    pub fn bad_request_with_data(message: &str, data: T) -> ErrorResponse<T> {
+        ErrorResponse {
+            code: "400".to_string(),
+            message: message.to_string(),
+            data: Some(data),
         }
     }
 }
