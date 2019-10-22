@@ -23,6 +23,11 @@ const whitelabelConfig = {
     'scssVariables': './src/scss/modules/themes/acme',
     'assets': './src/assets/acme',
   },
+  'generic': {
+    'brand': 'generic',
+    'scssVariables': './src/scss/modules/themes/generic',
+    'assets': './src/assets/generic',
+  },
 }
 
 module.exports = whitelabelConfig;
