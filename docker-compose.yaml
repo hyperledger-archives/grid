@@ -16,7 +16,7 @@ version: "2.2"
 
 services:
   splinterd-node-0:
-    image: spliterd-node
+    image: splinterd-node
     expose:
       - 8080
       - 8043
