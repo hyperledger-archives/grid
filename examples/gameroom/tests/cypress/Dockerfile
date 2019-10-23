@@ -14,6 +14,12 @@
 
 FROM cypress/base:10
 
+RUN apt-get update \
+ && apt-get install -y \
+    postgresql-client \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 # Optionally pass proxy information to get internet connectivity within npm ci
 # postinstall hooks when running behind corporate proxies.
 ARG http_proxy
