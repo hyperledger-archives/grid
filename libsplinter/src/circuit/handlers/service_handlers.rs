@@ -79,7 +79,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
                     }
                 };
 
-                if !service.allowed_nodes.contains(&self.node_id) && service.allowed_nodes != ["*"]
+                if !service.allowed_nodes.contains(&self.node_id)
                 {
                     response.set_status(ServiceConnectResponse_Status::ERROR_NOT_AN_ALLOWED_NODE);
                     response.set_error_message(format!("{} is not allowed on this node", unique_id))
@@ -363,91 +363,6 @@ mod tests {
         let mut dispatcher = Dispatcher::new(sender.box_clone());
 
         let circuit = build_circuit();
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        let handler = ServiceConnectRequestHandler::new(
-            "123".to_string(),
-            "127.0.0.1:0".to_string(),
-            state.clone(),
-        );
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
-            Box::new(handler),
-        );
-        let mut connect_request = ServiceConnectRequest::new();
-        connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("abc".into());
-        let connect_bytes = connect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
-                connect_bytes.clone(),
-            )
-            .unwrap();
-        let send_requests = sender.sent();
-        assert_eq!(send_requests.len(), 1);
-        let send_request = send_requests.get(0).unwrap().clone();
-
-        assert_eq!(send_request.recipient(), "PEER");
-
-        let network_msg: NetworkMessage =
-            protobuf::parse_from_bytes(send_request.payload()).unwrap();
-        let circuit_msg: CircuitMessage =
-            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
-        let connect_response: ServiceConnectResponse =
-            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
-
-        assert_eq!(
-            circuit_msg.get_message_type(),
-            CircuitMessageType::SERVICE_CONNECT_RESPONSE
-        );
-        assert_eq!(connect_response.get_circuit(), "alpha");
-        assert_eq!(connect_response.get_service_id(), "abc");
-        assert_eq!(
-            connect_response.get_status(),
-            ServiceConnectResponse_Status::OK
-        );
-
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_some());
-    }
-
-    #[test]
-    // Test that if the service is in a circuit and not connected, a ServiceConnectResponse is
-    // returned with an OK If services have a * in there allowed nodes they can connect to any node on the
-    // circiut.
-    fn test_service_connect_request_handler_service_any_node() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let service_def = ServiceDefinition::builder("def".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["123".into(), "345".into()])
-            .with_roster(vec![service_abc, service_def])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurabilty)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
 
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);

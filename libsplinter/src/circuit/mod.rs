@@ -501,7 +501,7 @@ mod tests {
     impl Into<ServiceDefinition> for &str {
         fn into(self) -> ServiceDefinition {
             ServiceDefinition::builder(self.to_string(), "test_type".into())
-                .with_allowed_nodes(vec!["*".into()])
+                .with_allowed_nodes(vec!["test-node".into()])
                 .with_arguments(vec![("test-key".into(), "test-value".into())])
                 .build()
         }
