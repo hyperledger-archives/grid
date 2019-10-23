@@ -27,9 +27,7 @@ pub use self::admin_message::AdminDirectMessageHandler;
 pub use self::circuit_error::CircuitErrorHandler;
 pub use self::circuit_message::CircuitMessageHandler;
 pub use self::direct_message::CircuitDirectMessageHandler;
-pub use self::service_handlers::ServiceConnectForwardHandler;
 pub use self::service_handlers::ServiceConnectRequestHandler;
-pub use self::service_handlers::ServiceDisconnectForwardHandler;
 pub use self::service_handlers::ServiceDisconnectRequestHandler;
 
 fn create_message(
