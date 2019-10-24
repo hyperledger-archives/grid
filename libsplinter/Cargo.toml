@@ -33,6 +33,7 @@ byteorder = "1"
 url = "1.7.1"
 openssl = "0.10"
 mio = "0.6"
+sawtooth = { version = "0.1", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.4"
 sawtooth-sdk = { version = "0.3", optional = true }
 serde = "1.0"

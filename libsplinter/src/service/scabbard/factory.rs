@@ -32,11 +32,15 @@ use super::{Scabbard, SERVICE_TYPE};
 
 const DEFAULT_STATE_DB_DIR: &str = "/var/lib/splinter";
 const DEFAULT_STATE_DB_SIZE: usize = 1028 * 1028 * 1028;
+const DEFAULT_RECEIPT_DB_DIR: &str = "/var/lib/splinter";
+const DEFAULT_RECEIPT_DB_SIZE: usize = 1 << 30; // 1024 ** 3
 
 pub struct ScabbardFactory {
     service_types: Vec<String>,
     state_db_dir: String,
     state_db_size: usize,
+    receipt_db_dir: String,
+    receipt_db_size: usize,
     signature_verifier_factory: Box<dyn SignatureVerifierFactory>,
 }
 
@@ -44,12 +48,16 @@ impl ScabbardFactory {
     pub fn new(
         state_db_dir: Option<String>,
         state_db_size: Option<usize>,
+        receipt_db_dir: Option<String>,
+        receipt_db_size: Option<usize>,
         signature_verifier_factory: Box<dyn SignatureVerifierFactory>,
     ) -> Self {
         ScabbardFactory {
             service_types: vec![SERVICE_TYPE.into()],
             state_db_dir: state_db_dir.unwrap_or_else(|| DEFAULT_STATE_DB_DIR.into()),
             state_db_size: state_db_size.unwrap_or(DEFAULT_STATE_DB_SIZE),
+            receipt_db_dir: receipt_db_dir.unwrap_or_else(|| DEFAULT_RECEIPT_DB_DIR.into()),
+            receipt_db_size: receipt_db_size.unwrap_or(DEFAULT_RECEIPT_DB_SIZE),
             signature_verifier_factory,
         }
     }
@@ -86,6 +94,7 @@ impl ServiceFactory for ScabbardFactory {
                 .into_iter(),
         );
         let state_db_dir = Path::new(&self.state_db_dir);
+        let receipt_db_dir = Path::new(&self.receipt_db_dir);
         let admin_keys_str = args.get("admin_keys").ok_or_else(|| {
             FactoryCreateError::InvalidArguments("admin_keys argument not provided".into())
         })?;
@@ -102,6 +111,8 @@ impl ServiceFactory for ScabbardFactory {
             peer_services,
             &state_db_dir,
             self.state_db_size,
+            &receipt_db_dir,
+            self.receipt_db_size,
             self.signature_verifier_factory.create_verifier(),
             admin_keys,
         )
@@ -247,6 +258,8 @@ mod tests {
         );
 
         let factory = ScabbardFactory::new(
+            Some("/tmp".into()),
+            Some(1024 * 1024),
             Some("/tmp".into()),
             Some(1024 * 1024),
             Box::new(HashVerifier),

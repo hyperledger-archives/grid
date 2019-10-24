@@ -291,6 +291,8 @@ impl SplinterDaemon {
             vec![Box::new(ScabbardFactory::new(
                 None,
                 None,
+                None,
+                None,
                 Box::new(SawtoothSecp256k1SignatureVerifier::new()),
             ))],
             orchestrator_connection,

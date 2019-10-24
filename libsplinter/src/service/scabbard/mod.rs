@@ -62,6 +62,7 @@ pub struct Scabbard {
 }
 
 impl Scabbard {
+    #[allow(clippy::too_many_arguments)]
     /// Generate a new Scabbard service.
     pub fn new(
         service_id: String,
@@ -72,6 +73,10 @@ impl Scabbard {
         state_db_dir: &Path,
         // The size of sabre's LMDB database
         state_db_size: usize,
+        // The directory in which to create the transaction receipt store's LMDB database
+        receipt_db_dir: &Path,
+        // The size of the transaction receipt store's LMDB database
+        receipt_db_size: usize,
         signature_verifier: Box<dyn SignatureVerifier>,
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
@@ -83,8 +88,15 @@ impl Scabbard {
         .map(|digest| to_hex(&*digest))
         .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let state_db_path = state_db_dir.join(format!("{}-state.lmdb", hash));
-        let state = ScabbardState::new(state_db_path.as_path(), state_db_size, admin_keys)
-            .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
+        let receipt_db_path = receipt_db_dir.join(format!("{}-receipts.lmdb", hash));
+        let state = ScabbardState::new(
+            state_db_path.as_path(),
+            state_db_size,
+            receipt_db_path.as_path(),
+            receipt_db_size,
+            admin_keys,
+        )
+        .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(
             VecDeque::new(),
             None,
@@ -313,6 +325,8 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            Path::new("/tmp"),
+            1024 * 1024,
             Box::new(HashVerifier),
             vec![],
         )
@@ -331,6 +345,8 @@ pub mod tests {
             HashSet::new(),
             Path::new("/tmp"),
             1024 * 1024,
+            Path::new("/tmp"),
+            1024 * 1024,
             Box::new(HashVerifier),
             vec![],
         )
@@ -347,6 +363,8 @@ pub mod tests {
             "connect_and_disconnect".into(),
             "test_circuit",
             HashSet::new(),
+            Path::new("/tmp"),
+            1024 * 1024,
             Path::new("/tmp"),
             1024 * 1024,
             Box::new(HashVerifier),

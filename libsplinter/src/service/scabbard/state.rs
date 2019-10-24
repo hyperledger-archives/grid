@@ -15,6 +15,8 @@
 use std::{collections::HashMap, fmt, path::Path, time::SystemTime};
 
 use protobuf::Message;
+use sawtooth::store::lmdb::LmdbOrderedStore;
+use sawtooth::store::receipt_store::TransactionReceiptStore;
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
 use transact::context::manager::sync::ContextManager;
@@ -55,6 +57,7 @@ pub struct ScabbardState {
     context_manager: ContextManager,
     executor: Executor,
     current_state_root: String,
+    transaction_receipt_store: TransactionReceiptStore,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
     event_dealer: EventDealer<Vec<StateChangeEvent>>,
     batch_history: BatchHistory,
@@ -65,6 +68,8 @@ impl ScabbardState {
     pub fn new(
         state_db_path: &Path,
         state_db_size: usize,
+        receipt_db_path: &Path,
+        receipt_db_size: usize,
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardStateError> {
         // Initialize the database
@@ -124,6 +129,10 @@ impl ScabbardState {
             context_manager,
             executor,
             current_state_root,
+            transaction_receipt_store: TransactionReceiptStore::new(Box::new(
+                LmdbOrderedStore::new(receipt_db_path, Some(receipt_db_size))
+                    .map_err(|err| ScabbardStateError(err.to_string()))?,
+            )),
             pending_changes: None,
             event_dealer,
             batch_history: BatchHistory::new(),
@@ -230,6 +239,15 @@ impl ScabbardState {
                     state_changes.len(),
                     self.current_state_root,
                 );
+
+                self.transaction_receipt_store
+                    .append(txn_receipts)
+                    .map_err(|err| {
+                        ScabbardStateError(format!(
+                            "failed to add transaction receipts to store: {}",
+                            err
+                        ))
+                    })?;
 
                 let events = state_changes
                     .into_iter()
