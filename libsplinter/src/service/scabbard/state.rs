@@ -55,7 +55,7 @@ pub struct ScabbardState {
     context_manager: ContextManager,
     executor: Executor,
     current_state_root: String,
-    pending_changes: Option<(String, Vec<StateChange>)>,
+    pending_changes: Option<(String, Vec<TransactionReceipt>)>,
     event_dealer: EventDealer<Vec<StateChangeEvent>>,
     batch_history: BatchHistory,
     commit_history: LocalEventHistory<Vec<StateChangeEvent>>,
@@ -205,22 +205,23 @@ impl ScabbardState {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let state_changes = receipts_into_state_changes(&txn_results);
-
         scheduler.shutdown();
 
         // Save the results and compute the resulting state root
-        let state_root = MerkleState::new(self.db.clone())
-            .compute_state_id(&self.current_state_root, &state_changes)?;
-        self.pending_changes = Some((signature.to_string(), state_changes));
+        let state_root = MerkleState::new(self.db.clone()).compute_state_id(
+            &self.current_state_root,
+            &receipts_into_state_changes(&txn_results),
+        )?;
+        self.pending_changes = Some((signature.to_string(), txn_results));
         Ok(state_root)
     }
 
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some((signature, state_changes)) => {
+            Some((signature, txn_receipts)) => {
+                let state_changes = receipts_into_state_changes(&txn_receipts);
                 self.current_state_root = MerkleState::new(self.db.clone())
-                    .commit(&self.current_state_root, state_changes.as_slice())?;
+                    .commit(&self.current_state_root, &state_changes)?;
 
                 self.write_current_state_root()?;
 
@@ -251,7 +252,10 @@ impl ScabbardState {
 
     pub fn rollback(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some((_, state_changes)) => info!("discarded {} change(s)", state_changes.len()),
+            Some((_, txn_receipts)) => info!(
+                "discarded {} change(s)",
+                receipts_into_state_changes(&txn_receipts).len()
+            ),
             None => debug!("no changes to rollback"),
         }
 
