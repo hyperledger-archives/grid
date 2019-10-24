@@ -33,7 +33,7 @@ use splinter::network::auth::handlers::{
 };
 use splinter::network::auth::AuthorizationManager;
 use splinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
-use splinter::network::handlers::NetworkEchoHandler;
+use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
@@ -625,6 +625,13 @@ fn set_up_network_dispatcher(
             auth_manager.clone(),
             Box::new(network_echo_handler),
         )),
+    );
+
+    let network_heartbeat_handler = NetworkHeartbeatHandler::new();
+    // do not add auth guard
+    dispatcher.set_handler(
+        NetworkMessageType::NETWORK_HEARTBEAT,
+        Box::new(network_heartbeat_handler),
     );
 
     let circuit_message_handler = CircuitMessageHandler::new(Box::new(circuit_sender));

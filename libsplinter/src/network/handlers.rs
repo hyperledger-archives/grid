@@ -14,7 +14,7 @@
 use crate::channel::Sender;
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
-use crate::protos::network::{NetworkEcho, NetworkMessage, NetworkMessageType};
+use crate::protos::network::{NetworkEcho, NetworkHeartbeat, NetworkMessage, NetworkMessageType};
 
 use protobuf::Message;
 
@@ -64,6 +64,28 @@ impl Handler<NetworkMessageType, NetworkEcho> for NetworkEchoHandler {
 impl NetworkEchoHandler {
     pub fn new(node_id: String) -> Self {
         NetworkEchoHandler { node_id }
+    }
+}
+
+// Implements a handler that handles NetworkHeartbeat Messages
+#[derive(Default)]
+pub struct NetworkHeartbeatHandler {}
+
+impl Handler<NetworkMessageType, NetworkHeartbeat> for NetworkHeartbeatHandler {
+    fn handle(
+        &self,
+        _msg: NetworkHeartbeat,
+        context: &MessageContext<NetworkMessageType>,
+        _sender: &dyn Sender<SendRequest>,
+    ) -> Result<(), DispatchError> {
+        trace!("Received Heartbeat from {}", context.source_peer_id());
+        Ok(())
+    }
+}
+
+impl NetworkHeartbeatHandler {
+    pub fn new() -> Self {
+        NetworkHeartbeatHandler {}
     }
 }
 
