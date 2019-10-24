@@ -51,3 +51,30 @@
 
 /target
 /Cargo.lock
+
+## Canopy
+# deps
+**/node_modules
+**/.pnp
+**/.pnp.js
+**/yarn.lock
+
+#testing
+/canopy/**/coverage
+
+# production
+/canopy/**/build
+
+# misc
+.DS_Store
+/canopy/**/.env.local
+/canopy/**/.env.development.local
+/canopy/**/.env.test.local
+/canopy/**/.env.production.local
+
+/canopy/**/npm-debug.log*
+/canopy/**/yarn-debug.log*
+/canopy/**/yarn-error.log*
+
+# editor
+**/.vscode
