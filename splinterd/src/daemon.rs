@@ -491,6 +491,7 @@ pub struct SplinterDaemonBuilder {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     storage_type: Option<String>,
+    heartbeat_interval: Option<u64>,
 }
 
 impl SplinterDaemonBuilder {
@@ -545,6 +546,11 @@ impl SplinterDaemonBuilder {
 
     pub fn with_storage_type(mut self, value: String) -> Self {
         self.storage_type = Some(value);
+        self
+    }
+
+    pub fn with_heartbeat_interval(mut self, value: u64) -> Self {
+        self.heartbeat_interval = Some(value);
         self
     }
 
