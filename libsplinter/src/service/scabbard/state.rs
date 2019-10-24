@@ -205,23 +205,15 @@ impl ScabbardState {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let state_changes = txn_results
-            .into_iter()
-            .flat_map(|txn_result| {
-                txn_result
-                    .state_changes
-                    .into_iter()
-                    .map(into_writable_state_change)
-            })
-            .collect::<Vec<_>>();
+        let state_changes = receipts_into_state_changes(&txn_results);
+
         scheduler.shutdown();
 
         // Save the results and compute the resulting state root
-        self.pending_changes = Some((signature.to_string(), state_changes.clone()));
-        Ok(MerkleState::new(self.db.clone()).compute_state_id(
-            &self.current_state_root,
-            self.pending_changes.as_ref().unwrap().1.as_slice(),
-        )?)
+        let state_root = MerkleState::new(self.db.clone())
+            .compute_state_id(&self.current_state_root, &state_changes)?;
+        self.pending_changes = Some((signature.to_string(), state_changes));
+        Ok(state_root)
     }
 
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
@@ -281,17 +273,24 @@ impl ScabbardState {
     }
 }
 
-fn into_writable_state_change(
-    change: transact::protocol::receipt::StateChange,
-) -> transact::state::StateChange {
-    match change {
-        transact::protocol::receipt::StateChange::Set { key, value } => {
-            transact::state::StateChange::Set { key, value }
-        }
-        transact::protocol::receipt::StateChange::Delete { key } => {
-            transact::state::StateChange::Delete { key }
-        }
-    }
+fn receipts_into_state_changes(receipts: &[TransactionReceipt]) -> Vec<StateChange> {
+    receipts
+        .iter()
+        .flat_map(|receipt| {
+            receipt
+                .state_changes
+                .iter()
+                .cloned()
+                .map(|change| match change {
+                    transact::protocol::receipt::StateChange::Set { key, value } => {
+                        StateChange::Set { key, value }
+                    }
+                    transact::protocol::receipt::StateChange::Delete { key } => {
+                        StateChange::Delete { key }
+                    }
+                })
+        })
+        .collect::<Vec<_>>()
 }
 
 #[derive(Clone, Serialize, Deserialize)]
