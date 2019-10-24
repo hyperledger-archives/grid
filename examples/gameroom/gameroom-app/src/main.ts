@@ -28,7 +28,9 @@ new Vue({
   render: (h) => h(App),
 }).$mount('#app');
 
-Vue.use(VueNativeSock, `ws://${window.location.host}/ws/subscribe`, {
+const protocol = ('https:' === document.location.protocol ? 'wss' : 'ws');
+
+Vue.use(VueNativeSock, `${protocol}://${window.location.host}/ws/subscribe`, {
   store,
   format: 'json',
   reconnection: true,
