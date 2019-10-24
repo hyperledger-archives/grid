@@ -12,11 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! A simple n-party, two-phase consensus algorithm implemented as a `ConsensusEngine`. This is a
-//! bully algorithm where the coordinator for a proposal is determined as the node with the
-//! lowest ID in the set of verifiers. Only one proposal is considered at a time. A proposal
-//! manager can define its own set of required verifiers by setting this information in the
-//! consensus data.
+//! A simple n-party, two-phase commit (2PC) consensus algorithm implemented as a
+//! `ConsensusEngine`. This is a bully algorithm where the coordinator for a proposal is determined
+//! as the node with the lowest ID in the set of verifiers. Only one proposal is considered at a
+//! time. A proposal manager can define its own set of required verifiers by setting this
+//! information in the consensus data.
+//!
+//! # Known limitations of this 2PC implementation
+//!
+//! There is a potential race condition in two-phase commit where two different proposals are in
+//! flight:
+//!
+//! - The two proposals have different coordinators
+//! - Both proposals have two or more verifiers in common
+//! - One of the common verifiers evaluates the 1st proposal; the other evaluates the 2nd proposal
+//! - Neither proposal will be completed, since only a single proposal can be evaluated by a
+//!   verifier at a time
+//!
+//! The solution to this limitation would require 2PC to have more sophisticated knowledge about
+//! the proposals available to it, and be able to process multiple non-overlapping proposals at the
+//! same time.
+//!
+//! Another limitation of this implementation is that it is not fully resilient to crashes; for
+//! instance, if the coordinator commits a proposal but crashes before it is able to send the
+//! `APPLY` message to the other nodes, the network will be out of sync because the coordinator
+//! does not know to send the message when it restarts. This limitation will be solved by
+//! re-implementing 2PC as a stateless algorithm.
 
 mod timing;
 
