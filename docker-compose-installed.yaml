@@ -94,6 +94,16 @@ services:
     image: ${REGISTRY}${NAMESPACE}gameroom-app-bubba:${ISOLATION_ID}
     container_name: gameroom-app-bubba
 
+  gameroom-app:
+    build:
+      context: .
+      dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
+      args:
+        - VUE_APP_BRAND=generic
+        - REPO_VERSION=${REPO_VERSION}
+    image: ${REGISTRY}${NAMESPACE}gameroom-app:${ISOLATION_ID}
+    container_name: gameroom-app
+
   gameroom-database:
     build:
       context: .

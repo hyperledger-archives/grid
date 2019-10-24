@@ -6,9 +6,11 @@
   "license": "Apache-2.0",
   "scripts": {
     "serve": "npm run generate-proto-files ../../../protos && cross-env process.env.VUE_APP_BRAND='generic' vue-cli-service serve",
+    "serve-generic": "npm run serve",
     "serve-acme": "npm run generate-proto-files ../../../protos && cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service serve",
     "serve-bubba": "npm run generate-proto-files ../../../protos && cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service serve",
     "build": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='generic' vue-cli-service build",
+    "build-generic": "npm run build",
     "build-acme": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service build",
     "build-bubba": "npm run generate-proto-files ./protos && cross-env process.env.VUE_APP_BRAND='bubba' vue-cli-service build",
     "lint": "cross-env process.env.VUE_APP_BRAND='acme' vue-cli-service lint",
