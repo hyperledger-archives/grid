@@ -130,3 +130,19 @@ export interface Player {
   publicKey: string;
   organization: string;
 }
+
+export interface BatchInfo {
+  id: string;
+  status: BatchStatus;
+}
+
+export interface BatchStatus {
+  statusType: string;
+  message: BatchMessage[];
+}
+
+export interface BatchMessage {
+  transaction_id: string;
+  error_message: string;
+  error_data: number[];
+}

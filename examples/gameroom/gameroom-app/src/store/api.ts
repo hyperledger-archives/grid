@@ -27,6 +27,7 @@ import {
   Ballot,
   Game,
   Player,
+  BatchInfo,
 } from './models';
 
 import { hashGameName } from '@/utils/xo-games';
@@ -161,7 +162,7 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
   });
 }
 
-export async function submitBatch(payload: Uint8Array, circuitID: string): Promise<void> {
+export async function submitBatch(payload: Uint8Array, circuitID: string): Promise<BatchInfo[]> {
   const options = {
     method: 'POST',
     url: `http://${window.location.host}/api/gamerooms/${circuitID}/batches`,
@@ -171,12 +172,15 @@ export async function submitBatch(payload: Uint8Array, circuitID: string): Promi
     },
   };
 
-  await rp(options).then((body) => {
-    return;
+  return await rp(options).then((rawBody) => {
+    const jsonBody = JSON.parse(rawBody);
+    const batchesInfo = jsonBody.data as BatchInfo[];
+    return batchesInfo;
   })
   .catch((err) => {
-    console.error(err.message);
-    throw new Error('Failed to send request. Contact administrator for help.');
+     console.error(err.message);
+     const error = JSON.parse(err.response.body);
+     throw new Error(error.message || 'Failed to send request. Contact administrator for help.');
   });
 }
 

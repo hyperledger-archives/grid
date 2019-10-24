@@ -226,19 +226,22 @@ import store from '@/store';
       if (this.canSubmitNewGame) {
           this.submitting = true;
           try {
-            await
+             await
               this.$store.dispatch(
                 'games/createGame',
                 {gameName: this.newGameName, circuitID: this.$route.params.id},
               );
+
+             this.$store.commit(
+              'games/setUncommittedGame',
+              {gameName: this.newGameName, circuitID: this.$route.params.id},
+             );
+
           } catch (e) {
             console.error(e);
             this.$emit('error', e.message);
           }
-          this.$store.commit(
-            'games/setUncommittedGame',
-            {gameName: this.newGameName, circuitID: this.$route.params.id},
-          );
+
           this.submitting = false;
           this.closeNewGameModal();
       }
