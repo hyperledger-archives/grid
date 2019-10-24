@@ -33,14 +33,14 @@ use crate::mesh::{
 use crate::transport::Connection;
 
 #[derive(Debug)]
-pub struct NetworkMessage {
+pub struct NetworkMessageWrapper {
     peer_id: String,
     payload: Vec<u8>,
 }
 
-impl NetworkMessage {
+impl NetworkMessageWrapper {
     pub fn new(peer_id: String, payload: Vec<u8>) -> Self {
-        NetworkMessage { peer_id, payload }
+        NetworkMessageWrapper { peer_id, payload }
     }
     pub fn peer_id(&self) -> &str {
         &self.peer_id
@@ -229,7 +229,7 @@ impl Network {
         Ok(())
     }
 
-    pub fn recv(&self) -> Result<NetworkMessage, RecvError> {
+    pub fn recv(&self) -> Result<NetworkMessageWrapper, RecvError> {
         let envelope = self.mesh.recv()?;
         let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
@@ -241,10 +241,13 @@ impl Network {
             }
         };
 
-        Ok(NetworkMessage::new(peer_id, envelope.take_payload()))
+        Ok(NetworkMessageWrapper::new(peer_id, envelope.take_payload()))
     }
 
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<NetworkMessage, RecvTimeoutError> {
+    pub fn recv_timeout(
+        &self,
+        timeout: Duration,
+    ) -> Result<NetworkMessageWrapper, RecvTimeoutError> {
         let envelope = self.mesh.recv_timeout(timeout)?;
         let peer_id = match rwlock_read_unwrap!(self.peers).get_peer_id(envelope.id()) {
             Some(peer_id) => peer_id.to_string(),
@@ -256,7 +259,7 @@ impl Network {
             }
         };
 
-        Ok(NetworkMessage::new(peer_id, envelope.take_payload()))
+        Ok(NetworkMessageWrapper::new(peer_id, envelope.take_payload()))
     }
 }
 
