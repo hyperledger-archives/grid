@@ -22,7 +22,8 @@ use gameroom_database::{helpers, models::GameroomNotification, ConnectionPool};
 use crate::rest_api::RestApiResponseError;
 
 use super::{
-    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+    get_response_paging_info, validate_limit, ErrorResponse, SuccessResponse, DEFAULT_LIMIT,
+    DEFAULT_OFFSET,
 };
 
 #[derive(Debug, Serialize)]
@@ -135,7 +136,7 @@ fn list_unread_notifications_from_db(
     limit: usize,
     offset: usize,
 ) -> Result<(Vec<ApiNotification>, i64), RestApiResponseError> {
-    let db_limit = limit as i64;
+    let db_limit = validate_limit(limit);
     let db_offset = offset as i64;
 
     let notifications =

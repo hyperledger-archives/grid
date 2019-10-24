@@ -32,7 +32,8 @@ use splinter::protos::admin::{
 };
 
 use super::{
-    get_response_paging_info, ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET,
+    get_response_paging_info, validate_limit, ErrorResponse, SuccessResponse, DEFAULT_LIMIT,
+    DEFAULT_OFFSET,
 };
 use crate::rest_api::RestApiResponseError;
 
@@ -172,7 +173,7 @@ fn list_proposals_from_db(
     limit: usize,
     offset: usize,
 ) -> Result<(Vec<ApiGameroomProposal>, i64), RestApiResponseError> {
-    let db_limit = limit as i64;
+    let db_limit = validate_limit(limit);
     let db_offset = offset as i64;
 
     let mut proposal_members: HashMap<String, Vec<GameroomMember>> =
