@@ -400,6 +400,7 @@ fn process_incoming_msg(
                 msg_type => warn!("Received unimplemented message: {:?}", msg_type),
             }
         }
+        NetworkMessageType::NETWORK_HEARTBEAT => trace!("Received network heartbeat"),
         _ => warn!("Received unimplemented message"),
     }
 
@@ -626,7 +627,7 @@ pub mod tests {
         let r = running.clone();
 
         let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
 
         thread::Builder::new()
             .name("standard_direct_message".to_string())
@@ -726,7 +727,7 @@ pub mod tests {
         let r = running.clone();
 
         let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
 
         thread::Builder::new()
             .name("test_admin_direct_message".to_string())

@@ -555,8 +555,13 @@ impl SplinterDaemonBuilder {
     }
 
     pub fn build(self) -> Result<SplinterDaemon, CreateError> {
+        let heartbeat_interval = self.heartbeat_interval.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: heartbeat_interval".to_string())
+        })?;
+
         let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), heartbeat_interval)
+            .map_err(|err| CreateError::NetworkError(err.to_string()))?;
 
         let storage_location = self.storage_location.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_location".to_string())
@@ -736,6 +741,7 @@ fn create_node_registry(
 pub enum CreateError {
     MissingRequiredField(String),
     NodeRegistryError(String),
+    NetworkError(String),
 }
 
 impl From<RegistryConfigError> for CreateError {

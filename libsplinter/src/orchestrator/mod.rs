@@ -461,6 +461,7 @@ pub fn run_incoming_loop(
                     msg_type => warn!("Received unimplemented message: {:?}", msg_type),
                 }
             }
+            NetworkMessageType::NETWORK_HEARTBEAT => trace!("Received network heartbeat"),
             _ => warn!("Received unimplemented message"),
         }
     }

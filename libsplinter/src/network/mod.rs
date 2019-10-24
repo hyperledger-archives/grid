@@ -19,10 +19,12 @@ pub mod peer;
 pub(crate) mod reply;
 pub mod sender;
 
+use protobuf::Message;
 use uuid::Uuid;
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::thread;
 use std::time::Duration;
 
 use crate::collections::BiHashMap;
@@ -30,6 +32,7 @@ use crate::mesh::{
     AddError, Envelope, Mesh, RecvError as MeshRecvError, RecvTimeoutError as MeshRecvTimeoutError,
     RemoveError, SendError as MeshSendError,
 };
+use crate::protos::network::{NetworkHeartbeat, NetworkMessage, NetworkMessageType};
 use crate::transport::Connection;
 
 #[derive(Debug)]
@@ -157,11 +160,41 @@ pub struct Network {
 }
 
 impl Network {
-    pub fn new(mesh: Mesh) -> Self {
-        Network {
+    pub fn new(mesh: Mesh, heartbeat_interval: u64) -> Result<Self, NetworkStartUpError> {
+        let network = Network {
             peers: Arc::new(RwLock::new(PeerMap::new())),
             mesh,
+        };
+
+        if heartbeat_interval != 0 {
+            let heartbeat_network = network.clone();
+            let heartbeat = NetworkHeartbeat::new().write_to_bytes().map_err(|_| {
+                NetworkStartUpError("cannot create NetworkHeartbeat message".to_string())
+            })?;
+            let mut heartbeat_message = NetworkMessage::new();
+            heartbeat_message.set_message_type(NetworkMessageType::NETWORK_HEARTBEAT);
+            heartbeat_message.set_payload(heartbeat);
+            let heartbeat_bytes = heartbeat_message
+                .write_to_bytes()
+                .map_err(|_| NetworkStartUpError("cannot create NetworkMessage".to_string()))?;
+            let _ = thread::spawn(move || {
+                let interval = Duration::from_secs(heartbeat_interval);
+                thread::sleep(interval);
+                loop {
+                    let peers = rwlock_read_unwrap!(heartbeat_network.peers).peer_ids();
+                    for peer in peers {
+                        heartbeat_network
+                            .send(&peer, &heartbeat_bytes)
+                            .unwrap_or_else(|err| {
+                                error!("Unable to send heartbeat to {}: {:?}", peer, err)
+                            });
+                    }
+                    thread::sleep(interval);
+                }
+            });
         }
+
+        Ok(network)
     }
 
     pub fn peer_ids(&self) -> Vec<String> {
@@ -322,6 +355,17 @@ impl std::fmt::Display for ConnectionError {
     }
 }
 
+#[derive(Debug)]
+pub struct NetworkStartUpError(String);
+
+impl std::error::Error for NetworkStartUpError {}
+
+impl std::fmt::Display for NetworkStartUpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "network failed to startup: {}", self.0)
+    }
+}
+
 impl From<AddError> for ConnectionError {
     fn from(add_error: AddError) -> Self {
         ConnectionError::AddError(format!("Add Error: {:?}", add_error))
@@ -356,7 +400,7 @@ pub mod tests {
     fn test_network() {
         // Setup the first network
         let mesh_one = Mesh::new(5, 5);
-        let network_one = Network::new(mesh_one);
+        let network_one = Network::new(mesh_one, 2).unwrap();
 
         let mut transport = RawTransport::default();
 
@@ -366,7 +410,7 @@ pub mod tests {
         thread::spawn(move || {
             // Setup second network
             let mesh_two = Mesh::new(5, 5);
-            let network_two = Network::new(mesh_two);
+            let network_two = Network::new(mesh_two, 2).unwrap();
 
             // connect to listener and add connection to network
             let connection = assert_ok(transport.connect(&endpoint));
@@ -403,5 +447,16 @@ pub mod tests {
         let message = assert_ok(network_one.recv());
         assert_eq!("123", message.peer_id());
         assert_eq!(b"hello_world", message.payload());
+
+        let heartbeat = NetworkHeartbeat::new().write_to_bytes().unwrap();
+        let mut heartbeat_message = NetworkMessage::new();
+        heartbeat_message.set_message_type(NetworkMessageType::NETWORK_HEARTBEAT);
+        heartbeat_message.set_payload(heartbeat);
+        let heartbeat_bytes = heartbeat_message.write_to_bytes().unwrap();
+
+        // wait for heartbeat
+        let message = assert_ok(network_one.recv());
+        assert_eq!("123", message.peer_id());
+        assert_eq!(heartbeat_bytes, message.payload());
     }
 }

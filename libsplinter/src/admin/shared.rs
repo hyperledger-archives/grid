@@ -1228,7 +1228,7 @@ mod tests {
     #[test]
     fn test_auth_change() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let mut transport = MockConnectingTransport::expect_connections(vec![
             Ok(Box::new(MockConnection::new())),
             Ok(Box::new(MockConnection::new())),
@@ -1304,7 +1304,7 @@ mod tests {
     #[test]
     fn test_unauth_change() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let mut transport = MockConnectingTransport::expect_connections(vec![
             Ok(Box::new(MockConnection::new())),
             Ok(Box::new(MockConnection::new())),
@@ -1979,7 +1979,7 @@ mod tests {
 
     fn setup_peer_connector() -> PeerConnector {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport = MockConnectingTransport::expect_connections(vec![
             Ok(Box::new(MockConnection::new())),
             Ok(Box::new(MockConnection::new())),
