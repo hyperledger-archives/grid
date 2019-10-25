@@ -51,7 +51,7 @@ export interface Node {
 
 export interface NewGameroomProposal {
   alias: string;
-  member: [Node];
+  members: string[];
 }
 
 export interface Member {
