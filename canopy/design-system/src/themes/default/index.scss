@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-$text-primary: rgba(0, 0, 0, 0.8);
-$text-primary-light: rgba(0, 0, 0, 0.6);
-
-$canopy: #45be93;
-$purple: #731dd8;
-$blue: #4d9de0;
-
-$smoke: #e0e6ed;
+@import '../../styles/variables.scss';
+@import './variables.scss';
+@import '../../styles/core.scss';

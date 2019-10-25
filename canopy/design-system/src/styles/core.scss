@@ -1,0 +1,77 @@
+/**
+ * Copyright 2019 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+@import './mixins.scss';
+@import './layout.scss';
+@import './navigation.scss';
+
+$display-types: (
+  'none': none,
+  'block': block,
+  'flex': flex,
+  'inlineBlock': inline-block,
+  'inlineFlex': inline-flex
+);
+
+@each $name, $value in $display-types {
+  .display-#{$name} {
+    display: $value;
+  }
+}
+
+$flex-directions: (
+  'row': row,
+  'column': column
+);
+
+@each $name, $value in $flex-directions {
+  .flexDirection-#{$name} {
+    flex-direction: $value;
+  }
+}
+
+$flex-alignments: (
+  'flexStart': flex-start,
+  'flexEnd': flex-end,
+  'center': center,
+  'spaceAround': space-around,
+  'spaceBetween': space-between
+);
+
+@each $name, $value in $flex-alignments {
+  .justifyItems-#{$name} {
+    justify-items: $value;
+  }
+
+  .justifyContent-#{$name} {
+    justify-content: $value;
+  }
+
+  .justifySelf-#{$name} {
+    justify-self: $value;
+  }
+
+  .alignItems-#{$name} {
+    align-items: $value;
+  }
+
+  .alignContent-#{$name} {
+    align-content: $value;
+  }
+
+  .alignSelf-#{$name} {
+    align-self: $value;
+  }
+}

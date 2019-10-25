@@ -13,11 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-$text-primary: rgba(0, 0, 0, 0.8);
-$text-primary-light: rgba(0, 0, 0, 0.6);
+.nav-item {
+  .label {
+    box-sizing: border-box;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: $text-primary-light;
+    transition: all 0.2s linear;
 
-$canopy: #45be93;
-$purple: #731dd8;
-$blue: #4d9de0;
+    &:hover {
+      color: $text-primary;
+    }
+  }
+}
 
-$smoke: #e0e6ed;
+.nav-item-expandable {
+  .arrow {
+    @include arrow(5px, $smoke);
+
+    &.arrow-down {
+      transform: rotate(180deg);
+    }
+  }
+
+  .nested {
+    overflow: hidden;
+    background: #eeeeee;
+  }
+
+  &.open {
+    .nested {
+      height: fit-content;
+    }
+  }
+}

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-$sizes: (
+$space-sizes: (
   's': 16px,
   'm': 24px,
   'l': 36px
 );
 
-@each $name, $size in $sizes {
+@each $name, $size in $space-sizes {
   .margin-#{$name} {
     margin: $size;
   }
@@ -59,4 +59,51 @@ $sizes: (
   .paddingLeft-#{$name} {
     padding-left: $size;
   }
+}
+
+@for $i from 0 through 5 {
+  .borderRight-#{$i} {
+    border-right: ($i * 1px) solid;
+  }
+
+  .borderBottom-#{$i} {
+    border-bottom: ($i * 1px) solid;
+  }
+
+  .borderLeft-#{$i} {
+    border-left: ($i * 1px) solid;
+  }
+
+  .borderWidth-#{$i} {
+    border-width: $i * 1px;
+  }
+
+  .borderTopWidth-#{$i} {
+    border-top-width: $i * 1px;
+  }
+
+  .borderRightWidth-#{$i} {
+    border-right-width: $i * 1px;
+  }
+
+  .borderBottomWidth-#{$i} {
+    border-bottom-width: $i * 1px;
+  }
+
+  .borderLeftWidth-#{$i} {
+    border-left-width: $i * 1px;
+  }
+}
+
+@mixin border($style, $width) {
+  border-style: $style;
+  border-width: $width * 1px;
+}
+
+.borderStyle-solid {
+  border-style: solid;
+}
+
+.borderColor-smoke {
+  border-color: $smoke;
 }
