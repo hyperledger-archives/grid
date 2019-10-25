@@ -38,12 +38,15 @@ use transact::{
 
 #[cfg(feature = "events")]
 use crate::events::{ParseBytes, ParseError};
+use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
 use crate::rest_api::{EventDealer, LocalEventHistory, Request, Response, ResponseError};
 
 use super::error::ScabbardStateError;
 
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
+
+const CURRENT_STATE_ROOT_INDEX: &str = "current_state_root";
 
 pub struct ScabbardState {
     db: Box<dyn Database>,
@@ -62,33 +65,42 @@ impl ScabbardState {
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardStateError> {
         // Initialize the database
+        let mut indexes = INDEXES.to_vec();
+        indexes.push(CURRENT_STATE_ROOT_INDEX);
         let db = Box::new(LmdbDatabase::new(
-            LmdbContext::new(db_path, INDEXES.len(), Some(db_size))?,
-            &INDEXES,
+            LmdbContext::new(db_path, indexes.len(), Some(db_size))?,
+            &indexes,
         )?);
 
-        // Set initial state (admin keys)
-        let mut admin_keys_entry = Setting_Entry::new();
-        admin_keys_entry.set_key(ADMINISTRATORS_SETTING_KEY.into());
-        admin_keys_entry.set_value(admin_keys.join(","));
-        let mut admin_keys_setting = Setting::new();
-        admin_keys_setting.set_entries(vec![admin_keys_entry].into());
-        let admin_keys_setting_bytes = admin_keys_setting.write_to_bytes().map_err(|err| {
-            ScabbardStateError(format!(
-                "failed to write admin keys setting to bytes: {}",
-                err
-            ))
-        })?;
-        let admin_keys_state_change = StateChange::Set {
-            key: ADMINISTRATORS_SETTING_ADDRESS.into(),
-            value: admin_keys_setting_bytes,
-        };
+        let current_state_root = if let Some(current_state_root) =
+            Self::read_current_state_root(&*db)?
+        {
+            debug!("Restoring scabbard state on root {}", current_state_root);
+            current_state_root
+        } else {
+            // Set initial state (admin keys)
+            let mut admin_keys_entry = Setting_Entry::new();
+            admin_keys_entry.set_key(ADMINISTRATORS_SETTING_KEY.into());
+            admin_keys_entry.set_value(admin_keys.join(","));
+            let mut admin_keys_setting = Setting::new();
+            admin_keys_setting.set_entries(vec![admin_keys_entry].into());
+            let admin_keys_setting_bytes = admin_keys_setting.write_to_bytes().map_err(|err| {
+                ScabbardStateError(format!(
+                    "failed to write admin keys setting to bytes: {}",
+                    err
+                ))
+            })?;
+            let admin_keys_state_change = StateChange::Set {
+                key: ADMINISTRATORS_SETTING_ADDRESS.into(),
+                value: admin_keys_setting_bytes,
+            };
 
-        let initial_state_root = MerkleRadixTree::new(db.clone_box(), None)?.get_merkle_root();
-        let current_state_root = MerkleState::new(db.clone()).commit(
-            &initial_state_root,
-            vec![admin_keys_state_change].as_slice(),
-        )?;
+            let initial_state_root = MerkleRadixTree::new(db.clone_box(), None)?.get_merkle_root();
+            MerkleState::new(db.clone()).commit(
+                &initial_state_root,
+                vec![admin_keys_state_change].as_slice(),
+            )?
+        };
 
         // Initialize transact
         let context_manager = ContextManager::new(Box::new(MerkleState::new(db.clone())));
@@ -113,6 +125,39 @@ impl ScabbardState {
             event_dealer,
             batch_history: BatchHistory::new(),
         })
+    }
+
+    fn read_current_state_root(db: &dyn Database) -> Result<Option<String>, ScabbardStateError> {
+        db.get_reader()
+            .and_then(|reader| reader.index_get(CURRENT_STATE_ROOT_INDEX, b"HEAD"))
+            .map(|head| head.map(|bytes| hex::to_hex(&bytes)))
+            .map_err(|e| ScabbardStateError(format!("Unable to read HEAD entry: {}", e)))
+    }
+
+    fn write_current_state_root(&self) -> Result<(), ScabbardStateError> {
+        let current_root_bytes = hex::parse_hex(&self.current_state_root).map_err(|e| {
+            ScabbardStateError(format!(
+                "The in-memory current state root is invalid: {}",
+                e
+            ))
+        })?;
+
+        let mut writer = self.db.get_writer().map_err(|e| {
+            ScabbardStateError(format!(
+                "Unable to start write transaction for HEAD entry: {}",
+                e
+            ))
+        })?;
+
+        writer
+            .index_put(CURRENT_STATE_ROOT_INDEX, b"HEAD", &current_root_bytes)
+            .map_err(|e| ScabbardStateError(format!("Unable to write HEAD entry: {}", e)))?;
+
+        writer
+            .commit()
+            .map_err(|e| ScabbardStateError(format!("Unable to commit HEAD entry: {}", e)))?;
+
+        Ok(())
     }
 
     pub fn prepare_change(&mut self, batch: BatchPair) -> Result<String, ScabbardStateError> {
@@ -180,6 +225,8 @@ impl ScabbardState {
             Some((signature, state_changes)) => {
                 self.current_state_root = MerkleState::new(self.db.clone())
                     .commit(&self.current_state_root, state_changes.as_slice())?;
+
+                self.write_current_state_root()?;
 
                 info!(
                     "committed {} change(s) for new state root {}",
