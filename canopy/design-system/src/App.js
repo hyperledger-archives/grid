@@ -31,15 +31,34 @@ import Components from './views/Components';
 const tabs = [
   {
     name: 'Overview',
-    route: '/overview'
+    nested: [
+      {
+        name: 'Introduction',
+        route: '/overview/introduction'
+      },
+      {
+        name: 'Conventions',
+        route: '/overview/conventions'
+      }
+    ]
   },
   {
     name: 'Design',
-    route: '/design'
+    nested: [
+      {
+        name: 'Buttons',
+        route: '/design/buttons'
+      }
+    ]
   },
   {
     name: 'Components',
-    route: '/components'
+    nested: [
+      {
+        name: 'Modals',
+        route: '/design/modals'
+      }
+    ]
   }
 ];
 

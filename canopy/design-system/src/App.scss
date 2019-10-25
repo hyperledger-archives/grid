@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@import './styles';
+@import './themes/default';
 
 .App {
   background-color: #282c34;
@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: $warm-white;
+  color: $text-primary;
 
   .view {
     flex: 0 1 100%;
