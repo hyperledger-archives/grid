@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@import '../../styles';
+@import '../../themes/default';
 
 .side-nav {
   display: flex;
@@ -23,7 +23,7 @@
   left: 0;
   width: fit-content;
   height: 100vh;
-  background: $warm-white;
+  background: #ffffff;
 }
 
 #brand {
@@ -50,6 +50,7 @@
   ul {
     list-style-type: none;
     margin: 0;
+    padding: 0;
   }
 
   a {

@@ -18,6 +18,8 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
+import { NavItemExpandable } from './NavItemExpandable';
+
 import logo from '../../logo.svg';
 import './SideNav.scss';
 
@@ -33,13 +35,39 @@ export default class SideNav extends React.Component {
             <sup>design</sup>
           </span>
         </div>
-        <nav id="tabs" className="marginTop-m">
+        <nav
+          id="tabs"
+          className=" marginTop-m
+                      borderWidth-0
+                      borderTopWidth-1
+                      borderStyle-solid
+                      borderColor-smoke"
+        >
           <ul>
-            {tabs.map(tab => (
-              <li className="tab paddingTop-s paddingBottom-s" key={tab.name}>
-                <NavLink to={tab.route}>{tab.name}</NavLink>
-              </li>
-            ))}
+            {tabs.map(tab => {
+              if (tab.nested) {
+                return (
+                  <NavItemExpandable
+                    nested={tab.nested}
+                    key={tab.name}
+                    aria-label={tab.name}
+                  >
+                    <span>{tab.name}</span>
+                  </NavItemExpandable>
+                );
+              } else {
+                return (
+                  <li
+                    className="tab paddingTop-s paddingBottom-s"
+                    key={tab.name}
+                  >
+                    <NavLink to={tab.route} aria-label={tab.name}>
+                      {tab.name}
+                    </NavLink>
+                  </li>
+                );
+              }
+            })}
           </ul>
         </nav>
       </div>
