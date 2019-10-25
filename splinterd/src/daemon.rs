@@ -659,8 +659,7 @@ fn set_up_circuit_dispatcher(
         Box::new(service_connect_request_handler),
     );
 
-    let service_disconnect_request_handler =
-        ServiceDisconnectRequestHandler::new(node_id.to_string(), state.clone());
+    let service_disconnect_request_handler = ServiceDisconnectRequestHandler::new(state.clone());
     dispatcher.set_handler(
         CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
         Box::new(service_disconnect_request_handler),

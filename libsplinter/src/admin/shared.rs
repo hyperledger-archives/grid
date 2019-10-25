@@ -22,8 +22,10 @@ use protobuf::{Message, RepeatedField};
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
-    service::SplinterNode as StateNode, AuthorizationType, Circuit as StateCircuit, DurabilityType,
-    PersistenceType, RouteType, ServiceDefinition as StateServiceDefinition,
+    service::SplinterNode as StateNode,
+    service::{Service, ServiceId},
+    AuthorizationType, Circuit as StateCircuit, DurabilityType, PersistenceType, RouteType,
+    ServiceDefinition as StateServiceDefinition,
 };
 use crate::consensus::{Proposal, ProposalId};
 use crate::hex::to_hex;
@@ -1148,7 +1150,7 @@ impl AdminServiceShared {
                     .map(|node| node.id().to_string())
                     .collect::<Vec<String>>(),
             )
-            .with_roster(roster)
+            .with_roster(roster.clone())
             .with_auth(auth)
             .with_persistence(persistence)
             .with_durability(durability)
@@ -1162,6 +1164,7 @@ impl AdminServiceShared {
         let mut splinter_state = self.splinter_state.write().map_err(|err| {
             AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
         })?;
+
         for member in members {
             splinter_state
                 .add_node(member.id().to_string(), member)
@@ -1180,6 +1183,63 @@ impl AdminServiceShared {
                     err
                 ))
             })?;
+
+        for service in roster {
+            if service.allowed_nodes().contains(&self.node_id) {
+                continue;
+            }
+
+            let unique_id = ServiceId::new(
+                circuit.circuit_id.to_string(),
+                service.service_id().to_string(),
+            );
+
+            let allowed_node = &service.allowed_nodes()[0];
+            if let Some(member) = splinter_state.node(&allowed_node) {
+                let service = Service::new(service.service_id().to_string(), None, member.clone());
+                splinter_state.add_service(unique_id, service)
+            } else {
+                return Err(AdminSharedError::CommitError(format!(
+                    "Unable to find allowed node {} when adding service {} to directory",
+                    allowed_node,
+                    service.service_id()
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn add_services_to_directory(&self) -> Result<(), AdminSharedError> {
+        let mut splinter_state = self.splinter_state.write().map_err(|err| {
+            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
+        })?;
+
+        for (id, circuit) in splinter_state.circuits().clone() {
+            for service in circuit.roster() {
+                if service.allowed_nodes().contains(&self.node_id) {
+                    continue;
+                }
+                warn!("Adding service {}", service.service_id());
+                let unique_id = ServiceId::new(id.to_string(), service.service_id().to_string());
+
+                let allowed_node = &service.allowed_nodes()[0];
+                if let Some(member) = splinter_state.node(&allowed_node) {
+                    // rebuild Node with id
+                    let node =
+                        StateNode::new(allowed_node.to_string(), member.endpoints().to_vec());
+                    let service = Service::new(service.service_id().to_string(), None, node);
+                    splinter_state.add_service(unique_id, service)
+                } else {
+                    return Err(AdminSharedError::CommitError(format!(
+                        "Unable to find allowed node {} when adding service {} to directory",
+                        allowed_node,
+                        service.service_id()
+                    )));
+                }
+            }
+        }
+
         Ok(())
     }
 

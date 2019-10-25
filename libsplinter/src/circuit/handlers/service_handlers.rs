@@ -79,8 +79,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
                     }
                 };
 
-                if !service.allowed_nodes.contains(&self.node_id)
-                {
+                if !service.allowed_nodes.contains(&self.node_id) {
                     response.set_status(ServiceConnectResponse_Status::ERROR_NOT_AN_ALLOWED_NODE);
                     response.set_error_message(format!("{} is not allowed on this node", unique_id))
                 } else {
@@ -145,7 +144,6 @@ impl ServiceConnectRequestHandler {
 
 // Implements a handler that handles ServiceDisconnectRequest
 pub struct ServiceDisconnectRequestHandler {
-    node_id: String,
     state: Arc<RwLock<SplinterState>>,
 }
 
@@ -217,8 +215,8 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
 }
 
 impl ServiceDisconnectRequestHandler {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
-        ServiceDisconnectRequestHandler { node_id, state }
+    pub fn new(state: Arc<RwLock<SplinterState>>) -> Self {
+        ServiceDisconnectRequestHandler { state }
     }
 }
 
@@ -497,7 +495,7 @@ mod tests {
             "memory".to_string(),
             circuit_directory,
         )));
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -554,7 +552,7 @@ mod tests {
             "memory".to_string(),
             circuit_directory,
         )));
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -617,7 +615,7 @@ mod tests {
         let id = ServiceId::new("alpha".into(), "abc".into());
         state.write().unwrap().add_service(id.clone(), service);
 
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state.clone());
+        let handler = ServiceDisconnectRequestHandler::new(state.clone());
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -679,7 +677,7 @@ mod tests {
             circuit_directory,
         )));
 
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
