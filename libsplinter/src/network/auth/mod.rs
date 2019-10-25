@@ -473,7 +473,7 @@ mod tests {
     }
 
     fn create_network_with_initial_temp_peer() -> (Network, String) {
-        let network = Network::new(Mesh::new(5, 5));
+        let network = Network::new(Mesh::new(5, 5), 0).unwrap();
 
         let mut transport = MockConnectingTransport;
         let connection = transport

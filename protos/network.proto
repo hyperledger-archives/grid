@@ -27,6 +27,7 @@ enum NetworkMessageType {
 
     // Network Message
     NETWORK_ECHO = 1;
+    NETWORK_HEARTBEAT = 2;
 
     // Message types that indicate that the payload is another message envelope
     CIRCUIT = 100;
@@ -39,3 +40,6 @@ message NetworkEcho {
     string recipient = 2;
     int32 time_to_live = 3;
 }
+
+// This messagE is used to keep connections alive
+message NetworkHeartbeat {}

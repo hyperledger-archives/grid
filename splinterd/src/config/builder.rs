@@ -29,6 +29,7 @@ pub struct ConfigBuilder {
     bind: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
+    heartbeat_interval: Option<u64>,
 }
 
 impl ConfigBuilder {
@@ -48,6 +49,7 @@ impl ConfigBuilder {
             bind: None,
             registry_backend: None,
             registry_file: None,
+            heartbeat_interval: None,
         }
     }
 
@@ -121,6 +123,11 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_heartbeat_interval(mut self, heartbeat_interval: u64) -> Self {
+        self.heartbeat_interval = Some(heartbeat_interval);
+        self
+    }
+
     pub fn build(self) -> Config {
         Config {
             storage: self.storage,
@@ -137,6 +144,7 @@ impl ConfigBuilder {
             bind: self.bind,
             registry_backend: self.registry_backend,
             registry_file: self.registry_file,
+            heartbeat_interval: self.heartbeat_interval,
         }
     }
 }

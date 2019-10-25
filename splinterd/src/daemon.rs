@@ -33,7 +33,7 @@ use splinter::network::auth::handlers::{
 };
 use splinter::network::auth::AuthorizationManager;
 use splinter::network::dispatch::{DispatchLoop, DispatchMessage, Dispatcher};
-use splinter::network::handlers::NetworkEchoHandler;
+use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
@@ -491,6 +491,7 @@ pub struct SplinterDaemonBuilder {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     storage_type: Option<String>,
+    heartbeat_interval: Option<u64>,
 }
 
 impl SplinterDaemonBuilder {
@@ -548,9 +549,19 @@ impl SplinterDaemonBuilder {
         self
     }
 
+    pub fn with_heartbeat_interval(mut self, value: u64) -> Self {
+        self.heartbeat_interval = Some(value);
+        self
+    }
+
     pub fn build(self) -> Result<SplinterDaemon, CreateError> {
+        let heartbeat_interval = self.heartbeat_interval.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: heartbeat_interval".to_string())
+        })?;
+
         let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), heartbeat_interval)
+            .map_err(|err| CreateError::NetworkError(err.to_string()))?;
 
         let storage_location = self.storage_location.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_location".to_string())
@@ -625,6 +636,13 @@ fn set_up_network_dispatcher(
             auth_manager.clone(),
             Box::new(network_echo_handler),
         )),
+    );
+
+    let network_heartbeat_handler = NetworkHeartbeatHandler::new();
+    // do not add auth guard
+    dispatcher.set_handler(
+        NetworkMessageType::NETWORK_HEARTBEAT,
+        Box::new(network_heartbeat_handler),
     );
 
     let circuit_message_handler = CircuitMessageHandler::new(Box::new(circuit_sender));
@@ -723,6 +741,7 @@ fn create_node_registry(
 pub enum CreateError {
     MissingRequiredField(String),
     NodeRegistryError(String),
+    NetworkError(String),
 }
 
 impl From<RegistryConfigError> for CreateError {

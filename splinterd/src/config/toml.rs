@@ -35,6 +35,7 @@ pub struct TomlConfig {
     bind: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
+    heartbeat_interval: Option<u64>,
 }
 
 impl TomlConfig {
@@ -98,6 +99,10 @@ impl TomlConfig {
         self.registry_file.take()
     }
 
+    pub fn take_heartbeat_interval(&mut self) -> Option<u64> {
+        self.heartbeat_interval.take()
+    }
+
     pub fn apply_to_builder(mut self, mut builder: ConfigBuilder) -> ConfigBuilder {
         if let Some(x) = self.take_storage() {
             builder = builder.with_storage(x);
@@ -140,6 +145,9 @@ impl TomlConfig {
         }
         if let Some(x) = self.take_registry_file() {
             builder = builder.with_registry_file(x);
+        }
+        if let Some(x) = self.take_heartbeat_interval() {
+            builder = builder.with_heartbeat_interval(x);
         }
 
         builder

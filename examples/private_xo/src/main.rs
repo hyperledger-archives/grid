@@ -45,6 +45,8 @@ use crate::service::consensus::{PrivateXoNetworkSender, PrivateXoProposalManager
 use crate::service::{start_service_loop, ServiceConfig, ServiceError};
 use crate::transaction::{XoState, XoStateError};
 
+const HEARTBEAT: u64 = 60;
+
 fn index(_: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::Ok, "Private XO Server")))
 }
@@ -234,7 +236,8 @@ fn create_network_and_connect(
     connect_endpoint: &str,
 ) -> Result<Network, CliError> {
     let mesh = Mesh::new(512, 128);
-    let network = Network::new(mesh);
+    let network = Network::new(mesh, HEARTBEAT)
+        .map_err(|err| ServiceError(format!("Unable to start network: {}", err)))?;
     let connection = transport.connect(connect_endpoint).map_err(|err| {
         CliError(format!(
             "Unable to connect to {}: {:?}",

@@ -131,14 +131,14 @@ mod tests {
         let endpoint = listener.endpoint();
 
         let mesh1 = Mesh::new(1, 1);
-        let network1 = Network::new(mesh1.clone());
+        let network1 = Network::new(mesh1.clone(), 0).unwrap();
 
         let running = Arc::new(AtomicBool::new(true));
         let network_message_sender = NetworkMessageSender::new(receiver, network1.clone(), running);
 
         thread::spawn(move || {
             let mesh2 = Mesh::new(1, 1);
-            let network2 = Network::new(mesh2.clone());
+            let network2 = Network::new(mesh2.clone(), 0).unwrap();
             let connection = listener.accept().unwrap();
             network2.add_peer("ABC".to_string(), connection).unwrap();
             let network_message = network2.recv().unwrap();
@@ -170,14 +170,14 @@ mod tests {
         let endpoint = listener.endpoint();
 
         let mesh1 = Mesh::new(5, 5);
-        let network1 = Network::new(mesh1.clone());
+        let network1 = Network::new(mesh1.clone(), 0).unwrap();
 
         let running = Arc::new(AtomicBool::new(true));
         let network_message_sender = NetworkMessageSender::new(receiver, network1.clone(), running);
 
         thread::spawn(move || {
             let mesh2 = Mesh::new(5, 5);
-            let network2 = Network::new(mesh2.clone());
+            let network2 = Network::new(mesh2.clone(), 0).unwrap();
             let connection = listener.accept().unwrap();
             network2.add_peer("ABC".to_string(), connection).unwrap();
             for _ in 0..100 {

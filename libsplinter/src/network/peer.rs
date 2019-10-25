@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn test_connect_unidentified_peer() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn test_connect_unidentified_peer_idempotent() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn test_connect_peer() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport =
             MockConnectingTransport::expect_connections(vec![Ok(Box::new(MockConnection))]);
 
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_connect_peer_unable_to_connect() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport = MockConnectingTransport::expect_connections(vec![Err(
             ConnectError::ProtocolError("test error".into()),
         )]);
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn test_connect_unidentified_peer_unable_to_connect() {
         let mesh = Mesh::new(4, 16);
-        let network = Network::new(mesh.clone());
+        let network = Network::new(mesh.clone(), 0).unwrap();
         let transport = MockConnectingTransport::expect_connections(vec![Err(
             ConnectError::ProtocolError("test error".into()),
         )]);

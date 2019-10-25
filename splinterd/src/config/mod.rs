@@ -50,6 +50,7 @@ pub struct Config {
     bind: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
+    heartbeat_interval: Option<u64>,
 }
 
 impl Config {
@@ -115,5 +116,9 @@ impl Config {
 
     pub fn registry_file(&self) -> Option<String> {
         self.registry_file.clone()
+    }
+
+    pub fn heartbeat_interval(&self) -> Option<u64> {
+        self.heartbeat_interval
     }
 }

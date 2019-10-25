@@ -18,6 +18,8 @@ extern crate log;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
+#[macro_use]
+extern crate clap;
 
 mod certs;
 mod config;
@@ -49,6 +51,7 @@ use std::io;
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
+const HEARTBEAT_DEFAULT: u64 = 30;
 
 #[cfg(not(feature = "config-toml"))]
 fn load_toml_config(config_file_path: &str) -> Config {
@@ -119,6 +122,8 @@ fn main() {
             "backend type for the node registry. Possible values: FILE.")
         (@arg registry_file: --("registry-file") +takes_value
             "file path to the node registry file if registry-backend is FILE.")
+        (@arg heartbeat_interval: --("heartbeat") +takes_value
+            "how often heartbeat should be sent in seconds, defaults to 30 seconds, 0 means off")
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity"))
     .get_matches();
@@ -192,6 +197,9 @@ fn main() {
         .or_else(|| config.peers())
         .unwrap_or_default();
 
+    let heartbeat_interval = value_t!(matches.value_of("heartbeat_interval"), u64)
+        .unwrap_or_else(|_| config.heartbeat_interval().unwrap_or(HEARTBEAT_DEFAULT));
+
     let transport = match get_transport(&transport_type, &matches, &config) {
         Ok(transport) => transport,
         Err(err) => {
@@ -246,7 +254,8 @@ fn main() {
         .with_node_id(node_id)
         .with_rest_api_endpoint(rest_api_endpoint)
         .with_registry_backend(registry_backend.clone())
-        .with_storage_type(storage_type);
+        .with_storage_type(storage_type)
+        .with_heartbeat_interval(heartbeat_interval);
 
     if let Some(registry_file) = registry_file {
         daemon_builder = daemon_builder.with_registry_file(registry_file);

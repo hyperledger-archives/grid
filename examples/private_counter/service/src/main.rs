@@ -65,6 +65,7 @@ use crate::protos::private_counter::{PrivateCounterMessage, PrivateCounterMessag
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
+const HEARTBEAT: u64 = 60;
 
 #[derive(Debug)]
 pub struct ServiceState {
@@ -232,7 +233,8 @@ fn create_network_and_connect(
     connect_endpoint: &str,
 ) -> Result<Network, ServiceError> {
     let mesh = Mesh::new(512, 128);
-    let network = Network::new(mesh);
+    let network = Network::new(mesh, HEARTBEAT)
+        .map_err(|err| ServiceError(format!("Unable to start network: {}", err)))?;
     let connection = transport.connect(connect_endpoint).map_err(|err| {
         ServiceError(format!(
             "Unable to connect to {}: {:?}",
