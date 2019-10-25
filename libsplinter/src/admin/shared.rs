@@ -862,11 +862,23 @@ impl AdminServiceShared {
 
         // check that all services' allowed nodes are in members
         for service in circuit.get_roster() {
+            if service.get_allowed_nodes().is_empty() {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Service cannot have an empty allowed nodes list".to_string(),
+                ));
+            }
+
+            if service.get_allowed_nodes().len() > 1 {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Only one allowed node for a service is supported".to_string(),
+                ));
+            }
+
             for node in service.get_allowed_nodes() {
                 if !members.contains(node) {
                     return Err(AdminSharedError::ValidationFailed(format!(
                         "Service cannot have an allowed node that is not in members: {}",
-                        self.node_id
+                        node
                     )));
                 }
             }
@@ -1527,6 +1539,46 @@ mod tests {
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
             panic!("Should have been invalid due to service having an allowed node not in members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a service in its roster with too many allowed nodes
+    fn test_validate_circuit_too_many_allowed_nodes() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut service_bad = SplinterService::new();
+        service_bad.set_service_id("service_b".to_string());
+        service_bad.set_service_type("type_a".to_string());
+        service_bad.set_allowed_nodes(RepeatedField::from_vec(vec![
+            "node_b".to_string(),
+            "extra".to_string(),
+        ]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid due to service having too many allowed nodes");
         }
     }
 
