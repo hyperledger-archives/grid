@@ -16,8 +16,8 @@
 @import './themes/default';
 
 .App {
-  background-color: #282c34;
-  min-height: 100vh;
+  background-color: #ffffff;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -25,6 +25,8 @@
 
   .view {
     flex: 0 1 100%;
-    min-height: 100vh;
+    height: 100vh;
+    overflow-y: scroll;
+    box-sizing: border-box;
   }
 }

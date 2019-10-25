@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
   BrowserRouter as Router,
   Route,
@@ -24,7 +24,6 @@ import {
 import './App.scss';
 
 import SideNav from './components/navigation/SideNav';
-import Overview from './views/Overview';
 import Design from './views/Design';
 import Components from './views/Components';
 
@@ -62,16 +61,23 @@ const tabs = [
   }
 ];
 
+const Introduction = lazy(() =>
+  import('!babel-loader!mdx-loader!./views/Introduction.mdx')
+);
+
 function App() {
   return (
     <Router>
       <div className="App">
         <SideNav tabs={tabs} />
-        <div className="view">
+        <div className="view marginLeft-l marginRight-l paddingTop-l">
           <Switch>
-            <Redirect exact from="/" to="/overview" />
-            <Route path="/overview">
-              <Overview />
+            <Redirect exact from="/" to="/overview/introduction" />
+            <Redirect exact from="/overview" to="/overview/introduction" />
+            <Route path="/overview/introduction">
+              <Suspense fallback={<div>Loading...</div>}>
+                <Introduction />
+              </Suspense>
             </Route>
             <Route path="/design">
               <Design />
