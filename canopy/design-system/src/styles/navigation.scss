@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 .nav-item {
+  width: 100%;
+
   .label {
+    width: 100%;
     box-sizing: border-box;
     font-size: 1.4rem;
     cursor: pointer;
@@ -39,6 +42,7 @@
   .nested {
     overflow: hidden;
     background: #eeeeee;
+    width: 100%;
   }
 
   &.open {
