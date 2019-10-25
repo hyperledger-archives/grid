@@ -37,6 +37,8 @@ use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_LIMIT: usize = 100;
 pub const DEFAULT_OFFSET: usize = 0;
+const MAX_LIMIT: usize = 1000;
+
 const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b' ')
     .add(b'"')
@@ -126,7 +128,7 @@ pub fn get_response_paging_info(
     link: &str,
     query_count: usize,
 ) -> Paging {
-    let limit = limit as i64;
+    let limit = validate_limit(limit);
     let offset = offset as i64;
     let query_count = query_count as i64;
 
@@ -163,6 +165,14 @@ pub fn get_response_paging_info(
         prev: previous_link,
         next: next_link,
         last: last_link,
+    }
+}
+
+pub fn validate_limit(limit: usize) -> i64 {
+    if limit > MAX_LIMIT {
+        DEFAULT_LIMIT as i64
+    } else {
+        limit as i64
     }
 }
 
@@ -212,6 +222,19 @@ mod tests {
         // Create paging response from limit of 50, offset of 250, and total of 1000
         let test_paging_response = get_response_paging_info(50, 250, TEST_LINK, 1000);
         let generated_paging_response = create_test_paging_response(50, 250, 300, 200, 950);
+        assert_eq!(test_paging_response, generated_paging_response);
+    }
+
+    #[test]
+    fn test_maximum_invalid_limit() {
+        // Pass an invalid limit, greater than the maximum i64 value which should cause the
+        // paging response to include the DEFAULT_LIMIT.
+        // Also uses the DEFAULT_OFFSET and a total of 1000.
+        let max_limit: usize = 1001;
+        let test_paging_response =
+            get_response_paging_info(max_limit, DEFAULT_OFFSET, TEST_LINK, 1000);
+        let generated_paging_response =
+            create_test_paging_response(DEFAULT_LIMIT, DEFAULT_OFFSET, 100, 0, 900);
         assert_eq!(test_paging_response, generated_paging_response);
     }
 

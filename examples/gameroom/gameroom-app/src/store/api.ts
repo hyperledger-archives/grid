@@ -79,7 +79,7 @@ export async function gameroomPropose(
 }
 
 export async function listGamerooms(): Promise<Gameroom[]> {
-  const response = await gameroomAPI.get('/gamerooms');
+  const response = await gameroomAPI.get('/gamerooms?limit=1000');
   const gamerooms = response.data.data.map((gameroom: any) => {
     const members = gameroom.members.map(async (member: any) => {
       const node = await getNode(member.node_id);
@@ -106,7 +106,7 @@ export async function fetchGameroom(circuitID: string): Promise<Gameroom> {
 
 // Nodes
 export async function listNodes(): Promise<Node[]> {
-  const response = await gameroomAPI.get('/nodes');
+  const response = await gameroomAPI.get('/nodes?limit=1000');
   return response.data.data as Node[];
 }
 
@@ -182,7 +182,7 @@ export async function submitBatch(payload: Uint8Array, circuitID: string): Promi
 
 // Proposals
 export async function listProposals(): Promise<GameroomProposal[]> {
-  const response = await gameroomAPI.get('/proposals');
+  const response = await gameroomAPI.get('/proposals?limit=1000');
 
   const getMembers = async (member: any) => {
     const node = await getNode(member.node_id);
@@ -237,7 +237,7 @@ export async function listNotifications(publicKey: string): Promise<GameroomNoti
     } else { return false; }
   };
 
-  const response = await gameroomAPI.get('/notifications');
+  const response = await gameroomAPI.get('/notifications?limit=1000');
   const notifications = response.data.data as GameroomNotification[];
   const filtered = notifications.filter(isDisplayed);
   return await Promise.all(filtered.map((notif: any) => getOrgName(notif)));
