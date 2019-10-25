@@ -1,0 +1,10 @@
+[package]
+name = "health"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
+
+[dependencies]
+splinter = { path = "../../libsplinter" }
+log = "0.3.0"
