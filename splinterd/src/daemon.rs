@@ -216,22 +216,14 @@ impl SplinterDaemon {
 
         // For each node in the circuit_directory, try to connect and add them to the network
         for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
-            if let Some(endpoint) = node.endpoints().get(0) {
-                // if the node is this node do not try to connect.
-                let node_endpoint = {
-                    if endpoint.starts_with("tcp://") {
-                        &endpoint[6..]
-                    } else {
-                        endpoint
-                    }
-                };
-                if node_endpoint != self.network_endpoint {
-                    if let Err(err) = peer_connector.connect_peer(node_id, &node_endpoint) {
+            if node_id != &self.node_id {
+                if let Some(endpoint) = node.endpoints().get(0) {
+                    if let Err(err) = peer_connector.connect_peer(node_id, endpoint) {
                         debug!("Unable to connect to node: {} Error: {:?}", node_id, err);
                     }
+                } else {
+                    debug!("node {} has no known endpoints", node_id);
                 }
-            } else {
-                debug!("node {} has no known endpoints", node_id);
             }
         }
 
