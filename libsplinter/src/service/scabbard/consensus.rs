@@ -73,17 +73,15 @@ impl ScabbardConsensusManager {
             .name(format!("consensus-{}", service_id))
             .spawn(move || {
                 let mut two_phase_engine = TwoPhaseEngine::default();
-                two_phase_engine
-                    .run(
-                        consensus_msg_rx,
-                        proposal_update_rx,
-                        Box::new(consensus_network_sender),
-                        Box::new(proposal_manager),
-                        startup_state,
-                    )
-                    .unwrap_or_else(|err| {
-                        panic!("two phase consensus exited with an error: {}", err)
-                    });
+                if let Err(err) = two_phase_engine.run(
+                    consensus_msg_rx,
+                    proposal_update_rx,
+                    Box::new(consensus_network_sender),
+                    Box::new(proposal_manager),
+                    startup_state,
+                ) {
+                    error!("two phase consensus exited with an error: {}", err)
+                }
             })
             .map_err(|err| ScabbardConsensusManagerError(Box::new(err)))?;
 
