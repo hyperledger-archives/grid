@@ -22,7 +22,7 @@ services:
       dockerfile: cli/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: splinter-cli:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}splinter-cli:${ISOLATION_ID}
     container_name: splinter-cli
 
   splinterd:
@@ -31,7 +31,7 @@ services:
       dockerfile: splinterd/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: splinterd:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}splinterd:${ISOLATION_ID}
     container_name: splinterd
 
 # ---==== examples ====---
@@ -42,7 +42,7 @@ services:
       dockerfile: examples/private_xo/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: private_xo:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}private_xo:${ISOLATION_ID}
     container_name: private_xo
 
   private_counter_cli:
@@ -51,7 +51,7 @@ services:
       dockerfile: examples/private_counter/cli/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: private_counter_cli:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}private_counter_cli:${ISOLATION_ID}
     container_name: private_counter_cli
 
   private_counter_service:
@@ -60,7 +60,7 @@ services:
       dockerfile: examples/private_counter/service/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: private_counter_service:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}private_counter_service:${ISOLATION_ID}
     container_name: private_counter_service
 
 # ---==== gameroom components ====---
@@ -71,7 +71,7 @@ services:
       dockerfile: examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: gameroomd:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}gameroomd:${ISOLATION_ID}
     container_name: gameroomd
 
   gameroom-app-acme:
@@ -81,7 +81,7 @@ services:
       args:
         - VUE_APP_BRAND=acme
         - REPO_VERSION=${REPO_VERSION}
-    image: gameroom-app-acme:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}gameroom-app-acme:${ISOLATION_ID}
     container_name: gameroom-app-acme
 
   gameroom-app-bubba:
@@ -91,7 +91,7 @@ services:
       args:
         - VUE_APP_BRAND=bubba
         - REPO_VERSION=${REPO_VERSION}
-    image: gameroom-app-bubba:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}gameroom-app-bubba:${ISOLATION_ID}
     container_name: gameroom-app-bubba
 
   gameroom-database:
@@ -100,5 +100,5 @@ services:
       dockerfile: examples/gameroom/database/Dockerfile-installed
       args:
       - REPO_VERSION=${REPO_VERSION}
-    image: gameroom-database:${ISOLATION_ID}
+    image: ${REGISTRY}${NAMESPACE}gameroom-database:${ISOLATION_ID}
     container_name: gameroom-database
