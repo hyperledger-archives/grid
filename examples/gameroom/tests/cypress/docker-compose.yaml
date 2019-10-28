@@ -14,6 +14,9 @@
 
 version: '3'
 
+volumes:
+  cargo-registry:
+
 services:
 
   gameroom-app-test:
@@ -41,3 +44,69 @@ services:
     volumes:
       - ../cypress:/app/cypress
       - ../cypress/cypress.json:/app/cypress.json
+
+  gameroomd-acme:
+    image: gameroomd
+    container_name: gameroomd-acme
+    build:
+      context: ../../../..
+      dockerfile: ./examples/gameroom/daemon/Dockerfile
+    volumes:
+      - cargo-registry:/root/.cargo/registry
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - splinterd-node
+    command: |
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=gameroom_test psql -h db-cypress-test -U gameroom_test -c '\q'; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+
+        # check if splinterd-node is available
+        while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-node:8085/status) -ne 200 ]] ; do
+           >&2 echo \"SplinterD is unavailable - sleeping\"
+           sleep 1
+        done
+
+        gameroomd -vv --database-url postgres://gameroom_test:gameroom_test@db-cypress-test:5432/gameroom_test \
+          -b gameroomd-acme:8000 --splinterd-url http://splinterd-node:8085
+      "
+
+  splinterd-node:
+    image: splinterd-node
+    expose:
+      - 8080
+      - 8043
+      - 8945
+      - 8085
+    ports:
+      - 8090:8085
+    volumes:
+      - ../:/project/tests
+    build:
+      context: ../../../..
+      dockerfile: splinterd/Dockerfile
+    entrypoint: |
+      bash -c "
+        splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
+      "
+
+  db-cypress-test:
+    image: postgres:alpine
+    container_name: db-cypress-test
+    restart: always
+    expose:
+      - 5432
+    ports:
+        - "5430:5432"
+    environment:
+      POSTGRES_USER: gameroom_test
+      POSTGRES_PASSWORD: gameroom_test
+      POSTGRES_DB: gameroom_test
+    volumes:
+      - "../../database/tables:/docker-entrypoint-initdb.d"

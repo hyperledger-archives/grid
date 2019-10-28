@@ -44,9 +44,13 @@ jobs:
       before_script:
         - set -e
         - docker-compose -f tests/test-splinter.yaml build
+      script:
+        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-splinter
+    - stage: Run Gameroom Tests
+      before_script:
+        - set -e
         - docker-compose -f examples/gameroom/tests/docker-compose.yaml build
         - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml build
       script:
-        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-splinter
         - docker-compose -f examples/gameroom/tests/docker-compose.yaml up --abort-on-container-exit
         - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit

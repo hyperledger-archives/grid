@@ -26,6 +26,7 @@ limitations under the License.
           <input
             class="form-input"
             type="email"
+            data-cy="email"
             v-model="email"
             v-focus
           />
@@ -36,8 +37,10 @@ limitations under the License.
               <input
                 class="input"
                 type="password"
+                data-cy="privateKey"
                 v-model="privateKey"/>
-              <button class="form-button" type="button" @click.prevent="generatePrivateKey">
+              <button class="form-button" type="button" data-cy="generatePrivateKey"
+                @click.prevent="generatePrivateKey">
                 <i class="icon material-icons-round">autorenew</i>
               </button>
             </div>
@@ -47,6 +50,7 @@ limitations under the License.
           <input
             class="form-input"
             type="password"
+            data-cy="password"
             v-model="password"
           />
         </label>
@@ -55,11 +59,12 @@ limitations under the License.
           <input
             class="form-input"
             type="password"
+            data-cy="confirmPassword"
             v-model="confirmPassword"
           />
         </label>
         <div class="submit-container">
-          <button class="btn-action large" type="submit" :disabled="!canSubmit">
+          <button class="btn-action large" type="submit" data-cy="submit" :disabled="!canSubmit">
             <div v-if="submitting" class="spinner" />
             <div v-else> Register </div>
           </button>

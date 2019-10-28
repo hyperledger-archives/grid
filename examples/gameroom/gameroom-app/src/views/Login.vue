@@ -28,6 +28,7 @@ limitations under the License.
             class="form-input"
             type="email"
             v-model="email"
+            data-cy="email"
           />
         </label>
         <label class="form-label">
@@ -36,10 +37,11 @@ limitations under the License.
             class="form-input"
             type="password"
             v-model="password"
+            data-cy="password"
           />
         </label>
         <div class="submit-container">
-          <button class="btn-action large" type="submit" :disabled="!canSubmit">
+          <button class="btn-action large" type="submit" data-cy="submit" :disabled="!canSubmit">
             <div v-if="submitting" class="spinner" />
             <div class="btn-text" v-else> Log In </div>
           </button>
