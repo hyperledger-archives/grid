@@ -258,7 +258,14 @@ impl Network {
             }
         };
 
-        self.mesh.send(Envelope::new(mesh_id, msg.to_vec()))?;
+        match self.mesh.send(Envelope::new(mesh_id, msg.to_vec())) {
+            Ok(()) => (),
+            Err(MeshSendError::Disconnected(_)) => {
+                rwlock_write_unwrap!(self.peers).remove(peer_id);
+            }
+            Err(err) => return Err(SendError::from(err)),
+        }
+
         Ok(())
     }
 
