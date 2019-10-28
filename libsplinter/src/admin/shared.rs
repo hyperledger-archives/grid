@@ -1232,7 +1232,6 @@ impl AdminServiceShared {
                 if service.allowed_nodes().contains(&self.node_id) {
                     continue;
                 }
-                warn!("Adding service {}", service.service_id());
                 let unique_id = ServiceId::new(id.to_string(), service.service_id().to_string());
 
                 let allowed_node = &service.allowed_nodes()[0];
