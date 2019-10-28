@@ -18,6 +18,8 @@ use std::time::Duration;
 
 use crossbeam_channel;
 
+#[cfg(feature = "health")]
+use health::HealthService;
 use splinter::admin::{admin_service_id, AdminService};
 use splinter::circuit::directory::CircuitDirectory;
 use splinter::circuit::handlers::{
@@ -72,6 +74,13 @@ const ADMIN_SERVICE_PROCESSOR_INCOMING_CAPACITY: usize = 8;
 const ADMIN_SERVICE_PROCESSOR_OUTGOING_CAPACITY: usize = 8;
 const ADMIN_SERVICE_PROCESSOR_CHANNEL_CAPACITY: usize = 8;
 
+#[cfg(feature = "health")]
+const HEALTH_SERVICE_PROCESSOR_INCOMING_CAPACITY: usize = 8;
+#[cfg(feature = "health")]
+const HEALTH_SERVICE_PROCESSOR_OUTGOING_CAPACITY: usize = 8;
+#[cfg(feature = "health")]
+const HEALTH_SERVICE_PROCESSOR_CHANNEL_CAPACITY: usize = 8;
+
 type ServiceJoinHandle = service::JoinHandles<Result<(), service::error::ServiceProcessorError>>;
 
 pub struct SplinterDaemon {
@@ -90,7 +99,17 @@ pub struct SplinterDaemon {
 impl SplinterDaemon {
     pub fn start(&mut self, transport: Box<dyn Transport + Send>) -> Result<(), StartError> {
         let mut inproc_tranport = InprocTransport::default();
-        let mut transport = MultiTransport::new(vec![transport, Box::new(inproc_tranport.clone())]);
+        let mut transports = vec![transport, Box::new(inproc_tranport.clone())];
+
+        let health_inproc = if cfg!(feature = "health") {
+            let inproc_tranport = InprocTransport::default();
+            transports.push(Box::new(inproc_tranport.clone()));
+            Some(inproc_tranport)
+        } else {
+            None
+        };
+
+        let mut transport = MultiTransport::new(transports);
 
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
@@ -375,6 +394,15 @@ impl SplinterDaemon {
             .join()
             .map_err(|_| StartError::ThreadError("Unable to join main loop".into()))?;
 
+        #[cfg(feature = "health")]
+        {
+            let health_service = HealthService::new(&self.node_id);
+            let health_service_processor_join_handle =
+                start_health_service(health_inproc.unwrap(), health_service, Arc::clone(&running))?;
+
+            let _ = health_service_processor_join_handle.join_all();
+        }
+
         // Join network sender and dispatcher threads
         let _ = network_message_sender_thread.join();
         let _ = circuit_dispatcher_thread.join();
@@ -486,6 +514,66 @@ impl SplinterDaemon {
             )
         })?
     }
+}
+
+#[cfg(feature = "health")]
+fn start_health_service(
+    mut transport: InprocTransport,
+    health_service: HealthService,
+    running: Arc<AtomicBool>,
+) -> Result<service::JoinHandles<Result<(), service::error::ServiceProcessorError>>, StartError> {
+    let start_health_service: std::thread::JoinHandle<
+        Result<service::JoinHandles<Result<(), service::error::ServiceProcessorError>>, StartError>,
+    > = thread::spawn(move || {
+        // use a match statement here, to inform
+        let connection = transport
+            .connect("inproc://health-service")
+            .map_err(|err| {
+                StartError::HealthServiceError(format!(
+                    "unable to initiate health service connection: {:?}",
+                    err
+                ))
+            })?;
+        let mut health_service_processor = ServiceProcessor::new(
+            connection,
+            "health".into(),
+            HEALTH_SERVICE_PROCESSOR_INCOMING_CAPACITY,
+            HEALTH_SERVICE_PROCESSOR_OUTGOING_CAPACITY,
+            HEALTH_SERVICE_PROCESSOR_CHANNEL_CAPACITY,
+            running,
+        )
+        .map_err(|err| {
+            StartError::HealthServiceError(format!(
+                "unable to create health service processor: {}",
+                err
+            ))
+        })?;
+
+        health_service_processor
+            .add_service(Box::new(health_service))
+            .map_err(|err| {
+                StartError::HealthServiceError(format!(
+                    "unable to add health service to processor: {}",
+                    err
+                ))
+            })?;
+
+        health_service_processor
+            .start()
+            .map(|(_, join_handles)| join_handles)
+            .map_err(|err| {
+                StartError::HealthServiceError(format!(
+                    "unable to health service processor: {}",
+                    err
+                ))
+            })
+    });
+
+    start_health_service.join().map_err(|_| {
+        StartError::HealthServiceError(
+            "unable to start health service, due to thread join error".into(),
+        )
+    })?
 }
 
 #[derive(Default)]
@@ -754,6 +842,8 @@ pub enum StartError {
     ProtocolError(String),
     RestApiError(String),
     AdminServiceError(String),
+    #[cfg(feature = "health")]
+    HealthServiceError(String),
     OrchestratorError(String),
     ThreadError(String),
 }

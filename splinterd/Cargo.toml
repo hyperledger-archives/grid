@@ -25,6 +25,7 @@ path = "src/main.rs"
 
 [dependencies]
 splinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
+health = { path = "../services/health", optional = true }
 clap = "2.32"
 crossbeam-channel = "0.3"
 ctrlc = "3.0"
@@ -48,6 +49,7 @@ experimental = [
     "config-builder",
     "config-toml",
     "circuit-read",
+    "health",
 ]
 
 config-builder = []
