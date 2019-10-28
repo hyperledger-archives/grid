@@ -18,9 +18,9 @@ use crate::circuit::{ServiceDefinition, SplinterState};
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::circuit::{
-    CircuitMessageType, ServiceConnectForward, ServiceConnectRequest, ServiceConnectResponse,
-    ServiceConnectResponse_Status, ServiceDisconnectForward, ServiceDisconnectRequest,
-    ServiceDisconnectResponse, ServiceDisconnectResponse_Status,
+    CircuitMessageType, ServiceConnectRequest, ServiceConnectResponse,
+    ServiceConnectResponse_Status, ServiceDisconnectRequest, ServiceDisconnectResponse,
+    ServiceDisconnectResponse_Status,
 };
 use crate::rwlock_write_unwrap;
 
@@ -79,27 +79,10 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
                     }
                 };
 
-                if !service.allowed_nodes.contains(&self.node_id) && service.allowed_nodes != ["*"]
-                {
+                if !service.allowed_nodes.contains(&self.node_id) {
                     response.set_status(ServiceConnectResponse_Status::ERROR_NOT_AN_ALLOWED_NODE);
                     response.set_error_message(format!("{} is not allowed on this node", unique_id))
                 } else {
-                    let mut forward_message = ServiceConnectForward::new();
-                    forward_message.set_circuit(circuit_name.into());
-                    forward_message.set_service_id(service_id.into());
-                    forward_message.set_node_id(self.node_id.to_string());
-                    forward_message.set_node_endpoint(self.endpoint.to_string());
-                    let forward_bytes = forward_message.write_to_bytes()?;
-                    let network_msg_bytes =
-                        create_message(forward_bytes, CircuitMessageType::SERVICE_CONNECT_FORWARD)?;
-
-                    for member in circuit.members() {
-                        if member != &self.node_id {
-                            let send_request =
-                                SendRequest::new(member.to_string(), network_msg_bytes.clone());
-                            sender.send(send_request)?;
-                        }
-                    }
                     let node = SplinterNode::new(
                         self.node_id.to_string(),
                         vec![self.endpoint.to_string()],
@@ -161,7 +144,6 @@ impl ServiceConnectRequestHandler {
 
 // Implements a handler that handles ServiceDisconnectRequest
 pub struct ServiceDisconnectRequestHandler {
-    node_id: String,
     state: Arc<RwLock<SplinterState>>,
 }
 
@@ -192,24 +174,6 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
             if circuit.roster().contains(&service_id.to_string())
                 && state.service_directory.contains_key(&unique_id)
             {
-                let mut forward_message = ServiceDisconnectForward::new();
-                forward_message.set_circuit(circuit_name.into());
-                forward_message.set_service_id(service_id.into());
-                forward_message.set_node_id(self.node_id.to_string());
-                let forward_bytes = forward_message.write_to_bytes()?;
-                let network_msg_bytes = create_message(
-                    forward_bytes,
-                    CircuitMessageType::SERVICE_DISCONNECT_FORWARD,
-                )?;
-
-                for member in circuit.members() {
-                    if member != &self.node_id {
-                        let send_request =
-                            SendRequest::new(member.to_string(), network_msg_bytes.clone());
-                        sender.send(send_request)?;
-                    }
-                }
-
                 state.remove_service(&unique_id);
                 response.set_status(ServiceDisconnectResponse_Status::OK);
             // If the circuit exists and has the service in the roster but the service not
@@ -251,139 +215,8 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
 }
 
 impl ServiceDisconnectRequestHandler {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
-        ServiceDisconnectRequestHandler { node_id, state }
-    }
-}
-
-// Implements a handler that handles ServiceConnectForward Messages
-pub struct ServiceConnectForwardHandler {
-    state: Arc<RwLock<SplinterState>>,
-}
-
-impl Handler<CircuitMessageType, ServiceConnectForward> for ServiceConnectForwardHandler {
-    fn handle(
-        &self,
-        msg: ServiceConnectForward,
-        _: &MessageContext<CircuitMessageType>,
-        _: &dyn Sender<SendRequest>,
-    ) -> Result<(), DispatchError> {
-        debug!("Handle Service Connect Forward {:?}", msg);
-        let circuit_name = msg.get_circuit();
-        let service_id = msg.get_service_id();
-        let node_id = msg.get_node_id().to_string();
-        let node_endpoint = msg.get_node_endpoint();
-
-        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
-
-        // hold on to the write lock for the entirety of the function
-        let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name);
-        if let Some(circuit) = circuit_result {
-            // If the circuit has the service in its roster and the service is not yet connected
-            // add the service to splinter state. Otherwise return
-            if circuit.roster().contains(&service_id.to_string())
-                && !state.service_directory.contains_key(&unique_id)
-            {
-                // This should never return None since we just checked if it exists.
-                // If admin service create a service defination for the admin service
-                let service = {
-                    if !service_id.starts_with("admin::") {
-                        circuit
-                            .roster()
-                            .iter()
-                            .find(|service| service.service_id == service_id)
-                            .expect("Cannot find service in circuit")
-                            .clone()
-                    } else {
-                        ServiceDefinition::builder(service_id.into(), "admin".into())
-                            .with_allowed_nodes(vec![node_id.to_string()])
-                            .build()
-                    }
-                };
-
-                if !service.allowed_nodes.contains(&node_id) && service.allowed_nodes != ["*"] {
-                    warn!(
-                        "Service {} is not allowed to connect to {}",
-                        service_id, node_id
-                    );
-                } else {
-                    let node = SplinterNode::new(node_id, vec![node_endpoint.to_string()]);
-                    let service = Service::new(service_id.to_string(), None, node);
-                    state.add_service(unique_id, service);
-                }
-            } else if circuit.roster().contains(&service_id.to_string())
-                && state.service_directory.contains_key(&unique_id)
-            {
-                warn!("Service is already registered: {}", service_id);
-            } else {
-                warn!(
-                    "Service is not allowed in the circuit: {}:{}",
-                    circuit_name, service_id
-                );
-            }
-        } else {
-            warn!("Circuit does not exist: {}", circuit_name);
-        }
-
-        Ok(())
-    }
-}
-
-impl ServiceConnectForwardHandler {
     pub fn new(state: Arc<RwLock<SplinterState>>) -> Self {
-        ServiceConnectForwardHandler { state }
-    }
-}
-
-// Implements a handler that handles ServiceDisconnectForward Messages
-pub struct ServiceDisconnectForwardHandler {
-    state: Arc<RwLock<SplinterState>>,
-}
-
-impl Handler<CircuitMessageType, ServiceDisconnectForward> for ServiceDisconnectForwardHandler {
-    fn handle(
-        &self,
-        msg: ServiceDisconnectForward,
-        _: &MessageContext<CircuitMessageType>,
-        _: &dyn Sender<SendRequest>,
-    ) -> Result<(), DispatchError> {
-        debug!("Handle Service Connect Forward {:?}", msg);
-        let circuit_name = msg.get_circuit();
-        let service_id = msg.get_service_id();
-        let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
-
-        // hold on to the write lock for the entirety of the function
-        let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name);
-        if let Some(circuit) = circuit_result {
-            // If the circuit has the service in its roster and the service is connected
-            // remove the service from splinter state. Otherwise return
-            if circuit.roster().contains(&service_id.to_string())
-                && state.service_directory.contains_key(&unique_id)
-            {
-                state.remove_service(&unique_id);
-            } else if circuit.roster().contains(&service_id.to_string())
-                && !state.service_directory.contains_key(&unique_id)
-            {
-                warn!("Service not registered: {}", service_id);
-            } else {
-                warn!(
-                    "Service is not allowed in the circuit: {}:{}",
-                    circuit_name, service_id
-                );
-            }
-        } else {
-            warn!("Circuit does not exist: {}", circuit_name);
-        }
-
-        Ok(())
-    }
-}
-
-impl ServiceDisconnectForwardHandler {
-    pub fn new(state: Arc<RwLock<SplinterState>>) -> Self {
-        ServiceDisconnectForwardHandler { state }
+        ServiceDisconnectRequestHandler { state }
     }
 }
 
@@ -522,8 +355,7 @@ mod tests {
 
     #[test]
     // Test that if the service is in a circuit and not connected, a ServiceConnectResponse is
-    // returned with an OK, also test that ServiceConnectForward are sent to other nodes on the
-    // circuit
+    // returned with an OK
     fn test_service_connect_request_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -560,124 +392,8 @@ mod tests {
             )
             .unwrap();
         let send_requests = sender.sent();
-        assert_eq!(send_requests.len(), 2);
+        assert_eq!(send_requests.len(), 1);
         let send_request = send_requests.get(0).unwrap().clone();
-        let network_msg: NetworkMessage =
-            protobuf::parse_from_bytes(send_request.payload()).unwrap();
-        let circuit_msg: CircuitMessage =
-            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
-        let forward_connect: ServiceConnectForward =
-            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
-        assert_eq!(
-            circuit_msg.get_message_type(),
-            CircuitMessageType::SERVICE_CONNECT_FORWARD
-        );
-        assert_eq!(forward_connect.get_circuit(), "alpha");
-        assert_eq!(forward_connect.get_service_id(), "abc");
-        assert_eq!(forward_connect.get_node_id(), "123");
-
-        let send_request = send_requests.get(1).unwrap().clone();
-
-        assert_eq!(send_request.recipient(), "PEER");
-
-        let network_msg: NetworkMessage =
-            protobuf::parse_from_bytes(send_request.payload()).unwrap();
-        let circuit_msg: CircuitMessage =
-            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
-        let connect_response: ServiceConnectResponse =
-            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
-
-        assert_eq!(
-            circuit_msg.get_message_type(),
-            CircuitMessageType::SERVICE_CONNECT_RESPONSE
-        );
-        assert_eq!(connect_response.get_circuit(), "alpha");
-        assert_eq!(connect_response.get_service_id(), "abc");
-        assert_eq!(
-            connect_response.get_status(),
-            ServiceConnectResponse_Status::OK
-        );
-
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_some());
-    }
-
-    #[test]
-    // Test that if the service is in a circuit and not connected, a ServiceConnectResponse is
-    // returned with an OK, also test that ServiceConnectForward are sent to other nodes on the
-    // circuit. If services have a * in there allowed nodes they can connect to any node on the
-    // circiut.
-    fn test_service_connect_request_handler_service_any_node() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let service_def = ServiceDefinition::builder("def".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["123".into(), "345".into()])
-            .with_roster(vec![service_abc, service_def])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurabilty)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        let handler = ServiceConnectRequestHandler::new(
-            "123".to_string(),
-            "127.0.0.1:0".to_string(),
-            state.clone(),
-        );
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_REQUEST,
-            Box::new(handler),
-        );
-        let mut connect_request = ServiceConnectRequest::new();
-        connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("abc".into());
-        let connect_bytes = connect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_CONNECT_REQUEST,
-                connect_bytes.clone(),
-            )
-            .unwrap();
-        let send_requests = sender.sent();
-        assert_eq!(send_requests.len(), 2);
-        let send_request = send_requests.get(0).unwrap().clone();
-        let network_msg: NetworkMessage =
-            protobuf::parse_from_bytes(send_request.payload()).unwrap();
-        let circuit_msg: CircuitMessage =
-            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
-        let forward_connect: ServiceConnectForward =
-            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
-        assert_eq!(
-            circuit_msg.get_message_type(),
-            CircuitMessageType::SERVICE_CONNECT_FORWARD
-        );
-        assert_eq!(forward_connect.get_circuit(), "alpha");
-        assert_eq!(forward_connect.get_service_id(), "abc");
-        assert_eq!(forward_connect.get_node_id(), "123");
-
-        let send_request = send_requests.get(1).unwrap().clone();
 
         assert_eq!(send_request.recipient(), "PEER");
 
@@ -767,149 +483,6 @@ mod tests {
     }
 
     #[test]
-    // Test that if the service is in a circuit and it is not yet connect, add the service to
-    // splinter state
-    fn test_service_connect_forward_handler() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let circuit = build_circuit();
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        let handler = ServiceConnectForwardHandler::new(state.clone());
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_FORWARD,
-            Box::new(handler),
-        );
-        let mut connect_request = ServiceConnectForward::new();
-        connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("abc".into());
-        connect_request.set_node_id("123".into());
-        connect_request.set_node_endpoint("127.0.0.1:0".into());
-        let connect_bytes = connect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_CONNECT_FORWARD,
-                connect_bytes.clone(),
-            )
-            .unwrap();
-
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_some());
-    }
-
-    #[test]
-    // Test that if the service is in a circuit, it is not yet connected, and allowed to
-    // connect to all nodes, add the service to splinter state
-    fn test_service_connect_forward_handler_all_node() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let service_abc = ServiceDefinition::builder("abc".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let service_def = ServiceDefinition::builder("def".into(), "test".into())
-            .with_allowed_nodes(vec!["*".to_string()])
-            .build();
-
-        let circuit = Circuit::builder()
-            .with_id("alpha".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["123".into(), "345".into()])
-            .with_roster(vec![service_abc, service_def])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurabilty)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("service_connect_test_app".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        let handler = ServiceConnectForwardHandler::new(state.clone());
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_FORWARD,
-            Box::new(handler),
-        );
-        let mut connect_request = ServiceConnectForward::new();
-        connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("abc".into());
-        // abc can connect to any node
-        connect_request.set_node_id("345".into());
-        connect_request.set_node_endpoint("127.0.0.1:0".into());
-        let connect_bytes = connect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_CONNECT_FORWARD,
-                connect_bytes.clone(),
-            )
-            .unwrap();
-
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_some());
-    }
-
-    #[test]
-    // Test that if the service is in a circuit and it is not yet connect but the service is
-    // trying to connect to a node not in there allowed nodes list, ignore.
-    fn test_service_connect_forward_handler_wrong_node() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let circuit = build_circuit();
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        let handler = ServiceConnectForwardHandler::new(state.clone());
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_CONNECT_FORWARD,
-            Box::new(handler),
-        );
-        let mut connect_request = ServiceConnectForward::new();
-        connect_request.set_circuit("alpha".into());
-        connect_request.set_service_id("abc".into());
-        // abc is only allowed to connect to 123
-        connect_request.set_node_id("345".into());
-        connect_request.set_node_endpoint("127.0.0.1:0".into());
-        let connect_bytes = connect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_CONNECT_FORWARD,
-                connect_bytes.clone(),
-            )
-            .unwrap();
-
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_none());
-    }
-
-    #[test]
     // Test that if the circuit does not exist, a ServiceDisconnectResponse is returned with
     // a ERROR_CIRCUIT_DOES_NOT_EXIST
     fn test_service_disconnect_request_handler_no_circuit() {
@@ -922,7 +495,7 @@ mod tests {
             "memory".to_string(),
             circuit_directory,
         )));
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -979,7 +552,7 @@ mod tests {
             "memory".to_string(),
             circuit_directory,
         )));
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -1022,8 +595,7 @@ mod tests {
 
     #[test]
     // Test that if the service is in a circuit and already connected, a ServiceDisconnectResponse
-    // is returned with an OK, also test that ServiceDisconnectForward are sent to other nodes on
-    // the circuit
+    // is returned with an OK.
     fn test_service_disconnect_request_handler() {
         let sender = Box::new(MockSender::default());
         let mut dispatcher = Dispatcher::new(sender.box_clone());
@@ -1043,7 +615,7 @@ mod tests {
         let id = ServiceId::new("alpha".into(), "abc".into());
         state.write().unwrap().add_service(id.clone(), service);
 
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state.clone());
+        let handler = ServiceDisconnectRequestHandler::new(state.clone());
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -1062,23 +634,8 @@ mod tests {
             )
             .unwrap();
         let send_requests = sender.sent();
-        assert_eq!(send_requests.len(), 2);
+        assert_eq!(send_requests.len(), 1);
         let send_request = send_requests.get(0).unwrap().clone();
-        let network_msg: NetworkMessage =
-            protobuf::parse_from_bytes(send_request.payload()).unwrap();
-        let circuit_msg: CircuitMessage =
-            protobuf::parse_from_bytes(network_msg.get_payload()).unwrap();
-        let forward_connect: ServiceDisconnectForward =
-            protobuf::parse_from_bytes(circuit_msg.get_payload()).unwrap();
-        assert_eq!(
-            circuit_msg.get_message_type(),
-            CircuitMessageType::SERVICE_DISCONNECT_FORWARD
-        );
-        assert_eq!(forward_connect.get_circuit(), "alpha");
-        assert_eq!(forward_connect.get_service_id(), "abc");
-        assert_eq!(forward_connect.get_node_id(), "123");
-
-        let send_request = send_requests.get(1).unwrap().clone();
 
         assert_eq!(send_request.recipient(), "PEER");
 
@@ -1120,7 +677,7 @@ mod tests {
             circuit_directory,
         )));
 
-        let handler = ServiceDisconnectRequestHandler::new("123".to_string(), state);
+        let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
             CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
@@ -1159,51 +716,6 @@ mod tests {
             disconnect_response.get_status(),
             ServiceDisconnectResponse_Status::ERROR_SERVICE_NOT_REGISTERED
         );
-    }
-
-    #[test]
-    // Test that if the service is in a circuit and it is connected, remove the service from
-    // splinter state
-    fn test_service_disconnect_forward_handler() {
-        let sender = Box::new(MockSender::default());
-        let mut dispatcher = Dispatcher::new(sender.box_clone());
-
-        let circuit = build_circuit();
-
-        let mut circuit_directory = CircuitDirectory::new();
-        circuit_directory.add_circuit("alpha".to_string(), circuit);
-
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-
-        let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
-        let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
-        let id = ServiceId::new("alpha".into(), "abc".into());
-        state.write().unwrap().add_service(id.clone(), service);
-
-        let handler = ServiceDisconnectForwardHandler::new(state.clone());
-
-        dispatcher.set_handler(
-            CircuitMessageType::SERVICE_DISCONNECT_FORWARD,
-            Box::new(handler),
-        );
-        let mut disconnect_request = ServiceDisconnectForward::new();
-        disconnect_request.set_circuit("alpha".into());
-        disconnect_request.set_service_id("abc".into());
-        disconnect_request.set_node_id("123".into());
-        let disconnect_bytes = disconnect_request.write_to_bytes().unwrap();
-
-        dispatcher
-            .dispatch(
-                "PEER",
-                &CircuitMessageType::SERVICE_DISCONNECT_FORWARD,
-                disconnect_bytes.clone(),
-            )
-            .unwrap();
-
-        assert!(state.read().unwrap().service_directory().get(&id).is_none());
     }
 
     fn build_circuit() -> Circuit {

@@ -132,7 +132,8 @@ impl Handler<CircuitMessageType, CircuitDirectMessage> for CircuitDirectMessageH
                             (network_msg_bytes, &peer_id[..])
                         }
                     } else {
-                        // if the recipient is not connected, send circuit error
+                        // This should not happen as every service should be added on circuit
+                        // creation. If the recipient is not connected, send circuit error
                         let mut error_message = CircuitError::new();
                         error_message.set_correlation_id(msg.get_correlation_id().to_string());
                         error_message.set_service_id(msg_sender.into());

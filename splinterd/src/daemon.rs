@@ -22,8 +22,7 @@ use splinter::admin::{admin_service_id, AdminService};
 use splinter::circuit::directory::CircuitDirectory;
 use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
-    CircuitMessageHandler, ServiceConnectForwardHandler, ServiceConnectRequestHandler,
-    ServiceDisconnectForwardHandler, ServiceDisconnectRequestHandler,
+    CircuitMessageHandler, ServiceConnectRequestHandler, ServiceDisconnectRequestHandler,
 };
 use splinter::circuit::SplinterState;
 use splinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
@@ -670,23 +669,10 @@ fn set_up_circuit_dispatcher(
         Box::new(service_connect_request_handler),
     );
 
-    let service_connect_forward_handler = ServiceConnectForwardHandler::new(state.clone());
-    dispatcher.set_handler(
-        CircuitMessageType::SERVICE_CONNECT_FORWARD,
-        Box::new(service_connect_forward_handler),
-    );
-
-    let service_disconnect_request_handler =
-        ServiceDisconnectRequestHandler::new(node_id.to_string(), state.clone());
+    let service_disconnect_request_handler = ServiceDisconnectRequestHandler::new(state.clone());
     dispatcher.set_handler(
         CircuitMessageType::SERVICE_DISCONNECT_REQUEST,
         Box::new(service_disconnect_request_handler),
-    );
-
-    let service_disconnect_forward_handler = ServiceDisconnectForwardHandler::new(state.clone());
-    dispatcher.set_handler(
-        CircuitMessageType::SERVICE_DISCONNECT_FORWARD,
-        Box::new(service_disconnect_forward_handler),
     );
 
     let direct_message_handler =

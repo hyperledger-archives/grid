@@ -31,10 +31,8 @@ enum CircuitMessageType {
     CIRCUIT_DIRECT_MESSAGE = 3;
     SERVICE_CONNECT_REQUEST = 4;
     SERVICE_CONNECT_RESPONSE = 5;
-    SERVICE_CONNECT_FORWARD = 6;
     SERVICE_DISCONNECT_REQUEST = 7;
     SERVICE_DISCONNECT_RESPONSE = 8;
-    SERVICE_DISCONNECT_FORWARD = 9;
 
     ADMIN_DIRECT_MESSAGE = 100;
 }
@@ -152,21 +150,6 @@ message ServiceConnectResponse {
     string correlation_id = 5;
 }
 
-// To be forwarded to other nodes on the circuit
-message ServiceConnectForward {
-    // the name of the circuit the message is meant for
-    string circuit = 1;
-
-    // the unique id of the service that is connecting to the circuit
-    string service_id = 2;
-
-    // the unique id of the node id that the service connected to
-    string node_id = 3;
-
-    // the network endpoint of the node that the service connected to
-    string node_endpoint = 4;
-}
-
 message ServiceDisconnectRequest {
     // the name of the circuit the message is meant for
     string circuit = 1;
@@ -201,16 +184,4 @@ message ServiceDisconnectResponse {
 
     // id used to correlate this response with the request
     string correlation_id = 5;
-}
-
-// To be forwarded to other nodes on the circuit
-message ServiceDisconnectForward {
-    // the name of the circuit the message is meant for
-    string circuit = 1;
-
-    // the unique id of the service that is connecting to the circuit
-    string service_id = 2;
-
-    // the unique id of the node id that the service connected to
-    string node_id = 3;
 }

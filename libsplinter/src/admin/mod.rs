@@ -154,6 +154,15 @@ impl Service for AdminService {
             })?
             .restart_services()
             .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
+
+        self.admin_service_shared
+            .lock()
+            .map_err(|_| {
+                ServiceStartError::PoisonedLock("the admin shared lock was poisoned".into())
+            })?
+            .add_services_to_directory()
+            .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
+
         Ok(())
     }
 
@@ -450,8 +459,8 @@ mod tests {
             splinter_node("other-node", "tcp://otherplace:8000"),
         ]));
         proposed_circuit.set_roster(protobuf::RepeatedField::from_vec(vec![
-            splinter_service("service-a", "sabre"),
-            splinter_service("service-b", "sabre"),
+            splinter_service("service-a", "sabre", "test-node"),
+            splinter_service("service-b", "sabre", "other-node"),
         ]));
 
         let mut request = admin::CircuitCreateRequest::new();
@@ -523,10 +532,15 @@ mod tests {
         node
     }
 
-    fn splinter_service(service_id: &str, service_type: &str) -> admin::SplinterService {
+    fn splinter_service(
+        service_id: &str,
+        service_type: &str,
+        allowed_node: &str,
+    ) -> admin::SplinterService {
         let mut service = admin::SplinterService::new();
         service.set_service_id(service_id.into());
         service.set_service_type(service_type.into());
+        service.set_allowed_nodes(vec![allowed_node.into()].into());
         service
     }
 

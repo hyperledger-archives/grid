@@ -22,8 +22,10 @@ use protobuf::{Message, RepeatedField};
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
-    service::SplinterNode as StateNode, AuthorizationType, Circuit as StateCircuit, DurabilityType,
-    PersistenceType, RouteType, ServiceDefinition as StateServiceDefinition,
+    service::SplinterNode as StateNode,
+    service::{Service, ServiceId},
+    AuthorizationType, Circuit as StateCircuit, DurabilityType, PersistenceType, RouteType,
+    ServiceDefinition as StateServiceDefinition,
 };
 use crate::consensus::{Proposal, ProposalId};
 use crate::hex::to_hex;
@@ -860,11 +862,23 @@ impl AdminServiceShared {
 
         // check that all services' allowed nodes are in members
         for service in circuit.get_roster() {
+            if service.get_allowed_nodes().is_empty() {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Service cannot have an empty allowed nodes list".to_string(),
+                ));
+            }
+
+            if service.get_allowed_nodes().len() > 1 {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Only one allowed node for a service is supported".to_string(),
+                ));
+            }
+
             for node in service.get_allowed_nodes() {
                 if !members.contains(node) {
                     return Err(AdminSharedError::ValidationFailed(format!(
                         "Service cannot have an allowed node that is not in members: {}",
-                        self.node_id
+                        node
                     )));
                 }
             }
@@ -1148,7 +1162,7 @@ impl AdminServiceShared {
                     .map(|node| node.id().to_string())
                     .collect::<Vec<String>>(),
             )
-            .with_roster(roster)
+            .with_roster(roster.clone())
             .with_auth(auth)
             .with_persistence(persistence)
             .with_durability(durability)
@@ -1162,6 +1176,7 @@ impl AdminServiceShared {
         let mut splinter_state = self.splinter_state.write().map_err(|err| {
             AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
         })?;
+
         for member in members {
             splinter_state
                 .add_node(member.id().to_string(), member)
@@ -1180,6 +1195,63 @@ impl AdminServiceShared {
                     err
                 ))
             })?;
+
+        for service in roster {
+            if service.allowed_nodes().contains(&self.node_id) {
+                continue;
+            }
+
+            let unique_id = ServiceId::new(
+                circuit.circuit_id.to_string(),
+                service.service_id().to_string(),
+            );
+
+            let allowed_node = &service.allowed_nodes()[0];
+            if let Some(member) = splinter_state.node(&allowed_node) {
+                let service = Service::new(service.service_id().to_string(), None, member.clone());
+                splinter_state.add_service(unique_id, service)
+            } else {
+                return Err(AdminSharedError::CommitError(format!(
+                    "Unable to find allowed node {} when adding service {} to directory",
+                    allowed_node,
+                    service.service_id()
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn add_services_to_directory(&self) -> Result<(), AdminSharedError> {
+        let mut splinter_state = self.splinter_state.write().map_err(|err| {
+            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
+        })?;
+
+        for (id, circuit) in splinter_state.circuits().clone() {
+            for service in circuit.roster() {
+                if service.allowed_nodes().contains(&self.node_id) {
+                    continue;
+                }
+                warn!("Adding service {}", service.service_id());
+                let unique_id = ServiceId::new(id.to_string(), service.service_id().to_string());
+
+                let allowed_node = &service.allowed_nodes()[0];
+                if let Some(member) = splinter_state.node(&allowed_node) {
+                    // rebuild Node with id
+                    let node =
+                        StateNode::new(allowed_node.to_string(), member.endpoints().to_vec());
+                    let service = Service::new(service.service_id().to_string(), None, node);
+                    splinter_state.add_service(unique_id, service)
+                } else {
+                    return Err(AdminSharedError::CommitError(format!(
+                        "Unable to find allowed node {} when adding service {} to directory",
+                        allowed_node,
+                        service.service_id()
+                    )));
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1467,6 +1539,46 @@ mod tests {
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
             panic!("Should have been invalid due to service having an allowed node not in members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a service in its roster with too many allowed nodes
+    fn test_validate_circuit_too_many_allowed_nodes() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut service_bad = SplinterService::new();
+        service_bad.set_service_id("service_b".to_string());
+        service_bad.set_service_type("type_a".to_string());
+        service_bad.set_allowed_nodes(RepeatedField::from_vec(vec![
+            "node_b".to_string(),
+            "extra".to_string(),
+        ]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid due to service having too many allowed nodes");
         }
     }
 
