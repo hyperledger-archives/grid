@@ -23,7 +23,8 @@ network_endpoint = "tls://localhost:8044"
 
 # A comma separated list of splinter nodes the daemon will automatically
 # attempt to connect to on start up
-peers = ["tls://acme-node-001:8044", "tls://acme-node-002:8044"]
+# example: peers = ["tls://acme-node-001:8044", "tls://acme-node-002:8044"]
+peers = []
 
 # The type of storage that should be used to store circuit state. Options are
 # currently "yaml" or "memory"
