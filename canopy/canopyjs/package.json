@@ -1,6 +1,7 @@
 {
   "name": "canopyjs",
   "private": true,
+  "version": "0.0.0-alpha",
   "author": "Cargill Incorporated",
   "license": "Apache-2.0",
   "main": "dist/index.js",
