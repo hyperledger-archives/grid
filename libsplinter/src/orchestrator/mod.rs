@@ -31,7 +31,7 @@ use crate::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
 use crate::protos::circuit::{
-    AdminDirectMessage, CircuitDirectMessage, CircuitMessage, CircuitMessageType,
+    AdminDirectMessage, CircuitDirectMessage, CircuitError, CircuitMessage, CircuitMessageType,
     ServiceConnectResponse, ServiceDisconnectResponse,
 };
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
@@ -457,6 +457,12 @@ pub fn run_incoming_loop(
                                 )),
                             )
                             .map_err(|err| OrchestratorError::Internal(Box::new(err)))?;
+                    }
+                    CircuitMessageType::CIRCUIT_ERROR_MESSAGE => {
+                        let response: CircuitError =
+                            protobuf::parse_from_bytes(circuit_msg.get_payload())
+                                .map_err(|err| OrchestratorError::Internal(Box::new(err)))?;
+                        warn!("Received circuit error message {:?}", response);
                     }
                     msg_type => warn!("Received unimplemented message: {:?}", msg_type),
                 }
