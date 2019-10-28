@@ -100,7 +100,7 @@ fn run() -> Result<(), GameroomDaemonError> {
     )?;
 
     ctrlc::set_handler(move || {
-        info!("Recieved Shutdown");
+        info!("Received Shutdown");
 
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);

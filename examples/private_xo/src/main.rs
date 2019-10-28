@@ -355,7 +355,7 @@ fn configure_logging(matches: &clap::ArgMatches) {
 
 fn configure_shutdown_handler(running: Arc<AtomicBool>) -> Result<(), CliError> {
     ctrlc::set_handler(move || {
-        info!("Recieved Shutdown");
+        info!("Received Shutdown");
         running.store(false, Ordering::SeqCst);
     })
     .map_err(|err| CliError(format!("Unable to create control c handler: {}", err)))

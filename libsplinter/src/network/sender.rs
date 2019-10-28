@@ -70,9 +70,9 @@ impl NetworkMessageSender {
                 Ok(send_request) => send_request,
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => {
-                    error!("Recieved Disconnected Error from receiver");
+                    error!("Received Disconnected Error from receiver");
                     return Err(NetworkMessageSenderError::RecvTimeoutError(String::from(
-                        "Recieved Disconnected Error from receiver",
+                        "Received Disconnected Error from receiver",
                     )));
                 }
             };

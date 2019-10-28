@@ -253,7 +253,7 @@ impl SplinterDaemon {
                         }
                         Err(RecvTimeoutError::Disconnected) => {
                             // if the reciever has disconnected, shutdown
-                            warn!("Recieved Disconnected Error from Network");
+                            warn!("Received Disconnected Error from Network");
                             break;
                         }
                         Err(_) => {

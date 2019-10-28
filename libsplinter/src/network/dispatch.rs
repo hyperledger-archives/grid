@@ -389,9 +389,9 @@ impl<MT: Any + Hash + Eq + Debug + Clone> DispatchLoop<MT> {
                 Ok(dispatch_msg) => dispatch_msg,
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => {
-                    error!("Recieved Disconnected Error from receiver");
+                    error!("Received Disconnected Error from receiver");
                     return Err(DispatchLoopError(String::from(
-                        "Recieved Disconnected Error from receiver",
+                        "Received Disconnected Error from receiver",
                     )));
                 }
             };
