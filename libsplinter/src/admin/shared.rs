@@ -1001,6 +1001,42 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    fn validate_circuit_management_payload(
+        &self,
+        payload: &CircuitManagementPayload,
+        header: &CircuitManagementPayload_Header,
+    ) -> Result<(), AdminSharedError> {
+        // Validate payload signature
+        if payload.get_signature().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload signature must be set".to_string(),
+            ));
+        };
+
+        // Validate the payload header
+        if payload.get_header().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload header must be set".to_string(),
+            ));
+        };
+
+        // Validate the header, requester field is set
+        if header.get_requester().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload must have a requester".to_string(),
+            ));
+        };
+
+        // Validate the header, requester_node_id is set
+        if header.get_requester_node_id().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload must have a requester node id".to_string(),
+            ));
+        };
+
+        Ok(())
+    }
+
     fn check_approved(
         &self,
         proposal: &CircuitProposal,
