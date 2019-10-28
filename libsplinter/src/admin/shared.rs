@@ -351,6 +351,7 @@ impl AdminServiceShared {
             circuit_payload.get_header(),
         )
         .map_err(MarshallingError::from)?;
+        self.validate_circuit_management_payload(&circuit_payload, &header)?;
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
@@ -522,6 +523,8 @@ impl AdminServiceShared {
 
         let header =
             protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
+        self.validate_circuit_management_payload(&payload, &header)
+            .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
