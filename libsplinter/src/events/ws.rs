@@ -25,7 +25,7 @@
 //! let mut ws = WebSocketClient::new(
 //!    "http://echo.websocket.org", |ctx, msg: Vec<u8>| {
 //!    if let Ok(s) = String::from_utf8(msg.clone()) {
-//!         println!("Recieved {}", s);
+//!         println!("Received {}", s);
 //!    } else {
 //!       println!("malformed message: {:?}", msg);
 //!    };
