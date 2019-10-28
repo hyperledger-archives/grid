@@ -61,6 +61,13 @@ $space-sizes: (
   }
 }
 
+@for $i from 1 through 6 {
+  .grid-#{$i} {
+    grid-template-columns: repeat($i, 1fr);
+    grid-column-gap: $padding-m;
+  }
+}
+
 @for $i from 0 through 5 {
   .borderRight-#{$i} {
     border-right: ($i * 1px) solid;

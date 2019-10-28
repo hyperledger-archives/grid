@@ -21,6 +21,8 @@ $display-types: (
   'none': none,
   'block': block,
   'flex': flex,
+  'grid': grid,
+  'inlineGrid': inline-grid,
   'inlineBlock': inline-block,
   'inlineFlex': inline-flex
 );
