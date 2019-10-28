@@ -58,3 +58,7 @@ server_cert = "/etc/splinter/certs/private/acme.crt"
 
 # Private key used by daemon when it is acting as a server.
 server_key = "/etc/splinter/certs/private/acme.key"
+
+# The number of seconds between network keep-alive heartbeat messages.
+# Setting heartbeat_interval to 0 disables this feature.
+heartbeat_interval = 30
