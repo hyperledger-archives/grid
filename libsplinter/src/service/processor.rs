@@ -28,7 +28,7 @@ use crate::protos::authorization::{
     AuthorizationMessage, AuthorizationMessageType, ConnectRequest, ConnectRequest_HandshakeMode,
 };
 use crate::protos::circuit::{
-    AdminDirectMessage, CircuitDirectMessage, CircuitMessage, CircuitMessageType,
+    AdminDirectMessage, CircuitDirectMessage, CircuitError, CircuitMessage, CircuitMessageType,
     ServiceConnectResponse, ServiceDisconnectResponse,
 };
 use crate::protos::network::{NetworkMessage, NetworkMessageType};
@@ -431,6 +431,11 @@ fn process_inbound_msg_with_correlation_id(
             handle_circuit_direct_msg(circuit_direct_message, &shared_state).map_err(
                 to_process_err!("unable to handle inbound circuit direct message"),
             )?;
+        }
+        (CircuitMessageType::CIRCUIT_ERROR_MESSAGE, msg) => {
+            let response: CircuitError = protobuf::parse_from_bytes(&msg)
+                .map_err(to_process_err!("unable to parse circuit error message"))?;
+            warn!("Received circuit error message {:?}", response);
         }
         (msg_type, _) => warn!(
             "Received message ({:?}) that does not have a correlation id",
