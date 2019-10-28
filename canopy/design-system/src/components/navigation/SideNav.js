@@ -27,9 +27,9 @@ export default class SideNav extends React.Component {
   render() {
     const { tabs } = this.props;
     return (
-      <div className="side-nav">
-        <div id="brand">
-          <img src={logo} className="app-logo" alt="logo" />
+      <div className="side-nav borderRight-1 borderColor-smoke">
+        <div id="brand" className="paddingTop-m">
+          <img src={logo} className="app-logo paddingBottom-s" alt="logo" />
           <span>
             Canopy
             <sup>design</sup>
