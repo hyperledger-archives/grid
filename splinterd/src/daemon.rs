@@ -193,7 +193,12 @@ impl SplinterDaemon {
             for connection_result in network_listener.incoming() {
                 let connection = match connection_result {
                     Ok(connection) => connection,
-                    Err(err) => {
+                    Err(AcceptError::ProtocolError(msg)) => {
+                        warn!("Failed to accept connection due to {}", msg);
+                        continue;
+                    }
+                    Err(AcceptError::IoError(err)) => {
+                        error!("Unable to receive new connections; exiting: {:?}", err);
                         return Err(StartError::TransportError(format!(
                             "Accept Error: {:?}",
                             err
@@ -201,7 +206,10 @@ impl SplinterDaemon {
                     }
                 };
                 debug!("Received connection from {}", connection.remote_endpoint());
-                network_clone.add_connection(connection)?;
+                match network_clone.add_connection(connection) {
+                    Ok(peer_id) => debug!("Added connection with id {}", peer_id),
+                    Err(err) => error!("Failed to add connection to network: {}", err),
+                };
             }
             Ok(())
         });
