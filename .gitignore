@@ -64,6 +64,7 @@
 
 # production
 /canopy/**/build
+/canopy**/dist
 
 # misc
 .DS_Store
