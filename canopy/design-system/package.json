@@ -8,7 +8,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "format": "prettier --write \"**/*.+(js|jsx|json|css|scss|md)\"",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "rollup:build": "cd src/themes; each '**/*.js' -- rollup -c $PWD/../../rollup.config.js -o $PWD/../../dist/%p $PWD/%p; cd ../../dist; each '**/*.js' -- rm $PWD/%p"
   },
   "husky": {
     "hooks": {
@@ -36,7 +37,9 @@
     "react-scripts": "^3.2.0"
   },
   "devDependencies": {
+    "autoprefixer": "^9.7.0",
     "babel-loader": "^8.0.6",
+    "cli-foreachfile": "^1.0.5",
     "eslint": "6.1.0",
     "eslint-config-airbnb": "18.0.1",
     "eslint-config-prettier": "^6.4.0",
@@ -48,6 +51,11 @@
     "husky": "^3.0.9",
     "lint-staged": "^9.4.2",
     "mdx-loader": "^3.0.2",
-    "prettier": "^1.18.2"
+    "postcss": "^7.0.21",
+    "postcss-base64": "^0.7.1",
+    "postcss-clean": "^1.1.0",
+    "prettier": "^1.18.2",
+    "rollup": "^1.26.0",
+    "rollup-plugin-sass": "^1.2.2"
   }
 }
