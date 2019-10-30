@@ -1,5 +1,51 @@
 # Release Notes
 
+## Changes in Splinter 0.3.5
+
+### Highlights:
+* Add network-level heartbeats to improve peer connectivity
+* Update Gameroom UI to use the WebSocket Secure protocol (wss) when the
+  application protocol is HTTPS
+* Improve libsplinter tests
+* Add code of conduct to README
+* Add the command-line option --common-name to splinterd
+
+### Canopy:
+* Add initial directory structure for the Canopy project, a web application
+  that hosts pluggable applications and tools built on Splinter
+
+### Gameroom example:
+* Remove unnecessary logo files
+* Update UI to use wss when the application protocol is HTTPS. This fixes an
+  issue where the application could not communicate via WebSockets if the
+  application was communicating over HTTPS
+* Check for batch status after batch is submitted, then wait for batch to be
+  committed or invalidated in gameroomd
+* Remove member node’s metadata from gameroom propose request payload
+* Fetch member node information from splinterd when gameroomd receives a
+  gameroom propose request
+
+### libsplinter:
+* Add dockerfile for libsplinter crate generation
+* Document the limitations for two-phase commit
+* Add network-level heartbeats. The network now creates a thread that will send
+  a one-way heartbeat to each connected peer every 30 seconds by default.
+* Rename libsplinter crate to splinter
+* Store the current state root hash for scabbard's shared transaction state in
+  order to support restarts
+* Simplify where services can be connected. This ensures that a service is
+  connected to the first allowed node and that allowed nodes can only have one
+  service.
+* Remove peers when a node is disconnected
+
+
+### libsplinter Testing:
+* Update key_not_registered test to use a valid circuit
+* Rename error_msg to msg in AdminDirectMessage tests
+* Correctly set message type to CircuitMessageType::CIRCUIT_DIRECT_MESSAGE in
+  AdminDirectMessage tests
+* Fix typos in doc comments
+
 ## Changes in Splinter 0.3.4
 
 ### Highlights
