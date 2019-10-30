@@ -31,7 +31,7 @@ use transact::scheduler::{
 };
 use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, INDEXES},
-    StateChange, Write,
+    StateChange as TransactStateChange, Write,
 };
 use transact::{
     execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor},
@@ -99,7 +99,7 @@ impl ScabbardState {
                     err
                 ))
             })?;
-            let admin_keys_state_change = StateChange::Set {
+            let admin_keys_state_change = TransactStateChange::Set {
                 key: ADMINISTRATORS_SETTING_ADDRESS.into(),
                 value: admin_keys_setting_bytes,
             };
@@ -221,7 +221,7 @@ impl ScabbardState {
         // Save the results and compute the resulting state root
         let state_root = MerkleState::new(self.db.clone()).compute_state_id(
             &self.current_state_root,
-            &receipts_into_state_changes(&txn_results),
+            &receipts_into_transact_state_changes(&txn_results),
         )?;
         self.pending_changes = Some((signature.to_string(), txn_results));
         Ok(state_root)
@@ -230,7 +230,7 @@ impl ScabbardState {
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
             Some((signature, txn_receipts)) => {
-                let state_changes = receipts_into_state_changes(&txn_receipts);
+                let state_changes = receipts_into_transact_state_changes(&txn_receipts);
                 self.current_state_root = MerkleState::new(self.db.clone())
                     .commit(&self.current_state_root, &state_changes)?;
 
@@ -275,7 +275,7 @@ impl ScabbardState {
         match self.pending_changes.take() {
             Some((_, txn_receipts)) => info!(
                 "discarded {} change(s)",
-                receipts_into_state_changes(&txn_receipts).len()
+                receipts_into_transact_state_changes(&txn_receipts).len()
             ),
             None => debug!("no changes to rollback"),
         }
@@ -303,7 +303,9 @@ impl ScabbardState {
     }
 }
 
-fn receipts_into_state_changes(receipts: &[TransactionReceipt]) -> Vec<StateChange> {
+fn receipts_into_transact_state_changes(
+    receipts: &[TransactionReceipt],
+) -> Vec<TransactStateChange> {
     receipts
         .iter()
         .flat_map(|receipt| {
@@ -313,10 +315,10 @@ fn receipts_into_state_changes(receipts: &[TransactionReceipt]) -> Vec<StateChan
                 .cloned()
                 .map(|change| match change {
                     transact::protocol::receipt::StateChange::Set { key, value } => {
-                        StateChange::Set { key, value }
+                        TransactStateChange::Set { key, value }
                     }
                     transact::protocol::receipt::StateChange::Delete { key } => {
-                        StateChange::Delete { key }
+                        TransactStateChange::Delete { key }
                     }
                 })
         })
@@ -331,10 +333,10 @@ pub enum StateChangeEvent {
 }
 
 impl StateChangeEvent {
-    fn from_state_change(state_change: StateChange) -> Self {
+    fn from_state_change(state_change: TransactStateChange) -> Self {
         match state_change {
-            StateChange::Set { key, value } => StateChangeEvent::Set { key, value },
-            StateChange::Delete { key } => StateChangeEvent::Delete { key },
+            TransactStateChange::Set { key, value } => StateChangeEvent::Set { key, value },
+            TransactStateChange::Delete { key } => StateChangeEvent::Delete { key },
         }
     }
 }
