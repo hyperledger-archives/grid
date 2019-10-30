@@ -28,14 +28,24 @@
       color: $text-primary;
     }
   }
-}
 
-.nav-item-expandable {
-  .arrow {
-    @include arrow(5px, $smoke);
+  .nav-logo {
+    width: 16rem;
+    height: 16rem;
+    margin-bottom: $margin-m;
+  }
+  .nav-items {
+    width: 100%;
+    margin-bottom: auto;
 
-    &.arrow-down {
-      transform: rotate(180deg);
+    .nav-item {
+      display: grid;
+      grid-template-columns: [icon-start] 4rem [icon-end label-start] 12rem [label-end];
+      grid-column-gap: $padding-l;
+      align-items: center;
+      padding: $padding-s;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
   }
 
@@ -44,10 +54,21 @@
     background: #eeeeee;
     width: 100%;
   }
+}
 
-  &.open {
-    .nested {
-      height: fit-content;
+@media only screen and (max-width: $mobile) {
+  .nav {
+    transition: width $transitionDuration-s linear, visibility 0s 0s;
+
+    .nav-logo {
+      width: 4rem;
+      height: 4rem;
+    }
+
+    &:not(.is-open) {
+      width: 0;
+      visibility: hidden;
+      transition: width $transitionDuration-s linear, visibility 0s $transitionDuration-s;
     }
   }
 }

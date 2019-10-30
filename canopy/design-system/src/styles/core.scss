@@ -17,6 +17,10 @@
 @import './layout.scss';
 @import './navigation.scss';
 
+html {
+  font-size: 14px;
+}
+
 $display-types: (
   'none': none,
   'block': block,
