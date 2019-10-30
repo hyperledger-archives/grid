@@ -435,7 +435,7 @@ components:
                       example: f4e147ff464013deccb3e68bb8619beffb29ff86b401257c93bcf8ef76d7ca173fa84b4f4a58414ad2d00a2c9f810cbb726e01cd26ebd44720239d9d35853099
                     error_message:
                       type: string
-                      example: "Wasm contract retruned invalid transaction: xo, 0.3.3"
+                      example: "Wasm contract returned invalid transaction: xo, 0.3.3"
                     error_data:
                       type: array
                       items:
