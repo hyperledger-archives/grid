@@ -834,11 +834,35 @@ impl AdminServiceShared {
             ));
         }
 
-        let members: Vec<String> = circuit
-            .get_members()
-            .iter()
-            .map(|node| node.get_node_id().to_string())
-            .collect();
+        let mut members: Vec<String> = Vec::new();
+        let mut endpoints: Vec<String> = Vec::new();
+        for member in circuit.get_members() {
+            let node_id = member.get_node_id().to_string();
+            if node_id.is_empty() {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Member node id cannot be empty".to_string(),
+                ));
+            } else if members.contains(&node_id) {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Every member must be unique in the circuit.".to_string(),
+                ));
+            } else {
+                members.push(node_id);
+            }
+
+            let endpoint = member.get_endpoint().to_string();
+            if endpoint.is_empty() {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Member endpoint cannot be empty".to_string(),
+                ));
+            } else if endpoints.contains(&endpoint) {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Every member endpoint must be unique in the circuit.".to_string(),
+                ));
+            } else {
+                endpoints.push(endpoint);
+            }
+        }
 
         if members.is_empty() {
             return Err(AdminSharedError::ValidationFailed(
@@ -860,6 +884,7 @@ impl AdminServiceShared {
             ));
         }
 
+        let mut services: Vec<String> = Vec::new();
         // check that all services' allowed nodes are in members
         for service in circuit.get_roster() {
             if service.get_allowed_nodes().is_empty() {
@@ -881,6 +906,19 @@ impl AdminServiceShared {
                         node
                     )));
                 }
+            }
+
+            let service_id = service.get_service_id().to_string();
+            if service_id.is_empty() {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Service id cannot be empty".to_string(),
+                ));
+            } else if services.contains(&service_id) {
+                return Err(AdminSharedError::ValidationFailed(
+                    "Every service must be unique in the circuit.".to_string(),
+                ));
+            } else {
+                services.push(service_id)
             }
         }
 
@@ -1582,6 +1620,85 @@ mod tests {
     }
 
     #[test]
+    // test that if a circuit has a service with "" for a service id an error is returned
+    fn test_validate_circuit_empty_service_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut service_ = SplinterService::new();
+        service_.set_service_id("".to_string());
+        service_.set_service_type("type_a".to_string());
+        service_.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid due to service's id being empty");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a service with duplicate service ids an error is returned
+    fn test_validate_circuit_duplicate_service_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut service_a = SplinterService::new();
+        service_a.set_service_id("service_a".to_string());
+        service_a.set_service_type("type_a".to_string());
+        service_a.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
+
+        let mut service_a2 = SplinterService::new();
+        service_a2.set_service_id("service_a".to_string());
+        service_a2.set_service_type("type_a".to_string());
+        service_a2.set_allowed_nodes(RepeatedField::from_vec(vec!["node_b".to_string()]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_a, service_a2]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid due to service's id being a duplicate");
+        }
+    }
+
+    #[test]
     // test that if a circuit does not have any services in its roster an error is returned
     fn test_validate_circuit_empty_roster() {
         let state = setup_splinter_state();
@@ -1678,6 +1795,175 @@ mod tests {
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
             panic!("Should have been invalid because node_a is not in members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a member with node id of "" an error is
+    // returned
+    fn test_validate_circuit_empty_node_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut node_a = SplinterNode::new();
+        node_a.set_node_id("node_a".to_string());
+        node_a.set_endpoint("test://endpoint_a:0".to_string());
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("test://endpoint_b:0".to_string());
+
+        let mut node_ = SplinterNode::new();
+        node_.set_node_id("".to_string());
+        node_.set_endpoint("test://endpoint_:0".to_string());
+
+        circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b, node_]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid because node_ is has an empty node id");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has duplicate members an error is returned
+    fn test_validate_circuit_duplicate_members() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut node_a = SplinterNode::new();
+        node_a.set_node_id("node_a".to_string());
+        node_a.set_endpoint("test://endpoint_a:0".to_string());
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("test://endpoint_b:0".to_string());
+
+        let mut node_b2 = SplinterNode::new();
+        node_b2.set_node_id("node_b".to_string());
+        node_b2.set_endpoint("test://endpoint_b2:0".to_string());
+
+        circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b, node_b2]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid because there are duplicate members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a member with an empty endpoint an error is returned
+    fn test_validate_circuit_empty_endpoint() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut node_a = SplinterNode::new();
+        node_a.set_node_id("node_a".to_string());
+        node_a.set_endpoint("test://endpoint_a:0".to_string());
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("".to_string());
+
+        circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid because a member has an empty endpoint");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has a member with a duplicate endpoint an error is returned
+    fn test_validate_circuit_duplicate_endpoint() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut node_a = SplinterNode::new();
+        node_a.set_node_id("node_a".to_string());
+        node_a.set_endpoint("test://endpoint_a:0".to_string());
+
+        let mut node_b = SplinterNode::new();
+        node_b.set_node_id("node_b".to_string());
+        node_b.set_endpoint("test://endpoint_a:0".to_string());
+
+        circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+            panic!("Should have been invalid because a member has a duplicate endpoint");
         }
     }
 
