@@ -57,8 +57,8 @@ pub struct ScabbardState {
     current_state_root: String,
     transaction_receipt_store: TransactionReceiptStore,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
-    event_dealer: EventDealer<Vec<StateChangeEvent>>,
-    event_senders: Vec<EventSender<Vec<StateChangeEvent>>>,
+    event_dealer: EventDealer<StateChangeEvent>,
+    event_senders: Vec<EventSender<StateChangeEvent>>,
     batch_history: BatchHistory,
 }
 
@@ -238,6 +238,8 @@ impl ScabbardState {
                     self.current_state_root,
                 );
 
+                let events = receipts_into_scabbard_state_change_events(&txn_receipts);
+
                 self.transaction_receipt_store
                     .append(txn_receipts)
                     .map_err(|err| {
@@ -247,13 +249,10 @@ impl ScabbardState {
                         ))
                     })?;
 
-                let events = state_changes
-                    .into_iter()
-                    .map(StateChangeEvent::from_state_change)
-                    .collect::<Vec<_>>();
-
-                self.event_senders
-                    .retain(|sender| sender.send(events.clone()).is_ok());
+                for event in events {
+                    self.event_senders
+                        .retain(|sender| sender.send(event.clone()).is_ok());
+                }
 
                 self.batch_history.commit(&signature);
 
@@ -316,37 +315,38 @@ fn receipts_into_transact_state_changes(
         .collect::<Vec<_>>()
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(tag = "eventType", content = "message")]
-pub enum StateChangeEvent {
-    Set { key: String, value: Vec<u8> },
-    Delete { key: String },
-}
+fn receipts_into_scabbard_state_change_events(
+    receipts: &[TransactionReceipt],
+) -> Vec<StateChangeEvent> {
+    receipts
+        .iter()
+        .map(|receipt| {
+            let state_changes = receipt
+                .state_changes
+                .iter()
+                .cloned()
+                .map(|change| match change {
+                    transact::protocol::receipt::StateChange::Set { key, value } => {
+                        StateChange::Set { key, value }
+                    }
+                    transact::protocol::receipt::StateChange::Delete { key } => {
+                        StateChange::Delete { key }
+                    }
+                })
+                .collect();
 
-impl StateChangeEvent {
-    fn from_state_change(state_change: TransactStateChange) -> Self {
-        match state_change {
-            TransactStateChange::Set { key, value } => StateChangeEvent::Set { key, value },
-            TransactStateChange::Delete { key } => StateChangeEvent::Delete { key },
-        }
-    }
-}
-
-impl fmt::Display for StateChangeEvent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            StateChangeEvent::Set { key, value } => {
-                write!(f, "Set(key: {}, payload_size: {})", key, value.len())
+            StateChangeEvent {
+                id: receipt.transaction_id.clone(),
+                state_changes,
             }
-            StateChangeEvent::Delete { key } => write!(f, "Delete(key: {})", key),
-        }
-    }
+        })
+        .collect::<Vec<_>>()
 }
 
-impl fmt::Debug for StateChangeEvent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
-    }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateChangeEvent {
+    pub id: String,
+    pub state_changes: Vec<StateChange>,
 }
 
 #[cfg(feature = "events")]
@@ -358,12 +358,26 @@ impl ParseBytes<StateChangeEvent> for StateChangeEvent {
     }
 }
 
-#[cfg(feature = "events")]
-impl ParseBytes<Vec<StateChangeEvent>> for Vec<StateChangeEvent> {
-    fn from_bytes(bytes: &[u8]) -> Result<Vec<StateChangeEvent>, ParseError> {
-        serde_json::from_slice(bytes)
-            .map_err(Box::new)
-            .map_err(|err| ParseError::MalformedMessage(err))
+#[derive(Clone, Serialize, Deserialize)]
+pub enum StateChange {
+    Set { key: String, value: Vec<u8> },
+    Delete { key: String },
+}
+
+impl fmt::Display for StateChange {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StateChange::Set { key, value } => {
+                write!(f, "Set(key: {}, payload_size: {})", key, value.len())
+            }
+            StateChange::Delete { key } => write!(f, "Delete(key: {})", key),
+        }
+    }
+}
+
+impl fmt::Debug for StateChange {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 

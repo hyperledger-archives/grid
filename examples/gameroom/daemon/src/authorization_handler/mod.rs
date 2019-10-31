@@ -380,9 +380,12 @@ fn process_admin_event(
                     "{}/scabbard/{}/{}/ws/subscribe",
                     url, msg_proposal.circuit_id, service_id
                 ),
-                move |_, changes| {
-                    if let Err(err) = processor.handle_state_changes(changes) {
-                        error!("An error occurred while handling state changes {:?}", err);
+                move |_, event| {
+                    if let Err(err) = processor.handle_state_change_event(event) {
+                        error!(
+                            "An error occurred while handling a state change event: {:?}",
+                            err
+                        );
                     }
                     WsResponse::Empty
                 },
@@ -447,7 +450,7 @@ fn resubscribe(
     url: &str,
     gameroom: &ActiveGameroom,
     db_pool: &ConnectionPool,
-) -> WebSocketClient<Vec<StateChangeEvent>> {
+) -> WebSocketClient<StateChangeEvent> {
     let processor = XoStateDeltaProcessor::new(
         &gameroom.circuit_id,
         &gameroom.requester_node_id,
@@ -460,9 +463,12 @@ fn resubscribe(
             "{}/scabbard/{}/{}/ws/subscribe",
             url, gameroom.circuit_id, gameroom.service_id
         ),
-        move |_, changes| {
-            if let Err(err) = processor.handle_state_changes(changes) {
-                error!("An error occurred while handling state changes {:?}", err);
+        move |_, event| {
+            if let Err(err) = processor.handle_state_change_event(event) {
+                error!(
+                    "An error occurred while handling a state change event: {:?}",
+                    err
+                );
             }
             WsResponse::Empty
         },
