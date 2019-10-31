@@ -271,6 +271,14 @@ fn process_admin_event(
             })
         }
         AdminServiceEvent::CircuitReady(msg_proposal) => {
+            let conn = &*pool.get()?;
+
+            // If the gameroom already exists and is in the ready state, skip
+            // processing the event.
+            if helpers::gameroom_service_is_active(conn, &msg_proposal.circuit_id)? {
+                return Ok(());
+            }
+
             // Now that the circuit is created, submit the Sabre transactions to run xo
             let service_id = match msg_proposal.circuit.roster.iter().find_map(|service| {
                 if service.allowed_nodes.contains(&node_id.to_string()) {
@@ -299,8 +307,6 @@ fn process_admin_event(
                     )))
                 }
             };
-
-            let conn = &*pool.get()?;
 
             let time = SystemTime::now();
             let requester = to_hex(&msg_proposal.requester);

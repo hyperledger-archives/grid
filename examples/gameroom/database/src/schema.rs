@@ -115,3 +115,5 @@ table! {
         updated_time -> Timestamp,
     }
 }
+
+allow_tables_to_appear_in_same_query!(gameroom_service, gameroom_proposal);

@@ -15,8 +15,8 @@
 use std::time::SystemTime;
 
 use crate::models::{
-    Gameroom, GameroomMember, GameroomProposal, NewGameroomMember, NewGameroomProposal,
-    NewGameroomService, NewProposalVoteRecord,
+    Gameroom, GameroomMember, GameroomProposal, GameroomService, NewGameroomMember,
+    NewGameroomProposal, NewGameroomService, NewProposalVoteRecord,
 };
 use crate::schema::{
     gameroom, gameroom_member, gameroom_proposal, gameroom_service, proposal_vote_record,
@@ -102,6 +102,18 @@ pub fn update_gameroom_proposal_status(
         ))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn gameroom_service_is_active(conn: &PgConnection, circuit_id: &str) -> QueryResult<bool> {
+    gameroom_service::table
+        .filter(
+            gameroom_service::circuit_id
+                .eq(circuit_id)
+                .and(gameroom_service::status.eq("Active")),
+        )
+        .first::<GameroomService>(conn)
+        .map(|_| true)
+        .or_else(|err| if err == NotFound { Ok(false) } else { Err(err) })
 }
 
 pub fn update_gameroom_status(
