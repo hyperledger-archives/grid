@@ -261,8 +261,9 @@ impl Network {
 
         match self.mesh.send(Envelope::new(mesh_id, msg.to_vec())) {
             Ok(()) => (),
-            Err(MeshSendError::Disconnected(_)) => {
+            Err(MeshSendError::Disconnected(err)) => {
                 rwlock_write_unwrap!(self.peers).remove(peer_id);
+                return Err(SendError::from(MeshSendError::Disconnected(err)));
             }
             Err(err) => return Err(SendError::from(err)),
         }
