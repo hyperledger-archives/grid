@@ -352,7 +352,9 @@ impl AdminServiceShared {
         )
         .map_err(MarshallingError::from)?;
         self.validate_circuit_management_payload(&circuit_payload, &header)?;
-
+        self.verify_signature(&circuit_payload).map_err(|_| {
+            AdminSharedError::ValidationFailed(String::from("Unable to verify signature"))
+        })?;
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 let mut create_request = circuit_payload.take_circuit_create_request();
@@ -515,16 +517,11 @@ impl AdminServiceShared {
     pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
         debug!("Payload submitted: {:?}", payload);
 
-        match self.verify_signature(&payload) {
-            Ok(_) => (),
-            Err(ServiceError::UnableToHandleMessage(_)) => (),
-            Err(err) => return Err(err),
-        };
-
         let header =
             protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
         self.validate_circuit_management_payload(&payload, &header)
             .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+        self.verify_signature(&payload)?;
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
