@@ -20,7 +20,7 @@ events = ["hyper", "tokio", "awc"]
 
 [package]
 name = "splinter"
-version = "0.3.5"
+version = "0.3.6"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
