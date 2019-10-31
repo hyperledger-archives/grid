@@ -88,6 +88,7 @@ impl PeerMap {
 
     /// Remove a peer id, its endpoint and all of its redirects
     fn remove(&mut self, peer_id: &str) -> Option<usize> {
+        info!("Removing peer: {}", peer_id);
         let peer_id_key = peer_id.to_string();
         self.redirects
             .retain(|_, target_peer_id| target_peer_id != peer_id);
