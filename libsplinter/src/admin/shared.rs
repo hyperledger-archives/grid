@@ -444,6 +444,9 @@ impl AdminServiceShared {
                 self.current_consensus_verifiers = verifiers;
                 Ok((expected_hash, circuit_proposal))
             }
+            CircuitManagementPayload_Action::ACTION_UNSET => Err(
+                AdminSharedError::ValidationFailed("Action must be set".to_string()),
+            ),
             unknown_action => Err(AdminSharedError::ValidationFailed(format!(
                 "Unable to handle {:?}",
                 unknown_action
@@ -528,10 +531,17 @@ impl AdminServiceShared {
                 self.propose_circuit(payload)
             }
             CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => self.propose_vote(payload),
-            _ => {
-                debug!("Unhandled action: {:?}", header.get_action());
-                Ok(())
+            CircuitManagementPayload_Action::ACTION_UNSET => {
+                Err(ServiceError::UnableToHandleMessage(Box::new(
+                    AdminSharedError::ValidationFailed(String::from("No action specified")),
+                )))
             }
+            unknown_action => Err(ServiceError::UnableToHandleMessage(Box::new(
+                AdminSharedError::ValidationFailed(format!(
+                    "Unable to handle {:?}",
+                    unknown_action
+                )),
+            ))),
         }
     }
 
