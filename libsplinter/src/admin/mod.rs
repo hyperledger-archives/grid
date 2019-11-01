@@ -172,10 +172,6 @@ impl Service for AdminService {
     ) -> Result<(), ServiceStopError> {
         service_registry.disconnect(&self.service_id)?;
 
-        let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
-            ServiceStopError::PoisonedLock("the admin shared lock was poisoned".into())
-        })?;
-
         // Shutdown consensus
         self.consensus
             .take()
@@ -183,8 +179,9 @@ impl Service for AdminService {
             .shutdown()
             .map_err(|err| ServiceStopError::Internal(Box::new(err)))?;
 
-        // Disconnect from splinter network
-        service_registry.disconnect(&self.service_id)?;
+        let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
+            ServiceStopError::PoisonedLock("the admin shared lock was poisoned".into())
+        })?;
 
         admin_service_shared.set_network_sender(None);
 
