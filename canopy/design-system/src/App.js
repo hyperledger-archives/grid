@@ -24,7 +24,6 @@ import {
 import './App.scss';
 
 import SideNav from './components/navigation/SideNav';
-import Design from './views/Design';
 import Components from './views/Components';
 
 const tabs = [
@@ -51,6 +50,10 @@ const tabs = [
       {
         name: 'Buttons',
         route: '/design/buttons'
+      },
+      {
+        name: 'Typography',
+        route: '/design/typography'
       }
     ]
   },
@@ -71,6 +74,9 @@ const Introduction = lazy(() =>
 const Colors = lazy(() =>
   import('!babel-loader!mdx-loader!./views/Colors.mdx')
 );
+const Typography = lazy(() =>
+  import('!babel-loader!mdx-loader!./views/Typography.mdx')
+);
 
 function App() {
   return (
@@ -86,13 +92,16 @@ function App() {
                 <Introduction />
               </Suspense>
             </Route>
+            <Redirect exact from="/design" to="/design/colors" />
             <Route path="/design/colors">
               <Suspense fallback={<div>Loading...</div>}>
                 <Colors />
               </Suspense>
             </Route>
-            <Route path="/design">
-              <Design />
+            <Route path="/design/typography">
+              <Suspense fallback={<div>Loading...</div>}>
+                <Typography />
+              </Suspense>
             </Route>
             <Route path="/components">
               <Components />
