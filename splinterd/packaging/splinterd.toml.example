@@ -23,7 +23,8 @@ network_endpoint = "tls://localhost:8044"
 
 # A comma separated list of splinter nodes the daemon will automatically
 # attempt to connect to on start up
-peers = ["tls://acme-node-001:8044", "tls://acme-node-002:8044"]
+# example: peers = ["tls://acme-node-001:8044", "tls://acme-node-002:8044"]
+peers = []
 
 # The type of storage that should be used to store circuit state. Options are
 # currently "yaml" or "memory"
@@ -57,3 +58,7 @@ server_cert = "/etc/splinter/certs/private/acme.crt"
 
 # Private key used by daemon when it is acting as a server.
 server_key = "/etc/splinter/certs/private/acme.key"
+
+# The number of seconds between network keep-alive heartbeat messages.
+# Setting heartbeat_interval to 0 disables this feature.
+heartbeat_interval = 30
