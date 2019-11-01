@@ -27,8 +27,8 @@ use diesel::connection::Connection;
 use gameroom_database::{
     helpers,
     models::{
-        Gameroom, GameroomProposal, NewGameroomMember, NewGameroomProposal, NewGameroomService,
-        NewProposalVoteRecord,
+        ActiveGameroom, Gameroom, GameroomProposal, NewGameroomMember, NewGameroomProposal,
+        NewGameroomService, NewProposalVoteRecord,
     },
     ConnectionPool,
 };
@@ -37,6 +37,7 @@ use splinter::{
         AdminServiceEvent, CircuitProposal, CreateCircuit, SplinterNode, SplinterService,
     },
     events::{Igniter, WebSocketClient, WebSocketError, WsResponse},
+    service::scabbard::StateChangeEvent,
 };
 use state_delta::XoStateDeltaProcessor;
 
@@ -51,6 +52,12 @@ pub fn run(
     private_key: String,
     igniter: Igniter,
 ) -> Result<(), AppAuthHandlerError> {
+    let pool = db_conn.get()?;
+    helpers::fetch_active_gamerooms(&pool, &node_id)?
+        .iter()
+        .map(|gameroom| resubscribe(&splinterd_url, gameroom, &db_conn))
+        .try_for_each(|ws| igniter.start_ws(&ws))?;
+
     let mut ws = WebSocketClient::new(
         &format!("{}/ws/admin/register/gameroom", splinterd_url),
         move |ctx, event| {
@@ -404,6 +411,48 @@ fn process_admin_event(
             igniter.start_ws(&xo_ws).map_err(AppAuthHandlerError::from)
         }
     }
+}
+
+fn resubscribe(
+    url: &str,
+    gameroom: &ActiveGameroom,
+    db_pool: &ConnectionPool,
+) -> WebSocketClient<Vec<StateChangeEvent>> {
+    let processor = XoStateDeltaProcessor::new(
+        &gameroom.circuit_id,
+        &gameroom.requester_node_id,
+        &gameroom.requester,
+        db_pool,
+    );
+
+    let mut ws = WebSocketClient::new(
+        &format!(
+            "{}/scabbard/{}/{}/ws/subscribe",
+            url, gameroom.circuit_id, gameroom.service_id
+        ),
+        move |_, changes| {
+            if let Err(err) = processor.handle_state_changes(changes) {
+                error!("An error occurred while handling state changes {:?}", err);
+            }
+            WsResponse::Empty
+        },
+    );
+
+    ws.on_error(move |err, ctx| {
+        error!(
+            "An error occured while listening for scabbard events {}",
+            err
+        );
+        if let WebSocketError::ParserError { .. } = err {
+            debug!("Protocol error, closing connection");
+            Ok(())
+        } else {
+            debug!("Attempting to restart connection");
+            ctx.start_ws()
+        }
+    });
+
+    ws
 }
 
 fn parse_proposal(
