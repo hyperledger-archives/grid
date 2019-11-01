@@ -25,17 +25,37 @@ $color-tertiary: rgb(255, 91, 50) !default;
 $color-tertiary-light: lighten($color-tertiary, 15%);
 $color-tertiary-dark: darken($color-tertiary, 15%);
 
+$brand-colors: (
+  'canopy-light': $color-canopy-light,
+  'canopy': $color-canopy,
+  'canopy-dark': $color-canopy-dark,
+  'secondary-light': $color-secondary-light,
+  'secondary': $color-secondary,
+  'secondary-dark': $color-secondary-dark,
+  'tertiary-light': $color-tertiary-light,
+  'tertiary': $color-tertiary,
+  'tertiary-dark': $color-tertiary-dark
+);
+@each $name, $color in $brand-colors {
+  .background-#{$name} {
+    background: $color;
+  }
+}
+
 // Components
-$link-color: #4D9DE0;
+$link-color: #4d9de0;
 
 // Backgrounds
 $background-white: rgb(255, 255, 255) !default;
 $background-light: rgb(239, 239, 239) !default;
-$background-colors: ('white': $background-white, 'light': $background-light);
+$background-colors: (
+  'white': $background-white,
+  'light': $background-light
+);
 
 @each $name, $color in $background-colors {
   .background-#{$name} {
-    background: $color
+    background: $color;
   }
 }
 
@@ -49,7 +69,11 @@ $text-white: rgb(255, 255, 255) !default;
 $color-success: rgb(0, 211, 74) !default;
 $color-danger: rgb(219, 3, 0) !default;
 $color-warning: rgb(255, 225, 0) !default;
-$status-colors: ('success': $color-success, 'danger': $color-danger, 'warning': $color-warning);
+$status-colors: (
+  'success': $color-success,
+  'danger': $color-danger,
+  'warning': $color-warning
+);
 
 @each $name, $color in $status-colors {
   .background-#{$name} {

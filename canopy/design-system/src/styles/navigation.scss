@@ -21,7 +21,7 @@
     box-sizing: border-box;
     font-size: 1.4rem;
     cursor: pointer;
-    color: $text-primary-light;
+    color: $text-light;
     transition: all 0.2s linear;
 
     &:hover {
@@ -68,7 +68,8 @@
     &:not(.is-open) {
       width: 0;
       visibility: hidden;
-      transition: width $transitionDuration-s linear, visibility 0s $transitionDuration-s;
+      transition: width $transitionDuration-s linear,
+        visibility 0s $transitionDuration-s;
     }
   }
 }

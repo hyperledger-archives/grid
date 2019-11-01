@@ -16,7 +16,7 @@
 @import './themes/default';
 
 .App {
-  background-color: #ffffff;
+  background-color: $background-white;
   height: 100vh;
   display: flex;
   align-items: center;
