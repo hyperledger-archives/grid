@@ -194,3 +194,12 @@ pub struct NewXoGame {
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
 }
+
+#[derive(Queryable, PartialEq, Debug)]
+pub struct ActiveGameroom {
+    pub circuit_id: String,
+    pub service_id: String,
+    pub status: String,
+    pub requester: String,
+    pub requester_node_id: String,
+}
