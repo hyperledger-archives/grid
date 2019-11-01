@@ -45,6 +45,10 @@ const tabs = [
     name: 'Design',
     nested: [
       {
+        name: 'Colors',
+        route: '/design/colors'
+      },
+      {
         name: 'Buttons',
         route: '/design/buttons'
       }
@@ -64,6 +68,9 @@ const tabs = [
 const Introduction = lazy(() =>
   import('!babel-loader!mdx-loader!./views/Introduction.mdx')
 );
+const Colors = lazy(() =>
+  import('!babel-loader!mdx-loader!./views/Colors.mdx')
+);
 
 function App() {
   return (
@@ -77,6 +84,11 @@ function App() {
             <Route path="/overview/introduction">
               <Suspense fallback={<div>Loading...</div>}>
                 <Introduction />
+              </Suspense>
+            </Route>
+            <Route path="/design/colors">
+              <Suspense fallback={<div>Loading...</div>}>
+                <Colors />
               </Suspense>
             </Route>
             <Route path="/design">
