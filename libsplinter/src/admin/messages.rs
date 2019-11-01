@@ -426,6 +426,18 @@ pub enum AdminServiceEvent {
     CircuitReady(CircuitProposal),
 }
 
+impl AdminServiceEvent {
+    pub fn proposal(&self) -> &CircuitProposal {
+        match self {
+            AdminServiceEvent::ProposalSubmitted(proposal) => proposal,
+            AdminServiceEvent::ProposalVote((proposal, _)) => proposal,
+            AdminServiceEvent::ProposalAccepted((proposal, _)) => proposal,
+            AdminServiceEvent::ProposalRejected((proposal, _)) => proposal,
+            AdminServiceEvent::CircuitReady(proposal) => proposal,
+        }
+    }
+}
+
 #[cfg(feature = "events")]
 impl ParseBytes<AdminServiceEvent> for AdminServiceEvent {
     fn from_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, ParseError> {
