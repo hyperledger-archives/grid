@@ -13,3 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Brand
+$color-canopy: rgb(69, 190, 147) !default;
+$color-canopy-light: lighten($color-canopy, 15%) !default;
+$color-canopy-dark: darken($color-canopy, 15%) !default;
+$color-secondary: rgb(115, 29, 216) !default;
+$color-secondary-light: lighten($color-secondary, 15%);
+$color-secondary-dark: darken($color-secondary, 15%);
+$color-tertiary: rgb(255, 91, 50) !default;
+$color-tertiary-light: lighten($color-tertiary, 15%);
+$color-tertiary-dark: darken($color-tertiary, 15%);
+
+// Components
+$link-color: #4D9DE0;
+
+// Backgrounds
+$background-white: rgb(255, 255, 255) !default;
+$background-light: rgb(239, 239, 239) !default;
+$background-colors: ('white': $background-white, 'light': $background-light);
+
+@each $name, $color in $background-colors {
+  .background-#{$name} {
+    background: $color
+  }
+}
+
+// Text
+$text-primary: rgb(14, 15, 19) !default;
+$text-light: rgba(14, 15, 19, 0.7) !default;
+$text-lighter: rgba(14, 15, 19, 0.4) !default;
+$text-white: rgb(255, 255, 255) !default;
+
+// Status
+$color-success: rgb(0, 211, 74) !default;
+$color-danger: rgb(219, 3, 0) !default;
+$color-warning: rgb(255, 225, 0) !default;
+$status-colors: ('success': $color-success, 'danger': $color-danger, 'warning': $color-warning);
+
+@each $name, $color in $status-colors {
+  .background-#{$name} {
+    background: $color;
+  }
+
+  .color-#{$name} {
+    color: $color;
+  }
+}
