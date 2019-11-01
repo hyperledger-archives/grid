@@ -74,6 +74,7 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
     }
 
     pub fn stop(&self) {
+        debug!("Stoping WebSockets...");
         self.senders.iter().for_each(|sender| {
             if let Err(err) = sender.unbounded_send(MessageWrapper::Shutdown) {
                 error!("Failed to shutdown webocket: {:?}", err);
