@@ -88,6 +88,7 @@ impl PeerMap {
 
     /// Remove a peer id, its endpoint and all of its redirects
     fn remove(&mut self, peer_id: &str) -> Option<usize> {
+        info!("Removing peer: {}", peer_id);
         let peer_id_key = peer_id.to_string();
         self.redirects
             .retain(|_, target_peer_id| target_peer_id != peer_id);
@@ -260,8 +261,9 @@ impl Network {
 
         match self.mesh.send(Envelope::new(mesh_id, msg.to_vec())) {
             Ok(()) => (),
-            Err(MeshSendError::Disconnected(_)) => {
+            Err(MeshSendError::Disconnected(err)) => {
                 rwlock_write_unwrap!(self.peers).remove(peer_id);
+                return Err(SendError::from(MeshSendError::Disconnected(err)));
             }
             Err(err) => return Err(SendError::from(err)),
         }
