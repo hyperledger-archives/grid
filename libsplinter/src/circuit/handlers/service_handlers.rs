@@ -733,7 +733,7 @@ mod tests {
             .with_members(vec!["123".into(), "345".into()])
             .with_roster(vec![service_abc, service_def])
             .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurabilty)
+            .with_durability(DurabilityType::NoDurability)
             .with_routes(RouteType::Any)
             .with_circuit_management_type("service_connect_test_app".into())
             .build()

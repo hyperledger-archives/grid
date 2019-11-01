@@ -75,7 +75,7 @@ impl CreateCircuit {
         };
 
         let durability = match proto.get_durability() {
-            admin::Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurabilty,
+            admin::Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurability,
             admin::Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
                 return Err(MarshallingError::UnsetField(
                     "Unset durability type".to_string(),
@@ -144,7 +144,7 @@ impl CreateCircuit {
             }
         };
         match self.durability {
-            DurabilityType::NoDurabilty => {
+            DurabilityType::NoDurability => {
                 circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
             }
         };
@@ -172,7 +172,7 @@ pub enum PersistenceType {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum DurabilityType {
-    NoDurabilty,
+    NoDurability,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

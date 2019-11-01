@@ -222,7 +222,7 @@ pub fn propose_gameroom(
             members,
             authorization_type: AuthorizationType::Trust,
             persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurabilty,
+            durability: DurabilityType::NoDurability,
             routes: RouteType::Any,
             circuit_management_type: "gameroom".to_string(),
             application_metadata,
