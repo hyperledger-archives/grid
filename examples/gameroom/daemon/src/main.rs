@@ -27,8 +27,11 @@ mod config;
 mod error;
 mod rest_api;
 
-use flexi_logger::{LogSpecBuilder, Logger};
+use std::thread;
+
+use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
+use log::Record;
 use sawtooth_sdk::signing::create_context;
 use splinter::events::Reactor;
 
@@ -37,6 +40,23 @@ use crate::error::GameroomDaemonError;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// format for logs
+pub fn log_format(
+    w: &mut dyn std::io::Write,
+    now: &mut DeferredNow,
+    record: &Record,
+) -> Result<(), std::io::Error> {
+    write!(
+        w,
+        "[{}] T[{:?}] {} [{}] {}",
+        now.now().format("%Y-%m-%d %H:%M:%S%.3f"),
+        thread::current().name().unwrap_or("<unnamed>"),
+        record.level(),
+        record.module_path().unwrap_or("<unnamed>"),
+        &record.args()
+    )
+}
 
 fn run() -> Result<(), GameroomDaemonError> {
     let matches = clap_app!(myapp =>
@@ -64,7 +84,9 @@ fn run() -> Result<(), GameroomDaemonError> {
     log_spec_builder.module("tokio", log::LevelFilter::Warn);
     log_spec_builder.module("trust_dns", log::LevelFilter::Warn);
 
-    Logger::with(log_spec_builder.build()).start()?;
+    Logger::with(log_spec_builder.build())
+        .format(log_format)
+        .start()?;
 
     let config = GameroomConfigBuilder::default()
         .with_cli_args(&matches)
