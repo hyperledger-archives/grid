@@ -212,13 +212,7 @@ pub struct RestApi {
 impl RestApi {
     pub fn run(
         self,
-    ) -> Result<
-        (
-            RestApiShutdownHandle,
-            thread::JoinHandle<Result<(), RestApiServerError>>,
-        ),
-        RestApiServerError,
-    > {
+    ) -> Result<(RestApiShutdownHandle, thread::JoinHandle<()>), RestApiServerError> {
         let bind_url = self.bind.to_owned();
         let (tx, rx) = mpsc::channel();
 
@@ -226,27 +220,34 @@ impl RestApi {
             .name("SplinterDRestApi".into())
             .spawn(move || {
                 let sys = actix::System::new("SplinterD-Rest-API");
-                let addr = HttpServer::new(move || {
+                let mut server = HttpServer::new(move || {
                     let mut app = App::new().wrap(middleware::Logger::default());
 
                     for resource in self.resources.clone() {
                         app = app.service(resource.into_route());
                     }
                     app
-                })
-                .bind(bind_url)?
-                .disable_signals()
-                .system_exit()
-                .start();
+                });
 
-                tx.send(addr).map_err(|err| {
-                    RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
-                })?;
-                sys.run()?;
+                server = match server.bind(&bind_url) {
+                    Ok(server) => server,
+                    Err(err) => {
+                        error!("Invalid REST API bind {}: {}", bind_url, err);
+                        return;
+                    }
+                };
+
+                let addr = server.disable_signals().system_exit().start();
+
+                if let Err(err) = tx.send(addr) {
+                    error!("Unable to send Server Addr: {}", err);
+                }
+
+                if let Err(err) = sys.run() {
+                    error!("REST Api unexpectedly exiting: {}", err);
+                };
 
                 info!("Rest API terminating");
-
-                Ok(())
             })?;
 
         let addr = rx.recv().map_err(|err| {

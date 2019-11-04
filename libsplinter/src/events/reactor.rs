@@ -28,14 +28,21 @@ use crate::events::{ReactorError, WebSocketError};
 /// send futures to the runtime.
 pub struct Reactor {
     sender: Sender<ReactorMessage>,
-    thread_handle: thread::JoinHandle<Result<(), ReactorError>>,
+    thread_handle: thread::JoinHandle<()>,
 }
 
 impl Reactor {
     pub fn new() -> Self {
         let (sender, receiver) = bounded::<ReactorMessage>(10);
         let thread_handle = thread::spawn(move || {
-            let mut runtime = Runtime::new()?;
+            let mut runtime = match Runtime::new() {
+                Ok(runtime) => runtime,
+                Err(err) => {
+                    error!("Unable to create event reactor runtime: {}", err);
+                    return;
+                }
+            };
+
             let mut connections = Vec::new();
             loop {
                 match receiver.recv() {
@@ -61,7 +68,7 @@ impl Reactor {
                 .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
                 .collect::<Vec<WebSocketError>>();
 
-            runtime
+            if let Err(err) = runtime
                 .shutdown_now()
                 .wait()
                 .map_err(|_| {
@@ -76,6 +83,9 @@ impl Reactor {
                         Err(ReactorError::ShutdownHandleErrors(shutdown_errors))
                     }
                 })
+            {
+                error!("Unable to cleanly shutdown event reactor: {}", err);
+            }
         });
 
         Self {
@@ -97,7 +107,7 @@ impl Reactor {
 
         self.thread_handle
             .join()
-            .map_err(|_| ReactorError::ReactorShutdownError("Failed to join thread".to_string()))?
+            .map_err(|_| ReactorError::ReactorShutdownError("Failed to join thread".to_string()))
     }
 }
 
