@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import axios from 'axios';
-import rp from 'request-promise';
 import {
   GameroomNotification,
   GameroomProposal,
@@ -55,6 +54,38 @@ gameroomAPI.interceptors.response.use(
     }
   },
 );
+
+async function http(
+  method: string,
+  url: string,
+  data: Uint8Array,
+  headerFn: (request: XMLHttpRequest) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open(method, `/api${url}`);
+    if (headerFn) {
+      headerFn(request);
+    }
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve(request.response);
+      } else {
+        console.error(request);
+        if (request.status >= 400 && request.status < 500) {
+          reject('Failed to send request. Contact the administrator for help.');
+        } else {
+          reject('The Gameroom server has encountered an error. Please contact the administrator.');
+        }
+      }
+    };
+    request.onerror = () => {
+      console.error(request);
+      reject('The Gameroom server has encountered an error. Please contact the administrator.');
+    };
+    request.send(data);
+  });
+}
 
 // Users
 export async function userCreate(
@@ -144,43 +175,22 @@ export async function listGames(circuitID: string): Promise<Game[]> {
 
 // Payloads
 export async function submitPayload(payload: Uint8Array): Promise<void> {
-  const options = {
-    method: 'POST',
-    url: `http://${window.location.host}/api/submit`,
-    body: payload,
-    headers: {
-      'Content-Type': 'application/octet-stream',
-    },
-  };
-
-  await rp(options).then((body) => {
-    return;
-  })
-  .catch((err) => {
-    console.error(err.message);
-    throw new Error('Failed to send request. Contact administrator for help.');
+  await http('POST', '/submit', payload, (request: XMLHttpRequest) => {
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+  }).catch((err) => {
+    throw new Error(err);
   });
 }
 
 export async function submitBatch(payload: Uint8Array, circuitID: string): Promise<BatchInfo[]> {
-  const options = {
-    method: 'POST',
-    url: `http://${window.location.host}/api/gamerooms/${circuitID}/batches`,
-    body: payload,
-    headers: {
-      'Content-Type': 'application/octet-stream',
-    },
-  };
-
-  return await rp(options).then((rawBody) => {
+  return await http('POST', `/gamerooms/${circuitID}/batches`, payload, (request: XMLHttpRequest) => {
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+  }).catch((err) => {
+    throw new Error(err);
+  }).then((rawBody) => {
     const jsonBody = JSON.parse(rawBody);
     const batchesInfo = jsonBody.data as BatchInfo[];
     return batchesInfo;
-  })
-  .catch((err) => {
-     console.error(err.message);
-     const error = JSON.parse(err.response.body);
-     throw new Error(error.message || 'Failed to send request. Contact administrator for help.');
   });
 }
 
