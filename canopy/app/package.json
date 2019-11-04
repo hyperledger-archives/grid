@@ -3,7 +3,9 @@
   "license": "Apache-2.0",
   "author": "Cargill Incorporated",
   "scripts": {
-    "start": "react-scripts start",
+    "start:saplings": "http-server ./saplings -p 8675",
+    "start:react": "react-scripts start",
+    "start": "run-p start:saplings start:react",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -28,6 +30,11 @@
     ]
   },
   "dependencies": {
+    "@babel/parser": "^7.7.2",
+    "babel-plugin-macros": "^2.6.1",
+    "es6-promisify": "^6.0.2",
+    "js-yaml": "^3.13.1",
+    "little-loader": "^0.2.0",
     "node-sass": "^4.12.0",
     "prop-types": "^15.7.2",
     "react": "^16.10.2",
@@ -44,8 +51,10 @@
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.14.3",
     "eslint-plugin-react-hooks": "^1.7.0",
+    "http-server": "^0.11.1",
     "husky": "^3.0.9",
     "lint-staged": "^9.4.2",
+    "npm-run-all": "^4.1.5",
     "prettier": "^1.18.2"
   }
 }
