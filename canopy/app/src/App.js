@@ -14,14 +14,79 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
+import { loadAllSaplings } from './loadSaplings';
 import 'App.scss';
 
+const canopyState = {
+  configSaplings: {},
+  bootstrapApp: null
+};
+
+function invokeConfigSaplings() {
+  const configSaplings = Object.values(canopyState.configSaplings);
+  if (configSaplings.length === 0) {
+    throw new Error('No Config Saplings registered');
+  }
+  configSaplings.forEach(bootstrapConfigSapling => {
+    bootstrapConfigSapling();
+  });
+}
+
+function invokeRegisteredApp(domNode) {
+  if (canopyState.registeredApp === null) {
+    throw new Error('No Sapling registered');
+  }
+  canopyState.bootstrapApp(domNode);
+}
+
+window.$CANOPY = {
+  registerApp: bootStrapFunction => {
+    // exposed via CanopyJS
+    canopyState.bootstrapApp = bootStrapFunction;
+  },
+  registerConfigSapling: (namespace, bootStrapFunction) => {
+    // exposed via CanopyJS
+    canopyState.configSaplings[namespace] = bootStrapFunction;
+  }
+};
+
 function App() {
+  const saplingNode = useRef(null);
+  const [userSaplings, setUserSaplings] = useState([]);
+  useLayoutEffect(() => {
+    (async function invokeSaplings() {
+      const {
+        saplingIsLoaded,
+        configSaplingsAreLoaded,
+        userSaplingsResponse
+      } = await loadAllSaplings();
+
+      setUserSaplings(userSaplingsResponse);
+
+      if (configSaplingsAreLoaded) {
+        invokeConfigSaplings();
+      }
+
+      if (saplingIsLoaded) {
+        invokeRegisteredApp(saplingNode.current);
+      }
+    })();
+  }, []);
+
   return (
-    <div className="app">
-      <div className="view">Canopy!</div>
-    </div>
+    <>
+      <nav>
+        {userSaplings.map(({ displayName, namespace }) => {
+          return (
+            <a href={`/${namespace}`} key={namespace}>
+              {displayName}
+            </a>
+          );
+        })}
+      </nav>
+      <div ref={saplingNode} />
+    </>
   );
 }
 
