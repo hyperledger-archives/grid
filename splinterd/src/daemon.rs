@@ -46,7 +46,7 @@ use splinter::rest_api::{
 };
 use splinter::rwlock_read_unwrap;
 use splinter::service::scabbard::ScabbardFactory;
-use splinter::service::{self, ServiceProcessor};
+use splinter::service::{self, ServiceProcessor, ShutdownHandle};
 use splinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
 use splinter::storage::get_storage;
 use splinter::transport::{
@@ -69,6 +69,8 @@ const ORCHESTRATOR_CHANNEL_CAPACITY: usize = 8;
 const ADMIN_SERVICE_PROCESSOR_INCOMING_CAPACITY: usize = 8;
 const ADMIN_SERVICE_PROCESSOR_OUTGOING_CAPACITY: usize = 8;
 const ADMIN_SERVICE_PROCESSOR_CHANNEL_CAPACITY: usize = 8;
+
+type ServiceJoinHandle = service::JoinHandles<Result<(), service::error::ServiceProcessorError>>;
 
 pub struct SplinterDaemon {
     storage_location: String,
@@ -338,18 +340,23 @@ impl SplinterDaemon {
             .build()?
             .run()?;
 
+        let (admin_shutdown_handle, service_processor_join_handle) =
+            Self::start_admin_service(inproc_tranport, admin_service, Arc::clone(&running))?;
+
         let r = running.clone();
         ctrlc::set_handler(move || {
             info!("Received Shutdown");
             r.store(false, Ordering::SeqCst);
+
+            if let Err(err) = admin_shutdown_handle.shutdown() {
+                error!("Unable to cleanly shutdown Admin Service: {}", err);
+            }
+
             if let Err(err) = rest_api_shutdown_handle.shutdown() {
                 error!("Unable to cleanly shutdown REST API server: {}", err);
             }
         })
         .expect("Error setting Ctrl-C handler");
-
-        let service_processor_join_handle =
-            Self::start_admin_service(inproc_tranport, admin_service, Arc::clone(&running))?;
 
         main_loop_join_handle
             .join()
@@ -418,13 +425,9 @@ impl SplinterDaemon {
         transport: InprocTransport,
         admin_service: AdminService,
         running: Arc<AtomicBool>,
-    ) -> Result<service::JoinHandles<Result<(), service::error::ServiceProcessorError>>, StartError>
-    {
+    ) -> Result<(ShutdownHandle, ServiceJoinHandle), StartError> {
         let start_admin: std::thread::JoinHandle<
-            Result<
-                service::JoinHandles<Result<(), service::error::ServiceProcessorError>>,
-                StartError,
-            >,
+            Result<(ShutdownHandle, ServiceJoinHandle), StartError>,
         > = thread::spawn(move || {
             let mut transport = transport;
 
@@ -459,15 +462,9 @@ impl SplinterDaemon {
                     ))
                 })?;
 
-            admin_service_processor
-                .start()
-                .map(|(_, join_handles)| join_handles)
-                .map_err(|err| {
-                    StartError::AdminServiceError(format!(
-                        "unable to start service processor: {}",
-                        err
-                    ))
-                })
+            admin_service_processor.start().map_err(|err| {
+                StartError::AdminServiceError(format!("unable to start service processor: {}", err))
+            })
         });
 
         start_admin.join().map_err(|_| {

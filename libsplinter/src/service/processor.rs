@@ -470,10 +470,8 @@ impl<T> JoinHandles<T> {
 }
 
 impl ShutdownHandle {
-    pub fn shutdown(self) -> Result<(), ServiceProcessorError> {
-        (*self.do_shutdown)()?;
-
-        Ok(())
+    pub fn shutdown(&self) -> Result<(), ServiceProcessorError> {
+        (*self.do_shutdown)()
     }
 }
 
