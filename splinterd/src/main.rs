@@ -28,7 +28,8 @@ mod node_registry;
 mod registry_config;
 mod routes;
 
-use flexi_logger::{LogSpecBuilder, Logger};
+use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+use log::Record;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
@@ -48,6 +49,7 @@ use std::fs;
 #[cfg(not(feature = "config-toml"))]
 use std::fs::File;
 use std::io;
+use std::thread;
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
@@ -81,6 +83,23 @@ fn load_toml_config(config_file_path: &str) -> Config {
     };
 
     config_builder.build()
+}
+
+// format for logs
+pub fn log_format(
+    w: &mut dyn std::io::Write,
+    now: &mut DeferredNow,
+    record: &Record,
+) -> Result<(), std::io::Error> {
+    write!(
+        w,
+        "[{}] T[{:?}] {} [{}] {}",
+        now.now().format("%Y-%m-%d %H:%M:%S%.3f"),
+        thread::current().name().unwrap_or("<unnamed>"),
+        record.level(),
+        record.module_path().unwrap_or("<unnamed>"),
+        &record.args()
+    )
 }
 
 fn main() {
@@ -141,6 +160,7 @@ fn main() {
     log_spec_builder.module("tokio", log::LevelFilter::Warn);
 
     Logger::with(log_spec_builder.build())
+        .format(log_format)
         .start()
         .expect("Failed to create logger");
 
