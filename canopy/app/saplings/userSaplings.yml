@@ -1,0 +1,6 @@
+- displayName: Vanilla
+  namespace: vanilla
+  runtimeFiles:
+    - 0.0.0.0:8675/vanilla.js
+  workerFiles: []
+  icon: https://via.placeholder.com/48
