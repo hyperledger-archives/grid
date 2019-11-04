@@ -21,7 +21,7 @@ nodes:
       - tcp://127.0.0.1:8046
 circuits:
   alpha:
-    auth: trust
+    auth: Trust
     members:
       - 012 # <- public key, matches key in node definition
       - 345
@@ -36,7 +36,7 @@ circuits:
         service_type: example_service
         allowed_nodes:
           - "345"
-    persistence: any
-    durability: none
-    routes: require_direct
+    persistence: Any
+    durability: NoDurability 
+    routes: Any 
     circuit_management_type: default

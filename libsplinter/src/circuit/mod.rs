@@ -57,7 +57,7 @@ impl Circuit {
             members: vec![],
             roster: Roster::Admin,
             persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurabilty,
+            durability: DurabilityType::NoDurability,
             routes: RouteType::Any,
             circuit_management_type: "".into(),
         }
@@ -344,7 +344,7 @@ pub enum PersistenceType {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum DurabilityType {
-    NoDurabilty,
+    NoDurability,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -528,7 +528,7 @@ mod tests {
             .with_members(vec!["123".into()])
             .with_roster(vec!["abc".into(), "def".into()])
             .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurabilty)
+            .with_durability(DurabilityType::NoDurability)
             .with_routes(RouteType::Any)
             .with_circuit_management_type("test_app".into())
             .build()

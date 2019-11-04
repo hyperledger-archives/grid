@@ -24,7 +24,7 @@ nodes:
       - tcp://splinter-node-2:8048
 circuits:
   alpha:
-    auth: trust
+    auth: Trust
     members:
       - 012
       - 345
@@ -48,7 +48,7 @@ circuits:
           - "678"
         arguments:
           peers: "service_a,service_b"
-    persistence: any
-    durability: none
-    routes: require_direct
+    persistence: Any
+    durability: NoDurability
+    routes: Any 
     circuit_management_type: default

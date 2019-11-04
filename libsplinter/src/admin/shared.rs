@@ -1173,7 +1173,7 @@ impl AdminServiceShared {
         };
 
         let durability = match circuit.get_durability() {
-            Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurabilty,
+            Circuit_DurabilityType::NO_DURABILITY => DurabilityType::NoDurability,
             // This should never happen
             Circuit_DurabilityType::UNSET_DURABILITY_TYPE => {
                 return Err(AdminSharedError::CommitError(
