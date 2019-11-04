@@ -16,6 +16,15 @@
 
 import { initialize } from './initialize';
 
-initialize();
-
-export { register } from './register';
+describe('Initialize', () => {
+  afterEach(() => {
+    delete window.$CANOPY;
+  });
+  it('should initialize the window $CANOPY object', () => {
+    expect.assertions(3);
+    expect(window.$CANOPY).toBeUndefined();
+    initialize();
+    expect(window.$CANOPY).not.toBeUndefined();
+    expect(window.$CANOPY.invokeRegisteredApp).toBeInstanceOf(Function);
+  });
+});
