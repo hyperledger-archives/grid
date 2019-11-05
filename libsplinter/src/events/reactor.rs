@@ -14,11 +14,11 @@
 
 use std::thread;
 
-use crossbeam_channel::{bounded, Sender};
+use crossbeam_channel::{bounded, Sender, TryRecvError};
 use futures::Future;
 use tokio::runtime::Runtime;
 
-use crate::events::ws::{Context, Listen, ParseBytes, WebSocketClient};
+use crate::events::ws::{Context, Listen, ParseBytes, ShutdownHandle, WebSocketClient};
 use crate::events::{ReactorError, WebSocketError};
 
 /// Reactor
@@ -45,7 +45,7 @@ impl Reactor {
 
             let mut connections = Vec::new();
             loop {
-                match receiver.recv() {
+                match receiver.try_recv() {
                     Ok(ReactorMessage::StartWs(listen)) => {
                         let (future, handle) = listen.into_shutdown_handle();
                         runtime.spawn(futures::lazy(|| future.map_err(|_| ())));
@@ -56,10 +56,26 @@ impl Reactor {
                     }
                     Ok(ReactorMessage::Stop) => break,
                     Err(err) => {
-                        error!("Failed to receive message {}", err);
-                        break;
+                        if let TryRecvError::Disconnected = err {
+                            error!("Failed to receive message {}", err);
+                            break;
+                        }
                     }
                 }
+
+                let (live_connections, closed_connections): (
+                    Vec<ShutdownHandle>,
+                    Vec<ShutdownHandle>,
+                ) = connections.into_iter().partition(|conn| conn.running());
+                for conn in closed_connections {
+                    match conn.shutdown() {
+                        Ok(()) => info!("A ws connection closed"),
+                        Err(err) => {
+                            error!("A ws connection closed unexpectedly with error {}", err)
+                        }
+                    }
+                }
+                connections = live_connections;
             }
 
             let shutdown_errors = connections

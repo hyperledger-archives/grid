@@ -113,6 +113,10 @@ impl ShutdownHandle {
         self.running.store(false, Ordering::SeqCst);
         self.receiver.recv()?
     }
+
+    pub fn running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
 }
 
 /// WebSocket client. Configures Websocket connection and produces `Listen` future.
@@ -218,11 +222,13 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                     let codec = Codec::new().max_size(MAX_FRAME_SIZE).client_mode();
                     let framed = codec.framed(upgraded);
                     let (sink, stream) = framed.split();
-
                     let mut blocking_sink = sink.wait();
 
-                    if let Err(err) = handle_response(&mut blocking_sink, on_open(context.clone()))
-                    {
+                    if let Err(err) = handle_response(
+                        &mut blocking_sink,
+                        on_open(context.clone()),
+                        running_clone.clone(),
+                    ) {
                         if let Err(err) = sender.send(Err(err)) {
                             error!("Failed to send response to shutdown handle: {}", err);
                         }
@@ -252,6 +258,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                                 if let Err(protocol_error) = do_shutdown(
                                                     &mut blocking_sink,
                                                     CloseCode::Protocol,
+                                                    running_clone.clone(),
                                                 ) {
                                                     WebSocketError::ParserError {
                                                         parse_error,
@@ -268,6 +275,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                                 handle_response(
                                                     &mut blocking_sink,
                                                     on_message(context.clone(), message),
+                                                    running_clone.clone(),
                                                 )
                                             });
 
@@ -282,6 +290,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         if let Err(err) = handle_response(
                                             &mut blocking_sink,
                                             WsResponse::Pong(msg.to_string()),
+                                            running_clone.clone(),
                                         ) {
                                             ConnectionStatus::UnexpectedClose(err)
                                         } else {
@@ -294,9 +303,12 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                     }
                                     Frame::Close(msg) => {
                                         debug!("Received close message {:?}", msg);
-                                        let result =
-                                            do_shutdown(&mut blocking_sink, CloseCode::Normal)
-                                                .map_err(WebSocketError::from);
+                                        let result = do_shutdown(
+                                            &mut blocking_sink,
+                                            CloseCode::Normal,
+                                            running_clone.clone(),
+                                        )
+                                        .map_err(WebSocketError::from);
                                         ConnectionStatus::Close(result)
                                     }
                                 };
@@ -304,9 +316,12 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                 match (running_clone.load(Ordering::SeqCst), status) {
                                     (true, ConnectionStatus::Open) => future::ok(true),
                                     (false, ConnectionStatus::Open) => {
-                                        let shutdown_result =
-                                            do_shutdown(&mut blocking_sink, CloseCode::Normal)
-                                                .map_err(WebSocketError::from);
+                                        let shutdown_result = do_shutdown(
+                                            &mut blocking_sink,
+                                            CloseCode::Normal,
+                                            running_clone.clone(),
+                                        )
+                                        .map_err(WebSocketError::from);
                                         if let Err(err) = sender.send(shutdown_result) {
                                             error!(
                                                 "Failed to send response to shutdown handle: {}",
@@ -356,6 +371,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 fn handle_response(
     wait_sink: &mut Wait<stream::SplitSink<Framed<Upgraded, Codec>>>,
     res: WsResponse,
+    running: Arc<AtomicBool>,
 ) -> Result<(), WebSocketError> {
     match res {
         WsResponse::Text(msg) => wait_sink
@@ -363,7 +379,7 @@ fn handle_response(
             .and_then(|_| wait_sink.flush())
             .or_else(|protocol_error| {
                 error!("Error occurred while handling message {:?}", protocol_error);
-                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
+                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol, running) {
                     Err(WebSocketError::AbnormalShutdownError {
                         protocol_error,
                         shutdown_error,
@@ -377,7 +393,7 @@ fn handle_response(
             .and_then(|_| wait_sink.flush())
             .or_else(|protocol_error| {
                 error!("Error occurred while handling message {:?}", protocol_error);
-                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
+                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol, running) {
                     Err(WebSocketError::AbnormalShutdownError {
                         protocol_error,
                         shutdown_error,
@@ -390,7 +406,7 @@ fn handle_response(
             .send(Message::Pong(msg))
             .or_else(|protocol_error| {
                 error!("Error occurred while handling message {:?}", protocol_error);
-                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol) {
+                if let Err(shutdown_error) = do_shutdown(wait_sink, CloseCode::Protocol, running) {
                     Err(WebSocketError::AbnormalShutdownError {
                         protocol_error,
                         shutdown_error,
@@ -400,7 +416,7 @@ fn handle_response(
                 }
             }),
         WsResponse::Close => {
-            do_shutdown(wait_sink, CloseCode::Normal).map_err(WebSocketError::from)
+            do_shutdown(wait_sink, CloseCode::Normal, running).map_err(WebSocketError::from)
         }
         WsResponse::Empty => Ok(()),
     }
@@ -409,7 +425,11 @@ fn handle_response(
 fn do_shutdown(
     blocking_sink: &mut Wait<stream::SplitSink<Framed<Upgraded, Codec>>>,
     close_code: CloseCode,
+    running: Arc<AtomicBool>,
 ) -> Result<(), ws::ProtocolError> {
+    debug!("Sending close to server");
+
+    running.store(false, Ordering::SeqCst);
     blocking_sink
         .send(Message::Close(Some(CloseReason::from(close_code))))
         .and_then(|_| blocking_sink.flush())
