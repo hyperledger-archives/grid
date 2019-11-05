@@ -16,6 +16,8 @@ use std::error::Error;
 
 use crate::service::FactoryCreateError;
 
+use super::ServiceDefinition;
+
 #[derive(Debug)]
 pub struct NewOrchestratorError(pub Box<dyn Error + Send>);
 
@@ -95,7 +97,7 @@ impl From<FactoryCreateError> for InitializeServiceError {
 #[derive(Debug)]
 pub enum ShutdownServiceError {
     LockPoisoned,
-    ShutdownFailed(Box<dyn Error + Send>),
+    ShutdownFailed((ServiceDefinition, Box<dyn Error + Send>)),
     UnknownService,
 }
 
@@ -103,7 +105,7 @@ impl Error for ShutdownServiceError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ShutdownServiceError::LockPoisoned => None,
-            ShutdownServiceError::ShutdownFailed(err) => Some(&**err),
+            ShutdownServiceError::ShutdownFailed((_, err)) => Some(&**err),
             ShutdownServiceError::UnknownService => None,
         }
     }
@@ -113,9 +115,11 @@ impl std::fmt::Display for ShutdownServiceError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ShutdownServiceError::LockPoisoned => write!(f, "internal lock poisoned"),
-            ShutdownServiceError::ShutdownFailed(err) => {
-                write!(f, "failed to shutdown service: {}", err)
-            }
+            ShutdownServiceError::ShutdownFailed((service, err)) => write!(
+                f,
+                "failed to shutdown service {:?} with error {}",
+                service, err
+            ),
             ShutdownServiceError::UnknownService => write!(f, "specified service not found"),
         }
     }
