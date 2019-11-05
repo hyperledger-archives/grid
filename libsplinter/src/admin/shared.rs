@@ -34,7 +34,7 @@ use crate::network::{
     auth::{AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
-use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator};
+use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator, ShutdownServiceError};
 use crate::protos::admin::{
     AdminMessage, AdminMessage_Type, Circuit, CircuitManagementPayload,
     CircuitManagementPayload_Action, CircuitManagementPayload_Header, CircuitProposal,
@@ -1068,6 +1068,30 @@ impl AdminServiceShared {
         }
 
         Ok(())
+    }
+
+    /// Stops all running services
+    pub fn stop_services(&mut self) -> Result<(), AdminSharedError> {
+        let shutdown_errors = self
+            .running_services
+            .iter()
+            .map(|service| {
+                debug!(
+                    "Stoping service {} in circuit {}",
+                    service.service_type, service.circuit
+                );
+                self.orchestrator.shutdown_service(&service)
+            })
+            .filter_map(Result::err)
+            .collect::<Vec<ShutdownServiceError>>();
+
+        self.running_services = HashSet::new();
+
+        if shutdown_errors.is_empty() {
+            Ok(())
+        } else {
+            Err(AdminSharedError::ServiceShutdownFailed(shutdown_errors))
+        }
     }
 
     /// On restart of a splinter node, all services that this node should run on the existing

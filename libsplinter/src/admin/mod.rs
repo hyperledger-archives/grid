@@ -188,6 +188,10 @@ impl Service for AdminService {
         // Shutdown event dealers and disconnect active websocket connections
         admin_service_shared.shutdown_event_dealers();
 
+        admin_service_shared
+            .stop_services()
+            .map_err(|err| ServiceStopError::Internal(Box::new(err)))?;
+
         info!("Admin service stopped and disconnected");
 
         Ok(())

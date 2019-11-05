@@ -49,7 +49,7 @@ pub use self::error::{
 const TIMEOUT_SEC: u64 = 2;
 
 /// Identifies a unique service instance from the perspective of the orchestrator
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
 pub struct ServiceDefinition {
     pub circuit: String,
     pub service_id: String,
@@ -259,12 +259,12 @@ impl ServiceOrchestrator {
             .remove(service_definition)
             .ok_or(ShutdownServiceError::UnknownService)?;
 
-        service
-            .stop(&registry)
-            .map_err(|err| ShutdownServiceError::ShutdownFailed(Box::new(err)))?;
-        service
-            .destroy()
-            .map_err(|err| ShutdownServiceError::ShutdownFailed(Box::new(err)))?;
+        service.stop(&registry).map_err(|err| {
+            ShutdownServiceError::ShutdownFailed((service_definition.clone(), Box::new(err)))
+        })?;
+        service.destroy().map_err(|err| {
+            ShutdownServiceError::ShutdownFailed((service_definition.clone(), Box::new(err)))
+        })?;
 
         Ok(())
     }
