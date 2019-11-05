@@ -192,6 +192,7 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
                     description: Some("Received close frame closing normally".into()),
                     code: CloseCode::Normal,
                 }));
+                debug!("Received close message");
                 ctx.stop()
             }
             ws::Message::Nop => (),
