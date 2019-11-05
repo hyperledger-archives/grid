@@ -69,7 +69,12 @@ impl fmt::Display for ReactorError {
             ReactorError::RequestSendError(err) => write!(f, "{}", err),
             ReactorError::ReactorShutdownError(err) => write!(f, "{}", err),
             ReactorError::ShutdownHandleErrors(err) => {
-                write!(f, "Websockets did not shut down correctly: {:?}", err)
+                let err_message = err
+                    .iter()
+                    .map(|err| format!("{}", err))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "Websockets did not shut down correctly: {}", err_message)
             }
             ReactorError::IoError(err) => write!(f, "IO Error: {}", err),
         }
