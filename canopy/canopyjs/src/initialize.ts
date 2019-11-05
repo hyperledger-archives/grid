@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import { message, ParentMessage } from './message';
-
-export interface Notification {
-  text: string;
-}
-
-export function notify(body: Notification): Promise<ParentMessage> {
-  return message({ type: 'notification', body });
+export function initialize(): void {
+  if (window.$CANOPY === undefined) {
+    window.$CANOPY = {
+      invokeRegisteredApp: (): void => {
+        throw new Error('No Sapling registered');
+      }
+    };
+  }
 }

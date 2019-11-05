@@ -5,9 +5,7 @@
   "author": "Cargill Incorporated",
   "license": "Apache-2.0",
   "main": "dist/index.js",
-  "dependencies": {
-    "uuid": "^3.3.3"
-  },
+  "dependencies": {},
   "scripts": {
     "test": "jest",
     "build": "tsc -p ./tsconfig.json --strict --outDir dist",

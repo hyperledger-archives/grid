@@ -14,8 +14,4 @@
  * limitations under the License.
  */
 
-import { initialize } from './initialize';
-
-initialize();
-
-export { register } from './register';
+import './types.d';

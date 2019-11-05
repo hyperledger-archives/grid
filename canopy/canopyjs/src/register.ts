@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-import { initialize } from './initialize';
+export function register(bootstrapFunction: (domNode: Node) => void): void {
+  if (window.$CANOPY && Object.isFrozen(window.$CANOPY)) {
+    throw new Error('Cannot register Sapling on frozen Canopy');
+  }
 
-initialize();
+  window.$CANOPY.invokeRegisteredApp = bootstrapFunction;
 
-export { register } from './register';
+  Object.freeze(window.$CANOPY);
+}
