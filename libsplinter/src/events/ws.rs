@@ -172,7 +172,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
     }
 
     /// Returns `Listen` for WebSocket.
-    pub fn listen(&self, igniter: Igniter) -> Result<Listen, WebSocketError> {
+    pub fn listen(&self, mut context: Context<T>) -> Result<Listen, WebSocketError> {
         let url = self.url.clone();
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
@@ -185,8 +185,6 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             .on_error
             .clone()
             .unwrap_or_else(|| Arc::new(|_, _| Ok(())));
-
-        let context = Context::new(igniter, self.clone());
 
         let (sender, receiver) = bounded(1);
 
@@ -438,7 +436,8 @@ impl<T: ParseBytes<T> + 'static> Context<T> {
 
     /// Starts an instance of the Context's websocket.
     pub fn start_ws(&self) -> Result<(), WebSocketError> {
-        self.igniter.start_ws(&self.ws)
+        let listen = self.ws.listen(self.clone())?;
+        self.igniter.start_ws_with_listen(listen)
     }
 
     /// Returns a copy of the igniter used to start the websocket.

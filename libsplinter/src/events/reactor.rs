@@ -18,7 +18,7 @@ use crossbeam_channel::{bounded, Sender};
 use futures::Future;
 use tokio::runtime::Runtime;
 
-use crate::events::ws::{Listen, ParseBytes, WebSocketClient};
+use crate::events::ws::{Context, Listen, ParseBytes, WebSocketClient};
 use crate::events::{ReactorError, WebSocketError};
 
 /// Reactor
@@ -128,8 +128,9 @@ impl Igniter {
         &self,
         ws: &WebSocketClient<T>,
     ) -> Result<(), WebSocketError> {
+        let context = Context::new(self.clone(), ws.clone());
         self.sender
-            .send(ReactorMessage::StartWs(ws.listen(self.clone())?))
+            .send(ReactorMessage::StartWs(ws.listen(context)?))
             .map_err(|err| {
                 WebSocketError::ListenError(format!("Failed to start ws {}: {}", ws.url(), err))
             })
@@ -144,6 +145,12 @@ impl Igniter {
             .map_err(|err| {
                 ReactorError::RequestSendError(format!("Failed to send request to reactor {}", err))
             })
+    }
+
+    pub fn start_ws_with_listen(&self, listen: Listen) -> Result<(), WebSocketError> {
+        self.sender
+            .send(ReactorMessage::StartWs(listen))
+            .map_err(|err| WebSocketError::ListenError(format!("Failed to start ws {}", err)))
     }
 }
 
