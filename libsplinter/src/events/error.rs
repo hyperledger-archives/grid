@@ -122,6 +122,11 @@ pub enum WebSocketError {
         shutdown_error: Option<ws::ProtocolError>,
     },
     ListenError(String),
+    /// Error returned when the client cannot establish a connection to the server
+    ConnectError(String),
+    /// Error returned when the client, after the connection with the server closed unexpectedly,
+    /// tries to reestablish the connection but fails.
+    ReconnectError(String),
     OnFailCallbackError(String),
 }
 
@@ -137,6 +142,8 @@ impl error::Error for WebSocketError {
             WebSocketError::NoParserDefinedError => None,
             WebSocketError::ParserError { .. } => None,
             WebSocketError::ListenError(_) => None,
+            WebSocketError::ConnectError(_) => None,
+            WebSocketError::ReconnectError(_) => None,
             WebSocketError::OnFailCallbackError(_) => None,
         }
     }
@@ -189,6 +196,8 @@ impl fmt::Display for WebSocketError {
                 parse_error
             ),
             WebSocketError::ListenError(err) => write!(f, "{}", err),
+            WebSocketError::ConnectError(err) => write!(f, "{}", err),
+            WebSocketError::ReconnectError(err) => write!(f, "{}", err),
             WebSocketError::OnFailCallbackError(err) => write!(f, "{}", err),
         }
     }
