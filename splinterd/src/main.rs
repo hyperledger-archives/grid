@@ -28,7 +28,7 @@ mod node_registry;
 mod registry_config;
 mod routes;
 
-use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
@@ -91,6 +91,7 @@ pub fn log_format(
     now: &mut DeferredNow,
     record: &Record,
 ) -> Result<(), std::io::Error> {
+    let level = record.level();
     write!(
         w,
         "[{}] T[{:?}] {} [{}] {}",
@@ -98,7 +99,7 @@ pub fn log_format(
         thread::current().name().unwrap_or("<unnamed>"),
         record.level(),
         record.module_path().unwrap_or("<unnamed>"),
-        &record.args()
+        style(level, &record.args()),
     )
 }
 
