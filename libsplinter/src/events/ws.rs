@@ -78,6 +78,7 @@ type OnErrorHandle<T> =
 const MAX_FRAME_SIZE: usize = 10_000_000;
 const DEFAULT_RECONNECT: bool = false;
 const DEFAULT_RECONNECT_LIMIT: u64 = 10;
+const DEFAULT_TIMEOUT: u64 = 300; // default timeout if no message is received from server in seconds
 
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `Igniter::start_ws`
@@ -130,6 +131,7 @@ pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     on_error: Option<Arc<OnErrorHandle<T>>>,
     reconnect: bool,
     reconnect_limit: u64,
+    timeout: u64,
 }
 
 impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
@@ -141,6 +143,7 @@ impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
             on_error: self.on_error.clone(),
             reconnect: self.reconnect,
             reconnect_limit: self.reconnect_limit,
+            timeout: self.timeout,
         }
     }
 }
@@ -157,6 +160,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             on_error: None,
             reconnect: DEFAULT_RECONNECT,
             reconnect_limit: DEFAULT_RECONNECT_LIMIT,
+            timeout: DEFAULT_TIMEOUT,
         }
     }
 
@@ -172,6 +176,10 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
         self.reconnect_limit = reconnect_limit
     }
 
+    pub fn set_timeout(&mut self, timeout: u64) {
+        self.timeout = timeout
+    }
+
     pub fn reconnect(&self) -> bool {
         self.reconnect
     }
@@ -179,6 +187,11 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
     pub fn reconnect_limit(&self) -> u64 {
         self.reconnect_limit
     }
+
+    pub fn timeout(&self) -> u64 {
+        self.timeout
+    }
+
     /// Adds optional `on_open` closure. This closer is called after a connection is initially
     /// established with the server, and is used for printing debug information and sending initial
     /// messages to server if necessary.
@@ -212,6 +225,11 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
         let (sender, receiver) = bounded(1);
 
+        let mut context_timeout = context.clone();
+        let running_timeout = running.clone();
+        let sender_timout = sender.clone();
+        let timeout = self.timeout;
+
         let running_connection = running.clone();
         let sender_connection = sender.clone();
         let mut context_connection = context.clone();
@@ -238,6 +256,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
                     res.into_body().on_upgrade()
                 })
+                .timeout(Duration::from_secs(timeout))
                 .map_err(move |err| {
                     if let Err(err) = sender_connection.send(Err(WebSocketError::ConnectError(
                         format!("Failed to connect: {}", err),
@@ -270,9 +289,21 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                     context.ws_connected();
                     Either::B(
                         stream
-                            .map_err(|err| {
-                                error!("Protocol Error: {:?}", err);
-                                WebSocketError::from(err)
+                            .timeout(Duration::from_secs(timeout))
+                            .map_err(move |err| {
+                                error!("Connection timeout: {}", err);
+                                if let Err(err) = sender_timout.send(Err(
+                                    WebSocketError::ListenError("Connection timeout".to_string()),
+                                )) {
+                                    error!("Failed to send response to shutdown handle: {}", err);
+                                }
+
+                                if let Err(err) = context_timeout.try_reconnect() {
+                                    error!("Context returned an error  {}", err);
+                                }
+
+                                running_timeout.store(false, Ordering::SeqCst);
+                                WebSocketError::ListenError("Connection timeout".to_string())
                             })
                             .take_while(move |message| {
                                 let status = match message {
