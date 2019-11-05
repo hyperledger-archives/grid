@@ -29,7 +29,7 @@ mod rest_api;
 
 use std::thread;
 
-use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use gameroom_database::ConnectionPool;
 use log::Record;
 use sawtooth_sdk::signing::create_context;
@@ -47,6 +47,7 @@ pub fn log_format(
     now: &mut DeferredNow,
     record: &Record,
 ) -> Result<(), std::io::Error> {
+    let level = record.level();
     write!(
         w,
         "[{}] T[{:?}] {} [{}] {}",
@@ -54,7 +55,7 @@ pub fn log_format(
         thread::current().name().unwrap_or("<unnamed>"),
         record.level(),
         record.module_path().unwrap_or("<unnamed>"),
-        &record.args()
+        style(level, &record.args()),
     )
 }
 
