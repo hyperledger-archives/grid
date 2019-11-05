@@ -129,6 +129,7 @@ impl Reactor {
     }
 
     pub fn shutdown(self) -> Result<(), ReactorError> {
+        debug!("Received shutdown");
         self.sender.send(ReactorMessage::Stop).map_err(|_| {
             ReactorError::ReactorShutdownError("Failed to send shutdown message".to_string())
         })?;
