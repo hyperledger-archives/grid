@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS gameroom_service (
   allowed_nodes             TEXT[][]    NOT NULL,
   arguments                 JSON []     NOT NULL,
   status                    TEXT        NOT NULL,
+  last_event                TEXT        NOT NULL,
   created_time              TIMESTAMP   NOT NULL,
   updated_time              TIMESTAMP   NOT NULL,
   FOREIGN KEY (circuit_id) REFERENCES gameroom(circuit_id) ON DELETE CASCADE

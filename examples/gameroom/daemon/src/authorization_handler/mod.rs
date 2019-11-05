@@ -552,6 +552,7 @@ fn parse_splinter_services(
                 })
                 .collect(),
             status: "Pending".to_string(),
+            last_event: "".to_string(),
             created_time: timestamp,
             updated_time: timestamp,
         })
@@ -1263,6 +1264,7 @@ mod test {
                 "value": "test_value"
             })],
             status: "Pending".to_string(),
+            last_event: "".to_string(),
             created_time: timestamp,
             updated_time: timestamp,
         }

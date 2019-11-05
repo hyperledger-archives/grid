@@ -85,6 +85,7 @@ table! {
         allowed_nodes -> Array<Text>,
         arguments -> Array<Json>,
         status -> Text,
+        last_event -> Text,
         created_time -> Timestamp,
         updated_time -> Timestamp,
     }

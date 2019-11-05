@@ -50,9 +50,23 @@ impl XoStateDeltaProcessor {
         &self,
         change_event: StateChangeEvent,
     ) -> Result<(), StateDeltaError> {
+        // Update the last seen state change event
+        let time = SystemTime::now();
+        let conn = &*self.db_pool.get()?;
+        conn.transaction::<_, error::DatabaseError, _>(|| {
+            helpers::update_gameroom_service_last_event(
+                &conn,
+                &self.circuit_id,
+                &time,
+                &change_event.id,
+            )?;
+            Ok(())
+        })?;
+
         for change in change_event.state_changes {
             self.handle_state_change(&change)?;
         }
+
         Ok(())
     }
 

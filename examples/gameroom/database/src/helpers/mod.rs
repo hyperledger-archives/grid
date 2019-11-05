@@ -24,8 +24,8 @@ pub use gameroom::{
     insert_gameroom, insert_gameroom_members, insert_gameroom_proposal, insert_gameroom_services,
     insert_proposal_vote_record, list_gameroom_members_with_status, list_gamerooms_with_paging,
     list_gamerooms_with_paging_and_status, list_proposals_with_paging,
-    update_gameroom_member_status, update_gameroom_proposal_status, update_gameroom_service_status,
-    update_gameroom_status,
+    update_gameroom_member_status, update_gameroom_proposal_status,
+    update_gameroom_service_last_event, update_gameroom_service_status, update_gameroom_status,
 };
 pub use gameroom_user::{fetch_user_by_email, insert_user};
 pub use notification::{

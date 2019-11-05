@@ -129,6 +129,7 @@ pub fn fetch_active_gamerooms(
             gameroom_service::circuit_id,
             gameroom_service::service_id,
             gameroom_service::status,
+            gameroom_service::last_event,
             gameroom_proposal::requester,
             gameroom_proposal::requester_node_id,
         ))
@@ -197,6 +198,21 @@ pub fn update_gameroom_service_status(
     ))
     .execute(conn)
     .map(|_| ())
+}
+
+pub fn update_gameroom_service_last_event(
+    conn: &PgConnection,
+    circuit_id: &str,
+    updated_time: &SystemTime,
+    event_id: &str,
+) -> QueryResult<()> {
+    diesel::update(gameroom_service::table.filter(gameroom_service::circuit_id.eq(circuit_id)))
+        .set((
+            gameroom_service::updated_time.eq(updated_time),
+            gameroom_service::last_event.eq(event_id),
+        ))
+        .execute(conn)
+        .map(|_| ())
 }
 
 pub fn insert_proposal_vote_record(
