@@ -201,6 +201,8 @@ impl Service for Scabbard {
         &mut self,
         service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStopError> {
+        debug!("Stopping scabbard service with id {}", self.service_id);
+
         // Shutdown consensus
         self.consensus
             .lock()
