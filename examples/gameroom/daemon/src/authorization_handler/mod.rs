@@ -44,6 +44,15 @@ use crate::application_metadata::ApplicationMetadata;
 
 use self::sabre::setup_xo;
 
+/// default value if the client should attempt to reconnet if ws connection is lost
+const RECONNECT: bool = true;
+
+/// default limit for number of consecutives failed reconnection attempts
+const RECONNECT_LIMIT: u64 = 10;
+
+/// default timeout in seconds if no message is received from server
+const CONNECTION_TIMEOUT: u64 = 60;
+
 pub fn run(
     splinterd_url: String,
     node_id: String,
@@ -68,14 +77,25 @@ pub fn run(
         },
     );
 
+    ws.set_reconnect(RECONNECT);
+    ws.set_reconnect_limit(RECONNECT_LIMIT);
+    ws.set_timeout(CONNECTION_TIMEOUT);
+
     ws.on_error(move |err, ctx| {
         error!("An error occured while listening for admin events {}", err);
-        if let WebSocketError::ParserError { .. } = err {
-            debug!("Protocol error, closing connection");
-            Ok(())
-        } else {
-            debug!("Attempting to restart connection");
-            ctx.start_ws()
+        match err {
+            WebSocketError::ParserError { .. } => {
+                debug!("Protocol error, closing connection");
+                Ok(())
+            }
+            WebSocketError::ReconnectError(_) => {
+                debug!("Failed to reconnect. Closing WebSocket.");
+                Ok(())
+            }
+            _ => {
+                debug!("Attempting to restart connection");
+                ctx.start_ws()
+            }
         }
     });
 
@@ -380,18 +400,28 @@ fn process_admin_event(
                     WsResponse::Empty
                 }
             });
+            xo_ws.set_reconnect(RECONNECT);
+            xo_ws.set_reconnect_limit(RECONNECT_LIMIT);
+            xo_ws.set_timeout(CONNECTION_TIMEOUT);
 
             xo_ws.on_error(move |err, ctx| {
                 error!(
                     "An error occured while listening for scabbard events {}",
                     err
                 );
-                if let WebSocketError::ParserError { .. } = err {
-                    debug!("Protocol error, closing connection");
-                    Ok(())
-                } else {
-                    debug!("Attempting to restart connection");
-                    ctx.start_ws()
+                match err {
+                    WebSocketError::ParserError { .. } => {
+                        debug!("Protocol error, closing connection");
+                        Ok(())
+                    }
+                    WebSocketError::ReconnectError(_) => {
+                        debug!("Failed to reconnect. Closing WebSocket.");
+                        Ok(())
+                    }
+                    _ => {
+                        debug!("Attempting to restart connection");
+                        ctx.start_ws()
+                    }
                 }
             });
 
