@@ -69,7 +69,7 @@ impl Reactor {
                 .collect::<Vec<WebSocketError>>();
 
             if let Err(err) = runtime
-                .shutdown_now()
+                .shutdown_on_idle()
                 .wait()
                 .map_err(|_| {
                     ReactorError::ReactorShutdownError(
