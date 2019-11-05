@@ -209,12 +209,12 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             .clone()
             .unwrap_or_else(|| Arc::new(|_| WsResponse::Empty));
         let on_message = self.on_message.clone();
-        let on_error = self
-            .on_error
-            .clone()
-            .unwrap_or_else(|| Arc::new(|_, _| Ok(())));
 
         let (sender, receiver) = bounded(1);
+
+        let running_connection = running.clone();
+        let sender_connection = sender.clone();
+        let mut context_connection = context.clone();
 
         debug!("starting: {}", url);
 
@@ -238,9 +238,18 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
                     res.into_body().on_upgrade()
                 })
-                .map_err(|err| {
-                    error!("Client Error: {:?}", err);
-                    WebSocketError::from(err)
+                .map_err(move |err| {
+                    if let Err(err) = sender_connection.send(Err(WebSocketError::ConnectError(
+                        format!("Failed to connect: {}", err),
+                    ))) {
+                        error!("Failed to send response to shutdown handle: {}", err);
+                    }
+                    if let Err(err) = context_connection.try_reconnect() {
+                        error!("Context returned an error  {}", err);
+                    }
+
+                    running_connection.store(false, Ordering::SeqCst);
+                    WebSocketError::ConnectError(format!("Failed to connect: {}", err))
                 })
                 .and_then(move |upgraded| {
                     let codec = Codec::new().max_size(MAX_FRAME_SIZE).client_mode();
@@ -258,7 +267,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                         }
                         return Either::A(future::ok(()));
                     }
-
+                    context.ws_connected();
                     Either::B(
                         stream
                             .map_err(|err| {
@@ -355,17 +364,16 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         future::ok(false)
                                     }
                                     (_, ConnectionStatus::UnexpectedClose(original_error)) => {
-                                        let result = on_error(&original_error, context.clone())
-                                            .map_err(|on_fail_error| WebSocketError::OnFailError {
-                                                original_error: Box::new(original_error),
-                                                on_fail_error: Box::new(on_fail_error),
-                                            });
-                                        if let Err(err) = sender.send(result) {
+                                        if let Err(err) = sender.send(Err(original_error)) {
                                             error!(
                                                 "Failed to send response to shutdown handle: {}",
                                                 err
                                             );
                                         }
+                                        if let Err(err) = context.try_reconnect() {
+                                            error!("Context returned an error  {}", err);
+                                        }
+
                                         future::ok(false)
                                     }
                                     (_, ConnectionStatus::Close(res)) => {
@@ -374,6 +382,9 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                                 "Failed to send response to shutdown handle: {}",
                                                 err
                                             );
+                                        }
+                                        if let Err(err) = context.try_reconnect() {
+                                            error!("Context returned an error  {}", err);
                                         }
                                         future::ok(false)
                                     }
