@@ -16,7 +16,7 @@ use std::error::Error;
 use std::fmt;
 
 use crate::consensus::error::ProposalManagerError;
-use crate::orchestrator::InitializeServiceError;
+use crate::orchestrator::{InitializeServiceError, ShutdownServiceError};
 use crate::service::error::{ServiceError, ServiceSendError};
 use crate::signing;
 
@@ -35,6 +35,7 @@ pub enum AdminSharedError {
     InvalidMessageFormat(MarshallingError),
     NoPendingChanges,
     ServiceInitializationFailed(InitializeServiceError),
+    ServiceShutdownFailed(Vec<ShutdownServiceError>),
     ServiceSendError(ServiceSendError),
     UnknownAction(String),
     ValidationFailed(String),
@@ -58,6 +59,7 @@ impl Error for AdminSharedError {
             AdminSharedError::InvalidMessageFormat(err) => Some(err),
             AdminSharedError::NoPendingChanges => None,
             AdminSharedError::ServiceInitializationFailed(err) => Some(err),
+            AdminSharedError::ServiceShutdownFailed(_) => None,
             AdminSharedError::ServiceSendError(err) => Some(err),
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
@@ -82,6 +84,14 @@ impl fmt::Display for AdminSharedError {
             }
             AdminSharedError::ServiceInitializationFailed(err) => {
                 write!(f, "failed to initialize service: {}", err)
+            }
+            AdminSharedError::ServiceShutdownFailed(err) => {
+                let err_message = err
+                    .iter()
+                    .map(|err| format!("{}", err))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "failed to shutdown services: {}", err_message)
             }
             AdminSharedError::ServiceSendError(err) => {
                 write!(f, "failed to send service message: {}", err)
