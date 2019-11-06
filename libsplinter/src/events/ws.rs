@@ -56,6 +56,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+use std::time::{Duration, SystemTime};
 
 use actix_http::ws;
 use awc::ws::{CloseCode, CloseReason, Codec, Frame, Message};
@@ -75,6 +76,8 @@ type OnErrorHandle<T> =
     dyn Fn(&WebSocketError, Context<T>) -> Result<(), WebSocketError> + Send + Sync + 'static;
 
 const MAX_FRAME_SIZE: usize = 10_000_000;
+const DEFAULT_RECONNECT: bool = false;
+const DEFAULT_RECONNECT_LIMIT: u64 = 10;
 
 /// Wrapper around future created by `WebSocketClient`. In order for
 /// the future to run it must be passed to `Igniter::start_ws`
@@ -125,6 +128,8 @@ pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     on_message: Arc<dyn Fn(Context<T>, T) -> WsResponse + Send + Sync + 'static>,
     on_open: Option<Arc<dyn Fn(Context<T>) -> WsResponse + Send + Sync + 'static>>,
     on_error: Option<Arc<OnErrorHandle<T>>>,
+    reconnect: bool,
+    reconnect_limit: u64,
 }
 
 impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
@@ -134,6 +139,8 @@ impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
             on_message: self.on_message.clone(),
             on_open: self.on_open.clone(),
             on_error: self.on_error.clone(),
+            reconnect: self.reconnect,
+            reconnect_limit: self.reconnect_limit,
         }
     }
 }
@@ -148,6 +155,8 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             on_message: Arc::new(on_message),
             on_open: None,
             on_error: None,
+            reconnect: DEFAULT_RECONNECT,
+            reconnect_limit: DEFAULT_RECONNECT_LIMIT,
         }
     }
 
@@ -155,6 +164,21 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
         self.url.clone()
     }
 
+    pub fn set_reconnect(&mut self, reconnect: bool) {
+        self.reconnect = reconnect
+    }
+
+    pub fn set_reconnect_limit(&mut self, reconnect_limit: u64) {
+        self.reconnect_limit = reconnect_limit
+    }
+
+    pub fn reconnect(&self) -> bool {
+        self.reconnect
+    }
+
+    pub fn reconnect_limit(&self) -> u64 {
+        self.reconnect_limit
+    }
     /// Adds optional `on_open` closure. This closer is called after a connection is initially
     /// established with the server, and is used for printing debug information and sending initial
     /// messages to server if necessary.
@@ -447,11 +471,20 @@ fn do_shutdown(
 pub struct Context<T: ParseBytes<T> + 'static> {
     igniter: Igniter,
     ws: WebSocketClient<T>,
+    reconnect_count: u64,
+    last_reconnect: SystemTime,
+    wait: Duration,
 }
 
 impl<T: ParseBytes<T> + 'static> Context<T> {
     pub fn new(igniter: Igniter, ws: WebSocketClient<T>) -> Self {
-        Self { igniter, ws }
+        Self {
+            igniter,
+            ws,
+            reconnect_count: 0,
+            last_reconnect: SystemTime::now(),
+            wait: Duration::from_secs(1),
+        }
     }
 
     /// Starts an instance of the Context's websocket.
@@ -463,6 +496,82 @@ impl<T: ParseBytes<T> + 'static> Context<T> {
     /// Returns a copy of the igniter used to start the websocket.
     pub fn igniter(&self) -> Igniter {
         self.igniter.clone()
+    }
+
+    /// Should called by the ws to inform that the connection was established successfully
+    /// the Context resets the wait and reconnect cound to its intial values.
+    pub fn ws_connected(&mut self) {
+        self.reset_wait();
+        self.reset_reconnect_count();
+    }
+
+    /// Checks that ws client can reconnect. If it can it attempts to reconnect if it cannot it
+    /// calls the on_error function provided by the user and exits.
+    pub fn try_reconnect(&mut self) -> Result<(), WebSocketError> {
+        // Check that the ws is configure for automatic reconnect attempts and that the number
+        // of reconnect attempts hasn't exceeded the maximum configure
+        if self.ws.reconnect && self.reconnect_count < self.ws.reconnect_limit {
+            self.reconnect()
+        } else {
+            let error_message = if self.ws.reconnect {
+                WebSocketError::ReconnectError(
+                    "Cannot connect to ws server. Reached maximum limit of reconnection attempts"
+                        .to_string(),
+                )
+            } else {
+                WebSocketError::ConnectError("Cannot connect to ws server".to_string())
+            };
+            let on_error = self
+                .ws
+                .on_error
+                .clone()
+                .unwrap_or_else(|| Arc::new(|_, _| Ok(())));
+
+            self.reset_wait();
+            self.reset_reconnect_count();
+            on_error(&error_message, self.clone())
+        }
+    }
+
+    fn reconnect(&mut self) -> Result<(), WebSocketError> {
+        // loop until wait time has passed or reactor received shutdown signal
+        debug!("Reconnecting in {:?}", self.wait);
+        loop {
+            // time elapsed since last reconnect attempt
+            let elapsed = SystemTime::now()
+                .duration_since(self.last_reconnect)
+                .unwrap_or(Duration::from_secs(0));
+
+            if elapsed >= self.wait {
+                break;
+            }
+
+            if !self.igniter.is_reactor_running() {
+                return Ok(());
+            }
+        }
+
+        self.reconnect_count += 1;
+        self.last_reconnect = SystemTime::now();
+
+        let new_wait = self.wait.as_secs_f64() * 2.0;
+
+        self.wait = Duration::from_secs_f64(new_wait);
+
+        debug!(
+            "Attempting to reconnect. Attempt number {} out of {}",
+            self.reconnect_count, self.ws.reconnect_limit
+        );
+
+        self.start_ws()
+    }
+
+    fn reset_reconnect_count(&mut self) {
+        self.reconnect_count = 0
+    }
+
+    fn reset_wait(&mut self) {
+        self.wait = Duration::from_secs(1)
     }
 }
 
