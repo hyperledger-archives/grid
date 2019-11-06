@@ -13,7 +13,10 @@
 // limitations under the License.
 
 pub mod error;
-use error::NodeRegistryError;
+pub mod noop;
+pub mod yaml;
+
+pub use error::NodeRegistryError;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

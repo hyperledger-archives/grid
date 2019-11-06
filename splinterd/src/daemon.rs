@@ -38,7 +38,7 @@ use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
-use splinter::node_registry::NodeRegistry;
+use splinter::node_registry::{self, NodeRegistry};
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;
 use splinter::protos::circuit::CircuitMessageType;
@@ -56,7 +56,6 @@ use splinter::transport::{
     ListenError, Listener, Transport,
 };
 
-use crate::node_registry;
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
 #[cfg(feature = "circuit-read")]

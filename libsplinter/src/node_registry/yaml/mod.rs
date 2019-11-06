@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::error::YamlNodeRegistryError;
-use splinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+mod error;
+
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+
+use super::{Node, NodeRegistry, NodeRegistryError};
+
+use error::YamlNodeRegistryError;
 
 #[derive(Clone)]
 pub struct YamlNodeRegistry {

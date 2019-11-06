@@ -212,7 +212,7 @@ fn query_list_nodes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::node_registry::yaml::YamlNodeRegistry;
+    use splinter::node_registry::yaml::YamlNodeRegistry;
     use splinter::node_registry::Node;
     use std::collections::HashMap;
     use std::env;
