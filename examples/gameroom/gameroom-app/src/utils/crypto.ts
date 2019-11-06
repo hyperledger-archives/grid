@@ -91,7 +91,7 @@ export function signPayload(payload: Uint8Array, privateKey: string): Uint8Array
 
   const pubKey = signer.getPublicKey().asBytes();
   header.requester = pubKey;
-  message.signature = signer.sign(header);
+  message.signature = hexToBytes(signer.sign(header));
   message.header = protos.CircuitManagementPayload.Header.encode(header).finish();
   const signedPayload = protos.CircuitManagementPayload.encode(message).finish();
   return signedPayload;
@@ -109,4 +109,13 @@ export function signXOPayload(payload: Uint8Array, privateKey: string): Uint8Arr
   const pubKey = signer.getPublicKey().asBytes();
   return signer.sign(payload);
 
+}
+
+function hexToBytes(hex: string) {
+    const bytes = [];
+    let i;
+    for (i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+    return bytes;
 }
