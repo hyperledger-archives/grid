@@ -12,46 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic as BUILDER
-
-RUN apt-get update \
- && apt-get install -y \
-    curl \
-    gcc \
-    libssl-dev \
-    pkg-config \
-    unzip \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-ENV PATH=$PATH:/root/.cargo/bin
-
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
- && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-# Create empty cargo project
-WORKDIR /build/
-RUN USER=root cargo new --bin cli --name pcounter
-
-# Copy over Cargo.toml file
-COPY examples/private_counter/cli/Cargo.toml /build/cli/Cargo.toml
-
-# Do a release build to cache dependencies
-WORKDIR /build/cli
-RUN cargo build --release
-
-# Remove the auto-generated .rs files and the built files
-RUN rm src/*.rs
-RUN rm target/release/pcounter* ./target/release/deps/pcounter*
+FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
 COPY examples/private_counter/cli/src src
 
-RUN cargo install cargo-deb
-
 # Build the project
+WORKDIR examples/private_counter/cli
 ARG REPO_VERSION
 RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
 RUN cargo deb --deb-version $REPO_VERSION
@@ -59,7 +26,7 @@ RUN cargo deb --deb-version $REPO_VERSION
 # -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic
 
-COPY --from=BUILDER /build/cli/target/debian/private-counter-cli*.deb /tmp
+COPY --from=BUILDER /build/target/debian/private-counter-cli*.deb /tmp
 
 RUN apt-get update \
  && dpkg -i /tmp/private-counter-cli*.deb || true \
