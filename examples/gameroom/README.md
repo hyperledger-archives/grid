@@ -1,9 +1,9 @@
 # Gameroom
 
-Gameroom is a demo Splinter application that allows you to set up dynamic
+Gameroom is an example Splinter application that allows you to set up private,
 multi-party circuits (called "gamerooms") and play tic tac toe with shared
-state, as managed by two-phase-commit consensus between the parties. This
-example application, as configured,  sets up Splinter nodes for two imaginary
+state, as managed by two-phase-commit consensus between the participants. This
+example application, as configured, sets up Splinter nodes for two imaginary
 organizations: Acme Corporation and Bubba Bakery.
 
 To learn about the Splinter functionality that powers this deceptively simple
