@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
 
 use crossbeam_channel::{bounded, Sender, TryRecvError};
@@ -29,11 +33,15 @@ use crate::events::{ReactorError, WebSocketError};
 pub struct Reactor {
     sender: Sender<ReactorMessage>,
     thread_handle: thread::JoinHandle<()>,
+    running: Arc<AtomicBool>,
 }
 
 impl Reactor {
     pub fn new() -> Self {
         let (sender, receiver) = bounded::<ReactorMessage>(10);
+        let running = Arc::new(AtomicBool::new(true));
+        let reactor_running = running.clone();
+
         let thread_handle = thread::spawn(move || {
             let mut runtime = match Runtime::new() {
                 Ok(runtime) => runtime,
@@ -78,6 +86,8 @@ impl Reactor {
                 connections = live_connections;
             }
 
+            reactor_running.store(false, Ordering::SeqCst);
+
             let shutdown_errors = connections
                 .into_iter()
                 .map(|connection| connection.shutdown())
@@ -107,12 +117,14 @@ impl Reactor {
         Self {
             thread_handle,
             sender,
+            running,
         }
     }
 
     pub fn igniter(&self) -> Igniter {
         Igniter {
             sender: self.sender.clone(),
+            reactor_running: self.running.clone(),
         }
     }
 
@@ -137,6 +149,7 @@ impl std::default::Default for Reactor {
 #[derive(Clone)]
 pub struct Igniter {
     sender: Sender<ReactorMessage>,
+    reactor_running: Arc<AtomicBool>,
 }
 
 impl Igniter {
@@ -167,6 +180,10 @@ impl Igniter {
         self.sender
             .send(ReactorMessage::StartWs(listen))
             .map_err(|err| WebSocketError::ListenError(format!("Failed to start ws {}", err)))
+    }
+
+    pub fn is_reactor_running(&self) -> bool {
+        self.reactor_running.load(Ordering::SeqCst)
     }
 }
 
