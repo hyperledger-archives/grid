@@ -56,17 +56,17 @@ const actions = {
        throw err;
      }
   },
-  async take({ commit, rootGetters }: any, {gameName, cellIndex, circuitID}: any) {
+  async take({ commit, rootGetters, dispatch }: any, {gameName, cellIndex, circuitID}: any) {
     const user = rootGetters['user/getUser'];
     const payload = new Buffer(`${gameName},take,${cellIndex + 1}`, 'utf-8');
     const gameAdress = calculateGameAddress(gameName);
     const transaction = createTransaction(payload, [gameAdress], [gameAdress], user);
     const batchBytes = createBatch([transaction], user);
     try {
-      const response = await submitBatch(batchBytes, circuitID);
       commit('setPendingTake', {gameName, cellIndex});
-      return response;
+      await submitBatch(batchBytes, circuitID);
     } catch (err) {
+      await dispatch('games/listGames', circuitID, {root: true});
       throw err;
     }
   },

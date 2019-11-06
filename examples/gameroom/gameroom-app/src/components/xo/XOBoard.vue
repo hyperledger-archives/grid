@@ -135,6 +135,14 @@ export default class XOBoard extends Vue {
   }
 
   canSelect(cell: string): boolean {
+    let submitting = false;
+    this.boardArray.forEach((boardCell) => {
+      if (boardCell === '?') {
+        submitting = true;
+      }
+    });
+    if (submitting) { return false; }
+
     if (this.disabled) {
       return false;
     }
