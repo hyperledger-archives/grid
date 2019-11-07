@@ -63,15 +63,15 @@ pub struct ScabbardState {
 
 impl ScabbardState {
     pub fn new(
-        db_path: &Path,
-        db_size: usize,
+        state_db_path: &Path,
+        state_db_size: usize,
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardStateError> {
         // Initialize the database
         let mut indexes = INDEXES.to_vec();
         indexes.push(CURRENT_STATE_ROOT_INDEX);
         let db = Box::new(LmdbDatabase::new(
-            LmdbContext::new(db_path, indexes.len(), Some(db_size))?,
+            LmdbContext::new(state_db_path, indexes.len(), Some(state_db_size))?,
             &indexes,
         )?);
 

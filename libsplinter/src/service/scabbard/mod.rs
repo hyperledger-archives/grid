@@ -69,9 +69,9 @@ impl Scabbard {
         // List of other scabbard services on the same circuit that this service shares state with
         peer_services: HashSet<String>,
         // The directory in which to create sabre's LMDB database
-        db_dir: &Path,
+        state_db_dir: &Path,
         // The size of sabre's LMDB database
-        db_size: usize,
+        state_db_size: usize,
         signature_verifier: Box<dyn SignatureVerifier>,
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
@@ -82,8 +82,8 @@ impl Scabbard {
         )
         .map(|digest| to_hex(&*digest))
         .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
-        let db_path = db_dir.join(format!("{}.lmdb", hash));
-        let state = ScabbardState::new(db_path.as_path(), db_size, admin_keys)
+        let state_db_path = state_db_dir.join(format!("{}-state.lmdb", hash));
+        let state = ScabbardState::new(state_db_path.as_path(), state_db_size, admin_keys)
             .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
         let shared = ScabbardShared::new(
             VecDeque::new(),
