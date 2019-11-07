@@ -200,7 +200,7 @@ pub mod tests {
                     )
                     .unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let _service_network_sender = registry.connect("service_a").unwrap();
     }
@@ -248,7 +248,7 @@ pub mod tests {
                     )
                     .unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let _service_network_sender = registry.connect("service_a").unwrap();
     }
@@ -296,7 +296,7 @@ pub mod tests {
                     )
                     .unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         registry.disconnect("service_a").unwrap();
     }

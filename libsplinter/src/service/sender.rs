@@ -417,7 +417,7 @@ pub mod tests {
                 };
                 network_sender.reply(&msg_context, b"test_message").unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let msg_bytes = match outgoing_receiver.recv() {
             Ok(msg_bytes) => msg_bytes,
@@ -455,7 +455,7 @@ pub mod tests {
             .spawn(move || {
                 network_sender.send("service_a", b"test_admin").unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let msg_bytes = match outgoing_receiver.recv() {
             Ok(msg_bytes) => msg_bytes,
@@ -499,7 +499,7 @@ pub mod tests {
                 // send message to shutdown the test
                 network_sender.send("service_b", b"shutdown").unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let msg_bytes = match outgoing_receiver.recv() {
             Ok(msg_bytes) => msg_bytes,
@@ -565,7 +565,7 @@ pub mod tests {
                 };
                 network_sender.reply(&msg_context, b"test_message").unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         let msg_bytes = match outgoing_receiver.recv() {
             Ok(msg_bytes) => msg_bytes,

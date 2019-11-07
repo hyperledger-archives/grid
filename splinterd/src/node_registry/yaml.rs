@@ -662,7 +662,7 @@ mod test {
             write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
 
             let registry = YamlNodeRegistry::new(test_yaml_file_path)
-                .expect("Failed to create YamlNodeRegistry");;
+                .expect("Failed to create YamlNodeRegistry");
 
             let result = registry.update_node("NodeNotInRegistry", HashMap::new());
             match result {

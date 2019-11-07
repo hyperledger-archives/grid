@@ -153,7 +153,7 @@ impl ServiceProcessor {
         // Starts the authorization process with the splinter node
         // If running over inproc connection, this is the only authorization message required
         let connect_request = create_connect_request()
-            .map_err(|err| process_err!(err, "unable to create connect request"))?;;
+            .map_err(|err| process_err!(err, "unable to create connect request"))?;
         self.mesh
             .send(Envelope::new(self.node_mesh_id, connect_request))
             .map_err(|err| process_err!(err, "unable to send connect request"))?;
@@ -645,7 +645,7 @@ pub mod tests {
                 processor.add_service(Box::new(service)).unwrap();
                 let _ = processor.start().unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         // this part of the test mimics the splinter daemon sending message to the connected
         // service
@@ -745,14 +745,14 @@ pub mod tests {
                 processor.add_service(Box::new(service)).unwrap();
                 let _ = processor.start().unwrap();
             })
-            .unwrap();;
+            .unwrap();
 
         // this part of the test mimics the splinter daemon sending message to the connected
         // service
         let connection = inproc_listener.accept().unwrap();
         network
             .add_peer("service_processor".to_string(), connection)
-            .unwrap();;
+            .unwrap();
 
         // Receive connect request from service
         let auth_request = get_auth_msg(network.recv().unwrap().payload().to_vec());
