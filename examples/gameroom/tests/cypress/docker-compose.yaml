@@ -22,9 +22,10 @@ services:
   gameroom-app-test:
     build:
       context: ../../../..
-      dockerfile: examples/gameroom/gameroom-app/Dockerfile
+      dockerfile: examples/gameroom/gameroom-app/Dockerfile-installed
       args:
         VUE_APP_BRAND: "acme"
+        REPO_VERSION: ${REPO_VERSION}
     image: gameroom-app-test
     container_name: gameroom-app-test
     environment:
@@ -50,7 +51,9 @@ services:
     container_name: gameroomd-acme
     build:
       context: ../../../..
-      dockerfile: ./examples/gameroom/daemon/Dockerfile
+      dockerfile: ./examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - cargo-registry:/root/.cargo/registry
     expose:
@@ -90,15 +93,20 @@ services:
       - ../:/project/tests
     build:
       context: ../../../..
-      dockerfile: splinterd/Dockerfile
+      dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
         splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
       "
 
   db-cypress-test:
-    image: postgres:alpine
+    image: gameroom-database
     container_name: db-cypress-test
+    build:
+      context: ../../../..
+      dockerfile: ./examples/gameroom/database/Dockerfile-installed
     restart: always
     expose:
       - 5432

@@ -46,7 +46,9 @@ services:
       - .:/project/tests
     build:
       context: ../../..
-      dockerfile: splinterd/Dockerfile
+      dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
         splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
@@ -66,3 +68,6 @@ services:
       POSTGRES_DB: gameroom_test
     volumes:
       - "../database/tables:/docker-entrypoint-initdb.d"
+    build:
+      context: ../../..
+      dockerfile: ./examples/gameroom/database/Dockerfile-installed

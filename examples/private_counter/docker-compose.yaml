@@ -20,7 +20,9 @@ services:
     image: splinterd:latest
     build:
         context: ../..
-        dockerfile: ./splinterd/Dockerfile
+        dockerfile: ./splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8043
       - 8044
@@ -44,7 +46,9 @@ services:
     image: splinterd:latest
     build:
         context: ../..
-        dockerfile: ./splinterd/Dockerfile
+        dockerfile: ./splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8045
       - 8046
@@ -68,7 +72,9 @@ services:
     image: splinterd:latest
     build:
         context: ../..
-        dockerfile: ./splinterd/Dockerfile
+        dockerfile: ./splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8047
       - 8048
@@ -93,7 +99,9 @@ services:
     container_name: private-counter-service-a
     build:
         context: ../..
-        dockerfile: ./examples/private_counter/service/Dockerfile
+        dockerfile: ./examples/private_counter/service/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
         - 8000
     ports:
@@ -115,7 +123,9 @@ services:
     container_name: private-counter-service-b
     build:
         context: ../..
-        dockerfile: ./examples/private_counter/service/Dockerfile
+        dockerfile: ./examples/private_counter/service/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
         - 8000
     ports:
@@ -137,7 +147,9 @@ services:
     container_name: private-counter-service-c
     build:
         context: ../..
-        dockerfile: ./examples/private_counter/service/Dockerfile
+        dockerfile: ./examples/private_counter/service/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
         - 8000
     ports:
@@ -158,8 +170,10 @@ services:
     image: pcounter:latest
     container_name: pcounter-local
     build:
-        context: .
-        dockerfile: ./cli/Dockerfile
+        context: ../..
+        dockerfile: ./examples/private_counter/cli/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     init: true
     entrypoint: |
       bash -c "
