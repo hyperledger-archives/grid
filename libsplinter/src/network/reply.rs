@@ -181,7 +181,7 @@ pub mod tests {
         thread::Builder::new()
             .name("test_no_correlation_id".to_string())
             .spawn(move || inbound_router.route("test", Ok((TestType, b"test_payload".to_vec()))))
-            .unwrap();;
+            .unwrap();
 
         let msg = match default_rx.recv() {
             Ok(msg_result) => msg_result.unwrap(),
@@ -202,7 +202,7 @@ pub mod tests {
         thread::Builder::new()
             .name("test_expect_reply".to_string())
             .spawn(move || inbound_router.route("test", Ok((TestType, b"test_payload".to_vec()))))
-            .unwrap();;
+            .unwrap();
 
         let msg = fut
             .get::<RawBytes>()

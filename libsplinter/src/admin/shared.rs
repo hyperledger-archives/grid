@@ -147,7 +147,7 @@ impl AdminServiceShared {
         };
 
         let open_proposals = OpenProposals::new(storage_location)
-            .map_err(|err| ServiceError::UnableToCreate(Box::new(err)))?;;
+            .map_err(|err| ServiceError::UnableToCreate(Box::new(err)))?;
 
         Ok(AdminServiceShared {
             node_id: node_id.to_string(),
