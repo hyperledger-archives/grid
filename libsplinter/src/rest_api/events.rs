@@ -15,6 +15,7 @@
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Debug;
+use std::time::Duration;
 
 use actix::prelude::*;
 use actix_web_actors::ws::{self, CloseCode, CloseReason};
@@ -26,6 +27,9 @@ use crate::rest_api::{
     errors::{EventHistoryError, ResponseError},
     Request, Response,
 };
+
+/// Wait time in seconds between ping messages being sent by the ws server to the ws client
+const PING_INTERVAL: u64 = 30;
 
 /// `EventDealer` is responsible for creating and managing WebSockets for Services that need to
 /// push messages to a web based client.
@@ -164,6 +168,10 @@ impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
         if let Some(recv) = self.recv.take() {
             debug!("Starting Event Websocket");
             ctx.add_stream(recv);
+            ctx.run_interval(Duration::from_secs(PING_INTERVAL), move |_, ctx| {
+                debug!("Sending Ping");
+                ctx.ping("");
+            });
         } else {
             warn!("Event dealer websocket was unexpectedly started twice; ignoring");
         }
@@ -184,6 +192,7 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
                     description: Some("Received close frame closing normally".into()),
                     code: CloseCode::Normal,
                 }));
+                debug!("Received close message");
                 ctx.stop()
             }
             ws::Message::Nop => (),

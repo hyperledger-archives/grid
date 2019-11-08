@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
 
-use crossbeam_channel::{bounded, Sender};
+use crossbeam_channel::{bounded, Sender, TryRecvError};
 use futures::Future;
 use tokio::runtime::Runtime;
 
-use crate::events::ws::{Listen, ParseBytes, WebSocketClient};
+use crate::events::ws::{Context, Listen, ParseBytes, ShutdownHandle, WebSocketClient};
 use crate::events::{ReactorError, WebSocketError};
 
 /// Reactor
@@ -29,11 +33,15 @@ use crate::events::{ReactorError, WebSocketError};
 pub struct Reactor {
     sender: Sender<ReactorMessage>,
     thread_handle: thread::JoinHandle<()>,
+    running: Arc<AtomicBool>,
 }
 
 impl Reactor {
     pub fn new() -> Self {
         let (sender, receiver) = bounded::<ReactorMessage>(10);
+        let running = Arc::new(AtomicBool::new(true));
+        let reactor_running = running.clone();
+
         let thread_handle = thread::spawn(move || {
             let mut runtime = match Runtime::new() {
                 Ok(runtime) => runtime,
@@ -45,7 +53,7 @@ impl Reactor {
 
             let mut connections = Vec::new();
             loop {
-                match receiver.recv() {
+                match receiver.try_recv() {
                     Ok(ReactorMessage::StartWs(listen)) => {
                         let (future, handle) = listen.into_shutdown_handle();
                         runtime.spawn(futures::lazy(|| future.map_err(|_| ())));
@@ -56,11 +64,29 @@ impl Reactor {
                     }
                     Ok(ReactorMessage::Stop) => break,
                     Err(err) => {
-                        error!("Failed to receive message {}", err);
-                        break;
+                        if let TryRecvError::Disconnected = err {
+                            error!("Failed to receive message {}", err);
+                            break;
+                        }
                     }
                 }
+
+                let (live_connections, closed_connections): (
+                    Vec<ShutdownHandle>,
+                    Vec<ShutdownHandle>,
+                ) = connections.into_iter().partition(|conn| conn.running());
+                for conn in closed_connections {
+                    match conn.shutdown() {
+                        Ok(()) => info!("A ws connection closed"),
+                        Err(err) => {
+                            error!("A ws connection closed unexpectedly with error {}", err)
+                        }
+                    }
+                }
+                connections = live_connections;
             }
+
+            reactor_running.store(false, Ordering::SeqCst);
 
             let shutdown_errors = connections
                 .into_iter()
@@ -69,7 +95,7 @@ impl Reactor {
                 .collect::<Vec<WebSocketError>>();
 
             if let Err(err) = runtime
-                .shutdown_now()
+                .shutdown_on_idle()
                 .wait()
                 .map_err(|_| {
                     ReactorError::ReactorShutdownError(
@@ -91,16 +117,19 @@ impl Reactor {
         Self {
             thread_handle,
             sender,
+            running,
         }
     }
 
     pub fn igniter(&self) -> Igniter {
         Igniter {
             sender: self.sender.clone(),
+            reactor_running: self.running.clone(),
         }
     }
 
     pub fn shutdown(self) -> Result<(), ReactorError> {
+        debug!("Received shutdown");
         self.sender.send(ReactorMessage::Stop).map_err(|_| {
             ReactorError::ReactorShutdownError("Failed to send shutdown message".to_string())
         })?;
@@ -121,6 +150,7 @@ impl std::default::Default for Reactor {
 #[derive(Clone)]
 pub struct Igniter {
     sender: Sender<ReactorMessage>,
+    reactor_running: Arc<AtomicBool>,
 }
 
 impl Igniter {
@@ -128,8 +158,9 @@ impl Igniter {
         &self,
         ws: &WebSocketClient<T>,
     ) -> Result<(), WebSocketError> {
+        let context = Context::new(self.clone(), ws.clone());
         self.sender
-            .send(ReactorMessage::StartWs(ws.listen(self.clone())?))
+            .send(ReactorMessage::StartWs(ws.listen(context)?))
             .map_err(|err| {
                 WebSocketError::ListenError(format!("Failed to start ws {}: {}", ws.url(), err))
             })
@@ -144,6 +175,16 @@ impl Igniter {
             .map_err(|err| {
                 ReactorError::RequestSendError(format!("Failed to send request to reactor {}", err))
             })
+    }
+
+    pub fn start_ws_with_listen(&self, listen: Listen) -> Result<(), WebSocketError> {
+        self.sender
+            .send(ReactorMessage::StartWs(listen))
+            .map_err(|err| WebSocketError::ListenError(format!("Failed to start ws {}", err)))
+    }
+
+    pub fn is_reactor_running(&self) -> bool {
+        self.reactor_running.load(Ordering::SeqCst)
     }
 }
 
