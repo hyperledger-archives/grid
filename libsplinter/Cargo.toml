@@ -68,3 +68,11 @@ zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
+
+[package.metadata.docs.rs]
+features = [
+    "zmq-transport",
+    "ursa-compat",
+    "sawtooth-signing-compat",
+    "events",
+  ]
