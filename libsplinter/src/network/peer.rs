@@ -98,6 +98,7 @@ impl PeerConnector {
             return Ok(());
         }
 
+        debug!("Connecting to {} at {}...", node_id, endpoint);
         let connection = transport
             .connect(&endpoint)
             .map_err(|err| PeerConnectorError::connection_failed(node_id, format!("{:?}", err)))?;
