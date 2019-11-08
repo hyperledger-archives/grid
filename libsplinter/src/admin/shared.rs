@@ -351,7 +351,10 @@ impl AdminServiceShared {
             circuit_payload.get_header(),
         )
         .map_err(MarshallingError::from)?;
-
+        self.validate_circuit_management_payload(&circuit_payload, &header)?;
+        self.verify_signature(&circuit_payload).map_err(|_| {
+            AdminSharedError::ValidationFailed(String::from("Unable to verify signature"))
+        })?;
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 let mut create_request = circuit_payload.take_circuit_create_request();
@@ -441,6 +444,9 @@ impl AdminServiceShared {
                 self.current_consensus_verifiers = verifiers;
                 Ok((expected_hash, circuit_proposal))
             }
+            CircuitManagementPayload_Action::ACTION_UNSET => Err(
+                AdminSharedError::ValidationFailed("Action must be set".to_string()),
+            ),
             unknown_action => Err(AdminSharedError::ValidationFailed(format!(
                 "Unable to handle {:?}",
                 unknown_action
@@ -514,24 +520,28 @@ impl AdminServiceShared {
     pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
         debug!("Payload submitted: {:?}", payload);
 
-        match self.verify_signature(&payload) {
-            Ok(_) => (),
-            Err(ServiceError::UnableToHandleMessage(_)) => (),
-            Err(err) => return Err(err),
-        };
-
         let header =
             protobuf::parse_from_bytes::<CircuitManagementPayload_Header>(payload.get_header())?;
+        self.validate_circuit_management_payload(&payload, &header)
+            .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+        self.verify_signature(&payload)?;
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 self.propose_circuit(payload)
             }
             CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => self.propose_vote(payload),
-            _ => {
-                debug!("Unhandled action: {:?}", header.get_action());
-                Ok(())
+            CircuitManagementPayload_Action::ACTION_UNSET => {
+                Err(ServiceError::UnableToHandleMessage(Box::new(
+                    AdminSharedError::ValidationFailed(String::from("No action specified")),
+                )))
             }
+            unknown_action => Err(ServiceError::UnableToHandleMessage(Box::new(
+                AdminSharedError::ValidationFailed(format!(
+                    "Unable to handle {:?}",
+                    unknown_action
+                )),
+            ))),
         }
     }
 
@@ -1001,6 +1011,42 @@ impl AdminServiceShared {
         Ok(())
     }
 
+    fn validate_circuit_management_payload(
+        &self,
+        payload: &CircuitManagementPayload,
+        header: &CircuitManagementPayload_Header,
+    ) -> Result<(), AdminSharedError> {
+        // Validate payload signature
+        if payload.get_signature().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload signature must be set".to_string(),
+            ));
+        };
+
+        // Validate the payload header
+        if payload.get_header().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload header must be set".to_string(),
+            ));
+        };
+
+        // Validate the header, requester field is set
+        if header.get_requester().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload must have a requester".to_string(),
+            ));
+        };
+
+        // Validate the header, requester_node_id is set
+        if header.get_requester_node_id().is_empty() {
+            return Err(AdminSharedError::ValidationFailed(
+                "CircuitManagementPayload must have a requester node id".to_string(),
+            ));
+        };
+
+        Ok(())
+    }
+
     fn check_approved(
         &self,
         proposal: &CircuitProposal,
@@ -1350,7 +1396,10 @@ mod tests {
         AuthorizationMessage, AuthorizationMessageType, AuthorizedMessage,
     };
     use crate::protos::network::{NetworkMessage, NetworkMessageType};
-    use crate::signing::hash::HashVerifier;
+    use crate::signing::{
+        hash::{HashSigner, HashVerifier},
+        Signer,
+    };
     use crate::storage::get_storage;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
@@ -2329,7 +2378,221 @@ mod tests {
         if let Ok(_) =
             admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
         {
-            panic!("Should have been invalid becasue the circuit hash does not match");
+            panic!("Should have been invalid because the circuit hash does not match");
+        }
+    }
+
+    #[test]
+    // test that the validate_circuit_management_payload method returns an error in case the
+    // signature is empty.
+    fn test_validate_circuit_management_payload_signature() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+
+        let circuit = setup_test_circuit();
+
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester_node_id("node_b".to_string());
+        let mut payload = admin::CircuitManagementPayload::new();
+        payload.set_signature(Vec::new());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        payload.set_circuit_create_request(request);
+
+        // Asserting the payload will be deemed invalid as the signature is an empty vec.
+        if let Ok(_) = shared.validate_circuit_management_payload(&payload, &header) {
+            panic!("Should have been invalid due to empty signature");
+        }
+
+        payload.set_signature(HashSigner.sign(&payload.header).unwrap());
+        // Asserting the payload passed through validation.
+        if let Err(_) = shared.validate_circuit_management_payload(&payload, &header) {
+            panic!("Should have been valid");
+        }
+    }
+
+    #[test]
+    // test that the validate_circuit_management_payload method returns an error in case the header is empty.
+    fn test_validate_circuit_management_payload_header() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+
+        let circuit = setup_test_circuit();
+
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester_node_id("node_b".to_string());
+        let mut payload = admin::CircuitManagementPayload::new();
+        payload.set_signature(HashSigner.sign(&payload.header).unwrap());
+        payload.set_circuit_create_request(request);
+
+        // Asserting the payload will be deemed invalid as the header is empty.
+        match shared.validate_circuit_management_payload(&payload, &header) {
+            Err(err) => assert!(err
+                .to_string()
+                .contains("CircuitManagementPayload header must be set")),
+            _ => panic!("Should have been invalid because empty requester field"),
+        }
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        // Asserting the payload passed through validation, and failed at a further step.
+        if let Err(_) = shared.validate_circuit_management_payload(&payload, &header) {
+            panic!("Should have been valid");
+        }
+    }
+
+    #[test]
+    // test that the validate_circuit_management_payload method returns an error in case the header
+    // requester field is empty.
+    fn test_validate_circuit_management_header_requester() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+
+        let circuit = setup_test_circuit();
+
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+        header.set_requester_node_id("node_b".to_string());
+        let mut payload = admin::CircuitManagementPayload::new();
+        payload.set_signature(HashSigner.sign(&payload.header).unwrap());
+        payload.set_circuit_create_request(request);
+
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        // Asserting the payload will be deemed invalid as the header is empty.
+        match shared.validate_circuit_management_payload(&payload, &header) {
+            Err(err) => assert!(err
+                .to_string()
+                .contains("CircuitManagementPayload must have a requester")),
+            _ => panic!("Should have been invalid because empty requester field"),
+        }
+
+        header.set_requester(b"test_signer_b".to_vec());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        // Asserting the payload passed through validation, and failed at a further step.
+        if let Err(_) = shared.validate_circuit_management_payload(&payload, &header) {
+            panic!("Should have been valid");
+        }
+    }
+
+    #[test]
+    // test that the CircuitManagementPayload returns an error in case the header requester_node_id
+    // field is empty.
+    fn test_validate_circuit_management_header_requester_node_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+
+        // set up key registry
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+
+        let circuit = setup_test_circuit();
+
+        let mut request = admin::CircuitCreateRequest::new();
+        request.set_circuit(circuit);
+
+        let mut header = admin::CircuitManagementPayload_Header::new();
+        header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
+        header.set_requester(b"test_signer_b".to_vec());
+        let mut payload = admin::CircuitManagementPayload::new();
+        payload.set_signature(HashSigner.sign(&payload.header).unwrap());
+        payload.set_circuit_create_request(request);
+
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        // Asserting the payload will be deemed invalid as the header is empty.
+        match shared.validate_circuit_management_payload(&payload, &header) {
+            Err(err) => assert!(err
+                .to_string()
+                .contains("CircuitManagementPayload must have a requester node id")),
+            _ => panic!("Should have been invalid because empty requester field"),
+        }
+
+        header.set_requester_node_id("node_b".to_string());
+        payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
+        // Asserting the payload passed through validation, and failed at a further step.
+        if let Err(_) = shared.validate_circuit_management_payload(&payload, &header) {
+            panic!("Should have been valid");
         }
     }
 

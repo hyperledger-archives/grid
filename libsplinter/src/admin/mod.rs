@@ -391,7 +391,10 @@ mod tests {
         network::{NetworkMessage, NetworkMessageType},
     };
     use crate::service::{error, ServiceNetworkRegistry, ServiceNetworkSender};
-    use crate::signing::hash::HashVerifier;
+    use crate::signing::{
+        hash::{HashSigner, HashVerifier},
+        Signer,
+    };
     use crate::storage::get_storage;
     use crate::transport::{
         ConnectError, Connection, DisconnectError, RecvError, SendError, Transport,
@@ -474,7 +477,7 @@ mod tests {
 
         let mut payload = admin::CircuitManagementPayload::new();
 
-        payload.set_signature(Vec::new());
+        payload.set_signature(HashSigner.sign(&payload.header).unwrap());
         payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
         payload.set_circuit_create_request(request);
 
