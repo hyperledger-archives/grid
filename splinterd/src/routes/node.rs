@@ -18,7 +18,7 @@ use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpRes
 use splinter::futures::{future::IntoFuture, Future};
 use splinter::{
     node_registry::{error::NodeRegistryError, Node, NodeRegistry},
-    rest_api::{Method, Resource, RestResourceProvider},
+    rest_api::{Method, Resource},
 };
 use std::collections::HashMap;
 
@@ -30,40 +30,19 @@ pub struct ListNodesResponse {
     paging: Paging,
 }
 
-#[derive(Clone)]
-pub struct NodeRegistryManager {
-    node_id: String,
-    registry: Box<dyn NodeRegistry>,
-}
-
-impl NodeRegistryManager {
-    pub fn new(node_id: String, registry: Box<dyn NodeRegistry>) -> Self {
-        Self { node_id, registry }
-    }
-}
-
-impl RestResourceProvider for NodeRegistryManager {
-    fn resources(&self) -> Vec<Resource> {
-        vec![
-            make_fetch_node_resource(self.registry.clone()),
-            make_list_nodes_resource(self.registry.clone()),
-        ]
-    }
-}
-
-fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+pub fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     Resource::new(Method::Get, "/nodes/{identity}", move |r, _| {
         fetch_node(r, web::Data::new(registry.clone()))
     })
 }
 
-fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+pub fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     Resource::new(Method::Get, "/nodes", move |r, _| {
         list_nodes(r, web::Data::new(registry.clone()))
     })
 }
 
-pub fn fetch_node(
+fn fetch_node(
     request: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
@@ -86,7 +65,7 @@ pub fn fetch_node(
     )
 }
 
-pub fn list_nodes(
+fn list_nodes(
     req: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {

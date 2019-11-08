@@ -112,10 +112,6 @@ impl SplinterDaemon {
 
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
-        let registry = create_node_registry(&self.registry_config)?;
-
-        let node_registry_manager =
-            routes::NodeRegistryManager::new(self.node_id.clone(), registry);
 
         // Load initial state from the configured storage location and create the new
         // SplinterState from the retrieved circuit directory
@@ -343,6 +339,8 @@ impl SplinterDaemon {
         })?;
         let key_registry_manager = routes::KeyRegistryManager::new(key_registry);
 
+        let node_registry = create_node_registry(&self.registry_config)?;
+
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
 
@@ -359,7 +357,8 @@ impl SplinterDaemon {
             .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
                 routes::get_status(node_id.clone(), service_endpoint.clone())
             }))
-            .add_resources(node_registry_manager.resources())
+            .add_resource(routes::make_fetch_node_resource(node_registry.clone()))
+            .add_resource(routes::make_list_nodes_resource(node_registry.clone()))
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources);
