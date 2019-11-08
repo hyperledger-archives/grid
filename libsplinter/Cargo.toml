@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[features]
-zmq-transport = ["zmq"]
-ursa-compat = ["ursa"]
-sawtooth-signing-compat = ["sawtooth-sdk"]
-events = ["hyper", "tokio", "awc"]
-
 [package]
 name = "splinter"
 version = "0.3.6"
@@ -62,3 +56,15 @@ tempdir = "0.3"
 [build-dependencies]
 protoc-rust = "2"
 glob = "0.2"
+
+[features]
+default = []
+
+experimental = [
+    "zmq-transport"
+]
+
+zmq-transport = ["zmq"]
+ursa-compat = ["ursa"]
+sawtooth-signing-compat = ["sawtooth-sdk"]
+events = ["hyper", "tokio", "awc"]
