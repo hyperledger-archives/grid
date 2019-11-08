@@ -70,24 +70,19 @@ impl YamlNodeRegistry {
 }
 
 impl NodeRegistry for YamlNodeRegistry {
-    fn create_node(
-        &self,
-        identity: &str,
-        data: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError> {
+    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
         let mut nodes = self
             .get_cached_nodes()
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
-        if nodes.iter().any(|node| node.identity == identity) {
+        if nodes
+            .iter()
+            .any(|existing_node| existing_node.identity == node.identity)
+        {
             return Err(NodeRegistryError::DuplicateNodeError(format!(
                 "Node with ID {} already exists",
-                identity
+                node.identity,
             )));
         }
-        let node = Node {
-            identity: identity.to_string(),
-            metadata: data,
-        };
 
         nodes.push(node);
 
@@ -528,10 +523,10 @@ mod test {
     }
 
     ///
-    /// Verifies that create_node successfully adds a new node to the yaml file.
+    /// Verifies that add_node successfully adds a new node to the yaml file.
     ///
     #[test]
-    fn test_list_create_node_ok() {
+    fn test_list_add_node_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&vec![], test_yaml_file_path);
 
@@ -541,7 +536,7 @@ mod test {
             let node = get_node_1();
 
             registry
-                .create_node(&node.identity, node.metadata.clone())
+                .add_node(node.clone())
                 .expect("Failed to add not to file.");
 
             let nodes = registry
@@ -555,11 +550,11 @@ mod test {
     }
 
     ///
-    /// Verifies that create_node returns DuplicateNodeError when a node with the same identity already
+    /// Verifies that add_node returns DuplicateNodeError when a node with the same identity already
     /// exists in the yaml file.
     ///
     #[test]
-    fn test_list_create_node_duplicate_error() {
+    fn test_list_add_node_duplicate_error() {
         run_test(|test_yaml_file_path| {
             write_to_file(&vec![get_node_1()], test_yaml_file_path);
 
@@ -568,7 +563,7 @@ mod test {
 
             let node = get_node_1();
 
-            let result = registry.create_node(&node.identity, node.metadata.clone());
+            let result = registry.add_node(node.clone());
 
             match result {
                 Ok(_) => panic!("Duplicate node exists. Error should be returned"),
