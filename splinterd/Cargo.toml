@@ -47,10 +47,12 @@ default = []
 experimental = [
     "config-builder",
     "config-toml",
+    "circuit-read",
 ]
 
 config-builder = []
 config-toml = ["config-builder"]
+circuit-read = []
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

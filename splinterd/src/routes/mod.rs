@@ -13,10 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "circuit-read")]
+mod circuit;
 mod keys;
 mod node;
 mod status;
 
+#[cfg(feature = "circuit-read")]
+pub use circuit::CircuitResourceProvider;
 pub use keys::KeyRegistryManager;
 pub use node::*;
 use percent_encoding::{AsciiSet, CONTROLS};
