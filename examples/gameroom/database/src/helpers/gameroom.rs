@@ -15,8 +15,8 @@
 use std::time::SystemTime;
 
 use crate::models::{
-    Gameroom, GameroomMember, GameroomProposal, NewGameroomMember, NewGameroomProposal,
-    NewGameroomService, NewProposalVoteRecord,
+    ActiveGameroom, Gameroom, GameroomMember, GameroomProposal, GameroomService, NewGameroomMember,
+    NewGameroomProposal, NewGameroomService, NewProposalVoteRecord,
 };
 use crate::schema::{
     gameroom, gameroom_member, gameroom_proposal, gameroom_service, proposal_vote_record,
@@ -102,6 +102,42 @@ pub fn update_gameroom_proposal_status(
         ))
         .execute(conn)
         .map(|_| ())
+}
+
+pub fn gameroom_service_is_active(conn: &PgConnection, circuit_id: &str) -> QueryResult<bool> {
+    gameroom_service::table
+        .filter(
+            gameroom_service::circuit_id
+                .eq(circuit_id)
+                .and(gameroom_service::status.eq("Active")),
+        )
+        .first::<GameroomService>(conn)
+        .map(|_| true)
+        .or_else(|err| if err == NotFound { Ok(false) } else { Err(err) })
+}
+
+pub fn fetch_active_gamerooms(
+    conn: &PgConnection,
+    node_id: &str,
+) -> QueryResult<Vec<ActiveGameroom>> {
+    gameroom_service::table
+        .inner_join(
+            gameroom_proposal::table
+                .on(gameroom_service::circuit_id.eq(gameroom_proposal::circuit_id)),
+        )
+        .select((
+            gameroom_service::circuit_id,
+            gameroom_service::service_id,
+            gameroom_service::status,
+            gameroom_proposal::requester,
+            gameroom_proposal::requester_node_id,
+        ))
+        .filter(
+            gameroom_service::status
+                .eq("Active")
+                .and(gameroom_service::allowed_nodes.contains(vec![node_id])),
+        )
+        .load(conn)
 }
 
 pub fn update_gameroom_status(

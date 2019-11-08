@@ -17,6 +17,8 @@ version: '3'
 volumes:
   cargo-registry:
   key-registry:
+  acme-var:
+  bubba-var:
 
 services:
 
@@ -115,6 +117,7 @@ services:
         - 8088:8085
       volumes:
         - key-registry:/key_registry_shared
+        - acme-var:/var/lib/splinter
         - ./splinterd-config:/configs
         - ./node_registry:/node_registry
       entrypoint: |
@@ -211,6 +214,7 @@ services:
         - key-registry:/key_registry_shared
         - ./splinterd-config:/configs
         - ./node_registry:/node_registry
+        - bubba-var:/var/lib/splinter
       entrypoint: |
         bash -c "
           # We need to wait for the generated key registry to be available
