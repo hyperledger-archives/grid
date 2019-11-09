@@ -18,11 +18,14 @@ use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::collections::{BTreeSet, HashSet};
 use std::hash::Hash;
+use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
 use super::{DurableOrderedSet, DurableRange, DurableSet, DurableSetError};
 
 /// An in-memory, DurableSet, backed by a HashSet.
+///
+/// This set is unbounded.
 #[derive(Default)]
 pub struct DurableHashSet<V: Hash + Eq> {
     inner: Arc<Mutex<HashSet<V>>>,
@@ -116,9 +119,13 @@ impl<V: Send + Clone> Iterator for SnapShotIter<V> {
 }
 
 /// An in-memory, DurableOrderedSet, backed by a BTreeSet.
+///
+/// This set is bounded, where in it will drop the first item in the set, based on the natural
+/// order of the items stored.
 #[derive(Default, Clone)]
 pub struct DurableBTreeSet<V: Ord + Send> {
     inner: Arc<Mutex<BTreeSet<V>>>,
+    bound: usize,
 }
 
 impl<V: Ord + Send> DurableBTreeSet<V> {
@@ -129,6 +136,18 @@ impl<V: Ord + Send> DurableBTreeSet<V> {
     {
         Box::new(Self {
             inner: Arc::new(Mutex::new(BTreeSet::new())),
+            bound: std::usize::MAX,
+        })
+    }
+
+    pub fn new_boxed_with_bound<Index>(bound: NonZeroUsize) -> Box<dyn DurableOrderedSet<V, Index>>
+    where
+        Index: Ord + Send + Clone,
+        V: Send + Ord + Borrow<Index> + Clone + 'static,
+    {
+        Box::new(Self {
+            inner: Arc::new(Mutex::new(BTreeSet::new())),
+            bound: bound.get(),
         })
     }
 }
@@ -141,12 +160,16 @@ where
 
     /// Add an item to the set.
     fn add(&mut self, item: Self::Item) -> Result<(), DurableSetError> {
-        self.inner
-            .lock()
-            .map_err(|_| {
-                DurableSetError::new("Poisoned lock error occurred while attempting to insert item")
-            })?
-            .insert(item);
+        let mut set = self.inner.lock().map_err(|_| {
+            DurableSetError::new("Poisoned lock error occurred while attempting to insert item")
+        })?;
+
+        if set.len() == self.bound {
+            let rm_lowest = set.iter().next().cloned().unwrap();
+            set.remove(&rm_lowest);
+        }
+
+        set.insert(item);
 
         Ok(())
     }
