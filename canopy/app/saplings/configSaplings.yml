@@ -1,0 +1,4 @@
+- namespace: login
+  runtimeFiles:
+    - 0.0.0.0:8675/loginRegisterSapling.js
+  workerFiles: []
