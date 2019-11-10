@@ -27,8 +27,10 @@ services:
     command: |
         bash -c "
             cargo test && \
+            echo \"Running experimental feature tests...\" && \
+            (cd libsplinter && cargo test --features experimental) &&
+            (cd splinterd && cargo test --features experimental) &&
             echo \"Running optional feature tests...\" && \
-            (cd libsplinter && cargo test --features zmq-transport) &&
             cargo test signing::sawtooth --manifest-path libsplinter/Cargo.toml \
                 --features \"sawtooth-signing-compat\"
         "
