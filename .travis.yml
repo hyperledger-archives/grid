@@ -34,23 +34,26 @@ jobs:
     - stage: Lint Gameroom Client
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-gameroom-client
-    - stage: Lint Splinter
+
+    - stage: Run Lint/Clippy on Splinter
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
-    - stage: Run Clippy on Splinter
+    - stage: Run Lint/Clippy on Splinter
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit clippy-splinter
-    - stage: Run Splinter Unit Tests
+
+    - stage: Run Splinter/Gameroom Unit Tests
       before_script:
         - set -e
-        - docker-compose -f tests/test-splinter.yaml build
       script:
         - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-splinter
-    - stage: Run Gameroom Tests
+    - stage: Run Splinter/Gameroom Unit Tests
       before_script:
         - set -e
-        - docker-compose -f examples/gameroom/tests/docker-compose.yaml build
-        - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml build
       script:
         - docker-compose -f examples/gameroom/tests/docker-compose.yaml up --abort-on-container-exit
+    - stage: Run Splinter/Gameroom Unit Tests
+      before_script:
+        - set -e
+      script:
         - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit

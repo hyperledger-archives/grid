@@ -28,7 +28,9 @@ services:
       - ./splinterd/sample_node_registries:/node_registries
     build:
       context: .
-      dockerfile: splinterd/Dockerfile
+      dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
         splinterd \

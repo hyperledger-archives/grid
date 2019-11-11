@@ -20,7 +20,9 @@ services:
     image: splinterd:latest
     build:
         context: ../..
-        dockerfile: ./splinterd/Dockerfile
+        dockerfile: ./splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8043
       - 8044
@@ -44,7 +46,9 @@ services:
     image: splinterd:latest
     build:
         context: ../..
-        dockerfile: ./splinterd/Dockerfile
+        dockerfile: ./splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8045
       - 8046
@@ -69,7 +73,9 @@ services:
     container_name: private-xo-service-a
     build:
         context: ../..
-        dockerfile: ./examples/private_xo/Dockerfile
+        dockerfile: ./examples/private_xo/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
         - 8000
     ports:
@@ -90,7 +96,9 @@ services:
     container_name: private-xo-service-b
     build:
         context: ../..
-        dockerfile: ./examples/private_xo/Dockerfile
+        dockerfile: ./examples/private_xo/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
     expose:
         - 8000
     ports:

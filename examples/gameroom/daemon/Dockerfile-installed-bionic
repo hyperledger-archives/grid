@@ -12,65 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic as BUILDER
-
-RUN apt-get update \
- && apt-get install -y \
-    curl \
-    gcc \
-    g++ \
-    libpq-dev \
-    libssl-dev \
-    libzmq3-dev \
-    openssl \
-    pkg-config \
-    unzip \
-    postgresql-client \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-ENV PATH=$PATH:/root/.cargo/bin
-
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
- && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-# Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
-
-RUN mkdir /build
-
-# Copy dependencies
-COPY examples/gameroom/database /build/examples/gameroom/database
-COPY protos /build/protos
-COPY libsplinter /build/libsplinter
-
-# Create empty cargo project
-WORKDIR /build/examples/gameroom
-RUN USER=root cargo new --bin daemon
-
-# Copy over Cargo.toml file
-COPY examples/gameroom/daemon/Cargo.toml /build/examples/gameroom/daemon/Cargo.toml
-
-# Do a release build to cache dependencies
-WORKDIR /build/examples/gameroom/daemon
-RUN cargo build --release
-
-# Remove the auto-generated .rs files and the built files
-WORKDIR /build
-RUN rm */src/*.rs
-RUN rm examples/gameroom/daemon/target/release/gameroom* examples/gameroom/daemon/target/release/deps/gameroom*
+FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
-COPY examples/gameroom/daemon/packaging /build/examples/gameroom/daemon/packaging
-COPY examples/gameroom/daemon/src /build/examples/gameroom/daemon/src
-COPY libsplinter/src /build/libsplinter/src
+COPY examples/gameroom/database /build/examples/gameroom/database
+COPY protos /build/protos
+COPY examples/gameroom/daemon/ /build/examples/gameroom/daemon
+COPY libsplinter /build/libsplinter
 COPY protos/ /build/protos
-
-RUN cargo install cargo-deb
 
 # Build the project
 WORKDIR /build/examples/gameroom/daemon
@@ -87,7 +36,7 @@ RUN apt-get update \
     postgresql-client \
     unzip
 
-COPY --from=BUILDER /build/examples/gameroom/daemon/target/debian/gameroom*.deb /tmp
+COPY --from=BUILDER /build/target/debian/gameroom*.deb /tmp
 
 RUN apt-get update \
  && dpkg -i /tmp/gameroom*.deb || true \

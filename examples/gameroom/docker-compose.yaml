@@ -26,7 +26,9 @@ services:
         image: splinter-cli
         build:
           context: ../..
-          dockerfile: ./cli/Dockerfile
+          dockerfile: ./cli/Dockerfile-installed-${DISTRO}
+          args:
+            - REPO_VERSION=${REPO_VERSION}
         volumes:
           - key-registry:/key_registry
           - ./key_registry:/input
@@ -42,8 +44,13 @@ services:
           "
 
     db-acme:
-      image: postgres:alpine
+      image: gameroom-database
       container_name: db-acme
+      build:
+        context: ../..
+        dockerfile: ./examples/gameroom/database/Dockerfile-installed
+        args:
+          - REPO_VERSION=${REPO_VERSION}
       restart: always
       expose:
         - 5432
@@ -59,9 +66,10 @@ services:
     gameroom-app-acme:
       build:
         context: ../..
-        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile
+        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile-installed
         args:
           VUE_APP_BRAND: "acme"
+          REPO_VERSION: ${REPO_VERSION}
       image: gameroom-app-acme
       container_name: gameroom-app-acme
       environment:
@@ -76,7 +84,9 @@ services:
         container_name: gameroomd-acme
         build:
           context: ../..
-          dockerfile: ./examples/gameroom/daemon/Dockerfile
+          dockerfile: ./examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+          args:
+            - REPO_VERSION=${REPO_VERSION}
         volumes:
           - cargo-registry:/root/.cargo/registry
         expose:
@@ -107,7 +117,9 @@ services:
       container_name: splinterd-node-acme
       build:
         context: ../..
-        dockerfile: splinterd/Dockerfile
+        dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
       expose:
         - 8080
         - 8044
@@ -136,8 +148,13 @@ services:
         "
 
     db-bubba:
-      image: postgres:alpine
+      image: gameroom-database
       container_name: db-bubba
+      build:
+        context: ../..
+        dockerfile: ./examples/gameroom/database/Dockerfile-installed
+        args:
+          - REPO_VERSION=${REPO_VERSION}
       restart: always
       expose:
         - 5432
@@ -153,9 +170,10 @@ services:
     gameroom-app-bubba:
       build:
         context: ../..
-        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile
+        dockerfile: ./examples/gameroom/gameroom-app/Dockerfile-installed
         args:
           VUE_APP_BRAND: "bubba"
+          REPO_VERSION: ${REPO_VERSION}
       image: gameroom-app-bubba
       container_name: gameroom-app-bubba
       environment:
@@ -170,7 +188,9 @@ services:
         container_name: gameroomd-bubba
         build:
           context: ../..
-          dockerfile: ./examples/gameroom/daemon/Dockerfile
+          dockerfile: ./examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
+          args:
+            - REPO_VERSION=${REPO_VERSION}
         volumes:
           - cargo-registry:/root/.cargo/registry
         expose:
@@ -202,7 +222,9 @@ services:
       container_name: splinterd-node-bubba
       build:
         context: ../..
-        dockerfile: splinterd/Dockerfile
+        dockerfile: splinterd/Dockerfile-installed-${DISTRO}
+        args:
+          - REPO_VERSION=${REPO_VERSION}
       expose:
         - 8080
         - 8044

@@ -12,27 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic
+FROM splintercommunity/splinter-dev
 
 RUN apt-get update \
  && apt-get install -y \
- curl \
- gcc \
- libpq-dev \
- libssl-dev \
- libzmq3-dev \
- pkg-config \
- unzip \
  postgresql-client
-
-
-# For Building Protobufs
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
- && curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
- && unzip protoc-3.7.1-linux-x86_64.zip -d protoc3 \
- && rm protoc-3.7.1-linux-x86_64.zip
-
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin \
-    CARGO_INCREMENTAL=0
 
 WORKDIR /project/splinter/
