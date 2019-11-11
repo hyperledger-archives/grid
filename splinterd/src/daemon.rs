@@ -255,7 +255,7 @@ impl SplinterDaemon {
                                 msg.take_payload(),
                                 message.peer_id().to_string(),
                             );
-                            debug!("Received Message from {}: {:?}", message.peer_id(), msg);
+                            trace!("Received Message from {}: {:?}", message.peer_id(), msg);
                             match network_dispatch_send.send(dispatch_msg) {
                                 Ok(()) => (),
                                 Err(err) => error!("Dispatch Error {}", err.to_string()),
