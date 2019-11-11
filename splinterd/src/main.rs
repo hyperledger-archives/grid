@@ -236,13 +236,13 @@ fn main() {
     };
 
     let storage_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "/circuits.yaml"),
+        "yaml" => format!("{}{}", location, "circuits.yaml"),
         "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
 
     let key_registry_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "/keys.yaml"),
+        "yaml" => format!("{}{}", location, "keys.yaml"),
         "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
