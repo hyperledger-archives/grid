@@ -169,7 +169,7 @@ impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
             debug!("Starting Event Websocket");
             ctx.add_stream(recv);
             ctx.run_interval(Duration::from_secs(PING_INTERVAL), move |_, ctx| {
-                debug!("Sending Ping");
+                trace!("Sending Ping");
                 ctx.ping("");
             });
         } else {
