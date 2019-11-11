@@ -350,7 +350,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         }
                                     }
                                     Frame::Ping(msg) => {
-                                        debug!("Received Ping {} sending pong", msg);
+                                        trace!("Received Ping {} sending pong", msg);
                                         if let Err(err) = handle_response(
                                             &mut blocking_sink,
                                             WsResponse::Pong(msg.to_string()),
@@ -362,7 +362,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
                                         }
                                     }
                                     Frame::Pong(msg) => {
-                                        debug!("Received Pong {}", msg);
+                                        trace!("Received Pong {}", msg);
                                         ConnectionStatus::Open
                                     }
                                     Frame::Close(msg) => {
