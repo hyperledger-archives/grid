@@ -33,5 +33,5 @@ FROM ubuntu:bionic
 COPY --from=builder /build/target/debian/splinter-daemon*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/splinter-daemon*.deb || true \
+ && dpkg --unpack /tmp/splinter-daemon*.deb \
  && apt-get -f -y install

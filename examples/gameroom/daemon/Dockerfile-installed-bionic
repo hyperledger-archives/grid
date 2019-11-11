@@ -39,7 +39,7 @@ RUN apt-get update \
 COPY --from=BUILDER /build/target/debian/gameroom*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/gameroom*.deb || true \
+ && dpkg --unpack /tmp/gameroom*.deb \
  && apt-get -f -y install
 
 # Fetch the XO smart contract
