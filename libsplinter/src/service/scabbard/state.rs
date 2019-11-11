@@ -40,7 +40,9 @@ use transact::{
 use crate::events::{ParseBytes, ParseError};
 use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
-use crate::rest_api::{EventDealer, LocalEventHistory, Request, Response, ResponseError};
+use crate::rest_api::{
+    EventDealer, EventHistory, LocalEventHistory, Request, Response, ResponseError,
+};
 
 use super::error::ScabbardStateError;
 
@@ -54,8 +56,9 @@ pub struct ScabbardState {
     executor: Executor,
     current_state_root: String,
     pending_changes: Option<(String, Vec<StateChange>)>,
-    event_dealer: EventDealer<Vec<StateChangeEvent>, LocalEventHistory<Vec<StateChangeEvent>>>,
+    event_dealer: EventDealer<Vec<StateChangeEvent>>,
     batch_history: BatchHistory,
+    commit_history: LocalEventHistory<Vec<StateChangeEvent>>,
 }
 
 impl ScabbardState {
@@ -124,6 +127,7 @@ impl ScabbardState {
             pending_changes: None,
             event_dealer,
             batch_history: BatchHistory::new(),
+            commit_history: LocalEventHistory::default(),
         })
     }
 
@@ -237,7 +241,11 @@ impl ScabbardState {
                 let events = state_changes
                     .into_iter()
                     .map(StateChangeEvent::from_state_change)
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                self.commit_history.store(events.clone()).map_err(|err| {
+                    ScabbardStateError(format!("Unable to store commit history: {}", err))
+                })?;
 
                 if let Err(err) = self.event_dealer.dispatch(events) {
                     error!("An error occured while dispatching events {}", err);
@@ -265,7 +273,9 @@ impl ScabbardState {
     }
 
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
-        self.event_dealer.subscribe(request)
+        let events = self.commit_history.events()?;
+        self.event_dealer
+            .subscribe(request, &mut events.into_iter())
     }
 
     pub fn shutdown_event_dealer(&self) {

@@ -56,7 +56,8 @@ impl fmt::Display for RestApiServerError {
 #[derive(Debug)]
 pub enum ResponseError {
     ActixError(ActixError),
-    CatchUpWsError(EventHistoryError),
+    CatchUpWsError(EventDealerError),
+    CatchUpHistoryError(EventHistoryError),
 }
 
 impl Error for ResponseError {
@@ -64,6 +65,7 @@ impl Error for ResponseError {
         match self {
             ResponseError::ActixError(err) => Some(err),
             ResponseError::CatchUpWsError(err) => Some(err),
+            ResponseError::CatchUpHistoryError(err) => Some(err),
         }
     }
 }
@@ -77,6 +79,7 @@ impl fmt::Display for ResponseError {
                 err
             ),
             ResponseError::CatchUpWsError(err) => write!(f, "{}", err),
+            ResponseError::CatchUpHistoryError(err) => write!(f, "{}", err),
         }
     }
 }
@@ -87,9 +90,41 @@ impl From<ActixError> for ResponseError {
     }
 }
 
+impl From<EventDealerError> for ResponseError {
+    fn from(err: EventDealerError) -> Self {
+        ResponseError::CatchUpWsError(err)
+    }
+}
+
 impl From<EventHistoryError> for ResponseError {
     fn from(err: EventHistoryError) -> Self {
-        ResponseError::CatchUpWsError(err)
+        ResponseError::CatchUpHistoryError(err)
+    }
+}
+
+#[derive(Debug)]
+pub struct EventDealerError {
+    pub context: String,
+    pub source: Option<Box<dyn Error + Send>>,
+}
+
+impl Error for EventDealerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        if let Some(ref err) = self.source {
+            Some(&**err)
+        } else {
+            None
+        }
+    }
+}
+
+impl fmt::Display for EventDealerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref err) = self.source {
+            write!(f, "{}: {}", self.context, err)
+        } else {
+            f.write_str(&self.context)
+        }
     }
 }
 
@@ -104,10 +139,6 @@ impl Error for EventHistoryError {
 
 impl fmt::Display for EventHistoryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "An error occured while send a new socket event history {}",
-            self.0
-        )
+        write!(f, "Unable to read or write to event history: {}", self.0)
     }
 }

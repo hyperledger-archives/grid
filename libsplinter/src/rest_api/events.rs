@@ -24,7 +24,7 @@ use serde::ser::Serialize;
 use serde_json;
 
 use crate::rest_api::{
-    errors::{EventHistoryError, ResponseError},
+    errors::{EventDealerError, EventHistoryError, ResponseError},
     Request, Response,
 };
 
@@ -33,38 +33,35 @@ const PING_INTERVAL: u64 = 30;
 
 /// `EventDealer` is responsible for creating and managing WebSockets for Services that need to
 /// push messages to a web based client.
-#[derive(Debug, Clone)]
-pub struct EventDealer<
-    T: Serialize + Debug + Clone + 'static,
-    H: EventHistory<T> + Send + Sync + Default,
-> {
+#[derive(Debug, Clone, Default)]
+pub struct EventDealer<T: Serialize + Debug + Clone + 'static> {
     senders: Vec<UnboundedSender<MessageWrapper<T>>>,
-    history: H,
 }
 
-impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default>
-    EventDealer<T, H>
-{
+impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
     pub fn new() -> Self {
-        Self::default()
+        Self { senders: vec![] }
     }
 
     /// Creates a new Websocket and sender receiver pair
-    pub fn subscribe(&mut self, req: Request) -> Result<Response, ResponseError> {
+    pub fn subscribe(
+        &mut self,
+        req: Request,
+        events: &mut dyn Iterator<Item = T>,
+    ) -> Result<Response, ResponseError> {
         let (send, recv) = unbounded();
 
         let (request, payload) = req.into();
         let res = ws::start(EventDealerWebSocket::new(recv), &request, payload)
             .map_err(ResponseError::from)?;
 
-        self.add_sender(send)?;
+        self.add_sender(send, events)?;
 
         Ok(Response::from(res))
     }
 
     /// Send message to all created WebSockets
-    pub fn dispatch(&mut self, msg: T) -> Result<(), EventHistoryError> {
-        self.history.store(msg.clone())?;
+    pub fn dispatch(&mut self, msg: T) -> Result<(), EventDealerError> {
         self.senders.retain(|sender| {
             if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
@@ -89,9 +86,10 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
     fn add_sender(
         &mut self,
         sender: UnboundedSender<MessageWrapper<T>>,
-    ) -> Result<(), EventHistoryError> {
+        events: &mut dyn Iterator<Item = T>,
+    ) -> Result<(), EventDealerError> {
         debug!("Catching up new connection");
-        self.history.events()?.into_iter().for_each(|msg| {
+        events.for_each(|msg| {
             if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
                 error!(
                     "Failed to send message to Websocket Message: {:?}, Error: {}",
@@ -101,17 +99,6 @@ impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + 
         });
         self.senders.push(sender);
         Ok(())
-    }
-}
-
-impl<T: Serialize + Debug + Clone + 'static, H: EventHistory<T> + Send + Sync + Default> Default
-    for EventDealer<T, H>
-{
-    fn default() -> Self {
-        Self {
-            senders: Vec::new(),
-            history: H::default(),
-        }
     }
 }
 

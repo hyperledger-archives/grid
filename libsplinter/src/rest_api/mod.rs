@@ -64,7 +64,7 @@ use std::boxed::Box;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
-pub use errors::{EventHistoryError, ResponseError, RestApiServerError};
+pub use errors::{EventDealerError, EventHistoryError, ResponseError, RestApiServerError};
 
 pub use events::{EventDealer, EventHistory, LocalEventHistory};
 
