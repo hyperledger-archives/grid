@@ -105,6 +105,83 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /circuits:
+    get:
+      tags:
+          - Circuits
+      description: Experimental - List of circuits in Splinter state
+      parameters:
+        - name: offset
+          in: query
+          description: paging offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: maximum number of items to return (max 100)
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: filter
+          in: query
+          description: node id that must be present in the circuits returned
+          required: false
+          schema:
+            type: string
+          example: "node-001"
+      responses:
+        200:
+          description: list of circuits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Circuit'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /circuits/{circuit_id}:
+    get:
+      tags:
+        - Circuits
+      description: Experimental - Fetch a circuit in Splinter State by its circuit id
+      parameters:
+        - name: circuit_id
+          in: path
+          description: cirucit id of circuit to fetch
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Circuit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Circuit"
+        404:
+          description: The circuit with {circuit_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
   /keys:
     get:
       tags:
@@ -440,6 +517,55 @@ components:
                       type: array
                       items:
                         type: integer
+    Circuit:
+      type: object
+      properties:
+        circuit_id:
+          type: string
+          example: alpha
+        authorization_type:
+          type: string
+          example: Trust
+        persistence:
+          type: string
+          example: Any
+        routes:
+          type: string
+          example: Any
+        circuit_management_type:
+          type: string
+          example: Gameroom
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitMember'
+        roster:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitService'
+
+    CircuitMember:
+      type: object
+      properties:
+        node_id:
+          type: string
+          example: node-000
+        endpoint:
+          type: string
+          example: tls://127.0.0.1:8080
+
+    CircuitService:
+      type: object
+      properties:
+        service_id:
+          type: string
+          example: service-a
+        service_type:
+          type: string
+          example: scabbard
+        allowed_nodes:
+          type: array
+          item: string
 
     Paging:
       type: object

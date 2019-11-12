@@ -57,6 +57,8 @@ use splinter::transport::{
 use crate::node_registry;
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
+#[cfg(feature = "circuit-read")]
+use crate::routes::CircuitResourceProvider;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -323,7 +325,11 @@ impl SplinterDaemon {
 
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
-        let (rest_api_shutdown_handle, rest_api_join_handle) = RestApiBuilder::new()
+
+        // Allowing unused_mut because rest_api_builder must be mutable if feature circuit-read is
+        // enabled
+        #[allow(unused_mut)]
+        let mut rest_api_builder = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
             .add_resource(Resource::new(
                 Method::Get,
@@ -336,9 +342,16 @@ impl SplinterDaemon {
             .add_resources(node_registry_manager.resources())
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
-            .add_resources(orchestrator_resources)
-            .build()?
-            .run()?;
+            .add_resources(orchestrator_resources);
+
+        #[cfg(feature = "circuit-read")]
+        {
+            let circuit_resource =
+                CircuitResourceProvider::new(self.node_id.to_string(), state.clone());
+            rest_api_builder = rest_api_builder.add_resources(circuit_resource.resources());
+        }
+
+        let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api_builder.build()?.run()?;
 
         let (admin_shutdown_handle, service_processor_join_handle) =
             Self::start_admin_service(inproc_tranport, admin_service, Arc::clone(&running))?;
