@@ -13,9 +13,9 @@
 // limitations under the License.
 
 mod consensus;
-pub mod error;
+pub(crate) mod error;
 mod mailbox;
-pub mod messages;
+pub(crate) mod messages;
 mod open_proposals;
 mod shared;
 
@@ -282,7 +282,7 @@ pub fn admin_service_id(node_id: &str) -> String {
     format!("admin::{}", node_id)
 }
 
-pub fn sha256<T>(message: &T) -> Result<String, Sha256Error>
+fn sha256<T>(message: &T) -> Result<String, Sha256Error>
 where
     T: Message,
 {
