@@ -247,9 +247,7 @@ impl ScabbardState {
                     ScabbardStateError(format!("Unable to store commit history: {}", err))
                 })?;
 
-                if let Err(err) = self.event_dealer.dispatch(events) {
-                    error!("An error occured while dispatching events {}", err);
-                }
+                self.event_dealer.dispatch(events);
 
                 self.batch_history.commit(&signature);
 

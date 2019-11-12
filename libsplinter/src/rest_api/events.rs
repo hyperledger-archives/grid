@@ -61,17 +61,16 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
     }
 
     /// Send message to all created WebSockets
-    pub fn dispatch(&mut self, msg: T) -> Result<(), EventDealerError> {
+    pub fn dispatch(&mut self, msg: T) {
         self.senders.retain(|sender| {
             if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
-                trace!("Message sent: {:?}", msg);
                 true
             }
         });
-        Ok(())
+        trace!("Message sent: {:?}", msg);
     }
 
     pub fn stop(&self) {
