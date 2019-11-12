@@ -42,7 +42,9 @@ use crate::protos::admin::{
     CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
     Circuit_PersistenceType, Circuit_RouteType, MemberReady,
 };
-use crate::rest_api::{EventDealer, LocalEventHistory, Request, Response, ResponseError};
+use crate::rest_api::{
+    EventDealer, EventHistory, LocalEventHistory, Request, Response, ResponseError,
+};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 use crate::signing::SignatureVerifier;
@@ -109,7 +111,10 @@ pub struct AdminServiceShared {
     // Map of event dealers, keyed by circuit management type
     event_dealers: HashMap<
         String,
-        EventDealer<messages::AdminServiceEvent, LocalEventHistory<messages::AdminServiceEvent>>,
+        (
+            EventDealer<messages::AdminServiceEvent>,
+            LocalEventHistory<messages::AdminServiceEvent>,
+        ),
     >,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
@@ -550,13 +555,18 @@ impl AdminServiceShared {
         circuit_management_type: String,
         request: Request,
     ) -> Result<Response, ResponseError> {
-        if let Some(dealer) = self.event_dealers.get_mut(&circuit_management_type) {
-            dealer.subscribe(request)
+        if let Some((dealer, event_history)) = self.event_dealers.get_mut(&circuit_management_type)
+        {
+            let mut event_iter = event_history.events()?.into_iter();
+            dealer.subscribe(request, &mut event_iter)
         } else {
             let mut dealer = EventDealer::new();
-            let res = dealer.subscribe(request)?;
+            let res = dealer.subscribe(request, &mut vec![].into_iter())?;
 
-            self.event_dealers.insert(circuit_management_type, dealer);
+            self.event_dealers.insert(
+                circuit_management_type,
+                (dealer, LocalEventHistory::default()),
+            );
 
             Ok(res)
         }
@@ -567,23 +577,26 @@ impl AdminServiceShared {
         circuit_management_type: &str,
         event: messages::AdminServiceEvent,
     ) {
-        let dealer = if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
-            dealer
+        if let Some((dealer, event_history)) = self.event_dealers.get_mut(circuit_management_type) {
+            if let Err(err) = event_history.store(event.clone()) {
+                error!("Unable to store admin event history: {}", err);
+            }
+
+            if let Err(err) = dealer.dispatch(event) {
+                error!("Failed to dispatch events: {}", err);
+            }
         } else {
             warn!(
                 "No event dealer for circuit management type {}",
                 circuit_management_type
             );
-            return;
-        };
-
-        if let Err(err) = dealer.dispatch(event) {
-            error!("Failed to dispatch events: {}", err);
         }
     }
 
     pub fn shutdown_event_dealers(&mut self) {
-        self.event_dealers.values().for_each(EventDealer::stop);
+        self.event_dealers
+            .values()
+            .for_each(|(dealer, _)| dealer.stop());
     }
 
     pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {
