@@ -16,7 +16,11 @@ import protos from '@/protobuf';
 import { User } from '@/store/models';
 import { signXOPayload } from '@/utils/crypto';
 import { XO_FAMILY_NAME, XO_FAMILY_VERSION, XO_FAMILY_PREFIX } from '@/utils/addressing';
-import { calculateNamespaceRegistryAddress, computeContractAddress, computeContractRegistryAddress } from '@/utils/addressing';
+import {
+  calculateNamespaceRegistryAddress,
+  computeContractAddress,
+  computeContractRegistryAddress,
+} from '@/utils/addressing';
 
 const crypto = require('crypto');
 const { Transaction, TransactionHeader, Batch, BatchHeader, BatchList } = require('sawtooth-sdk/protobuf');
@@ -27,7 +31,12 @@ const SABRE_FAMILY_NAME = 'sabre';
 const SABRE_FAMILY_VERSION = '0.4';
 
 
-export function createTransaction(payloadBytes: Uint8Array, inputs: string[], outputs: string[], user: User) {
+export function createTransaction(
+  payloadBytes: Uint8Array,
+  inputs: string[],
+  outputs: string[],
+  user: User,
+) {
   const excuteTransactionAction = protos.ExecuteContractAction.create({
     name: 'xo',
     version: XO_FAMILY_VERSION,

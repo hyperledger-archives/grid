@@ -52,12 +52,27 @@ export default class DropdownNotification extends Vue {
 
   get link(): any {
     const regex = RegExp('^new_game_created');
-    const notification: string =
-        regex.test(this.notification.notification_type) ? 'new_game_created' : this.notification.notification_type;
+    const notification: string = regex.test(
+      this.notification.notification_type) ?
+      'new_game_created' :
+      this.notification.notification_type;
     switch (notification) {
       case('gameroom_proposal'): return {name: 'invitations'};
-      case('circuit_active'): return {name: 'gamerooms', params: {id: `${this.notification.target}`}};
-      case('new_game_created'): return {name: 'games', params: {id: `${this.notification.target}`, gameNameHash: `${hashGameName(this.getGameName(this.notification.notification_type))}`}};
+      case('circuit_active'):
+        return {
+          name: 'gamerooms',
+          params: {
+            id: `${this.notification.target}`,
+          },
+        };
+      case('new_game_created'):
+        return {
+          name: 'games',
+          params: {
+            id: `${this.notification.target}`,
+            gameNameHash: `${hashGameName(this.getGameName(this.notification.notification_type))}`,
+          },
+        };
       default: return '';
     }
   }

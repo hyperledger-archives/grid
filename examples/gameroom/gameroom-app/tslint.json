@@ -18,6 +18,7 @@
     "semicolon": [true, "always"],
     "member-access": [true, "no-public"],
     "no-console": [true, "log"],
-    "no-var-requires": false
+    "no-var-requires": false,
+    "max-line-length": [true, 100]
   }
 }

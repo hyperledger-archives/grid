@@ -183,7 +183,9 @@ export async function submitPayload(payload: Uint8Array): Promise<void> {
 }
 
 export async function submitBatch(payload: Uint8Array, circuitID: string): Promise<BatchInfo[]> {
-  return await http('POST', `/gamerooms/${circuitID}/batches`, payload, (request: XMLHttpRequest) => {
+  return await http(
+    'POST', `/gamerooms/${circuitID}/batches`, payload, (request: XMLHttpRequest,
+  ) => {
     request.setRequestHeader('Content-Type', 'application/octet-stream');
   }).catch((err) => {
     throw new Error(err);

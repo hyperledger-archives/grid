@@ -194,7 +194,8 @@ import store from '@/store';
       // intersection of filteredGamesByName and filteredGamesByState
       get filteredGames() {
         const filteredGamesByState = this.filterGamesByState;
-        return this.filterGamesByName.filter((game, index, array) => filteredGamesByState.indexOf(game) !== -1);
+        return this.filterGamesByName.filter(
+          (game, index, array) => filteredGamesByState.indexOf(game) !== -1);
       }
 
       get filterGamesByName() {
@@ -216,7 +217,9 @@ import store from '@/store';
                 !gameIsOver(game.game_status) && userIsInGame(game, publicKey));
            case 4:
               return this.games.filter((game, index, array) =>
-                !gameIsOver(game.game_status) && !userIsInGame(game, publicKey) && !userCanJoinGame(game, publicKey));
+                !gameIsOver(game.game_status)
+                && !userIsInGame(game, publicKey)
+                && !userCanJoinGame(game, publicKey));
            default:
             return this.games;
         }
