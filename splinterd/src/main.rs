@@ -174,8 +174,6 @@ fn main() {
 
     let config = load_toml_config(config_file_path);
 
-    debug!("Configuration: {:?}", config);
-
     // Currently only YamlStorage is supported
 
     let node_id = matches
@@ -221,7 +219,7 @@ fn main() {
     let heartbeat_interval = value_t!(matches.value_of("heartbeat_interval"), u64)
         .unwrap_or_else(|_| config.heartbeat_interval().unwrap_or(HEARTBEAT_DEFAULT));
 
-    let transport = match get_transport(&transport_type, &matches, &config) {
+    let (transport, transport_log) = match get_transport(&transport_type, &matches, &config) {
         Ok(transport) => transport,
         Err(err) => {
             error!("An error occurred while getting transport {:?}", err);
@@ -238,13 +236,13 @@ fn main() {
     };
 
     let storage_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "/circuits.yaml"),
+        "yaml" => format!("{}{}", location, "circuits.yaml"),
         "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
 
     let key_registry_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "/keys.yaml"),
+        "yaml" => format!("{}{}", location, "keys.yaml"),
         "memory" => "memory".to_string(),
         _ => panic!("Storage type is not supported: {}", storage_type),
     };
@@ -265,6 +263,25 @@ fn main() {
         .value_of("registry_file")
         .map(String::from)
         .or_else(|| config.registry_file());
+
+    debug!(
+        "Configuration: {{ storage_type: {}, storage_location: {}, key_registry_location: {}, {}, \
+         service_endpoint: {}, network_endpoint: {}, initial_peers: {:?}, node_id: {}, \
+         rest_api_endpoint: {}, registry_backend: {:?}, registry_file: {:?}, \
+         heartbeat_interval: {} }}",
+        storage_type,
+        storage_location,
+        key_registry_location,
+        transport_log,
+        service_endpoint,
+        network_endpoint,
+        initial_peers,
+        node_id,
+        rest_api_endpoint,
+        registry_backend,
+        registry_file,
+        heartbeat_interval,
+    );
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
@@ -300,7 +317,7 @@ fn get_transport(
     transport_type: &str,
     matches: &clap::ArgMatches,
     config: &Config,
-) -> Result<Box<dyn Transport + Send>, GetTransportError> {
+) -> Result<(Box<dyn Transport + Send>, String), GetTransportError> {
     match transport_type {
         "tls" => {
             if matches.is_present("generate_certs") {
@@ -350,6 +367,10 @@ fn get_transport(
 
                 warn!("Starting TlsTransport in insecure mode");
 
+                let log_value = "ca_certs: generated, client_cert: generated, client_key: \
+                                 generated, server_cert: generated, server_key: generated"
+                    .to_string();
+
                 // Start transport in insecure mode, do not verify the certs if auto generated,
                 // as the ca will not match
                 let transport = TlsTransport::new(
@@ -360,7 +381,7 @@ fn get_transport(
                     server_cert,
                 )?;
 
-                Ok(Box::new(transport))
+                Ok((Box::new(transport), log_value))
             } else {
                 let client_cert = matches
                     .value_of("client_cert")
@@ -400,6 +421,33 @@ fn get_transport(
                     }
                 };
 
+                let current_path = env::current_dir()?
+                    .to_str()
+                    .expect("Unable to get current path")
+                    .to_string();
+
+                let ca_file_log = {
+                    if let Some(ca_file) = &ca_file {
+                        format!("{}/{}", current_path, &ca_file)
+                    } else {
+                        "insecure".to_string()
+                    }
+                };
+
+                let log_value = format!(
+                    "transport_type: tls, ca_certs: {}, client_cert: {}/{}, \
+                     client_key: {}/{}, server_cert: {}/{}, server_key: {}/{}",
+                    ca_file_log,
+                    current_path,
+                    client_cert,
+                    current_path,
+                    client_key_file,
+                    current_path,
+                    server_cert,
+                    current_path,
+                    server_key_file,
+                );
+
                 let transport = TlsTransport::new(
                     ca_file,
                     client_key_file,
@@ -408,10 +456,13 @@ fn get_transport(
                     server_cert,
                 )?;
 
-                Ok(Box::new(transport))
+                Ok((Box::new(transport), log_value))
             }
         }
-        "raw" => Ok(Box::new(RawTransport::default())),
+        "raw" => Ok((
+            Box::new(RawTransport::default()),
+            "transport_type: raw".to_string(),
+        )),
         _ => Err(GetTransportError::NotSupportedError(format!(
             "Transport type {} is not supported",
             transport_type
