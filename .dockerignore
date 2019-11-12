@@ -46,5 +46,14 @@
 /examples/gameroom/gameroom-app/dist
 /examples/gameroom/gameroom-app/package-lock.json
 
+# Canopy
+**/node_modules
+**/.pnp
+**/.pnp.js
+**/yarn.lock
+/canopy/**/coverage
+/canopy/**/build
+/canopy**/dist
+
 /target
 /Cargo.lock

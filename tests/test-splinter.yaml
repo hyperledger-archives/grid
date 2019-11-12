@@ -33,3 +33,27 @@ services:
                 --features \"sawtooth-signing-compat\"
         "
     stop_signal: SIGKILL
+
+  unit-test-canopy-app:
+    build:
+      context: ../canopy/app
+    environment:
+      - CI=true
+    image: canopy-app:${ISOLATION_ID}
+    command: yarn test
+
+  unit-test-canopyjs:
+    build:
+      context: ../canopy/canopyjs
+    environment:
+      - CI=true
+    image: canopyjs:${ISOLATION_ID}
+    command: yarn test
+
+  unit-test-design-system:
+    build:
+      context: ../canopy/design-system
+    environment:
+      - CI=true
+    image: design-system:${ISOLATION_ID}
+    command: yarn test

@@ -50,3 +50,21 @@ services:
     volumes:
       - ../../:/project/splinter/examples/gameroom/gameroom-app
     command: npm run lint
+
+  lint-canopy-app:
+    build:
+      context: ../../canopy/app
+    image: canopy-app:${ISOLATION_ID}
+    command: yarn lint
+
+  lint-canopyjs:
+    build:
+      context: ../../canopy/canopyjs
+    image: canopyjs:${ISOLATION_ID}
+    command: yarn lint
+
+  lint-design-system:
+    build:
+      context: ../../canopy/design-system
+    image: design-system:${ISOLATION_ID}
+    command: yarn lint
