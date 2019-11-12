@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export function ColumnItem({ children }) {
   return (
@@ -22,3 +23,11 @@ export function ColumnItem({ children }) {
     </div>
   );
 }
+
+ColumnItem.propTypes = {
+  children: PropTypes.arrayOf(PropTypes.element)
+};
+
+ColumnItem.defaultProps = {
+  children: []
+};

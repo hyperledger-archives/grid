@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export function ColumnBlock({ children }) {
   return (
@@ -22,3 +23,11 @@ export function ColumnBlock({ children }) {
     </div>
   );
 }
+
+ColumnBlock.propTypes = {
+  children: PropTypes.arrayOf(PropTypes.element)
+};
+
+ColumnBlock.defaultProps = {
+  children: []
+};

@@ -14,18 +14,23 @@
  * limitations under the License.
  */
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export function ColorBlock({ colors }) {
   return (
-    <div  className="color-block display-flex flexDirection-column alignItems-center"
-          style={{width: '100%', borderRadius: '4px', height: '10rem'}}>
-      <div className="colors display-flex flexDirection-column"
-            style={{width: '100%', height: '100%'}}>
+    <div
+      className="color-block display-flex flexDirection-column alignItems-center"
+      style={{ width: '100%', borderRadius: '4px', height: '10rem' }}
+    >
+      <div
+        className="colors display-flex flexDirection-column"
+        style={{ width: '100%', height: '100%' }}
+      >
         {colors.map(color => {
           return (
             <div
               className={`color background-${color} display-flex justifyContent-center alignItems-center`}
-              style={{width: '100%'}}
+              style={{ width: '100%' }}
               key={color.name}
             >
               {color}
@@ -36,3 +41,11 @@ export function ColorBlock({ colors }) {
     </div>
   );
 }
+
+ColorBlock.propTypes = {
+  colors: PropTypes.arrayOf(PropTypes.object)
+};
+
+ColorBlock.defaultProps = {
+  colors: []
+};

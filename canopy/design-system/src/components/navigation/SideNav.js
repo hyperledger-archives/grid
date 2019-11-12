@@ -55,18 +55,14 @@ export default class SideNav extends React.Component {
                     <span>{tab.name}</span>
                   </NavItemExpandable>
                 );
-              } else {
-                return (
-                  <li
-                    className="tab paddingTop-s paddingBottom-s"
-                    key={tab.name}
-                  >
-                    <NavLink to={tab.route} aria-label={tab.name}>
-                      {tab.name}
-                    </NavLink>
-                  </li>
-                );
               }
+              return (
+                <li className="tab paddingTop-s paddingBottom-s" key={tab.name}>
+                  <NavLink to={tab.route} aria-label={tab.name}>
+                    {tab.name}
+                  </NavLink>
+                </li>
+              );
             })}
           </ul>
         </nav>

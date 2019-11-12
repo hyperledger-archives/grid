@@ -41,6 +41,13 @@ export function NavItemExpandable({ nested, children }) {
                     borderBottom-1
                     borderStyle-solid
                     borderColor-smoke"
+        role="button"
+        tabIndex="0"
+        onKeyPress={e => {
+          if (e.key === 'Enter') {
+            setIsOpen(!isOpen);
+          }
+        }}
         onClick={() => setIsOpen(!isOpen)}
       >
         {children}
@@ -74,9 +81,14 @@ export function NavItemExpandable({ nested, children }) {
 }
 
 NavItemExpandable.propTypes = {
+  children: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.element),
+    PropTypes.object
+  ]),
   nested: PropTypes.arrayOf(PropTypes.object)
 };
 
 NavItemExpandable.defaultProps = {
+  children: [],
   nested: []
 };
