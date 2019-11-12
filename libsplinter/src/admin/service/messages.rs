@@ -13,13 +13,9 @@
 // limitations under the License.
 
 use protobuf::{self, RepeatedField};
-use serde::de::DeserializeOwned;
-use serde_json;
 
-use crate::actix_web::{error::ErrorBadRequest, web, Error as ActixError};
 #[cfg(feature = "events")]
 use crate::events::{ParseBytes, ParseError};
-use crate::futures::{stream::Stream, Future, IntoFuture};
 use crate::hex::{as_hex, deserialize_hex};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
@@ -38,20 +34,6 @@ pub struct CreateCircuit {
     #[serde(serialize_with = "as_hex")]
     #[serde(deserialize_with = "deserialize_hex")]
     pub application_metadata: Vec<u8>,
-}
-
-pub fn from_payload<T: DeserializeOwned>(
-    payload: web::Payload,
-) -> impl Future<Item = T, Error = ActixError> {
-    payload
-        .from_err::<ActixError>()
-        .fold(web::BytesMut::new(), move |mut body, chunk| {
-            body.extend_from_slice(&chunk);
-            Ok::<_, ActixError>(body)
-        })
-        .and_then(|body| Ok(serde_json::from_slice::<T>(&body)?))
-        .or_else(|err| Err(ErrorBadRequest(json!({ "message": format!("{}", err) }))))
-        .into_future()
 }
 
 impl CreateCircuit {

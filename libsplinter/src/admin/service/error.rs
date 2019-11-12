@@ -43,9 +43,6 @@ pub enum AdminSharedError {
     /// An error occured while attempting to verify a payload's signature
     SignerError(signing::error::Error),
 
-    /// Returned if a signer is not specified currently only usra is supported
-    /// and the feature flag "ursa-compat" must be supplied.
-    UndefinedSigner,
     // Returned if a circuit cannot be added to splinter state
     CommitError(String),
     UpdateProposalsError(OpenProposalError),
@@ -64,7 +61,6 @@ impl Error for AdminSharedError {
             AdminSharedError::UnknownAction(_) => None,
             AdminSharedError::ValidationFailed(_) => None,
             AdminSharedError::SignerError(_) => None,
-            AdminSharedError::UndefinedSigner => None,
             AdminSharedError::CommitError(_) => None,
             AdminSharedError::UpdateProposalsError(err) => Some(err),
         }
@@ -101,7 +97,6 @@ impl fmt::Display for AdminSharedError {
             }
             AdminSharedError::ValidationFailed(msg) => write!(f, "validation failed: {}", msg),
             AdminSharedError::SignerError(ref msg) => write!(f, "Signing error: {}", msg),
-            AdminSharedError::UndefinedSigner => f.write_str("Signing method was not defined"),
             AdminSharedError::CommitError(msg) => write!(f, "unable to commit circuit: {}", msg),
             AdminSharedError::UpdateProposalsError(err) => {
                 write!(f, "received error while update open proposal: {}", err)
