@@ -5,5 +5,5 @@
     "declaration": true
   },
   "exclude": ["node_modules", "**/*.spec.ts"],
-  "include": ["src/**/*", "types.d.ts"]
+  "include": ["src/**/*"]
 }

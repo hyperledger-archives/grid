@@ -13,9 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+interface RegisterApp {
+  (bootstrapFunction: (domNode: Node) => void): void;
+}
 
-import { initialize } from './initialize';
+interface RegisterConfigSapling {
+  (
+    configNamespace: 'login' | 'notifications',
+    bootstrapFunction: () => void
+  ): void;
+}
+interface Canopy {
+  registerApp: RegisterApp;
+  registerConfigSapling: RegisterConfigSapling;
+}
 
-initialize();
+function assertAndGetWindowCanopy(): Canopy {
+  // In order to prevent the need to overwrite the window interface,
+  // a intentional `any` is cast here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!window || !(window as any).$CANOPY) {
+    throw new Error(
+      `Must be in a Canopy with 'window.$CANOPY' in scope to call this CanopyJS functions`
+    );
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (window as any).$CANOPY;
+}
 
-export { register } from './register';
+const canopy = assertAndGetWindowCanopy();
+
+export const { registerApp, registerConfigSapling }: Canopy = canopy;
