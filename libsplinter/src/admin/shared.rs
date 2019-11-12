@@ -42,14 +42,14 @@ use crate::protos::admin::{
     CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
     Circuit_PersistenceType, Circuit_RouteType, MemberReady,
 };
-use crate::rest_api::{
-    EventDealer, EventHistory, LocalEventHistory, Request, Response, ResponseError,
-};
+use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 use crate::signing::SignatureVerifier;
+use crate::storage::sets::mem::DurableBTreeSet;
 
 use super::error::{AdminSharedError, MarshallingError};
+use super::mailbox::Mailbox;
 use super::messages;
 use super::open_proposals::OpenProposals;
 use super::{admin_service_id, sha256};
@@ -58,6 +58,8 @@ const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 static VOTER_ROLE: &str = "voter";
 static PROPOSER_ROLE: &str = "proposer";
+
+const DEFAULT_IN_MEMORY_EVENT_LIMIT: usize = 100;
 
 type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
 
@@ -109,13 +111,9 @@ pub struct AdminServiceShared {
     // the verifiers that should be broadcasted for the pending change
     current_consensus_verifiers: Vec<String>,
     // Map of event dealers, keyed by circuit management type
-    event_dealers: HashMap<
-        String,
-        (
-            EventDealer<messages::AdminServiceEvent>,
-            LocalEventHistory<messages::AdminServiceEvent>,
-        ),
-    >,
+    event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
+    // Mailbox of AdminServiceEvent values
+    event_mailbox: Mailbox,
     // copy of splinter state
     splinter_state: Arc<RwLock<SplinterState>>,
     // signature verifier
@@ -154,6 +152,9 @@ impl AdminServiceShared {
         let open_proposals = OpenProposals::new(storage_location)
             .map_err(|err| ServiceError::UnableToCreate(Box::new(err)))?;
 
+        let event_mailbox = Mailbox::new(DurableBTreeSet::new_boxed_with_bound(
+            std::num::NonZeroUsize::new(DEFAULT_IN_MEMORY_EVENT_LIMIT).unwrap(),
+        ));
         Ok(AdminServiceShared {
             node_id: node_id.to_string(),
             network_sender: None,
@@ -169,6 +170,7 @@ impl AdminServiceShared {
             pending_changes: None,
             current_consensus_verifiers: Vec::new(),
             event_dealers: HashMap::new(),
+            event_mailbox,
             splinter_state,
             signature_verifier,
             key_registry,
@@ -555,18 +557,21 @@ impl AdminServiceShared {
         circuit_management_type: String,
         request: Request,
     ) -> Result<Response, ResponseError> {
-        if let Some((dealer, event_history)) = self.event_dealers.get_mut(&circuit_management_type)
-        {
-            let mut event_iter = event_history.events()?.into_iter();
+        let mut event_iter = self
+            .event_mailbox
+            .iter()
+            .map_err(|err| ResponseError::CatchUpHistoryError(err.to_string()))?
+            .filter(|(_, evt)| {
+                evt.proposal().circuit.circuit_management_type == circuit_management_type
+            })
+            .map(|(_, evt)| evt);
+        if let Some(dealer) = self.event_dealers.get_mut(&circuit_management_type) {
             dealer.subscribe(request, &mut event_iter)
         } else {
             let mut dealer = EventDealer::new();
-            let res = dealer.subscribe(request, &mut vec![].into_iter())?;
+            let res = dealer.subscribe(request, &mut event_iter)?;
 
-            self.event_dealers.insert(
-                circuit_management_type,
-                (dealer, LocalEventHistory::default()),
-            );
+            self.event_dealers.insert(circuit_management_type, dealer);
 
             Ok(res)
         }
@@ -577,11 +582,15 @@ impl AdminServiceShared {
         circuit_management_type: &str,
         event: messages::AdminServiceEvent,
     ) {
-        if let Some((dealer, event_history)) = self.event_dealers.get_mut(circuit_management_type) {
-            if let Err(err) = event_history.store(event.clone()) {
-                error!("Unable to store admin event history: {}", err);
+        let event = match self.event_mailbox.add(event) {
+            Ok((_, event)) => event,
+            Err(err) => {
+                error!("Unable to store admin event: {}", err);
+                return;
             }
+        };
 
+        if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
             dealer.dispatch(event);
         } else {
             warn!(
@@ -592,9 +601,7 @@ impl AdminServiceShared {
     }
 
     pub fn shutdown_event_dealers(&mut self) {
-        self.event_dealers
-            .values()
-            .for_each(|(dealer, _)| dealer.stop());
+        self.event_dealers.values().for_each(EventDealer::stop);
     }
 
     pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {

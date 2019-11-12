@@ -57,7 +57,7 @@ impl fmt::Display for RestApiServerError {
 pub enum ResponseError {
     ActixError(ActixError),
     CatchUpWsError(EventDealerError),
-    CatchUpHistoryError(EventHistoryError),
+    CatchUpHistoryError(String),
 }
 
 impl Error for ResponseError {
@@ -65,7 +65,7 @@ impl Error for ResponseError {
         match self {
             ResponseError::ActixError(err) => Some(err),
             ResponseError::CatchUpWsError(err) => Some(err),
-            ResponseError::CatchUpHistoryError(err) => Some(err),
+            ResponseError::CatchUpHistoryError(_) => None,
         }
     }
 }
@@ -79,7 +79,7 @@ impl fmt::Display for ResponseError {
                 err
             ),
             ResponseError::CatchUpWsError(err) => write!(f, "{}", err),
-            ResponseError::CatchUpHistoryError(err) => write!(f, "{}", err),
+            ResponseError::CatchUpHistoryError(msg) => f.write_str(&msg),
         }
     }
 }
@@ -98,7 +98,7 @@ impl From<EventDealerError> for ResponseError {
 
 impl From<EventHistoryError> for ResponseError {
     fn from(err: EventHistoryError) -> Self {
-        ResponseError::CatchUpHistoryError(err)
+        ResponseError::CatchUpHistoryError(err.to_string())
     }
 }
 
