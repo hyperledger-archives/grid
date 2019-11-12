@@ -89,14 +89,13 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         events: &mut dyn Iterator<Item = T>,
     ) -> Result<(), EventDealerError> {
         debug!("Catching up new connection");
-        events.for_each(|msg| {
-            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
-                error!(
-                    "Failed to send message to Websocket Message: {:?}, Error: {}",
-                    msg, err
-                );
-            }
-        });
+        for event in events {
+            sender
+                .unbounded_send(MessageWrapper::Message(event))
+                .map_err(|err| {
+                    EventDealerError::new(format!("failed to send catch-up event: {}", err), None)
+                })?
+        }
         self.senders.push(sender);
         Ok(())
     }
