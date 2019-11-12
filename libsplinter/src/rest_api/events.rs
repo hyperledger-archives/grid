@@ -43,7 +43,8 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         Self { senders: vec![] }
     }
 
-    /// Creates a new Websocket and sender receiver pair
+    /// Create a new WebSocket and sender receiver pair. Immediately send all provided events to
+    /// the WebSocket.
     pub fn subscribe(
         &mut self,
         req: Request,
@@ -60,17 +61,17 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
         Ok(Response::from(res))
     }
 
-    /// Send message to all created WebSockets
-    pub fn dispatch(&mut self, msg: T) {
+    /// Send event to all created WebSockets.
+    pub fn dispatch(&mut self, event: T) {
         self.senders.retain(|sender| {
-            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(msg.clone())) {
+            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(event.clone())) {
                 warn!("Dropping sender due to error: {}", err);
                 false
             } else {
                 true
             }
         });
-        trace!("Message sent: {:?}", msg);
+        trace!("Event sent: {:?}", event);
     }
 
     pub fn stop(&self) {
