@@ -13,6 +13,9 @@
     "jest": true,
     "browser": true
   },
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
   "rules": {
     "import/no-default-export": 2,
     "import/prefer-default-export": 0
