@@ -15,6 +15,8 @@
 use std::{collections::HashMap, fmt, path::Path, time::SystemTime};
 
 use protobuf::Message;
+use sawtooth::store::lmdb::LmdbOrderedStore;
+use sawtooth::store::receipt_store::TransactionReceiptStore;
 use sawtooth_sabre::handler::SabreTransactionHandler;
 use sawtooth_sabre::{ADMINISTRATORS_SETTING_ADDRESS, ADMINISTRATORS_SETTING_KEY};
 use transact::context::manager::sync::ContextManager;
@@ -55,7 +57,8 @@ pub struct ScabbardState {
     context_manager: ContextManager,
     executor: Executor,
     current_state_root: String,
-    pending_changes: Option<(String, Vec<StateChange>)>,
+    transaction_receipt_store: TransactionReceiptStore,
+    pending_changes: Option<(String, Vec<TransactionReceipt>)>,
     event_dealer: EventDealer<Vec<StateChangeEvent>>,
     batch_history: BatchHistory,
     commit_history: LocalEventHistory<Vec<StateChangeEvent>>,
@@ -63,15 +66,17 @@ pub struct ScabbardState {
 
 impl ScabbardState {
     pub fn new(
-        db_path: &Path,
-        db_size: usize,
+        state_db_path: &Path,
+        state_db_size: usize,
+        receipt_db_path: &Path,
+        receipt_db_size: usize,
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardStateError> {
         // Initialize the database
         let mut indexes = INDEXES.to_vec();
         indexes.push(CURRENT_STATE_ROOT_INDEX);
         let db = Box::new(LmdbDatabase::new(
-            LmdbContext::new(db_path, indexes.len(), Some(db_size))?,
+            LmdbContext::new(state_db_path, indexes.len(), Some(state_db_size))?,
             &indexes,
         )?);
 
@@ -124,6 +129,10 @@ impl ScabbardState {
             context_manager,
             executor,
             current_state_root,
+            transaction_receipt_store: TransactionReceiptStore::new(Box::new(
+                LmdbOrderedStore::new(receipt_db_path, Some(receipt_db_size))
+                    .map_err(|err| ScabbardStateError(err.to_string()))?,
+            )),
             pending_changes: None,
             event_dealer,
             batch_history: BatchHistory::new(),
@@ -205,30 +214,23 @@ impl ScabbardState {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let state_changes = txn_results
-            .into_iter()
-            .flat_map(|txn_result| {
-                txn_result
-                    .state_changes
-                    .into_iter()
-                    .map(into_writable_state_change)
-            })
-            .collect::<Vec<_>>();
         scheduler.shutdown();
 
         // Save the results and compute the resulting state root
-        self.pending_changes = Some((signature.to_string(), state_changes.clone()));
-        Ok(MerkleState::new(self.db.clone()).compute_state_id(
+        let state_root = MerkleState::new(self.db.clone()).compute_state_id(
             &self.current_state_root,
-            self.pending_changes.as_ref().unwrap().1.as_slice(),
-        )?)
+            &receipts_into_state_changes(&txn_results),
+        )?;
+        self.pending_changes = Some((signature.to_string(), txn_results));
+        Ok(state_root)
     }
 
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some((signature, state_changes)) => {
+            Some((signature, txn_receipts)) => {
+                let state_changes = receipts_into_state_changes(&txn_receipts);
                 self.current_state_root = MerkleState::new(self.db.clone())
-                    .commit(&self.current_state_root, state_changes.as_slice())?;
+                    .commit(&self.current_state_root, &state_changes)?;
 
                 self.write_current_state_root()?;
 
@@ -237,6 +239,15 @@ impl ScabbardState {
                     state_changes.len(),
                     self.current_state_root,
                 );
+
+                self.transaction_receipt_store
+                    .append(txn_receipts)
+                    .map_err(|err| {
+                        ScabbardStateError(format!(
+                            "failed to add transaction receipts to store: {}",
+                            err
+                        ))
+                    })?;
 
                 let events = state_changes
                     .into_iter()
@@ -259,7 +270,10 @@ impl ScabbardState {
 
     pub fn rollback(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
-            Some((_, state_changes)) => info!("discarded {} change(s)", state_changes.len()),
+            Some((_, txn_receipts)) => info!(
+                "discarded {} change(s)",
+                receipts_into_state_changes(&txn_receipts).len()
+            ),
             None => debug!("no changes to rollback"),
         }
 
@@ -281,17 +295,24 @@ impl ScabbardState {
     }
 }
 
-fn into_writable_state_change(
-    change: transact::protocol::receipt::StateChange,
-) -> transact::state::StateChange {
-    match change {
-        transact::protocol::receipt::StateChange::Set { key, value } => {
-            transact::state::StateChange::Set { key, value }
-        }
-        transact::protocol::receipt::StateChange::Delete { key } => {
-            transact::state::StateChange::Delete { key }
-        }
-    }
+fn receipts_into_state_changes(receipts: &[TransactionReceipt]) -> Vec<StateChange> {
+    receipts
+        .iter()
+        .flat_map(|receipt| {
+            receipt
+                .state_changes
+                .iter()
+                .cloned()
+                .map(|change| match change {
+                    transact::protocol::receipt::StateChange::Set { key, value } => {
+                        StateChange::Set { key, value }
+                    }
+                    transact::protocol::receipt::StateChange::Delete { key } => {
+                        StateChange::Delete { key }
+                    }
+                })
+        })
+        .collect::<Vec<_>>()
 }
 
 #[derive(Clone, Serialize, Deserialize)]

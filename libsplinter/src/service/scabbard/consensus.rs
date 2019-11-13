@@ -383,8 +383,14 @@ mod tests {
             Some(Box::new(service_sender.clone())),
             peer_services.clone(),
             Box::new(HashVerifier),
-            ScabbardState::new(Path::new("/tmp/network_sender.lmdb"), 1024 * 1024, vec![])
-                .expect("failed to create state"),
+            ScabbardState::new(
+                Path::new("/tmp/network-sender-state.lmdb"),
+                1024 * 1024,
+                Path::new("/tmp/network-sender-receipts.lmdb"),
+                1024 * 1024,
+                vec![],
+            )
+            .expect("failed to create state"),
         )));
         let consensus_sender = ScabbardConsensusNetworkSender::new("0".into(), shared);
 
