@@ -56,7 +56,6 @@ impl fmt::Display for RestApiServerError {
 #[derive(Debug)]
 pub enum ResponseError {
     ActixError(ActixError),
-    CatchUpWsError(EventDealerError),
     CatchUpHistoryError(String),
 }
 
@@ -64,7 +63,6 @@ impl Error for ResponseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ResponseError::ActixError(err) => Some(err),
-            ResponseError::CatchUpWsError(err) => Some(err),
             ResponseError::CatchUpHistoryError(_) => None,
         }
     }
@@ -78,8 +76,9 @@ impl fmt::Display for ResponseError {
                 "Failed to get response when setting up websocket: {}",
                 err
             ),
-            ResponseError::CatchUpWsError(err) => write!(f, "{}", err),
-            ResponseError::CatchUpHistoryError(msg) => f.write_str(&msg),
+            ResponseError::CatchUpHistoryError(msg) => {
+                write!(f, "failed to catch-up event subscriber: {}", msg)
+            }
         }
     }
 }
@@ -92,7 +91,7 @@ impl From<ActixError> for ResponseError {
 
 impl From<EventDealerError> for ResponseError {
     fn from(err: EventDealerError) -> Self {
-        ResponseError::CatchUpWsError(err)
+        ResponseError::CatchUpHistoryError(err.to_string())
     }
 }
 
