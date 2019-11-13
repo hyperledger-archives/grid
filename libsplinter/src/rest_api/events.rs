@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Debug;
 use std::time::Duration;
@@ -27,7 +26,7 @@ use serde::ser::Serialize;
 use serde_json;
 
 use crate::rest_api::{
-    errors::{EventHistoryError, ResponseError},
+    errors::ResponseError,
     Request, Response,
 };
 
@@ -205,61 +204,4 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
 enum MessageWrapper<T: Serialize + Debug + 'static> {
     Message(T),
     Shutdown,
-}
-
-/// A trait used for implementing different schemes for
-/// storing events.
-pub trait EventHistory<T: Clone + Debug>: Clone + Debug {
-    /// Add an event to the event history
-    fn store(&mut self, event: T) -> Result<(), EventHistoryError>;
-
-    /// Retrieves a list of events
-    fn events(&self) -> Result<Vec<T>, EventHistoryError>;
-}
-
-/// An implementation of EventHistory for storing
-/// events in memory. Only the n most recent events
-/// are stored.
-#[derive(Clone, Debug)]
-pub struct LocalEventHistory<T: Clone + Debug> {
-    history: VecDeque<T>,
-    limit: usize,
-}
-
-impl<T: Clone + Debug> LocalEventHistory<T> {
-    pub fn with_limit(limit: usize) -> Self {
-        Self {
-            history: VecDeque::new(),
-            limit,
-        }
-    }
-
-    /// Creates a LocalEventHistory with a default limit
-    /// of 100 events.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl<T: Clone + Debug> EventHistory<T> for LocalEventHistory<T> {
-    fn store(&mut self, event: T) -> Result<(), EventHistoryError> {
-        self.history.push_back(event);
-        if self.history.len() > self.limit {
-            self.history.pop_front();
-        }
-        Ok(())
-    }
-
-    fn events(&self) -> Result<Vec<T>, EventHistoryError> {
-        Ok(self.history.clone().into_iter().collect())
-    }
-}
-
-impl<T: Clone + Debug> Default for LocalEventHistory<T> {
-    fn default() -> Self {
-        Self {
-            history: VecDeque::new(),
-            limit: 100,
-        }
-    }
 }

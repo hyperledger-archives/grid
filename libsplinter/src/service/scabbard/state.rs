@@ -42,9 +42,7 @@ use transact::{
 use crate::events::{ParseBytes, ParseError};
 use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
-use crate::rest_api::{
-    EventDealer, EventHistory, EventSender, LocalEventHistory, Request, Response, ResponseError,
-};
+use crate::rest_api::{EventDealer, EventSender, Request, Response, ResponseError};
 
 use super::error::ScabbardStateError;
 
@@ -62,7 +60,6 @@ pub struct ScabbardState {
     event_dealer: EventDealer<Vec<StateChangeEvent>>,
     event_senders: Vec<EventSender<Vec<StateChangeEvent>>>,
     batch_history: BatchHistory,
-    commit_history: LocalEventHistory<Vec<StateChangeEvent>>,
 }
 
 impl ScabbardState {
@@ -138,7 +135,6 @@ impl ScabbardState {
             event_dealer,
             event_senders: vec![],
             batch_history: BatchHistory::new(),
-            commit_history: LocalEventHistory::default(),
         })
     }
 
@@ -256,10 +252,6 @@ impl ScabbardState {
                     .map(StateChangeEvent::from_state_change)
                     .collect::<Vec<_>>();
 
-                self.commit_history.store(events.clone()).map_err(|err| {
-                    ScabbardStateError(format!("Unable to store commit history: {}", err))
-                })?;
-
                 self.event_senders
                     .retain(|sender| sender.send(events.clone()).is_ok());
 
@@ -288,10 +280,9 @@ impl ScabbardState {
     }
 
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
-        let events = self.commit_history.events()?;
         let (sender, res) = self
             .event_dealer
-            .subscribe(request, Box::new(events.into_iter()))?;
+            .subscribe(request, Box::new(vec![].into_iter()))?;
 
         self.event_senders.push(sender);
 

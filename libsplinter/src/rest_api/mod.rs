@@ -64,9 +64,9 @@ use std::boxed::Box;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
-pub use errors::{EventDealerError, EventHistoryError, ResponseError, RestApiServerError};
+pub use errors::{EventDealerError, ResponseError, RestApiServerError};
 
-pub use events::{EventDealer, EventHistory, EventSender, LocalEventHistory};
+pub use events::{EventDealer, EventSender};
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {

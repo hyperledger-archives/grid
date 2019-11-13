@@ -96,12 +96,6 @@ impl From<EventDealerError> for ResponseError {
     }
 }
 
-impl From<EventHistoryError> for ResponseError {
-    fn from(err: EventHistoryError) -> Self {
-        ResponseError::CatchUpHistoryError(err.to_string())
-    }
-}
-
 #[derive(Debug)]
 pub struct EventDealerError {
     pub context: String,
@@ -131,20 +125,5 @@ impl fmt::Display for EventDealerError {
         } else {
             f.write_str(&self.context)
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct EventHistoryError(pub Box<dyn Error + 'static>);
-
-impl Error for EventHistoryError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
-    }
-}
-
-impl fmt::Display for EventHistoryError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to read or write to event history: {}", self.0)
     }
 }
