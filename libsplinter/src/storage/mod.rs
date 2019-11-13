@@ -22,6 +22,7 @@
 //! the selected storage.
 
 pub mod memory;
+pub mod sets;
 pub mod yaml;
 
 use std::ops::{Deref, DerefMut};

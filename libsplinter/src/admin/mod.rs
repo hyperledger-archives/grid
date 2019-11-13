@@ -14,6 +14,7 @@
 
 mod consensus;
 pub mod error;
+mod mailbox;
 pub mod messages;
 mod open_proposals;
 mod shared;

@@ -25,7 +25,7 @@ use crate::protos::admin::{self, CircuitCreateRequest};
 
 use super::error::MarshallingError;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct CreateCircuit {
     pub circuit_id: String,
     pub roster: Vec<SplinterService>,
@@ -160,27 +160,27 @@ impl CreateCircuit {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum AuthorizationType {
     Trust,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum PersistenceType {
     Any,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DurabilityType {
     NoDurability,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum RouteType {
     Any,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SplinterNode {
     pub node_id: String,
     pub endpoint: String,
@@ -204,7 +204,7 @@ impl SplinterNode {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SplinterService {
     pub service_id: String,
     pub service_type: String,
@@ -251,7 +251,7 @@ impl SplinterService {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct CircuitProposal {
     pub proposal_type: ProposalType,
     pub circuit_id: String,
@@ -326,7 +326,7 @@ impl CircuitProposal {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ProposalType {
     Create,
     UpdateRoster,
@@ -335,7 +335,7 @@ pub enum ProposalType {
     Destroy,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct CircuitProposalVote {
     pub circuit_id: String,
     pub circuit_hash: String,
@@ -371,7 +371,7 @@ impl CircuitProposalVote {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct VoteRecord {
     pub public_key: Vec<u8>,
     pub vote: Vote,
@@ -410,13 +410,13 @@ impl VoteRecord {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Vote {
     Accept,
     Reject,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(tag = "eventType", content = "message")]
 pub enum AdminServiceEvent {
     ProposalSubmitted(CircuitProposal),
@@ -424,6 +424,18 @@ pub enum AdminServiceEvent {
     ProposalAccepted((CircuitProposal, Vec<u8>)),
     ProposalRejected((CircuitProposal, Vec<u8>)),
     CircuitReady(CircuitProposal),
+}
+
+impl AdminServiceEvent {
+    pub fn proposal(&self) -> &CircuitProposal {
+        match self {
+            AdminServiceEvent::ProposalSubmitted(proposal) => proposal,
+            AdminServiceEvent::ProposalVote((proposal, _)) => proposal,
+            AdminServiceEvent::ProposalAccepted((proposal, _)) => proposal,
+            AdminServiceEvent::ProposalRejected((proposal, _)) => proposal,
+            AdminServiceEvent::CircuitReady(proposal) => proposal,
+        }
+    }
 }
 
 #[cfg(feature = "events")]
