@@ -140,3 +140,76 @@ fn vote_on_circuit_proposal(
 
     client.submit_admin_payload(signed_payload)
 }
+
+pub struct CircuitListAction;
+
+impl Action for CircuitListAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+
+        let filter = args.value_of("member");
+
+        list_circuits(url, filter)
+    }
+}
+
+fn list_circuits(url: &str, filter: Option<&str>) -> Result<(), CliError> {
+    let client = api::SplinterRestClient::new(url);
+
+    let circuits = client.list_circuits(filter)?;
+    println!(
+        "{0: <80} | {1: <30}",
+        "CIRCUIT ID", "CIRCUIT MANAGEMENT TYPE",
+    );
+    println!("{}", "-".repeat(110));
+    circuits.data.iter().for_each(|circuit| {
+        println!(
+            "{0: <80} | {1: <30}",
+            circuit.id, circuit.circuit_management_type,
+        );
+    });
+    Ok(())
+}
+
+pub struct CircuitShowAction;
+
+impl Action for CircuitShowAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+        let circuit_id = args
+            .value_of("circuit")
+            .ok_or_else(|| CliError::ActionError("Circuit name must be provided".to_string()))?;
+
+        // A value should always be passed because a default is defined
+        let format = args.value_of("format").expect("format was not provided");
+
+        show_circuit(url, circuit_id, format)
+    }
+}
+
+fn show_circuit(url: &str, circuit_id: &str, format: &str) -> Result<(), CliError> {
+    let client = api::SplinterRestClient::new(url);
+    let circuit = client.fetch_circuit(circuit_id)?;
+    match format {
+        "json" => println!(
+            "{}",
+            serde_json::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
+                "Cannot format circuit into json: {}",
+                err
+            )))?
+        ),
+        // default is yaml
+        _ => println!(
+            "{}",
+            serde_yaml::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
+                "Cannot format circuit into yaml: {}",
+                err
+            )))?
+        ),
+    }
+    Ok(())
+}

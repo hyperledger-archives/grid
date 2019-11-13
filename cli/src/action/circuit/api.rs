@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use reqwest::{blocking::Client, header, StatusCode};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use splinter::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
 
 use crate::error::CliError;
 
@@ -85,6 +86,75 @@ impl<'a> SplinterRestClient<'a> {
                 ))
             })
     }
+
+    pub fn list_circuits(&self, filter: Option<&str>) -> Result<CircuitListSlice, CliError> {
+        let mut request = format!("{}/circuits", self.url);
+        if let Some(filter) = filter {
+            request = format!("{}?filter={}", &request, &filter);
+        }
+
+        Client::new()
+            .get(&request)
+            .send()
+            .map_err(|err| CliError::ActionError(err.to_string()))
+            .and_then(|res| match res.status() {
+                StatusCode::OK => Ok(res
+                    .json::<CircuitListSlice>()
+                    .map_err(|err| CliError::ActionError(err.to_string()))?),
+                StatusCode::BAD_REQUEST | StatusCode::INTERNAL_SERVER_ERROR => {
+                    let message = res
+                        .json::<ServerError>()
+                        .map_err(|err| {
+                            CliError::ActionError(format!(
+                                "Unable to parse error response: {}",
+                                err
+                            ))
+                        })?
+                        .message;
+
+                    Err(CliError::ActionError(format!(
+                        "Unable to fetch circuits: {}",
+                        message
+                    )))
+                }
+                _ => Err(CliError::ActionError(format!(
+                    "Received unknown response status: {}",
+                    res.status()
+                ))),
+            })
+    }
+
+    pub fn fetch_circuit(&self, circuit_id: &str) -> Result<CircuitSlice, CliError> {
+        Client::new()
+            .get(&format!("{}/circuits/{}", self.url, circuit_id))
+            .send()
+            .map_err(|err| CliError::ActionError(err.to_string()))
+            .and_then(|res| match res.status() {
+                StatusCode::OK => Ok(res
+                    .json::<CircuitSlice>()
+                    .map_err(|err| CliError::ActionError(err.to_string()))?),
+                StatusCode::BAD_REQUEST | StatusCode::INTERNAL_SERVER_ERROR => {
+                    let message = res
+                        .json::<ServerError>()
+                        .map_err(|err| {
+                            CliError::ActionError(format!(
+                                "Unable to parse error response: {}",
+                                err
+                            ))
+                        })?
+                        .message;
+
+                    Err(CliError::ActionError(format!(
+                        "Unable to fetch circuit: {}",
+                        message
+                    )))
+                }
+                _ => Err(CliError::ActionError(format!(
+                    "Received unknown response status: {}",
+                    res.status()
+                ))),
+            })
+    }
 }
 
 #[derive(Deserialize)]
@@ -101,4 +171,34 @@ struct ServerStatus {
 #[derive(Deserialize)]
 struct ServerError {
     message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CircuitSlice {
+    pub id: String,
+    pub auth: AuthorizationType,
+    pub persistence: PersistenceType,
+    pub durability: DurabilityType,
+    pub routes: RouteType,
+    pub circuit_management_type: String,
+    pub members: Vec<String>,
+    pub roster: Roster,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CircuitListSlice {
+    pub data: Vec<CircuitSlice>,
+    pub paging: Paging,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Paging {
+    pub current: String,
+    pub offset: usize,
+    pub limit: usize,
+    pub total: usize,
+    pub first: String,
+    pub prev: String,
+    pub next: String,
+    pub last: String,
 }

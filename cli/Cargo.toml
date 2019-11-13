@@ -27,7 +27,7 @@ experimental = [
     "postgres",
 ]
 
-circuit = ["reqwest", "splinter/sawtooth-signing-compat"]
+circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat"]
 health = ["reqwest", "serde_json"]
 
 database = ["splinter/database", "diesel", "postgres"]
