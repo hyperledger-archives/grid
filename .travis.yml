@@ -18,6 +18,8 @@ services:
 env:
   global:
     - ISOLATION_ID=$TRAVIS_BUILD_ID
+    - NAMESPACE="splintercommunity/"
+    - VERSION=AUTO_STRICT
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
@@ -66,3 +68,14 @@ jobs:
         - set -e
       script:
         - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit
+
+    - stage: Publish docker images
+      language: generic
+      before_deploy:
+        - docker login -u splintercommunity -p $DOCKER_TOKEN
+        - REPO_VERSION=$(./bin/get_version) ISOLATION_ID="master" docker-compose -f docker-compose-installed.yaml build
+      deploy:
+        provider: script
+        script: ISOLATION_ID="master" docker-compose -f docker-compose-installed.yaml push
+        on:
+          branch: master
