@@ -49,6 +49,8 @@ ursa = { version = "0.1", optional = true }
 hyper = { version = "0.12", optional = true }
 tokio = { version = "0.1.22", optional = true }
 awc = { version = "0.2", optional = true }
+diesel = { version = "1.0", features = ["postgres", "r2d2", "serde_json"], optional = true }
+diesel_migrations = { version = "1.4", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"
@@ -61,13 +63,15 @@ glob = "0.2"
 default = []
 
 experimental = [
-    "zmq-transport"
+    "zmq-transport",
+    "database"
 ]
 
 zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
+database = ["diesel", "diesel_migrations"]
 
 [package.metadata.docs.rs]
 features = [
@@ -75,4 +79,5 @@ features = [
     "ursa-compat",
     "sawtooth-signing-compat",
     "events",
+    "database"
   ]

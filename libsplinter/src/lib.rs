@@ -18,6 +18,12 @@ extern crate log;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
+#[macro_use]
+#[cfg(feature = "database")]
+extern crate diesel;
+#[macro_use]
+#[cfg(feature = "database")]
+extern crate diesel_migrations;
 
 #[macro_export]
 macro_rules! rwlock_read_unwrap {
@@ -54,6 +60,8 @@ pub mod channel;
 pub mod circuit;
 pub mod collections;
 pub mod consensus;
+#[cfg(feature = "database")]
+pub mod database;
 #[cfg(feature = "events")]
 pub mod events;
 mod hex;
