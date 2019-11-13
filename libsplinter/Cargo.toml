@@ -64,6 +64,8 @@ default = []
 
 experimental = [
     "zmq-transport",
+    "biome",
+    "biome-notifications",
     "database"
 ]
 
@@ -71,6 +73,8 @@ zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
+biome = []
+biome-notifications = ["biome", "database"]
 database = ["diesel", "diesel_migrations"]
 
 [package.metadata.docs.rs]
@@ -79,5 +83,7 @@ features = [
     "ursa-compat",
     "sawtooth-signing-compat",
     "events",
+    "biome",
+    "biome-notifications",
     "database"
   ]
