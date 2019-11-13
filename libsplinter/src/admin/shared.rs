@@ -582,9 +582,7 @@ impl AdminServiceShared {
                 error!("Unable to store admin event history: {}", err);
             }
 
-            if let Err(err) = dealer.dispatch(event) {
-                error!("Failed to dispatch events: {}", err);
-            }
+            dealer.dispatch(event);
         } else {
             warn!(
                 "No event dealer for circuit management type {}",

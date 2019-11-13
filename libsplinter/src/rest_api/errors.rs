@@ -108,6 +108,12 @@ pub struct EventDealerError {
     pub source: Option<Box<dyn Error + Send>>,
 }
 
+impl EventDealerError {
+    pub fn new(context: String, source: Option<Box<dyn Error + Send>>) -> Self {
+        Self { context, source }
+    }
+}
+
 impl Error for EventDealerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         if let Some(ref err) = self.source {
