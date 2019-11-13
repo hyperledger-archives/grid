@@ -28,7 +28,7 @@ const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn run() -> Result<(), CliError> {
-    let matches = clap_app!(myapp =>
+    let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Cargill")
@@ -62,8 +62,32 @@ fn run() -> Result<(), CliError> {
                 (@arg quiet: -q --quiet "do not display output")
             )
         )
-    )
-    .get_matches();
+    );
+
+    #[cfg(feature = "health")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("health")
+                .about("displays information about network health")
+                .subcommand(
+                    SubCommand::with_name("status")
+                        .about(
+                            "displays a node's version, endpoint, node id, and a list\n\
+                             of endpoints of its connected peers",
+                        )
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .takes_value(true)
+                                .help("URL of node"),
+                        ),
+                ),
+        );
+    }
+
+    let matches = app.get_matches();
 
     let logger = match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(LogLevel::Warn),
@@ -73,14 +97,22 @@ fn run() -> Result<(), CliError> {
 
     logger.expect("Failed to create logger");
 
-    SubcommandActions::new()
-        .with_command(
-            "admin",
-            SubcommandActions::new()
-                .with_command("keygen", admin::KeyGenAction)
-                .with_command("keyregistry", admin::KeyRegistryGenerationAction),
-        )
-        .run(Some(&matches))
+    let mut subcommands = SubcommandActions::new().with_command(
+        "admin",
+        SubcommandActions::new()
+            .with_command("keygen", admin::KeyGenAction)
+            .with_command("keyregistry", admin::KeyRegistryGenerationAction),
+    );
+
+    #[cfg(feature = "health")]
+    {
+        use action::health;
+        subcommands = SubcommandActions::new().with_command(
+            "health",
+            SubcommandActions::new().with_command("status", health::StatusAction),
+        );
+    }
+    subcommands.run(Some(&matches))
 }
 
 fn main() {

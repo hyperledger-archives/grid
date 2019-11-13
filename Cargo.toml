@@ -24,4 +24,5 @@ members = [
     "examples/private_xo",
     "examples/gameroom/database",
     "examples/gameroom/daemon",
+    "services/health"
 ]

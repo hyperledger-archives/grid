@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+[features]
+experimental = ["health"]
+health = ["reqwest", "serde_json"]
+
 [package]
 name = "splinter-cli"
 version = "0.3.6"
@@ -26,7 +30,9 @@ protobuf = "2"
 simple_logger = "0.4.0"
 libc = "0.2"
 splinter = { path = "../libsplinter" }
+reqwest = { version = "0.9", optional = true }
 sawtooth-sdk = "0.3"
 serde = "1.0"
+serde_json = { version ="1.0", optional = true }
 serde_yaml = "0.8"
 serde_derive = "1.0"
