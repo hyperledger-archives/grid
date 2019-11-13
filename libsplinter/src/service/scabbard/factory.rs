@@ -31,7 +31,7 @@ use crate::signing::SignatureVerifierFactory;
 use super::{Scabbard, SERVICE_TYPE};
 
 const DEFAULT_STATE_DB_DIR: &str = "/var/lib/splinter";
-const DEFAULT_STATE_DB_SIZE: usize = 1028 * 1028 * 1028;
+const DEFAULT_STATE_DB_SIZE: usize = 1 << 30; // 1024 ** 3
 const DEFAULT_RECEIPT_DB_DIR: &str = "/var/lib/splinter";
 const DEFAULT_RECEIPT_DB_SIZE: usize = 1 << 30; // 1024 ** 3
 
