@@ -36,6 +36,12 @@ pub fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     })
 }
 
+pub fn make_update_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Patch, "/nodes/{identity}", move |r, p| {
+        update_node(r, p, web::Data::new(registry.clone()))
+    })
+}
+
 pub fn make_delete_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     Resource::new(Method::Delete, "/nodes/{identity}", move |r, _| {
         delete_node(r, web::Data::new(registry.clone()))
@@ -74,6 +80,56 @@ fn fetch_node(
                 _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
             },
         }),
+    )
+}
+
+fn update_node(
+    request: HttpRequest,
+    payload: web::Payload,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        payload
+            .from_err::<Error>()
+            .fold(web::BytesMut::new(), move |mut body, chunk| {
+                body.extend_from_slice(&chunk);
+                Ok::<_, Error>(body)
+            })
+            .into_future()
+            .and_then(
+                move |body| match serde_json::from_slice::<HashMap<String, String>>(&body) {
+                    Ok(updates) => Box::new(
+                        web::block(move || registry.update_node(&identity, updates)).then(|res| {
+                            Ok(match res {
+                                Ok(_) => HttpResponse::Ok().finish(),
+                                Err(err) => match err {
+                                    BlockingError::Error(err) => match err {
+                                        NodeRegistryError::NotFoundError(err) => {
+                                            HttpResponse::NotFound().json(err)
+                                        }
+                                        _ => HttpResponse::InternalServerError()
+                                            .json(format!("{}", err)),
+                                    },
+                                    _ => {
+                                        HttpResponse::InternalServerError().json(format!("{}", err))
+                                    }
+                                },
+                            })
+                        }),
+                    )
+                        as Box<dyn Future<Item = HttpResponse, Error = Error>>,
+                    Err(err) => Box::new(
+                        HttpResponse::BadRequest()
+                            .json(format!("invalid updates: {}", err))
+                            .into_future(),
+                    ),
+                },
+            ),
     )
 }
 
@@ -321,6 +377,79 @@ mod tests {
 
             let req = test::TestRequest::get()
                 .uri("/nodes/Node-not-valid")
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        })
+    }
+
+    #[test]
+    /// Test the PATCH /nodes/{identity} route for updating the metadata of a node in the registry.
+    fn test_update_node() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path, &[get_node_1()]);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes/{identity}")
+                        .route(web::patch().to_async(update_node))
+                        .route(web::get().to_async(fetch_node)),
+                ),
+            );
+
+            // Verify invalid updates (e.g. no updates) gets a BAD_REQUEST response
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+            // Verify that updating an existing node gets an OK response and the fetched node has
+            // the updated metadata
+            let updated_key = "location".to_string();
+            let updated_value = "Minneapolis".to_string();
+            let mut updates = HashMap::new();
+            updates.insert(updated_key.clone(), updated_value.clone());
+
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&updates)
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+
+            let req = test::TestRequest::get()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+            let node: Node = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+            assert_eq!(
+                node.metadata
+                    .get(&updated_key)
+                    .expect("updated value doesn't exist"),
+                &updated_value
+            );
+
+            // Verify that updating a non-existent node gets a NOT_FOUND response
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_2().identity))
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&updates)
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
