@@ -458,10 +458,16 @@ fn resubscribe(
         db_pool,
     );
 
+    let query_string = if gameroom.last_event.is_empty() {
+        "".into()
+    } else {
+        format!("?last_seen_event={}", gameroom.last_event)
+    };
+
     let mut ws = WebSocketClient::new(
         &format!(
-            "{}/scabbard/{}/{}/ws/subscribe",
-            url, gameroom.circuit_id, gameroom.service_id
+            "{}/scabbard/{}/{}/ws/subscribe?{}",
+            url, gameroom.circuit_id, gameroom.service_id, query_string,
         ),
         move |_, event| {
             if let Err(err) = processor.handle_state_change_event(event) {
