@@ -30,7 +30,7 @@ FROM ubuntu:bionic
 COPY --from=BUILDER /build/target/debian/private-xo-service*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/private-xo-service*.deb || true \
+ && dpkg --unpack /tmp/private-xo-service*.deb \
  && apt-get -f -y install
 
 EXPOSE 8000

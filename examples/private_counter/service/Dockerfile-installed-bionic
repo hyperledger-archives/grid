@@ -32,7 +32,7 @@ FROM ubuntu:bionic
 COPY --from=BUILDER /build/target/debian/private-counter-service*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/private-counter-service*.deb || true \
+ && dpkg --unpack /tmp/private-counter-service*.deb \
  && apt-get -f -y install
 
 EXPOSE 8000

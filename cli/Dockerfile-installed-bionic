@@ -33,5 +33,5 @@ FROM ubuntu:bionic
 COPY --from=builder /build/target/debian/splinter-cli_*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/splinter-cli_*.deb || true \
+ && dpkg --unpack /tmp/splinter-cli_*.deb \
  && apt-get -f -y install
