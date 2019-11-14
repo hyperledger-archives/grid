@@ -36,6 +36,12 @@ pub fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     })
 }
 
+pub fn make_delete_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    Resource::new(Method::Delete, "/nodes/{identity}", move |r, _| {
+        delete_node(r, web::Data::new(registry.clone()))
+    })
+}
+
 pub fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
     Resource::new(Method::Get, "/nodes", move |r, _| {
         list_nodes(r, web::Data::new(registry.clone()))
@@ -60,6 +66,29 @@ fn fetch_node(
     Box::new(
         web::block(move || registry.fetch_node(&identity)).then(|res| match res {
             Ok(node) => Ok(HttpResponse::Ok().json(node)),
+            Err(err) => match err {
+                BlockingError::Error(err) => match err {
+                    NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+                    _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+                },
+                _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+            },
+        }),
+    )
+}
+
+fn delete_node(
+    request: HttpRequest,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        web::block(move || registry.delete_node(&identity)).then(|res| match res {
+            Ok(_) => Ok(HttpResponse::Ok().finish()),
             Err(err) => match err {
                 BlockingError::Error(err) => match err {
                     NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
@@ -292,6 +321,41 @@ mod tests {
 
             let req = test::TestRequest::get()
                 .uri("/nodes/Node-not-valid")
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        })
+    }
+
+    #[test]
+    /// Test the DELETE /nodes/{identity} route for deleting a node from the registry.
+    fn test_delete_node() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path, &[get_node_1()]);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes/{identity}").route(web::delete().to_async(delete_node)),
+            ));
+
+            // Verify that an existing node gets an OK response
+            let req = test::TestRequest::delete()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+
+            // Verify that a non-existent node gets a NOT_FOUND response
+            let req = test::TestRequest::delete()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
                 .to_request();
 
             let resp = test::call_service(&mut app, req);

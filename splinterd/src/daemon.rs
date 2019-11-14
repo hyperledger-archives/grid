@@ -358,6 +358,7 @@ impl SplinterDaemon {
                 routes::get_status(node_id.clone(), service_endpoint.clone())
             }))
             .add_resource(routes::make_fetch_node_resource(node_registry.clone()))
+            .add_resource(routes::make_delete_node_resource(node_registry.clone()))
             .add_resource(routes::make_list_nodes_resource(node_registry.clone()))
             .add_resource(routes::make_add_node_resource(node_registry))
             .add_resources(key_registry_manager.resources())
