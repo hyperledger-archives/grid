@@ -20,7 +20,7 @@ use crossbeam_channel;
 
 #[cfg(feature = "health")]
 use health::HealthService;
-use splinter::admin::{admin_service_id, AdminService};
+use splinter::admin::service::{admin_service_id, AdminService};
 use splinter::circuit::directory::CircuitDirectory;
 use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
