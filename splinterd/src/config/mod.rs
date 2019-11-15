@@ -38,6 +38,7 @@ use toml;
 pub struct Config {
     storage: Option<String>,
     transport: Option<String>,
+    cert_dir: Option<String>,
     ca_certs: Option<String>,
     client_cert: Option<String>,
     client_key: Option<String>,
@@ -68,6 +69,10 @@ impl Config {
 
     pub fn transport(&self) -> Option<String> {
         self.transport.clone()
+    }
+
+    pub fn cert_dir(&self) -> Option<String> {
+        self.cert_dir.clone()
     }
 
     pub fn ca_certs(&self) -> Option<String> {

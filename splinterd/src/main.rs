@@ -43,15 +43,25 @@ use splinter::transport::Transport;
 use tempdir::TempDir;
 
 use std::env;
-#[cfg(feature = "config-toml")]
 use std::fs;
 #[cfg(not(feature = "config-toml"))]
 use std::fs::File;
 use std::io;
+use std::path::Path;
 use std::thread;
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
+
+const DEFAULT_CERT_DIR: &str = "/etc/splinter/certs/";
+const CERT_DIR_ENV: &str = "SPLINTER_CERT_DIR";
+
+const CLIENT_CERT: &str = "client.crt";
+const CLIENT_KEY: &str = "private/client.key";
+const SERVER_CERT: &str = "server.crt";
+const SERVER_KEY: &str = "private/server.key";
+const CA_PEM: &str = "ca.pem";
+
 const HEARTBEAT_DEFAULT: u64 = 30;
 
 #[cfg(not(feature = "config-toml"))]
@@ -121,6 +131,8 @@ fn main() {
           "endpoint that service will connect to, ip:port")
         (@arg ca_file: --("ca-file") +takes_value
           "file path to the trusted ca cert")
+        (@arg cert_dir: --("cert-dir") +takes_value
+          "path to the directory where the certs and keys are")
         (@arg client_cert: --("client-cert") +takes_value
           "file path the cert for the node when connecting to a node")
         (@arg server_cert: --("server-cert") +takes_value
@@ -382,28 +394,85 @@ fn get_transport(
 
                 Ok((Box::new(transport), log_value))
             } else {
+                let cert_location = {
+                    if let Ok(s) = env::var(CERT_DIR_ENV) {
+                        s.to_string()
+                    } else {
+                        DEFAULT_CERT_DIR.to_string()
+                    }
+                };
+
+                let cert_dir = matches
+                    .value_of("cert_dir")
+                    .map(String::from)
+                    .or_else(|| config.cert_dir())
+                    .or_else(|| Some(cert_location))
+                    .expect("Must provide a valid client certificate");
+
                 let client_cert = matches
                     .value_of("client_cert")
                     .map(String::from)
                     .or_else(|| config.client_cert())
+                    .or_else(|| {
+                        let cert_dir_path = Path::new(&cert_dir);
+                        let client_cert = cert_dir_path.join(CLIENT_CERT);
+                        if !client_cert.is_file() {
+                            error!("Client cert file not found: {:?}", client_cert);
+                            return None;
+                        }
+                        let client_cert: Option<String> =
+                            client_cert.to_str().map(ToOwned::to_owned);
+                        client_cert
+                    })
                     .expect("Must provide a valid client certificate");
 
                 let server_cert = matches
                     .value_of("server_cert")
                     .map(String::from)
                     .or_else(|| config.server_cert())
+                    .or_else(|| {
+                        let cert_dir_path = Path::new(&cert_dir);
+                        let server_cert = cert_dir_path.join(SERVER_CERT);
+                        if !server_cert.is_file() {
+                            error!("Server cert file not found: {:?}", server_cert);
+                            return None;
+                        }
+                        let server_cert: Option<String> =
+                            server_cert.to_str().map(ToOwned::to_owned);
+                        server_cert
+                    })
                     .expect("Must provide a valid server certificate");
 
                 let server_key_file = matches
                     .value_of("server_key")
                     .map(String::from)
                     .or_else(|| config.server_key())
+                    .or_else(|| {
+                        let cert_dir_path = Path::new(&cert_dir);
+                        let server_key = cert_dir_path.join(SERVER_KEY);
+                        if !server_key.is_file() {
+                            error!("Server key file not found: {:?}", server_key);
+                            return None;
+                        }
+                        let server_key: Option<String> = server_key.to_str().map(ToOwned::to_owned);
+                        server_key
+                    })
                     .expect("Must provide a valid key path");
 
                 let client_key_file = matches
                     .value_of("client_key")
                     .map(String::from)
                     .or_else(|| config.client_key())
+                    .or_else(|| {
+                        let cert_dir_path = Path::new(&cert_dir);
+                        let client_key = cert_dir_path.join(CLIENT_KEY);
+                        if !client_key.is_file() {
+                            error!("Client key file not found: {:?}", client_key);
+                            return None;
+                        }
+                        let client_key: Option<String> = client_key.to_str().map(ToOwned::to_owned);
+                        client_key
+                    })
                     .expect("Must provide a valid key path");
 
                 let ca_file = {
@@ -415,36 +484,45 @@ fn get_transport(
                             .value_of("ca_file")
                             .map(String::from)
                             .or_else(|| config.ca_certs())
+                            .or_else(|| {
+                                let cert_dir_path = Path::new(&cert_dir);
+                                let ca_path = cert_dir_path.join(CA_PEM);
+                                if !ca_path.is_file() {
+                                    error!("Ca file not found: {:?}", ca_path);
+                                    return None;
+                                }
+                                let ca_file: Option<String> =
+                                    cert_dir_path.join(CA_PEM).to_str().map(ToOwned::to_owned);
+                                ca_file
+                            })
                             .expect("Must provide a valid file containing ca certs");
                         Some(ca_file)
                     }
                 };
 
-                let current_path = env::current_dir()?
-                    .to_str()
-                    .expect("Unable to get current path")
-                    .to_string();
-
                 let ca_file_log = {
                     if let Some(ca_file) = &ca_file {
-                        format!("{}/{}", current_path, &ca_file)
+                        match fs::canonicalize(&ca_file)?.to_str() {
+                            Some(ca_path) => ca_path.to_string(),
+                            None => {
+                                return Err(GetTransportError::CertError(
+                                    "CA path is not a valid path".to_string(),
+                                ))
+                            }
+                        }
                     } else {
                         "insecure".to_string()
                     }
                 };
 
                 let log_value = format!(
-                    "transport_type: tls, ca_certs: {}, client_cert: {}/{}, \
-                     client_key: {}/{}, server_cert: {}/{}, server_key: {}/{}",
+                    "transport_type: tls, ca_certs: {:?}, client_cert: {:?}, \
+                     client_key: {:?}, server_cert: {:?}, server_key: {:?}",
                     ca_file_log,
-                    current_path,
-                    client_cert,
-                    current_path,
-                    client_key_file,
-                    current_path,
-                    server_cert,
-                    current_path,
-                    server_key_file,
+                    fs::canonicalize(client_cert.clone())?,
+                    fs::canonicalize(client_key_file.clone())?,
+                    fs::canonicalize(server_cert.clone())?,
+                    fs::canonicalize(server_key_file.clone())?,
                 );
 
                 let transport = TlsTransport::new(
@@ -471,7 +549,7 @@ fn get_transport(
 
 #[derive(Debug)]
 pub enum GetTransportError {
-    CertError(CertError),
+    CertError(String),
     NotSupportedError(String),
     TlsTransportError(TlsInitError),
     OpensslError(ErrorStack),
@@ -480,7 +558,7 @@ pub enum GetTransportError {
 
 impl From<CertError> for GetTransportError {
     fn from(cert_error: CertError) -> Self {
-        GetTransportError::CertError(cert_error)
+        GetTransportError::CertError(format!("CertError: {:?}", cert_error))
     }
 }
 
