@@ -154,10 +154,17 @@ fn main() {
             "backend type for the node registry. Possible values: FILE.")
         (@arg registry_file: --("registry-file") +takes_value
             "file path to the node registry file if registry-backend is FILE.")
-        (@arg heartbeat_interval: --("heartbeat") +takes_value
-            "how often heartbeat should be sent in seconds, defaults to 30 seconds, 0 means off")
         (@arg verbose: -v --verbose +multiple
          "increase output verbosity"));
+
+    let app = app.arg(
+        Arg::with_name("heartbeat_interval")
+            .long("heartbeat")
+            .long_help(
+                "how often heartbeat should be sent in seconds, defaults to 30 seconds,\
+                 0 means off",
+            ),
+    );
 
     #[cfg(feature = "generate-certs")]
     let app = app
