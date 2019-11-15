@@ -14,70 +14,57 @@
  * limitations under the License.
  */
 
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { useUserState, UserProvider } from 'UserStore';
 import { loadAllSaplings } from './loadSaplings';
 import 'App.scss';
 
-const canopyState = {
-  configSaplings: {},
-  bootstrapApp: null
-};
-
-function invokeConfigSaplings() {
-  const configSaplings = Object.values(canopyState.configSaplings);
-  if (configSaplings.length === 0) {
-    throw new Error('No Config Saplings registered');
-  }
-  configSaplings.forEach(bootstrapConfigSapling => {
-    bootstrapConfigSapling();
-  });
-}
-
-function invokeRegisteredApp(domNode) {
-  if (canopyState.registeredApp === null) {
-    throw new Error('No Sapling registered');
-  }
-  canopyState.bootstrapApp(domNode);
-}
-
-window.$CANOPY = {
-  registerApp: bootStrapFunction => {
-    // exposed via CanopyJS
-    canopyState.bootstrapApp = bootStrapFunction;
-  },
-  registerConfigSapling: (namespace, bootStrapFunction) => {
-    // exposed via CanopyJS
-    canopyState.configSaplings[namespace] = bootStrapFunction;
-  }
-};
+window.$CANOPY = {};
 
 function App() {
-  const saplingNode = useRef(null);
-  const [userSaplings, setUserSaplings] = useState([]);
-  useLayoutEffect(() => {
-    (async function invokeSaplings() {
-      const {
-        saplingIsLoaded,
-        configSaplingsAreLoaded,
-        userSaplingsResponse
-      } = await loadAllSaplings();
+  const saplingDomNode = useRef(null);
+  const [userSaplingManifests, setUserSaplingManifests] = useState([]);
+  const [user, setUser] = useUserState();
 
-      setUserSaplings(userSaplingsResponse);
+  const appSapling = useRef(null);
+  const configSaplings = useRef({});
 
-      if (configSaplingsAreLoaded) {
-        invokeConfigSaplings();
+  // Define implementaion of CanopyJS methods
+  window.$CANOPY.registerApp = bootstrapFunction => {
+    appSapling.current = bootstrapFunction;
+  };
+
+  window.$CANOPY.registerConfigSapling = (namespace, bootStrapFunction) => {
+    configSaplings.current[namespace] = bootStrapFunction;
+  };
+
+  window.$CANOPY.setUser = setUser;
+  window.$CANOPY.getUser = () => user;
+
+  // This useEffect with zero dependencies will run only when the component first loads.
+  useEffect(() => {
+    (async () => {
+      const { userSaplingsResponse } = await loadAllSaplings();
+      setUserSaplingManifests(userSaplingsResponse);
+
+      // Load the config saplings
+      const configs = Object.values(configSaplings.current);
+      if (configs.length === 0) {
+        throw new Error('No Config Saplings registered');
       }
+      configs.forEach(bootstrapConfigSapling => {
+        bootstrapConfigSapling();
+      });
 
-      if (saplingIsLoaded) {
-        invokeRegisteredApp(saplingNode.current);
-      }
+      // Invoke the current sapling
+      appSapling.current(saplingDomNode.current);
     })();
   }, []);
 
   return (
     <>
       <nav>
-        {userSaplings.map(({ displayName, namespace }) => {
+        {userSaplingManifests.map(({ displayName, namespace }) => {
           return (
             <a href={`/${namespace}`} key={namespace}>
               {displayName}
@@ -85,9 +72,16 @@ function App() {
           );
         })}
       </nav>
-      <div ref={saplingNode} />
+      <div ref={saplingDomNode} />
     </>
   );
 }
 
-export default App;
+function AppWithProvider() {
+  return (
+    <UserProvider>
+      <App />
+    </UserProvider>
+  );
+}
+export default AppWithProvider;
