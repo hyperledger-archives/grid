@@ -27,6 +27,7 @@ license = "Apache-2.0"
 clap = "2"
 libc = "0.2"
 log = "0.3.8"
+openssl = "0.10"
 protobuf = "2"
 reqwest = { version = "0.9", optional = true }
 sawtooth-sdk = "0.3"

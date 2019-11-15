@@ -19,7 +19,7 @@ mod action;
 mod error;
 
 use crate::error::CliError;
-use action::{admin, Action, SubcommandActions};
+use action::{admin, certs, Action, SubcommandActions};
 
 use clap::clap_app;
 use log::LogLevel;
@@ -28,7 +28,7 @@ const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn run() -> Result<(), CliError> {
-    let mut app = clap_app!(myapp =>
+    let app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Cargill")
@@ -62,13 +62,24 @@ fn run() -> Result<(), CliError> {
                 (@arg quiet: -q --quiet "do not display output")
             )
         )
+        (@subcommand cert =>
+            (@subcommand generate =>
+                (about: "generate certificates that can be used for development")
+                (@arg common_name: --("common-name") +takes_value
+                  "the common name that should be used in the generated cert, default localhost")
+                (@arg cert_dir: -d --("cert-dir") +takes_value
+                  "name of the directory in which to create the certificates")
+                (@arg force: --force  conflicts_with[skip] "Overwrite files if they exist")
+                (@arg skip: --skip conflicts_with[force] "Check if files exists, generate if missing")
+            )
+        )
     );
 
     #[cfg(feature = "health")]
     {
         use clap::{Arg, SubCommand};
 
-        app = app.subcommand(
+        let app = app.subcommand(
             SubCommand::with_name("health")
                 .about("displays information about network health")
                 .subcommand(
@@ -97,12 +108,17 @@ fn run() -> Result<(), CliError> {
 
     logger.expect("Failed to create logger");
 
-    let mut subcommands = SubcommandActions::new().with_command(
-        "admin",
-        SubcommandActions::new()
-            .with_command("keygen", admin::KeyGenAction)
-            .with_command("keyregistry", admin::KeyRegistryGenerationAction),
-    );
+    let mut subcommands = SubcommandActions::new()
+        .with_command(
+            "admin",
+            SubcommandActions::new()
+                .with_command("keygen", admin::KeyGenAction)
+                .with_command("keyregistry", admin::KeyRegistryGenerationAction),
+        )
+        .with_command(
+            "cert",
+            SubcommandActions::new().with_command("generate", certs::CertGenAction),
+        );
 
     #[cfg(feature = "health")]
     {
