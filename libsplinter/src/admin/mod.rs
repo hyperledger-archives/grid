@@ -14,4 +14,5 @@
 
 pub mod error;
 pub mod messages;
+pub mod rest_api;
 pub mod service;

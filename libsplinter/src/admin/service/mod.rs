@@ -22,14 +22,11 @@ mod shared;
 use std::any::Any;
 use std::sync::{Arc, Mutex, RwLock};
 
-use futures::Future;
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
-use crate::actix_web::HttpResponse;
 use crate::circuit::SplinterState;
 use crate::consensus::{Proposal, ProposalUpdate};
-use crate::futures::IntoFuture;
 use crate::hex::to_hex;
 use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
@@ -37,8 +34,7 @@ use crate::network::{
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{AdminMessage, AdminMessage_Type, CircuitManagementPayload};
-use crate::rest_api::{into_protobuf, Method, Request, Resource, RestResourceProvider};
+use crate::protos::admin::{AdminMessage, AdminMessage_Type};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -292,80 +288,6 @@ where
     hash(MessageDigest::sha256(), &bytes)
         .map(|digest| to_hex(&*digest))
         .map_err(|err| Sha256Error(Box::new(err)))
-}
-
-impl RestResourceProvider for AdminService {
-    fn resources(&self) -> Vec<Resource> {
-        vec![
-            make_application_handler_registration_route(self.admin_service_shared.clone()),
-            make_submit_route(self.admin_service_shared.clone()),
-        ]
-    }
-}
-
-fn make_submit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::build("/admin/submit").add_method(Method::Post, move |_, payload| {
-        let shared = shared.clone();
-        Box::new(
-            into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
-                let mut shared = match shared.lock() {
-                    Ok(shared) => shared,
-                    Err(err) => {
-                        debug!("Lock poisoned: {}", err);
-                        return HttpResponse::InternalServerError().finish().into_future();
-                    }
-                };
-
-                match shared.submit(payload) {
-                    Ok(()) => HttpResponse::Accepted().finish().into_future(),
-                    Err(ServiceError::UnableToHandleMessage(err)) => HttpResponse::BadRequest()
-                        .json(json!({
-                            "message": format!("Unable to handle message: {}", err)
-                        }))
-                        .into_future(),
-                    Err(ServiceError::InvalidMessageFormat(err)) => HttpResponse::BadRequest()
-                        .json(json!({
-                            "message": format!("Failed to parse payload: {}", err)
-                        }))
-                        .into_future(),
-                    Err(_) => HttpResponse::InternalServerError().finish().into_future(),
-                }
-            }),
-        )
-    })
-}
-
-fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::build("/ws/admin/register/{type}").add_method(Method::Get, move |request, payload| {
-        let circuit_management_type = if let Some(t) = request.match_info().get("type") {
-            t.to_string()
-        } else {
-            return Box::new(HttpResponse::BadRequest().finish().into_future());
-        };
-
-        let unlocked_shared = shared.lock();
-
-        match unlocked_shared {
-            Ok(mut shared) => {
-                let request = Request::from((request, payload));
-                debug!("circuit management type {}", circuit_management_type);
-                match shared.add_subscriber(circuit_management_type, request) {
-                    Ok(res) => {
-                        debug!("Websocket response: {:?}", res);
-                        Box::new(res.into_future())
-                    }
-                    Err(err) => {
-                        debug!("Failed to create websocket: {:?}", err);
-                        Box::new(HttpResponse::InternalServerError().finish().into_future())
-                    }
-                }
-            }
-            Err(err) => {
-                debug!("Failed to add socket sender: {:?}", err);
-                Box::new(HttpResponse::InternalServerError().finish().into_future())
-            }
-        }
-    })
 }
 
 #[cfg(test)]
