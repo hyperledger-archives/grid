@@ -139,13 +139,13 @@ fn main() {
         (@arg cert_dir: --("cert-dir") +takes_value
           "path to the directory where the certs and keys are")
         (@arg client_cert: --("client-cert") +takes_value
-          "file path the cert for the node when connecting to a node")
+          "file path to the cert for the node when connecting to a node")
         (@arg server_cert: --("server-cert") +takes_value
-          "file path the cert for the node when connecting to a node")
+          "file path to the cert for the node when connecting to a node")
         (@arg server_key:  --("server-key") +takes_value
-          "file path key for the node when connecting to a node as sever")
+          "file path to the key for the node when connecting to a node as server")
         (@arg client_key:  --("client-key") +takes_value
-          "file path key for the node when connecting to a node as client")
+          "file path to the key for the node when connecting to a node as client")
         (@arg insecure:  --("insecure")
           "if set tls should accept all peer certificates")
         (@arg bind: --("bind") +takes_value
