@@ -17,19 +17,25 @@
 const bootstrap = (): void => {
   /* no op */
 };
-
-interface MockCanopy {
-  registerConfigSapling: jest.Mock;
-  registerApp: jest.Mock;
-}
+const completeUser = { userId: 'COMPLETE', displayName: 'canopy' };
+const minimalUser = { userId: 'MINIMAL' };
 
 // In order to prevent the need to overwrite the window interface,
 // a intentional `any` is cast here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).$CANOPY = {
   registerConfigSapling: jest.fn(),
-  registerApp: jest.fn()
+  registerApp: jest.fn(),
+  getUser: jest.fn(() => completeUser),
+  setUser: jest.fn()
 };
+
+interface MockCanopy {
+  registerConfigSapling: jest.Mock;
+  registerApp: jest.Mock;
+  getUser: jest.Mock;
+  setUser: jest.Mock;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const $CANOPY = (window as any).$CANOPY as MockCanopy;
@@ -56,6 +62,32 @@ describe('CanopyJS', () => {
       registerConfigSapling('login', bootstrap);
       expect($CANOPY.registerConfigSapling.mock.calls[0][0]).toEqual('login');
       expect($CANOPY.registerConfigSapling.mock.calls[0][1]).toEqual(bootstrap);
+    });
+  });
+
+  describe('getUser()', () => {
+    it('should call getUser from window object', async () => {
+      expect.assertions(1);
+      // dynamic import is used here to ensure that the window.$CANOPY object has been set up
+      const { getUser } = await import('./index');
+      expect(getUser()).toEqual(completeUser);
+    });
+  });
+
+  describe('setUser(user)', () => {
+    it('should call setUser from window object with a complete user object', async () => {
+      expect.assertions(1);
+      // dynamic import is used here to ensure that the window.$CANOPY object has been set up
+      const { setUser } = await import('./index');
+      setUser(completeUser);
+      expect($CANOPY.setUser.mock.calls[0][0]).toEqual(completeUser);
+    });
+    it('it should call setUser from window object with a minimal user object', async () => {
+      expect.assertions(1);
+      // dynamic import is used here to ensure that the window.$CANOPY object has been set up
+      const { setUser } = await import('./index');
+      setUser(minimalUser);
+      expect($CANOPY.setUser.mock.calls[0][0]).toEqual(minimalUser);
     });
   });
 });

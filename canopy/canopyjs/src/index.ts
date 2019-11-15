@@ -13,6 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+interface User {
+  userId: string;
+  displayName?: string;
+}
+
+interface SetUser {
+  (user: User): void;
+}
+
+interface GetUser {
+  (): User;
+}
+
 interface RegisterApp {
   (bootstrapFunction: (domNode: Node) => void): void;
 }
@@ -26,6 +40,8 @@ interface RegisterConfigSapling {
 interface Canopy {
   registerApp: RegisterApp;
   registerConfigSapling: RegisterConfigSapling;
+  getUser: GetUser;
+  setUser: SetUser;
 }
 
 function assertAndGetWindowCanopy(): Canopy {
@@ -43,4 +59,9 @@ function assertAndGetWindowCanopy(): Canopy {
 
 const canopy = assertAndGetWindowCanopy();
 
-export const { registerApp, registerConfigSapling }: Canopy = canopy;
+export const {
+  registerApp,
+  registerConfigSapling,
+  getUser,
+  setUser
+}: Canopy = canopy;
