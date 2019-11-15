@@ -14,7 +14,19 @@
  * limitations under the License.
  */
 
-import littleLoader from 'little-loader';
-import { promisify } from 'es6-promisify';
+function promiseLoader(scriptUrl) {
+  const canopyUrl = new URL(window.location);
+  const saplingUrl = new URL(scriptUrl);
+  return new Promise((resolve, reject) => {
+    const body = document.querySelector('body');
+    const script = document.createElement('script');
+    script.async = true;
+    script.crossOrigin = canopyUrl.origin !== saplingUrl.origin;
+    script.src = scriptUrl;
+    script.onload = resolve;
+    script.onerror = reject;
+    body.insertAdjacentElement('beforeend', script);
+  });
+}
 
-export default promisify(littleLoader);
+export default promiseLoader;
