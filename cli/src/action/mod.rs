@@ -16,8 +16,11 @@ pub mod admin;
 pub mod health;
 
 use std::collections::HashMap;
+use std::ffi::CString;
+use std::path::Path;
 
 use clap::ArgMatches;
+use libc;
 
 use super::error::CliError;
 
@@ -62,5 +65,21 @@ impl<'s> Action for SubcommandActions<'s> {
         } else {
             Err(CliError::InvalidSubcommand)
         }
+    }
+}
+
+fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
+    let pathstr = path
+        .to_str()
+        .ok_or_else(|| CliError::EnvironmentError(format!("Invalid path: {:?}", path)))?;
+    let cpath =
+        CString::new(pathstr).map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+    let result = unsafe { libc::chown(cpath.as_ptr(), uid, gid) };
+    match result {
+        0 => Ok(()),
+        code => Err(CliError::EnvironmentError(format!(
+            "Error chowning file {}: {}",
+            pathstr, code
+        ))),
     }
 }

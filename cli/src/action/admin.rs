@@ -15,7 +15,6 @@
 
 use std::collections::BTreeMap;
 use std::env;
-use std::ffi::CString;
 use std::fs::{metadata, File, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
@@ -27,14 +26,13 @@ use std::os::linux::fs::MetadataExt;
 use std::os::unix::fs::MetadataExt;
 
 use clap::ArgMatches;
-use libc;
 use sawtooth_sdk::signing;
 use serde::{Deserialize, Serialize};
 use splinter::keys::{storage::StorageKeyRegistry, KeyInfo, KeyRegistry};
 
 use crate::error::CliError;
 
-use super::Action;
+use super::{chown, Action};
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
@@ -294,20 +292,4 @@ fn create_key_pair(
     }
 
     Ok(public_key.as_slice().to_vec())
-}
-
-fn chown(path: &Path, uid: u32, gid: u32) -> Result<(), CliError> {
-    let pathstr = path
-        .to_str()
-        .ok_or_else(|| CliError::EnvironmentError(format!("Invalid path: {:?}", path)))?;
-    let cpath =
-        CString::new(pathstr).map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-    let result = unsafe { libc::chown(cpath.as_ptr(), uid, gid) };
-    match result {
-        0 => Ok(()),
-        code => Err(CliError::EnvironmentError(format!(
-            "Error chowning file {}: {}",
-            pathstr, code
-        ))),
-    }
 }
