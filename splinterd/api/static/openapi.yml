@@ -181,7 +181,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  
+
   /keys:
     get:
       tags:
@@ -259,9 +259,41 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /nodes:
+    post:
+      tags:
+        - Node Registry
+      description: Add node to the Node Registry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisteredNode'
+      responses:
+        200:
+          description: The node was added to the registry
+        400:
+          description: The request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: The node already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     get:
       tags:
-          - Node Registry
+        - Node Registry
       description: List nodes in the Node Registry
       parameters:
         - name: offset
@@ -307,7 +339,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /nodes/{identity}:
     get:
@@ -333,6 +370,72 @@ paths:
                     $ref: "#/components/schemas/RegisteredNode"
         404:
           description: The node with {identity} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Node Registry
+      description: Update a node in the Node Registry
+      parameters:
+        - name: identity
+          in: path
+          description: identity of node to update
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: The node in the registry has been updated
+        400:
+          description: The request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: The node with {identity} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Node Registry
+      description: Delete a node from the Node Registry
+      parameters:
+        - name: identity
+          in: path
+          description: identity of node to delete
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The node has been deleted from the registry
+        404:
+          description: The node with {identity} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
           content:
             application/json:
               schema:
