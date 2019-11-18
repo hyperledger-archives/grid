@@ -1,0 +1,98 @@
+/**
+ * Copyright 2019 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@import 'canopy-design-system/src/themes/default';
+
+$nav-tab-spacings: (
+  padding: $padding-s,
+  column-gap: $padding-s,
+  icon-width: 2rem,
+  label-width: 9rem
+);
+
+$total-nav-width: map-get($nav-tab-spacings, 'padding') * 2 +
+  map-get($nav-tab-spacings, 'column-gap') +
+  map-get($nav-tab-spacings, 'icon-width') +
+  map-get($nav-tab-spacings, 'label-width');
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  top: 0;
+  left: 0;
+  width: fit-content;
+  height: 100vh;
+  background: $background-white;
+  min-width: $total-nav-width;
+
+  hr {
+    margin: 0;
+    border: 0;
+    width: 100%;
+    background-color: $background-light;
+    height: 2px;
+  }
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: darken($color-canopy, 20%);
+  padding: $padding-s;
+  color: text-primary;
+
+  h5 {
+    margin: 0;
+  }
+}
+
+.nav-tab {
+  display: grid;
+  grid-template-columns:
+    [icon-start] map-get($nav-tab-spacings, 'icon-width')
+    [icon-end label-start] map-get($nav-tab-spacings, 'label-width')
+    [label-end];
+  column-gap: map-get($nav-tab-spacings, 'column-gap');
+  align-items: center;
+  padding: map-get($nav-tab-spacings, 'padding');
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-decoration: none;
+  color: $text-primary;
+  transition: all 0.2s linear;
+  margin-top: 0.5rem;
+
+  .icon {
+    height: map-get($nav-tab-spacings, 'icon-width');
+    width: map-get($nav-tab-spacings, 'icon-width');
+  }
+
+  .label {
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  &:hover {
+    background: lighten($color-canopy-light, 15%);
+  }
+
+  &.page-active {
+    background: $color-canopy-light;
+  }
+}
