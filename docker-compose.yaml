@@ -50,3 +50,16 @@ services:
       build:
         context: .
         dockerfile: splinterd/api/openapi.dockerfile
+
+  splinter-db:
+    image: postgres
+    container_name: splinter-db
+    restart: always
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: splinter_admin
+      POSTGRES_PASSWORD: splinter_test
+      POSTGRES_DB: splinter
