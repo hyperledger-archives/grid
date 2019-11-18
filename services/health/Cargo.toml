@@ -6,5 +6,5 @@ edition = "2018"
 license = "Apache-2.0"
 
 [dependencies]
-splinter = { path = "../../libsplinter" }
 log = "0.3.0"
+splinter = { path = "../../libsplinter" }
