@@ -14,10 +14,12 @@
 
 FROM node:lts-alpine
 
-WORKDIR /app
+WORKDIR /project/app
 
-COPY package*.json ./
+COPY app/package*.json /project/app
+
+COPY design-system /project/design-system
 
 RUN yarn install
 
-COPY . .
+COPY app /project/app
