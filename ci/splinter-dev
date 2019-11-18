@@ -68,6 +68,8 @@ RUN USER=root cargo new --bin examples/private_counter/service
 # Create empty Cargo projects for private xo
 RUN USER=root cargo new --bin examples/private_xo
 
+# Create empty Cargo project for health service
+RUN USER=root cargo new --bin services/health
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -87,6 +89,8 @@ COPY examples/private_counter/service/Cargo.toml \
      /build/examples/private_counter/service/Cargo.toml
 COPY examples/private_xo/Cargo.toml /build/examples/private_xo/Cargo.toml
 
+COPY services/health/Cargo.toml /build/services/health/Cargo.toml
+
 # Do release builds for each Cargo.toml
 RUN find . -name 'Cargo.toml' -exec \
     sh -c 'x="{}"; cargo build --release --manifest-path "$x" ' \;
@@ -95,6 +99,7 @@ RUN find . -name 'Cargo.toml' -exec \
 RUN rm \
     target/release/gameroom-database* \
     target/release/gameroomd* \
+    target/release/health* \
     target/release/libsplinter* \
     target/release/pcounter* \
     target/release/private-counter* \
@@ -103,6 +108,7 @@ RUN rm \
     target/release/splinterd* \
     target/release/deps/gameroom_database* \
     target/release/deps/gameroomd* \
+    target/release/deps/health* \
     target/release/deps/libsplinter* \
     target/release/deps/pcounter* \
     target/release/deps/private_counter* \
