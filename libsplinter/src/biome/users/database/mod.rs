@@ -14,6 +14,7 @@
 
 //! Defines methods and utilities to interact with user tables in the database.
 
+pub(super) mod helpers;
 pub(in crate::biome) mod models;
 pub(super) mod schema;
 

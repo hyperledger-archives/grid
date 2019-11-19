@@ -19,6 +19,7 @@
 
 pub mod database;
 mod error;
+pub(in crate::biome) mod user_store;
 
 pub use error::UserStoreError;
 
