@@ -88,13 +88,13 @@ impl RestResourceProvider for CircuitResourceProvider {
 }
 
 fn make_fetch_circuit_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
-    Resource::new(Method::Get, "/circuits/{circuit_id}", move |r, _| {
+    Resource::build("/circuits/{circuit_id}").add_method(Method::Get, move |r, _| {
         fetch_circuit(r, web::Data::new(state.clone()))
     })
 }
 
 fn make_list_circuits_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
-    Resource::new(Method::Get, "/circuits", move |r, _| {
+    Resource::build("/circuits").add_method(Method::Get, move |r, _| {
         list_circuits(r, web::Data::new(state.clone()))
     })
 }

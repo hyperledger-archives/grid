@@ -13,7 +13,10 @@
 // limitations under the License.
 
 pub mod error;
-use error::NodeRegistryError;
+pub mod noop;
+pub mod yaml;
+
+pub use error::NodeRegistryError;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -29,14 +32,9 @@ pub trait NodeRegistry: Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `identity` - The Splinter ID of the node.
-    /// * `data` - A map with node metadata.
+    /// * `node` - The node to be added to the registry.
     ///
-    fn create_node(
-        &self,
-        identity: &str,
-        data: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError>;
+    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError>;
 
     /// Returns a list of nodes.
     ///

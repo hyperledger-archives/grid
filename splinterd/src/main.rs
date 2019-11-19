@@ -24,7 +24,6 @@ extern crate clap;
 mod certs;
 mod config;
 mod daemon;
-mod node_registry;
 mod registry_config;
 mod routes;
 

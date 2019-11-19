@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use splinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
+use super::{Node, NodeRegistry, NodeRegistryError};
 
 /// The NoOpNodeRegistry is an empty-list implementation of the NodeRegistry trait.
 ///
@@ -25,12 +25,8 @@ use splinter::node_registry::{error::NodeRegistryError, Node, NodeRegistry};
 pub struct NoOpNodeRegistry;
 
 impl NodeRegistry for NoOpNodeRegistry {
-    fn create_node(
-        &self,
-        _identity: &str,
-        _data: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError> {
-        Err(NodeRegistryError::UnableToCreateNode(
+    fn add_node(&self, _node: Node) -> Result<(), NodeRegistryError> {
+        Err(NodeRegistryError::UnableToAddNode(
             "operation not supported".into(),
             None,
         ))

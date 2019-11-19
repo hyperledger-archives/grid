@@ -15,10 +15,10 @@
 use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 use percent_encoding::utf8_percent_encode;
 use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use splinter::futures::{future::IntoFuture, Future};
+use splinter::futures::{future::IntoFuture, stream::Stream, Future};
 use splinter::{
     node_registry::{error::NodeRegistryError, Node, NodeRegistry},
-    rest_api::{Method, Resource, RestResourceProvider},
+    rest_api::{Method, Resource},
 };
 use std::collections::HashMap;
 
@@ -30,40 +30,33 @@ pub struct ListNodesResponse {
     paging: Paging,
 }
 
-#[derive(Clone)]
-pub struct NodeRegistryManager {
-    node_id: String,
-    registry: Box<dyn NodeRegistry>,
+pub fn make_nodes_identity_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    let registry1 = registry.clone();
+    let registry2 = registry.clone();
+    Resource::build("/nodes/{identity}")
+        .add_method(Method::Get, move |r, _| {
+            fetch_node(r, web::Data::new(registry.clone()))
+        })
+        .add_method(Method::Patch, move |r, p| {
+            update_node(r, p, web::Data::new(registry1.clone()))
+        })
+        .add_method(Method::Delete, move |r, _| {
+            delete_node(r, web::Data::new(registry2.clone()))
+        })
 }
 
-impl NodeRegistryManager {
-    pub fn new(node_id: String, registry: Box<dyn NodeRegistry>) -> Self {
-        Self { node_id, registry }
-    }
+pub fn make_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    let registry1 = registry.clone();
+    Resource::build("/nodes")
+        .add_method(Method::Get, move |r, _| {
+            list_nodes(r, web::Data::new(registry.clone()))
+        })
+        .add_method(Method::Post, move |_, p| {
+            add_node(p, web::Data::new(registry1.clone()))
+        })
 }
 
-impl RestResourceProvider for NodeRegistryManager {
-    fn resources(&self) -> Vec<Resource> {
-        vec![
-            make_fetch_node_resource(self.registry.clone()),
-            make_list_nodes_resource(self.registry.clone()),
-        ]
-    }
-}
-
-fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Get, "/nodes/{identity}", move |r, _| {
-        fetch_node(r, web::Data::new(registry.clone()))
-    })
-}
-
-fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Get, "/nodes", move |r, _| {
-        list_nodes(r, web::Data::new(registry.clone()))
-    })
-}
-
-pub fn fetch_node(
+fn fetch_node(
     request: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
@@ -86,7 +79,80 @@ pub fn fetch_node(
     )
 }
 
-pub fn list_nodes(
+fn update_node(
+    request: HttpRequest,
+    payload: web::Payload,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        payload
+            .from_err::<Error>()
+            .fold(web::BytesMut::new(), move |mut body, chunk| {
+                body.extend_from_slice(&chunk);
+                Ok::<_, Error>(body)
+            })
+            .into_future()
+            .and_then(
+                move |body| match serde_json::from_slice::<HashMap<String, String>>(&body) {
+                    Ok(updates) => Box::new(
+                        web::block(move || registry.update_node(&identity, updates)).then(|res| {
+                            Ok(match res {
+                                Ok(_) => HttpResponse::Ok().finish(),
+                                Err(err) => match err {
+                                    BlockingError::Error(err) => match err {
+                                        NodeRegistryError::NotFoundError(err) => {
+                                            HttpResponse::NotFound().json(err)
+                                        }
+                                        _ => HttpResponse::InternalServerError()
+                                            .json(format!("{}", err)),
+                                    },
+                                    _ => {
+                                        HttpResponse::InternalServerError().json(format!("{}", err))
+                                    }
+                                },
+                            })
+                        }),
+                    )
+                        as Box<dyn Future<Item = HttpResponse, Error = Error>>,
+                    Err(err) => Box::new(
+                        HttpResponse::BadRequest()
+                            .json(format!("invalid updates: {}", err))
+                            .into_future(),
+                    ),
+                },
+            ),
+    )
+}
+
+fn delete_node(
+    request: HttpRequest,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let identity = request
+        .match_info()
+        .get("identity")
+        .unwrap_or("")
+        .to_string();
+    Box::new(
+        web::block(move || registry.delete_node(&identity)).then(|res| match res {
+            Ok(_) => Ok(HttpResponse::Ok().finish()),
+            Err(err) => match err {
+                BlockingError::Error(err) => match err {
+                    NodeRegistryError::NotFoundError(err) => Ok(HttpResponse::NotFound().json(err)),
+                    _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+                },
+                _ => Ok(HttpResponse::InternalServerError().json(format!("{}", err))),
+            },
+        }),
+    )
+}
+
+fn list_nodes(
     req: HttpRequest,
     registry: web::Data<Box<dyn NodeRegistry>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
@@ -209,10 +275,48 @@ fn query_list_nodes(
     })
 }
 
+fn add_node(
+    payload: web::Payload,
+    registry: web::Data<Box<dyn NodeRegistry>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        payload
+            .from_err::<Error>()
+            .fold(web::BytesMut::new(), move |mut body, chunk| {
+                body.extend_from_slice(&chunk);
+                Ok::<_, Error>(body)
+            })
+            .into_future()
+            .and_then(move |body| match serde_json::from_slice::<Node>(&body) {
+                Ok(node) => Box::new(web::block(move || registry.add_node(node)).then(|res| {
+                    Ok(match res {
+                        Ok(_) => HttpResponse::Ok().finish(),
+                        Err(err) => match err {
+                            BlockingError::Error(err) => match err {
+                                NodeRegistryError::DuplicateNodeError(id) => {
+                                    HttpResponse::Forbidden()
+                                        .json(format!("node with with ID ({}) already exists", id))
+                                }
+                                _ => HttpResponse::InternalServerError().json(format!("{}", err)),
+                            },
+                            _ => HttpResponse::InternalServerError().json(format!("{}", err)),
+                        },
+                    })
+                }))
+                    as Box<dyn Future<Item = HttpResponse, Error = Error>>,
+                Err(err) => Box::new(
+                    HttpResponse::BadRequest()
+                        .json(format!("invalid node: {}", err))
+                        .into_future(),
+                ),
+            }),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::node_registry::yaml::YamlNodeRegistry;
+    use splinter::node_registry::yaml::YamlNodeRegistry;
     use splinter::node_registry::Node;
     use std::collections::HashMap;
     use std::env;
@@ -229,7 +333,7 @@ mod tests {
     /// Tests a GET /nodes/{identity} request returns the expected node.
     fn test_fetch_node_ok() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path);
+            write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
             let node_registry: Box<dyn NodeRegistry> = Box::new(
                 YamlNodeRegistry::new(test_yaml_file_path)
@@ -256,7 +360,7 @@ mod tests {
     /// Tests a GET /nodes/{identity} request returns NotFound when an invalid identity is passed
     fn test_fetch_node_not_found() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path);
+            write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
             let node_registry: Box<dyn NodeRegistry> = Box::new(
                 YamlNodeRegistry::new(test_yaml_file_path)
@@ -278,10 +382,118 @@ mod tests {
     }
 
     #[test]
+    /// Test the PATCH /nodes/{identity} route for updating the metadata of a node in the registry.
+    fn test_update_node() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path, &[get_node_1()]);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes/{identity}")
+                        .route(web::patch().to_async(update_node))
+                        .route(web::get().to_async(fetch_node)),
+                ),
+            );
+
+            // Verify invalid updates (e.g. no updates) gets a BAD_REQUEST response
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+            // Verify that updating an existing node gets an OK response and the fetched node has
+            // the updated metadata
+            let updated_key = "location".to_string();
+            let updated_value = "Minneapolis".to_string();
+            let mut updates = HashMap::new();
+            updates.insert(updated_key.clone(), updated_value.clone());
+
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&updates)
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+
+            let req = test::TestRequest::get()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+            let node: Node = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+            assert_eq!(
+                node.metadata
+                    .get(&updated_key)
+                    .expect("updated value doesn't exist"),
+                &updated_value
+            );
+
+            // Verify that updating a non-existent node gets a NOT_FOUND response
+            let req = test::TestRequest::patch()
+                .uri(&format!("/nodes/{}", get_node_2().identity))
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&updates)
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        })
+    }
+
+    #[test]
+    /// Test the DELETE /nodes/{identity} route for deleting a node from the registry.
+    fn test_delete_node() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path, &[get_node_1()]);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes/{identity}").route(web::delete().to_async(delete_node)),
+            ));
+
+            // Verify that an existing node gets an OK response
+            let req = test::TestRequest::delete()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+
+            // Verify that a non-existent node gets a NOT_FOUND response
+            let req = test::TestRequest::delete()
+                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        })
+    }
+
+    #[test]
     /// Tests a GET /nodes request with no filters returns the expected nodes.
     fn test_list_node_ok() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path);
+            write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
             let node_registry: Box<dyn NodeRegistry> = Box::new(
                 YamlNodeRegistry::new(test_yaml_file_path)
@@ -312,7 +524,7 @@ mod tests {
     /// Tests a GET /nodes request with filters returns the expected node.
     fn test_list_node_with_filters_ok() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path);
+            write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
             let node_registry: Box<dyn NodeRegistry> = Box::new(
                 YamlNodeRegistry::new(test_yaml_file_path)
@@ -351,7 +563,7 @@ mod tests {
     /// Tests a GET /nodes request with invalid filter returns BadRequest response.
     fn test_list_node_with_filters_bad_request() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path);
+            write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
             let node_registry: Box<dyn NodeRegistry> = Box::new(
                 YamlNodeRegistry::new(test_yaml_file_path)
@@ -376,6 +588,57 @@ mod tests {
             let resp = test::call_service(&mut app, req);
 
             assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        })
+    }
+
+    #[test]
+    /// Test the POST /nodes route for adding a node to the registry.
+    fn test_add_node() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&test_yaml_file_path, &[]);
+
+            let node_registry: Box<dyn NodeRegistry> = Box::new(
+                YamlNodeRegistry::new(test_yaml_file_path)
+                    .expect("Error creating YamlNodeRegistry"),
+            );
+
+            let mut app = test::init_service(
+                App::new()
+                    .data(node_registry.clone())
+                    .service(web::resource("/nodes").route(web::post().to_async(add_node))),
+            );
+
+            // Verify an invalid node gets a BAD_REQUEST response
+            let req = test::TestRequest::post()
+                .uri("/nodes")
+                .header(header::CONTENT_TYPE, "application/json")
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+            // Verify a valid node gets an OK response
+            let req = test::TestRequest::post()
+                .uri("/nodes")
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&get_node_1())
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::OK);
+
+            // Verify a duplicate node gets a FORBIDDEN response
+            let req = test::TestRequest::post()
+                .uri("/nodes")
+                .header(header::CONTENT_TYPE, "application/json")
+                .set_json(&get_node_1())
+                .to_request();
+
+            let resp = test::call_service(&mut app, req);
+
+            assert_eq!(resp.status(), StatusCode::FORBIDDEN);
         })
     }
 
@@ -407,10 +670,9 @@ mod tests {
         }
     }
 
-    fn write_to_file(file_path: &str) {
+    fn write_to_file(file_path: &str, nodes: &[Node]) {
         let file = File::create(file_path).expect("Error creating test nodes yaml file.");
-        serde_yaml::to_writer(file, &vec![get_node_1(), get_node_2()])
-            .expect("Error writing nodes to file.");
+        serde_yaml::to_writer(file, nodes).expect("Error writing nodes to file.");
     }
 
     fn get_node_1() -> Node {

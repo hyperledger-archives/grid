@@ -38,7 +38,7 @@ use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
-use splinter::node_registry::NodeRegistry;
+use splinter::node_registry::{self, NodeRegistry};
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;
 use splinter::protos::circuit::CircuitMessageType;
@@ -56,7 +56,6 @@ use splinter::transport::{
     ListenError, Listener, Transport,
 };
 
-use crate::node_registry;
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
 #[cfg(feature = "circuit-read")]
@@ -113,10 +112,6 @@ impl SplinterDaemon {
 
         // Setup up ctrlc handling
         let running = Arc::new(AtomicBool::new(true));
-        let registry = create_node_registry(&self.registry_config)?;
-
-        let node_registry_manager =
-            routes::NodeRegistryManager::new(self.node_id.clone(), registry);
 
         // Load initial state from the configured storage location and create the new
         // SplinterState from the retrieved circuit directory
@@ -344,6 +339,8 @@ impl SplinterDaemon {
         })?;
         let key_registry_manager = routes::KeyRegistryManager::new(key_registry);
 
+        let node_registry = create_node_registry(&self.registry_config)?;
+
         let node_id = self.node_id.clone();
         let service_endpoint = self.service_endpoint.clone();
 
@@ -352,15 +349,16 @@ impl SplinterDaemon {
         #[allow(unused_mut)]
         let mut rest_api_builder = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
-            .add_resource(Resource::new(
-                Method::Get,
-                "/openapi.yml",
-                routes::get_openapi,
-            ))
-            .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
-                routes::get_status(node_id.clone(), service_endpoint.clone())
-            }))
-            .add_resources(node_registry_manager.resources())
+            .add_resource(
+                Resource::build("/openapi.yml").add_method(Method::Get, routes::get_openapi),
+            )
+            .add_resource(
+                Resource::build("/status").add_method(Method::Get, move |_, _| {
+                    routes::get_status(node_id.clone(), service_endpoint.clone())
+                }),
+            )
+            .add_resource(routes::make_nodes_identity_resource(node_registry.clone()))
+            .add_resource(routes::make_nodes_resource(node_registry.clone()))
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources);
