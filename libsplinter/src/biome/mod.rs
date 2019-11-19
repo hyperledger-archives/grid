@@ -13,4 +13,5 @@
 // limitations under the License.
 #[cfg(feature = "biome-notifications")]
 pub mod notifications;
+
 pub mod users;

@@ -18,3 +18,40 @@
 //! application.
 
 pub mod database;
+
+use database::models::UserModel;
+
+/// Represents a user of a splinter application
+pub struct SplinterUser {
+    id: String,
+}
+
+impl SplinterUser {
+    /// Creates a new SplinterUser
+    ///
+    /// # Arguments
+    ///
+    /// * `user_id`: unique identifier for the user being created
+    ///
+    pub fn new(user_id: &str) -> Self {
+        SplinterUser {
+            id: user_id.to_string(),
+        }
+    }
+
+    /// Returns the user's id.
+    pub fn id(&self) -> String {
+        self.id.to_string()
+    }
+}
+
+impl From<UserModel> for SplinterUser {
+    fn from(user: UserModel) -> Self {
+        SplinterUser { id: user.id }
+    }
+}
+impl Into<UserModel> for SplinterUser {
+    fn into(self) -> UserModel {
+        UserModel { id: self.id }
+    }
+}
