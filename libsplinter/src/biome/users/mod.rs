@@ -18,6 +18,9 @@
 //! application.
 
 pub mod database;
+mod error;
+
+pub use error::UserStoreError;
 
 use database::models::UserModel;
 
@@ -43,6 +46,55 @@ impl SplinterUser {
     pub fn id(&self) -> String {
         self.id.to_string()
     }
+}
+
+/// Defines methods for CRUD operations and fetching and listing users
+/// without defining a storage strategy
+pub trait UserStore<T> {
+    /// Adds a user to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `user` - The user to be added
+    ///
+    ///
+    fn add_user(&self, user: T) -> Result<(), UserStoreError>;
+
+    /// Updates a user information in the underling storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `user` - The user with the updated information
+    ///
+    fn update_user(&self, updated_user: T) -> Result<(), UserStoreError>;
+
+    /// Removes a user from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The unique id of the user to be removed
+    ///
+    fn remove_user(&self, id: &str) -> Result<T, UserStoreError>;
+
+    /// Fetches a user from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The unique id of the user to be returned
+    ///
+    fn fetch_user(&self, id: &str) -> Result<T, UserStoreError>;
+
+    /// List all users from the underlying storage
+    ///
+    fn list_users(&self, id: &str) -> Result<Vec<T>, UserStoreError>;
+
+    /// Checks that a user with the given id exists
+    ///
+    /// # Arguments
+    ///
+    ///  * `id` - The unique id of the user.
+    ///
+    fn is_user(&self, id: &str) -> Result<bool, UserStoreError>;
 }
 
 impl From<UserModel> for SplinterUser {
