@@ -56,8 +56,13 @@ function App() {
         bootstrapConfigSapling();
       });
 
-      // Invoke the current sapling
-      appSapling.current(saplingDomNode.current);
+      // Invoke the current sapling if one has been registered
+      if (
+        appSapling.current &&
+        typeof appSapling.current === typeof Function.prototype
+      ) {
+        appSapling.current(saplingDomNode.current);
+      }
     })();
   }, []);
 
