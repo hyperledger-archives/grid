@@ -19,12 +19,15 @@ use std::time::Duration;
 
 use actix::prelude::*;
 use actix_web_actors::ws::{self, CloseCode, CloseReason};
-use futures::sync::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
+use futures::{
+    stream::{iter_ok, Stream},
+    sync::mpsc::{unbounded, UnboundedSender},
+};
 use serde::ser::Serialize;
 use serde_json;
 
 use crate::rest_api::{
-    errors::{EventDealerError, EventHistoryError, ResponseError},
+    errors::{EventHistoryError, ResponseError},
     Request, Response,
 };
 
@@ -48,66 +51,78 @@ impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
     pub fn subscribe(
         &mut self,
         req: Request,
-        events: &mut dyn Iterator<Item = T>,
-    ) -> Result<Response, ResponseError> {
-        let (send, recv) = unbounded();
+        initial_events: Box<dyn Iterator<Item = T> + Send>,
+    ) -> Result<(EventSender<T>, Response), ResponseError> {
+        let (sender, recv) = unbounded();
 
         let (request, payload) = req.into();
-        let res = ws::start(EventDealerWebSocket::new(recv), &request, payload)
-            .map_err(ResponseError::from)?;
 
-        self.add_sender(send, events)?;
+        let stream = iter_ok::<_, ()>(initial_events.map(MessageWrapper::Message)).chain(recv);
 
-        Ok(Response::from(res))
-    }
+        let res = ws::start(
+            EventDealerWebSocket::new(Box::new(stream)),
+            &request,
+            payload,
+        )
+        .map_err(ResponseError::from)?;
 
-    /// Send event to all created WebSockets.
-    pub fn dispatch(&mut self, event: T) {
-        self.senders.retain(|sender| {
-            if let Err(err) = sender.unbounded_send(MessageWrapper::Message(event.clone())) {
-                warn!("Dropping sender due to error: {}", err);
-                false
-            } else {
-                true
-            }
-        });
-        trace!("Event sent: {:?}", event);
-    }
-
-    pub fn stop(&self) {
-        debug!("Stoping WebSockets...");
-        self.senders.iter().for_each(|sender| {
-            if let Err(err) = sender.unbounded_send(MessageWrapper::Shutdown) {
-                error!("Failed to shutdown webocket: {:?}", err);
-            }
-        });
-    }
-
-    fn add_sender(
-        &mut self,
-        sender: UnboundedSender<MessageWrapper<T>>,
-        events: &mut dyn Iterator<Item = T>,
-    ) -> Result<(), EventDealerError> {
-        debug!("Catching up new connection");
-        for event in events {
-            sender
-                .unbounded_send(MessageWrapper::Message(event))
-                .map_err(|err| {
-                    EventDealerError::new(format!("failed to send catch-up event: {}", err), None)
-                })?
-        }
-        self.senders.push(sender);
-        Ok(())
+        Ok((EventSender { sender }, Response::from(res)))
     }
 }
 
+#[derive(Clone)]
+pub struct EventSender<T: Serialize + Debug + 'static> {
+    sender: UnboundedSender<MessageWrapper<T>>,
+}
+
+impl<T: Serialize + Debug + 'static> EventSender<T> {
+    pub fn send(&self, event: T) -> Result<(), EventSendError<T>> {
+        trace!("Event sent: {:?}", &event);
+        self.sender
+            .unbounded_send(MessageWrapper::Message(event))
+            .map_err(|err| match err.into_inner() {
+                MessageWrapper::Message(event) => EventSendError(event),
+                _ => {
+                    panic!("Sent an Message variant, but didn't receive the same variant on error")
+                }
+            })
+    }
+
+    pub fn shutdown(self) {
+        if self
+            .sender
+            .unbounded_send(MessageWrapper::Shutdown)
+            .is_err()
+        {
+            debug!("Attempting to shutdown an already stopped websocket");
+        }
+    }
+}
+
+impl<T: Serialize + Debug + 'static> Drop for EventSender<T> {
+    fn drop(&mut self) {
+        if self
+            .sender
+            .unbounded_send(MessageWrapper::Shutdown)
+            .is_err()
+        {
+            debug!("Attempting to shutdown an already stopped websocket");
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct EventSendError<T: Serialize + Debug + 'static>(pub T);
+
 struct EventDealerWebSocket<T: Serialize + Debug + 'static> {
-    recv: Option<UnboundedReceiver<MessageWrapper<T>>>,
+    stream: Option<Box<dyn Stream<Item = MessageWrapper<T>, Error = ()>>>,
 }
 
 impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
-    fn new(recv: UnboundedReceiver<MessageWrapper<T>>) -> Self {
-        Self { recv: Some(recv) }
+    fn new(stream: Box<dyn Stream<Item = MessageWrapper<T>, Error = ()>>) -> Self {
+        Self {
+            stream: Some(stream),
+        }
     }
 }
 
@@ -151,9 +166,9 @@ impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
     type Context = ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        if let Some(recv) = self.recv.take() {
+        if let Some(stream) = self.stream.take() {
             debug!("Starting Event Websocket");
-            ctx.add_stream(recv);
+            ctx.add_stream(stream);
             ctx.run_interval(Duration::from_secs(PING_INTERVAL), move |_, ctx| {
                 trace!("Sending Ping");
                 ctx.ping("");
