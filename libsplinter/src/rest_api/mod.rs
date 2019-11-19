@@ -53,6 +53,7 @@
 
 mod errors;
 mod events;
+mod response_models;
 
 use actix_web::{
     error::ErrorBadRequest, middleware, web, App, Error as ActixError, HttpRequest, HttpResponse,
@@ -67,6 +68,8 @@ use std::thread;
 pub use errors::{EventDealerError, EventHistoryError, ResponseError, RestApiServerError};
 
 pub use events::{EventDealer, EventHistory, EventSender, LocalEventHistory};
+
+pub use response_models::ErrorResponse;
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
