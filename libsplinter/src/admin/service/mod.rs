@@ -161,6 +161,12 @@ impl AdminService {
 
         Ok(new_service)
     }
+
+    pub fn commands(&self) -> impl AdminCommands + Clone {
+        AdminServiceCommands {
+            shared: Arc::clone(&self.admin_service_shared),
+        }
+    }
 }
 
 impl Service for AdminService {
@@ -234,8 +240,7 @@ impl Service for AdminService {
 
         admin_service_shared.set_network_sender(None);
 
-        // Shutdown event dealers and disconnect active websocket connections
-        admin_service_shared.shutdown_event_dealers();
+        admin_service_shared.remove_all_event_subscribers();
 
         admin_service_shared
             .stop_services()
@@ -323,6 +328,60 @@ impl Service for AdminService {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[derive(Clone)]
+struct AdminServiceCommands {
+    shared: Arc<Mutex<AdminServiceShared>>,
+}
+
+impl AdminCommands for AdminServiceCommands {
+    fn submit_circuit_change(
+        &self,
+        circuit_change: CircuitManagementPayload,
+    ) -> Result<(), AdminServiceError> {
+        self.shared
+            .lock()
+            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
+            .submit(circuit_change)?;
+
+        Ok(())
+    }
+
+    fn add_event_subscriber(
+        &self,
+        event_type: &str,
+        subscriber: Box<dyn AdminServiceEventSubscriber>,
+    ) -> Result<(), AdminServiceError> {
+        self.shared
+            .lock()
+            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
+            .add_subscriber(event_type.into(), subscriber)
+            .map_err(|err| {
+                AdminServiceError::general_error_with_source(
+                    "Unable to add event subscriber",
+                    Box::new(err),
+                )
+            })
+    }
+
+    fn get_events_since(
+        &self,
+        since_timestamp: &SystemTime,
+        event_type: &str,
+    ) -> Result<Events, AdminServiceError> {
+        self.shared
+            .lock()
+            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
+            .get_events_since(since_timestamp, event_type)
+            .map_err(|err| {
+                AdminServiceError::general_error_with_source("Unable to get events", Box::new(err))
+            })
+    }
+
+    fn clone_boxed(&self) -> Box<dyn AdminCommands> {
+        Box::new(self.clone())
     }
 }
 
