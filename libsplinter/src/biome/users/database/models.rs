@@ -11,6 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
-pub mod users;
+
+use super::schema::*;
+
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "splinter_user"]
+#[primary_key(id)]
+pub struct UserModel {
+    pub id: String,
+}
