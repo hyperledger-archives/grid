@@ -14,8 +14,6 @@
 
 use protobuf::{self, RepeatedField};
 
-#[cfg(feature = "events")]
-use crate::events::{ParseBytes, ParseError};
 use crate::hex::{as_hex, deserialize_hex};
 use crate::protos::admin::{self, CircuitCreateRequest};
 
@@ -417,14 +415,5 @@ impl AdminServiceEvent {
             AdminServiceEvent::ProposalRejected((proposal, _)) => proposal,
             AdminServiceEvent::CircuitReady(proposal) => proposal,
         }
-    }
-}
-
-#[cfg(feature = "events")]
-impl ParseBytes<AdminServiceEvent> for AdminServiceEvent {
-    fn from_bytes(bytes: &[u8]) -> Result<AdminServiceEvent, ParseError> {
-        serde_json::from_slice(bytes)
-            .map_err(Box::new)
-            .map_err(|err| ParseError::MalformedMessage(err))
     }
 }
