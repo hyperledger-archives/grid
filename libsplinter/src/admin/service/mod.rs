@@ -21,6 +21,7 @@ mod shared;
 
 use std::any::Any;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::SystemTime;
 
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
@@ -34,7 +35,7 @@ use crate::network::{
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{AdminMessage, AdminMessage_Type};
+use crate::protos::admin::{AdminMessage, AdminMessage_Type, CircuitManagementPayload};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -44,6 +45,57 @@ use crate::signing::SignatureVerifier;
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
 use self::shared::AdminServiceShared;
+
+pub use self::error::AdminServiceError;
+pub use self::error::AdminSubscriberError;
+
+pub trait AdminServiceEventSubscriber: Send {
+    fn handle_event(
+        &self,
+        admin_service_event: &messages::AdminServiceEvent,
+        timestamp: &SystemTime,
+    ) -> Result<(), AdminSubscriberError>;
+}
+
+pub trait AdminCommands: Send + Sync {
+    fn submit_circuit_change(
+        &self,
+        circuit_change: CircuitManagementPayload,
+    ) -> Result<(), AdminServiceError>;
+
+    fn add_event_subscriber(
+        &self,
+        event_type: &str,
+        subscriber: Box<dyn AdminServiceEventSubscriber>,
+    ) -> Result<(), AdminServiceError>;
+
+    fn get_events_since(
+        &self,
+        since_timestamp: &SystemTime,
+        event_type: &str,
+    ) -> Result<Events, AdminServiceError>;
+
+    fn clone_boxed(&self) -> Box<dyn AdminCommands>;
+}
+
+impl Clone for Box<dyn AdminCommands> {
+    fn clone(&self) -> Self {
+        self.clone_boxed()
+    }
+}
+
+/// An iterator over AdminServiceEvents and the time that each occurred.
+pub struct Events {
+    inner: Box<dyn Iterator<Item = (SystemTime, messages::AdminServiceEvent)> + Send>,
+}
+
+impl Iterator for Events {
+    type Item = (SystemTime, messages::AdminServiceEvent);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
 
 pub struct AdminService {
     service_id: String,
