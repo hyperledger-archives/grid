@@ -26,4 +26,5 @@ pub mod credentials;
 #[cfg(feature = "biome-notifications")]
 pub mod notifications;
 
+pub mod rest_api;
 pub mod users;
