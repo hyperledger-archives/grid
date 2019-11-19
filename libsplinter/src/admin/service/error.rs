@@ -121,6 +121,9 @@ pub enum AdminSharedError {
     UnknownAction(String),
     ValidationFailed(String),
 
+    /// An error occurred while trying to add an admin service event subscriber to the service.
+    UnableToAddSubscriber(String),
+
     /// An error occured while attempting to verify a payload's signature
     SignerError(signing::error::Error),
 
@@ -144,6 +147,7 @@ impl Error for AdminSharedError {
             AdminSharedError::SignerError(_) => None,
             AdminSharedError::CommitError(_) => None,
             AdminSharedError::UpdateProposalsError(err) => Some(err),
+            AdminSharedError::UnableToAddSubscriber(_) => None,
         }
     }
 }
@@ -181,6 +185,9 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::CommitError(msg) => write!(f, "unable to commit circuit: {}", msg),
             AdminSharedError::UpdateProposalsError(err) => {
                 write!(f, "received error while update open proposal: {}", err)
+            }
+            AdminSharedError::UnableToAddSubscriber(msg) => {
+                write!(f, "unable to add admin service event subscriber: {}", msg)
             }
         }
     }
