@@ -347,6 +347,17 @@ pub fn into_protobuf<M: Message>(
         .into_future()
 }
 
+pub fn into_bytes(payload: web::Payload) -> impl Future<Item = Vec<u8>, Error = ActixError> {
+    payload
+        .from_err::<ActixError>()
+        .fold(web::BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            Ok::<_, ActixError>(body)
+        })
+        .and_then(|body| Ok(body.to_vec()))
+        .into_future()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
