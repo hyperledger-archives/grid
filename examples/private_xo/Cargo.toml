@@ -24,7 +24,6 @@ name = "private-xo"
 path = "src/main.rs"
 
 [dependencies]
-splinter = { path = "../../libsplinter" }
 base64 = "0.10"
 clap = "2.32"
 crossbeam-channel = "0.3"
@@ -39,10 +38,11 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 simple_logger = "1.0"
+splinter = { path = "../../libsplinter" }
 transact = { git = "https://github.com/bitwiseio/transact", features = [ "sawtooth-compat" ] }
 urlencoded = "0.6"
 uuid = { version = "0.7", features = ["v4"] }
 
 [build-dependencies]
-protoc-rust = "2"
 glob = "0.2"
+protoc-rust = "2"

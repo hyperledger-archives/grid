@@ -21,7 +21,7 @@ license = "Apache-2.0"
 
 [dependencies]
 log = "0.3.8"
-splinter = { path = "../libsplinter" }
-protobuf = "2"
-url = "1.7.1"
 openssl = "0.10"
+protobuf = "2"
+splinter = { path = "../libsplinter" }
+url = "1.7.1"

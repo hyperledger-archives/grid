@@ -21,37 +21,37 @@ license = "Apache-2.0"
 
 [dependencies]
 actix = { version = "0.8", default-features = false }
-actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
-flate2 = "1.0.10"
-actix-service = "0.4"
 actix-http = {version = "0.2", features = ["flate2-zlib"] }
+actix-service = "0.4"
+actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
 actix-web-actors = "1.0"
-futures = "0.1"
 atomicwrites = "0.2"
-log = "0.3.0"
+awc = { version = "0.2", optional = true }
 byteorder = "1"
-url = "1.7.1"
-openssl = "0.10"
+crossbeam-channel = "0.3"
+diesel = { version = "1.0", features = ["postgres", "r2d2", "serde_json"], optional = true }
+diesel_migrations = { version = "1.4", optional = true }
+flate2 = "1.0.10"
+futures = "0.1"
+hyper = { version = "0.12", optional = true }
+log = "0.3.0"
 mio = "0.6"
+mio-extras = "2"
+openssl = "0.10"
+protobuf = "2"
 sawtooth = { version = "0.1", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.4"
 sawtooth-sdk = { version = "0.3", optional = true }
 serde = "1.0"
-serde_yaml = "0.8"
 serde_derive = "1.0"
 serde_json = "1.0"
-transact = { version = "0.1", features = ["sawtooth-compat"] }
-mio-extras = "2"
-crossbeam-channel = "0.3"
-uuid = { version = "0.7", features = ["v4"]}
-protobuf = "2"
-zmq = { version = "0.9", optional = true }
-ursa = { version = "0.1", optional = true }
-hyper = { version = "0.12", optional = true }
+serde_yaml = "0.8"
 tokio = { version = "0.1.22", optional = true }
-awc = { version = "0.2", optional = true }
-diesel = { version = "1.0", features = ["postgres", "r2d2", "serde_json"], optional = true }
-diesel_migrations = { version = "1.4", optional = true }
+transact = { version = "0.1", features = ["sawtooth-compat"] }
+url = "1.7.1"
+ursa = { version = "0.1", optional = true }
+uuid = { version = "0.7", features = ["v4"]}
+zmq = { version = "0.9", optional = true }
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -24,23 +24,23 @@ name = "splinterd"
 path = "src/main.rs"
 
 [dependencies]
-splinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
-health = { path = "../services/health", optional = true }
+bytes = "0.4"
 clap = "2.32"
 crossbeam-channel = "0.3"
 ctrlc = "3.0"
-log = "0.4"
 flexi_logger = "0.14"
-bytes = "0.4"
-serde_derive = "1.0.80"
-serde = "1.0.80"
-serde_yaml = "0.8"
-serde_json = "1.0"
-percent-encoding = "2.0"
-toml = "0.4.8"
-protobuf = "2"
+health = { path = "../services/health", optional = true }
+log = "0.4"
 openssl = "0.10"
+percent-encoding = "2.0"
+protobuf = "2"
+serde = "1.0.80"
+serde_derive = "1.0.80"
+serde_json = "1.0"
+serde_yaml = "0.8"
+splinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
 tempdir = "0.3"
+toml = "0.4.8"
 
 [features]
 default = []
