@@ -19,6 +19,8 @@ pub(in crate::biome) mod credentials_store;
 
 pub mod database;
 mod error;
+pub(in crate::biome) mod rest_resources;
+
 use bcrypt::{hash, DEFAULT_COST};
 
 use database::models::{NewUserCredentialsModel, UserCredentialsModel};
