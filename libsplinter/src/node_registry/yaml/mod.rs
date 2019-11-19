@@ -15,8 +15,7 @@
 mod error;
 
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
-use std::io::Write;
+use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 use super::{Node, NodeRegistry, NodeRegistryError};
@@ -29,19 +28,18 @@ pub struct YamlNodeRegistry {
 }
 
 pub struct FileInternal {
-    pub file: File,
+    pub file_path: String,
     pub cached_nodes: Vec<Node>,
 }
 
 impl YamlNodeRegistry {
     pub fn new(file_path: &str) -> Result<YamlNodeRegistry, YamlNodeRegistryError> {
-        let file = OpenOptions::new().read(true).write(true).open(file_path)?;
-
-        let nodes = serde_yaml::from_reader(&file)?;
+        let file = File::open(file_path)?;
+        let cached_nodes = serde_yaml::from_reader(&file)?;
 
         let file_internal = FileInternal {
-            file,
-            cached_nodes: nodes,
+            file_path: file_path.into(),
+            cached_nodes,
         };
 
         Ok(YamlNodeRegistry {
@@ -62,8 +60,8 @@ impl YamlNodeRegistry {
             .file_internal
             .lock()
             .map_err(|err| YamlNodeRegistryError::PoisonLockError(format!("{}", err)))?;
-        let output = serde_yaml::to_string(&data)?;
-        file_backend.file.write_all(&output.into_bytes())?;
+        let output = serde_yaml::to_vec(&data)?;
+        std::fs::write(&file_backend.file_path, &output)?;
         file_backend.cached_nodes = data.to_vec();
         Ok(())
     }
