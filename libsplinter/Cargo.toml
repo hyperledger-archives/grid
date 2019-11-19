@@ -75,6 +75,7 @@ ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
 biome = ["database"]
+biome-credentials = ["biome", "database"]
 biome-notifications = ["biome", "database"]
 database = ["diesel", "diesel_migrations"]
 
@@ -85,6 +86,7 @@ features = [
     "sawtooth-signing-compat",
     "events",
     "biome",
+    "biome-credentials",
     "biome-notifications",
     "database"
   ]
