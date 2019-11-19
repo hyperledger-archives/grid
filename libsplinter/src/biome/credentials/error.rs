@@ -17,6 +17,82 @@ use bcrypt::BcryptError;
 use std::error::Error;
 use std::fmt;
 
+use crate::database::error::DatabaseError;
+
+/// Represents CredentialsStore errors
+#[derive(Debug)]
+pub enum CredentialsStoreError {
+    /// Represents CRUD operations failures
+    OperationError {
+        context: String,
+        source: Box<dyn Error>,
+    },
+    /// Represents database query failures
+    QueryError {
+        context: String,
+        source: Box<dyn Error>,
+    },
+    /// Represents general failures in the database
+    StorageError {
+        context: String,
+        source: Box<dyn Error>,
+    },
+    /// Represents an issue connecting to the database
+    ConnectionError(Box<dyn Error>),
+    /// Represents error occured when an attempt is made to add a new credential with a
+    /// username that already exists in the database
+    DuplicateError(String),
+}
+
+impl Error for CredentialsStoreError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            CredentialsStoreError::OperationError { source, .. } => Some(&**source),
+            CredentialsStoreError::QueryError { source, .. } => Some(&**source),
+            CredentialsStoreError::StorageError { source, .. } => Some(&**source),
+            CredentialsStoreError::ConnectionError(err) => Some(&**err),
+            CredentialsStoreError::DuplicateError(_) => None,
+        }
+    }
+}
+impl fmt::Display for CredentialsStoreError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CredentialsStoreError::OperationError { context, source } => {
+                write!(f, "failed to perform operation: {}: {}", context, source)
+            }
+            CredentialsStoreError::QueryError { context, source } => {
+                write!(f, "failed query: {}: {}", context, source)
+            }
+            CredentialsStoreError::StorageError { context, source } => write!(
+                f,
+                "the underlying storage returned an error: {}: {}",
+                context, source
+            ),
+            CredentialsStoreError::ConnectionError(ref s) => {
+                write!(f, "failed to connect to underlying storage: {}", s)
+            }
+            CredentialsStoreError::DuplicateError(ref s) => {
+                write!(f, "credentials already exists: {}", s)
+            }
+        }
+    }
+}
+
+impl From<DatabaseError> for CredentialsStoreError {
+    fn from(err: DatabaseError) -> CredentialsStoreError {
+        match err {
+            DatabaseError::ConnectionError(_) => {
+                CredentialsStoreError::ConnectionError(Box::new(err))
+            }
+            _ => CredentialsStoreError::StorageError {
+                context: "The database returned an error".to_string(),
+                source: Box::new(err),
+            },
+        }
+    }
+}
+
 /// Represents UserCredentialsBuilder errors
 #[derive(Debug)]
 pub enum UserCredentialsBuilderError {

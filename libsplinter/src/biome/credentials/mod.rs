@@ -21,7 +21,7 @@ use bcrypt::{hash, DEFAULT_COST};
 
 use database::models::{NewUserCredentialsModel, UserCredentialsModel};
 
-pub(in crate::biome) use error::UserCredentialsBuilderError;
+pub use error::{CredentialsStoreError, UserCredentialsBuilderError};
 
 /// Represents crendentials used to authenticate a user
 pub struct UserCredentials {
@@ -93,6 +93,52 @@ impl UserCredentialsBuilder {
             password: hashed_password,
         })
     }
+}
+
+/// Defines methods for CRUD operations and fetching a user’s
+/// credentials without defining a storage strategy
+pub trait CredentialsStore<T> {
+    /// Adds a credential to the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `credentials` - Credentials to be added
+    ///
+    ///
+    fn add_credentials(&self, credentials: T) -> Result<(), CredentialsStoreError>;
+
+    /// Replaces a credential of a certain type for a user in the underlying storage with new
+    /// credentials. This assumes that the user has only one credential of a certain type in
+    /// storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `user_id` - The unique identifier of the user credential belongs to
+    ///  * `updated_username` - The updated username for the user
+    ///  * `updated_password` - The updated password for the user
+    ///
+    fn update_credentials(
+        &self,
+        user_id: &str,
+        updated_username: &str,
+        updated_password: &str,
+    ) -> Result<(), CredentialsStoreError>;
+
+    /// Removes a credential from a user from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `user_id` - The unique identifier of the user credential belongs to
+    ///
+    fn remove_credentials(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
+
+    /// Fetches a credential for a user
+    ///
+    /// # Arguments
+    ///
+    ///  * `user_id` - The unique identifier of the user for which the credentials will be returned
+    ///
+    fn fetch_credential(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
 }
 
 impl From<UserCredentialsModel> for UserCredentials {
