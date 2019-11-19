@@ -22,6 +22,68 @@ use crate::signing;
 
 use protobuf::error;
 
+#[derive(Debug)]
+pub enum AdminServiceError {
+    ServiceError(ServiceError),
+
+    GeneralError {
+        context: String,
+        source: Option<Box<dyn Error + Send>>,
+    },
+}
+
+impl AdminServiceError {
+    pub fn general_error(context: &str) -> Self {
+        AdminServiceError::GeneralError {
+            context: context.into(),
+            source: None,
+        }
+    }
+
+    pub fn general_error_with_source(context: &str, err: Box<dyn Error + Send>) -> Self {
+        AdminServiceError::GeneralError {
+            context: context.into(),
+            source: Some(err),
+        }
+    }
+}
+
+impl Error for AdminServiceError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            AdminServiceError::ServiceError(err) => Some(err),
+            AdminServiceError::GeneralError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for AdminServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AdminServiceError::ServiceError(err) => f.write_str(&err.to_string()),
+            AdminServiceError::GeneralError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
+        }
+    }
+}
+
+impl From<ServiceError> for AdminServiceError {
+    fn from(err: ServiceError) -> Self {
+        AdminServiceError::ServiceError(err)
+    }
+}
+
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
         ProposalManagerError::Internal(Box::new(err))
