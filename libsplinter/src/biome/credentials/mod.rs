@@ -15,6 +15,8 @@
 //! Defines a basic API to register and authenticate a SplinterUser using a username and a password.
 //! Not recommended for use in production.
 
+pub(in crate::biome) mod credentials_store;
+
 pub mod database;
 mod error;
 use bcrypt::{hash, DEFAULT_COST};

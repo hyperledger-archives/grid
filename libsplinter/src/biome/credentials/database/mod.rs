@@ -14,6 +14,7 @@
 
 //! Defines methods and utilities to interact with credentials tables in the database.
 
+pub(super) mod helpers;
 pub(super) mod models;
 pub(super) mod schema;
 
