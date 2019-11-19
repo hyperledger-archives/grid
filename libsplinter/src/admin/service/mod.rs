@@ -304,7 +304,7 @@ impl RestResourceProvider for AdminService {
 }
 
 fn make_submit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(Method::Post, "/admin/submit", move |_, payload| {
+    Resource::build("/admin/submit").add_method(Method::Post, move |_, payload| {
         let shared = shared.clone();
         Box::new(
             into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
@@ -336,40 +336,36 @@ fn make_submit_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
 }
 
 fn make_application_handler_registration_route(shared: Arc<Mutex<AdminServiceShared>>) -> Resource {
-    Resource::new(
-        Method::Get,
-        "/ws/admin/register/{type}",
-        move |request, payload| {
-            let circuit_management_type = if let Some(t) = request.match_info().get("type") {
-                t.to_string()
-            } else {
-                return Box::new(HttpResponse::BadRequest().finish().into_future());
-            };
+    Resource::build("/ws/admin/register/{type}").add_method(Method::Get, move |request, payload| {
+        let circuit_management_type = if let Some(t) = request.match_info().get("type") {
+            t.to_string()
+        } else {
+            return Box::new(HttpResponse::BadRequest().finish().into_future());
+        };
 
-            let unlocked_shared = shared.lock();
+        let unlocked_shared = shared.lock();
 
-            match unlocked_shared {
-                Ok(mut shared) => {
-                    let request = Request::from((request, payload));
-                    debug!("circuit management type {}", circuit_management_type);
-                    match shared.add_subscriber(circuit_management_type, request) {
-                        Ok(res) => {
-                            debug!("Websocket response: {:?}", res);
-                            Box::new(res.into_future())
-                        }
-                        Err(err) => {
-                            debug!("Failed to create websocket: {:?}", err);
-                            Box::new(HttpResponse::InternalServerError().finish().into_future())
-                        }
+        match unlocked_shared {
+            Ok(mut shared) => {
+                let request = Request::from((request, payload));
+                debug!("circuit management type {}", circuit_management_type);
+                match shared.add_subscriber(circuit_management_type, request) {
+                    Ok(res) => {
+                        debug!("Websocket response: {:?}", res);
+                        Box::new(res.into_future())
+                    }
+                    Err(err) => {
+                        debug!("Failed to create websocket: {:?}", err);
+                        Box::new(HttpResponse::InternalServerError().finish().into_future())
                     }
                 }
-                Err(err) => {
-                    debug!("Failed to add socket sender: {:?}", err);
-                    Box::new(HttpResponse::InternalServerError().finish().into_future())
-                }
             }
-        },
-    )
+            Err(err) => {
+                debug!("Failed to add socket sender: {:?}", err);
+                Box::new(HttpResponse::InternalServerError().finish().into_future())
+            }
+        }
+    })
 }
 
 #[cfg(test)]

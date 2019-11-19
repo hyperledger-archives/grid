@@ -32,7 +32,7 @@
 //!     fn resources(&self) -> Vec<Resource> {
 //!         let name = self.name.clone();
 //!
-//!         vec![Resource::new(Method::Get, "/index", move |r, p| {
+//!         vec![Resource::build("/index").add_method(Method::Get, move |r, p| {
 //!             Box::new(
 //!                 HttpResponse::Ok()
 //!                 .body(format!("Hello, I am {}", name))
@@ -141,31 +141,30 @@ pub enum Method {
     Head,
 }
 
-/// Resource is a `struct` meant to describe a RESTful endpoint.
+/// `Resource` represents a RESTful endpoint.
 ///
 /// ```
-///
 /// use splinter::rest_api::{Resource, Method};
 /// use actix_web::HttpResponse;
 /// use futures::IntoFuture;
 ///
-///
-/// let resource = Resource::new(Method::Get, "/index", |r, p| {
-///     Box::new(
-///         HttpResponse::Ok()
-///             .body("Hello, World")
-///             .into_future()
-///     )
-/// });
+/// Resource::build("/index")
+///     .add_method(Method::Get, |r, p| {
+///         Box::new(
+///             HttpResponse::Ok()
+///                 .body("Hello, World")
+///                 .into_future()
+///         )
+///     });
 /// ```
 #[derive(Clone)]
 pub struct Resource {
     route: String,
-    method: Method,
-    handle: Arc<HandlerFunction>,
+    methods: Vec<(Method, Arc<HandlerFunction>)>,
 }
 
 impl Resource {
+    #[deprecated(note = "Please use the `build` and `add_method` methods instead")]
     pub fn new<F>(method: Method, route: &str, handle: F) -> Self
     where
         F: Fn(
@@ -177,28 +176,45 @@ impl Resource {
             + 'static
             + Clone,
     {
+        Self::build(route).add_method(method, handle)
+    }
+
+    pub fn build(route: &str) -> Self {
         Self {
-            method,
             route: route.to_string(),
-            handle: Arc::new(Box::new(handle)),
+            methods: vec![],
         }
     }
 
+    pub fn add_method<F>(mut self, method: Method, handle: F) -> Self
+    where
+        F: Fn(
+                HttpRequest,
+                web::Payload,
+            ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
+            + Send
+            + Sync
+            + 'static
+            + Clone,
+    {
+        self.methods.push((method, Arc::new(Box::new(handle))));
+        self
+    }
+
     fn into_route(self) -> actix_web::Resource {
-        let method = self.method.clone();
-        let path = self.route.clone();
-        let func = move |r: HttpRequest, p: web::Payload| (self.handle)(r, p);
-
-        let route = match method {
-            Method::Get => web::get().to_async(func),
-            Method::Post => web::post().to_async(func),
-            Method::Put => web::put().to_async(func),
-            Method::Patch => web::patch().to_async(func),
-            Method::Delete => web::delete().to_async(func),
-            Method::Head => web::head().to_async(func),
-        };
-
-        web::resource(&path).route(route)
+        self.methods
+            .into_iter()
+            .fold(web::resource(&self.route), |resource, (method, handler)| {
+                let func = move |r: HttpRequest, p: web::Payload| (handler)(r, p);
+                resource.route(match method {
+                    Method::Get => web::get().to_async(func),
+                    Method::Post => web::post().to_async(func),
+                    Method::Put => web::put().to_async(func),
+                    Method::Patch => web::patch().to_async(func),
+                    Method::Delete => web::delete().to_async(func),
+                    Method::Head => web::head().to_async(func),
+                })
+            })
     }
 }
 
@@ -338,9 +354,11 @@ mod test {
     use futures::IntoFuture;
 
     #[test]
-    fn test_create_handle() {
-        let _handler = Resource::new(Method::Get, "/test", |_: HttpRequest, _: web::Payload| {
-            Box::new(Response::Ok().finish().into_future())
-        });
+    fn test_resource() {
+        Resource::build("/test")
+            .add_method(Method::Get, |_: HttpRequest, _: web::Payload| {
+                Box::new(Response::Ok().finish().into_future())
+            })
+            .into_route();
     }
 }

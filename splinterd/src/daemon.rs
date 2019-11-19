@@ -349,19 +349,16 @@ impl SplinterDaemon {
         #[allow(unused_mut)]
         let mut rest_api_builder = RestApiBuilder::new()
             .with_bind(&self.rest_api_endpoint)
-            .add_resource(Resource::new(
-                Method::Get,
-                "/openapi.yml",
-                routes::get_openapi,
-            ))
-            .add_resource(Resource::new(Method::Get, "/status", move |_, _| {
-                routes::get_status(node_id.clone(), service_endpoint.clone())
-            }))
-            .add_resource(routes::make_fetch_node_resource(node_registry.clone()))
-            .add_resource(routes::make_update_node_resource(node_registry.clone()))
-            .add_resource(routes::make_delete_node_resource(node_registry.clone()))
-            .add_resource(routes::make_list_nodes_resource(node_registry.clone()))
-            .add_resource(routes::make_add_node_resource(node_registry))
+            .add_resource(
+                Resource::build("/openapi.yml").add_method(Method::Get, routes::get_openapi),
+            )
+            .add_resource(
+                Resource::build("/status").add_method(Method::Get, move |_, _| {
+                    routes::get_status(node_id.clone(), service_endpoint.clone())
+                }),
+            )
+            .add_resource(routes::make_nodes_identity_resource(node_registry.clone()))
+            .add_resource(routes::make_nodes_resource(node_registry.clone()))
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources);

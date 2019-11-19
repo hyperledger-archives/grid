@@ -30,34 +30,30 @@ pub struct ListNodesResponse {
     paging: Paging,
 }
 
-pub fn make_fetch_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Get, "/nodes/{identity}", move |r, _| {
-        fetch_node(r, web::Data::new(registry.clone()))
-    })
+pub fn make_nodes_identity_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    let registry1 = registry.clone();
+    let registry2 = registry.clone();
+    Resource::build("/nodes/{identity}")
+        .add_method(Method::Get, move |r, _| {
+            fetch_node(r, web::Data::new(registry.clone()))
+        })
+        .add_method(Method::Patch, move |r, p| {
+            update_node(r, p, web::Data::new(registry1.clone()))
+        })
+        .add_method(Method::Delete, move |r, _| {
+            delete_node(r, web::Data::new(registry2.clone()))
+        })
 }
 
-pub fn make_update_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Patch, "/nodes/{identity}", move |r, p| {
-        update_node(r, p, web::Data::new(registry.clone()))
-    })
-}
-
-pub fn make_delete_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Delete, "/nodes/{identity}", move |r, _| {
-        delete_node(r, web::Data::new(registry.clone()))
-    })
-}
-
-pub fn make_list_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Get, "/nodes", move |r, _| {
-        list_nodes(r, web::Data::new(registry.clone()))
-    })
-}
-
-pub fn make_add_node_resource(registry: Box<dyn NodeRegistry>) -> Resource {
-    Resource::new(Method::Post, "/nodes", move |_, p| {
-        add_node(p, web::Data::new(registry.clone()))
-    })
+pub fn make_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+    let registry1 = registry.clone();
+    Resource::build("/nodes")
+        .add_method(Method::Get, move |r, _| {
+            list_nodes(r, web::Data::new(registry.clone()))
+        })
+        .add_method(Method::Post, move |_, p| {
+            add_node(p, web::Data::new(registry1.clone()))
+        })
 }
 
 fn fetch_node(

@@ -89,7 +89,7 @@ impl RestResourceProvider for HealthService {
 }
 
 fn make_status_resource() -> Resource {
-    Resource::new(Method::Get, "/health/status", move |_, _| {
+    Resource::build("/health/status").add_method(Method::Get, move |_, _| {
         Box::new(HttpResponse::Ok().finish().into_future())
     })
 }

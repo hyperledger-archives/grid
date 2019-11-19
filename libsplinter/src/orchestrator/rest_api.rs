@@ -35,9 +35,8 @@ impl RestResourceProvider for ServiceOrchestrator {
                         );
                         let services = self.services.clone();
 
-                        Resource::new(
+                        Resource::build(route.as_str()).add_method(
                             endpoint.method.clone(),
-                            route.as_str(),
                             move |request, payload| {
                                 let circuit = request
                                     .match_info()

@@ -76,7 +76,7 @@ impl RestResourceProvider for KeyRegistryManager {
 }
 
 fn make_fetch_key_resource(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::new(Method::Get, "/keys/{public_key}", move |req, _| {
+    Resource::build("/keys/{public_key}").add_method(Method::Get, move |req, _| {
         let public_key = match parse_hex(req.match_info().get("public_key").unwrap_or("")) {
             Ok(public_key) => public_key,
             Err(err_msg) => {
@@ -105,7 +105,7 @@ fn make_fetch_key_resource(key_registry: Box<dyn KeyRegistry>) -> Resource {
 }
 
 fn make_list_key_resources(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::new(Method::Get, "/keys", move |req, _| {
+    Resource::build("/keys").add_method(Method::Get, move |req, _| {
         let query: web::Query<HashMap<String, String>> =
             if let Ok(q) = web::Query::from_query(req.query_string()) {
                 q
