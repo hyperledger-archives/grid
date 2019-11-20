@@ -48,37 +48,38 @@ fn run() -> Result<(), CliError> {
         (@subcommand admin =>
             (about: "Administrative commands")
             (@subcommand keygen =>
-                (about: "generates secp256k1 keys to use when signing circuit proposals")
-                (@arg key_name: +takes_value "name of the key to create; defaults to \"splinter\"")
+                (about: "Generates secp256k1 keys to use when signing circuit proposals")
+                (@arg key_name: +takes_value "Name of the key to create; defaults to \"splinter\"")
                 (@arg key_dir: -d --("key-dir") +takes_value
-                 "name of the directory in which to create the keys; defaults to current working directory")
-                (@arg force: --force "overwrite files if they exist")
-                (@arg quiet: -q --quiet "do not display output")
+                 "Name of the directory in which to create the keys; defaults to current working directory")
+                (@arg force: --force "Overwrite files if they exist")
+                (@arg quiet: -q --quiet "Do not display output")
             )
             (@subcommand keyregistry =>
-                (about: "generates a key registry yaml file and keys, based on a registry \
+                (about: "Generates a key registry yaml file and keys, based on a registry \
                  specification")
                 (@arg target_dir: -d --("target-dir") +takes_value
-                 "name of the directory in which to create the registry file and keys; \
+                 "Name of the directory in which to create the registry file and keys; \
                  defaults to /var/lib/splinter or the value of SPLINTER_STATE_DIR environment \
                  variable")
                 (@arg registry_file: -o --("registry-file") +takes_value
-                 "name of the target registry file (in the target directory); \
+                 "Name of the target registry file (in the target directory); \
                  defaults to \"keys.yaml\"")
                 (@arg registry_spec_path: -i --("input-registry-spec") +takes_value
-                 "name of the input key registry specification; \
+                 "Name of the input key registry specification; \
                  defaults to \"./key_registry_spec.yaml\"")
-                (@arg force: --force "overwrite files if they exist")
-                (@arg quiet: -q --quiet "do not display output")
+                (@arg force: --force "Overwrite files if they exist")
+                (@arg quiet: -q --quiet "Do not display output")
             )
         )
         (@subcommand cert =>
+            (about: "Generate certificates that can be used for development")
             (@subcommand generate =>
-                (about: "generate certificates that can be used for development")
+                (about: "Generate certificates and keys for the ca, server and client")
                 (@arg common_name: --("common-name") +takes_value
-                  "the common name that should be used in the generated cert, default localhost")
+                  "The common name that should be used in the generated cert, default localhost")
                 (@arg cert_dir: -d --("cert-dir") +takes_value
-                  "name of the directory in which to create the certificates")
+                  "Name of the directory in which to create the certificates")
                 (@arg force: --force  conflicts_with[skip] "Overwrite files if they exist")
                 (@arg skip: --skip conflicts_with[force] "Check if files exists, generate if missing")
             )
@@ -91,11 +92,11 @@ fn run() -> Result<(), CliError> {
 
         let app = app.subcommand(
             SubCommand::with_name("health")
-                .about("displays information about network health")
+                .about("Displays information about network health")
                 .subcommand(
                     SubCommand::with_name("status")
                         .about(
-                            "displays a node's version, endpoint, node id, and a list\n\
+                            "Displays a node's version, endpoint, node id, and a list\n\
                              of endpoints of its connected peers",
                         )
                         .arg(

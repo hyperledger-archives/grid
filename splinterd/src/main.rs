@@ -123,45 +123,45 @@ fn main() {
         (about: "Splinter Daemon")
         (@arg config: -c --config +takes_value)
         (@arg node_id: --("node-id") +takes_value
-          "unique id for the node ")
+          "Unique id for the node ")
         (@arg storage: --("storage") +takes_value
-          "storage type used for node, default yaml")
+          "Storage type used for node, default yaml")
         (@arg transport: --("transport") +takes_value
-          "transport type for sockets, either raw or tls")
+          "Transport type for sockets, either raw or tls")
         (@arg network_endpoint: -n --("network-endpoint") +takes_value
-          "endpoint to connect to the network, tcp://ip:port")
+          "Endpoint to connect to the network, tcp://ip:port")
         (@arg service_endpoint: --("service-endpoint") +takes_value
-          "endpoint that service will connect to, tcp://ip:port")
+          "Endpoint that service will connect to, tcp://ip:port")
         (@arg peers: --peer +takes_value +multiple
-          "endpoint that service will connect to, ip:port")
+          "Endpoint that service will connect to, ip:port")
         (@arg ca_file: --("ca-file") +takes_value
-          "file path to the trusted ca cert")
+          "File path to the trusted ca cert")
         (@arg cert_dir: --("cert-dir") +takes_value
-          "path to the directory where the certs and keys are")
+          "Path to the directory where the certs and keys are")
         (@arg client_cert: --("client-cert") +takes_value
-          "file path to the cert for the node when connecting to a node")
+          "File path to the cert for the node when connecting to a node")
         (@arg server_cert: --("server-cert") +takes_value
-          "file path to the cert for the node when connecting to a node")
+          "File path to the cert for the node when connecting to a node")
         (@arg server_key:  --("server-key") +takes_value
-          "file path to the key for the node when connecting to a node as server")
+          "File path to the key for the node when connecting to a node as server")
         (@arg client_key:  --("client-key") +takes_value
-          "file path to the key for the node when connecting to a node as client")
+          "File path to the key for the node when connecting to a node as client")
         (@arg insecure:  --("insecure")
-          "if set tls should accept all peer certificates")
+          "If set tls should accept all peer certificates")
         (@arg bind: --("bind") +takes_value
-            "connection endpoint for REST API")
+          "Connection endpoint for REST API")
         (@arg registry_backend: --("registry-backend") +takes_value
-            "backend type for the node registry. Possible values: FILE.")
+          "Backend type for the node registry. Possible values: FILE.")
         (@arg registry_file: --("registry-file") +takes_value
-            "file path to the node registry file if registry-backend is FILE.")
+          "File path to the node registry file if registry-backend is FILE.")
         (@arg verbose: -v --verbose +multiple
-         "increase output verbosity"));
+          "Increase output verbosity"));
 
     let app = app.arg(
         Arg::with_name("heartbeat_interval")
             .long("heartbeat")
             .long_help(
-                "how often heartbeat should be sent in seconds, defaults to 30 seconds,\
+                "How often heartbeat should be sent in seconds, defaults to 30 seconds,\
                  0 means off",
             ),
     );
@@ -172,7 +172,7 @@ fn main() {
             Arg::with_name("generate_certs")
                 .long("generate-certs")
                 .long_help(
-                    "deprecated: if set, the certs will be generated and insecure will be false, \
+                    "Deprecated: if set, the certs will be generated and insecure will be false, \
                      only use for development",
                 ),
         )
@@ -180,7 +180,7 @@ fn main() {
             Arg::with_name("common_name")
                 .long("common-name")
                 .long_help(
-                    "deprecated: the common name that should be used in the generated cert, \
+                    "Deprecated: the common name that should be used in the generated cert, \
                      defaults to localhost",
                 )
                 .takes_value(true),
