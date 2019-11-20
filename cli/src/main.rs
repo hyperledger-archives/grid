@@ -22,10 +22,20 @@ use crate::error::CliError;
 use action::{admin, certs, Action, SubcommandActions};
 
 use clap::clap_app;
-use log::LogLevel;
+use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
+use log::Record;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// log format for cli that will only show the log message
+pub fn log_format(
+    w: &mut dyn std::io::Write,
+    _now: &mut DeferredNow,
+    record: &Record,
+) -> Result<(), std::io::Error> {
+    write!(w, "{}", record.args(),)
+}
 
 fn run() -> Result<(), CliError> {
     let app = clap_app!(myapp =>
@@ -100,13 +110,20 @@ fn run() -> Result<(), CliError> {
 
     let matches = app.get_matches();
 
-    let logger = match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(LogLevel::Warn),
-        1 => simple_logger::init_with_level(LogLevel::Info),
-        _ => simple_logger::init_with_level(LogLevel::Debug),
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
     };
 
-    logger.expect("Failed to create logger");
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+
+    Logger::with(log_spec_builder.build())
+        .format(log_format)
+        .start()
+        .expect("Failed to create logger");
 
     let mut subcommands = SubcommandActions::new()
         .with_command(
@@ -133,7 +150,7 @@ fn run() -> Result<(), CliError> {
 
 fn main() {
     if let Err(e) = run() {
-        error!("{:?}", e);
+        error!("ERROR: {:?}", e);
         std::process::exit(1);
     }
 }
