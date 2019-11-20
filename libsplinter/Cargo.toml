@@ -67,9 +67,11 @@ experimental = [
     "zmq-transport",
     "biome",
     "biome-notifications",
-    "database"
+    "database",
+    "connection-manager",
 ]
 
+connection-manager = []
 zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
@@ -86,5 +88,6 @@ features = [
     "events",
     "biome",
     "biome-notifications",
-    "database"
+    "database",
+    "connection-manager",
   ]

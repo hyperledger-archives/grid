@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 pub mod auth;
+#[cfg(feature = "connection-manager")]
+pub mod connection_manager;
 pub mod dispatch;
 mod dispatch_proto;
 pub mod handlers;
