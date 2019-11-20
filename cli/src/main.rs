@@ -154,7 +154,7 @@ fn run() -> Result<(), CliError> {
 
 fn main() {
     if let Err(e) = run() {
-        error!("ERROR: {:?}", e);
+        error!("ERROR: {}", e);
         std::process::exit(1);
     }
 }
