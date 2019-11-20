@@ -84,6 +84,7 @@ fn run() -> Result<(), CliError> {
                   "Name of the directory in which to create the certificates")
                 (@arg force: --force  conflicts_with[skip] "Overwrite files if they exist")
                 (@arg skip: --skip conflicts_with[force] "Check if files exists, generate if missing")
+                (@arg quiet: -q --quiet "Do not display output")
             )
         )
     );
@@ -113,17 +114,17 @@ fn run() -> Result<(), CliError> {
 
     let matches = app.get_matches();
 
+    // set default to info
     let log_level = match matches.occurrences_of("verbose") {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
+        0 => log::LevelFilter::Info,
+        1 => log::LevelFilter::Debug,
         _ => log::LevelFilter::Trace,
     };
 
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
 
-    let logger_handle = Logger::with(log_spec_builder.build())
+    let mut logger_handle = Logger::with(log_spec_builder.build())
         .format(log_format)
         .start()
         .expect("Failed to create logger");
@@ -148,7 +149,7 @@ fn run() -> Result<(), CliError> {
             SubcommandActions::new().with_command("status", health::StatusAction),
         );
     }
-    subcommands.run(Some(&matches), &logger_handle)
+    subcommands.run(Some(&matches), &mut logger_handle)
 }
 
 fn main() {

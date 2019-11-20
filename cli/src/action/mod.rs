@@ -35,7 +35,7 @@ pub trait Action {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        logger_handle: &ReconfigurationHandle,
+        logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError>;
 }
 
@@ -65,7 +65,7 @@ impl<'s> Action for SubcommandActions<'s> {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        logger_handle: &ReconfigurationHandle,
+        logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 

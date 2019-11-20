@@ -55,9 +55,13 @@ impl Action for CertGenAction {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &ReconfigurationHandle,
+        logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        if args.is_present("quiet") {
+            logger_handle.parse_new_spec("error");
+        }
 
         let common_name = args
             .value_of("common_name")

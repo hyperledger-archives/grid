@@ -26,7 +26,7 @@ impl Action for StatusAction {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &ReconfigurationHandle,
+        _logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
         let url = if let Some(args) = arg_matches {
             args.value_of("url").unwrap_or("http://localhost:8085")

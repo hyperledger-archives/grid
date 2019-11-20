@@ -44,9 +44,13 @@ impl Action for KeyGenAction {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &ReconfigurationHandle,
+        logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        if args.is_present("quiet") {
+            logger_handle.parse_new_spec("error");
+        }
 
         let key_name = args.value_of("key_name").unwrap_or("splinter");
         let key_dir = args
@@ -63,7 +67,6 @@ impl Action for KeyGenAction {
             private_key_path,
             public_key_path,
             args.is_present("force"),
-            args.is_present("quiet"),
             true,
         )?;
 
@@ -77,9 +80,13 @@ impl Action for KeyRegistryGenerationAction {
     fn run<'a>(
         &mut self,
         arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &ReconfigurationHandle,
+        logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        if args.is_present("quiet") {
+            logger_handle.parse_new_spec("error");
+        }
 
         let registry_spec_path = args
             .value_of("registry_spec_path")
@@ -101,7 +108,6 @@ impl Action for KeyRegistryGenerationAction {
             .unwrap();
 
         let force_write = args.is_present("force");
-        let silent = args.is_present("quiet");
 
         let target_registry_path = target_dir.join(registry_target_file);
         let registry_file_exists = target_registry_path.exists();
@@ -159,12 +165,10 @@ impl Action for KeyRegistryGenerationAction {
             ))
         })?;
 
-        if !silent {
-            if registry_file_exists {
-                println!("overwriting file \"{}\"", target_registry_path.display());
-            } else {
-                println!("writing file \"{}\"", target_registry_path.display());
-            }
+        if registry_file_exists {
+            info!("overwriting file \"{}\"", target_registry_path.display());
+        } else {
+            info!("writing file \"{}\"", target_registry_path.display());
         }
 
         let mut key_infos = vec![];
@@ -177,7 +181,6 @@ impl Action for KeyRegistryGenerationAction {
                 private_key_path,
                 public_key_path,
                 force_write,
-                silent,
                 false,
             )?;
 
@@ -219,7 +222,6 @@ fn create_key_pair(
     private_key_path: PathBuf,
     public_key_path: PathBuf,
     force_create: bool,
-    quiet: bool,
     change_permissions: bool,
 ) -> Result<Vec<u8>, CliError> {
     if !force_create {
@@ -256,12 +258,10 @@ fn create_key_pair(
     let (key_dir_uid, key_dir_gid) = (key_dir_info.st_uid(), key_dir_info.st_gid());
 
     {
-        if !quiet {
-            if private_key_path.exists() {
-                println!("overwriting file: {:?}", private_key_path);
-            } else {
-                println!("writing file: {:?}", private_key_path);
-            }
+        if private_key_path.exists() {
+            info!("overwriting file: {:?}", private_key_path);
+        } else {
+            info!("writing file: {:?}", private_key_path);
         }
 
         let mut private_key_file = OpenOptions::new()
@@ -277,13 +277,12 @@ fn create_key_pair(
     }
 
     {
-        if !quiet {
-            if public_key_path.exists() {
-                println!("overwriting file: {:?}", public_key_path);
-            } else {
-                println!("writing file: {:?}", public_key_path);
-            }
+        if public_key_path.exists() {
+            info!("overwriting file: {:?}", public_key_path);
+        } else {
+            info!("writing file: {:?}", public_key_path);
         }
+
         let mut public_key_file = OpenOptions::new()
             .write(true)
             .create(true)
