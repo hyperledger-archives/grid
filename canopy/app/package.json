@@ -3,7 +3,7 @@
   "license": "Apache-2.0",
   "author": "Cargill Incorporated",
   "scripts": {
-    "start:saplings": "http-server ./saplings -p 8675",
+    "start:saplings": "http-server ./saplings -p 8675 --cors",
     "start:react": "react-scripts start",
     "start": "run-p start:saplings start:react",
     "build": "react-scripts build",
