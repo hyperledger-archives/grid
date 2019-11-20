@@ -38,7 +38,9 @@ pub fn log_format(
 }
 
 fn run() -> Result<(), CliError> {
-    let app = clap_app!(myapp =>
+    // ignore unused_mut while there are experimental features
+    #[allow(unused_mut)]
+    let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Cargill")
@@ -90,7 +92,7 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{Arg, SubCommand};
 
-        let app = app.subcommand(
+        app = app.subcommand(
             SubCommand::with_name("health")
                 .about("Displays information about network health")
                 .subcommand(
@@ -141,7 +143,7 @@ fn run() -> Result<(), CliError> {
     #[cfg(feature = "health")]
     {
         use action::health;
-        subcommands = SubcommandActions::new().with_command(
+        subcommands = subcommands.with_command(
             "health",
             SubcommandActions::new().with_command("status", health::StatusAction),
         );
