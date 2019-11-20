@@ -25,6 +25,7 @@ use std::os::linux::fs::MetadataExt;
 use std::os::unix::fs::MetadataExt;
 
 use clap::ArgMatches;
+use flexi_logger::ReconfigurationHandle;
 use openssl::asn1::Asn1Time;
 use openssl::bn::{BigNum, MsbOption};
 use openssl::error::ErrorStack;
@@ -51,7 +52,11 @@ const CA_CERT: &str = "generated_ca.pem";
 const CA_KEY: &str = "generated_ca.key";
 
 impl Action for CertGenAction {
-    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+    fn run<'a>(
+        &mut self,
+        arg_matches: Option<&ArgMatches<'a>>,
+        _logger_handle: &ReconfigurationHandle,
+    ) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
         let common_name = args

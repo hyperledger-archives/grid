@@ -121,7 +121,7 @@ fn run() -> Result<(), CliError> {
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
 
-    Logger::with(log_spec_builder.build())
+    let logger_handle = Logger::with(log_spec_builder.build())
         .format(log_format)
         .start()
         .expect("Failed to create logger");
@@ -146,7 +146,7 @@ fn run() -> Result<(), CliError> {
             SubcommandActions::new().with_command("status", health::StatusAction),
         );
     }
-    subcommands.run(Some(&matches))
+    subcommands.run(Some(&matches), &logger_handle)
 }
 
 fn main() {
