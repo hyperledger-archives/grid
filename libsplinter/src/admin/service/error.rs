@@ -84,6 +84,25 @@ impl From<ServiceError> for AdminServiceError {
     }
 }
 
+#[derive(Debug)]
+pub enum AdminSubscriberError {
+    UnableToHandleEvent(String),
+    Unsubscribe,
+}
+
+impl Error for AdminSubscriberError {}
+
+impl fmt::Display for AdminSubscriberError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AdminSubscriberError::UnableToHandleEvent(msg) => {
+                write!(f, "Unable to handle event: {}", msg)
+            }
+            AdminSubscriberError::Unsubscribe => f.write_str("Unsubscribe"),
+        }
+    }
+}
+
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
         ProposalManagerError::Internal(Box::new(err))
