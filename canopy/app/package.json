@@ -31,6 +31,9 @@
   },
   "dependencies": {
     "@babel/parser": "^7.7.2",
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-solid-svg-icons": "^5.11.2",
+    "@fortawesome/react-fontawesome": "^0.1.7",
     "babel-plugin-macros": "^2.6.1",
     "canopy-design-system": "file:../design-system",
     "classnames": "^2.2.6",

@@ -16,6 +16,8 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import classnames from 'classnames';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import NavItem from 'components/navigation/NavItem';
 
@@ -28,6 +30,7 @@ function SideNav(props) {
       return <NavItem key={path} path={path} label={displayName} logo={logo} />;
     }
   );
+
   return (
     <div className="side-nav">
       <a href="/" className="brand">
@@ -35,7 +38,25 @@ function SideNav(props) {
       </a>
       <hr />
       <div className="nav-items">{userSaplingTabs}</div>
+      <hr className="bottom" />
+      <ProfileTab />
     </div>
+  );
+}
+
+function ProfileTab() {
+  const profileClasses = classnames('profile-tab', {
+    'page-active': `${window.location.pathname.split('/')[1]}` === 'profile'
+  });
+
+  return (
+    <a href="/profile" className={profileClasses}>
+      <FontAwesomeIcon className="icon" icon="user-circle" />
+      <div className="label">
+        <div>username</div>
+        <div className="key-name">active key name</div>
+      </div>
+    </a>
   );
 }
 

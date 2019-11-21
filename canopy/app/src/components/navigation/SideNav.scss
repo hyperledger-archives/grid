@@ -45,6 +45,10 @@ $total-nav-width: map-get($nav-tab-spacings, 'padding') * 2 +
     width: 100%;
     background-color: $background-light;
     height: 2px;
+
+    &.bottom {
+      margin-top: auto;
+    }
   }
 }
 
@@ -62,7 +66,7 @@ $total-nav-width: map-get($nav-tab-spacings, 'padding') * 2 +
   }
 }
 
-.nav-tab {
+.tab {
   display: grid;
   grid-template-columns:
     [icon-start] map-get($nav-tab-spacings, 'icon-width')
@@ -74,9 +78,12 @@ $total-nav-width: map-get($nav-tab-spacings, 'padding') * 2 +
   text-overflow: ellipsis;
   overflow: hidden;
   text-decoration: none;
-  color: $text-primary;
   transition: all 0.2s linear;
-  margin-top: 0.5rem;
+}
+
+.nav-tab {
+  @extend .tab;
+  color: $text-primary;
 
   .icon {
     height: map-get($nav-tab-spacings, 'icon-width');
@@ -94,5 +101,39 @@ $total-nav-width: map-get($nav-tab-spacings, 'padding') * 2 +
 
   &.page-active {
     background: $color-canopy-light;
+  }
+}
+
+.profile-tab {
+  @extend .tab;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  .icon {
+    height: map-get($nav-tab-spacings, 'icon-width');
+    width: map-get($nav-tab-spacings, 'icon-width');
+    color: $color-canopy-light;
+  }
+
+  .label {
+    color: $text-light;
+    font-size: 0.9rem;
+
+    .key-name {
+      color: $text-lighter;
+      font-size: 0.7rem;
+    }
+  }
+
+  &:hover {
+    .icon {
+      color: $color-canopy;
+    }
+  }
+
+  &.page-active {
+    .icon {
+      color: $color-canopy-dark;
+    }
   }
 }
