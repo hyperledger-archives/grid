@@ -16,7 +16,10 @@ pub mod handlers;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    mpsc::{channel, Receiver},
+    Arc, Mutex,
+};
 
 use crate::network::Network;
 
@@ -119,8 +122,18 @@ pub struct AuthorizationManager {
 impl AuthorizationManager {
     /// Constructs an AuthorizationManager
     pub fn new(network: Network, identity: Identity) -> Self {
+        let (disconnect_send, disconnect_receive) = channel();
+        let shared = Arc::new(Mutex::new(ManagedAuthorizations::new(disconnect_receive)));
+
+        network.add_disconnect_listener(Box::new(move |peer_id: &str| {
+            match disconnect_send.send(peer_id.to_string()) {
+                Ok(()) => (),
+                Err(_) => error!("unable to notify authorization manager of disconnection"),
+            }
+        }));
+
         AuthorizationManager {
-            shared: Default::default(),
+            shared,
             network,
             identity,
         }
@@ -137,6 +150,12 @@ impl AuthorizationManager {
         action: AuthorizationAction,
     ) -> Result<AuthorizationState, AuthorizationActionError> {
         let mut shared = mutex_lock_unwrap!(self.shared);
+
+        // drain the removals
+        let removals = shared.disconnect_receiver.try_iter().collect::<Vec<_>>();
+        for peer_id in removals.into_iter() {
+            shared.states.remove(&peer_id);
+        }
 
         let cur_state = shared
             .states
@@ -262,7 +281,14 @@ impl AuthorizationInquisitor for AuthorizationManager {
     }
 
     fn is_authorized(&self, peer_id: &str) -> bool {
-        let shared = mutex_lock_unwrap!(self.shared);
+        let mut shared = mutex_lock_unwrap!(self.shared);
+
+        // drain the removals
+        let removals = shared.disconnect_receiver.try_iter().collect::<Vec<_>>();
+        for peer_id in removals.into_iter() {
+            shared.states.remove(&peer_id);
+        }
+
         if let Some(state) = shared.states.get(peer_id) {
             state == &AuthorizationState::Authorized || state == &AuthorizationState::Internal
         } else {
@@ -271,10 +297,20 @@ impl AuthorizationInquisitor for AuthorizationManager {
     }
 }
 
-#[derive(Default)]
 struct ManagedAuthorizations {
     states: HashMap<String, AuthorizationState>,
     callbacks: Vec<Box<dyn AuthorizationCallback>>,
+    disconnect_receiver: Receiver<String>,
+}
+
+impl ManagedAuthorizations {
+    fn new(disconnect_receiver: Receiver<String>) -> Self {
+        Self {
+            states: Default::default(),
+            callbacks: Default::default(),
+            disconnect_receiver,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -469,6 +505,60 @@ mod tests {
                 .lock()
                 .expect("callback values posioned")
                 .pop()
+        );
+    }
+
+    /// This test verifies that a connection that is authorized, if has disconnected, can begin the
+    /// authorization process over again.
+    #[test]
+    fn disconnection_notification_allows_reauth() {
+        let (network, peer_id) = create_network_with_initial_temp_peer();
+
+        let auth_manager = AuthorizationManager::new(network.clone(), "mock_identity".into());
+        assert!(!auth_manager.is_authorized(&peer_id));
+
+        assert_eq!(
+            Ok(AuthorizationState::Connecting),
+            auth_manager.next_state(&peer_id, AuthorizationAction::Connecting)
+        );
+
+        assert!(!auth_manager.is_authorized(&peer_id));
+
+        // verify that it cannot be connected again.
+        assert_eq!(
+            Err(AuthorizationActionError::AlreadyConnecting),
+            auth_manager.next_state(&peer_id, AuthorizationAction::Connecting)
+        );
+        assert!(!auth_manager.is_authorized(&peer_id));
+
+        // Supply the TrustIdentifying action and verify that it is authorized
+        let new_peer_id = "abcd".to_string();
+        assert_eq!(
+            Ok(AuthorizationState::Authorized),
+            auth_manager.next_state(
+                &peer_id,
+                AuthorizationAction::TrustIdentifying(new_peer_id.clone())
+            )
+        );
+        assert!(auth_manager.is_authorized(&new_peer_id));
+
+        // verify that it cannot be connected again.
+        assert_eq!(
+            Err(AuthorizationActionError::InvalidMessageOrder(
+                AuthorizationState::Authorized,
+                AuthorizationAction::Connecting
+            )),
+            auth_manager.next_state(&new_peer_id, AuthorizationAction::Connecting)
+        );
+
+        network
+            .remove_connection(&new_peer_id)
+            .expect("Unable to remove peer");
+
+        // verify that it can be connected again.
+        assert_eq!(
+            Ok(AuthorizationState::Connecting),
+            auth_manager.next_state(&new_peer_id, AuthorizationAction::Connecting)
         );
     }
 
