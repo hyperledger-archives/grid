@@ -15,8 +15,11 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
+
 import { useUserState, UserProvider } from 'UserStore';
+import SideNav from 'components/navigation/SideNav';
 import { loadAllSaplings } from './loadSaplings';
+
 import 'App.scss';
 
 window.$CANOPY = {};
@@ -66,19 +69,21 @@ function App() {
     })();
   }, []);
 
+  const userSaplingRoutes = userSaplingManifests.map(
+    ({ displayName, namespace, icon }) => {
+      return {
+        path: `/${namespace}`,
+        displayName,
+        logo: icon
+      };
+    }
+  );
+
   return (
-    <>
-      <nav>
-        {userSaplingManifests.map(({ displayName, namespace }) => {
-          return (
-            <a href={`/${namespace}`} key={namespace}>
-              {displayName}
-            </a>
-          );
-        })}
-      </nav>
-      <div ref={saplingDomNode} />
-    </>
+    <div className="app">
+      <SideNav userSaplingRoutes={userSaplingRoutes} />
+      <div className="view" ref={saplingDomNode} />
+    </div>
   );
 }
 

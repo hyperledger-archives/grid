@@ -32,12 +32,14 @@
   "dependencies": {
     "@babel/parser": "^7.7.2",
     "babel-plugin-macros": "^2.6.1",
+    "canopy-design-system": "file:../design-system",
+    "classnames": "^2.2.6",
+    "es6-promisify": "^6.0.2",
     "js-yaml": "^3.13.1",
     "node-sass": "^4.12.0",
     "prop-types": "^15.7.2",
     "react": "^16.10.2",
     "react-dom": "^16.10.2",
-    "react-router-dom": "^5.1.2",
     "react-scripts": "3.2.0"
   },
   "devDependencies": {

@@ -53,7 +53,8 @@ services:
 
   lint-canopy-app:
     build:
-      context: ../../canopy/app
+      context: ../../canopy
+      dockerfile: ./app/Dockerfile
     image: canopy-app:${ISOLATION_ID}
     command: yarn lint
 

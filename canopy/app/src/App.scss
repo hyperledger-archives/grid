@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
+@import 'canopy-design-system/src/themes/default';
+
 .app {
-  min-height: 100vh;
+  background-color: $background-white;
+  height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: center;
+  color: $text-primary;
 
   .view {
+    background-color: $background-light;
     flex: 0 1 100%;
-    min-height: 100vh;
+    height: 100vh;
+    overflow-y: scroll;
+    overflow-x: none;
   }
 }
