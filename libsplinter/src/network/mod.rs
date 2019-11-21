@@ -276,6 +276,11 @@ impl Network {
         Ok(())
     }
 
+    /// Adds a peer with a given id.
+    ///
+    /// Note that while this peer id is specified explicitly, the connection will still require to
+    /// complete the authorization handshake, at which point its node id that the remote connection
+    /// has identified itself with may replace the given id.
     pub fn add_peer(
         &self,
         peer_id: String,
