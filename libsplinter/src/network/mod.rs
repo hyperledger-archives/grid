@@ -23,7 +23,7 @@ use protobuf::Message;
 use uuid::Uuid;
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
 
@@ -51,6 +51,21 @@ impl NetworkMessageWrapper {
 
     pub fn payload(&self) -> &[u8] {
         &self.payload
+    }
+}
+
+/// A disconnect listener will be notified when a peer has been disconnected from the network.
+pub trait DisconnectListener: Send {
+    /// Called when a disconnect occurs.
+    fn on_disconnect(&self, peer_id: &str);
+}
+
+impl<F> DisconnectListener for F
+where
+    F: Fn(&str) + Send,
+{
+    fn on_disconnect(&self, peer_id: &str) {
+        (*self)(peer_id)
     }
 }
 
@@ -158,6 +173,7 @@ impl PeerMap {
 pub struct Network {
     peers: Arc<RwLock<PeerMap>>,
     mesh: Mesh,
+    disconnect_listeners: Arc<Mutex<Vec<Box<dyn DisconnectListener>>>>,
 }
 
 impl Network {
@@ -165,6 +181,7 @@ impl Network {
         let network = Network {
             peers: Arc::new(RwLock::new(PeerMap::new())),
             mesh,
+            disconnect_listeners: Arc::new(Mutex::new(vec![])),
         };
 
         if heartbeat_interval != 0 {
@@ -210,6 +227,28 @@ impl Network {
         rwlock_read_unwrap!(self.peers).get_peer_by_endpoint(endpoint)
     }
 
+    pub fn add_disconnect_listener(&self, listener: Box<dyn DisconnectListener>) {
+        match self.disconnect_listeners.lock() {
+            Ok(mut listeners) => {
+                listeners.push(listener);
+            }
+            Err(_) => {
+                error!("Unable to add disconnect listener due to poisoned lock");
+            }
+        }
+    }
+
+    fn notify_disconnect_listeners(&self, peer_id: &str) {
+        match self.disconnect_listeners.lock() {
+            Ok(listeners) => {
+                listeners.iter().for_each(|listener| {
+                    listener.on_disconnect(peer_id);
+                });
+            }
+            Err(_) => error!("Unable to notify disconnect listeners due to poisoned lock"),
+        }
+    }
+
     pub fn add_connection(
         &self,
         connection: Box<dyn Connection>,
@@ -225,7 +264,13 @@ impl Network {
 
     pub fn remove_connection(&self, peer_id: &str) -> Result<(), ConnectionError> {
         if let Some(mesh_id) = rwlock_write_unwrap!(self.peers).remove(peer_id) {
-            self.mesh.remove(mesh_id)?;
+            let mut connection = self.mesh.remove(mesh_id)?;
+            match connection.disconnect() {
+                Ok(_) => (),
+                Err(err) => warn!("Unable to disconnect from {}: {:?}", peer_id, err),
+            }
+
+            self.notify_disconnect_listeners(peer_id);
         }
 
         Ok(())
@@ -263,6 +308,7 @@ impl Network {
             Ok(()) => (),
             Err(MeshSendError::Disconnected(err)) => {
                 rwlock_write_unwrap!(self.peers).remove(peer_id);
+                self.notify_disconnect_listeners(peer_id);
                 return Err(SendError::from(MeshSendError::Disconnected(err)));
             }
             Err(err) => return Err(SendError::from(err)),
