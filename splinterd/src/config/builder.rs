@@ -17,6 +17,7 @@ use crate::config::Config;
 pub struct ConfigBuilder {
     storage: Option<String>,
     transport: Option<String>,
+    cert_dir: Option<String>,
     ca_certs: Option<String>,
     client_cert: Option<String>,
     client_key: Option<String>,
@@ -37,6 +38,7 @@ impl ConfigBuilder {
         Self {
             storage: None,
             transport: None,
+            cert_dir: None,
             ca_certs: None,
             client_cert: None,
             client_key: None,
@@ -60,6 +62,11 @@ impl ConfigBuilder {
 
     pub fn with_transport(mut self, transport: String) -> Self {
         self.transport = Some(transport);
+        self
+    }
+
+    pub fn with_cert_dir(mut self, cert_dir: String) -> Self {
+        self.cert_dir = Some(cert_dir);
         self
     }
 
@@ -132,6 +139,7 @@ impl ConfigBuilder {
         Config {
             storage: self.storage,
             transport: self.transport,
+            cert_dir: self.cert_dir,
             ca_certs: self.ca_certs,
             client_cert: self.client_cert,
             client_key: self.client_key,

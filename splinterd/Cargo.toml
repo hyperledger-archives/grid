@@ -43,7 +43,7 @@ tempdir = "0.3"
 toml = "0.4.8"
 
 [features]
-default = []
+default = ["generate-certs"]
 
 experimental = [
     "config-builder",
@@ -55,6 +55,7 @@ experimental = [
 config-builder = []
 config-toml = ["config-builder"]
 circuit-read = []
+generate-certs = []
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

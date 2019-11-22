@@ -23,6 +23,7 @@ use toml;
 pub struct TomlConfig {
     storage: Option<String>,
     transport: Option<String>,
+    cert_dir: Option<String>,
     ca_certs: Option<String>,
     client_cert: Option<String>,
     client_key: Option<String>,
@@ -49,6 +50,10 @@ impl TomlConfig {
 
     pub fn take_transport(&mut self) -> Option<String> {
         self.transport.take()
+    }
+
+    pub fn take_cert_dir(&mut self) -> Option<String> {
+        self.cert_dir.take()
     }
 
     pub fn take_ca_certs(&mut self) -> Option<String> {
@@ -109,6 +114,9 @@ impl TomlConfig {
         }
         if let Some(x) = self.take_transport() {
             builder = builder.with_transport(x);
+        }
+        if let Some(x) = self.take_cert_dir() {
+            builder = builder.with_cert_dir(x);
         }
         if let Some(x) = self.take_ca_certs() {
             builder = builder.with_ca_certs(x);

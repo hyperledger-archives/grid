@@ -11,10 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::error::Error;
+use std::fmt;
+
 #[derive(Debug)]
 pub enum CliError {
     RequiresArgs,
     InvalidSubcommand,
     ActionError(String),
     EnvironmentError(String),
+}
+
+impl Error for CliError {}
+
+impl fmt::Display for CliError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CliError::RequiresArgs => write!(f, "action requires arguments"),
+            CliError::InvalidSubcommand => write!(f, "received invalid subcommand"),
+            CliError::ActionError(msg) => write!(f, "action encountered an error: {}", msg),
+            CliError::EnvironmentError(msg) => {
+                write!(f, "action encountered an environment error: {}", msg)
+            }
+        }
+    }
 }
