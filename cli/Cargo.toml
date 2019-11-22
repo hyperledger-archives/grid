@@ -18,7 +18,7 @@ health = ["reqwest", "serde_json"]
 
 [package]
 name = "splinter-cli"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
