@@ -1,5 +1,128 @@
 # Release Notes
 
+## Changes in Splinter 0.3.6
+
+### Highlights:
+* Peers can now successfully reconnect after restarting
+* Faster build times:
+  * Added a Dockerfile for splinter-dev docker image
+  * Based the installed images on the splinter-dev image
+  * Updated the compose files to build the installed docker images
+  * Added parallelization to Travis CI builds
+* Initial database structure for Biome, the libsplinter module that supports
+  user management
+* New Gameroom Technical Walkthrough document that explains the Splinter
+  functionality that powers the Gameroom application; see
+  examples/gameroom/README.md for a link to the PDF
+
+### Deprecated Features:
+* The --generate-certs flag for splinterd is now deprecated. Instead, please
+  generate development certificates and keys using the new command "splinter-cli
+  cert generate". This command will generate the certificates and keys in
+  /etc/splinter/certs/ (by default) or in the specified directory.
+  Note:  --generate-certs is still available by default in 0.3.6. It will be
+  turned off in 0.3.7, but will still be available with a Rust compile-time
+  feature flag. If using generated certificates, run splinterd with the
+  --insecure flag.
+
+### libsplinter:
+* Improve logging:
+  * Log when a peer is removed
+  * Log an event Reactor background thread error on startup
+  * Log REST API background thread startup errors immediately, rather than on
+    shutdown
+  * Log a WebSocket shutdown
+  * Log a peer connection initiation
+  * Log the configuration used to start splinterd
+  * Add timestamp and thread name to log messages
+* Return an error when a peer is disconnected
+* Allow consensus threads to log error and exit, rather than panic
+* Enforce that member, endpoint, and service IDs are unique to a circuit
+* Update the example TOML configuration file
+* Verify a CircuitManagementPayload message's payload field, header field, and
+  payload signature
+* Update example circuit files to use correct enum types
+* Fix a typo in DurabilityType enum
+* Stop the admin service once a shutdown signal is received
+* Fix a locking bug that prevented admin service from properly shutting down
+* Stop running services upon admin service shutdown
+* Include the service definition in service shutdown error
+* Update format lint for Rust 1.39
+* Add a Splinter PostgreSQL database to be used by Splinter modules
+* Decouple EventDealer and EventHistory to allow the storage of events to be
+  managed separately from event history
+* Change the log levels of received messages and pings/pongs
+* Update EventDealers to return error from EventDealer.add_sender method and
+  handle errors from EventDealer.dispatch method
+* Store AuthServiceEvents in a Mailbox, replacing LocalEventHistory
+* Start reorganizing the admin service module
+* Store pending changes as transaction receipts in scabbard
+* Add a "state_" prefix to variables that refer to the scabbard LMDB backend
+  database, which helps distinguish this database from other databases that
+  scabbard may maintain
+* Run tests behind the "experimental" feature
+* Move the zmq-transport feature, which loads the ZMQ dependency, to experimental
+* Rename the node registry method create_node add_node, which more accurately
+  reflects its functionality
+* Update the struct used to build REST API resources to represent multiple
+  method and handler pairs for a given resource
+* Fix the node registry implementation’s file editing to completely overwrite
+  the YAML node registry file rather than append changes
+* Add a disconnect listener to Network; this listener is used to close the
+  connection when a peer is disconnected from the network
+* Register the AuthorizationManager to listen for peer disconnections to clean
+  up old state about the disconnected peer
+
+### splinterd:
+* Add endpoints for local registry, including:
+  * POST /nodes
+  * DELETE /nodes/{identity}
+  * PATCH /nodes/{identity}
+* Move the node registry implementation from splinterd to libsplinter
+* Update the struct used to build REST API resources to represent multiple
+  method and handler pairs for a given resource
+* Run tests behind the experimental feature
+* Add /circuits route, available with circuit-read experimental feature,
+* Update splinterd to look for certificates and keys in /etc/splinter/certs (by
+  default) or the location specified by "--cert-dir" or the environment variable
+  SPLINTER_CERT_DIR
+* Deprecate the generate-cert flag (will be removed in a future release) now
+  that "splinter-cli cert generate" is available
+
+### splinter-cli:
+* Add subcommand "cert generate" to generate certificates and keys that can be
+  used to run splinterd for development.
+
+### Canopy:
+* Add CSS styles for responsive side navigation bar
+* Add default color styles to be used in design app
+* Add default typography styles and initial typography documentation
+* Add CSS class defaults and themes for navigation
+* Add structure and initial introduction page for the documentation app
+* Add configuration to build theme CSS bundles
+* Add the initial structure for a sapling example (an application to extend
+  Canopy)
+* Implement register and initialize functions for saplings in CanopyJS
+* Add lint and unit tests to Travis CI
+* Refactor CanopyJS to improve clarity and extensibility
+* Implement CanopyJS user
+
+### Gameroom example:
+* Add a generic-themed Gameroom app to installed docker-compose file
+* Add functions to check for active gamerooms and resubscribe on startup
+* Add volumes for /var/lib/splinter to the docker-compose file
+* Add timestamp and thread name to log messages
+* Remove the hardcoded protocol for octet-stream submission; instead, use a
+  relative URL handled by the proxy
+* Attempt to reconnect WebSocket clients if a "close" message is received
+* Time out WebSocket client connections and attempt to reconnect
+* Convert signature hex string to bytes for signing payloads
+* Base the test docker image on the splinter-dev docker image
+* Fix a bug with cell selection
+
+### Packaging:
+* Remove known errors during a .deb package install
+
 ## Changes in Splinter 0.3.5
 
 ### Highlights:
