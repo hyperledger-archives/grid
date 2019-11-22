@@ -163,7 +163,8 @@ fn main() {
             .long_help(
                 "How often heartbeat should be sent in seconds, defaults to 30 seconds,\
                  0 means off",
-            ),
+            )
+            .takes_value(true),
     );
 
     #[cfg(feature = "generate-certs")]
