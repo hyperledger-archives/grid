@@ -56,12 +56,14 @@ impl fmt::Display for RestApiServerError {
 #[derive(Debug)]
 pub enum ResponseError {
     ActixError(ActixError),
+    InternalError(String),
 }
 
 impl Error for ResponseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ResponseError::ActixError(err) => Some(err),
+            ResponseError::InternalError(_) => None,
         }
     }
 }
@@ -74,6 +76,7 @@ impl fmt::Display for ResponseError {
                 "Failed to get response when setting up websocket: {}",
                 err
             ),
+            ResponseError::InternalError(msg) => f.write_str(&msg),
         }
     }
 }
