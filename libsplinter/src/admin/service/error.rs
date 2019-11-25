@@ -22,6 +22,87 @@ use crate::signing;
 
 use protobuf::error;
 
+#[derive(Debug)]
+pub enum AdminServiceError {
+    ServiceError(ServiceError),
+
+    GeneralError {
+        context: String,
+        source: Option<Box<dyn Error + Send>>,
+    },
+}
+
+impl AdminServiceError {
+    pub fn general_error(context: &str) -> Self {
+        AdminServiceError::GeneralError {
+            context: context.into(),
+            source: None,
+        }
+    }
+
+    pub fn general_error_with_source(context: &str, err: Box<dyn Error + Send>) -> Self {
+        AdminServiceError::GeneralError {
+            context: context.into(),
+            source: Some(err),
+        }
+    }
+}
+
+impl Error for AdminServiceError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            AdminServiceError::ServiceError(err) => Some(err),
+            AdminServiceError::GeneralError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for AdminServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AdminServiceError::ServiceError(err) => f.write_str(&err.to_string()),
+            AdminServiceError::GeneralError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
+        }
+    }
+}
+
+impl From<ServiceError> for AdminServiceError {
+    fn from(err: ServiceError) -> Self {
+        AdminServiceError::ServiceError(err)
+    }
+}
+
+#[derive(Debug)]
+pub enum AdminSubscriberError {
+    UnableToHandleEvent(String),
+    Unsubscribe,
+}
+
+impl Error for AdminSubscriberError {}
+
+impl fmt::Display for AdminSubscriberError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AdminSubscriberError::UnableToHandleEvent(msg) => {
+                write!(f, "Unable to handle event: {}", msg)
+            }
+            AdminSubscriberError::Unsubscribe => f.write_str("Unsubscribe"),
+        }
+    }
+}
+
 impl From<ServiceError> for ProposalManagerError {
     fn from(err: ServiceError) -> Self {
         ProposalManagerError::Internal(Box::new(err))
@@ -39,6 +120,9 @@ pub enum AdminSharedError {
     ServiceSendError(ServiceSendError),
     UnknownAction(String),
     ValidationFailed(String),
+
+    /// An error occurred while trying to add an admin service event subscriber to the service.
+    UnableToAddSubscriber(String),
 
     /// An error occured while attempting to verify a payload's signature
     SignerError(signing::error::Error),
@@ -63,6 +147,7 @@ impl Error for AdminSharedError {
             AdminSharedError::SignerError(_) => None,
             AdminSharedError::CommitError(_) => None,
             AdminSharedError::UpdateProposalsError(err) => Some(err),
+            AdminSharedError::UnableToAddSubscriber(_) => None,
         }
     }
 }
@@ -100,6 +185,9 @@ impl fmt::Display for AdminSharedError {
             AdminSharedError::CommitError(msg) => write!(f, "unable to commit circuit: {}", msg),
             AdminSharedError::UpdateProposalsError(err) => {
                 write!(f, "received error while update open proposal: {}", err)
+            }
+            AdminSharedError::UnableToAddSubscriber(msg) => {
+                write!(f, "unable to add admin service event subscriber: {}", msg)
             }
         }
     }

@@ -43,7 +43,7 @@ use crate::events::{ParseBytes, ParseError};
 use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
 use crate::rest_api::{
-    EventDealer, EventHistory, LocalEventHistory, Request, Response, ResponseError,
+    EventDealer, EventHistory, EventSender, LocalEventHistory, Request, Response, ResponseError,
 };
 
 use super::error::ScabbardStateError;
@@ -60,6 +60,7 @@ pub struct ScabbardState {
     transaction_receipt_store: TransactionReceiptStore,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
     event_dealer: EventDealer<Vec<StateChangeEvent>>,
+    event_senders: Vec<EventSender<Vec<StateChangeEvent>>>,
     batch_history: BatchHistory,
     commit_history: LocalEventHistory<Vec<StateChangeEvent>>,
 }
@@ -135,6 +136,7 @@ impl ScabbardState {
             )),
             pending_changes: None,
             event_dealer,
+            event_senders: vec![],
             batch_history: BatchHistory::new(),
             commit_history: LocalEventHistory::default(),
         })
@@ -258,7 +260,8 @@ impl ScabbardState {
                     ScabbardStateError(format!("Unable to store commit history: {}", err))
                 })?;
 
-                self.event_dealer.dispatch(events);
+                self.event_senders
+                    .retain(|sender| sender.send(events.clone()).is_ok());
 
                 self.batch_history.commit(&signature);
 
@@ -286,12 +289,17 @@ impl ScabbardState {
 
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
         let events = self.commit_history.events()?;
-        self.event_dealer
-            .subscribe(request, &mut events.into_iter())
+        let (sender, res) = self
+            .event_dealer
+            .subscribe(request, Box::new(events.into_iter()))?;
+
+        self.event_senders.push(sender);
+
+        Ok(res)
     }
 
-    pub fn shutdown_event_dealer(&self) {
-        self.event_dealer.stop();
+    pub fn shutdown_event_dealer(&mut self) {
+        self.event_senders.clear();
     }
 }
 

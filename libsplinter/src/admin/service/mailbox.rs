@@ -13,8 +13,10 @@
 // limitations under the License.
 
 use std::cmp;
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt;
+use std::ops::Bound;
 use std::time::SystemTime;
 
 use crate::storage::sets::DurableOrderedSet;
@@ -82,21 +84,97 @@ impl Mailbox {
     }
 
     /// Returns an iterator over all of the values in the mailbox.
-    pub fn iter<'a>(
-        &'a self,
-    ) -> Result<Box<(dyn Iterator<Item = (SystemTime, AdminServiceEvent)> + 'a)>, MailboxError>
-    {
-        Ok(Box::new(
-            self.durable_set
-                .iter()
-                .map_err(|err| {
-                    MailboxError::with_source(
-                        "Unable to iterate over underlying storage",
-                        Box::new(err),
-                    )
-                })?
-                .map(|event| (event.timestamp, event.event)),
-        ))
+    pub fn iter(&self) -> Result<MailboxIter, MailboxError> {
+        MailboxIter::new(
+            self.durable_set.clone(),
+            SystemTime::UNIX_EPOCH,
+            SystemTime::now(),
+        )
+    }
+}
+
+const ITER_CACHE_SIZE: usize = 100;
+
+pub struct MailboxIter {
+    source: Box<dyn DurableOrderedSet<EventEntry, SystemTime>>,
+    start_search: SystemTime,
+    end_search: SystemTime,
+    cache: VecDeque<EventEntry>,
+}
+
+impl MailboxIter {
+    fn new(
+        source: Box<dyn DurableOrderedSet<EventEntry, SystemTime>>,
+        start_search: SystemTime,
+        end_search: SystemTime,
+    ) -> Result<Self, MailboxError> {
+        let initial_cache = source
+            .range_iter((&start_search..&end_search).into())
+            .map_err(|err| {
+                MailboxError::with_source(
+                    "Unable to iterate over underlying storage",
+                    Box::new(err),
+                )
+            })?
+            .take(ITER_CACHE_SIZE)
+            .collect::<VecDeque<_>>();
+
+        let start_search = if initial_cache.is_empty() {
+            end_search
+        } else {
+            initial_cache.back().unwrap().timestamp
+        };
+
+        Ok(Self {
+            source,
+            start_search,
+            end_search,
+            cache: initial_cache,
+        })
+    }
+
+    fn reload_cache(&mut self) -> Result<(), MailboxError> {
+        self.cache = self
+            .source
+            .range_iter(
+                (
+                    Bound::Excluded(&self.start_search),
+                    Bound::Excluded(&self.end_search),
+                )
+                    .into(),
+            )
+            .map_err(|err| {
+                MailboxError::with_source(
+                    "Unable to iterate over underlying storage",
+                    Box::new(err),
+                )
+            })?
+            .take(ITER_CACHE_SIZE)
+            .collect();
+
+        self.start_search = if self.cache.is_empty() {
+            self.end_search
+        } else {
+            self.cache.back().unwrap().timestamp
+        };
+
+        Ok(())
+    }
+}
+
+impl Iterator for MailboxIter {
+    type Item = (SystemTime, AdminServiceEvent);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cache.is_empty() && self.start_search < self.end_search {
+            if let Err(err) = self.reload_cache() {
+                error!("Unable to load iterator cache: {}", err);
+            }
+        }
+
+        self.cache
+            .pop_front()
+            .map(|event| (event.timestamp, event.event))
     }
 }
 

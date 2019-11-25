@@ -158,6 +158,12 @@ impl<T> From<RangeToInclusive<T>> for DurableRange<T> {
     }
 }
 
+impl<T> From<(Bound<T>, Bound<T>)> for DurableRange<T> {
+    fn from((start, end): (Bound<T>, Bound<T>)) -> Self {
+        Self { start, end }
+    }
+}
+
 /// An error that may occur with the underlying implementation of the DurableSet
 #[derive(Debug)]
 pub struct DurableSetError {

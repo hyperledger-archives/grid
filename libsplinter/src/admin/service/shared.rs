@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::env;
 use std::iter::FromIterator;
-
 use std::sync::{Arc, RwLock};
+use std::time::SystemTime;
 
 use protobuf::{Message, RepeatedField};
 
@@ -42,7 +43,6 @@ use crate::protos::admin::{
     CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
     Circuit_PersistenceType, Circuit_RouteType, MemberReady,
 };
-use crate::rest_api::{EventDealer, Request, Response, ResponseError};
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
 use crate::signing::SignatureVerifier;
@@ -52,7 +52,7 @@ use super::error::{AdminSharedError, MarshallingError};
 use super::mailbox::Mailbox;
 use super::messages;
 use super::open_proposals::OpenProposals;
-use super::{admin_service_id, sha256};
+use super::{admin_service_id, sha256, AdminServiceEventSubscriber, AdminSubscriberError, Events};
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
@@ -78,6 +78,55 @@ struct CircuitProposalContext {
 struct UninitializedCircuit {
     pub circuit: Option<CircuitProposal>,
     pub ready_members: HashSet<String>,
+}
+
+struct SubscriberMap {
+    subscribers_by_type: RefCell<HashMap<String, Vec<Box<dyn AdminServiceEventSubscriber>>>>,
+}
+
+impl SubscriberMap {
+    fn new() -> Self {
+        Self {
+            subscribers_by_type: RefCell::new(HashMap::new()),
+        }
+    }
+
+    fn broadcast_by_type(
+        &self,
+        event_type: &str,
+        admin_service_event: &messages::AdminServiceEvent,
+        timestamp: &SystemTime,
+    ) {
+        let mut subscribers_by_type = self.subscribers_by_type.borrow_mut();
+        if let Some(subscribers) = subscribers_by_type.get_mut(event_type) {
+            subscribers.retain(|subscriber| {
+                match subscriber.handle_event(admin_service_event, timestamp) {
+                    Ok(()) => true,
+                    Err(AdminSubscriberError::Unsubscribe) => false,
+                    Err(AdminSubscriberError::UnableToHandleEvent(msg)) => {
+                        error!("Unable to send event: {}", msg);
+                        true
+                    }
+                }
+            });
+        }
+    }
+
+    fn add_subscriber(
+        &mut self,
+        event_type: String,
+        listener: Box<dyn AdminServiceEventSubscriber>,
+    ) {
+        let mut subscribers_by_type = self.subscribers_by_type.borrow_mut();
+        let subscribers = subscribers_by_type
+            .entry(event_type)
+            .or_insert_with(Vec::new);
+        subscribers.push(listener);
+    }
+
+    fn clear(&mut self) {
+        self.subscribers_by_type.borrow_mut().clear()
+    }
 }
 
 pub struct AdminServiceShared {
@@ -110,8 +159,9 @@ pub struct AdminServiceShared {
     pending_changes: Option<CircuitProposalContext>,
     // the verifiers that should be broadcasted for the pending change
     current_consensus_verifiers: Vec<String>,
-    // Map of event dealers, keyed by circuit management type
-    event_dealers: HashMap<String, EventDealer<messages::AdminServiceEvent>>,
+
+    // Admin Service Event Subscribers
+    event_subscribers: SubscriberMap,
     // Mailbox of AdminServiceEvent values
     event_mailbox: Mailbox,
     // copy of splinter state
@@ -169,7 +219,7 @@ impl AdminServiceShared {
             pending_consensus_proposals: HashMap::new(),
             pending_changes: None,
             current_consensus_verifiers: Vec::new(),
-            event_dealers: HashMap::new(),
+            event_subscribers: SubscriberMap::new(),
             event_mailbox,
             splinter_state,
             signature_verifier,
@@ -552,29 +602,33 @@ impl AdminServiceShared {
         }
     }
 
+    pub fn get_events_since(
+        &self,
+        _since_timestamp: &SystemTime,
+        circuit_management_type: &str,
+    ) -> Result<Events, AdminSharedError> {
+        let events = self
+            .event_mailbox
+            .iter()
+            .map_err(|err| AdminSharedError::UnableToAddSubscriber(err.to_string()))?;
+
+        let circuit_management_type = circuit_management_type.to_string();
+        Ok(Events {
+            inner: Box::new(events.filter(move |(_, evt)| {
+                evt.proposal().circuit.circuit_management_type == circuit_management_type
+            })),
+        })
+    }
+
     pub fn add_subscriber(
         &mut self,
         circuit_management_type: String,
-        request: Request,
-    ) -> Result<Response, ResponseError> {
-        let mut event_iter = self
-            .event_mailbox
-            .iter()
-            .map_err(|err| ResponseError::CatchUpHistoryError(err.to_string()))?
-            .filter(|(_, evt)| {
-                evt.proposal().circuit.circuit_management_type == circuit_management_type
-            })
-            .map(|(_, evt)| evt);
-        if let Some(dealer) = self.event_dealers.get_mut(&circuit_management_type) {
-            dealer.subscribe(request, &mut event_iter)
-        } else {
-            let mut dealer = EventDealer::new();
-            let res = dealer.subscribe(request, &mut event_iter)?;
+        subscriber: Box<dyn AdminServiceEventSubscriber>,
+    ) -> Result<(), AdminSharedError> {
+        self.event_subscribers
+            .add_subscriber(circuit_management_type, subscriber);
 
-            self.event_dealers.insert(circuit_management_type, dealer);
-
-            Ok(res)
-        }
+        Ok(())
     }
 
     pub fn send_event(
@@ -582,26 +636,20 @@ impl AdminServiceShared {
         circuit_management_type: &str,
         event: messages::AdminServiceEvent,
     ) {
-        let event = match self.event_mailbox.add(event) {
-            Ok((_, event)) => event,
+        let (ts, event) = match self.event_mailbox.add(event) {
+            Ok((ts, event)) => (ts, event),
             Err(err) => {
                 error!("Unable to store admin event: {}", err);
                 return;
             }
         };
 
-        if let Some(dealer) = self.event_dealers.get_mut(circuit_management_type) {
-            dealer.dispatch(event);
-        } else {
-            warn!(
-                "No event dealer for circuit management type {}",
-                circuit_management_type
-            );
-        }
+        self.event_subscribers
+            .broadcast_by_type(&circuit_management_type, &event, &ts);
     }
 
-    pub fn shutdown_event_dealers(&mut self) {
-        self.event_dealers.values().for_each(EventDealer::stop);
+    pub fn remove_all_event_subscribers(&mut self) {
+        self.event_subscribers.clear();
     }
 
     pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {
