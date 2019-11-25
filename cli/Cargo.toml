@@ -23,6 +23,10 @@ authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
 
+[[bin]]
+name = "splinter"
+path = "src/main.rs"
+
 [dependencies]
 clap = "2"
 flexi_logger = "0.14"
