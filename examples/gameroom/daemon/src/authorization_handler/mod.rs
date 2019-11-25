@@ -132,10 +132,9 @@ fn process_admin_event(
     igniter: Igniter,
 ) -> Result<(), AppAuthHandlerError> {
     debug!("Received the event at {}", event.timestamp);
+    let time: SystemTime = SystemTime::UNIX_EPOCH + Duration::from_millis(event.timestamp);
     match event.admin_event {
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
-            let time = SystemTime::now();
-
             // convert requester public key to hex
             let requester = to_hex(&msg_proposal.requester);
             let proposal = parse_proposal(&msg_proposal, time, requester);
@@ -184,7 +183,6 @@ fn process_admin_event(
                 .ok_or_else(|| {
                     AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
                 })?;
-            let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
                 voter_public_key: to_hex(&signer_public_key),
@@ -212,7 +210,6 @@ fn process_admin_event(
         }
         AdminServiceEvent::ProposalAccepted((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
-            let time = SystemTime::now();
             let vote = msg_proposal
                 .votes
                 .iter()
@@ -264,7 +261,6 @@ fn process_admin_event(
         }
         AdminServiceEvent::ProposalRejected((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
-            let time = SystemTime::now();
             let vote = msg_proposal
                 .votes
                 .iter()
@@ -350,7 +346,6 @@ fn process_admin_event(
                 }
             };
 
-            let time = SystemTime::now();
             let requester = to_hex(&msg_proposal.requester);
             let proposal = parse_proposal(&msg_proposal, time, requester);
 
