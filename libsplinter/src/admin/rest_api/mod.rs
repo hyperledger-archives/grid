@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
 use std::time;
 
-use crate::actix_web::HttpResponse;
+use crate::actix_web::{web, HttpResponse};
 use crate::futures::{Future, IntoFuture};
 use crate::protos::admin::CircuitManagementPayload;
 use crate::rest_api::{
@@ -78,23 +79,44 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
         } else {
             return Box::new(HttpResponse::BadRequest().finish().into_future());
         };
+        debug!(
+            "Beginning application authorization handler registration for \"{}\"",
+            circuit_management_type
+        );
 
-        let initial_events = match admin_commands
-            .get_events_since(&time::SystemTime::UNIX_EPOCH, &circuit_management_type)
+        let mut query = match web::Query::<HashMap<String, u64>>::from_query(request.query_string())
         {
-            Ok(events) => events.map(JsonAdminEvent::from),
-            Err(err) => {
-                error!(
-                    "Unable to load initial set of admin events for {}: {}",
-                    &circuit_management_type, err
-                );
-                return Box::new(HttpResponse::InternalServerError().finish().into_future());
-            }
+            Ok(query) => query,
+            Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
         };
 
+        let (skip, last_seen_timestamp) = query
+            .remove("last")
+            .map(|since_millis| {
+                // Since this is the last seen event, we will skip it in our since
+                // query
+                debug!("Catching up on events since {}", since_millis);
+                (
+                    1usize,
+                    time::SystemTime::UNIX_EPOCH + time::Duration::from_millis(since_millis),
+                )
+            })
+            .unwrap_or((0, time::SystemTime::UNIX_EPOCH));
+
+        let initial_events =
+            match admin_commands.get_events_since(&last_seen_timestamp, &circuit_management_type) {
+                Ok(events) => events.map(JsonAdminEvent::from),
+                Err(err) => {
+                    error!(
+                        "Unable to load initial set of admin events for {}: {}",
+                        &circuit_management_type, err
+                    );
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
+                }
+            };
+
         let request = Request::from((request, payload));
-        debug!("Circuit management type \"{}\"", circuit_management_type);
-        match new_websocket_event_sender(request, Box::new(initial_events)) {
+        match new_websocket_event_sender(request, Box::new(initial_events.skip(skip))) {
             Ok((sender, res)) => {
                 debug!("Websocket response: {:?}", res);
                 if let Err(err) = admin_commands.add_event_subscriber(

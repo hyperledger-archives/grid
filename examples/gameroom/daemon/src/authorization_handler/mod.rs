@@ -21,7 +21,7 @@ pub mod sabre;
 mod state_delta;
 
 use std::fmt::Write;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use diesel::connection::Connection;
 use gameroom_database::{
