@@ -118,7 +118,6 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
         let request = Request::from((request, payload));
         match new_websocket_event_sender(request, Box::new(initial_events.skip(skip))) {
             Ok((sender, res)) => {
-                debug!("Websocket response: {:?}", res);
                 if let Err(err) = admin_commands.add_event_subscriber(
                     &circuit_management_type,
                     Box::new(WsAdminServiceEventSubscriber { sender }),
@@ -126,6 +125,7 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
                     error!("Unable to add admin event subscriber: {}", err);
                     return Box::new(HttpResponse::InternalServerError().finish().into_future());
                 }
+                debug!("Websocket response: {:?}", res);
                 Box::new(res.into_future())
             }
             Err(err) => {
