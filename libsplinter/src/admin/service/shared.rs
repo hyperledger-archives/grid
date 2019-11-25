@@ -604,12 +604,12 @@ impl AdminServiceShared {
 
     pub fn get_events_since(
         &self,
-        _since_timestamp: &SystemTime,
+        since_timestamp: &SystemTime,
         circuit_management_type: &str,
     ) -> Result<Events, AdminSharedError> {
         let events = self
             .event_mailbox
-            .iter()
+            .iter_since(*since_timestamp)
             .map_err(|err| AdminSharedError::UnableToAddSubscriber(err.to_string()))?;
 
         let circuit_management_type = circuit_management_type.to_string();

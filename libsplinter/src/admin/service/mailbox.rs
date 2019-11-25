@@ -83,13 +83,9 @@ impl Mailbox {
         Ok((entry.timestamp, entry.event))
     }
 
-    /// Returns an iterator over all of the values in the mailbox.
-    pub fn iter(&self) -> Result<MailboxIter, MailboxError> {
-        MailboxIter::new(
-            self.durable_set.clone(),
-            SystemTime::UNIX_EPOCH,
-            SystemTime::now(),
-        )
+    /// Returns an iterator starting from the given timestamp.
+    pub fn iter_since(&self, start_time: SystemTime) -> Result<MailboxIter, MailboxError> {
+        MailboxIter::new(self.durable_set.clone(), start_time, SystemTime::now())
     }
 }
 
@@ -220,6 +216,8 @@ mod tests {
 
     use super::*;
 
+    /// Iterate over a series of events, and ensure they are iterated in the order they are
+    /// inserted (as determined by their timestamp).
     #[test]
     fn test_iterate() {
         let mut mailbox = Mailbox::new(DurableBTreeSet::new_boxed());
@@ -241,7 +239,77 @@ mod tests {
                 make_event("circuit_two", "default"),
             ],
             mailbox
-                .iter()
+                .iter_since(SystemTime::UNIX_EPOCH)
+                .expect("Unable to create an iterator")
+                .map(|(_, evt)| evt)
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    /// Iterate over an empty mailbox and ensure that the iterator will return an empty set.
+    #[test]
+    fn test_iterate_empty() {
+        let mailbox = Mailbox::new(DurableBTreeSet::new_boxed());
+        assert!(&mailbox
+            .iter_since(SystemTime::UNIX_EPOCH)
+            .expect("Unable to create an iterator")
+            .collect::<Vec<(SystemTime, AdminServiceEvent)>>()
+            .is_empty());
+    }
+
+    /// Add two events and create an iterator.  Add a third event and ensure that the new event is
+    /// not included in the iterator's results.
+    #[test]
+    fn test_iterate_ignores_new() {
+        let mut mailbox = Mailbox::new(DurableBTreeSet::new_boxed());
+
+        mailbox
+            .add(make_event("circuit_one", "default"))
+            .expect("Unable to add event");
+        mailbox
+            .add(make_event("gameroom_one", "gameroom"))
+            .expect("Unable to add event");
+
+        let iter = mailbox
+            .iter_since(SystemTime::UNIX_EPOCH)
+            .expect("Unable to create an iterator");
+
+        mailbox
+            .add(make_event("circuit_two", "default"))
+            .expect("Unable to add event");
+
+        assert_eq!(
+            vec![
+                make_event("circuit_one", "default"),
+                make_event("gameroom_one", "gameroom"),
+            ],
+            iter.map(|(_, evt)| evt).collect::<Vec<_>>(),
+        );
+    }
+
+    /// Add three events to the mailbox and iterate from the timestamp of the second item. Ensure
+    /// that only the second two items are returned.
+    #[test]
+    fn test_iter_since() {
+        let mut mailbox = Mailbox::new(DurableBTreeSet::new_boxed());
+
+        mailbox
+            .add(make_event("circuit_one", "default"))
+            .expect("Unable to add event");
+        let (entry_time, _) = mailbox
+            .add(make_event("gameroom_one", "gameroom"))
+            .expect("Unable to add event");
+        mailbox
+            .add(make_event("circuit_two", "default"))
+            .expect("Unable to add event");
+
+        assert_eq!(
+            vec![
+                make_event("gameroom_one", "gameroom"),
+                make_event("circuit_two", "default"),
+            ],
+            mailbox
+                .iter_since(entry_time)
                 .expect("Unable to create an iterator")
                 .map(|(_, evt)| evt)
                 .collect::<Vec<_>>(),
