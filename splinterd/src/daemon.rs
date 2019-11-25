@@ -97,16 +97,16 @@ pub struct SplinterDaemon {
 
 impl SplinterDaemon {
     pub fn start(&mut self, transport: Box<dyn Transport + Send>) -> Result<(), StartError> {
-        let mut inproc_tranport = InprocTransport::default();
-        let mut transports = vec![transport, Box::new(inproc_tranport.clone())];
+        let mut inproc_transport = InprocTransport::default();
+        let mut transports = vec![transport, Box::new(inproc_transport.clone())];
 
         // Allowing unused_variable because health_inproc must be available later if feature
         // health is enabled
         #[allow(unused_variables)]
         let health_inproc = if cfg!(feature = "health") {
-            let inproc_tranport = InprocTransport::default();
-            transports.push(Box::new(inproc_tranport.clone()));
-            Some(inproc_tranport)
+            let inproc_transport = InprocTransport::default();
+            transports.push(Box::new(inproc_transport.clone()));
+            Some(inproc_transport)
         } else {
             None
         };
@@ -296,7 +296,7 @@ impl SplinterDaemon {
             .map_err(|_| StartError::ThreadError("Unable to spawn main loop".into()))?;
 
         let orchestrator_connection =
-            inproc_tranport
+            inproc_transport
                 .connect(ADMIN_SERVICE_ADDRESS)
                 .map_err(|err| {
                     StartError::TransportError(format!(
@@ -376,7 +376,7 @@ impl SplinterDaemon {
         let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api_builder.build()?.run()?;
 
         let (admin_shutdown_handle, service_processor_join_handle) =
-            Self::start_admin_service(inproc_tranport, admin_service, Arc::clone(&running))?;
+            Self::start_admin_service(inproc_transport, admin_service, Arc::clone(&running))?;
 
         let r = running.clone();
         ctrlc::set_handler(move || {
