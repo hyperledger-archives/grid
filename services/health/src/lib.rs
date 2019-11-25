@@ -18,7 +18,7 @@ extern crate log;
 use splinter::{
     actix_web::HttpResponse,
     futures::IntoFuture,
-    rest_api::{Method, Request, Resource, RestResourceProvider},
+    rest_api::{Method, Resource, RestResourceProvider},
     service::{
         error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
         Service, ServiceMessageContext, ServiceNetworkRegistry,
