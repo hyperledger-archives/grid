@@ -81,22 +81,31 @@ pub fn run(
         .map(|gameroom| resubscribe(&splinterd_url, gameroom, &db_conn))
         .try_for_each(|ws| igniter.start_ws(&ws))?;
 
-    let mut ws = WebSocketClient::new(
-        &format!("{}/ws/admin/register/gameroom", splinterd_url),
-        move |ctx, event| {
-            if let Err(err) = process_admin_event(
-                event,
-                &db_conn,
-                &node_id,
-                &private_key,
-                &splinterd_url,
-                ctx.igniter(),
-            ) {
-                error!("Failed to process admin event: {}", err);
-            }
-            WsResponse::Empty
-        },
-    );
+    let registration_route = helpers::get_last_updated_proposal_time(&pool)?
+        .map(|time| {
+            format!(
+                "{}/ws/admin/register/gameroom?last={}",
+                splinterd_url,
+                time.duration_since(SystemTime::UNIX_EPOCH)
+                    .map(|duration| duration.as_millis())
+                    .unwrap_or(0)
+            )
+        })
+        .unwrap_or_else(|| format!("{}/ws/admin/register/gameroom", splinterd_url));
+
+    let mut ws = WebSocketClient::new(&registration_route, move |ctx, event| {
+        if let Err(err) = process_admin_event(
+            event,
+            &db_conn,
+            &node_id,
+            &private_key,
+            &splinterd_url,
+            ctx.igniter(),
+        ) {
+            error!("Failed to process admin event: {}", err);
+        }
+        WsResponse::Empty
+    });
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);
