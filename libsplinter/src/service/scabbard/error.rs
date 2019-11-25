@@ -24,6 +24,7 @@ use transact::state::merkle::StateDatabaseError;
 
 #[derive(Debug)]
 pub enum ScabbardError {
+    BatchVerificationFailed(Box<dyn Error + Send>),
     ConsensusFailed(ScabbardConsensusManagerError),
     InitializationFailed(Box<dyn Error + Send>),
     LockPoisoned,
@@ -34,6 +35,7 @@ pub enum ScabbardError {
 impl Error for ScabbardError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            ScabbardError::BatchVerificationFailed(err) => Some(&**err),
             ScabbardError::ConsensusFailed(err) => Some(err),
             ScabbardError::InitializationFailed(err) => Some(&**err),
             ScabbardError::LockPoisoned => None,
@@ -46,6 +48,9 @@ impl Error for ScabbardError {
 impl std::fmt::Display for ScabbardError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            ScabbardError::BatchVerificationFailed(err) => {
+                write!(f, "failed to verify batch: {}", err)
+            }
             ScabbardError::ConsensusFailed(err) => write!(f, "scabbard consensus failed: {}", err),
             ScabbardError::InitializationFailed(err) => {
                 write!(f, "failed to initialize scabbard: {}", err)

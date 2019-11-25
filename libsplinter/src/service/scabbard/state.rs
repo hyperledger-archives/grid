@@ -471,7 +471,7 @@ impl BatchHistory {
         Self::default()
     }
 
-    pub fn add_batch(&mut self, signature: &str) -> Result<(), ScabbardStateError> {
+    pub fn add_batch(&mut self, signature: &str) {
         self.history.insert(
             signature.to_string(),
             BatchInfo {
@@ -488,8 +488,6 @@ impl BatchHistory {
                 .min_by_key(|(_, v)| v.timestamp)
                 .and_then(|(k, _)| self.history.remove(&k));
         }
-
-        Ok(())
     }
 
     fn update_batch_status(&mut self, signature: &str, status: BatchStatus) {
@@ -513,15 +511,15 @@ impl BatchHistory {
         }
     }
 
-    pub fn get_batch_info(&self, signature: &str) -> Result<BatchInfo, ScabbardStateError> {
+    pub fn get_batch_info(&self, signature: &str) -> BatchInfo {
         if let Some(info) = self.history.get(signature) {
-            Ok(info.clone())
+            info.clone()
         } else {
-            Ok(BatchInfo {
+            BatchInfo {
                 id: signature.to_string(),
                 status: BatchStatus::Unknown,
                 timestamp: SystemTime::now(),
-            })
+            }
         }
     }
 }

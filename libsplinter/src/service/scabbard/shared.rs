@@ -20,9 +20,11 @@ use transact::protos::FromBytes;
 
 use crate::consensus::ProposalId;
 use crate::hex::parse_hex;
-use crate::service::{ServiceError, ServiceNetworkSender};
+use crate::service::ServiceNetworkSender;
 use crate::signing::hash::HashVerifier;
 use crate::signing::SignatureVerifier;
+
+use super::error::ScabbardError;
 
 /// Data structure used to store information that's shared between components in this service
 pub struct ScabbardShared {
@@ -95,7 +97,7 @@ impl ScabbardShared {
         self.proposed_batches.remove(&proposal_id)
     }
 
-    pub fn verify_batches(&self, batches: &[BatchPair]) -> Result<bool, ServiceError> {
+    pub fn verify_batches(&self, batches: &[BatchPair]) -> Result<bool, ScabbardError> {
         for batch in batches {
             let batch_pub_key = batch.header().signer_public_key();
 
@@ -105,11 +107,11 @@ impl ScabbardShared {
                 .verify(
                     batch.batch().header(),
                     parse_hex(batch.batch().header_signature())
-                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                        .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?
                         .as_slice(),
                     batch_pub_key,
                 )
-                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?
             {
                 warn!(
                     "Batch failed signature verification: {}",
@@ -132,11 +134,11 @@ impl ScabbardShared {
             // Verify all transactions in batch
             for (i, txn) in batch.batch().transactions().iter().enumerate() {
                 let header = TransactionHeader::from_bytes(txn.header())
-                    .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))?;
+                    .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?;
 
                 // Verify this transaction matches the corresponding ID in the batch header
                 let header_signature_bytes = parse_hex(txn.header_signature())
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+                    .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?;
                 if header_signature_bytes != batch.header().transaction_ids()[i] {
                     warn!(
                         "Transaction at index {} does not match corresponding transaction ID in
@@ -162,11 +164,11 @@ impl ScabbardShared {
                     .verify(
                         txn.header(),
                         parse_hex(txn.header_signature())
-                            .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                            .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?
                             .as_slice(),
                         header.signer_public_key(),
                     )
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?
+                    .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?
                 {
                     warn!(
                         "Transaction failed signature verification - txn: {}, batch: {}",
@@ -179,7 +181,7 @@ impl ScabbardShared {
                 if !match header.payload_hash_method() {
                     HashMethod::SHA512 => HashVerifier
                         .verify(txn.payload(), header.payload_hash(), &[])
-                        .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?,
+                        .map_err(|err| ScabbardError::BatchVerificationFailed(Box::new(err)))?,
                 } {
                     warn!(
                         "Transaction payload hash doesn't match payload - txn: {}, batch: {}",

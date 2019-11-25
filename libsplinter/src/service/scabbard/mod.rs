@@ -112,11 +112,11 @@ impl Scabbard {
     pub fn add_batches(
         &self,
         batches: Vec<BatchPair>,
-    ) -> Result<Option<BatchListPath>, ServiceError> {
+    ) -> Result<Option<BatchListPath>, ScabbardError> {
         let mut shared = self
             .shared
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+            .map_err(|_| ScabbardError::LockPoisoned)?;
 
         if shared.verify_batches(&batches)? {
             let mut link = format!(
@@ -127,10 +127,9 @@ impl Scabbard {
             for batch in batches {
                 self.state
                     .lock()
-                    .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?
+                    .map_err(|_| ScabbardError::LockPoisoned)?
                     .batch_history()
-                    .add_batch(&batch.batch().header_signature())
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+                    .add_batch(&batch.batch().header_signature());
 
                 link.push_str(&format!("{},", batch.batch().header_signature()));
                 shared.add_batch_to_queue(batch);
@@ -146,25 +145,22 @@ impl Scabbard {
         }
     }
 
-    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ServiceError> {
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?;
+    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ScabbardError> {
+        let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
 
-        ids.iter()
+        Ok(ids
+            .iter()
             .map(|signature| state.batch_history().get_batch_info(signature))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
+            .collect::<Vec<_>>())
     }
 
     pub fn add_state_subscriber(
         &self,
         subscriber: Box<dyn StateSubscriber>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), ScabbardError> {
         self.state
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?
+            .map_err(|_| ScabbardError::LockPoisoned)?
             .add_subscriber(subscriber);
 
         Ok(())
