@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::time;
 
 use crate::actix_web::HttpResponse;
 use crate::futures::{Future, IntoFuture};
 use crate::protos::admin::CircuitManagementPayload;
 use crate::rest_api::{
-    into_protobuf, EventDealer, EventSender, Method, Request, Resource, Response, ResponseError,
+    into_protobuf, new_websocket_event_sender, EventSender, Method, Request, Resource,
     RestResourceProvider,
 };
 use crate::service::ServiceError;
@@ -74,7 +72,6 @@ fn make_submit_route<A: AdminCommands + Clone + 'static>(admin_commands: A) -> R
 fn make_application_handler_registration_route<A: AdminCommands + Clone + 'static>(
     admin_commands: A,
 ) -> Resource {
-    let admin_event_dealers = AdminEventDealers::default();
     Resource::build("/ws/admin/register/{type}").add_method(Method::Get, move |request, payload| {
         let circuit_management_type = if let Some(t) = request.match_info().get("type") {
             t.to_string()
@@ -97,11 +94,7 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
 
         let request = Request::from((request, payload));
         debug!("Circuit management type \"{}\"", circuit_management_type);
-        match admin_event_dealers.add_event_dealer(
-            request,
-            &circuit_management_type,
-            Box::new(initial_events),
-        ) {
+        match new_websocket_event_sender(request, Box::new(initial_events)) {
             Ok((sender, res)) => {
                 debug!("Websocket response: {:?}", res);
                 if let Err(err) = admin_commands.add_event_subscriber(
@@ -119,26 +112,6 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
             }
         }
     })
-}
-
-#[derive(Clone, Default)]
-struct AdminEventDealers {
-    event_dealers_by_type: Arc<Mutex<HashMap<String, EventDealer<JsonAdminEvent>>>>,
-}
-
-impl AdminEventDealers {
-    fn add_event_dealer(
-        &self,
-        request: Request,
-        event_type: &str,
-        initial_events: Box<dyn Iterator<Item = JsonAdminEvent> + Send>,
-    ) -> Result<(EventSender<JsonAdminEvent>, Response), ResponseError> {
-        let mut event_dealers = self.event_dealers_by_type.lock().unwrap();
-        let dealer = event_dealers
-            .entry(event_type.to_string())
-            .or_insert_with(EventDealer::new);
-        dealer.subscribe(request, initial_events)
-    }
 }
 
 struct WsAdminServiceEventSubscriber {

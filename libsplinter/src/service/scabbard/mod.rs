@@ -230,12 +230,12 @@ impl Service for Scabbard {
             .take_network_sender()
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
 
-        // Shutdown event dealer and disconnect websockets
+        // Shutdown event senders and disconnect websockets
         self.shared
             .lock()
             .map_err(|_| ServiceStopError::PoisonedLock("shared lock poisoned".into()))?
             .state_mut()
-            .shutdown_event_dealer();
+            .shutdown_event_senders();
 
         service_registry.disconnect(self.service_id())?;
 

@@ -42,7 +42,7 @@ use transact::{
 use crate::events::{ParseBytes, ParseError};
 use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
-use crate::rest_api::{EventDealer, EventSender, Request, Response, ResponseError};
+use crate::rest_api::{new_websocket_event_sender, EventSender, Request, Response, ResponseError};
 
 use super::error::ScabbardStateError;
 
@@ -57,7 +57,6 @@ pub struct ScabbardState {
     current_state_root: String,
     transaction_receipt_store: TransactionReceiptStore,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
-    event_dealer: EventDealer<StateChangeEvent>,
     event_senders: Vec<EventSender<StateChangeEvent>>,
     batch_history: BatchHistory,
 }
@@ -120,8 +119,6 @@ impl ScabbardState {
             .start()
             .map_err(|err| ScabbardStateError(format!("failed to start executor: {}", err)))?;
 
-        let event_dealer = EventDealer::new();
-
         Ok(ScabbardState {
             db,
             context_manager,
@@ -132,7 +129,6 @@ impl ScabbardState {
                     .map_err(|err| ScabbardStateError(err.to_string()))?,
             )),
             pending_changes: None,
-            event_dealer,
             event_senders: vec![],
             batch_history: BatchHistory::new(),
         })
@@ -279,16 +275,14 @@ impl ScabbardState {
     }
 
     pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
-        let (sender, res) = self
-            .event_dealer
-            .subscribe(request, Box::new(vec![].into_iter()))?;
+        let (sender, res) = new_websocket_event_sender(request, Box::new(vec![].into_iter()))?;
 
         self.event_senders.push(sender);
 
         Ok(res)
     }
 
-    pub fn shutdown_event_dealer(&mut self) {
+    pub fn shutdown_event_senders(&mut self) {
         self.event_senders.clear();
     }
 }
