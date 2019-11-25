@@ -49,7 +49,7 @@ impl Service for HealthService {
 
     fn start(
         &mut self,
-        service_registry: &dyn ServiceNetworkRegistry,
+        _service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStartError> {
         info!("Starting health service");
         Ok(())
@@ -57,7 +57,7 @@ impl Service for HealthService {
 
     fn stop(
         &mut self,
-        service_registry: &dyn ServiceNetworkRegistry,
+        _service_registry: &dyn ServiceNetworkRegistry,
     ) -> Result<(), ServiceStopError> {
         info!("Stopping health service");
         Ok(())
@@ -70,7 +70,7 @@ impl Service for HealthService {
 
     fn handle_message(
         &self,
-        message_bytes: &[u8],
+        _message_bytes: &[u8],
         _: &ServiceMessageContext,
     ) -> Result<(), ServiceError> {
         info!("Handling a messge");
