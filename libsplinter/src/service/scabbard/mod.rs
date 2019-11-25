@@ -35,7 +35,6 @@ use transact::protos::FromBytes;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::hex::to_hex;
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
-use crate::rest_api::{Request, Response, ResponseError};
 use crate::signing::SignatureVerifier;
 
 use super::{
@@ -47,8 +46,8 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
-use state::ScabbardState;
 pub use state::{BatchInfo, BatchStatus, StateChange, StateChangeEvent};
+use state::{ScabbardState, StateSubscriber};
 
 const SERVICE_TYPE: &str = "scabbard";
 
@@ -159,15 +158,16 @@ impl Scabbard {
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
     }
 
-    pub fn subscribe_to_state(
+    pub fn add_state_subscriber(
         &self,
-        request: Request,
-    ) -> Result<Result<Response, ResponseError>, ServiceError> {
-        Ok(self
-            .state
+        subscriber: Box<dyn StateSubscriber>,
+    ) -> Result<(), ServiceError> {
+        self.state
             .lock()
             .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?
-            .subscribe_to_state(request))
+            .add_subscriber(subscriber);
+
+        Ok(())
     }
 }
 
@@ -232,11 +232,10 @@ impl Service for Scabbard {
             .take_network_sender()
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
 
-        // Shutdown event senders and disconnect websockets
         self.state
             .lock()
             .map_err(|_| ServiceStopError::PoisonedLock("state lock poisoned".into()))?
-            .shutdown_event_senders();
+            .clear_subscribers();
 
         service_registry.disconnect(self.service_id())?;
 

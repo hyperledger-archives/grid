@@ -132,3 +132,22 @@ impl From<StateWriteError> for ScabbardStateError {
         ScabbardStateError(err.to_string())
     }
 }
+
+#[derive(Debug)]
+pub enum StateSubscriberError {
+    UnableToHandleEvent(String),
+    Unsubscribe,
+}
+
+impl Error for StateSubscriberError {}
+
+impl std::fmt::Display for StateSubscriberError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            StateSubscriberError::UnableToHandleEvent(msg) => {
+                write!(f, "unable to handle event: {}", msg)
+            }
+            StateSubscriberError::Unsubscribe => f.write_str("unsubscribe"),
+        }
+    }
+}

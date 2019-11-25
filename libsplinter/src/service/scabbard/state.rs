@@ -42,9 +42,8 @@ use transact::{
 use crate::events::{ParseBytes, ParseError};
 use crate::hex;
 use crate::protos::scabbard::{Setting, Setting_Entry};
-use crate::rest_api::{new_websocket_event_sender, EventSender, Request, Response, ResponseError};
 
-use super::error::ScabbardStateError;
+use super::error::{ScabbardStateError, StateSubscriberError};
 
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
 
@@ -57,7 +56,7 @@ pub struct ScabbardState {
     current_state_root: String,
     transaction_receipt_store: TransactionReceiptStore,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
-    event_senders: Vec<EventSender<StateChangeEvent>>,
+    event_subscribers: Vec<Box<dyn StateSubscriber>>,
     batch_history: BatchHistory,
 }
 
@@ -129,7 +128,7 @@ impl ScabbardState {
                     .map_err(|err| ScabbardStateError(err.to_string()))?,
             )),
             pending_changes: None,
-            event_senders: vec![],
+            event_subscribers: vec![],
             batch_history: BatchHistory::new(),
         })
     }
@@ -246,8 +245,16 @@ impl ScabbardState {
                     })?;
 
                 for event in events {
-                    self.event_senders
-                        .retain(|sender| sender.send(event.clone()).is_ok());
+                    self.event_subscribers.retain(|subscriber| {
+                        match subscriber.handle_event(event.clone()) {
+                            Ok(()) => true,
+                            Err(StateSubscriberError::Unsubscribe) => false,
+                            Err(err @ StateSubscriberError::UnableToHandleEvent(_)) => {
+                                error!("{}", err);
+                                true
+                            }
+                        }
+                    });
                 }
 
                 self.batch_history.commit(&signature);
@@ -274,16 +281,12 @@ impl ScabbardState {
         &mut self.batch_history
     }
 
-    pub fn subscribe_to_state(&mut self, request: Request) -> Result<Response, ResponseError> {
-        let (sender, res) = new_websocket_event_sender(request, Box::new(vec![].into_iter()))?;
-
-        self.event_senders.push(sender);
-
-        Ok(res)
+    pub fn add_subscriber(&mut self, subscriber: Box<dyn StateSubscriber>) {
+        self.event_subscribers.push(subscriber);
     }
 
-    pub fn shutdown_event_senders(&mut self) {
-        self.event_senders.clear();
+    pub fn clear_subscribers(&mut self) {
+        self.event_subscribers.clear();
     }
 }
 
@@ -373,6 +376,10 @@ impl fmt::Debug for StateChange {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
+}
+
+pub trait StateSubscriber: Send {
+    fn handle_event(&self, event: StateChangeEvent) -> Result<(), StateSubscriberError>;
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]

@@ -24,10 +24,12 @@ use transact::protos::FromBytes;
 
 use crate::actix_web::{web, Error as ActixError, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
-use crate::rest_api::{Method, Request};
+use crate::rest_api::{new_websocket_event_sender, EventSender, Method, Request};
 use crate::service::{FactoryCreateError, Service, ServiceEndpoint, ServiceFactory};
 use crate::signing::SignatureVerifierFactory;
 
+use super::error::StateSubscriberError;
+use super::state::{StateChangeEvent, StateSubscriber};
 use super::{Scabbard, SERVICE_TYPE};
 
 const DEFAULT_STATE_DB_DIR: &str = "/var/lib/splinter";
@@ -130,6 +132,22 @@ impl ServiceFactory for ScabbardFactory {
     }
 }
 
+struct WsStateSubscriber {
+    sender: EventSender<StateChangeEvent>,
+}
+
+impl StateSubscriber for WsStateSubscriber {
+    fn handle_event(&self, event: StateChangeEvent) -> Result<(), StateSubscriberError> {
+        self.sender.send(event).map_err(|_| {
+            debug!(
+                "Dropping scabbard state change event and unsubscribing due to websocket being
+                 closed"
+            );
+            StateSubscriberError::Unsubscribe
+        })
+    }
+}
+
 fn make_subscribe_endpoint() -> ServiceEndpoint {
     ServiceEndpoint {
         service_type: SERVICE_TYPE.into(),
@@ -143,9 +161,23 @@ fn make_subscribe_endpoint() -> ServiceEndpoint {
                 }
             };
 
-            match scabbard.subscribe_to_state(Request::from((request, payload))) {
-                Ok(Ok(response)) => Box::new(response.into_future()),
-                _ => Box::new(HttpResponse::InternalServerError().finish().into_future()),
+            let request = Request::from((request, payload));
+            match new_websocket_event_sender(request, Box::new(vec![].into_iter())) {
+                Ok((sender, res)) => {
+                    if let Err(err) =
+                        scabbard.add_state_subscriber(Box::new(WsStateSubscriber { sender }))
+                    {
+                        error!("Unable to add scabbard event sender: {}", err);
+                        return Box::new(
+                            HttpResponse::InternalServerError().finish().into_future(),
+                        );
+                    }
+                    Box::new(res.into_future())
+                }
+                Err(err) => {
+                    debug!("Failed to create websocket: {:?}", err);
+                    Box::new(HttpResponse::InternalServerError().finish().into_future())
+                }
             }
         }),
     }
