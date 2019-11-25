@@ -24,8 +24,6 @@ use crate::service::{ServiceError, ServiceNetworkSender};
 use crate::signing::hash::HashVerifier;
 use crate::signing::SignatureVerifier;
 
-use super::state::{BatchHistory, ScabbardState};
-
 /// Data structure used to store information that's shared between components in this service
 pub struct ScabbardShared {
     /// Queue of batches that have been submitted locally via the REST API, but have not yet been
@@ -39,7 +37,6 @@ pub struct ScabbardShared {
     /// Tracks which batches are currently being evaluated, indexed by corresponding proposal IDs.
     proposed_batches: HashMap<ProposalId, BatchPair>,
     signature_verifier: Box<dyn SignatureVerifier>,
-    state: ScabbardState,
 }
 
 impl ScabbardShared {
@@ -48,7 +45,6 @@ impl ScabbardShared {
         network_sender: Option<Box<dyn ServiceNetworkSender>>,
         peer_services: HashSet<String>,
         signature_verifier: Box<dyn SignatureVerifier>,
-        state: ScabbardState,
     ) -> Self {
         ScabbardShared {
             batch_queue,
@@ -56,7 +52,6 @@ impl ScabbardShared {
             peer_services,
             proposed_batches: HashMap::new(),
             signature_verifier,
-            state,
         }
     }
 
@@ -98,14 +93,6 @@ impl ScabbardShared {
 
     pub fn remove_proposed_batch(&mut self, proposal_id: &ProposalId) -> Option<BatchPair> {
         self.proposed_batches.remove(&proposal_id)
-    }
-
-    pub fn state_mut(&mut self) -> &mut ScabbardState {
-        &mut self.state
-    }
-
-    pub fn batch_history(&mut self) -> &mut BatchHistory {
-        self.state.batch_history()
     }
 
     pub fn verify_batches(&self, batches: &[BatchPair]) -> Result<bool, ServiceError> {

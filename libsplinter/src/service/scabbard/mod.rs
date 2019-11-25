@@ -58,6 +58,7 @@ pub struct Scabbard {
     circuit_id: String,
     service_id: String,
     shared: Arc<Mutex<ScabbardShared>>,
+    state: Arc<Mutex<ScabbardState>>,
     consensus: Arc<Mutex<Option<ScabbardConsensusManager>>>,
 }
 
@@ -81,6 +82,8 @@ impl Scabbard {
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
+        let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, signature_verifier);
+
         let hash = hash(
             MessageDigest::sha256(),
             format!("{}::{}", service_id, circuit_id).as_bytes(),
@@ -97,18 +100,12 @@ impl Scabbard {
             admin_keys,
         )
         .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
-        let shared = ScabbardShared::new(
-            VecDeque::new(),
-            None,
-            peer_services,
-            signature_verifier,
-            state,
-        );
 
         Ok(Scabbard {
             circuit_id: circuit_id.to_string(),
             service_id,
             shared: Arc::new(Mutex::new(shared)),
+            state: Arc::new(Mutex::new(state)),
             consensus: Arc::new(Mutex::new(None)),
         })
     }
@@ -129,7 +126,9 @@ impl Scabbard {
             );
 
             for batch in batches {
-                shared
+                self.state
+                    .lock()
+                    .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?
                     .batch_history()
                     .add_batch(&batch.batch().header_signature())
                     .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
@@ -149,13 +148,13 @@ impl Scabbard {
     }
 
     pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ServiceError> {
-        let mut shared = self
-            .shared
+        let mut state = self
+            .state
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+            .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?;
 
         ids.iter()
-            .map(|signature| shared.batch_history().get_batch_info(signature))
+            .map(|signature| state.batch_history().get_batch_info(signature))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
     }
@@ -165,10 +164,9 @@ impl Scabbard {
         request: Request,
     ) -> Result<Result<Response, ResponseError>, ServiceError> {
         Ok(self
-            .shared
+            .state
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?
-            .state_mut()
+            .map_err(|_| ServiceError::PoisonedLock("state lock poisoned".into()))?
             .subscribe_to_state(request))
     }
 }
@@ -202,8 +200,12 @@ impl Service for Scabbard {
 
         // Setup consensus
         consensus.replace(
-            ScabbardConsensusManager::new(self.service_id().into(), self.shared.clone())
-                .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
+            ScabbardConsensusManager::new(
+                self.service_id().into(),
+                self.shared.clone(),
+                self.state.clone(),
+            )
+            .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
         );
 
         Ok(())
@@ -231,10 +233,9 @@ impl Service for Scabbard {
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
 
         // Shutdown event senders and disconnect websockets
-        self.shared
+        self.state
             .lock()
-            .map_err(|_| ServiceStopError::PoisonedLock("shared lock poisoned".into()))?
-            .state_mut()
+            .map_err(|_| ServiceStopError::PoisonedLock("state lock poisoned".into()))?
             .shutdown_event_senders();
 
         service_registry.disconnect(self.service_id())?;

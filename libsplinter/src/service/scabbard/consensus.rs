@@ -30,6 +30,7 @@ use crate::protos::scabbard::{ProposedBatch, ScabbardMessage, ScabbardMessage_Ty
 
 use super::error::{ScabbardConsensusManagerError, ScabbardError};
 use super::shared::ScabbardShared;
+use super::state::ScabbardState;
 
 /// Component used by the service to manage and interact with consenus
 pub struct ScabbardConsensusManager {
@@ -44,6 +45,7 @@ impl ScabbardConsensusManager {
     pub fn new(
         service_id: String,
         shared: Arc<Mutex<ScabbardShared>>,
+        state: Arc<Mutex<ScabbardState>>,
     ) -> Result<Self, ScabbardConsensusManagerError> {
         let peer_ids = shared
             .lock()
@@ -60,6 +62,7 @@ impl ScabbardConsensusManager {
             service_id.clone(),
             proposal_update_tx.clone(),
             shared.clone(),
+            state.clone(),
         );
         let consensus_network_sender =
             ScabbardConsensusNetworkSender::new(service_id.clone(), shared);
@@ -128,6 +131,7 @@ pub struct ScabbardProposalManager {
     service_id: String,
     proposal_update_sender: Sender<ProposalUpdate>,
     shared: Arc<Mutex<ScabbardShared>>,
+    state: Arc<Mutex<ScabbardState>>,
 }
 
 impl ScabbardProposalManager {
@@ -135,11 +139,13 @@ impl ScabbardProposalManager {
         service_id: String,
         proposal_update_sender: Sender<ProposalUpdate>,
         shared: Arc<Mutex<ScabbardShared>>,
+        state: Arc<Mutex<ScabbardState>>,
     ) -> Self {
         ScabbardProposalManager {
             service_id,
             proposal_update_sender,
             shared,
+            state,
         }
     }
 }
@@ -158,8 +164,10 @@ impl ProposalManager for ScabbardProposalManager {
             .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
 
         if let Some(batch) = shared.pop_batch_from_queue() {
-            let expected_hash = shared
-                .state_mut()
+            let expected_hash = self
+                .state
+                .lock()
+                .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?
                 .prepare_change(batch.clone())
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
@@ -215,20 +223,21 @@ impl ProposalManager for ScabbardProposalManager {
     }
 
     fn check_proposal(&self, id: &ProposalId) -> Result<(), ProposalManagerError> {
-        let mut shared = self
+        let batch = self
             .shared
             .lock()
-            .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?;
-
-        let batch = shared
+            .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?
             .get_proposed_batch(id)
             .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?
             .clone();
 
-        let hash = shared
-            .state_mut()
+        let hash = self
+            .state
+            .lock()
+            .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?
             .prepare_change(batch)
             .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
+
         if hash.as_bytes() != id.as_ref() {
             warn!("Hash mismatch: expected {} but was {}", id, hash);
 
@@ -258,8 +267,9 @@ impl ProposalManager for ScabbardProposalManager {
             .remove_proposed_batch(id)
             .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?;
 
-        shared
-            .state_mut()
+        self.state
+            .lock()
+            .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?
             .commit()
             .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
@@ -281,8 +291,9 @@ impl ProposalManager for ScabbardProposalManager {
             .remove_proposed_batch(id)
             .ok_or_else(|| ProposalManagerError::UnknownProposal(id.clone()))?;
 
-        shared
-            .state_mut()
+        self.state
+            .lock()
+            .map_err(|_| ProposalManagerError::Internal(Box::new(ScabbardError::LockPoisoned)))?
             .rollback()
             .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
@@ -363,9 +374,7 @@ mod tests {
     use super::*;
 
     use std::collections::{HashSet, VecDeque};
-    use std::path::Path;
 
-    use crate::service::scabbard::state::ScabbardState;
     use crate::service::tests::*;
     use crate::signing::hash::HashVerifier;
 
@@ -383,14 +392,6 @@ mod tests {
             Some(Box::new(service_sender.clone())),
             peer_services.clone(),
             Box::new(HashVerifier),
-            ScabbardState::new(
-                Path::new("/tmp/network-sender-state.lmdb"),
-                1024 * 1024,
-                Path::new("/tmp/network-sender-receipts.lmdb"),
-                1024 * 1024,
-                vec![],
-            )
-            .expect("failed to create state"),
         )));
         let consensus_sender = ScabbardConsensusNetworkSender::new("0".into(), shared);
 
