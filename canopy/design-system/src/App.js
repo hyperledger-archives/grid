@@ -24,7 +24,6 @@ import {
 import './App.scss';
 
 import SideNav from './components/navigation/SideNav';
-import Components from './views/Components';
 
 const tabs = [
   {
@@ -32,7 +31,10 @@ const tabs = [
     nested: [
       {
         name: 'Introduction',
-        route: '/overview/introduction'
+        route: '/overview/introduction',
+        component: lazy(() =>
+          import('!babel-loader!mdx-loader!./views/Introduction.mdx')
+        )
       },
       {
         name: 'Conventions',
@@ -45,7 +47,10 @@ const tabs = [
     nested: [
       {
         name: 'Colors',
-        route: '/design/colors'
+        route: '/design/colors',
+        component: lazy(() =>
+          import('!babel-loader!mdx-loader!./views/Colors.mdx')
+        )
       },
       {
         name: 'Buttons',
@@ -53,7 +58,10 @@ const tabs = [
       },
       {
         name: 'Typography',
-        route: '/design/typography'
+        route: '/design/typography',
+        component: lazy(() =>
+          import('!babel-loader!mdx-loader!./views/Typography.mdx')
+        )
       }
     ]
   },
@@ -61,22 +69,27 @@ const tabs = [
     name: 'Components',
     nested: [
       {
-        name: 'Modals',
-        route: '/design/modals'
+        name: 'Progress',
+        route: '/components/progress',
+        component: lazy(() =>
+          import('!babel-loader!mdx-loader!./views/Progress.mdx')
+        )
+      },
+      {
+        name: 'TabBox',
+        route: '/components/tabbox',
+        component: lazy(() =>
+          import('!babel-loader!mdx-loader!./views/TabBox.mdx')
+        )
       }
     ]
   }
 ];
 
-const Introduction = lazy(() =>
-  import('!babel-loader!mdx-loader!./views/Introduction.mdx')
-);
-const Colors = lazy(() =>
-  import('!babel-loader!mdx-loader!./views/Colors.mdx')
-);
-const Typography = lazy(() =>
-  import('!babel-loader!mdx-loader!./views/Typography.mdx')
-);
+const flatRoutes = tabs
+  .map(t => t.nested)
+  .flat()
+  .filter(({ component }) => Boolean(component));
 
 function App() {
   return (
@@ -87,25 +100,17 @@ function App() {
           <Switch>
             <Redirect exact from="/" to="/overview/introduction" />
             <Redirect exact from="/overview" to="/overview/introduction" />
-            <Route path="/overview/introduction">
-              <Suspense fallback={<div>Loading...</div>}>
-                <Introduction />
-              </Suspense>
-            </Route>
             <Redirect exact from="/design" to="/design/colors" />
-            <Route path="/design/colors">
-              <Suspense fallback={<div>Loading...</div>}>
-                <Colors />
-              </Suspense>
-            </Route>
-            <Route path="/design/typography">
-              <Suspense fallback={<div>Loading...</div>}>
-                <Typography />
-              </Suspense>
-            </Route>
-            <Route path="/components">
-              <Components />
-            </Route>
+            {flatRoutes.map(({ route, component }) => {
+              const C = component;
+              return (
+                <Route path={route} exact key={route}>
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <C />
+                  </Suspense>
+                </Route>
+              );
+            })}
           </Switch>
         </div>
       </div>
