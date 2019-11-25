@@ -100,6 +100,9 @@ impl SplinterDaemon {
         let mut inproc_tranport = InprocTransport::default();
         let mut transports = vec![transport, Box::new(inproc_tranport.clone())];
 
+        // Allowing unused_variable because health_inproc must be available later if feature
+        // health is enabled
+        #[allow(unused_variables)]
         let health_inproc = if cfg!(feature = "health") {
             let inproc_tranport = InprocTransport::default();
             transports.push(Box::new(inproc_tranport.clone()));
