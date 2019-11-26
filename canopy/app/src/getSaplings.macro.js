@@ -22,10 +22,15 @@ function replaceReferenceWithPromiseResolveExpression(resplacement) {
 }
 
 function saplingMacro({ references }) {
-  const { getUserSaplings = [], getConfigSaplings = [] } = references;
+  const {
+    getUserSaplings = [],
+    getConfigSaplings = [],
+    getSharedConfig = []
+  } = references;
 
   const userSaplings = loadYaml('../saplings/userSaplings.yml');
   const configSaplings = loadYaml('../saplings/configSaplings.yml');
+  const sharedConfig = loadYaml('../saplings/canopyConfig.yml');
 
   getUserSaplings.forEach(
     replaceReferenceWithPromiseResolveExpression(userSaplings)
@@ -33,6 +38,10 @@ function saplingMacro({ references }) {
 
   getConfigSaplings.forEach(
     replaceReferenceWithPromiseResolveExpression(configSaplings)
+  );
+
+  getSharedConfig.forEach(
+    replaceReferenceWithPromiseResolveExpression(sharedConfig)
   );
 }
 
