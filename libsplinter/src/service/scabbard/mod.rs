@@ -46,7 +46,7 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
-pub use state::{BatchInfo, BatchStatus, StateChange, StateChangeEvent};
+pub use state::{BatchInfo, BatchStatus, Events, StateChange, StateChangeEvent};
 use state::{ScabbardState, StateSubscriber};
 
 const SERVICE_TYPE: &str = "scabbard";
@@ -152,6 +152,14 @@ impl Scabbard {
             .iter()
             .map(|signature| state.batch_history().get_batch_info(signature))
             .collect::<Vec<_>>())
+    }
+
+    pub fn get_events_since(&self, event_id: Option<String>) -> Result<Events, ScabbardError> {
+        Ok(self
+            .state
+            .lock()
+            .map_err(|_| ScabbardError::LockPoisoned)?
+            .get_events_since(event_id)?)
     }
 
     pub fn add_state_subscriber(

@@ -161,8 +161,21 @@ fn make_subscribe_endpoint() -> ServiceEndpoint {
                 }
             };
 
+            let last_seen_event_id = request
+                .match_info()
+                .get("last_seen_event")
+                .map(String::from);
+
+            let unseen_events = match scabbard.get_events_since(last_seen_event_id) {
+                Ok(events) => events,
+                Err(err) => {
+                    error!("Unable to load unseen scabbard events: {}", err);
+                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
+                }
+            };
+
             let request = Request::from((request, payload));
-            match new_websocket_event_sender(request, Box::new(vec![].into_iter())) {
+            match new_websocket_event_sender(request, Box::new(unseen_events)) {
                 Ok((sender, res)) => {
                     if let Err(err) =
                         scabbard.add_state_subscriber(Box::new(WsStateSubscriber { sender }))

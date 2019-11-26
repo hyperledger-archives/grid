@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::HashMap, fmt, path::Path, time::SystemTime};
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, RwLock};
+use std::{fmt, path::Path, time::SystemTime};
 
 use protobuf::Message;
 use sawtooth::store::lmdb::LmdbOrderedStore;
@@ -49,12 +51,14 @@ const EXECUTION_TIMEOUT: u64 = 300; // five minutes
 
 const CURRENT_STATE_ROOT_INDEX: &str = "current_state_root";
 
+const ITER_CACHE_SIZE: usize = 64;
+
 pub struct ScabbardState {
     db: Box<dyn Database>,
     context_manager: ContextManager,
     executor: Executor,
     current_state_root: String,
-    transaction_receipt_store: TransactionReceiptStore,
+    transaction_receipt_store: Arc<RwLock<TransactionReceiptStore>>,
     pending_changes: Option<(String, Vec<TransactionReceipt>)>,
     event_subscribers: Vec<Box<dyn StateSubscriber>>,
     batch_history: BatchHistory,
@@ -123,10 +127,12 @@ impl ScabbardState {
             context_manager,
             executor,
             current_state_root,
-            transaction_receipt_store: TransactionReceiptStore::new(Box::new(
-                LmdbOrderedStore::new(receipt_db_path, Some(receipt_db_size))
-                    .map_err(|err| ScabbardStateError(err.to_string()))?,
-            )),
+            transaction_receipt_store: Arc::new(RwLock::new(TransactionReceiptStore::new(
+                Box::new(
+                    LmdbOrderedStore::new(receipt_db_path, Some(receipt_db_size))
+                        .map_err(|err| ScabbardStateError(err.to_string()))?,
+                ),
+            ))),
             pending_changes: None,
             event_subscribers: vec![],
             batch_history: BatchHistory::new(),
@@ -233,9 +239,19 @@ impl ScabbardState {
                     self.current_state_root,
                 );
 
-                let events = receipts_into_scabbard_state_change_events(&txn_receipts);
+                let events = txn_receipts
+                    .iter()
+                    .map(receipt_into_scabbard_state_change_event)
+                    .collect::<Vec<_>>();
 
                 self.transaction_receipt_store
+                    .write()
+                    .map_err(|err| {
+                        ScabbardStateError(format!(
+                            "transaction receipt store lock poisoned: {}",
+                            err
+                        ))
+                    })?
                     .append(txn_receipts)
                     .map_err(|err| {
                         ScabbardStateError(format!(
@@ -281,6 +297,10 @@ impl ScabbardState {
         &mut self.batch_history
     }
 
+    pub fn get_events_since(&self, event_id: Option<String>) -> Result<Events, ScabbardStateError> {
+        Events::new(self.transaction_receipt_store.clone(), event_id)
+    }
+
     pub fn add_subscriber(&mut self, subscriber: Box<dyn StateSubscriber>) {
         self.event_subscribers.push(subscriber);
     }
@@ -312,32 +332,23 @@ fn receipts_into_transact_state_changes(
         .collect::<Vec<_>>()
 }
 
-fn receipts_into_scabbard_state_change_events(
-    receipts: &[TransactionReceipt],
-) -> Vec<StateChangeEvent> {
-    receipts
+fn receipt_into_scabbard_state_change_event(receipt: &TransactionReceipt) -> StateChangeEvent {
+    let state_changes = receipt
+        .state_changes
         .iter()
-        .map(|receipt| {
-            let state_changes = receipt
-                .state_changes
-                .iter()
-                .cloned()
-                .map(|change| match change {
-                    transact::protocol::receipt::StateChange::Set { key, value } => {
-                        StateChange::Set { key, value }
-                    }
-                    transact::protocol::receipt::StateChange::Delete { key } => {
-                        StateChange::Delete { key }
-                    }
-                })
-                .collect();
-
-            StateChangeEvent {
-                id: receipt.transaction_id.clone(),
-                state_changes,
+        .cloned()
+        .map(|change| match change {
+            transact::protocol::receipt::StateChange::Set { key, value } => {
+                StateChange::Set { key, value }
             }
+            transact::protocol::receipt::StateChange::Delete { key } => StateChange::Delete { key },
         })
-        .collect::<Vec<_>>()
+        .collect();
+
+    StateChangeEvent {
+        id: receipt.transaction_id.clone(),
+        state_changes,
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -380,6 +391,72 @@ impl fmt::Debug for StateChange {
 
 pub trait StateSubscriber: Send {
     fn handle_event(&self, event: StateChangeEvent) -> Result<(), StateSubscriberError>;
+}
+
+/// An iterator that wraps the `TransactionReceiptStore` and returns `StateChangeEvent`s using an
+/// in-memory cache.
+pub struct Events {
+    transaction_receipt_store: Arc<RwLock<TransactionReceiptStore>>,
+    start_id: Option<String>,
+    cache: VecDeque<StateChangeEvent>,
+}
+
+impl Events {
+    fn new(
+        transaction_receipt_store: Arc<RwLock<TransactionReceiptStore>>,
+        start_id: Option<String>,
+    ) -> Result<Self, ScabbardStateError> {
+        let mut iter = Events {
+            transaction_receipt_store,
+            start_id,
+            cache: VecDeque::default(),
+        };
+        iter.reload_cache()?;
+        Ok(iter)
+    }
+
+    fn reload_cache(&mut self) -> Result<(), ScabbardStateError> {
+        let transaction_receipt_store = self.transaction_receipt_store.read().map_err(|err| {
+            ScabbardStateError(format!("transaction receipt store lock poisoned: {}", err))
+        })?;
+
+        self.cache = if let Some(id) = &self.start_id {
+            transaction_receipt_store.iter_since_id(id.clone())
+        } else {
+            transaction_receipt_store.iter()
+        }
+        .map_err(|err| {
+            ScabbardStateError(format!(
+                "failed to get transaction receipts from store: {}",
+                err
+            ))
+        })?
+        .take(ITER_CACHE_SIZE)
+        .map(|ref receipt| receipt_into_scabbard_state_change_event(receipt))
+        .collect::<VecDeque<_>>();
+
+        self.start_id = Some(
+            self.cache
+                .back()
+                .map(|event| event.id.clone())
+                .unwrap_or_else(|| "".into()),
+        );
+
+        Ok(())
+    }
+}
+
+impl Iterator for Events {
+    type Item = StateChangeEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cache.is_empty() {
+            if let Err(err) = self.reload_cache() {
+                error!("Unable to reload iterator cache: {}", err);
+            }
+        }
+        self.cache.pop_front()
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -530,5 +607,85 @@ impl Default for BatchHistory {
             history: HashMap::new(),
             limit: 100,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEMP_DB_SIZE: usize = 1 << 30; // 1024 ** 3
+
+    /// Verify that the event iterator works as expected.
+    #[test]
+    fn event_iterator() {
+        let temp_db_path = get_temp_db_path();
+
+        let test_result = std::panic::catch_unwind(|| {
+            let receipts = vec![
+                TransactionReceipt {
+                    state_changes: vec![],
+                    events: vec![],
+                    data: vec![],
+                    transaction_id: "ab".into(),
+                },
+                TransactionReceipt {
+                    state_changes: vec![],
+                    events: vec![],
+                    data: vec![],
+                    transaction_id: "cd".into(),
+                },
+                TransactionReceipt {
+                    state_changes: vec![],
+                    events: vec![],
+                    data: vec![],
+                    transaction_id: "ef".into(),
+                },
+            ];
+            let receipt_ids = receipts
+                .iter()
+                .map(|receipt| receipt.transaction_id.clone())
+                .collect::<Vec<_>>();
+
+            let transaction_receipt_store =
+                Arc::new(RwLock::new(TransactionReceiptStore::new(Box::new(
+                    LmdbOrderedStore::new(&temp_db_path, Some(TEMP_DB_SIZE))
+                        .expect("Failed to create LMDB store"),
+                ))));
+
+            transaction_receipt_store
+                .write()
+                .expect("failed to get write lock")
+                .append(receipts.clone())
+                .expect("failed to add receipts to store");
+
+            // Test without a specified start
+            let all_events = Events::new(transaction_receipt_store.clone(), None)
+                .expect("failed to get iterator for all events");
+            let all_event_ids = all_events.map(|event| event.id.clone()).collect::<Vec<_>>();
+            assert_eq!(all_event_ids, receipt_ids);
+
+            // Test with a specified start
+            let some_events = Events::new(
+                transaction_receipt_store.clone(),
+                Some(receipt_ids[0].clone()),
+            )
+            .expect("failed to get iterator for some events");
+            let some_event_ids = some_events
+                .map(|event| event.id.clone())
+                .collect::<Vec<_>>();
+            assert_eq!(some_event_ids, receipt_ids[1..].to_vec());
+        });
+
+        std::fs::remove_file(temp_db_path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
+
+    fn get_temp_db_path() -> std::path::PathBuf {
+        let mut temp_db_path = std::env::temp_dir();
+        let thread_id = std::thread::current().id();
+        temp_db_path.push(format!("store-{:?}.lmdb", thread_id));
+        temp_db_path
     }
 }

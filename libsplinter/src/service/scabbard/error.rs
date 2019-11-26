@@ -30,6 +30,7 @@ pub enum ScabbardError {
     LockPoisoned,
     MessageTypeUnset,
     NotConnected,
+    StateInteractionFailed(ScabbardStateError),
 }
 
 impl Error for ScabbardError {
@@ -41,6 +42,7 @@ impl Error for ScabbardError {
             ScabbardError::LockPoisoned => None,
             ScabbardError::MessageTypeUnset => None,
             ScabbardError::NotConnected => None,
+            ScabbardError::StateInteractionFailed(err) => Some(err),
         }
     }
 }
@@ -60,6 +62,9 @@ impl std::fmt::Display for ScabbardError {
             ScabbardError::NotConnected => {
                 write!(f, "attempted to send message, but service isn't connected")
             }
+            ScabbardError::StateInteractionFailed(err) => {
+                write!(f, "interaction with scabbard state failed: {}", err)
+            }
         }
     }
 }
@@ -67,6 +72,12 @@ impl std::fmt::Display for ScabbardError {
 impl From<ScabbardConsensusManagerError> for ScabbardError {
     fn from(err: ScabbardConsensusManagerError) -> Self {
         ScabbardError::ConsensusFailed(err)
+    }
+}
+
+impl From<ScabbardStateError> for ScabbardError {
+    fn from(err: ScabbardStateError) -> Self {
+        ScabbardError::StateInteractionFailed(err)
     }
 }
 
