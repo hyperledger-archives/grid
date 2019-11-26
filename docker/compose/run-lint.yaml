@@ -40,7 +40,7 @@ services:
     image: clippy-splinter:${ISOLATION_ID}
     volumes:
       - ../../:/project/splinter
-    command:  cargo clippy -- -D clippy::all
+    command:  cargo clippy -- -D warnings
 
   lint-gameroom-client:
     build:
