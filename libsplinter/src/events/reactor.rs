@@ -17,8 +17,9 @@ use std::sync::{
     Arc,
 };
 use std::thread;
+use std::time::Duration;
 
-use crossbeam_channel::{bounded, Sender, TryRecvError};
+use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
 use futures::Future;
 use tokio::runtime::Runtime;
 
@@ -42,77 +43,83 @@ impl Reactor {
         let running = Arc::new(AtomicBool::new(true));
         let reactor_running = running.clone();
 
-        let thread_handle = thread::spawn(move || {
-            let mut runtime = match Runtime::new() {
-                Ok(runtime) => runtime,
-                Err(err) => {
-                    error!("Unable to create event reactor runtime: {}", err);
-                    return;
-                }
-            };
-
-            let mut connections = Vec::new();
-            loop {
-                match receiver.try_recv() {
-                    Ok(ReactorMessage::StartWs(listen)) => {
-                        let (future, handle) = listen.into_shutdown_handle();
-                        runtime.spawn(futures::lazy(|| future.map_err(|_| ())));
-                        connections.push(handle);
-                    }
-                    Ok(ReactorMessage::HttpRequest(req)) => {
-                        runtime.spawn(req);
-                    }
-                    Ok(ReactorMessage::Stop) => break,
+        let thread_builder = thread::Builder::new().name("EventReactor".into());
+        let thread_handle = thread_builder
+            .spawn(move || {
+                let mut runtime = match Runtime::new() {
+                    Ok(runtime) => runtime,
                     Err(err) => {
-                        if let TryRecvError::Disconnected = err {
-                            error!("Failed to receive message {}", err);
+                        error!("Unable to create event reactor runtime: {}", err);
+                        return;
+                    }
+                };
+
+                let mut connections = Vec::new();
+                loop {
+                    match receiver.recv_timeout(Duration::from_millis(500)) {
+                        Ok(ReactorMessage::StartWs(listen)) => {
+                            let (future, handle) = listen.into_shutdown_handle();
+                            runtime.spawn(futures::lazy(|| future.map_err(|_| ())));
+                            connections.push(handle);
+                        }
+                        Ok(ReactorMessage::HttpRequest(req)) => {
+                            runtime.spawn(req);
+                        }
+                        Ok(ReactorMessage::Stop) => break,
+                        Err(RecvTimeoutError::Timeout) => {
+                            continue;
+                        }
+                        Err(RecvTimeoutError::Disconnected) => {
+                            debug!(
+                                "Event reactor sender disconnected; terminating web socket loop..."
+                            );
                             break;
                         }
                     }
-                }
 
-                let (live_connections, closed_connections): (
-                    Vec<ShutdownHandle>,
-                    Vec<ShutdownHandle>,
-                ) = connections.into_iter().partition(|conn| conn.running());
-                for conn in closed_connections {
-                    match conn.shutdown() {
-                        Ok(()) => info!("A ws connection closed"),
-                        Err(err) => {
-                            error!("A ws connection closed unexpectedly with error {}", err)
+                    let (live_connections, closed_connections): (
+                        Vec<ShutdownHandle>,
+                        Vec<ShutdownHandle>,
+                    ) = connections.into_iter().partition(|conn| conn.running());
+                    for conn in closed_connections {
+                        match conn.shutdown() {
+                            Ok(()) => info!("A ws connection closed"),
+                            Err(err) => {
+                                error!("A ws connection closed unexpectedly with error {}", err)
+                            }
                         }
                     }
+                    connections = live_connections;
                 }
-                connections = live_connections;
-            }
 
-            reactor_running.store(false, Ordering::SeqCst);
+                reactor_running.store(false, Ordering::SeqCst);
 
-            let shutdown_errors = connections
-                .into_iter()
-                .map(|connection| connection.shutdown())
-                .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
-                .collect::<Vec<WebSocketError>>();
+                let shutdown_errors = connections
+                    .into_iter()
+                    .map(|connection| connection.shutdown())
+                    .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
+                    .collect::<Vec<WebSocketError>>();
 
-            if let Err(err) = runtime
-                .shutdown_on_idle()
-                .wait()
-                .map_err(|_| {
-                    ReactorError::ReactorShutdownError(
-                        "An Error occured while shutting down Reactor".to_string(),
-                    )
-                })
-                .and_then(|_| {
-                    if shutdown_errors.is_empty() {
-                        Ok(())
-                    } else {
-                        Err(ReactorError::ShutdownHandleErrors(shutdown_errors))
-                    }
-                })
-            {
-                error!("Unable to cleanly shutdown event reactor: {}", err);
-            }
-        });
+                if let Err(err) = runtime
+                    .shutdown_on_idle()
+                    .wait()
+                    .map_err(|_| {
+                        ReactorError::ReactorShutdownError(
+                            "An Error occurred while shutting down Reactor".to_string(),
+                        )
+                    })
+                    .and_then(|_| {
+                        if shutdown_errors.is_empty() {
+                            Ok(())
+                        } else {
+                            Err(ReactorError::ShutdownHandleErrors(shutdown_errors))
+                        }
+                    })
+                {
+                    error!("Unable to cleanly shutdown event reactor: {}", err);
+                }
+            })
+            .expect("Unable to spawn event reactor thread");
 
         Self {
             thread_handle,

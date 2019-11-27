@@ -116,6 +116,15 @@ pub fn gameroom_service_is_active(conn: &PgConnection, circuit_id: &str) -> Quer
         .or_else(|err| if err == NotFound { Ok(false) } else { Err(err) })
 }
 
+pub fn get_last_updated_proposal_time(conn: &PgConnection) -> QueryResult<Option<SystemTime>> {
+    gameroom_proposal::table
+        .select(gameroom_proposal::updated_time)
+        .order_by(gameroom_proposal::updated_time.desc())
+        .first(conn)
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
 pub fn fetch_active_gamerooms(
     conn: &PgConnection,
     node_id: &str,

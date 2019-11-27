@@ -21,7 +21,7 @@ pub mod sabre;
 mod state_delta;
 
 use std::fmt::Write;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use diesel::connection::Connection;
 use gameroom_database::{
@@ -36,7 +36,7 @@ use splinter::{
     admin::messages::{
         AdminServiceEvent, CircuitProposal, CreateCircuit, SplinterNode, SplinterService,
     },
-    events::{Igniter, WebSocketClient, WebSocketError, WsResponse},
+    events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
     service::scabbard::StateChangeEvent,
 };
 use state_delta::XoStateDeltaProcessor;
@@ -54,6 +54,20 @@ const RECONNECT_LIMIT: u64 = 10;
 /// default timeout in seconds if no message is received from server
 const CONNECTION_TIMEOUT: u64 = 60;
 
+#[derive(Deserialize, Debug, Clone)]
+struct Event {
+    timestamp: u64,
+
+    #[serde(flatten)]
+    admin_event: AdminServiceEvent,
+}
+
+impl ParseBytes<Event> for Event {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
+        serde_json::from_slice(bytes).map_err(|err| ParseError::MalformedMessage(Box::new(err)))
+    }
+}
+
 pub fn run(
     splinterd_url: String,
     node_id: String,
@@ -67,22 +81,31 @@ pub fn run(
         .map(|gameroom| resubscribe(&splinterd_url, gameroom, &db_conn))
         .try_for_each(|ws| igniter.start_ws(&ws))?;
 
-    let mut ws = WebSocketClient::new(
-        &format!("{}/ws/admin/register/gameroom", splinterd_url),
-        move |ctx, event| {
-            if let Err(err) = process_admin_event(
-                event,
-                &db_conn,
-                &node_id,
-                &private_key,
-                &splinterd_url,
-                ctx.igniter(),
-            ) {
-                error!("Failed to process admin event: {}", err);
-            }
-            WsResponse::Empty
-        },
-    );
+    let registration_route = helpers::get_last_updated_proposal_time(&pool)?
+        .map(|time| {
+            format!(
+                "{}/ws/admin/register/gameroom?last={}",
+                splinterd_url,
+                time.duration_since(SystemTime::UNIX_EPOCH)
+                    .map(|duration| duration.as_millis())
+                    .unwrap_or(0)
+            )
+        })
+        .unwrap_or_else(|| format!("{}/ws/admin/register/gameroom", splinterd_url));
+
+    let mut ws = WebSocketClient::new(&registration_route, move |ctx, event| {
+        if let Err(err) = process_admin_event(
+            event,
+            &db_conn,
+            &node_id,
+            &private_key,
+            &splinterd_url,
+            ctx.igniter(),
+        ) {
+            error!("Failed to process admin event: {}", err);
+        }
+        WsResponse::Empty
+    });
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);
@@ -110,17 +133,17 @@ pub fn run(
 }
 
 fn process_admin_event(
-    admin_event: AdminServiceEvent,
+    event: Event,
     pool: &ConnectionPool,
     node_id: &str,
     private_key: &str,
     url: &str,
     igniter: Igniter,
 ) -> Result<(), AppAuthHandlerError> {
-    match admin_event {
+    debug!("Received the event at {}", event.timestamp);
+    let time: SystemTime = SystemTime::UNIX_EPOCH + Duration::from_millis(event.timestamp);
+    match event.admin_event {
         AdminServiceEvent::ProposalSubmitted(msg_proposal) => {
-            let time = SystemTime::now();
-
             // convert requester public key to hex
             let requester = to_hex(&msg_proposal.requester);
             let proposal = parse_proposal(&msg_proposal, time, requester);
@@ -169,7 +192,6 @@ fn process_admin_event(
                 .ok_or_else(|| {
                     AppAuthHandlerError::InvalidMessageError("Missing vote from signer".to_string())
                 })?;
-            let time = SystemTime::now();
             let vote = NewProposalVoteRecord {
                 proposal_id: proposal.id,
                 voter_public_key: to_hex(&signer_public_key),
@@ -197,7 +219,6 @@ fn process_admin_event(
         }
         AdminServiceEvent::ProposalAccepted((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
-            let time = SystemTime::now();
             let vote = msg_proposal
                 .votes
                 .iter()
@@ -249,7 +270,6 @@ fn process_admin_event(
         }
         AdminServiceEvent::ProposalRejected((msg_proposal, signer_public_key)) => {
             let proposal = get_pending_proposal_with_circuit_id(&pool, &msg_proposal.circuit_id)?;
-            let time = SystemTime::now();
             let vote = msg_proposal
                 .votes
                 .iter()
@@ -335,7 +355,6 @@ fn process_admin_event(
                 }
             };
 
-            let time = SystemTime::now();
             let requester = to_hex(&msg_proposal.requester);
             let proposal = parse_proposal(&msg_proposal, time, requester);
 
@@ -1058,7 +1077,7 @@ mod test {
         let votes = query_votes_table(&pool);
         assert_eq!(votes.len(), 1);
 
-        let vote = &votes[0];
+        let _vote = &votes[0];
 
         let notification = &notifications[0];
         let expected_notification =
@@ -1204,20 +1223,41 @@ mod test {
         }
     }
 
-    fn get_reject_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalRejected((get_msg_proposal_with_vote(circuit_id), public_key()))
+    fn get_reject_proposal_msg(circuit_id: &str) -> Event {
+        Event {
+            timestamp: current_time_millis(),
+            admin_event: AdminServiceEvent::ProposalRejected((
+                get_msg_proposal_with_vote(circuit_id),
+                public_key(),
+            )),
+        }
     }
 
-    fn get_accept_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalAccepted((get_msg_proposal_with_vote(circuit_id), public_key()))
+    fn get_accept_proposal_msg(circuit_id: &str) -> Event {
+        Event {
+            timestamp: current_time_millis(),
+            admin_event: AdminServiceEvent::ProposalAccepted((
+                get_msg_proposal_with_vote(circuit_id),
+                public_key(),
+            )),
+        }
     }
 
-    fn get_vote_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalVote((get_msg_proposal_with_vote(circuit_id), public_key()))
+    fn get_vote_proposal_msg(circuit_id: &str) -> Event {
+        Event {
+            timestamp: current_time_millis(),
+            admin_event: AdminServiceEvent::ProposalVote((
+                get_msg_proposal_with_vote(circuit_id),
+                public_key(),
+            )),
+        }
     }
 
-    fn get_submit_proposal_msg(circuit_id: &str) -> AdminServiceEvent {
-        AdminServiceEvent::ProposalSubmitted(get_msg_proposal(circuit_id))
+    fn get_submit_proposal_msg(circuit_id: &str) -> Event {
+        Event {
+            timestamp: current_time_millis(),
+            admin_event: AdminServiceEvent::ProposalSubmitted(get_msg_proposal(circuit_id)),
+        }
     }
 
     fn get_gameroom_proposal(circuit_id: &str, timestamp: SystemTime) -> NewGameroomProposal {
@@ -1439,5 +1479,11 @@ mod test {
 
     fn public_key() -> Vec<u8> {
         vec![73, 119, 65, 65, 65, 81]
+    }
+
+    fn current_time_millis() -> u64 {
+        let now = SystemTime::now();
+        let duration = now.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        duration.as_millis() as u64
     }
 }
