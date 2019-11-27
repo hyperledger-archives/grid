@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
-//!
-//! ## Features
-//!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-notifications`: API to create and manage user notifications.
+use super::super::models::UserModel;
+use super::super::schema::splinter_user;
 
-#[cfg(feature = "biome-credentials")]
-pub mod credentials;
+use diesel::{dsl::insert_into, pg::PgConnection, prelude::*, QueryResult};
 
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
-
-pub mod rest_api;
-pub mod users;
+pub fn insert_user(conn: &PgConnection, user: UserModel) -> QueryResult<()> {
+    insert_into(splinter_user::table)
+        .values(&vec![user])
+        .execute(conn)
+        .map(|_| ())
+}

@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
-//!
-//! ## Features
-//!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-notifications`: API to create and manage user notifications.
+use super::schema::*;
+use crate::biome::users::database::models::UserModel;
 
-#[cfg(feature = "biome-credentials")]
-pub mod credentials;
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "user_credentials"]
+#[belongs_to(UserModel, foreign_key = "user_id")]
+pub struct UserCredentialsModel {
+    pub id: i64,
+    pub user_id: String,
+    pub username: String,
+    pub password: String,
+}
 
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
-
-pub mod rest_api;
-pub mod users;
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "user_credentials"]
+pub struct NewUserCredentialsModel {
+    pub user_id: String,
+    pub username: String,
+    pub password: String,
+}

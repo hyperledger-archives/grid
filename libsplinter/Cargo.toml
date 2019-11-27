@@ -27,6 +27,7 @@ actix-web = { version = "1.0", default-features = false, features = ["flate2-zli
 actix-web-actors = "1.0"
 atomicwrites = "0.2"
 awc = { version = "0.2", optional = true }
+bcrypt = {version = "0.6", optional = true}
 byteorder = "1"
 crossbeam-channel = "0.3"
 diesel = { version = "1.0", features = ["postgres", "r2d2", "serde_json"], optional = true }
@@ -74,7 +75,8 @@ zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
-biome = []
+biome = ["database"]
+biome-credentials = ["biome", "database", "bcrypt"]
 biome-notifications = ["biome", "database"]
 database = ["diesel", "diesel_migrations"]
 
@@ -85,6 +87,7 @@ features = [
     "sawtooth-signing-compat",
     "events",
     "biome",
+    "biome-credentials",
     "biome-notifications",
     "database"
   ]

@@ -53,6 +53,7 @@
 
 mod errors;
 mod events;
+mod response_models;
 
 use actix_web::{
     error::ErrorBadRequest, middleware, web, App, Error as ActixError, HttpRequest, HttpResponse,
@@ -67,6 +68,8 @@ use std::thread;
 pub use errors::{ResponseError, RestApiServerError};
 
 pub use events::{new_websocket_event_sender, EventSender};
+
+pub use response_models::ErrorResponse;
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
@@ -344,6 +347,17 @@ pub fn into_protobuf<M: Message>(
             Ok(proto) => Ok(proto),
             Err(err) => Err(ErrorBadRequest(json!({ "message": format!("{}", err) }))),
         })
+        .into_future()
+}
+
+pub fn into_bytes(payload: web::Payload) -> impl Future<Item = Vec<u8>, Error = ActixError> {
+    payload
+        .from_err::<ActixError>()
+        .fold(web::BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            Ok::<_, ActixError>(body)
+        })
+        .and_then(|body| Ok(body.to_vec()))
         .into_future()
 }
 

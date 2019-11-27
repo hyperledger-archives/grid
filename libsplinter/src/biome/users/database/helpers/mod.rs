@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
-//!
-//! ## Features
-//!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-notifications`: API to create and manage user notifications.
+mod users;
 
-#[cfg(feature = "biome-credentials")]
-pub mod credentials;
-
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
-
-pub mod rest_api;
-pub mod users;
+pub use users::insert_user;
