@@ -26,7 +26,7 @@ use splinter::consensus::{
     ProposalUpdate,
 };
 use splinter::network::sender::SendRequest;
-use transact::protos::batch::Batch;
+use transact::protos::{batch::Batch, FromProto};
 
 use crate::protos::private_xo::{PrivateXoMessage, PrivateXoMessage_Type, ProposedBatch};
 use crate::service::error::ServiceError;
@@ -76,7 +76,10 @@ impl ProposalManager for PrivateXoProposalManager {
         {
             let expected_hash = self
                 .xo_state
-                .propose_change(transact::protocol::batch::Batch::from(batch.clone()))
+                .propose_change(
+                    transact::protocol::batch::Batch::from_proto(batch.clone())
+                        .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?,
+                )
                 .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
             // Cheating a bit here by not setting the ID properly (isn't a hash of previous_id,
@@ -138,7 +141,10 @@ impl ProposalManager for PrivateXoProposalManager {
             Some((ref proposal, ref batch)) if &proposal.id == id => {
                 let hash = self
                     .xo_state
-                    .propose_change(batch.clone().into())
+                    .propose_change(
+                        transact::protocol::batch::Batch::from_proto(batch.clone())
+                            .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?,
+                    )
                     .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
                 // proposal id == expected hash
                 if hash.as_bytes() != id.as_ref() {
