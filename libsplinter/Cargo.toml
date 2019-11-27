@@ -39,7 +39,7 @@ mio = "0.6"
 mio-extras = "2"
 openssl = "0.10"
 protobuf = "2"
-sawtooth = { version = "0.1", default-features = false, features = ["lmdb-store", "receipt-store"] }
+sawtooth = { version = "0.2", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.4"
 sawtooth-sdk = { version = "0.3", optional = true }
 serde = "1.0"

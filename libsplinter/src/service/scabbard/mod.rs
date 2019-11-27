@@ -35,7 +35,6 @@ use transact::protos::FromBytes;
 use crate::consensus::{Proposal, ProposalUpdate};
 use crate::hex::to_hex;
 use crate::protos::scabbard::{ScabbardMessage, ScabbardMessage_Type};
-use crate::rest_api::{Request, Response, ResponseError};
 use crate::signing::SignatureVerifier;
 
 use super::{
@@ -47,8 +46,8 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
-use state::ScabbardState;
-pub use state::{BatchInfo, BatchStatus, StateChangeEvent};
+pub use state::{BatchInfo, BatchStatus, Events, StateChange, StateChangeEvent};
+use state::{ScabbardState, StateSubscriber};
 
 const SERVICE_TYPE: &str = "scabbard";
 
@@ -58,6 +57,7 @@ pub struct Scabbard {
     circuit_id: String,
     service_id: String,
     shared: Arc<Mutex<ScabbardShared>>,
+    state: Arc<Mutex<ScabbardState>>,
     consensus: Arc<Mutex<Option<ScabbardConsensusManager>>>,
 }
 
@@ -81,6 +81,8 @@ impl Scabbard {
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
     ) -> Result<Self, ScabbardError> {
+        let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, signature_verifier);
+
         let hash = hash(
             MessageDigest::sha256(),
             format!("{}::{}", service_id, circuit_id).as_bytes(),
@@ -97,18 +99,12 @@ impl Scabbard {
             admin_keys,
         )
         .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
-        let shared = ScabbardShared::new(
-            VecDeque::new(),
-            None,
-            peer_services,
-            signature_verifier,
-            state,
-        );
 
         Ok(Scabbard {
             circuit_id: circuit_id.to_string(),
             service_id,
             shared: Arc::new(Mutex::new(shared)),
+            state: Arc::new(Mutex::new(state)),
             consensus: Arc::new(Mutex::new(None)),
         })
     }
@@ -116,11 +112,11 @@ impl Scabbard {
     pub fn add_batches(
         &self,
         batches: Vec<BatchPair>,
-    ) -> Result<Option<BatchListPath>, ServiceError> {
+    ) -> Result<Option<BatchListPath>, ScabbardError> {
         let mut shared = self
             .shared
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+            .map_err(|_| ScabbardError::LockPoisoned)?;
 
         if shared.verify_batches(&batches)? {
             let mut link = format!(
@@ -129,10 +125,11 @@ impl Scabbard {
             );
 
             for batch in batches {
-                shared
+                self.state
+                    .lock()
+                    .map_err(|_| ScabbardError::LockPoisoned)?
                     .batch_history()
-                    .add_batch(&batch.batch().header_signature())
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+                    .add_batch(&batch.batch().header_signature());
 
                 link.push_str(&format!("{},", batch.batch().header_signature()));
                 shared.add_batch_to_queue(batch);
@@ -148,28 +145,33 @@ impl Scabbard {
         }
     }
 
-    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ServiceError> {
-        let mut shared = self
-            .shared
-            .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?;
+    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ScabbardError> {
+        let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
 
-        ids.iter()
-            .map(|signature| shared.batch_history().get_batch_info(signature))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ServiceError::InvalidMessageFormat(Box::new(err)))
+        Ok(ids
+            .iter()
+            .map(|signature| state.batch_history().get_batch_info(signature))
+            .collect::<Vec<_>>())
     }
 
-    pub fn subscribe_to_state(
-        &self,
-        request: Request,
-    ) -> Result<Result<Response, ResponseError>, ServiceError> {
+    pub fn get_events_since(&self, event_id: Option<String>) -> Result<Events, ScabbardError> {
         Ok(self
-            .shared
+            .state
             .lock()
-            .map_err(|_| ServiceError::PoisonedLock("shared lock poisoned".into()))?
-            .state_mut()
-            .subscribe_to_state(request))
+            .map_err(|_| ScabbardError::LockPoisoned)?
+            .get_events_since(event_id)?)
+    }
+
+    pub fn add_state_subscriber(
+        &self,
+        subscriber: Box<dyn StateSubscriber>,
+    ) -> Result<(), ScabbardError> {
+        self.state
+            .lock()
+            .map_err(|_| ScabbardError::LockPoisoned)?
+            .add_subscriber(subscriber);
+
+        Ok(())
     }
 }
 
@@ -202,8 +204,12 @@ impl Service for Scabbard {
 
         // Setup consensus
         consensus.replace(
-            ScabbardConsensusManager::new(self.service_id().into(), self.shared.clone())
-                .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
+            ScabbardConsensusManager::new(
+                self.service_id().into(),
+                self.shared.clone(),
+                self.state.clone(),
+            )
+            .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
         );
 
         Ok(())
@@ -230,12 +236,10 @@ impl Service for Scabbard {
             .take_network_sender()
             .ok_or_else(|| ServiceStopError::Internal(Box::new(ScabbardError::NotConnected)))?;
 
-        // Shutdown event dealer and disconnect websockets
-        self.shared
+        self.state
             .lock()
-            .map_err(|_| ServiceStopError::PoisonedLock("shared lock poisoned".into()))?
-            .state_mut()
-            .shutdown_event_dealer();
+            .map_err(|_| ServiceStopError::PoisonedLock("state lock poisoned".into()))?
+            .clear_subscribers();
 
         service_registry.disconnect(self.service_id())?;
 

@@ -23,7 +23,7 @@ use gameroom_database::{
     models::{NewXoGame, XoGame},
     ConnectionPool,
 };
-use splinter::service::scabbard::StateChangeEvent;
+use splinter::service::scabbard::{StateChange, StateChangeEvent};
 
 use crate::authorization_handler::sabre::{get_xo_contract_address, XO_PREFIX};
 
@@ -46,19 +46,34 @@ impl XoStateDeltaProcessor {
         }
     }
 
-    pub fn handle_state_changes(
+    pub fn handle_state_change_event(
         &self,
-        changes: Vec<StateChangeEvent>,
+        change_event: StateChangeEvent,
     ) -> Result<(), StateDeltaError> {
-        changes
-            .iter()
-            .try_for_each(|change| self.handle_state_change(change))
+        // Update the last seen state change event
+        let time = SystemTime::now();
+        let conn = &*self.db_pool.get()?;
+        conn.transaction::<_, error::DatabaseError, _>(|| {
+            helpers::update_gameroom_service_last_event(
+                &conn,
+                &self.circuit_id,
+                &time,
+                &change_event.id,
+            )?;
+            Ok(())
+        })?;
+
+        for change in change_event.state_changes {
+            self.handle_state_change(&change)?;
+        }
+
+        Ok(())
     }
 
-    fn handle_state_change(&self, change: &StateChangeEvent) -> Result<(), StateDeltaError> {
+    fn handle_state_change(&self, change: &StateChange) -> Result<(), StateDeltaError> {
         debug!("Received state change: {}", change);
         match change {
-            StateChangeEvent::Set { key, .. } if key == &self.contract_address => {
+            StateChange::Set { key, .. } if key == &self.contract_address => {
                 debug!("Xo contract created successfully");
                 let time = SystemTime::now();
                 let conn = &*self.db_pool.get()?;
@@ -90,7 +105,7 @@ impl XoStateDeltaProcessor {
                 })
                 .map_err(StateDeltaError::from)
             }
-            StateChangeEvent::Set { key, value } if &key[..6] == XO_PREFIX => {
+            StateChange::Set { key, value } if &key[..6] == XO_PREFIX => {
                 let time = SystemTime::now();
                 let game_state: Vec<String> = String::from_utf8(value.to_vec())
                     .map_err(|err| StateDeltaError::XoPayloadParseError(format!("{:?}", err)))
@@ -147,7 +162,7 @@ impl XoStateDeltaProcessor {
                 })
                 .map_err(StateDeltaError::from)
             }
-            StateChangeEvent::Delete { .. } => {
+            StateChange::Delete { .. } => {
                 debug!("Delete state skipping...");
                 Ok(())
             }

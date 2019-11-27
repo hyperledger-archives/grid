@@ -56,16 +56,12 @@ impl fmt::Display for RestApiServerError {
 #[derive(Debug)]
 pub enum ResponseError {
     ActixError(ActixError),
-    CatchUpWsError(EventDealerError),
-    CatchUpHistoryError(String),
 }
 
 impl Error for ResponseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ResponseError::ActixError(err) => Some(err),
-            ResponseError::CatchUpWsError(err) => Some(err),
-            ResponseError::CatchUpHistoryError(_) => None,
         }
     }
 }
@@ -78,8 +74,6 @@ impl fmt::Display for ResponseError {
                 "Failed to get response when setting up websocket: {}",
                 err
             ),
-            ResponseError::CatchUpWsError(err) => write!(f, "{}", err),
-            ResponseError::CatchUpHistoryError(msg) => f.write_str(&msg),
         }
     }
 }
@@ -87,64 +81,5 @@ impl fmt::Display for ResponseError {
 impl From<ActixError> for ResponseError {
     fn from(err: ActixError) -> Self {
         ResponseError::ActixError(err)
-    }
-}
-
-impl From<EventDealerError> for ResponseError {
-    fn from(err: EventDealerError) -> Self {
-        ResponseError::CatchUpWsError(err)
-    }
-}
-
-impl From<EventHistoryError> for ResponseError {
-    fn from(err: EventHistoryError) -> Self {
-        ResponseError::CatchUpHistoryError(err.to_string())
-    }
-}
-
-#[derive(Debug)]
-pub struct EventDealerError {
-    pub context: String,
-    pub source: Option<Box<dyn Error + Send>>,
-}
-
-impl EventDealerError {
-    pub fn new(context: String, source: Option<Box<dyn Error + Send>>) -> Self {
-        Self { context, source }
-    }
-}
-
-impl Error for EventDealerError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        if let Some(ref err) = self.source {
-            Some(&**err)
-        } else {
-            None
-        }
-    }
-}
-
-impl fmt::Display for EventDealerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref err) = self.source {
-            write!(f, "{}: {}", self.context, err)
-        } else {
-            f.write_str(&self.context)
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct EventHistoryError(pub Box<dyn Error + 'static>);
-
-impl Error for EventHistoryError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&*self.0)
-    }
-}
-
-impl fmt::Display for EventHistoryError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to read or write to event history: {}", self.0)
     }
 }

@@ -128,6 +128,7 @@ pub struct GameroomService {
     pub allowed_nodes: Vec<String>,
     pub arguments: Vec<serde_json::Value>,
     pub status: String,
+    pub last_event: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
 }
@@ -141,6 +142,7 @@ pub struct NewGameroomService {
     pub allowed_nodes: Vec<String>,
     pub arguments: Vec<serde_json::Value>,
     pub status: String,
+    pub last_event: String,
     pub created_time: SystemTime,
     pub updated_time: SystemTime,
 }
@@ -200,6 +202,7 @@ pub struct ActiveGameroom {
     pub circuit_id: String,
     pub service_id: String,
     pub status: String,
+    pub last_event: String,
     pub requester: String,
     pub requester_node_id: String,
 }

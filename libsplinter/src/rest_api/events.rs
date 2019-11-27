@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::Debug;
 use std::time::Duration;
 
@@ -26,48 +24,29 @@ use futures::{
 use serde::ser::Serialize;
 use serde_json;
 
-use crate::rest_api::{
-    errors::{EventHistoryError, ResponseError},
-    Request, Response,
-};
+use crate::rest_api::{errors::ResponseError, Request, Response};
 
 /// Wait time in seconds between ping messages being sent by the ws server to the ws client
 const PING_INTERVAL: u64 = 30;
 
-/// `EventDealer` is responsible for creating and managing WebSockets for Services that need to
-/// push messages to a web based client.
-#[derive(Debug, Clone, Default)]
-pub struct EventDealer<T: Serialize + Debug + Clone + 'static> {
-    senders: Vec<UnboundedSender<MessageWrapper<T>>>,
-}
+pub fn new_websocket_event_sender<T: Serialize + Debug>(
+    req: Request,
+    initial_events: Box<dyn Iterator<Item = T> + Send>,
+) -> Result<(EventSender<T>, Response), ResponseError> {
+    let (sender, recv) = unbounded();
 
-impl<T: Serialize + Debug + Clone + 'static> EventDealer<T> {
-    pub fn new() -> Self {
-        Self { senders: vec![] }
-    }
+    let (request, payload) = req.into();
 
-    /// Create a new WebSocket and sender receiver pair. Immediately send all provided events to
-    /// the WebSocket.
-    pub fn subscribe(
-        &mut self,
-        req: Request,
-        initial_events: Box<dyn Iterator<Item = T> + Send>,
-    ) -> Result<(EventSender<T>, Response), ResponseError> {
-        let (sender, recv) = unbounded();
+    let stream = iter_ok::<_, ()>(initial_events.map(MessageWrapper::Message)).chain(recv);
 
-        let (request, payload) = req.into();
+    let res = ws::start(
+        EventSenderWebSocket::new(Box::new(stream)),
+        &request,
+        payload,
+    )
+    .map_err(ResponseError::from)?;
 
-        let stream = iter_ok::<_, ()>(initial_events.map(MessageWrapper::Message)).chain(recv);
-
-        let res = ws::start(
-            EventDealerWebSocket::new(Box::new(stream)),
-            &request,
-            payload,
-        )
-        .map_err(ResponseError::from)?;
-
-        Ok((EventSender { sender }, Response::from(res)))
-    }
+    Ok((EventSender { sender }, Response::from(res)))
 }
 
 #[derive(Clone)]
@@ -114,11 +93,11 @@ impl<T: Serialize + Debug + 'static> Drop for EventSender<T> {
 #[derive(Debug)]
 pub struct EventSendError<T: Serialize + Debug + 'static>(pub T);
 
-struct EventDealerWebSocket<T: Serialize + Debug + 'static> {
+struct EventSenderWebSocket<T: Serialize + Debug + 'static> {
     stream: Option<Box<dyn Stream<Item = MessageWrapper<T>, Error = ()>>>,
 }
 
-impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
+impl<T: Serialize + Debug + 'static> EventSenderWebSocket<T> {
     fn new(stream: Box<dyn Stream<Item = MessageWrapper<T>, Error = ()>>) -> Self {
         Self {
             stream: Some(stream),
@@ -127,7 +106,7 @@ impl<T: Serialize + Debug + 'static> EventDealerWebSocket<T> {
 }
 
 impl<T: Serialize + Debug + 'static> StreamHandler<MessageWrapper<T>, ()>
-    for EventDealerWebSocket<T>
+    for EventSenderWebSocket<T>
 {
     fn handle(&mut self, msg: MessageWrapper<T>, ctx: &mut Self::Context) {
         match msg {
@@ -162,7 +141,7 @@ impl<T: Serialize + Debug + 'static> StreamHandler<MessageWrapper<T>, ()>
     }
 }
 
-impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
+impl<T: Serialize + Debug + 'static> Actor for EventSenderWebSocket<T> {
     type Context = ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
@@ -180,7 +159,7 @@ impl<T: Serialize + Debug + 'static> Actor for EventDealerWebSocket<T> {
 }
 
 impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolError>
-    for EventDealerWebSocket<T>
+    for EventSenderWebSocket<T>
 {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
         match msg {
@@ -205,61 +184,4 @@ impl<T: Serialize + Debug + 'static> StreamHandler<ws::Message, ws::ProtocolErro
 enum MessageWrapper<T: Serialize + Debug + 'static> {
     Message(T),
     Shutdown,
-}
-
-/// A trait used for implementing different schemes for
-/// storing events.
-pub trait EventHistory<T: Clone + Debug>: Clone + Debug {
-    /// Add an event to the event history
-    fn store(&mut self, event: T) -> Result<(), EventHistoryError>;
-
-    /// Retrieves a list of events
-    fn events(&self) -> Result<Vec<T>, EventHistoryError>;
-}
-
-/// An implementation of EventHistory for storing
-/// events in memory. Only the n most recent events
-/// are stored.
-#[derive(Clone, Debug)]
-pub struct LocalEventHistory<T: Clone + Debug> {
-    history: VecDeque<T>,
-    limit: usize,
-}
-
-impl<T: Clone + Debug> LocalEventHistory<T> {
-    pub fn with_limit(limit: usize) -> Self {
-        Self {
-            history: VecDeque::new(),
-            limit,
-        }
-    }
-
-    /// Creates a LocalEventHistory with a default limit
-    /// of 100 events.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl<T: Clone + Debug> EventHistory<T> for LocalEventHistory<T> {
-    fn store(&mut self, event: T) -> Result<(), EventHistoryError> {
-        self.history.push_back(event);
-        if self.history.len() > self.limit {
-            self.history.pop_front();
-        }
-        Ok(())
-    }
-
-    fn events(&self) -> Result<Vec<T>, EventHistoryError> {
-        Ok(self.history.clone().into_iter().collect())
-    }
-}
-
-impl<T: Clone + Debug> Default for LocalEventHistory<T> {
-    fn default() -> Self {
-        Self {
-            history: VecDeque::new(),
-            limit: 100,
-        }
-    }
 }

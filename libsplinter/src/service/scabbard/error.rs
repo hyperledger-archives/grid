@@ -24,21 +24,25 @@ use transact::state::merkle::StateDatabaseError;
 
 #[derive(Debug)]
 pub enum ScabbardError {
+    BatchVerificationFailed(Box<dyn Error + Send>),
     ConsensusFailed(ScabbardConsensusManagerError),
     InitializationFailed(Box<dyn Error + Send>),
     LockPoisoned,
     MessageTypeUnset,
     NotConnected,
+    StateInteractionFailed(ScabbardStateError),
 }
 
 impl Error for ScabbardError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            ScabbardError::BatchVerificationFailed(err) => Some(&**err),
             ScabbardError::ConsensusFailed(err) => Some(err),
             ScabbardError::InitializationFailed(err) => Some(&**err),
             ScabbardError::LockPoisoned => None,
             ScabbardError::MessageTypeUnset => None,
             ScabbardError::NotConnected => None,
+            ScabbardError::StateInteractionFailed(err) => Some(err),
         }
     }
 }
@@ -46,6 +50,9 @@ impl Error for ScabbardError {
 impl std::fmt::Display for ScabbardError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            ScabbardError::BatchVerificationFailed(err) => {
+                write!(f, "failed to verify batch: {}", err)
+            }
             ScabbardError::ConsensusFailed(err) => write!(f, "scabbard consensus failed: {}", err),
             ScabbardError::InitializationFailed(err) => {
                 write!(f, "failed to initialize scabbard: {}", err)
@@ -55,6 +62,9 @@ impl std::fmt::Display for ScabbardError {
             ScabbardError::NotConnected => {
                 write!(f, "attempted to send message, but service isn't connected")
             }
+            ScabbardError::StateInteractionFailed(err) => {
+                write!(f, "interaction with scabbard state failed: {}", err)
+            }
         }
     }
 }
@@ -62,6 +72,12 @@ impl std::fmt::Display for ScabbardError {
 impl From<ScabbardConsensusManagerError> for ScabbardError {
     fn from(err: ScabbardConsensusManagerError) -> Self {
         ScabbardError::ConsensusFailed(err)
+    }
+}
+
+impl From<ScabbardStateError> for ScabbardError {
+    fn from(err: ScabbardStateError) -> Self {
+        ScabbardError::StateInteractionFailed(err)
     }
 }
 
@@ -130,5 +146,24 @@ impl From<StateDatabaseError> for ScabbardStateError {
 impl From<StateWriteError> for ScabbardStateError {
     fn from(err: StateWriteError) -> Self {
         ScabbardStateError(err.to_string())
+    }
+}
+
+#[derive(Debug)]
+pub enum StateSubscriberError {
+    UnableToHandleEvent(String),
+    Unsubscribe,
+}
+
+impl Error for StateSubscriberError {}
+
+impl std::fmt::Display for StateSubscriberError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            StateSubscriberError::UnableToHandleEvent(msg) => {
+                write!(f, "unable to handle event: {}", msg)
+            }
+            StateSubscriberError::Unsubscribe => f.write_str("unsubscribe"),
+        }
     }
 }
