@@ -485,7 +485,7 @@ fn resubscribe(
 
     let mut ws = WebSocketClient::new(
         &format!(
-            "{}/scabbard/{}/{}/ws/subscribe?{}",
+            "{}/scabbard/{}/{}/ws/subscribe{}",
             url, gameroom.circuit_id, gameroom.service_id, query_string,
         ),
         move |_, event| {
