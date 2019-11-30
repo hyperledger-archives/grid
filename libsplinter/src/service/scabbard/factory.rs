@@ -161,10 +161,11 @@ fn make_subscribe_endpoint() -> ServiceEndpoint {
                 }
             };
 
-            let last_seen_event_id = request
-                .match_info()
-                .get("last_seen_event")
-                .map(String::from);
+            let mut query =
+                match web::Query::<HashMap<String, String>>::from_query(request.query_string()) {
+                    Ok(query) => query,
+                    Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
+                };
 
             let last_seen_event_id = query.remove("last_seen_event");
 
