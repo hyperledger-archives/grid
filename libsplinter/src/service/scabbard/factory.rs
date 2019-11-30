@@ -166,6 +166,14 @@ fn make_subscribe_endpoint() -> ServiceEndpoint {
                 .get("last_seen_event")
                 .map(String::from);
 
+            let last_seen_event_id = query.remove("last_seen_event");
+
+            if let Some(ref id) = last_seen_event_id {
+                debug!("Getting all state-delta events since {}", id);
+            } else {
+                debug!("Getting all state-delta events");
+            }
+
             let unseen_events = match scabbard.get_events_since(last_seen_event_id) {
                 Ok(events) => events,
                 Err(err) => {
