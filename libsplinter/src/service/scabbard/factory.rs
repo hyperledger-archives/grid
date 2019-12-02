@@ -161,10 +161,19 @@ fn make_subscribe_endpoint() -> ServiceEndpoint {
                 }
             };
 
-            let last_seen_event_id = request
-                .match_info()
-                .get("last_seen_event")
-                .map(String::from);
+            let mut query =
+                match web::Query::<HashMap<String, String>>::from_query(request.query_string()) {
+                    Ok(query) => query,
+                    Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
+                };
+
+            let last_seen_event_id = query.remove("last_seen_event");
+
+            if let Some(ref id) = last_seen_event_id {
+                debug!("Getting all state-delta events since {}", id);
+            } else {
+                debug!("Getting all state-delta events");
+            }
 
             let unseen_events = match scabbard.get_events_since(last_seen_event_id) {
                 Ok(events) => events,
