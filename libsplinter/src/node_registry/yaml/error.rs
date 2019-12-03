@@ -15,13 +15,14 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::node_registry::InvalidNodeError;
+
 #[derive(Debug)]
 pub enum YamlNodeRegistryError {
     PoisonLockError(String),
-
     SerdeError(serde_yaml::Error),
-
     IoError(std::io::Error),
+    InvalidNode(InvalidNodeError),
 }
 
 impl Error for YamlNodeRegistryError {
@@ -30,6 +31,7 @@ impl Error for YamlNodeRegistryError {
             YamlNodeRegistryError::PoisonLockError(_) => None,
             YamlNodeRegistryError::SerdeError(err) => Some(err),
             YamlNodeRegistryError::IoError(err) => Some(err),
+            YamlNodeRegistryError::InvalidNode(err) => Some(err),
         }
     }
 }
@@ -40,6 +42,7 @@ impl fmt::Display for YamlNodeRegistryError {
             YamlNodeRegistryError::PoisonLockError(e) => write!(f, "Error locking file: {}", e),
             YamlNodeRegistryError::SerdeError(e) => write!(f, "Serde error: {}", e),
             YamlNodeRegistryError::IoError(e) => write!(f, "IO error: {}", e),
+            YamlNodeRegistryError::InvalidNode(e) => write!(f, "invalid node in YAML file: {}", e),
         }
     }
 }
@@ -53,5 +56,11 @@ impl From<std::io::Error> for YamlNodeRegistryError {
 impl From<serde_yaml::Error> for YamlNodeRegistryError {
     fn from(err: serde_yaml::Error) -> YamlNodeRegistryError {
         YamlNodeRegistryError::SerdeError(err)
+    }
+}
+
+impl From<InvalidNodeError> for YamlNodeRegistryError {
+    fn from(err: InvalidNodeError) -> Self {
+        YamlNodeRegistryError::InvalidNode(err)
     }
 }

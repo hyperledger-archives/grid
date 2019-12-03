@@ -38,7 +38,12 @@ pub struct FileInternal {
 impl YamlNodeRegistry {
     pub fn new(file_path: &str) -> Result<YamlNodeRegistry, YamlNodeRegistryError> {
         let file = File::open(file_path)?;
-        let cached_nodes = serde_yaml::from_reader(&file)?;
+        let cached_nodes: Vec<Node> = serde_yaml::from_reader(&file)?;
+
+        for (idx, node) in cached_nodes.iter().enumerate() {
+            check_node_required_fields_are_not_empty(node)?;
+            check_if_node_is_duplicate(node, &cached_nodes[idx + 1..])?;
+        }
 
         let file_internal = FileInternal {
             file_path: file_path.into(),
@@ -232,6 +237,138 @@ mod test {
     use std::fs::{remove_file, File};
     use std::panic;
     use std::thread;
+
+    ///
+    /// Verifies that reading from a YAML file that contains two nodes with the same identity
+    /// returns InvalidNodeError::DuplicateIdentity.
+    ///
+    #[test]
+    fn test_read_yaml_duplicate_identity_error() {
+        run_test(|test_yaml_file_path| {
+            let node1 = get_node_1();
+            let mut node2 = get_node_2();
+            node2.identity = node1.identity.clone();
+
+            write_to_file(&vec![node1.clone(), node2], test_yaml_file_path);
+
+            let result = YamlNodeRegistry::new(test_yaml_file_path);
+            match result {
+                Ok(_) => {
+                    panic!("Two nodes with same identity in YAML file. Error should be returned")
+                }
+                Err(YamlNodeRegistryError::InvalidNode(InvalidNodeError::DuplicateIdentity(
+                    id,
+                ))) => assert_eq!(id, node1.identity),
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::DuplicateIdentity but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that reading from a YAML file that contains two nodes with the same endpoint
+    /// returns InvalidNodeError::DuplicateEndpoint.
+    ///
+    #[test]
+    fn test_read_yaml_duplicate_endpoint_error() {
+        run_test(|test_yaml_file_path| {
+            let node1 = get_node_1();
+            let mut node2 = get_node_2();
+            node2.endpoint = node1.endpoint.clone();
+
+            write_to_file(&vec![node1.clone(), node2], test_yaml_file_path);
+
+            let result = YamlNodeRegistry::new(test_yaml_file_path);
+            match result {
+                Ok(_) => {
+                    panic!("Two nodes with same endpoint in YAML file. Error should be returned")
+                }
+                Err(YamlNodeRegistryError::InvalidNode(InvalidNodeError::DuplicateEndpoint(
+                    id,
+                ))) => assert_eq!(id, node1.endpoint),
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::DuplicateEndpoint but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that reading from a YAML file that contains a node with an empty string as its
+    /// identity returns InvalidNodeError::EmptyIdentity.
+    ///
+    #[test]
+    fn test_read_yaml_empty_identity_error() {
+        run_test(|test_yaml_file_path| {
+            let mut node = get_node_1();
+            node.identity = "".to_string();
+
+            write_to_file(&vec![node], test_yaml_file_path);
+
+            let result = YamlNodeRegistry::new(test_yaml_file_path);
+            match result {
+                Ok(_) => panic!("Node with empty identity in YAML file. Error should be returned"),
+                Err(YamlNodeRegistryError::InvalidNode(InvalidNodeError::EmptyIdentity)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyIdentity but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that reading from a YAML file that contains a node with an empty string as its
+    /// endpoint returns InvalidNodeError::EmptyEndpoint.
+    ///
+    #[test]
+    fn test_read_yaml_empty_endpoint_error() {
+        run_test(|test_yaml_file_path| {
+            let mut node = get_node_1();
+            node.endpoint = "".to_string();
+
+            write_to_file(&vec![node], test_yaml_file_path);
+
+            let result = YamlNodeRegistry::new(test_yaml_file_path);
+            match result {
+                Ok(_) => panic!("Node with empty endpoint in YAML file. Error should be returned"),
+                Err(YamlNodeRegistryError::InvalidNode(InvalidNodeError::EmptyEndpoint)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyEndpoint but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that reading from a YAML file that contains a node with an empty string as its
+    /// display_name returns InvalidNodeError::EmptyDisplayName.
+    ///
+    #[test]
+    fn test_read_yaml_empty_display_name_error() {
+        run_test(|test_yaml_file_path| {
+            let mut node = get_node_1();
+            node.display_name = "".to_string();
+
+            write_to_file(&vec![node], test_yaml_file_path);
+
+            let result = YamlNodeRegistry::new(test_yaml_file_path);
+            match result {
+                Ok(_) => {
+                    panic!("Node with empty display_name in YAML file. Error should be returned")
+                }
+                Err(YamlNodeRegistryError::InvalidNode(InvalidNodeError::EmptyDisplayName)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyDisplayName but got {}",
+                    err
+                ),
+            }
+        })
+    }
 
     ///
     /// Verifies that fetch_node with a valid identity, returns the correct node.
