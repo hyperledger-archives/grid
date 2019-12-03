@@ -57,8 +57,12 @@ pub use error::BiomeRestResourceManagerBuilderError;
 
 #[cfg(feature = "biome-credentials")]
 use super::credentials::{
-    credentials_store::SplinterCredentialsStore, rest_resources::make_register_route,
+    credentials_store::SplinterCredentialsStore,
+    rest_resources::{make_login_route, make_register_route},
 };
+
+#[allow(unused_imports)]
+use super::sessions::AccessTokenIssuer;
 
 /// Manages Biome REST API endpoints
 pub struct BiomeRestResourceManager {
@@ -82,10 +86,17 @@ impl RestResourceProvider for BiomeRestResourceManager {
 
         #[cfg(feature = "biome-credentials")]
         match &self.credentials_store {
-            Some(credentials_store) => resources.push(make_register_route(
-                credentials_store.clone(),
-                self.user_store.clone(),
-            )),
+            Some(credentials_store) => {
+                resources.push(make_register_route(
+                    credentials_store.clone(),
+                    self.user_store.clone(),
+                ));
+                resources.push(make_login_route(
+                    credentials_store.clone(),
+                    self.rest_config.clone(),
+                    Arc::new(AccessTokenIssuer::new(self.token_secret_manager.clone())),
+                ));
+            }
             None => {
                 debug!(
                     "Credentials store not provided. Credentials REST API resources will not be'
