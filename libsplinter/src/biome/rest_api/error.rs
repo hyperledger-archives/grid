@@ -20,14 +20,51 @@ use std::fmt;
 pub enum BiomeRestResourceManagerBuilderError {
     /// Returned if a required field is missing
     MissingRequiredField(String),
+    /// Returned if a required field is missing
+    BuildingError(Box<dyn Error>),
 }
 
-impl Error for BiomeRestResourceManagerBuilderError {}
+impl Error for BiomeRestResourceManagerBuilderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            BiomeRestResourceManagerBuilderError::MissingRequiredField(_) => None,
+            BiomeRestResourceManagerBuilderError::BuildingError(err) => Some(&**err),
+        }
+    }
+}
 
 impl fmt::Display for BiomeRestResourceManagerBuilderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             BiomeRestResourceManagerBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "failed to build BiomeRestResourceManager: {}", s)
+            }
+            BiomeRestResourceManagerBuilderError::BuildingError(ref s) => {
+                write!(f, "failed to build BiomeRestResourceManager: {}", s)
+            }
+        }
+    }
+}
+
+impl From<BiomeRestConfigBuilderError> for BiomeRestResourceManagerBuilderError {
+    fn from(err: BiomeRestConfigBuilderError) -> BiomeRestResourceManagerBuilderError {
+        BiomeRestResourceManagerBuilderError::BuildingError(Box::new(err))
+    }
+}
+
+/// Error for BiomeRestConfigBuilder
+#[derive(Debug)]
+pub enum BiomeRestConfigBuilderError {
+    /// Returned if a required field is missing
+    MissingRequiredField(String),
+}
+
+impl Error for BiomeRestConfigBuilderError {}
+
+impl fmt::Display for BiomeRestConfigBuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BiomeRestConfigBuilderError::MissingRequiredField(ref s) => {
                 write!(f, "failed to build BiomeRestResourceManager: {}", s)
             }
         }
