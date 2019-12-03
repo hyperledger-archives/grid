@@ -160,9 +160,9 @@ export default class Dashboard extends Vue {
   }
 
   getMemberLabel(node: Node) {
-    let endpoint = node.metadata.endpoint;
+    let endpoint = node.endpoint;
     if (process.env.VUE_APP_BRAND
-     && node.metadata.endpoint.includes(process.env.VUE_APP_BRAND)) {
+     && node.endpoint.includes(process.env.VUE_APP_BRAND)) {
       endpoint = 'local';
     }
 

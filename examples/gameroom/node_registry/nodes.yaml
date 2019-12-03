@@ -14,10 +14,12 @@
 # -----------------------------------------------------------------------------
 
 - identity: 'bubba-node-000'
+  endpoint: 'tls://splinterd-node-bubba:8044'
+  display_name: 'Bubba - Node 1'
   metadata:
     organization: 'Bubba Bakery'
-    endpoint: 'tls://splinterd-node-bubba:8044'
 - identity: 'acme-node-000'
+  endpoint: 'tls://splinterd-node-acme:8044'
+  display_name: 'Acme - Node 1'
   metadata:
     organization: 'ACME Corporation'
-    endpoint: 'tls://splinterd-node-acme:8044'

@@ -702,20 +702,22 @@ mod tests {
 
     fn get_node_1() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "12.0.0.123:8431".to_string());
         metadata.insert("company".to_string(), "Bitwise IO".to_string());
         Node {
             identity: "Node-123".to_string(),
+            endpoint: "12.0.0.123:8431".to_string(),
+            display_name: "Bitwise IO - Node 1".to_string(),
             metadata,
         }
     }
 
     fn get_node_2() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "13.0.0.123:8434".to_string());
         metadata.insert("company".to_string(), "Cargill".to_string());
         Node {
             identity: "Node-456".to_string(),
+            endpoint: "13.0.0.123:8434".to_string(),
+            display_name: "Cargill - Node 1".to_string(),
             metadata,
         }
     }

@@ -153,6 +153,8 @@ impl NodeRegistryWriter for YamlNodeRegistry {
                 updated_metadata.extend(updates);
                 let updated_node = Node {
                     identity: node.identity.clone(),
+                    endpoint: node.endpoint.clone(),
+                    display_name: node.display_name.clone(),
                     metadata: updated_metadata,
                 };
                 nodes[i] = updated_node;
@@ -334,8 +336,8 @@ mod test {
                     get_node_3().metadata.get("company").unwrap().to_string(),
                 ),
                 MetadataPredicate::Eq(
-                    "url".to_string(),
-                    get_node_3().metadata.get("url").unwrap().to_string(),
+                    "admin".to_string(),
+                    get_node_3().metadata.get("admin").unwrap().to_string(),
                 ),
             ];
 
@@ -361,8 +363,8 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let filter = vec![MetadataPredicate::Eq(
-                "url".to_string(),
-                get_node_3().metadata.get("url").unwrap().to_string(),
+                "admin".to_string(),
+                get_node_3().metadata.get("admin").unwrap().to_string(),
             )];
 
             let nodes = registry
@@ -528,30 +530,36 @@ mod test {
 
     fn get_node_1() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "12.0.0.123:8431".to_string());
         metadata.insert("company".to_string(), "Bitwise IO".to_string());
+        metadata.insert("admin".to_string(), "Bob".to_string());
         Node {
             identity: "Node-123".to_string(),
+            endpoint: "tls://12.0.0.123:8431".to_string(),
+            display_name: "Bitwise IO - Node 1".to_string(),
             metadata,
         }
     }
 
     fn get_node_2() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "13.0.0.123:8434".to_string());
         metadata.insert("company".to_string(), "Cargill".to_string());
+        metadata.insert("admin".to_string(), "Carol".to_string());
         Node {
             identity: "Node-456".to_string(),
+            endpoint: "tls://12.0.0.123:8434".to_string(),
+            display_name: "Cargill - Node 1".to_string(),
             metadata,
         }
     }
 
     fn get_node_3() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "13.0.0.123:8435".to_string());
         metadata.insert("company".to_string(), "Cargill".to_string());
+        metadata.insert("admin".to_string(), "Charlie".to_string());
         Node {
             identity: "Node-789".to_string(),
+            endpoint: "tls://12.0.0.123:8435".to_string(),
+            display_name: "Cargill - Node 2".to_string(),
             metadata,
         }
     }

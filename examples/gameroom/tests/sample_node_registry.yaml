@@ -13,10 +13,12 @@
 # limitations under the License.
 
 - identity: "Node-123"
+  endpoint: "tls://127.0.0.1:8080"
+  display_name: "Bitwise IO - Node 1"
   metadata:
     company: "Bitwise IO"
-    url: "127.0.0.1:8080"
 - identity: "Node-456"
+  endpoint: "tls://127.0.0.1:8082"
+  display_name: "Cargill - Node 1"
   metadata:
     company: "Cargill"
-    url: "127.0.0.1:8082"

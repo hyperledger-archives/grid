@@ -22,8 +22,12 @@ pub use error::NodeRegistryError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
-    /// The Splinter identity of the node.
+    /// The Splinter identity of the node; must be unique in the registry.
     pub identity: String,
+    /// The endpoint the node can be reached at; must be unique in the registry.
+    pub endpoint: String,
+    /// A human-readable name for the node.
+    pub display_name: String,
     /// A map with node metadata.
     pub metadata: HashMap<String, String>,
 }

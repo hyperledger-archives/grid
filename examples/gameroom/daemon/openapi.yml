@@ -46,8 +46,9 @@ paths:
         - name: filter
           in: query
           description: |
-            url-encodeded stringified JSON containing property filters in the format
-              {NODE_PROPERTY:[{"operator":OPERATOR,"value":VALUE}]}
+            url-encodeded stringified JSON containing property filters on the
+            node's metadata properties in the format
+              {METADATA_PROPERTY:[{"operator":OPERATOR,"value":VALUE}]}
           required: false
           schema:
             type: string
@@ -953,11 +954,19 @@ components:
       properties:
         identity:
           type: string
-      additionalProperties: true
+        endpoint:
+          type: string
+        display_name:
+          type: string
+        metadata:
+          type: object
       example:
         identity: node-123123-asdf
-        company: Cargill
-        status: Up
+        endpoint: tls://12.0.0.123:8431
+        display_name: Cargill - Node 1
+        metadata:
+          company: Cargill
+          status: Up
 
     Paging:
       type: object
