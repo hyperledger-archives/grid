@@ -14,8 +14,10 @@
 
 //! Provides an API for managing secrets
 
+mod auto_secret_manager;
 mod error;
 
+pub use auto_secret_manager::AutoSecretManager;
 pub use error::SecretManagerError;
 
 /// Defines a manager for fetching and/or generating a secret.
