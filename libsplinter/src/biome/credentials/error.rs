@@ -42,6 +42,7 @@ pub enum CredentialsStoreError {
     /// Represents error occured when an attempt is made to add a new credential with a
     /// username that already exists in the database
     DuplicateError(String),
+    NotFoundError(String),
 }
 
 impl Error for CredentialsStoreError {
@@ -52,6 +53,7 @@ impl Error for CredentialsStoreError {
             CredentialsStoreError::StorageError { source, .. } => Some(&**source),
             CredentialsStoreError::ConnectionError(err) => Some(&**err),
             CredentialsStoreError::DuplicateError(_) => None,
+            CredentialsStoreError::NotFoundError(_) => None,
         }
     }
 }
@@ -74,6 +76,9 @@ impl fmt::Display for CredentialsStoreError {
             }
             CredentialsStoreError::DuplicateError(ref s) => {
                 write!(f, "credentials already exists: {}", s)
+            }
+            CredentialsStoreError::NotFoundError(ref s) => {
+                write!(f, "credentials not found: {}", s)
             }
         }
     }
@@ -127,5 +132,35 @@ impl fmt::Display for UserCredentialsBuilderError {
 impl From<BcryptError> for UserCredentialsBuilderError {
     fn from(err: BcryptError) -> UserCredentialsBuilderError {
         UserCredentialsBuilderError::EncryptionError(Box::new(err))
+    }
+}
+
+#[derive(Debug)]
+pub enum UserCredentialsError {
+    /// Returned when a error occurs while attempting to verify the password
+    VerificationError(Box<dyn Error>),
+}
+
+impl Error for UserCredentialsError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            UserCredentialsError::VerificationError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for UserCredentialsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UserCredentialsError::VerificationError(ref s) => {
+                write!(f, "failed to build verify password: {}", s)
+            }
+        }
+    }
+}
+
+impl From<BcryptError> for UserCredentialsError {
+    fn from(err: BcryptError) -> UserCredentialsError {
+        UserCredentialsError::VerificationError(Box::new(err))
     }
 }

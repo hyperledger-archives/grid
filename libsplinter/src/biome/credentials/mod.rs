@@ -21,17 +21,23 @@ pub mod database;
 mod error;
 pub(in crate::biome) mod rest_resources;
 
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::{hash, verify, DEFAULT_COST};
 
 use database::models::{NewUserCredentialsModel, UserCredentialsModel};
 
-pub use error::{CredentialsStoreError, UserCredentialsBuilderError};
+pub use error::{CredentialsStoreError, UserCredentialsBuilderError, UserCredentialsError};
 
 /// Represents crendentials used to authenticate a user
 pub struct UserCredentials {
     user_id: String,
     username: String,
     password: String,
+}
+
+impl UserCredentials {
+    pub fn verify_password(&self, password: &str) -> Result<bool, UserCredentialsError> {
+        Ok(verify(password, &self.password)?)
+    }
 }
 
 /// Builder for UsersCredential. It hashes the password upon build.
