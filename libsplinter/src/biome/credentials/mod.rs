@@ -146,9 +146,17 @@ pub trait CredentialsStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `user_id` - The unique identifier of the user for which the credentials will be returned
+    ///  * `user_id` - The unique identifier of the user credential belongs to
     ///
-    fn fetch_credential(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
+    fn fetch_credential_by_user_id(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
+
+    /// Fetches a credential for a user
+    ///
+    /// # Arguments
+    ///
+    ///  * `username` - The username the user uses for login
+    ///
+    fn fetch_credential_by_username(&self, username: &str) -> Result<T, CredentialsStoreError>;
 }
 
 impl From<UserCredentialsModel> for UserCredentials {

@@ -69,7 +69,28 @@ impl CredentialsStore<UserCredentials> for SplinterCredentialsStore {
         unimplemented!()
     }
 
-    fn fetch_credential(&self, _user_id: &str) -> Result<UserCredentials, CredentialsStoreError> {
+    fn fetch_credential_by_user_id(
+        &self,
+        _user_id: &str,
+    ) -> Result<UserCredentials, CredentialsStoreError> {
         unimplemented!()
+    }
+
+    fn fetch_credential_by_username(
+        &self,
+        username: &str,
+    ) -> Result<UserCredentials, CredentialsStoreError> {
+        let credentials = fetch_credential_by_username(&*self.connection_pool.get()?, &username)
+            .map_err(|err| CredentialsStoreError::QueryError {
+                context: "Failed to fetch credentials by username".to_string(),
+                source: Box::new(err),
+            })?
+            .ok_or_else(|| {
+                CredentialsStoreError::NotFoundError(format!(
+                    "Failed to find credentials: {}",
+                    username
+                ))
+            })?;
+        Ok(UserCredentials::from(credentials))
     }
 }
