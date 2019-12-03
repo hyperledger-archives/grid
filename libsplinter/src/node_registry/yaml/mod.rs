@@ -19,8 +19,8 @@ use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    MetadataPredicate, Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter,
-    RwNodeRegistry,
+    InvalidNodeError, MetadataPredicate, Node, NodeRegistryError, NodeRegistryReader,
+    NodeRegistryWriter, RwNodeRegistry,
 };
 
 use error::YamlNodeRegistryError;
@@ -116,21 +116,16 @@ impl NodeRegistryWriter for YamlNodeRegistry {
         let mut nodes = self
             .get_cached_nodes()
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
-        if nodes
-            .iter()
-            .any(|existing_node| existing_node.identity == node.identity)
-        {
-            return Err(NodeRegistryError::DuplicateNodeError(format!(
-                "Node with ID {} already exists",
-                node.identity,
-            )));
-        }
+
+        check_node_required_fields_are_not_empty(&node)?;
+        check_if_node_is_duplicate(&node, &nodes)?;
 
         nodes.push(node);
 
         self.write_nodes(&nodes)
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
+
     fn update_node(
         &self,
         identity: &str,
@@ -201,6 +196,33 @@ impl RwNodeRegistry for YamlNodeRegistry {
     fn clone_box(&self) -> Box<dyn RwNodeRegistry> {
         Box::new(Clone::clone(self))
     }
+}
+
+fn check_node_required_fields_are_not_empty(node: &Node) -> Result<(), InvalidNodeError> {
+    if node.identity.is_empty() {
+        Err(InvalidNodeError::EmptyIdentity)
+    } else if node.endpoint.is_empty() {
+        Err(InvalidNodeError::EmptyEndpoint)
+    } else if node.display_name.is_empty() {
+        Err(InvalidNodeError::EmptyDisplayName)
+    } else {
+        Ok(())
+    }
+}
+
+fn check_if_node_is_duplicate(
+    node: &Node,
+    existing_nodes: &[Node],
+) -> Result<(), InvalidNodeError> {
+    existing_nodes.iter().try_for_each(|existing_node| {
+        if existing_node.identity == node.identity {
+            Err(InvalidNodeError::DuplicateIdentity(node.identity.clone()))
+        } else if existing_node.endpoint == node.endpoint {
+            Err(InvalidNodeError::DuplicateEndpoint(node.endpoint.clone()))
+        } else {
+            Ok(())
+        }
+    })
 }
 
 #[cfg(test)]
@@ -404,25 +426,144 @@ mod test {
     }
 
     ///
-    /// Verifies that add_node returns DuplicateNodeError when a node with the same identity already
-    /// exists in the yaml file.
+    /// Verifies that add_node returns InvalidNodeError::DuplicateIdentity when a node with the
+    /// same identity already exists in the yaml file.
     ///
     #[test]
-    fn test_add_node_duplicate_error() {
+    fn test_add_node_duplicate_identity_error() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&vec![get_node_1()], test_yaml_file_path);
+            let node1 = get_node_1();
+
+            write_to_file(&vec![node1.clone()], test_yaml_file_path);
 
             let registry = YamlNodeRegistry::new(test_yaml_file_path)
                 .expect("Failed to create YamlNodeRegistry");
 
-            let node = get_node_1();
-
-            let result = registry.add_node(node.clone());
+            let mut node = get_node_2();
+            node.identity = node1.identity.clone();
+            let result = registry.add_node(node);
 
             match result {
-                Ok(_) => panic!("Duplicate node exists. Error should be returned"),
-                Err(NodeRegistryError::DuplicateNodeError(_)) => (),
-                Err(err) => panic!("Should have gotten DuplicateNodeError but got {}", err),
+                Ok(_) => panic!("Node with identity already exists. Error should be returned"),
+                Err(NodeRegistryError::InvalidNode(InvalidNodeError::DuplicateIdentity(id))) => {
+                    assert_eq!(id, node1.identity)
+                }
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::DuplicateIdentity but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that add_node returns InvalidNodeError::DuplicateEndpoint when a node with the
+    /// same endpoint already exists in the yaml file.
+    ///
+    #[test]
+    fn test_add_node_duplicate_endpoint_error() {
+        run_test(|test_yaml_file_path| {
+            let node1 = get_node_1();
+
+            write_to_file(&vec![node1.clone()], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let mut node = get_node_2();
+            node.endpoint = node1.endpoint.clone();
+            let result = registry.add_node(node);
+
+            match result {
+                Ok(_) => panic!("Node with endpoint already exists. Error should be returned"),
+                Err(NodeRegistryError::InvalidNode(InvalidNodeError::DuplicateEndpoint(
+                    endpoint,
+                ))) => assert_eq!(endpoint, node1.endpoint),
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::DuplicateEndpoint but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that add_node returns InvalidNodeError::EmptyIdentity when a node with an empty
+    /// string as its identity is added to the registry.
+    ///
+    #[test]
+    fn test_add_node_empty_identity_error() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let mut node = get_node_1();
+            node.identity = "".to_string();
+            let result = registry.add_node(node);
+
+            match result {
+                Ok(_) => panic!("Node identity is empty. Error should be returned"),
+                Err(NodeRegistryError::InvalidNode(InvalidNodeError::EmptyIdentity)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyIdentity but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that add_node returns InvalidNodeError::EmptyEndpoint when a node with an empty
+    /// string as its endpoint is added to the registry.
+    ///
+    #[test]
+    fn test_add_node_empty_endpoint_error() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let mut node = get_node_1();
+            node.endpoint = "".to_string();
+            let result = registry.add_node(node);
+
+            match result {
+                Ok(_) => panic!("Node endpoint is empty. Error should be returned"),
+                Err(NodeRegistryError::InvalidNode(InvalidNodeError::EmptyEndpoint)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyEndpoint but got {}",
+                    err
+                ),
+            }
+        })
+    }
+
+    ///
+    /// Verifies that add_node returns InvalidNodeError::EmptyDisplayName when a node with an empty
+    /// string as its display_name is added to the registry.
+    ///
+    #[test]
+    fn test_add_node_empty_display_name_error() {
+        run_test(|test_yaml_file_path| {
+            write_to_file(&vec![], test_yaml_file_path);
+
+            let registry = YamlNodeRegistry::new(test_yaml_file_path)
+                .expect("Failed to create YamlNodeRegistry");
+
+            let mut node = get_node_1();
+            node.display_name = "".to_string();
+            let result = registry.add_node(node);
+
+            match result {
+                Ok(_) => panic!("Node display_name is empty. Error should be returned"),
+                Err(NodeRegistryError::InvalidNode(InvalidNodeError::EmptyDisplayName)) => {}
+                Err(err) => panic!(
+                    "Should have gotten InvalidNodeError::EmptyDisplayName but got {}",
+                    err
+                ),
             }
         })
     }

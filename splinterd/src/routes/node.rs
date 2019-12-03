@@ -337,10 +337,8 @@ where
                         Ok(_) => HttpResponse::Ok().finish(),
                         Err(err) => match err {
                             BlockingError::Error(err) => match err {
-                                NodeRegistryError::DuplicateNodeError(id) => {
-                                    HttpResponse::Forbidden()
-                                        .json(format!("node with with ID ({}) already exists", id))
-                                }
+                                NodeRegistryError::InvalidNode(err) => HttpResponse::Forbidden()
+                                    .json(format!("node is invalid: {}", err)),
                                 _ => HttpResponse::InternalServerError().json(format!("{}", err)),
                             },
                             _ => HttpResponse::InternalServerError().json(format!("{}", err)),
