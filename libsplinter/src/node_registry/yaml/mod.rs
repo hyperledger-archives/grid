@@ -377,7 +377,7 @@ mod test {
     /// Verifies that add_node successfully adds a new node to the yaml file.
     ///
     #[test]
-    fn test_list_add_node_ok() {
+    fn test_add_node_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&vec![], test_yaml_file_path);
 
@@ -406,7 +406,7 @@ mod test {
     /// exists in the yaml file.
     ///
     #[test]
-    fn test_list_add_node_duplicate_error() {
+    fn test_add_node_duplicate_error() {
         run_test(|test_yaml_file_path| {
             write_to_file(&vec![get_node_1()], test_yaml_file_path);
 
