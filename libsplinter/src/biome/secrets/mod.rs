@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
-//!
-//! ## Features
-//!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-notifications`: API to create and manage user notifications.
+//! Provides an API for managing secrets
 
-#[cfg(feature = "biome-credentials")]
-pub mod credentials;
+mod error;
 
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
+pub use error::SecretManagerError;
 
-pub mod rest_api;
-pub mod secrets;
-pub mod users;
+/// Defines a manager for fetching and/or generating a secret.
+pub trait SecretManager: Sync + Send {
+    /// Returns the secret
+    fn secret(&self) -> Result<String, SecretManagerError>;
+
+    /// Updates the secret
+    fn update_secret(&mut self) -> Result<(), SecretManagerError>;
+}
