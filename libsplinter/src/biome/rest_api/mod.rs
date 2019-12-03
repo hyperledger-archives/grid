@@ -49,6 +49,7 @@ use std::sync::Arc;
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
+use super::secrets::{AutoSecretManager, SecretManager};
 use super::users::user_store::SplinterUserStore;
 
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
@@ -67,6 +68,8 @@ pub struct BiomeRestResourceManager {
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
     rest_config: Arc<BiomeRestConfig>,
+    #[allow(dead_code)]
+    token_secret_manager: Arc<dyn SecretManager>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<Arc<SplinterCredentialsStore>>,
 }
@@ -99,6 +102,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
 pub struct BiomeRestResourceManagerBuilder {
     user_store: Option<SplinterUserStore>,
     rest_config: Option<BiomeRestConfig>,
+    token_secret_manager: Option<Arc<dyn SecretManager>>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<SplinterCredentialsStore>,
 }
@@ -138,6 +142,20 @@ impl BiomeRestResourceManagerBuilder {
         self
     }
 
+    /// Sets a SecretManager for JWT tokens for the BiomeRestResourceManager
+    ///
+    /// # Arguments
+    ///
+    /// * `secret_manager`: the SecretManager to be used for fetching and generating secrets to
+    ///   sign and verify JWT tokens
+    pub fn set_token_secret_manager(
+        mut self,
+        secret_manager: impl SecretManager + 'static,
+    ) -> BiomeRestResourceManagerBuilder {
+        self.token_secret_manager = Some(Arc::new(secret_manager));
+        self
+    }
+
     /// Consumes the builder and returns a BiomeRestResourceManager
     pub fn build(self) -> Result<BiomeRestResourceManager, BiomeRestResourceManagerBuilderError> {
         let user_store = self.user_store.ok_or_else(|| {
@@ -153,9 +171,15 @@ impl BiomeRestResourceManagerBuilder {
             }
         };
 
+        let token_secret_manager = self.token_secret_manager.unwrap_or_else(|| {
+            debug!("Building BiomeRestResourceManager with default SecretManager.");
+            Arc::new(AutoSecretManager::default())
+        });
+
         Ok(BiomeRestResourceManager {
             user_store: Arc::new(user_store),
             rest_config: Arc::new(rest_config),
+            token_secret_manager,
             #[cfg(feature = "biome-credentials")]
             credentials_store: match self.credentials_store {
                 Some(credentials_store) => Some(Arc::new(credentials_store)),
