@@ -41,3 +41,8 @@ uuid = { version = "0.7", features = ["v4"] }
 [build-dependencies]
 glob = "0.2"
 protoc-rust = "2"
+
+[features]
+default = []
+
+experimental = []
