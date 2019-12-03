@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::{sync_channel, Receiver, SyncSender},
-    Arc, Mutex, MutexGuard,
+    Arc,
 };
 use std::thread;
 use std::time::Duration;
@@ -39,7 +39,7 @@ const CHANNEL_CAPACITY: usize = 15;
 
 pub struct ConnectionManager {
     hb_monitor: HeartbeatMonitor,
-    connection_state: Arc<Mutex<ConnectionState>>,
+    connection_state: ConnectionState,
     join_handle: Option<thread::JoinHandle<()>>,
     sender: Option<SyncSender<CmMessage>>,
     shutdown_handle: Option<ShutdownHandle>,
@@ -47,9 +47,9 @@ pub struct ConnectionManager {
 
 impl ConnectionManager {
     pub fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
-        let connection_state = Arc::new(Mutex::new(ConnectionState::new(mesh, transport)));
+        let connection_state = ConnectionState::new(mesh, transport);
         let hb_monitor =
-            HeartbeatMonitor::new(connection_state.clone(), DEFAULT_HEARTBEAT_INTERVAL);
+            HeartbeatMonitor::new(DEFAULT_HEARTBEAT_INTERVAL);
 
         Self {
             hb_monitor,
@@ -62,7 +62,7 @@ impl ConnectionManager {
 
     pub fn start(&mut self) -> Result<Connector, ConnectionManagerError> {
         let (sender, recv) = sync_channel(CHANNEL_CAPACITY);
-        let connection_state = self.connection_state.clone();
+        let mut state = self.connection_state.clone();
 
         let join_handle = thread::Builder::new()
             .name("Connection Manager".into())
@@ -78,24 +78,10 @@ impl ConnectionManager {
                             subscribers.remove(id);
                         }
                         Ok(CmMessage::Request(req)) => {
-                            let mut state = match connection_state.lock() {
-                                Ok(s) => s,
-                                Err(err) => {
-                                    notify_subscribers(
-                                        &mut subscribers,
-                                        vec![CmNotification::FatalError {
-                                            error: ConnectionManagerError::StatePoisoned,
-                                            message: format!("State has been poisoned {:?}", err),
-                                        }],
-                                    );
-                                    break;
-                                }
-                            };
-
                             handle_request(req, &mut state);
                         }
-                        Ok(CmMessage::HeartbeatNotifications(notifications)) => {
-                            notify_subscribers(&mut subscribers, notifications)
+                        Ok(CmMessage::SendHeartbeats) => {
+                            send_heartbeats(&mut state, &mut subscribers)
                         }
                         Err(_) => {
                             warn!("All senders have disconnected");
@@ -149,16 +135,14 @@ impl ConnectionManager {
 }
 
 struct HeartbeatMonitor {
-    connection_state: Arc<Mutex<ConnectionState>>,
     interval: u64,
     join_handle: Option<thread::JoinHandle<()>>,
     shutdown_handle: Option<HbShutdownHandle>,
 }
 
 impl HeartbeatMonitor {
-    fn new(connection_state: Arc<Mutex<ConnectionState>>, interval: u64) -> Self {
+    fn new(interval: u64) -> Self {
         Self {
-            connection_state,
             interval,
             join_handle: None,
             shutdown_handle: None,
@@ -173,71 +157,18 @@ impl HeartbeatMonitor {
         let running = Arc::new(AtomicBool::new(true));
 
         let running_clone = running.clone();
-        let connection_state = self.connection_state.clone();
         let interval = self.interval;
         let join_handle = thread::Builder::new()
             .name("Heartbeat Monitor".into())
             .spawn(move || {
                 info!("Starting heartbeat manager");
-                let heartbeat_message = match create_heartbeat() {
-                    Ok(h) => h,
-                    Err(err) => {
-                        error!("Failed to create heartbeat message: {:?}", err);
-                        return;
-                    }
-                };
 
                 while running_clone.load(Ordering::SeqCst) {
                     thread::sleep(Duration::from_secs(interval));
-                        let mut state = match connection_state.lock() {
-                            Ok(s) => s,
-                            Err(_) => {
-                                error!("Connection manager panicked while holding state");
-                                break;
-                            }
-                        };
-
-                        let mut notifications = Vec::new();
-
-                        for (endpoint, metadata) in state.connection_metadata() {
-                            info!("Sending heartbeat to {}", endpoint);
-                            if let Err(err) = state
-                                .mesh()
-                                .send(Envelope::new(metadata.id, heartbeat_message.clone()))
-                            {
-                                error!(
-                                    "failed to send heartbeat: {:?} attempting reconnection",
-                                    err
-                                );
-
-                                notifications.push(CmNotification::HeartbeatSendFail {
-                                    endpoint: endpoint.clone(),
-                                    message: format!("{:?}", err),
-                                });
-
-                                if let Err(err) = state.reconnect(&endpoint) {
-                                    error!("Connection reattempt failed: {:?}", err);
-                                    notifications.push(CmNotification::ReconnectAttemptFailed {
-                                        endpoint: endpoint.clone(),
-                                        message: format!("{:?}", err),
-                                    });
-                                } else {
-                                    notifications.push(CmNotification::ReconnectAttemptSuccess {
-                                        endpoint: endpoint.clone(),
-                                    });
-                                }
-                            } else {
-                                notifications.push(CmNotification::HeartbeatSent {
-                                    endpoint: endpoint.clone(),
-                                });
-                            }
-                        }
-
-                        info!("Sending notifications to connection manager");
-                        if let Err(err) = cm_sender.send(CmMessage::HeartbeatNotifications(notifications)) {
-                            error!("Connection manager has disconnected before shutting down heartbeat monitor {:?}", err);
-                            break;
-                        }
+                    if let Err(err) = cm_sender.send(CmMessage::SendHeartbeats) {
+                        error!("Connection manager has disconnected before shutting down heartbeat monitor {:?}", err);
+                        break;
+                    }
                 }
             })?;
 
@@ -370,10 +301,11 @@ struct ConnectionMetadata {
     ref_count: u64,
 }
 
+#[derive(Clone)]
 struct ConnectionState {
     connections: HashMap<String, ConnectionMetadata>,
     mesh: Mesh,
-    transport: Box<dyn Transport + Send>,
+    transport: Box<dyn Transport>,
 }
 
 impl ConnectionState {
@@ -445,7 +377,7 @@ impl ConnectionState {
     }
 }
 
-fn handle_request(req: CmRequest, state: &mut MutexGuard<ConnectionState>) {
+fn handle_request(req: CmRequest, state: &mut ConnectionState) {
     let result = match req.payload {
         CmPayload::AddConnection { ref endpoint } => state.add_connection(endpoint),
     };
@@ -476,6 +408,56 @@ fn notify_subscribers(
             subscribers.remove(&id);
         }
     }
+}
+
+fn send_heartbeats(
+    state: &mut ConnectionState,
+    subscribers: &mut HashMap<String, SyncSender<Vec<CmNotification>>>,
+) {
+    let heartbeat_message = match create_heartbeat() {
+        Ok(h) => h,
+        Err(err) => {
+            error!("Failed to create heartbeat message: {:?}", err);
+            return;
+        }
+    };
+    let mut notifications = Vec::new();
+
+    for (endpoint, metadata) in state.connection_metadata() {
+        info!("Sending heartbeat to {}", endpoint);
+        if let Err(err) = state
+            .mesh()
+            .send(Envelope::new(metadata.id, heartbeat_message.clone()))
+        {
+            error!(
+                "failed to send heartbeat: {:?} attempting reconnection",
+                err
+            );
+
+            notifications.push(CmNotification::HeartbeatSendFail {
+                endpoint: endpoint.clone(),
+                message: format!("{:?}", err),
+            });
+
+            if let Err(err) = state.reconnect(&endpoint) {
+                error!("Connection reattempt failed: {:?}", err);
+                notifications.push(CmNotification::ReconnectAttemptFailed {
+                    endpoint: endpoint.clone(),
+                    message: format!("{:?}", err),
+                });
+            } else {
+                notifications.push(CmNotification::ReconnectAttemptSuccess {
+                    endpoint: endpoint.clone(),
+                });
+            }
+        } else {
+            notifications.push(CmNotification::HeartbeatSent {
+                endpoint: endpoint.clone(),
+            });
+        }
+    }
+
+    notify_subscribers(subscribers, notifications);
 }
 
 fn create_heartbeat() -> Result<Vec<u8>, ConnectionManagerError> {
