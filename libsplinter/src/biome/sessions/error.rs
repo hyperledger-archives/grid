@@ -15,6 +15,8 @@
 use std::error::Error;
 use std::fmt;
 
+use jsonwebtoken::errors::{Error as JWTError, ErrorKind};
+
 /// Error for ClaimsBuilder
 #[derive(Debug)]
 pub enum ClaimsBuildError {
@@ -33,6 +35,73 @@ impl fmt::Display for ClaimsBuildError {
                 write!(f, "failed to build claim: {}", s)
             }
             ClaimsBuildError::InvalidValue(ref s) => write!(f, "failed to build claim: {}", s),
+        }
+    }
+}
+
+/// Error for token validation
+#[derive(Debug)]
+pub enum TokenValidationError {
+    /// Returned when validation fails
+    ValidationError(Box<dyn Error>),
+    /// Returned when the claims in the token are invalid
+    InvalidClaim(String),
+}
+
+impl Error for TokenValidationError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            TokenValidationError::ValidationError(err) => Some(&**err),
+            TokenValidationError::InvalidClaim(_) => None,
+        }
+    }
+}
+
+impl fmt::Display for TokenValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TokenValidationError::ValidationError(ref s) => {
+                write!(f, "failed to validate claim: {}", s)
+            }
+            TokenValidationError::InvalidClaim(ref s) => write!(f, "claim is invalid: {}", s),
+        }
+    }
+}
+
+impl From<JWTError> for TokenValidationError {
+    fn from(err: JWTError) -> TokenValidationError {
+        match err.kind() {
+            ErrorKind::InvalidToken => {
+                TokenValidationError::InvalidClaim("Token is not valid JWT".to_string())
+            }
+            ErrorKind::InvalidSignature => {
+                TokenValidationError::InvalidClaim("Token signature is not valid".to_string())
+            }
+            ErrorKind::InvalidAlgorithmName => {
+                TokenValidationError::InvalidClaim("Provided algorithm is not valid".to_string())
+            }
+            ErrorKind::ExpiredSignature => {
+                TokenValidationError::InvalidClaim("The token has expired".to_string())
+            }
+            ErrorKind::InvalidIssuer => {
+                TokenValidationError::InvalidClaim("The token has an invalid issuer".to_string())
+            }
+            ErrorKind::InvalidAudience => {
+                TokenValidationError::InvalidClaim("The token has an invalid audience".to_string())
+            }
+            ErrorKind::InvalidSubject => {
+                TokenValidationError::InvalidClaim("The token has an invalid subject".to_string())
+            }
+            ErrorKind::ImmatureSignature => {
+                TokenValidationError::InvalidClaim("The token is not valid yet".to_string())
+            }
+            ErrorKind::InvalidAlgorithm => {
+                TokenValidationError::InvalidClaim("Provided algorithm is not valid".to_string())
+            }
+
+            ErrorKind::InvalidEcdsaKey => TokenValidationError::ValidationError(Box::new(err)),
+            ErrorKind::InvalidRsaKey => TokenValidationError::ValidationError(Box::new(err)),
+            _ => TokenValidationError::ValidationError(Box::new(err)),
         }
     }
 }
