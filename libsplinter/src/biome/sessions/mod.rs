@@ -16,11 +16,22 @@
 
 mod claims;
 mod error;
+mod token_issuer;
+
 use jsonwebtoken::{decode, Validation};
+use serde::Serialize;
 
 pub use claims::{Claims, ClaimsBuilder};
-pub use error::{ClaimsBuildError, TokenValidationError};
+pub use error::{ClaimsBuildError, TokenIssuerError, TokenValidationError};
+pub use token_issuer::AccessTokenIssuer;
+
 const DEFAULT_LEEWAY: i64 = 10; // default leeway in seconds.
+
+/// Implementers can issue JWT tokens
+pub trait TokenIssuer<T: Serialize> {
+    /// Issues a JWT token with the given claims
+    fn issue_token_with_claims(&self, claims: T) -> Result<String, TokenIssuerError>;
+}
 
 /// Deserializes a JWT token, checks that a sigures is valid and checks that the claims are
 /// valid. It also and performs the extra validation provided by the caller.

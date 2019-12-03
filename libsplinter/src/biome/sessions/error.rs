@@ -17,6 +17,47 @@ use std::fmt;
 
 use jsonwebtoken::errors::{Error as JWTError, ErrorKind};
 
+use super::super::secrets::SecretManagerError;
+
+/// Error for TokenIssuer
+#[derive(Debug)]
+pub enum TokenIssuerError {
+    /// Returned when the TokenIssuer fails to encode a Token
+    EncodingError(Box<dyn Error>),
+    /// Returned when the TokenIssuer fails to get a valid secret
+    SecretError(Box<dyn Error>),
+}
+
+impl Error for TokenIssuerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            TokenIssuerError::EncodingError(err) => Some(&**err),
+            TokenIssuerError::SecretError(err) => Some(&**err),
+        }
+    }
+}
+
+impl fmt::Display for TokenIssuerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TokenIssuerError::EncodingError(ref s) => write!(f, "failed to issue token: {}", s),
+            TokenIssuerError::SecretError(ref s) => write!(f, "failed to fetch secret: {}", s),
+        }
+    }
+}
+
+impl From<JWTError> for TokenIssuerError {
+    fn from(err: JWTError) -> TokenIssuerError {
+        TokenIssuerError::EncodingError(Box::new(err))
+    }
+}
+
+impl From<SecretManagerError> for TokenIssuerError {
+    fn from(err: SecretManagerError) -> TokenIssuerError {
+        TokenIssuerError::SecretError(Box::new(err))
+    }
+}
+
 /// Error for ClaimsBuilder
 #[derive(Debug)]
 pub enum ClaimsBuildError {
