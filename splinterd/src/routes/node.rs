@@ -17,7 +17,7 @@ use percent_encoding::utf8_percent_encode;
 use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use splinter::futures::{future::IntoFuture, stream::Stream, Future};
 use splinter::{
-    node_registry::{error::NodeRegistryError, Node, NodeRegistry},
+    node_registry::{error::NodeRegistryError, Node, NodeRegistryReader, NodeRegistryWriter},
     rest_api::{Method, Resource},
 };
 use std::collections::HashMap;
@@ -30,7 +30,10 @@ pub struct ListNodesResponse {
     paging: Paging,
 }
 
-pub fn make_nodes_identity_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+pub fn make_nodes_identity_resource<N>(registry: N) -> Resource
+where
+    N: NodeRegistryReader + NodeRegistryWriter + Clone + 'static,
+{
     let registry1 = registry.clone();
     let registry2 = registry.clone();
     Resource::build("/nodes/{identity}")
@@ -45,7 +48,10 @@ pub fn make_nodes_identity_resource(registry: Box<dyn NodeRegistry>) -> Resource
         })
 }
 
-pub fn make_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
+pub fn make_nodes_resource<N>(registry: N) -> Resource
+where
+    N: NodeRegistryReader + NodeRegistryWriter + Clone + 'static,
+{
     let registry1 = registry.clone();
     Resource::build("/nodes")
         .add_method(Method::Get, move |r, _| {
@@ -56,10 +62,13 @@ pub fn make_nodes_resource(registry: Box<dyn NodeRegistry>) -> Resource {
         })
 }
 
-fn fetch_node(
+fn fetch_node<NR>(
     request: HttpRequest,
-    registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    registry: web::Data<NR>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+where
+    NR: NodeRegistryReader + 'static,
+{
     let identity = request
         .match_info()
         .get("identity")
@@ -79,11 +88,14 @@ fn fetch_node(
     )
 }
 
-fn update_node(
+fn update_node<NW>(
     request: HttpRequest,
     payload: web::Payload,
-    registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    registry: web::Data<NW>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+where
+    NW: NodeRegistryWriter + 'static,
+{
     let identity = request
         .match_info()
         .get("identity")
@@ -129,10 +141,13 @@ fn update_node(
     )
 }
 
-fn delete_node(
+fn delete_node<NW>(
     request: HttpRequest,
-    registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    registry: web::Data<NW>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+where
+    NW: NodeRegistryWriter + 'static,
+{
     let identity = request
         .match_info()
         .get("identity")
@@ -152,10 +167,13 @@ fn delete_node(
     )
 }
 
-fn list_nodes(
+fn list_nodes<NR>(
     req: HttpRequest,
-    registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    registry: web::Data<NR>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+where
+    NR: NodeRegistryReader + 'static,
+{
     let query: web::Query<HashMap<String, String>> =
         if let Ok(q) = web::Query::from_query(req.query_string()) {
             q
@@ -237,13 +255,16 @@ fn list_nodes(
     ))
 }
 
-fn query_list_nodes(
-    registry: web::Data<Box<dyn NodeRegistry>>,
+fn query_list_nodes<NR>(
+    registry: web::Data<NR>,
     link: String,
     filters: Option<Filter>,
     offset: Option<usize>,
     limit: Option<usize>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+) -> impl Future<Item = HttpResponse, Error = Error>
+where
+    NR: NodeRegistryReader + 'static,
+{
     web::block(
         move || match registry.list_nodes(filters.clone(), None, None) {
             Ok(nodes) => Ok((registry, filters, nodes.len(), link, limit, offset)),
@@ -275,10 +296,13 @@ fn query_list_nodes(
     })
 }
 
-fn add_node(
+fn add_node<NW>(
     payload: web::Payload,
-    registry: web::Data<Box<dyn NodeRegistry>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    registry: web::Data<NW>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+where
+    NW: NodeRegistryWriter + 'static,
+{
     Box::new(
         payload
             .from_err::<Error>()
@@ -329,20 +353,24 @@ mod tests {
         test, web, App,
     };
 
+    fn new_yaml_node_registry(file_path: &str) -> YamlNodeRegistry {
+        YamlNodeRegistry::new(file_path).expect("Error creating YamlNodeRegistry")
+    }
+
     #[test]
     /// Tests a GET /nodes/{identity} request returns the expected node.
     fn test_fetch_node_ok() {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
-                web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node)),
-            ));
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes/{identity}")
+                        .route(web::get().to_async(fetch_node::<YamlNodeRegistry>)),
+                ),
+            );
 
             let req = test::TestRequest::get()
                 .uri(&format!("/nodes/{}", get_node_1().identity))
@@ -362,14 +390,14 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
-                web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node)),
-            ));
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes/{identity}")
+                        .route(web::get().to_async(fetch_node::<YamlNodeRegistry>)),
+                ),
+            );
 
             let req = test::TestRequest::get()
                 .uri("/nodes/Node-not-valid")
@@ -387,16 +415,13 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
             let mut app = test::init_service(
                 App::new().data(node_registry.clone()).service(
                     web::resource("/nodes/{identity}")
-                        .route(web::patch().to_async(update_node))
-                        .route(web::get().to_async(fetch_node)),
+                        .route(web::patch().to_async(update_node::<YamlNodeRegistry>))
+                        .route(web::get().to_async(fetch_node::<YamlNodeRegistry>)),
                 ),
             );
 
@@ -460,14 +485,14 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
-                web::resource("/nodes/{identity}").route(web::delete().to_async(delete_node)),
-            ));
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes/{identity}")
+                        .route(web::delete().to_async(delete_node::<YamlNodeRegistry>)),
+                ),
+            );
 
             // Verify that an existing node gets an OK response
             let req = test::TestRequest::delete()
@@ -495,16 +520,11 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(
-                App::new()
-                    .data(node_registry.clone())
-                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-            );
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes").route(web::get().to_async(list_nodes::<YamlNodeRegistry>)),
+            ));
 
             let req = test::TestRequest::get().uri("/nodes").to_request();
 
@@ -526,16 +546,11 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(
-                App::new()
-                    .data(node_registry.clone())
-                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-            );
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes").route(web::get().to_async(list_nodes::<YamlNodeRegistry>)),
+            ));
 
             let filter =
                 utf8_percent_encode("{\"company\":[\"=\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
@@ -565,16 +580,11 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[get_node_1(), get_node_2()]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(
-                App::new()
-                    .data(node_registry.clone())
-                    .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-            );
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes").route(web::get().to_async(list_nodes::<YamlNodeRegistry>)),
+            ));
 
             let filter =
                 utf8_percent_encode("{\"company\":[\"*\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
@@ -597,16 +607,11 @@ mod tests {
         run_test(|test_yaml_file_path| {
             write_to_file(&test_yaml_file_path, &[]);
 
-            let node_registry: Box<dyn NodeRegistry> = Box::new(
-                YamlNodeRegistry::new(test_yaml_file_path)
-                    .expect("Error creating YamlNodeRegistry"),
-            );
+            let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(
-                App::new()
-                    .data(node_registry.clone())
-                    .service(web::resource("/nodes").route(web::post().to_async(add_node))),
-            );
+            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
+                web::resource("/nodes").route(web::post().to_async(add_node::<YamlNodeRegistry>)),
+            ));
 
             // Verify an invalid node gets a BAD_REQUEST response
             let req = test::TestRequest::post()
