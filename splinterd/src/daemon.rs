@@ -38,7 +38,7 @@ use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
-use splinter::node_registry::{self, NodeRegistry};
+use splinter::node_registry::{self, RwNodeRegistry};
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;
 use splinter::protos::circuit::CircuitMessageType;
@@ -810,7 +810,7 @@ fn set_up_circuit_dispatcher(
 
 fn create_node_registry(
     registry_config: &RegistryConfig,
-) -> Result<Box<dyn NodeRegistry>, RestApiServerError> {
+) -> Result<Box<dyn RwNodeRegistry>, RestApiServerError> {
     match registry_config {
         RegistryConfig::File { registry_file } => Ok(Box::new(
             node_registry::yaml::YamlNodeRegistry::new(&registry_file).map_err(|err| {

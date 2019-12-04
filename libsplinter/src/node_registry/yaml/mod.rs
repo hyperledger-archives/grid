@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, Mutex};
 
-use super::{Node, NodeRegistry, NodeRegistryError};
+use super::{Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter, RwNodeRegistry};
 
 use error::YamlNodeRegistryError;
 
@@ -67,25 +67,20 @@ impl YamlNodeRegistry {
     }
 }
 
-impl NodeRegistry for YamlNodeRegistry {
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
-        let mut nodes = self
+impl NodeRegistryReader for YamlNodeRegistry {
+    fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
+        match self
             .get_cached_nodes()
-            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
-        if nodes
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?
             .iter()
-            .any(|existing_node| existing_node.identity == node.identity)
+            .find(|node| node.identity == identity)
         {
-            return Err(NodeRegistryError::DuplicateNodeError(format!(
-                "Node with ID {} already exists",
-                node.identity,
-            )));
+            Some(node) => Ok(node.clone()),
+            None => Err(NodeRegistryError::NotFoundError(format!(
+                "Could not find node with identity {}",
+                identity
+            ))),
         }
-
-        nodes.push(node);
-
-        self.write_nodes(&nodes)
-            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
 
     fn list_nodes(
@@ -174,22 +169,28 @@ impl NodeRegistry for YamlNodeRegistry {
                 .collect()),
         }
     }
+}
 
-    fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
-        match self
+impl NodeRegistryWriter for YamlNodeRegistry {
+    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
+        let mut nodes = self
             .get_cached_nodes()
-            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
+        if nodes
             .iter()
-            .find(|node| node.identity == identity)
+            .any(|existing_node| existing_node.identity == node.identity)
         {
-            Some(node) => Ok(node.clone()),
-            None => Err(NodeRegistryError::NotFoundError(format!(
-                "Could not find node with identity {}",
-                identity
-            ))),
+            return Err(NodeRegistryError::DuplicateNodeError(format!(
+                "Node with ID {} already exists",
+                node.identity,
+            )));
         }
-    }
 
+        nodes.push(node);
+
+        self.write_nodes(&nodes)
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
+    }
     fn update_node(
         &self,
         identity: &str,
@@ -252,8 +253,10 @@ impl NodeRegistry for YamlNodeRegistry {
         self.write_nodes(&nodes)
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))
     }
+}
 
-    fn clone_box(&self) -> Box<dyn NodeRegistry> {
+impl RwNodeRegistry for YamlNodeRegistry {
+    fn clone_box(&self) -> Box<dyn RwNodeRegistry> {
         Box::new(Clone::clone(self))
     }
 }

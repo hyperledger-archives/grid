@@ -27,15 +27,8 @@ pub struct Node {
     pub metadata: HashMap<String, String>,
 }
 
-pub trait NodeRegistry: Send + Sync {
-    /// Registers a new node.
-    ///
-    /// # Arguments
-    ///
-    /// * `node` - The node to be added to the registry.
-    ///
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError>;
-
+/// Provides Node Registry read capabilities.
+pub trait NodeRegistryReader: Send + Sync {
     /// Returns a list of nodes.
     ///
     /// # Arguments
@@ -63,6 +56,17 @@ pub trait NodeRegistry: Send + Sync {
     ///  * `identity` - The Splinter identity of the node.
     ///
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError>;
+}
+
+/// Provides Node Registry write capabilities.
+pub trait NodeRegistryWriter: Send + Sync {
+    /// Registers a new node.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The node to be added to the registry.
+    ///
+    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError>;
 
     /// Updates a node with the given identity.
     /// The node's exiting metadata properties that are not in the updates map will not be
@@ -87,7 +91,10 @@ pub trait NodeRegistry: Send + Sync {
     ///  * `identity` - The Splinter identity of the node.
     ///
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError>;
+}
 
+/// Provides a marker trait for a clonable, readable and writable Node Registry.
+pub trait RwNodeRegistry: NodeRegistryWriter + NodeRegistryReader {
     /// Clone implementation for Box<NodeRegistry>.
     /// The implementation of Clone for NodeRegistry calls this method.
     ///
@@ -95,11 +102,11 @@ pub trait NodeRegistry: Send + Sync {
     ///  fn clone_box(&self) -> Box<NodeRegistry> {
     ///     Box::new(Clone::clone(self))
     ///  }
-    fn clone_box(&self) -> Box<dyn NodeRegistry>;
+    fn clone_box(&self) -> Box<dyn RwNodeRegistry>;
 }
 
-impl Clone for Box<dyn NodeRegistry> {
-    fn clone(&self) -> Box<dyn NodeRegistry> {
+impl Clone for Box<dyn RwNodeRegistry> {
+    fn clone(&self) -> Box<dyn RwNodeRegistry> {
         self.clone_box()
     }
 }

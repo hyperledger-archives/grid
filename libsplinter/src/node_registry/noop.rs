@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use super::{Node, NodeRegistry, NodeRegistryError};
+use super::{Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter, RwNodeRegistry};
 
 /// The NoOpNodeRegistry is an empty-list implementation of the NodeRegistry trait.
 ///
@@ -24,14 +24,7 @@ use super::{Node, NodeRegistry, NodeRegistryError};
 /// nodes.  It does not allow node creation.
 pub struct NoOpNodeRegistry;
 
-impl NodeRegistry for NoOpNodeRegistry {
-    fn add_node(&self, _node: Node) -> Result<(), NodeRegistryError> {
-        Err(NodeRegistryError::UnableToAddNode(
-            "operation not supported".into(),
-            None,
-        ))
-    }
-
+impl NodeRegistryReader for NoOpNodeRegistry {
     fn list_nodes(
         &self,
         _filters: Option<HashMap<String, (String, String)>>,
@@ -43,6 +36,15 @@ impl NodeRegistry for NoOpNodeRegistry {
 
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
         Err(NodeRegistryError::NotFoundError(identity.to_string()))
+    }
+}
+
+impl NodeRegistryWriter for NoOpNodeRegistry {
+    fn add_node(&self, _node: Node) -> Result<(), NodeRegistryError> {
+        Err(NodeRegistryError::UnableToAddNode(
+            "operation not supported".into(),
+            None,
+        ))
     }
 
     fn update_node(
@@ -56,8 +58,10 @@ impl NodeRegistry for NoOpNodeRegistry {
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {
         Err(NodeRegistryError::NotFoundError(identity.to_string()))
     }
+}
 
-    fn clone_box(&self) -> Box<dyn NodeRegistry> {
+impl RwNodeRegistry for NoOpNodeRegistry {
+    fn clone_box(&self) -> Box<dyn RwNodeRegistry> {
         Box::new(NoOpNodeRegistry)
     }
 }
