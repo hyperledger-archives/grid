@@ -18,7 +18,7 @@ use crate::network::connection_manager::error::ConnectionManagerError;
 
 pub enum CmMessage {
     Shutdown,
-    Subscribe(String, SyncSender<Vec<CmNotification>>),
+    Subscribe(String, SyncSender<CmNotification>),
     UnSubscribe(String),
     Request(CmRequest),
     SendHeartbeats,
