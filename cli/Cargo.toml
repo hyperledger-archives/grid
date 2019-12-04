@@ -41,3 +41,8 @@ serde_derive = "1.0"
 serde_json = { version ="1.0", optional = true }
 serde_yaml = "0.8"
 splinter = { path = "../libsplinter" }
+
+[package.metadata.deb]
+maintainer = "The Splinter Team"
+depends = "$auto"
+maintainer-scripts = "packaging/ubuntu"
