@@ -24,8 +24,9 @@ COPY splinterd/ /build/splinterd
 # Build the package
 WORKDIR /build/splinterd
 ARG REPO_VERSION
+ARG CARGO_ARGS
 RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # -------------=== splinterd docker build ===-------------
 

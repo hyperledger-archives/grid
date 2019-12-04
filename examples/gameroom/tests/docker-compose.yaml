@@ -48,6 +48,7 @@ services:
       context: ../../..
       dockerfile: splinterd/Dockerfile-installed-${DISTRO}
       args:
+        - CARGO_ARGS=${CARGO_ARGS}
         - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
