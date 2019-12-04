@@ -284,14 +284,9 @@ where
                     paging: get_response_paging_info(limit, offset, &link, total_count),
                 }))
             }
-            Err(err) => match err {
-                BlockingError::Error(err) => match err {
-                    NodeRegistryError::InvalidFilterError(err) => {
-                        Ok(HttpResponse::BadRequest().json(err))
-                    }
-                    _ => Ok(HttpResponse::InternalServerError().into()),
-                },
-                _ => Ok(HttpResponse::InternalServerError().into()),
+            Err(err) => {
+                error!("Unable to list nodes: {}", err);
+                Ok(HttpResponse::InternalServerError().into())
             },
         }),
     )
