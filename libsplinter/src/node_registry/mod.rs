@@ -16,8 +16,9 @@ pub mod error;
 pub mod noop;
 pub mod yaml;
 
-pub use error::NodeRegistryError;
 use std::collections::HashMap;
+
+pub use error::NodeRegistryError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
