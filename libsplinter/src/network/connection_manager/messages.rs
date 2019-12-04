@@ -32,11 +32,16 @@ pub struct CmRequest {
 #[derive(Debug, PartialEq)]
 pub enum CmPayload {
     AddConnection { endpoint: String },
+    RemoveConnection { endpoint: String },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum CmResponse {
     AddConnection {
+        status: CmResponseStatus,
+        error_message: Option<String>,
+    },
+    RemoveConnection {
         status: CmResponseStatus,
         error_message: Option<String>,
     },
@@ -46,6 +51,7 @@ pub enum CmResponse {
 pub enum CmResponseStatus {
     OK,
     Error,
+    ConnectionNotFound,
 }
 
 /// Messages that will be dispatched to all
