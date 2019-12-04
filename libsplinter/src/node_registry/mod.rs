@@ -110,3 +110,42 @@ impl Clone for Box<dyn RwNodeRegistry> {
         self.clone_box()
     }
 }
+
+impl<NR> NodeRegistryReader for Box<NR>
+where
+    NR: NodeRegistryReader + ?Sized,
+{
+    fn list_nodes(
+        &self,
+        filters: Option<HashMap<String, (String, String)>>,
+        limit: Option<usize>,
+        offset: Option<usize>,
+    ) -> Result<Vec<Node>, NodeRegistryError> {
+        (**self).list_nodes(filters, limit, offset)
+    }
+
+    fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
+        (**self).fetch_node(identity)
+    }
+}
+
+impl<NW> NodeRegistryWriter for Box<NW>
+where
+    NW: NodeRegistryWriter + ?Sized,
+{
+    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
+        (**self).add_node(node)
+    }
+
+    fn update_node(
+        &self,
+        identity: &str,
+        updates: HashMap<String, String>,
+    ) -> Result<(), NodeRegistryError> {
+        (**self).update_node(identity, updates)
+    }
+
+    fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {
+        (**self).delete_node(identity)
+    }
+}
