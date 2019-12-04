@@ -16,7 +16,10 @@
 
 use std::collections::HashMap;
 
-use super::{Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter, RwNodeRegistry};
+use super::{
+    MetadataPredicate, Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter,
+    RwNodeRegistry,
+};
 
 /// The NoOpNodeRegistry is an empty-list implementation of the NodeRegistry trait.
 ///
@@ -27,7 +30,7 @@ pub struct NoOpNodeRegistry;
 impl NodeRegistryReader for NoOpNodeRegistry {
     fn list_nodes(
         &self,
-        _filters: Option<HashMap<String, (String, String)>>,
+        _filters: &[MetadataPredicate],
         _limit: Option<usize>,
         _offset: Option<usize>,
     ) -> Result<Vec<Node>, NodeRegistryError> {

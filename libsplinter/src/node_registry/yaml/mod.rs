@@ -18,7 +18,10 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, Mutex};
 
-use super::{Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter, RwNodeRegistry};
+use super::{
+    MetadataPredicate, Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter,
+    RwNodeRegistry,
+};
 
 use error::YamlNodeRegistryError;
 
@@ -85,7 +88,7 @@ impl NodeRegistryReader for YamlNodeRegistry {
 
     fn list_nodes(
         &self,
-        filters: Option<HashMap<String, (String, String)>>,
+        predicates: &[MetadataPredicate],
         limit: Option<usize>,
         offset: Option<usize>,
     ) -> Result<Vec<Node>, NodeRegistryError> {
@@ -94,80 +97,13 @@ impl NodeRegistryReader for YamlNodeRegistry {
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| nodes.len());
-        match filters {
-            Some(filters) => filters
-                .iter()
-                .try_fold(nodes, |acc, (key, (operator, value))| {
-                    let nodes = match operator as &str {
-                        "=" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value == value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        ">" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value > value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        "<" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value < value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        "<=" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value <= value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        ">=" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value >= value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        "!=" => acc
-                            .into_iter()
-                            .filter(|node| match node.metadata.get(key) {
-                                Some(current_value) => current_value != value,
-                                None => false,
-                            })
-                            .skip(offset_value)
-                            .take(limit_value)
-                            .collect(),
-                        _ => {
-                            return Err(NodeRegistryError::InvalidFilterError(format!(
-                                "Unknown operator {}",
-                                operator
-                            )))
-                        }
-                    };
-                    Ok(nodes)
-                }),
-            None => Ok(nodes
-                .into_iter()
-                .skip(offset_value)
-                .take(limit_value)
-                .collect()),
-        }
+
+        Ok(nodes
+            .into_iter()
+            .filter(|node| predicates.iter().all(|predicate| predicate.apply(node)))
+            .skip(offset_value)
+            .take(limit_value)
+            .collect())
     }
 }
 
@@ -319,7 +255,7 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(None, None, None)
+                .list_nodes(&[], None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 2);
@@ -340,7 +276,7 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(None, None, None)
+                .list_nodes(&[], None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 0);
@@ -358,17 +294,13 @@ mod test {
             let registry = YamlNodeRegistry::new(test_yaml_file_path)
                 .expect("Failed to create YamlNodeRegistry");
 
-            let mut filter = HashMap::new();
-            filter.insert(
-                "company".to_string(),
-                (
-                    "=".to_string(),
-                    get_node_2().metadata.get("company").unwrap().to_string(),
-                ),
-            );
+            let filter = vec![MetadataPredicate::Eq(
+                "company".into(),
+                get_node_2().metadata.get("company").unwrap().to_string(),
+            )];
 
             let nodes = registry
-                .list_nodes(Some(filter), None, None)
+                .list_nodes(&filter, None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 1);
@@ -390,63 +322,26 @@ mod test {
             let registry = YamlNodeRegistry::new(test_yaml_file_path)
                 .expect("Failed to create YamlNodeRegistry");
 
-            let mut filter = HashMap::new();
-
-            // node_2 and node_3 have the same company
-            filter.insert(
-                "company".to_string(),
-                (
-                    "=".to_string(),
+            let filter = vec![
+                MetadataPredicate::Eq(
+                    "company".to_string(),
                     get_node_3().metadata.get("company").unwrap().to_string(),
                 ),
-            );
-
-            filter.insert(
-                "url".to_string(),
-                (
-                    "=".to_string(),
+                MetadataPredicate::Eq(
+                    "url".to_string(),
                     get_node_3().metadata.get("url").unwrap().to_string(),
                 ),
-            );
+            ];
 
             let nodes = registry
-                .list_nodes(Some(filter), None, None)
+                .list_nodes(&filter, None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 1);
             assert_eq!(nodes[0], get_node_3());
         })
     }
-
     ///
-    /// Verifies that list_nodes returns an error when an incorrect operator is passed as a filter
-    #[test]
-    fn test_list_nodes_filter_error() {
-        run_test(|test_yaml_file_path| {
-            write_to_file(&vec![get_node_1(), get_node_2()], test_yaml_file_path);
-
-            let registry = YamlNodeRegistry::new(test_yaml_file_path)
-                .expect("Failed to create YamlNodeRegistry");
-
-            let mut filter = HashMap::new();
-            filter.insert(
-                "company".to_string(),
-                (
-                    "==".to_string(),
-                    get_node_2().metadata.get("company").unwrap().to_string(),
-                ),
-            );
-
-            let result = registry.list_nodes(Some(filter), None, None);
-
-            match result {
-                Ok(_) => panic!("Incorrect operator was passed.. Error should be returned"),
-                Err(NodeRegistryError::InvalidFilterError(_)) => (),
-                Err(err) => panic!("Should have gotten InvalidFilterError but got {}", err),
-            }
-        })
-    }
-
     ///
     /// Verifies that list_nodes returns an empty list when no nodes fits the filtering criteria.
     ///
@@ -458,18 +353,13 @@ mod test {
             let registry = YamlNodeRegistry::new(test_yaml_file_path)
                 .expect("Failed to create YamlNodeRegistry");
 
-            let mut filter = HashMap::new();
-
-            filter.insert(
+            let filter = vec![MetadataPredicate::Eq(
                 "url".to_string(),
-                (
-                    "=".to_string(),
-                    get_node_3().metadata.get("url").unwrap().to_string(),
-                ),
-            );
+                get_node_3().metadata.get("url").unwrap().to_string(),
+            )];
 
             let nodes = registry
-                .list_nodes(Some(filter), None, None)
+                .list_nodes(&filter, None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 0);
@@ -490,7 +380,7 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(None, Some(2), None)
+                .list_nodes(&[], Some(2), None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 2);
@@ -514,7 +404,7 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(None, None, Some(1))
+                .list_nodes(&[], None, Some(1))
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 2);
@@ -541,7 +431,7 @@ mod test {
                 .expect("Failed to add not to file.");
 
             let nodes = registry
-                .list_nodes(None, None, None)
+                .list_nodes(&[], None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 1);
@@ -590,7 +480,7 @@ mod test {
                 .expect("Failed to delete node");
 
             let nodes = registry
-                .list_nodes(None, None, None)
+                .list_nodes(&[], None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 1);
@@ -638,7 +528,7 @@ mod test {
                 .expect("Failed to update node");
 
             let nodes = registry
-                .list_nodes(None, None, None)
+                .list_nodes(&[], None, None)
                 .expect("Failed to retrieve nodes");
 
             assert_eq!(nodes.len(), 2);
