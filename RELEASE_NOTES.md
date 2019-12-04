@@ -1,5 +1,51 @@
 # Release Notes
 
+## Changes in Splinter 0.3.7
+
+### Highlights:
+* The admin service and the scabbard service can now send catch-up events to
+  bring new subscribers up to date
+
+### Deprecations and Breaking Changes:
+* The splinterd --generate-certs flag, which was deprecated in 0.3.6, is still
+  available by default. In 0.3.8, the flag will not be available by default.
+  Instead, you must use the Rust compile-time feature “generate-certs” to
+  explicitly enable the deprecated --generate-certs flag. For more information,
+  see the 0.3.6 release notes.
+* In the next release, the splinter CLI name will change from “splinter-cli” to
+  “splinter”. “splinter-cli” will exist as an alias for “splinter”, but should
+  be considered deprecated as of release 0.3.8.
+
+### libsplinter:
+* Refactor the admin service and scabbard service to separate the REST API code
+* Change admin service events to include a timestamp of when the event occurred
+* Update the admin service to send all historical events that have occurred
+  since a given timestamp when an app auth handler subscribes
+* Update the scabbard event format to correlate directly with a transaction
+  receipt
+* Remove EventHistory from the REST API because it is no longer used
+* Remove EventDealer from the REST API and replace it with the EventSender
+* Update the event sender to send catch-up events as an asynchronous stream
+* Add state-delta catch-up to the scabbard service, sending all events that
+  occurred since a given event ID when a subscription request is received
+* Update Network to properly clean up connections on disconnection
+
+### splinterd:
+* Fix the splinterd --heartbeat argument to properly accept a value
+
+### Gameroom example:
+* Update the gameroomd app auth handler to track the timestamp of the last-seen
+  admin event
+* Add the timestamp for the last-seen admin event to the app auth handler’s
+  subscription request for getting any catch-up events
+* Update the gameroom state-delta subscriber to track the ID of the last-seen
+  scabbard event
+* Add the ID of the last-seen scabbard event when subscribing to scabbard on
+  restart, which lets the gameroom daemon receive catch-up events
+
+### Private XO example:
+* Replace the transact git repo dependency with a crates.io dependency
+
 ## Changes in Splinter 0.3.6
 
 ### Highlights:
