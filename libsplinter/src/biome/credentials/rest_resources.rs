@@ -28,10 +28,17 @@ use super::{
 #[derive(Deserialize)]
 struct UsernamePassword {
     username: String,
-    password: String,
+    hashed_password: String,
 }
 
 /// Defines a REST endpoint to add a user and credentials to the database
+/// The payload should be in the JSON format
+/// ```
+///   {
+///       "username": <username of new user>
+///       "hashed_password": <hash of the password the user will use to log in>
+///   }
+/// ```
 pub fn make_register_route(
     credentials_store: Arc<SplinterCredentialsStore>,
     user_store: Arc<SplinterUserStore>,
@@ -60,7 +67,7 @@ pub fn make_register_route(
                     let credentials = match credentials_builder
                         .with_user_id(&user_id)
                         .with_username(&username_password.username)
-                        .with_password(&username_password.password)
+                        .with_password(&username_password.hashed_password)
                         .build()
                     {
                         Ok(credential) => credential,
