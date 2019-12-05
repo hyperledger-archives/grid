@@ -14,7 +14,7 @@
 
 [package]
 name = "private-counter-cli"
-version = "0.3.7"
+version = "0.3.8"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
