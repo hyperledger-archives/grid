@@ -23,6 +23,16 @@ interface SetUser {
   (user: User): void;
 }
 
+interface SharedConfig {
+  canopyConfig: {
+    splinterEndpoint: string;
+  };
+}
+
+interface GetSharedConfig {
+  (): SharedConfig;
+}
+
 interface GetUser {
   (): User;
 }
@@ -42,6 +52,7 @@ interface Canopy {
   registerConfigSapling: RegisterConfigSapling;
   getUser: GetUser;
   setUser: SetUser;
+  getSharedConfig: GetSharedConfig;
 }
 
 function assertAndGetWindowCanopy(): Canopy {
@@ -63,5 +74,6 @@ export const {
   registerApp,
   registerConfigSapling,
   getUser,
-  setUser
+  setUser,
+  getSharedConfig
 }: Canopy = canopy;

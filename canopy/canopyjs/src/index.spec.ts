@@ -27,7 +27,10 @@ const minimalUser = { userId: 'MINIMAL' };
   registerConfigSapling: jest.fn(),
   registerApp: jest.fn(),
   getUser: jest.fn(() => completeUser),
-  setUser: jest.fn()
+  setUser: jest.fn(),
+  getSharedConfig: jest.fn(() => ({
+    mock: true
+  }))
 };
 
 interface MockCanopy {
@@ -35,6 +38,7 @@ interface MockCanopy {
   registerApp: jest.Mock;
   getUser: jest.Mock;
   setUser: jest.Mock;
+  getSharedConfig: jest.Mock;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,6 +92,13 @@ describe('CanopyJS', () => {
       const { setUser } = await import('./index');
       setUser(minimalUser);
       expect($CANOPY.setUser.mock.calls[0][0]).toEqual(minimalUser);
+    });
+  });
+
+  describe('getSharedConfig', () => {
+    it('should call getSharedConfig from window object', async () => {
+      const { getSharedConfig } = await import('./index');
+      expect(getSharedConfig()).toEqual({ mock: true });
     });
   });
 });
