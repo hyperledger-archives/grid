@@ -248,48 +248,54 @@ where
         None => None,
     };
 
-    query_list_nodes(registry, link, filters, Some(offset), Some(limit))
+    let predicates = match to_predicates(filters) {
+        Ok(predicates) => predicates,
+        Err(err) => return Box::new(HttpResponse::BadRequest().json(err).into_future()),
+    };
+
+    Box::new(query_list_nodes(
+        registry,
+        link,
+        predicates,
+        Some(offset),
+        Some(limit),
+    ))
 }
 
 fn query_list_nodes<NR>(
     registry: web::Data<NR>,
     link: String,
-    filters: Option<Filter>,
+    filters: Vec<MetadataPredicate>,
     offset: Option<usize>,
     limit: Option<usize>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
+) -> impl Future<Item = HttpResponse, Error = Error>
 where
     NR: NodeRegistryReader + 'static,
 {
-    let filters = match to_predicates(filters) {
-        Ok(filters) => filters,
-        Err(err) => return Box::new(HttpResponse::BadRequest().json(err).into_future()),
-    };
-
-    Box::new(
-        web::block(move || match registry.list_nodes(&filters, None, None) {
-            Ok(nodes) => Ok((registry, filters, nodes.len(), link, limit, offset)),
+    let count_filters = filters.clone();
+    web::block(move || match registry.count_nodes(&count_filters) {
+        Ok(count) => Ok((registry, count)),
+        Err(err) => Err(err),
+    })
+    .and_then(move |(registry, total_count)| {
+        web::block(move || match registry.list_nodes(&filters) {
+            Ok(nodes_iter) => Ok(ListNodesResponse {
+                data: nodes_iter
+                    .skip(offset.as_ref().copied().unwrap_or(0))
+                    .take(limit.as_ref().copied().unwrap_or(std::usize::MAX))
+                    .collect::<Vec<_>>(),
+                paging: get_response_paging_info(limit, offset, &link, total_count as usize),
+            }),
             Err(err) => Err(err),
         })
-        .and_then(|(registry, filters, total_count, link, limit, offset)| {
-            web::block(move || match registry.list_nodes(&filters, limit, offset) {
-                Ok(nodes) => Ok((nodes, link, limit, offset, total_count)),
-                Err(err) => Err(err),
-            })
-        })
-        .then(|res| match res {
-            Ok((nodes, link, limit, offset, total_count)) => {
-                Ok(HttpResponse::Ok().json(ListNodesResponse {
-                    data: nodes,
-                    paging: get_response_paging_info(limit, offset, &link, total_count),
-                }))
-            }
-            Err(err) => {
-                error!("Unable to list nodes: {}", err);
-                Ok(HttpResponse::InternalServerError().into())
-            },
-        }),
-    )
+    })
+    .then(|res| match res {
+        Ok(list_res) => Ok(HttpResponse::Ok().json(list_res)),
+        Err(err) => {
+            error!("Unable to list nodes: {}", err);
+            Ok(HttpResponse::InternalServerError().into())
+        }
+    })
 }
 
 fn to_predicates(filters: Option<Filter>) -> Result<Vec<MetadataPredicate>, String> {

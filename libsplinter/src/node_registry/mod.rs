@@ -79,23 +79,26 @@ impl MetadataPredicate {
 
 /// Provides Node Registry read capabilities.
 pub trait NodeRegistryReader: Send + Sync {
-    /// Returns a list of nodes.
+    /// Returns an iterator over the nodes in the registry.
     ///
     /// # Arguments
     ///
     /// * `predicates` - A list of of predicates to be applied to the resulting list. These are
     /// applied as an AND, from a query perspective. If the list is empty, it is the equivalent of
     /// no predicates (i.e. return all).
+    fn list_nodes<'a, 'b: 'a>(
+        &'b self,
+        predicates: &'a [MetadataPredicate],
+    ) -> Result<Box<dyn Iterator<Item = Node> + Send + 'a>, NodeRegistryError>;
+
+    /// Returns the count of nodes in the registry.
     ///
-    /// * `limit` - The maximum number of items to return
+    /// # Arguments
     ///
-    /// * `offset` - The index of the resource to start the resulting array
-    fn list_nodes(
-        &self,
-        predicates: &[MetadataPredicate],
-        limit: Option<usize>,
-        offset: Option<usize>,
-    ) -> Result<Vec<Node>, NodeRegistryError>;
+    /// * `predicates` - A list of of predicates to be applied before counting the nodes. These are
+    /// applied as an AND, from a query perspective. If the list is empty, it is the equivalent of
+    /// no predicates (i.e. return all).
+    fn count_nodes(&self, predicates: &[MetadataPredicate]) -> Result<u32, NodeRegistryError>;
 
     /// Returns a node with the given identity.
     ///
@@ -163,13 +166,15 @@ impl<NR> NodeRegistryReader for Box<NR>
 where
     NR: NodeRegistryReader + ?Sized,
 {
-    fn list_nodes(
-        &self,
-        filters: &[MetadataPredicate],
-        limit: Option<usize>,
-        offset: Option<usize>,
-    ) -> Result<Vec<Node>, NodeRegistryError> {
-        (**self).list_nodes(filters, limit, offset)
+    fn list_nodes<'a, 'b: 'a>(
+        &'b self,
+        predicates: &'a [MetadataPredicate],
+    ) -> Result<Box<dyn Iterator<Item = Node> + Send + 'a>, NodeRegistryError> {
+        (**self).list_nodes(predicates)
+    }
+
+    fn count_nodes(&self, predicates: &[MetadataPredicate]) -> Result<u32, NodeRegistryError> {
+        (**self).count_nodes(predicates)
     }
 
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {

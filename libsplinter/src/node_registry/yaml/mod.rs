@@ -86,24 +86,28 @@ impl NodeRegistryReader for YamlNodeRegistry {
         }
     }
 
-    fn list_nodes(
-        &self,
-        predicates: &[MetadataPredicate],
-        limit: Option<usize>,
-        offset: Option<usize>,
-    ) -> Result<Vec<Node>, NodeRegistryError> {
+    fn list_nodes<'a, 'b: 'a>(
+        &'b self,
+        predicates: &'a [MetadataPredicate],
+    ) -> Result<Box<dyn Iterator<Item = Node> + Send + 'a>, NodeRegistryError> {
         let nodes = self
             .get_cached_nodes()
             .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
-        let offset_value = offset.unwrap_or(0);
-        let limit_value = limit.unwrap_or_else(|| nodes.len());
+
+        Ok(Box::new(nodes.into_iter().filter(move |node| {
+            predicates.iter().all(|predicate| predicate.apply(node))
+        })))
+    }
+
+    fn count_nodes(&self, predicates: &[MetadataPredicate]) -> Result<u32, NodeRegistryError> {
+        let nodes = self
+            .get_cached_nodes()
+            .map_err(|err| NodeRegistryError::InternalError(Box::new(err)))?;
 
         Ok(nodes
-            .into_iter()
-            .filter(|node| predicates.iter().all(|predicate| predicate.apply(node)))
-            .skip(offset_value)
-            .take(limit_value)
-            .collect())
+            .iter()
+            .filter(move |node| predicates.iter().all(|predicate| predicate.apply(node)))
+            .count() as u32)
     }
 }
 
@@ -255,8 +259,9 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(&[], None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&[])
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 2);
             assert_eq!(nodes[0], get_node_1());
@@ -276,9 +281,9 @@ mod test {
                 .expect("Failed to create YamlNodeRegistry");
 
             let nodes = registry
-                .list_nodes(&[], None, None)
-                .expect("Failed to retrieve nodes");
-
+                .list_nodes(&[])
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
             assert_eq!(nodes.len(), 0);
         })
     }
@@ -300,8 +305,9 @@ mod test {
             )];
 
             let nodes = registry
-                .list_nodes(&filter, None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&filter)
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 1);
             assert_eq!(nodes[0], get_node_2());
@@ -334,8 +340,9 @@ mod test {
             ];
 
             let nodes = registry
-                .list_nodes(&filter, None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&filter)
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 1);
             assert_eq!(nodes[0], get_node_3());
@@ -359,61 +366,14 @@ mod test {
             )];
 
             let nodes = registry
-                .list_nodes(&filter, None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&filter)
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 0);
         })
     }
-    ///
-    /// Verifies that list_nodes returns the correct items when limit value is passed.
-    ///
-    #[test]
-    fn test_list_nodes_limit_ok() {
-        run_test(|test_yaml_file_path| {
-            write_to_file(
-                &vec![get_node_1(), get_node_2(), get_node_3()],
-                test_yaml_file_path,
-            );
 
-            let registry = YamlNodeRegistry::new(test_yaml_file_path)
-                .expect("Failed to create YamlNodeRegistry");
-
-            let nodes = registry
-                .list_nodes(&[], Some(2), None)
-                .expect("Failed to retrieve nodes");
-
-            assert_eq!(nodes.len(), 2);
-            assert_eq!(nodes[0], get_node_1());
-            assert_eq!(nodes[1], get_node_2());
-        })
-    }
-
-    ///
-    /// Verifies that list_nodes returns the correct items when offset value is passed.
-    ///
-    #[test]
-    fn test_list_nodes_offset_ok() {
-        run_test(|test_yaml_file_path| {
-            write_to_file(
-                &vec![get_node_1(), get_node_2(), get_node_3()],
-                test_yaml_file_path,
-            );
-
-            let registry = YamlNodeRegistry::new(test_yaml_file_path)
-                .expect("Failed to create YamlNodeRegistry");
-
-            let nodes = registry
-                .list_nodes(&[], None, Some(1))
-                .expect("Failed to retrieve nodes");
-
-            assert_eq!(nodes.len(), 2);
-            assert_eq!(nodes[0], get_node_2());
-            assert_eq!(nodes[1], get_node_3());
-        })
-    }
-
-    ///
     /// Verifies that add_node successfully adds a new node to the yaml file.
     ///
     #[test]
@@ -431,8 +391,9 @@ mod test {
                 .expect("Failed to add not to file.");
 
             let nodes = registry
-                .list_nodes(&[], None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&[])
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 1);
 
@@ -480,8 +441,9 @@ mod test {
                 .expect("Failed to delete node");
 
             let nodes = registry
-                .list_nodes(&[], None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&[])
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 1);
 
@@ -528,8 +490,9 @@ mod test {
                 .expect("Failed to update node");
 
             let nodes = registry
-                .list_nodes(&[], None, None)
-                .expect("Failed to retrieve nodes");
+                .list_nodes(&[])
+                .expect("Failed to retrieve nodes")
+                .collect::<Vec<_>>();
 
             assert_eq!(nodes.len(), 2);
             assert_eq!(nodes[1], get_node_2());
