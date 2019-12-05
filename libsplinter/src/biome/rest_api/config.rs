@@ -14,6 +14,11 @@
 
 use std::time::Duration;
 
+#[cfg(feature = "biome-credentials")]
+use super::super::credentials::PasswordEncryptionCost;
+#[cfg(feature = "biome-credentials")]
+use std::convert::TryFrom;
+
 use super::error::BiomeRestConfigBuilderError;
 
 const DEFAULT_ISSUER: &str = "self-issued";
@@ -26,6 +31,9 @@ pub struct BiomeRestConfig {
     issuer: String,
     /// Duration of JWT tokens issued by this service
     access_token_duration: Duration,
+    #[cfg(feature = "biome-credentials")]
+    /// Cost for encripting users password
+    password_encryption_cost: PasswordEncryptionCost,
 }
 
 impl BiomeRestConfig {
@@ -36,12 +44,19 @@ impl BiomeRestConfig {
     pub fn access_token_duration(&self) -> Duration {
         self.access_token_duration.to_owned()
     }
+
+    #[cfg(feature = "biome-credentials")]
+    pub fn password_encryption_cost(&self) -> PasswordEncryptionCost {
+        self.password_encryption_cost.clone()
+    }
 }
 
 /// Builder for BiomeRestConfig
 pub struct BiomeRestConfigBuilder {
     issuer: Option<String>,
     access_token_duration: Option<Duration>,
+    #[cfg(feature = "biome-credentials")]
+    password_encryption_cost: Option<String>,
 }
 
 impl Default for BiomeRestConfigBuilder {
@@ -49,6 +64,8 @@ impl Default for BiomeRestConfigBuilder {
         BiomeRestConfigBuilder {
             issuer: Some(DEFAULT_ISSUER.to_string()),
             access_token_duration: Some(Duration::from_secs(DEFAULT_DURATION)),
+            #[cfg(feature = "biome-credentials")]
+            password_encryption_cost: Some("high".to_string()),
         }
     }
 }
@@ -58,6 +75,8 @@ impl BiomeRestConfigBuilder {
         BiomeRestConfigBuilder {
             issuer: None,
             access_token_duration: None,
+            #[cfg(feature = "biome-credentials")]
+            password_encryption_cost: None,
         }
     }
 
@@ -68,6 +87,12 @@ impl BiomeRestConfigBuilder {
 
     pub fn with_access_token_duration_in_secs(mut self, duration: u64) -> Self {
         self.access_token_duration = Some(Duration::from_secs(duration));
+        self
+    }
+
+    #[cfg(feature = "biome-credentials")]
+    pub fn with_password_encryption_cost(mut self, cost: &str) -> Self {
+        self.password_encryption_cost = Some(cost.to_string());
         self
     }
 
@@ -82,9 +107,17 @@ impl BiomeRestConfigBuilder {
         }
         let access_token_duration = self.access_token_duration.unwrap_or_default();
 
+        #[cfg(feature = "biome-credentials")]
+        let password_encryption_cost = PasswordEncryptionCost::try_from(
+            self.password_encryption_cost.unwrap_or_default().as_ref(),
+        )
+        .map_err(|err| BiomeRestConfigBuilderError::InvalidValue(err.to_string()))?;
+
         Ok(BiomeRestConfig {
             issuer,
             access_token_duration,
+            #[cfg(feature = "biome-credentials")]
+            password_encryption_cost,
         })
     }
 }

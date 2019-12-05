@@ -90,6 +90,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
                 resources.push(make_register_route(
                     credentials_store.clone(),
                     self.user_store.clone(),
+                    self.rest_config.clone(),
                 ));
                 resources.push(make_login_route(
                     credentials_store.clone(),

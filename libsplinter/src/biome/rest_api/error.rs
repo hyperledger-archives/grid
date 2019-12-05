@@ -57,6 +57,8 @@ impl From<BiomeRestConfigBuilderError> for BiomeRestResourceManagerBuilderError 
 pub enum BiomeRestConfigBuilderError {
     /// Returned if a required field is missing
     MissingRequiredField(String),
+    /// Returned if a value provided is not valid
+    InvalidValue(String),
 }
 
 impl Error for BiomeRestConfigBuilderError {}
@@ -65,6 +67,9 @@ impl fmt::Display for BiomeRestConfigBuilderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BiomeRestConfigBuilderError::MissingRequiredField(ref s) => {
+                write!(f, "failed to build BiomeRestResourceManager: {}", s)
+            }
+            BiomeRestConfigBuilderError::InvalidValue(ref s) => {
                 write!(f, "failed to build BiomeRestResourceManager: {}", s)
             }
         }

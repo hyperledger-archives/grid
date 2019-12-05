@@ -44,10 +44,12 @@ struct UsernamePassword {
 pub fn make_register_route(
     credentials_store: Arc<SplinterCredentialsStore>,
     user_store: Arc<SplinterUserStore>,
+    rest_config: Arc<BiomeRestConfig>,
 ) -> Resource {
     Resource::build("/biome/register").add_method(Method::Post, move |_, payload| {
         let credentials_store = credentials_store.clone();
         let user_store = user_store.clone();
+        let rest_config = rest_config.clone();
         Box::new(into_bytes(payload).and_then(move |bytes| {
             let username_password = match serde_json::from_slice::<UsernamePassword>(&bytes) {
                 Ok(val) => val,
@@ -70,6 +72,7 @@ pub fn make_register_route(
                         .with_user_id(&user_id)
                         .with_username(&username_password.username)
                         .with_password(&username_password.hashed_password)
+                        .with_password_encryption_cost(rest_config.password_encryption_cost())
                         .build()
                     {
                         Ok(credential) => credential,
