@@ -80,6 +80,7 @@ experimental = [
     "connection-manager",
     "connection-manager-notification-iter-try-next",
     "database",
+    "matrix",
     "zmq-transport",
 ]
 
@@ -87,11 +88,12 @@ biome = ["database", "jsonwebtoken", "rand"]
 biome-credentials = ["biome", "database", "bcrypt"]
 biome-notifications = ["biome", "database"]
 circuit-read = []
-connection-manager = []
+connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel", "diesel_migrations"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
 rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
+matrix = []
 sawtooth-signing-compat = ["sawtooth-sdk"]
 zmq-transport = ["zmq"]
 
