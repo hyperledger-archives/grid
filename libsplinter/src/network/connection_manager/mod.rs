@@ -194,7 +194,7 @@ impl ShutdownHandle {
     pub fn shutdown(&self) {
         self.hb_shutdown_handle.shutdown();
 
-        if let Err(_) = self.sender.send(CmMessage::Shutdown) {
+        if self.sender.send(CmMessage::Shutdown).is_err() {
             warn!("Connection manager is no longer running");
         }
     }
@@ -251,7 +251,7 @@ impl ConnectionState {
 
     fn add_connection(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
         if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count = meta.ref_count + 1;
+            meta.ref_count += 1;
         } else {
             let connection = self.transport.connect(endpoint).map_err(|err| {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
@@ -279,7 +279,7 @@ impl ConnectionState {
         endpoint: &str,
     ) -> Result<Option<ConnectionMetadata>, ConnectionManagerError> {
         let meta = if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count = meta.ref_count - 1;
+            meta.ref_count -= 1;
             meta.clone()
         } else {
             return Ok(None);
@@ -340,7 +340,7 @@ fn handle_request(req: CmRequest, state: &mut ConnectionState) {
         },
     };
 
-    if let Err(_) = req.sender.send(response) {
+    if req.sender.send(response).is_err() {
         error!("Requester has dropped its connection to connection manager");
     }
 }
@@ -350,7 +350,7 @@ fn notify_subscribers(
     notifications: Vec<CmNotification>,
 ) {
     for (id, sender) in subscribers.clone() {
-        if let Err(_) = sender.send(notifications.clone()) {
+        if sender.send(notifications.clone()).is_err() {
             warn!("subscriber has dropped its connection to connection manager");
             subscribers.remove(&id);
         }
