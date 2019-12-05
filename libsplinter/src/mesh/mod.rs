@@ -51,6 +51,8 @@
 
 mod control;
 mod incoming;
+#[cfg(feature = "matrix")]
+mod matrix;
 mod outgoing;
 mod pool;
 mod reactor;
@@ -63,6 +65,8 @@ use std::time::Duration;
 
 pub use crate::mesh::control::{AddError, Control, RemoveError};
 pub use crate::mesh::incoming::Incoming;
+#[cfg(feature = "matrix")]
+pub use crate::mesh::matrix::{MeshLifeCycle, MeshMatrixSender};
 pub use crate::mesh::outgoing::Outgoing;
 
 use crate::mesh::reactor::Reactor;
@@ -173,6 +177,18 @@ impl Mesh {
     /// This is useful if an object only needs to receive and doesn't need to send.
     pub fn incoming(&self) -> Incoming {
         self.incoming.clone()
+    }
+
+    #[cfg(feature = "matrix")]
+    pub fn get_life_cycle(&self) -> MeshLifeCycle {
+        let mesh = self.clone();
+        MeshLifeCycle::new(mesh)
+    }
+
+    #[cfg(feature = "matrix")]
+    pub fn get_sender(&self) -> MeshMatrixSender {
+        let mesh = self.clone();
+        MeshMatrixSender::new(mesh)
     }
 }
 
