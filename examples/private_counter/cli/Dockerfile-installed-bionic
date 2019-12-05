@@ -15,7 +15,7 @@
 FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
-COPY examples/private_counter/cli/src src
+COPY examples/private_counter/cli/ /build/examples/private_counter/cli
 
 # Build the project
 WORKDIR examples/private_counter/cli
