@@ -227,6 +227,21 @@ impl NotificationHandler {
     }
 }
 
+impl Iterator for NotificationHandler {
+    type Item = CmNotification;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.recv.recv() {
+            Ok(notification) => Some(notification),
+            Err(_) => {
+                // This is expected if the connection manager shuts down before
+                // this end
+                None
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 struct ConnectionMetadata {
     id: usize,
@@ -685,5 +700,51 @@ pub mod tests {
                 error_message: None,
             }
         );
+    }
+
+    #[test]
+    /// Tests that notifier iterator correctly exists when sender
+    /// is dropped.
+    ///
+    /// Procedure:
+    ///
+    /// The test creates a sync channel and a notifier, then it
+    /// creates a thread that send HeartbeatSent notifications to
+    /// the notifier.
+    ///
+    /// Asserts:
+    ///
+    /// The notifications sent are received by the Notifier
+    /// correctly
+    ///
+    /// That the total number of notifications sent equals 5
+    fn test_notifications_handler_iterator() {
+        let (send, recv) = sync_channel(2);
+
+        let nh = NotificationHandler { recv };
+
+        let join_handle = thread::spawn(move || {
+            for _ in 0..5 {
+                send.send(CmNotification::HeartbeatSent {
+                    endpoint: "tcp://localhost:3030".to_string(),
+                })
+                .unwrap();
+            }
+        });
+
+        let mut notifications_sent = 0;
+        for n in nh {
+            assert_eq!(
+                n,
+                CmNotification::HeartbeatSent {
+                    endpoint: "tcp://localhost:3030".to_string()
+                }
+            );
+            notifications_sent += 1;
+        }
+
+        assert_eq!(notifications_sent, 5);
+
+        join_handle.join().unwrap();
     }
 }
