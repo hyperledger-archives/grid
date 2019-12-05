@@ -18,6 +18,8 @@ mod pacemaker;
 
 use std;
 use std::collections::HashMap;
+#[cfg(feature = "connection-manager-notification-iter-try-next")]
+use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
 
@@ -206,11 +208,13 @@ pub struct NotificationHandler {
     recv: Receiver<CmNotification>,
 }
 
+#[cfg(feature = "connection-manager-notification-iter-try-next")]
 impl NotificationHandler {
-    pub fn listen(&self) -> Result<CmNotification, ConnectionManagerError> {
-        match self.recv.recv() {
-            Ok(notifications) => Ok(notifications),
-            Err(_) => Err(ConnectionManagerError::SendMessageError(
+    pub fn try_next(&self) -> Result<Option<CmNotification>, ConnectionManagerError> {
+        match self.recv.try_recv() {
+            Ok(notifications) => Ok(Some(notifications)),
+            Err(TryRecvError::Empty) => Ok(None),
+            Err(TryRecvError::Disconnected) => Err(ConnectionManagerError::SendMessageError(
                 "The connection manager is no longer running".into(),
             )),
         }
@@ -569,9 +573,9 @@ pub mod tests {
             }
         );
 
-        let subscriber = connector.subscribe().unwrap();
+        let mut subscriber = connector.subscribe().unwrap();
 
-        let notification = subscriber.listen().unwrap();
+        let notification = subscriber.next().unwrap();
 
         assert!(
             notification
@@ -617,9 +621,9 @@ pub mod tests {
             }
         );
 
-        let subscriber = connector.subscribe().unwrap();
+        let mut subscriber = connector.subscribe().unwrap();
 
-        let notification = subscriber.listen().unwrap();
+        let notification = subscriber.next().unwrap();
 
         assert!(
             notification
