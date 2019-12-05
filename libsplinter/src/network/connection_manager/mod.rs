@@ -30,24 +30,32 @@ pub use messages::{
 use pacemaker::Pacemaker;
 use protobuf::Message;
 
-use crate::mesh::{Envelope, Mesh};
+use crate::matrix::{MatrixLifeCycle, MatrixSender};
 use crate::protos::network::{NetworkHeartbeat, NetworkMessage, NetworkMessageType};
 use crate::transport::Transport;
 
 const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const CHANNEL_CAPACITY: usize = 15;
 
-pub struct ConnectionManager {
+pub struct ConnectionManager<T: 'static, U: 'static>
+where
+    T: MatrixLifeCycle,
+    U: MatrixSender,
+{
     pacemaker: Pacemaker,
-    connection_state: Option<ConnectionState>,
+    connection_state: Option<ConnectionState<T, U>>,
     join_handle: Option<thread::JoinHandle<()>>,
     sender: Option<SyncSender<CmMessage>>,
     shutdown_handle: Option<ShutdownHandle>,
 }
 
-impl ConnectionManager {
-    pub fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
-        let connection_state = Some(ConnectionState::new(mesh, transport));
+impl<T, U> ConnectionManager<T, U>
+where
+    T: MatrixLifeCycle,
+    U: MatrixSender,
+{
+    pub fn new(life_cycle: T, matrix_sender: U, transport: Box<dyn Transport + Send>) -> Self {
+        let connection_state = Some(ConnectionState::new(life_cycle, matrix_sender, transport));
         let pacemaker = Pacemaker::new(DEFAULT_HEARTBEAT_INTERVAL);
 
         Self {
@@ -236,16 +244,26 @@ struct ConnectionMetadata {
     ref_count: u64,
 }
 
-struct ConnectionState {
+struct ConnectionState<T, U>
+where
+    T: MatrixLifeCycle,
+    U: MatrixSender,
+{
     connections: HashMap<String, ConnectionMetadata>,
-    mesh: Mesh,
+    life_cycle: T,
+    matrix_sender: U,
     transport: Box<dyn Transport>,
 }
 
-impl ConnectionState {
-    fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
+impl<T, U> ConnectionState<T, U>
+where
+    T: MatrixLifeCycle,
+    U: MatrixSender,
+{
+    fn new(life_cycle: T, matrix_sender: U, transport: Box<dyn Transport + Send>) -> Self {
         Self {
-            mesh,
+            life_cycle,
+            matrix_sender,
             transport,
             connections: HashMap::new(),
         }
@@ -259,7 +277,7 @@ impl ConnectionState {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
             })?;
 
-            let id = self.mesh.add(connection).map_err(|err| {
+            let id = self.life_cycle.add(connection).map_err(|err| {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
             })?;
 
@@ -289,7 +307,7 @@ impl ConnectionState {
 
         if meta.ref_count < 1 {
             self.connections.remove(endpoint);
-            self.mesh.remove(meta.id).map_err(|err| {
+            self.life_cycle.remove(meta.id).map_err(|err| {
                 ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err))
             })?;
         }
@@ -306,12 +324,15 @@ impl ConnectionState {
         self.connections.clone()
     }
 
-    fn mesh(&self) -> Mesh {
-        self.mesh.clone()
+    fn matrix_sender(&self) -> U {
+        self.matrix_sender.clone()
     }
 }
 
-fn handle_request(req: CmRequest, state: &mut ConnectionState) {
+fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
+    req: CmRequest,
+    state: &mut ConnectionState<T, U>,
+) {
     let response = match req.payload {
         CmPayload::AddConnection { ref endpoint } => {
             if let Err(err) = state.add_connection(endpoint) {
@@ -360,8 +381,8 @@ fn notify_subscribers(
     });
 }
 
-fn send_heartbeats(
-    state: &mut ConnectionState,
+fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
+    state: &mut ConnectionState<T, U>,
     subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
 ) {
     let heartbeat_message = match create_heartbeat() {
@@ -371,11 +392,12 @@ fn send_heartbeats(
             return;
         }
     };
+
     for (endpoint, metadata) in state.connection_metadata() {
         info!("Sending heartbeat to {}", endpoint);
         if let Err(err) = state
-            .mesh()
-            .send(Envelope::new(metadata.id, heartbeat_message.clone()))
+            .matrix_sender()
+            .send(metadata.id, heartbeat_message.clone())
         {
             error!(
                 "failed to send heartbeat: {:?} attempting reconnection",
@@ -434,6 +456,7 @@ fn create_heartbeat() -> Result<Vec<u8>, ConnectionManagerError> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::mesh::Mesh;
     use crate::transport::inproc::InprocTransport;
     use crate::transport::raw::RawTransport;
 
@@ -443,7 +466,7 @@ pub mod tests {
         transport.listen("inproc://test").unwrap();
         let mesh = Mesh::new(512, 128);
 
-        let mut cm = ConnectionManager::new(mesh, transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
 
         cm.start().unwrap();
         cm.shutdown_and_wait();
@@ -459,7 +482,7 @@ pub mod tests {
         });
 
         let mesh = Mesh::new(512, 128);
-        let mut cm = ConnectionManager::new(mesh, transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -486,7 +509,7 @@ pub mod tests {
         });
 
         let mesh = Mesh::new(512, 128);
-        let mut cm = ConnectionManager::new(mesh, transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -527,7 +550,7 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -573,7 +596,7 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let response = connector
@@ -621,7 +644,7 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let add_response = connector
@@ -659,7 +682,7 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
         let remove_response = connector.remove_connection("tcp://localhost:3030").unwrap();
