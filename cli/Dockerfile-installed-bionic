@@ -31,6 +31,9 @@ RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 FROM ubuntu:bionic
 
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
+
 COPY --from=builder /build/target/debian/splinter-cli_*.deb /tmp
 
 RUN apt-get update \

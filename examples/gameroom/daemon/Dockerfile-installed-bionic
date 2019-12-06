@@ -31,6 +31,9 @@ RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 # -------------=== gameroomd docker build ===-------------
 FROM ubuntu:bionic
 
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
+
 RUN apt-get update \
  && apt-get install -y \
     curl \

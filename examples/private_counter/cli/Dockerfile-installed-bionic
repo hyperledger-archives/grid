@@ -27,6 +27,9 @@ RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 # -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic
 
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
+
 COPY --from=BUILDER /build/target/debian/private-counter-cli*.deb /tmp
 
 RUN apt-get update \
