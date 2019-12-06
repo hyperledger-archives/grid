@@ -13,8 +13,8 @@
 // limitations under the License.
 
 mod error;
-mod heartbeat_monitor;
 mod messages;
+mod pacemaker;
 
 use std;
 use std::collections::HashMap;
@@ -22,8 +22,8 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
 
 pub use error::ConnectionManagerError;
-use heartbeat_monitor::{HbShutdownHandle, HeartbeatMonitor};
 pub use messages::{CmMessage, CmNotification, CmPayload, CmRequest, CmResponse, CmResponseStatus};
+use pacemaker::Pacemaker;
 use protobuf::Message;
 use uuid::Uuid;
 
@@ -35,7 +35,7 @@ const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const CHANNEL_CAPACITY: usize = 15;
 
 pub struct ConnectionManager {
-    hb_monitor: HeartbeatMonitor,
+    pacemaker: Pacemaker,
     connection_state: Option<ConnectionState>,
     join_handle: Option<thread::JoinHandle<()>>,
     sender: Option<SyncSender<CmMessage>>,
@@ -45,10 +45,10 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
         let connection_state = Some(ConnectionState::new(mesh, transport));
-        let hb_monitor = HeartbeatMonitor::new(DEFAULT_HEARTBEAT_INTERVAL);
+        let pacemaker = Pacemaker::new(DEFAULT_HEARTBEAT_INTERVAL);
 
         Self {
-            hb_monitor,
+            pacemaker,
             connection_state,
             join_handle: None,
             sender: None,
@@ -89,11 +89,11 @@ impl ConnectionManager {
                 }
             })?;
 
-        self.hb_monitor.start(sender.clone())?;
+        self.pacemaker.start(sender.clone())?;
         self.join_handle = Some(join_handle);
         self.shutdown_handle = Some(ShutdownHandle {
             sender: sender.clone(),
-            hb_shutdown_handle: self.hb_monitor.shutdown_handle().unwrap(),
+            pacemaker_shutdown_handle: self.pacemaker.shutdown_handle().unwrap(),
         });
         self.sender = Some(sender.clone());
 
@@ -105,7 +105,7 @@ impl ConnectionManager {
     }
 
     pub fn await_shutdown(self) {
-        self.hb_monitor.await_shutdown();
+        self.pacemaker.await_shutdown();
 
         let join_handle = if let Some(jh) = self.join_handle {
             jh
@@ -187,12 +187,12 @@ impl Connector {
 #[derive(Clone)]
 pub struct ShutdownHandle {
     sender: SyncSender<CmMessage>,
-    hb_shutdown_handle: HbShutdownHandle,
+    pacemaker_shutdown_handle: pacemaker::ShutdownHandle,
 }
 
 impl ShutdownHandle {
     pub fn shutdown(&self) {
-        self.hb_shutdown_handle.shutdown();
+        self.pacemaker_shutdown_handle.shutdown();
 
         if self.sender.send(CmMessage::Shutdown).is_err() {
             warn!("Connection manager is no longer running");

@@ -23,13 +23,13 @@ use std::time::Duration;
 
 use crate::network::connection_manager::{error::ConnectionManagerError, messages::CmMessage};
 
-pub struct HeartbeatMonitor {
+pub struct Pacemaker {
     interval: u64,
     join_handle: Option<thread::JoinHandle<()>>,
-    shutdown_handle: Option<HbShutdownHandle>,
+    shutdown_handle: Option<ShutdownHandle>,
 }
 
-impl HeartbeatMonitor {
+impl Pacemaker {
     pub fn new(interval: u64) -> Self {
         Self {
             interval,
@@ -38,7 +38,10 @@ impl HeartbeatMonitor {
         }
     }
 
-    pub fn start(&mut self, cm_sender: SyncSender<CmMessage>) -> Result<(), ConnectionManagerError> {
+    pub fn start(
+        &mut self,
+        cm_sender: SyncSender<CmMessage>,
+    ) -> Result<(), ConnectionManagerError> {
         if self.join_handle.is_some() {
             return Ok(());
         }
@@ -66,12 +69,12 @@ impl HeartbeatMonitor {
             })?;
 
         self.join_handle = Some(join_handle);
-        self.shutdown_handle = Some(HbShutdownHandle { running });
+        self.shutdown_handle = Some(ShutdownHandle { running });
 
         Ok(())
     }
 
-    pub fn shutdown_handle(&self) -> Option<HbShutdownHandle> {
+    pub fn shutdown_handle(&self) -> Option<ShutdownHandle> {
         self.shutdown_handle.clone()
     }
 
@@ -89,11 +92,11 @@ impl HeartbeatMonitor {
 }
 
 #[derive(Clone)]
-pub struct HbShutdownHandle {
+pub struct ShutdownHandle {
     running: Arc<AtomicBool>,
 }
 
-impl HbShutdownHandle {
+impl ShutdownHandle {
     pub fn shutdown(&self) {
         self.running.store(false, Ordering::SeqCst)
     }
