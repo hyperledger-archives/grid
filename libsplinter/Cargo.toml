@@ -35,11 +35,13 @@ diesel_migrations = { version = "1.4", optional = true }
 flate2 = "1.0.10"
 futures = "0.1"
 hyper = { version = "0.12", optional = true }
+jsonwebtoken = { version = "6.0", optional = true }
 log = "0.3.0"
 mio = "0.6"
 mio-extras = "2"
 openssl = "0.10"
 protobuf = "2"
+rand = { version = "0.7", optional = true }
 sawtooth = { version = "0.2", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.4"
 sawtooth-sdk = { version = "0.3", optional = true }
@@ -77,7 +79,7 @@ zmq-transport = ["zmq"]
 ursa-compat = ["ursa"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 events = ["hyper", "tokio", "awc"]
-biome = ["database"]
+biome = ["database", "jsonwebtoken", "rand"]
 biome-credentials = ["biome", "database", "bcrypt"]
 biome-notifications = ["biome", "database"]
 database = ["diesel", "diesel_migrations"]

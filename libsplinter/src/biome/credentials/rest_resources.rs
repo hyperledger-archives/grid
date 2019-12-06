@@ -19,6 +19,8 @@ use crate::actix_web::HttpResponse;
 use crate::futures::{Future, IntoFuture};
 use crate::rest_api::{into_bytes, ErrorResponse, Method, Resource};
 
+use super::super::rest_api::BiomeRestConfig;
+use super::super::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
 use super::super::users::{user_store::SplinterUserStore, SplinterUser, UserStore};
 use super::{
     credentials_store::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
@@ -28,17 +30,26 @@ use super::{
 #[derive(Deserialize)]
 struct UsernamePassword {
     username: String,
-    password: String,
+    hashed_password: String,
 }
 
 /// Defines a REST endpoint to add a user and credentials to the database
+/// The payload should be in the JSON format
+/// ```
+///   {
+///       "username": <username of new user>
+///       "hashed_password": <hash of the password the user will use to log in>
+///   }
+/// ```
 pub fn make_register_route(
     credentials_store: Arc<SplinterCredentialsStore>,
     user_store: Arc<SplinterUserStore>,
+    rest_config: Arc<BiomeRestConfig>,
 ) -> Resource {
     Resource::build("/biome/register").add_method(Method::Post, move |_, payload| {
         let credentials_store = credentials_store.clone();
         let user_store = user_store.clone();
+        let rest_config = rest_config.clone();
         Box::new(into_bytes(payload).and_then(move |bytes| {
             let username_password = match serde_json::from_slice::<UsernamePassword>(&bytes) {
                 Ok(val) => val,
@@ -60,7 +71,8 @@ pub fn make_register_route(
                     let credentials = match credentials_builder
                         .with_user_id(&user_id)
                         .with_username(&username_password.username)
-                        .with_password(&username_password.password)
+                        .with_password(&username_password.hashed_password)
+                        .with_password_encryption_cost(rest_config.password_encryption_cost())
                         .build()
                     {
                         Ok(credential) => credential,
@@ -96,6 +108,97 @@ pub fn make_register_route(
                 }
                 Err(err) => {
                     debug!("Failed to add new user to database {}", err);
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future()
+                }
+            }
+        }))
+    })
+}
+
+/// Defines a REST endpoint for login
+pub fn make_login_route(
+    credentials_store: Arc<SplinterCredentialsStore>,
+    rest_config: Arc<BiomeRestConfig>,
+    token_issuer: Arc<AccessTokenIssuer>,
+) -> Resource {
+    Resource::build("/biome/login").add_method(Method::Post, move |_, payload| {
+        let credentials_store = credentials_store.clone();
+        let rest_config = rest_config.clone();
+        let token_issuer = token_issuer.clone();
+        Box::new(into_bytes(payload).and_then(move |bytes| {
+            let username_password = match serde_json::from_slice::<UsernamePassword>(&bytes) {
+                Ok(val) => val,
+                Err(err) => {
+                    debug!("Error parsing payload {}", err);
+                    return HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&format!(
+                            "Failed to parse payload: {}",
+                            err
+                        )))
+                        .into_future();
+                }
+            };
+
+            let credentials =
+                match credentials_store.fetch_credential_by_username(&username_password.username) {
+                    Ok(credentials) => credentials,
+                    Err(err) => {
+                        debug!("Failed to fetch credentials {}", err);
+                        match err {
+                            CredentialsStoreError::NotFoundError(_) => {
+                                return HttpResponse::BadRequest()
+                                    .json(ErrorResponse::bad_request(&format!(
+                                        "Username not found: {}",
+                                        username_password.username
+                                    )))
+                                    .into_future();
+                            }
+                            _ => {
+                                return HttpResponse::InternalServerError()
+                                    .json(ErrorResponse::internal_error())
+                                    .into_future()
+                            }
+                        }
+                    }
+                };
+
+            match credentials.verify_password(&username_password.hashed_password) {
+                Ok(is_valid) => {
+                    if is_valid {
+                        let claim_builder: ClaimsBuilder = Default::default();
+                        let claim = match claim_builder.with_user_id(&credentials.user_id)
+                            .with_issuer(&rest_config.issuer())
+                            .with_duration(rest_config.access_token_duration())
+                            .build() {
+                                Ok(claim) => claim,
+                                Err(err) => {
+                                    debug!("Failed to build claim {}", err);
+                                    return HttpResponse::InternalServerError()
+                                        .json(ErrorResponse::internal_error())
+                                        .into_future()}
+                                };
+
+                        let token = match token_issuer.issue_token_with_claims(claim) {
+                                Ok(token) => token,
+                                Err(err) => {
+                                    debug!("Failed to issue token {}", err);
+                                    return HttpResponse::InternalServerError()
+                                        .json(ErrorResponse::internal_error())
+                                        .into_future()}
+                                };
+                        HttpResponse::Ok()
+                            .json(json!({ "message": "Successful login", "user_id": credentials.user_id ,"token": token  }))
+                            .into_future()
+                    } else {
+                        HttpResponse::BadRequest()
+                            .json(ErrorResponse::bad_request("Invalid password"))
+                            .into_future()
+                    }
+                }
+                Err(err) => {
+                    debug!("Failed to verify password {}", err);
                     HttpResponse::InternalServerError()
                         .json(ErrorResponse::internal_error())
                         .into_future()

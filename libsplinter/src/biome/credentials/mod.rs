@@ -21,11 +21,16 @@ pub mod database;
 mod error;
 pub(in crate::biome) mod rest_resources;
 
-use bcrypt::{hash, DEFAULT_COST};
+use std::convert::TryFrom;
+
+use bcrypt::{hash, verify, DEFAULT_COST};
 
 use database::models::{NewUserCredentialsModel, UserCredentialsModel};
 
-pub use error::{CredentialsStoreError, UserCredentialsBuilderError};
+pub use error::{CredentialsStoreError, UserCredentialsBuilderError, UserCredentialsError};
+
+const MEDIUM_COST: u32 = 8;
+const LOW_COST: u32 = 4;
 
 /// Represents crendentials used to authenticate a user
 pub struct UserCredentials {
@@ -34,12 +39,19 @@ pub struct UserCredentials {
     password: String,
 }
 
+impl UserCredentials {
+    pub fn verify_password(&self, password: &str) -> Result<bool, UserCredentialsError> {
+        Ok(verify(password, &self.password)?)
+    }
+}
+
 /// Builder for UsersCredential. It hashes the password upon build.
 #[derive(Default)]
 pub struct UserCredentialsBuilder {
     user_id: Option<String>,
     username: Option<String>,
     password: Option<String>,
+    password_encryption_cost: Option<PasswordEncryptionCost>,
 }
 
 impl UserCredentialsBuilder {
@@ -65,7 +77,7 @@ impl UserCredentialsBuilder {
         self
     }
 
-    // Sets the password for the credentials
+    /// Sets the password for the credentials
     ///
     /// # Arguments
     ///
@@ -73,6 +85,20 @@ impl UserCredentialsBuilder {
     ///
     pub fn with_password(mut self, password: &str) -> UserCredentialsBuilder {
         self.password = Some(password.to_owned());
+        self
+    }
+
+    /// Sets the cost to encrypt the password for the credentials
+    ///
+    /// # Arguments
+    ///
+    /// * `cost`: cost of the password encryption, default is high
+    ///
+    pub fn with_password_encryption_cost(
+        mut self,
+        cost: PasswordEncryptionCost,
+    ) -> UserCredentialsBuilder {
+        self.password_encryption_cost = Some(cost);
         self
     }
 
@@ -85,12 +111,18 @@ impl UserCredentialsBuilder {
         let username = self.username.ok_or_else(|| {
             UserCredentialsBuilderError::MissingRequiredField("Missing user_id".to_string())
         })?;
+
+        let cost = self
+            .password_encryption_cost
+            .unwrap_or(PasswordEncryptionCost::High);
+
         let hashed_password = hash(
             self.password.ok_or_else(|| {
                 UserCredentialsBuilderError::MissingRequiredField("Missing password".to_string())
             })?,
-            DEFAULT_COST,
+            cost.to_value(),
         )?;
+
         Ok(UserCredentials {
             user_id,
             username,
@@ -140,9 +172,17 @@ pub trait CredentialsStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `user_id` - The unique identifier of the user for which the credentials will be returned
+    ///  * `user_id` - The unique identifier of the user credential belongs to
     ///
-    fn fetch_credential(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
+    fn fetch_credential_by_user_id(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
+
+    /// Fetches a credential for a user
+    ///
+    /// # Arguments
+    ///
+    ///  * `username` - The username the user uses for login
+    ///
+    fn fetch_credential_by_username(&self, username: &str) -> Result<T, CredentialsStoreError>;
 }
 
 impl From<UserCredentialsModel> for UserCredentials {
@@ -161,6 +201,40 @@ impl Into<NewUserCredentialsModel> for UserCredentials {
             user_id: self.user_id,
             username: self.username,
             password: self.password,
+        }
+    }
+}
+
+/// Cost to encrypt password. The recommneded value is HIGH. Values LOW and MEDIUM may be used for
+/// development and testing as hashing and verifying passwords will be completed faster.
+#[derive(Debug, Deserialize, Clone)]
+pub enum PasswordEncryptionCost {
+    High,
+    Medium,
+    Low,
+}
+
+impl TryFrom<&str> for PasswordEncryptionCost {
+    type Error = String;
+    fn try_from(value: &str) -> Result<PasswordEncryptionCost, Self::Error> {
+        match value.to_lowercase().as_ref() {
+            "high" => Ok(PasswordEncryptionCost::High),
+            "medium" => Ok(PasswordEncryptionCost::Medium),
+            "low" => Ok(PasswordEncryptionCost::Low),
+            _ => Err(format!(
+                "Invalid cost value {}, must be high, medium or low",
+                value
+            )),
+        }
+    }
+}
+
+impl PasswordEncryptionCost {
+    fn to_value(&self) -> u32 {
+        match self {
+            PasswordEncryptionCost::High => DEFAULT_COST,
+            PasswordEncryptionCost::Medium => MEDIUM_COST,
+            PasswordEncryptionCost::Low => LOW_COST,
         }
     }
 }

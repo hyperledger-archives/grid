@@ -41,6 +41,7 @@
 //!     .run();
 //! ```
 
+mod config;
 mod error;
 
 use std::sync::Arc;
@@ -48,20 +49,31 @@ use std::sync::Arc;
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
+use super::secrets::{AutoSecretManager, SecretManager};
 use super::users::user_store::SplinterUserStore;
 
+pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;
 
 #[cfg(feature = "biome-credentials")]
 use super::credentials::{
-    credentials_store::SplinterCredentialsStore, rest_resources::make_register_route,
+    credentials_store::SplinterCredentialsStore,
+    rest_resources::{make_login_route, make_register_route},
 };
+
+#[allow(unused_imports)]
+use super::sessions::AccessTokenIssuer;
 
 /// Manages Biome REST API endpoints
 pub struct BiomeRestResourceManager {
-    // This is only used if the biome-credentials feature is enabled
+    // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
     user_store: Arc<SplinterUserStore>,
+    // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
+    #[allow(dead_code)]
+    rest_config: Arc<BiomeRestConfig>,
+    #[allow(dead_code)]
+    token_secret_manager: Arc<dyn SecretManager>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<Arc<SplinterCredentialsStore>>,
 }
@@ -74,10 +86,18 @@ impl RestResourceProvider for BiomeRestResourceManager {
 
         #[cfg(feature = "biome-credentials")]
         match &self.credentials_store {
-            Some(credentials_store) => resources.push(make_register_route(
-                credentials_store.clone(),
-                self.user_store.clone(),
-            )),
+            Some(credentials_store) => {
+                resources.push(make_register_route(
+                    credentials_store.clone(),
+                    self.user_store.clone(),
+                    self.rest_config.clone(),
+                ));
+                resources.push(make_login_route(
+                    credentials_store.clone(),
+                    self.rest_config.clone(),
+                    Arc::new(AccessTokenIssuer::new(self.token_secret_manager.clone())),
+                ));
+            }
             None => {
                 debug!(
                     "Credentials store not provided. Credentials REST API resources will not be'
@@ -93,6 +113,8 @@ impl RestResourceProvider for BiomeRestResourceManager {
 #[derive(Default)]
 pub struct BiomeRestResourceManagerBuilder {
     user_store: Option<SplinterUserStore>,
+    rest_config: Option<BiomeRestConfig>,
+    token_secret_manager: Option<Arc<dyn SecretManager>>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<SplinterCredentialsStore>,
 }
@@ -105,6 +127,16 @@ impl BiomeRestResourceManagerBuilder {
     /// * `pool`: ConnectionPool to database that will serve as backend for UserStore
     pub fn with_user_store(mut self, pool: ConnectionPool) -> BiomeRestResourceManagerBuilder {
         self.user_store = Some(SplinterUserStore::new(pool));
+        self
+    }
+
+    /// Sets a BiomeRestConfig for the BiomeRestResourceManager
+    ///
+    /// # Arguments
+    ///
+    /// * `config`: the BiomeRestConfig that will be used to configure the Biome resources
+    pub fn with_rest_config(mut self, config: BiomeRestConfig) -> BiomeRestResourceManagerBuilder {
+        self.rest_config = Some(config);
         self
     }
 
@@ -122,6 +154,20 @@ impl BiomeRestResourceManagerBuilder {
         self
     }
 
+    /// Sets a SecretManager for JWT tokens for the BiomeRestResourceManager
+    ///
+    /// # Arguments
+    ///
+    /// * `secret_manager`: the SecretManager to be used for fetching and generating secrets to
+    ///   sign and verify JWT tokens
+    pub fn set_token_secret_manager(
+        mut self,
+        secret_manager: impl SecretManager + 'static,
+    ) -> BiomeRestResourceManagerBuilder {
+        self.token_secret_manager = Some(Arc::new(secret_manager));
+        self
+    }
+
     /// Consumes the builder and returns a BiomeRestResourceManager
     pub fn build(self) -> Result<BiomeRestResourceManager, BiomeRestResourceManagerBuilderError> {
         let user_store = self.user_store.ok_or_else(|| {
@@ -129,9 +175,23 @@ impl BiomeRestResourceManagerBuilder {
                 "Missing user store".to_string(),
             )
         })?;
+        let rest_config = match self.rest_config {
+            Some(config) => config,
+            None => {
+                debug!("Building BiomeRestResourceManager with default config.");
+                BiomeRestConfigBuilder::default().build()?
+            }
+        };
+
+        let token_secret_manager = self.token_secret_manager.unwrap_or_else(|| {
+            debug!("Building BiomeRestResourceManager with default SecretManager.");
+            Arc::new(AutoSecretManager::default())
+        });
 
         Ok(BiomeRestResourceManager {
             user_store: Arc::new(user_store),
+            rest_config: Arc::new(rest_config),
+            token_secret_manager,
             #[cfg(feature = "biome-credentials")]
             credentials_store: match self.credentials_store {
                 Some(credentials_store) => Some(Arc::new(credentials_store)),
