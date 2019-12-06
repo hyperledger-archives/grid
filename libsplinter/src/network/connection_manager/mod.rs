@@ -39,7 +39,7 @@ const CHANNEL_CAPACITY: usize = 15;
 
 pub struct ConnectionManager {
     hb_monitor: HeartbeatMonitor,
-    connection_state: ConnectionState,
+    connection_state: Option<ConnectionState>,
     join_handle: Option<thread::JoinHandle<()>>,
     sender: Option<SyncSender<CmMessage>>,
     shutdown_handle: Option<ShutdownHandle>,
@@ -47,9 +47,8 @@ pub struct ConnectionManager {
 
 impl ConnectionManager {
     pub fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
-        let connection_state = ConnectionState::new(mesh, transport);
-        let hb_monitor =
-            HeartbeatMonitor::new(DEFAULT_HEARTBEAT_INTERVAL);
+        let connection_state = Some(ConnectionState::new(mesh, transport));
+        let hb_monitor = HeartbeatMonitor::new(DEFAULT_HEARTBEAT_INTERVAL);
 
         Self {
             hb_monitor,
@@ -62,7 +61,9 @@ impl ConnectionManager {
 
     pub fn start(&mut self) -> Result<Connector, ConnectionManagerError> {
         let (sender, recv) = sync_channel(CHANNEL_CAPACITY);
-        let mut state = self.connection_state.clone();
+        let mut state = self.connection_state.take().ok_or_else(|| {
+            ConnectionManagerError::StartUpError("Service has already started".into())
+        })?;
 
         let join_handle = thread::Builder::new()
             .name("Connection Manager".into())
@@ -301,7 +302,6 @@ struct ConnectionMetadata {
     ref_count: u64,
 }
 
-#[derive(Clone)]
 struct ConnectionState {
     connections: HashMap<String, ConnectionMetadata>,
     mesh: Mesh,
