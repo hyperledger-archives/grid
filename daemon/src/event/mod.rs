@@ -34,7 +34,7 @@ use sawtooth_sdk::{
     messaging::stream::{MessageSender, ReceiveError, SendError},
 };
 
-use crate::sawtooth_connection::SawtoothConnection;
+use crate::sawtooth::connection::SawtoothConnection;
 
 pub use super::event::error::{EventError, EventProcessorError};
 
