@@ -18,6 +18,10 @@ version = "0.1.0"
 authors = ["Contributors to Hyperledger Grid"]
 edition = "2018"
 
+[[bin]]
+name = "gridd"
+path = "src/main.rs"
+
 [dependencies]
 actix = "0.7"
 actix-web = "0.7"
@@ -39,8 +43,12 @@ base64 = "0.10"
 byteorder = "1"
 
 [features]
-test-api = []
+default = ["sawtooth"]
 
-[[bin]]
-name = "gridd"
-path = "src/main.rs"
+stable = ["sawtooth"]
+
+experimental = ["splinter"]
+
+sawtooth = []
+splinter = []
+test-api = []

@@ -31,7 +31,11 @@ mod database;
 mod error;
 mod event;
 mod rest_api;
+#[cfg(feature = "sawtooth")]
+mod sawtooth;
 mod sawtooth_connection;
+#[cfg(feature = "splinter")]
+mod splinter;
 
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
