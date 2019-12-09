@@ -38,3 +38,13 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 diesel = { version = "1.0", features = ["postgres"] }
 diesel_migrations = "1.4"
+
+[features]
+default = ["sawtooth"]
+
+stable = ["sawtooth"]
+
+experimental = ["splinter"]
+
+sawtooth = []
+splinter = []

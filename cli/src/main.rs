@@ -24,6 +24,10 @@ mod actions;
 mod error;
 mod http;
 mod key;
+#[cfg(feature = "sawtooth")]
+mod sawtooth;
+#[cfg(feature = "splinter")]
+mod splinter;
 mod transaction;
 mod yaml_parser;
 
