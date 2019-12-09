@@ -14,20 +14,28 @@
 
 FROM hyperledger/grid-dev as gridd-builder
 
+COPY cli /build/cli
 COPY daemon /build/daemon
 COPY sdk /build/sdk
 
-# Build the package
+# Build the gridd package
 WORKDIR /build/daemon
+RUN cargo deb
+
+# Build the grid-cli package
+WORKDIR /build/cli
 RUN cargo deb
 
 # -------------=== gridd docker build ===-------------
 FROM ubuntu:bionic
 
+COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 
 RUN apt-get update \
- && dpkg --unpack /tmp/grid-daemon_*.deb \
+ && apt-get install -y -q \
+    postgresql-client \
+ && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
 
 CMD ["gridd"]
