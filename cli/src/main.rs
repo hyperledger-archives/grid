@@ -20,8 +20,8 @@ extern crate diesel;
 mod action;
 mod error;
 
+use crate::action::{admin, certs, Action, SubcommandActions};
 use crate::error::CliError;
-use action::{admin, certs, Action, SubcommandActions};
 
 use clap::clap_app;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
