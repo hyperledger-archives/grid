@@ -44,10 +44,14 @@ impl EventConnection for SawtoothConnection {
         "sawtooth-validator"
     }
 
-    fn subscribe(&self, last_commit_id: &str) -> Result<Self::Unsubscriber, EventIoError> {
+    fn subscribe(
+        &self,
+        namespaces: &[&str],
+        last_commit_id: &str,
+    ) -> Result<Self::Unsubscriber, EventIoError> {
         let message_sender = self.get_sender();
 
-        let request = create_subscription_request(last_commit_id, &[]);
+        let request = create_subscription_request(last_commit_id, namespaces);
         let mut future = message_sender.send(
             Message_MessageType::CLIENT_EVENTS_SUBSCRIBE_REQUEST,
             &correlation_id(),

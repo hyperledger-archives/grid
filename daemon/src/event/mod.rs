@@ -60,7 +60,11 @@ pub trait EventConnection: Send {
 
     fn recv(&self) -> Result<Vec<Event>, EventIoError>;
 
-    fn subscribe(&self, last_commit_id: &str) -> Result<Self::Unsubscriber, EventIoError>;
+    fn subscribe(
+        &self,
+        namespaces: &[&str],
+        last_commit_id: &str,
+    ) -> Result<Self::Unsubscriber, EventIoError>;
 
     fn close(self) -> Result<(), EventIoError>;
 }
@@ -93,7 +97,10 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
         let unsubscriber = connection
-            .subscribe(last_known_commit_id)
+            .subscribe(
+                &[GRID_NAMESPACE, PIKE_NAMESPACE, TRACK_AND_TRACE_NAMESPACE],
+                last_known_commit_id,
+            )
             .map_err(|err| EventProcessorError(format!("Unable to unsubscribe: {}", err)))?;
 
         let join_handle = thread::Builder::new()
