@@ -14,7 +14,7 @@
 
 name: grid_product
 version: '1.0'
-wasm: target/wasm32-unknown-unknown/release/grid-product-tp.wasm
+wasm: /tmp/grid-product-tp.wasm
 inputs:
   - '621dee01'
   - '621dee02'
