@@ -39,3 +39,14 @@ impl fmt::Display for EventError {
         write!(f, "Event Error: {}", self.0)
     }
 }
+
+#[derive(Debug)]
+pub struct EventIoError(pub String);
+
+impl Error for EventIoError {}
+
+impl fmt::Display for EventIoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Event IO Error: {}", self.0)
+    }
+}

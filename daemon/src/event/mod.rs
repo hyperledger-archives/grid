@@ -20,23 +20,10 @@ mod error;
 
 use std::cell::RefCell;
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use protobuf::Message as _;
+use sawtooth_sdk::messages::events::Event;
 
-use sawtooth_sdk::{
-    messages::client_event::{
-        ClientEventsSubscribeRequest, ClientEventsSubscribeResponse,
-        ClientEventsSubscribeResponse_Status,
-    },
-    messages::events::{Event, EventFilter, EventFilter_FilterType, EventList, EventSubscription},
-    messages::validator::{Message, Message_MessageType},
-    messaging::stream::{MessageSender, ReceiveError, SendError},
-};
-
-use crate::sawtooth::connection::SawtoothConnection;
-
-pub use super::event::error::{EventError, EventProcessorError};
+pub use self::error::{EventError, EventIoError, EventProcessorError};
 
 const PIKE_NAMESPACE: &str = "cad11d";
 const PIKE_AGENT: &str = "cad11d00";
@@ -51,8 +38,6 @@ const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
 const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
 const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
 
-const SHUTDOWN_TIMEOUT: u64 = 2;
-
 pub trait EventHandler: Send {
     fn handle_events(&self, events: &[Event]) -> Result<(), EventError>;
 }
@@ -64,98 +49,75 @@ macro_rules! event_handlers {
     };
 }
 
-pub struct EventProcessor {
-    join_handle: thread::JoinHandle<Result<(), EventProcessorError>>,
-    message_sender: Box<dyn MessageSender + Send>,
+pub trait EventConnectionUnsubscriber: Send {
+    fn unsubscribe(self) -> Result<(), EventIoError>;
 }
 
-pub struct EventProcessorShutdownHandle {
-    message_sender: RefCell<Box<dyn MessageSender + Send>>,
+pub trait EventConnection: Send {
+    type Unsubscriber: EventConnectionUnsubscriber;
+
+    fn name(&self) -> &str;
+
+    fn recv(&self) -> Result<Vec<Event>, EventIoError>;
+
+    fn subscribe(&self, last_commit_id: &str) -> Result<Self::Unsubscriber, EventIoError>;
+
+    fn close(self) -> Result<(), EventIoError>;
 }
 
-impl EventProcessorShutdownHandle {
+pub struct EventProcessorShutdownHandle<Unsubscriber: EventConnectionUnsubscriber> {
+    unsubscriber: RefCell<Option<Unsubscriber>>,
+}
+
+impl<Unsubscriber: EventConnectionUnsubscriber> EventProcessorShutdownHandle<Unsubscriber> {
     pub fn shutdown(&self) -> Result<(), EventProcessorError> {
-        let mut message_sender = self.message_sender.borrow_mut();
-
-        debug!("Sending unsubscribe request");
-        match message_sender
-            .send(
-                Message_MessageType::CLIENT_EVENTS_UNSUBSCRIBE_REQUEST,
-                &correlation_id(),
-                &[], // An unsubscribe request has no content
-            )
-            .map_err(|err| {
-                EventProcessorError(format!("Unable to send unsubscribe request: {}", err))
-            })?
-            .get_timeout(Duration::from_secs(SHUTDOWN_TIMEOUT))
-        {
-            Ok(msg) => {
-                if msg.get_message_type() == Message_MessageType::CLIENT_EVENTS_UNSUBSCRIBE_RESPONSE
-                {
-                    debug!("Successfully unsubscribed");
-                } else {
-                    debug!("During unsubscribe, received {:?}", msg.get_message_type());
-                }
-            }
-            Err(ReceiveError::TimeoutError) => {
-                debug!("Timeout occurred while waiting for unsubscribe response; ignoring")
-            }
-            Err(err) => return Err(EventProcessorError::from(err)),
+        if let Some(unsubscriber) = self.unsubscriber.borrow_mut().take() {
+            unsubscriber
+                .unsubscribe()
+                .map_err(|err| EventProcessorError(format!("Unable to unsubscribe: {}", err)))?;
         }
-
-        debug!("Closing message sender");
-        message_sender.close();
 
         Ok(())
     }
 }
 
-impl EventProcessor {
+pub struct EventProcessor<Conn: EventConnection> {
+    join_handle: thread::JoinHandle<Result<(), EventProcessorError>>,
+    unsubscriber: Option<Conn::Unsubscriber>,
+}
+
+impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
     pub fn start(
-        sawtooth_connection: SawtoothConnection,
-        last_known_block_id: &str,
+        connection: Conn,
+        last_known_commit_id: &str,
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
-        let message_sender = sawtooth_connection.get_sender();
-
-        let last_known_block_id = last_known_block_id.to_owned();
-        let request = create_subscription_request(last_known_block_id);
-        let mut future = message_sender.send(
-            Message_MessageType::CLIENT_EVENTS_SUBSCRIBE_REQUEST,
-            &correlation_id(),
-            &request.write_to_bytes()?,
-        )?;
-
-        let response: ClientEventsSubscribeResponse = content_of_type(
-            Message_MessageType::CLIENT_EVENTS_SUBSCRIBE_RESPONSE,
-            future.get()?,
-        )?;
-
-        if response.get_status() != ClientEventsSubscribeResponse_Status::OK {
-            return Err(EventProcessorError(format!(
-                "Failed to subscribe for events: {:?} {}",
-                response.get_status(),
-                response.get_response_message()
-            )));
-        }
+        let unsubscriber = connection
+            .subscribe(last_known_commit_id)
+            .map_err(|err| EventProcessorError(format!("Unable to unsubscribe: {}", err)))?;
 
         let join_handle = thread::Builder::new()
-            .name("EventProcessor".into())
+            .name(format!("EventProcessor[{}]", connection.name()))
             .spawn(move || {
-                while let Ok(msg_result) = sawtooth_connection.get_receiver().recv() {
-                    match msg_result {
-                        Ok(msg) => handle_message(msg, &event_handlers)?,
-                        Err(ReceiveError::DisconnectedError) => break,
+                loop {
+                    match connection.recv() {
+                        Ok(events) => handle_message(&events, &event_handlers)?,
                         Err(err) => {
-                            return Err(EventProcessorError(format!(
-                                "Failed to receive events; aborting: {}",
-                                err
-                            )));
+                            error!("Failed to receive events; aborting: {}", err);
+                            break;
                         }
                     }
                 }
 
-                info!("Disconnected from validator; terminating Event Processor");
+                info!(
+                    "Disconnecting from {}; terminating Event Processor",
+                    connection.name()
+                );
+
+                if let Err(err) = connection.close() {
+                    error!("Unable to close connection: {}", err);
+                }
+
                 Ok(())
             })
             .map_err(|err| {
@@ -164,19 +126,19 @@ impl EventProcessor {
 
         Ok(Self {
             join_handle,
-            message_sender,
+            unsubscriber: Some(unsubscriber),
         })
     }
 
     pub fn take_shutdown_controls(
         self,
     ) -> (
-        EventProcessorShutdownHandle,
+        EventProcessorShutdownHandle<Conn::Unsubscriber>,
         thread::JoinHandle<Result<(), EventProcessorError>>,
     ) {
         (
             EventProcessorShutdownHandle {
-                message_sender: RefCell::new(self.message_sender),
+                unsubscriber: RefCell::new(self.unsubscriber),
             },
             self.join_handle,
         )
@@ -184,101 +146,14 @@ impl EventProcessor {
 }
 
 fn handle_message(
-    msg: Message,
+    events: &[Event],
     event_handlers: &[Box<dyn EventHandler>],
 ) -> Result<(), EventProcessorError> {
-    if msg.get_message_type() != Message_MessageType::CLIENT_EVENTS {
-        warn!("Received unexpected message: {:?}", msg.get_message_type());
-        return Ok(());
-    }
-
-    let event_list: EventList = match protobuf::parse_from_bytes(msg.get_content()) {
-        Ok(event_list) => event_list,
-        Err(err) => {
-            warn!("Unable to parse event list; ignoring: {}", err);
-            return Ok(());
-        }
-    };
-
     for handler in event_handlers {
-        if let Err(err) = handler.handle_events(&event_list.get_events()) {
-            error!("An error occured while handling events: {}", err);
+        if let Err(err) = handler.handle_events(events) {
+            error!("An error occurred while handling events: {}", err);
         }
     }
 
     Ok(())
-}
-
-fn content_of_type<M: protobuf::Message>(
-    expected_type: Message_MessageType,
-    msg: Message,
-) -> Result<M, EventProcessorError> {
-    if msg.get_message_type() != expected_type {
-        return Err(EventProcessorError(format!(
-            "Unexpected message type: expected {:?} but was {:?}",
-            expected_type,
-            msg.get_message_type()
-        )));
-    }
-
-    protobuf::parse_from_bytes(msg.get_content())
-        .map_err(|err| EventProcessorError(format!("Unable to parse message content: {}", err)))
-}
-
-fn create_subscription_request(last_known_block_id: String) -> ClientEventsSubscribeRequest {
-    let mut block_info_subscription = EventSubscription::new();
-    block_info_subscription.set_event_type("sawtooth/block-commit".into());
-
-    let grid_subscription = make_event_filter(GRID_NAMESPACE);
-    let pike_subscription = make_event_filter(PIKE_NAMESPACE);
-    let tnt_subscription = make_event_filter(TRACK_AND_TRACE_NAMESPACE);
-
-    let mut request = ClientEventsSubscribeRequest::new();
-    request.mut_subscriptions().push(block_info_subscription);
-    request.mut_subscriptions().push(pike_subscription);
-    request.mut_subscriptions().push(grid_subscription);
-    request.mut_subscriptions().push(tnt_subscription);
-    request.mut_last_known_block_ids().push(last_known_block_id);
-
-    request
-}
-
-fn make_event_filter(namespace: &str) -> EventSubscription {
-    let mut filter = EventFilter::new();
-    filter.set_filter_type(EventFilter_FilterType::REGEX_ANY);
-    filter.set_key("address".into());
-    filter.set_match_string(format!("^{}.*", namespace));
-
-    let mut event_subscription = EventSubscription::new();
-    event_subscription.set_event_type("sawtooth/state-delta".into());
-    event_subscription.mut_filters().push(filter);
-
-    event_subscription
-}
-
-fn correlation_id() -> String {
-    let start = SystemTime::now();
-    let since_the_epoch = start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-
-    since_the_epoch.as_millis().to_string()
-}
-
-impl From<protobuf::ProtobufError> for EventProcessorError {
-    fn from(err: protobuf::ProtobufError) -> Self {
-        EventProcessorError(format!("Wire protocol error: {}", &err))
-    }
-}
-
-impl From<ReceiveError> for EventProcessorError {
-    fn from(err: ReceiveError) -> Self {
-        EventProcessorError(format!("Unable to receive message: {}", &err))
-    }
-}
-
-impl From<SendError> for EventProcessorError {
-    fn from(err: SendError) -> Self {
-        EventProcessorError(format!("Unable to send message: {}", &err))
-    }
 }
