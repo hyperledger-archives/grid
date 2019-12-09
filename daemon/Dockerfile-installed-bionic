@@ -12,64 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic as gridd-builder
+FROM hyperledger/grid-dev as gridd-builder
 
-# Install base dependencies
-RUN apt-get update \
-    && apt-get install -y -q \
-        build-essential \
-        curl \
-        gcc \
-        g++ \
-        libpq-dev \
-        libssl-dev \
-        libsasl2-dev \
-        libzmq3-dev \
-        openssl \
-        pkg-config \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+COPY daemon /build/daemon
+COPY sdk /build/sdk
 
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
-
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
- && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-RUN cargo install cargo-deb
-
-# Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
-    && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
-    && rm protoc-3.7.1-linux-x86_64.zip
-
-# Copy grid sdk dependency
-COPY ./sdk/ ../sdk/
-
-RUN USER=root cargo new --bin daemon
-WORKDIR /daemon
-
-RUN apt update && apt-get install -y -q git
-
-COPY ./daemon/Cargo.toml ./Cargo.toml
-RUN cargo build --release
-
-RUN rm src/*.rs
-COPY ./daemon/src ./src
-COPY ./daemon/migrations ./migrations
-
-RUN rm ./target/release/gridd* ./target/release/deps/gridd*
+# Build the package
+WORKDIR /build/daemon
 RUN cargo deb
 
 # -------------=== gridd docker build ===-------------
 FROM ubuntu:bionic
 
-COPY --from=gridd-builder /daemon/target/debian/grid-daemon_*.deb /tmp
+COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 
 RUN apt-get update \
- && dpkg -i /tmp/grid-daemon_*.deb || true \
+ && dpkg --unpack /tmp/grid-daemon_*.deb \
  && apt-get -f -y install
 
 CMD ["gridd"]
