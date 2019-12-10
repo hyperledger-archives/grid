@@ -61,58 +61,51 @@ impl RestApiShutdownHandle {
     }
 }
 
-fn create_app(
-    sawtooth_connection: Addr<SawtoothMessageSender>,
-    database_connection: Addr<DbExecutor>,
-) -> App<AppState> {
-    App::with_state(AppState {
-        sawtooth_connection,
-        database_connection,
-    })
-    .resource("/batches", |r| {
-        r.method(Method::POST).with_async(submit_batches)
-    })
-    .resource("/batch_statuses", |r| {
-        r.name("batch_statuses");
-        r.method(Method::GET).with_async(get_batch_statuses)
-    })
-    .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
-    .resource("/agent/{public_key}", |r| {
-        r.method(Method::GET).with_async(fetch_agent)
-    })
-    .resource("/organization", |r| {
-        r.method(Method::GET).with_async(list_organizations)
-    })
-    .resource("/organization/{id}", |r| {
-        r.method(Method::GET).with_async(fetch_organization)
-    })
-    .resource("/product", |r| {
-        r.method(Method::GET).with_async(list_products)
-    })
-    .resource("/product/{id}", |r| {
-        r.method(Method::GET).with_async(fetch_product)
-    })
-    .resource("/schema", |r| {
-        r.method(Method::GET).with_async(list_grid_schemas)
-    })
-    .resource("/schema/{name}", |r| {
-        r.method(Method::GET).with_async(fetch_grid_schema)
-    })
-    .resource("/record", |r| {
-        r.method(Method::GET).with_async(list_records)
-    })
-    .resource("/record/{record_id}", |r| {
-        r.method(Method::GET).with_async(fetch_record)
-    })
-    .resource("/record/{record_id}/property/{property_name}", |r| {
-        r.method(Method::GET).with_async(fetch_record_property)
-    })
+fn create_app(app_state: AppState) -> App<AppState> {
+    App::with_state(app_state)
+        .resource("/batches", |r| {
+            r.method(Method::POST).with_async(submit_batches)
+        })
+        .resource("/batch_statuses", |r| {
+            r.name("batch_statuses");
+            r.method(Method::GET).with_async(get_batch_statuses)
+        })
+        .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
+        .resource("/agent/{public_key}", |r| {
+            r.method(Method::GET).with_async(fetch_agent)
+        })
+        .resource("/organization", |r| {
+            r.method(Method::GET).with_async(list_organizations)
+        })
+        .resource("/organization/{id}", |r| {
+            r.method(Method::GET).with_async(fetch_organization)
+        })
+        .resource("/product", |r| {
+            r.method(Method::GET).with_async(list_products)
+        })
+        .resource("/product/{id}", |r| {
+            r.method(Method::GET).with_async(fetch_product)
+        })
+        .resource("/schema", |r| {
+            r.method(Method::GET).with_async(list_grid_schemas)
+        })
+        .resource("/schema/{name}", |r| {
+            r.method(Method::GET).with_async(fetch_grid_schema)
+        })
+        .resource("/record", |r| {
+            r.method(Method::GET).with_async(list_records)
+        })
+        .resource("/record/{record_id}", |r| {
+            r.method(Method::GET).with_async(fetch_record)
+        })
+        .resource("/record/{record_id}/property/{property_name}", |r| {
+            r.method(Method::GET).with_async(fetch_record_property)
+        })
 }
 
 pub fn run(
     bind_url: &str,
-    zmq_sender: Box<dyn MessageSender + Send>,
-    connection_pool: ConnectionPool,
+    app_state: AppState,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -126,20 +119,12 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let zmq_connection_addr =
-                SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
-                    SawtoothMessageSender::new(zmq_sender)
-                });
-            let db_executor_addr =
-                SyncArbiter::start(2, move || DbExecutor::new(connection_pool.clone()));
             info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(move || {
-                create_app(zmq_connection_addr.clone(), db_executor_addr.clone())
-            })
-            .bind(bind_url)?
-            .disable_signals()
-            .system_exit()
-            .start();
+            let addr = server::new(move || create_app(app_state.clone()))
+                .bind(bind_url)?
+                .disable_signals()
+                .system_exit()
+                .start();
 
             tx.send(addr).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
