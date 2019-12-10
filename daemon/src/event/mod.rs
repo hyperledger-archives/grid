@@ -60,6 +60,24 @@ pub enum StateChange {
     Delete { key: String },
 }
 
+impl StateChange {
+    pub fn key_has_prefix(&self, prefix: &str) -> bool {
+        let key = match self {
+            Self::Set { key, .. } => key,
+            Self::Delete { key, .. } => key,
+        };
+        key.get(0..prefix.len())
+            .map(|key_prefix| key_prefix == prefix)
+            .unwrap_or(false)
+    }
+
+    pub fn is_grid_state_change(&self) -> bool {
+        ALL_GRID_NAMESPACES
+            .iter()
+            .any(|namespace| self.key_has_prefix(namespace))
+    }
+}
+
 pub trait EventHandler: Send {
     fn handle_events(&self, events: &[Event]) -> Result<(), EventError>;
 }
