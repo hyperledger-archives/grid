@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::rest_api::{error::RestApiResponseError, routes::SawtoothMessageSender, AppState};
+use crate::rest_api::{error::RestApiResponseError, AppState};
+use sawtooth_sdk::messaging::zmq_stream::ZmqMessageSender;
 
 use actix::{Context, Handler, Message};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
@@ -95,8 +96,25 @@ pub struct BatchStatusLink {
     pub link: String,
 }
 
-impl Handler<SubmitBatches> for SawtoothMessageSender {
-    type Result = Result<BatchStatusLink, RestApiResponseError>;
+pub trait BatchSubmitter: Send + 'static {
+    fn submit_batches(
+        &self,
+        submit_batches: SubmitBatches,
+    ) -> Result<BatchStatusLink, RestApiResponseError>;
+
+    fn batch_status(
+        &self,
+        batch_statuses: BatchStatuses,
+    ) -> Result<Vec<BatchStatus>, RestApiResponseError>;
+
+    fn clone_box(&self) -> Box<dyn BatchSubmitter>;
+}
+
+impl Clone for Box<dyn BatchSubmitter> {
+    fn clone(&self) -> Box<dyn BatchSubmitter> {
+        self.clone_box()
+    }
+}
 
     fn handle(&mut self, msg: SubmitBatches, _: &mut Context<Self>) -> Self::Result {
         let mut client_submit_request = ClientBatchSubmitRequest::new();
