@@ -89,6 +89,24 @@ To build individual components, run `cargo build` in the component directories.
 For example, to build only the Private XO demo, navigate to
 `examples/private_xo`, then run `cargo build`.
 
+To build Splinter using Docker, run
+`docker-compose -f docker-compose-installed.yaml` from the root directory.
+This command builds Docker images for all of the Splinter components,
+including `libsplinter` (the main library), `splinterd`
+(the splinter daemon), the CLI, the client, and all examples in the `examples`
+directory.
+
+To build individual components using Docker, run
+`docker-compose -f docker-compose-installed.yaml build <component>`
+from the root directory. For example, to build only the Private XO demo,
+run `docker-compose -f docker-compose-installed.yaml build private_xo`.
+
+To use Docker to build Splinter with experimental features enabled, set an
+enviroment variable in your shell before running the build commands. For
+example: `export 'CARGO_ARGS=-- --features experimental'`. To go back to
+building with default features, unset the evironment variable:
+`unset CARGO_ARGS`
+
 ## Demos
 
 Splinter includes several example applications that you can run as demos. The

@@ -15,16 +15,20 @@
 FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
-COPY examples/private_counter/cli/src src
+COPY examples/private_counter/cli/ /build/examples/private_counter/cli
 
 # Build the project
 WORKDIR examples/private_counter/cli
 ARG REPO_VERSION
+ARG CARGO_ARGS
 RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # -------------=== private_counter docker build ===-------------
 FROM ubuntu:bionic
+
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=BUILDER /build/target/debian/private-counter-cli*.deb /tmp
 

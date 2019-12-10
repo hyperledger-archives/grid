@@ -28,6 +28,7 @@ services:
           context: ../..
           dockerfile: ./cli/Dockerfile-installed-${DISTRO}
           args:
+            - CARGO_ARGS=${CARGO_ARGS}
             - REPO_VERSION=${REPO_VERSION}
         volumes:
           - key-registry:/key_registry
@@ -86,6 +87,7 @@ services:
           context: ../..
           dockerfile: ./examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
           args:
+            - CARGO_ARGS=${CARGO_ARGS}
             - REPO_VERSION=${REPO_VERSION}
         volumes:
           - cargo-registry:/root/.cargo/registry
@@ -119,6 +121,7 @@ services:
         context: ../..
         dockerfile: splinterd/Dockerfile-installed-${DISTRO}
         args:
+          - CARGO_ARGS=${CARGO_ARGS}
           - REPO_VERSION=${REPO_VERSION}
       expose:
         - 8080
@@ -190,6 +193,7 @@ services:
           context: ../..
           dockerfile: ./examples/gameroom/daemon/Dockerfile-installed-${DISTRO}
           args:
+            - CARGO_ARGS=${CARGO_ARGS}
             - REPO_VERSION=${REPO_VERSION}
         volumes:
           - cargo-registry:/root/.cargo/registry
@@ -224,6 +228,7 @@ services:
         context: ../..
         dockerfile: splinterd/Dockerfile-installed-${DISTRO}
         args:
+          - CARGO_ARGS=${CARGO_ARGS}
           - REPO_VERSION=${REPO_VERSION}
       expose:
         - 8080

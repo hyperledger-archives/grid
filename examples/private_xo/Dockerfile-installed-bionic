@@ -21,11 +21,15 @@ COPY examples/private_xo /build/examples/private_xo
 # Build the package
 WORKDIR /build/examples/private_xo
 ARG REPO_VERSION
+ARG CARGO_ARGS
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # -------------=== private_xo docker build ===-------------
 FROM ubuntu:bionic
+
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=BUILDER /build/target/debian/private-xo-service*.deb /tmp
 
