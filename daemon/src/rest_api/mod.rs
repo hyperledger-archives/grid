@@ -20,19 +20,35 @@ use std::thread;
 
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
+use crate::rest_api::routes::DbExecutor;
+pub use crate::rest_api::routes::SawtoothBatchSubmitter;
 use crate::rest_api::routes::{
     fetch_agent, fetch_grid_schema, fetch_organization, fetch_product, fetch_record,
     fetch_record_property, get_batch_statuses, list_agents, list_grid_schemas, list_organizations,
-    list_products, list_records, submit_batches,
+    list_products, list_records, submit_batches, BatchSubmitter,
 };
-use crate::rest_api::routes::{DbExecutor, SawtoothMessageSender};
-use actix::{Actor, Addr, Context, SyncArbiter};
+use actix::{Addr, SyncArbiter};
 use actix_web::{http::Method, server, App};
-use sawtooth_sdk::messaging::stream::MessageSender;
 
+#[derive(Clone)]
 pub struct AppState {
-    sawtooth_connection: Addr<SawtoothMessageSender>,
+    batch_submitter: Box<dyn BatchSubmitter + 'static>,
     database_connection: Addr<DbExecutor>,
+}
+
+impl AppState {
+    pub fn new(
+        batch_submitter: Box<dyn BatchSubmitter + 'static>,
+        connection_pool: ConnectionPool,
+    ) -> Self {
+        let database_connection =
+            SyncArbiter::start(2, move || DbExecutor::new(connection_pool.clone()));
+
+        AppState {
+            batch_submitter,
+            database_connection,
+        }
+    }
 }
 
 pub struct RestApiShutdownHandle {
