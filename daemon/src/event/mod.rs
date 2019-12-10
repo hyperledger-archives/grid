@@ -107,6 +107,30 @@ pub trait EventConnection: Send {
     fn close(self) -> Result<(), EventIoError>;
 }
 
+impl<EC: EventConnection> EventConnection for Box<EC> {
+    type Unsubscriber = EC::Unsubscriber;
+
+    fn name(&self) -> &str {
+        (**self).name()
+    }
+
+    fn recv(&self) -> Result<CommitEvent, EventIoError> {
+        (**self).recv()
+    }
+
+    fn subscribe(
+        &mut self,
+        namespaces: &[&str],
+        last_commit_id: &str,
+    ) -> Result<Self::Unsubscriber, EventIoError> {
+        (**self).subscribe(namespaces, last_commit_id)
+    }
+
+    fn close(self) -> Result<(), EventIoError> {
+        (*self).close()
+    }
+}
+
 pub struct EventProcessorShutdownHandle<Unsubscriber: EventConnectionUnsubscriber> {
     unsubscriber: RefCell<Option<Unsubscriber>>,
 }
