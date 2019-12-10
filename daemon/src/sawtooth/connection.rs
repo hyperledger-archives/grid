@@ -15,8 +15,10 @@
  * -----------------------------------------------------------------------------
  */
 
-use sawtooth_sdk::messaging::stream::{MessageConnection, MessageReceiver, MessageSender};
-use sawtooth_sdk::messaging::zmq_stream::{ZmqMessageConnection, ZmqMessageSender};
+use sawtooth_sdk::messaging::{
+    stream::{MessageConnection, MessageReceiver, MessageSender},
+    zmq_stream::{ZmqMessageConnection, ZmqMessageSender},
+};
 
 pub struct SawtoothConnection {
     sender: ZmqMessageSender,

@@ -33,7 +33,6 @@ mod event;
 mod rest_api;
 #[cfg(feature = "sawtooth")]
 mod sawtooth;
-mod sawtooth_connection;
 #[cfg(feature = "splinter")]
 mod splinter;
 
@@ -47,7 +46,7 @@ use crate::config::GridConfigBuilder;
 use crate::database::{error::DatabaseError, helpers as db};
 use crate::error::DaemonError;
 use crate::event::{block::BlockEventHandler, EventProcessor};
-use crate::sawtooth_connection::SawtoothConnection;
+use crate::sawtooth::connection::SawtoothConnection;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
