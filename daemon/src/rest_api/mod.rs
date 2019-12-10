@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod error;
+pub mod error;
 mod routes;
 
 use std::sync::mpsc;
@@ -21,12 +21,12 @@ use std::thread;
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::routes::DbExecutor;
-pub use crate::rest_api::routes::SawtoothBatchSubmitter;
 use crate::rest_api::routes::{
     fetch_agent, fetch_grid_schema, fetch_organization, fetch_product, fetch_record,
     fetch_record_property, get_batch_statuses, list_agents, list_grid_schemas, list_organizations,
-    list_products, list_records, submit_batches, BatchSubmitter,
+    list_products, list_records, submit_batches,
 };
+use crate::submitter::BatchSubmitter;
 use actix::{Addr, SyncArbiter};
 use actix_web::{http::Method, server, App};
 
