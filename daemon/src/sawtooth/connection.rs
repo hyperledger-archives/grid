@@ -16,7 +16,7 @@
  */
 
 use sawtooth_sdk::messaging::{
-    stream::{MessageConnection, MessageReceiver, MessageSender},
+    stream::{MessageConnection, MessageReceiver},
     zmq_stream::{ZmqMessageConnection, ZmqMessageSender},
 };
 
@@ -32,8 +32,8 @@ impl SawtoothConnection {
         SawtoothConnection { sender, receiver }
     }
 
-    pub fn get_sender(&self) -> Box<dyn MessageSender + Send> {
-        Box::new(self.sender.clone())
+    pub fn get_sender(&self) -> ZmqMessageSender {
+        self.sender.clone()
     }
 
     pub fn get_receiver(&self) -> &MessageReceiver {

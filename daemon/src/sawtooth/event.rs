@@ -28,7 +28,10 @@ use sawtooth_sdk::{
         events::{Event, EventFilter, EventFilter_FilterType, EventList, EventSubscription},
         validator::{Message, Message_MessageType},
     },
-    messaging::stream::{MessageSender, ReceiveError, SendError},
+    messaging::{
+        stream::{MessageSender, ReceiveError, SendError},
+        zmq_stream::ZmqMessageSender,
+    },
 };
 
 use crate::event::{EventConnection, EventConnectionUnsubscriber, EventIoError};
@@ -92,7 +95,7 @@ impl EventConnection for SawtoothConnection {
 }
 
 pub struct SawtoothEventUnsubscriber {
-    message_sender: Box<dyn MessageSender + Send>,
+    message_sender: ZmqMessageSender,
 }
 
 impl EventConnectionUnsubscriber for SawtoothEventUnsubscriber {
