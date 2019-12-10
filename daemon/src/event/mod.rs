@@ -38,6 +38,8 @@ const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
 const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
 const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
 
+const ALL_GRID_NAMESPACES: &[&str] = &[PIKE_NAMESPACE, GRID_NAMESPACE, TRACK_AND_TRACE_NAMESPACE];
+
 /// A notification that some source has committed a set of changes to state
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from
@@ -117,10 +119,7 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
         let unsubscriber = connection
-            .subscribe(
-                &[GRID_NAMESPACE, PIKE_NAMESPACE, TRACK_AND_TRACE_NAMESPACE],
-                last_known_commit_id,
-            )
+            .subscribe(ALL_GRID_NAMESPACES, last_known_commit_id)
             .map_err(|err| EventProcessorError(format!("Unable to unsubscribe: {}", err)))?;
 
         let join_handle = thread::Builder::new()
