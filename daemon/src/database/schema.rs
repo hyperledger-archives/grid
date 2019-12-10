@@ -27,6 +27,7 @@ table! {
         active -> Bool,
         roles -> Array<Text>,
         metadata -> Json,
+        source -> Nullable<Text>,
     }
 }
 
@@ -39,6 +40,7 @@ table! {
         end_block_num -> Int8,
         agent_id -> Text,
         timestamp -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
@@ -55,6 +57,7 @@ table! {
         id -> Int8,
         start_block_num -> Int8,
         end_block_num -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
@@ -71,6 +74,7 @@ table! {
         number_exponent -> Int8,
         enum_options -> Array<Text>,
         struct_properties -> Array<Text>,
+        source -> Nullable<Text>,
     }
 }
 
@@ -82,6 +86,7 @@ table! {
         name -> Text,
         description -> Text,
         owner -> Text,
+        source -> Nullable<Text>,
     }
 }
 
@@ -94,6 +99,7 @@ table! {
         metadata -> Array<Json>,
         start_block_num -> Int8,
         end_block_num -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
@@ -106,6 +112,7 @@ table! {
         owner -> Varchar,
         start_block_num -> Int8,
         end_block_num -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
@@ -127,6 +134,7 @@ table! {
         lat_long_value -> Nullable<LatLong>,
         start_block_num -> Int8,
         end_block_num -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
@@ -140,6 +148,7 @@ table! {
         property_definition -> Text,
         current_page -> Int4,
         wrapped -> Bool,
+        source -> Nullable<Text>,
     }
 }
 
@@ -156,6 +165,7 @@ table! {
         properties -> Array<Text>,
         status -> Text,
         terms -> Text,
+        source -> Nullable<Text>,
     }
 }
 
@@ -170,6 +180,7 @@ table! {
         final_ -> Bool,
         owners -> Array<Text>,
         custodians -> Array<Text>,
+        source -> Nullable<Text>,
     }
 }
 
@@ -192,6 +203,7 @@ table! {
         enum_value -> Nullable<Int4>,
         struct_values -> Nullable<Array<Text>>,
         lat_long_value -> Nullable<LatLong>,
+        source -> Nullable<Text>,
     }
 }
 
@@ -205,6 +217,7 @@ table! {
         public_key -> Text,
         authorized -> Bool,
         reporter_index -> Int4,
+        source -> Nullable<Text>,
     }
 }
 
@@ -230,6 +243,7 @@ table! {
         metadata ->  Nullable<Json>,
         reported_value_end_block_num -> Int8,
         reporter_end_block_num ->  Nullable<Int8>,
+        source -> Nullable<Text>,
     }
 }
 
@@ -243,6 +257,7 @@ table! {
         reporter_index -> Int4,
         metadata -> Nullable<Json>,
         reporter_end_block_num -> Int8,
+        source -> Nullable<Text>,
     }
 }
 
