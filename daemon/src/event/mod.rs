@@ -15,13 +15,11 @@
  * -----------------------------------------------------------------------------
  */
 
-pub mod block;
+pub mod db_handler;
 mod error;
 
 use std::cell::RefCell;
 use std::thread;
-
-use sawtooth_sdk::messages::events::Event;
 
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 
@@ -79,7 +77,7 @@ impl StateChange {
 }
 
 pub trait EventHandler: Send {
-    fn handle_events(&self, events: &[Event]) -> Result<(), EventError>;
+    fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError>;
 }
 
 #[macro_export]
@@ -98,7 +96,7 @@ pub trait EventConnection: Send {
 
     fn name(&self) -> &str;
 
-    fn recv(&self) -> Result<Vec<Event>, EventIoError>;
+    fn recv(&self) -> Result<CommitEvent, EventIoError>;
 
     fn subscribe(
         &self,
@@ -145,7 +143,7 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
             .spawn(move || {
                 loop {
                     match connection.recv() {
-                        Ok(events) => handle_message(&events, &event_handlers)?,
+                        Ok(commit_event) => handle_message(commit_event, &event_handlers)?,
                         Err(err) => {
                             error!("Failed to receive events; aborting: {}", err);
                             break;
@@ -190,11 +188,11 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
 }
 
 fn handle_message(
-    events: &[Event],
+    event: CommitEvent,
     event_handlers: &[Box<dyn EventHandler>],
 ) -> Result<(), EventProcessorError> {
     for handler in event_handlers {
-        if let Err(err) = handler.handle_events(events) {
+        if let Err(err) = handler.handle_event(&event) {
             error!("An error occurred while handling events: {}", err);
         }
     }

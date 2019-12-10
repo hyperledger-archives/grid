@@ -45,7 +45,7 @@ use simple_logger;
 use crate::config::GridConfigBuilder;
 use crate::database::{error::DatabaseError, helpers as db};
 use crate::error::DaemonError;
-use crate::event::{block::BlockEventHandler, EventProcessor};
+use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::sawtooth::connection::SawtoothConnection;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -93,7 +93,7 @@ fn run() -> Result<(), DaemonError> {
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
         &current_block,
-        event_handlers![BlockEventHandler::new(connection_pool.clone())],
+        event_handlers![DatabaseEventHandler::new(connection_pool.clone())],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
