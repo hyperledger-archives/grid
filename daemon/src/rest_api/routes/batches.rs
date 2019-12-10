@@ -35,13 +35,13 @@ use uuid::Uuid;
 const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
 
 pub struct SubmitBatches {
-    batch_list: BatchList,
-    response_url: Url,
+    pub batch_list: BatchList,
+    pub response_url: Url,
 }
 
 pub struct BatchStatuses {
-    batch_ids: Vec<String>,
-    wait: Option<u32>,
+    pub batch_ids: Vec<String>,
+    pub wait: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -279,8 +279,8 @@ pub fn get_batch_statuses(
     }
 }
 
-fn query_validator<T: protobuf::Message, C: protobuf::Message>(
-    sender: &ZmqMessageSender,
+pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSender>(
+    sender: &MS,
     message_type: Message_MessageType,
     message: &C,
 ) -> Result<T, RestApiResponseError> {
@@ -316,7 +316,7 @@ fn query_validator<T: protobuf::Message, C: protobuf::Message>(
     })
 }
 
-fn process_validator_response(
+pub fn process_validator_response(
     status: ClientBatchSubmitResponse_Status,
 ) -> Result<(), RestApiResponseError> {
     match status {
@@ -332,7 +332,7 @@ fn process_validator_response(
     }
 }
 
-fn process_batch_status_response(
+pub fn process_batch_status_response(
     response: ClientBatchStatusResponse,
 ) -> Result<Vec<BatchStatus>, RestApiResponseError> {
     let status = response.get_status();

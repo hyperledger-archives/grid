@@ -61,19 +61,22 @@ mod test {
         },
     };
     use crate::rest_api::{
-        routes::{AgentSlice, BatchStatusResponse, OrganizationSlice},
+        error::RestApiResponseError,
+        routes::{
+            batches::{process_batch_status_response, process_validator_response, query_validator},
+            AgentSlice, BatchStatusResponse, OrganizationSlice,
+        },
         AppState,
     };
 
-    use actix::SyncArbiter;
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
     use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
         ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
-        ClientBatchStatusResponse_Status, ClientBatchStatus_Status, ClientBatchSubmitResponse,
-        ClientBatchSubmitResponse_Status,
+        ClientBatchStatusResponse_Status, ClientBatchStatus_Status, ClientBatchSubmitRequest,
+        ClientBatchSubmitResponse, ClientBatchSubmitResponse_Status,
     };
     use sawtooth_sdk::messages::validator::{Message, Message_MessageType};
 
@@ -113,8 +116,79 @@ mod test {
     }
 
     impl MockMessageSender {
-        fn new_boxed(response_type: ResponseType) -> Box<MockMessageSender> {
-            Box::new(MockMessageSender { response_type })
+        fn new(response_type: ResponseType) -> Self {
+            MockMessageSender { response_type }
+        }
+    }
+
+    struct MockBatchSubmitter {
+        sender: MockMessageSender,
+    }
+
+    impl BatchSubmitter for MockBatchSubmitter {
+        fn submit_batches(
+            &self,
+            msg: SubmitBatches,
+        ) -> Result<BatchStatusLink, RestApiResponseError> {
+            let mut client_submit_request = ClientBatchSubmitRequest::new();
+            client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
+                msg.batch_list.get_batches().to_vec(),
+            ));
+
+            let response_status: ClientBatchSubmitResponse = query_validator(
+                &self.sender,
+                Message_MessageType::CLIENT_BATCH_SUBMIT_REQUEST,
+                &client_submit_request,
+            )?;
+
+            match process_validator_response(response_status.get_status()) {
+                Ok(_) => {
+                    let batch_query = msg
+                        .batch_list
+                        .get_batches()
+                        .iter()
+                        .map(Batch::get_header_signature)
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    let mut response_url = msg.response_url.clone();
+                    response_url.set_query(Some(&format!("id={}", batch_query)));
+
+                    Ok(BatchStatusLink {
+                        link: response_url.to_string(),
+                    })
+                }
+                Err(err) => Err(err),
+            }
+        }
+
+        fn batch_status(
+            &self,
+            msg: BatchStatuses,
+        ) -> Result<Vec<BatchStatus>, RestApiResponseError> {
+            let mut batch_status_request = ClientBatchStatusRequest::new();
+            batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
+            match msg.wait {
+                Some(wait_time) => {
+                    batch_status_request.set_wait(true);
+                    batch_status_request.set_timeout(wait_time);
+                }
+                None => {
+                    batch_status_request.set_wait(false);
+                }
+            }
+
+            let response_status: ClientBatchStatusResponse = query_validator(
+                &self.sender,
+                Message_MessageType::CLIENT_BATCH_STATUS_REQUEST,
+                &batch_status_request,
+            )?;
+
+            process_batch_status_response(response_status)
+        }
+
+        fn clone_box(&self) -> Box<dyn BatchSubmitter> {
+            unimplemented!()
         }
     }
 
@@ -183,16 +257,11 @@ mod test {
 
     fn create_test_server(response_type: ResponseType) -> TestServer {
         TestServer::build_with_state(move || {
-            let mock_connection_addr =
-                SawtoothMessageSender::create(move |_ctx: &mut Context<SawtoothMessageSender>| {
-                    SawtoothMessageSender::new(MockMessageSender::new_boxed(response_type))
-                });
-            let db_executor_addr =
-                SyncArbiter::start(1, move || DbExecutor::new(get_connection_pool()));
-            AppState {
-                sawtooth_connection: mock_connection_addr,
-                database_connection: db_executor_addr,
-            }
+            let mock_sender = MockMessageSender::new(response_type);
+            let mock_batch_submitter = Box::new(MockBatchSubmitter {
+                sender: mock_sender,
+            });
+            AppState::new(mock_batch_submitter, get_connection_pool())
         })
         .start(|app| {
             app.resource("/batch_statuses", |r| {
