@@ -43,12 +43,12 @@ base64 = "0.10"
 byteorder = "1"
 
 [features]
-default = ["sawtooth"]
+default = ["sawtooth-support"]
 
-stable = ["sawtooth"]
+stable = ["sawtooth-support"]
 
-experimental = ["splinter"]
+experimental = ["splinter-support"]
 
-sawtooth = []
-splinter = []
+sawtooth-support = []
+splinter-support = []
 test-api = []

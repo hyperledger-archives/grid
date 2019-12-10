@@ -31,9 +31,9 @@ mod database;
 mod error;
 mod event;
 mod rest_api;
-#[cfg(feature = "sawtooth")]
+#[cfg(feature = "sawtooth-support")]
 mod sawtooth;
-#[cfg(feature = "splinter")]
+#[cfg(feature = "splinter-support")]
 mod splinter;
 mod submitter;
 
