@@ -55,7 +55,12 @@ impl EventConnection for SawtoothConnection {
         let mut future = message_sender.send(
             Message_MessageType::CLIENT_EVENTS_SUBSCRIBE_REQUEST,
             &correlation_id(),
-            &request.write_to_bytes()?,
+            &request.write_to_bytes().map_err(|err| {
+                EventIoError::ConnectionError(format!(
+                    "Failed to serialize subscription request: {}",
+                    err
+                ))
+            })?,
         )?;
 
         let response: ClientEventsSubscribeResponse = content_of_type(
@@ -64,7 +69,7 @@ impl EventConnection for SawtoothConnection {
         )?;
 
         if response.get_status() != ClientEventsSubscribeResponse_Status::OK {
-            return Err(EventIoError(format!(
+            return Err(EventIoError::ConnectionError(format!(
                 "Failed to subscribe for events: {:?} {}",
                 response.get_status(),
                 response.get_response_message()
@@ -76,11 +81,11 @@ impl EventConnection for SawtoothConnection {
     fn recv(&self) -> Result<Vec<Event>, EventIoError> {
         match self.get_receiver().recv() {
             Ok(Ok(msg)) => extract_events(msg),
-            Ok(Err(ReceiveError::DisconnectedError)) => {
-                Err(EventIoError(format!("{} has disconnected", self.name())))
-            }
-            Ok(Err(err)) => Err(EventIoError(err.to_string())),
-            Err(err) => Err(EventIoError(err.to_string())),
+            Ok(Err(ReceiveError::DisconnectedError)) => Err(EventIoError::ConnectionError(
+                format!("{} has disconnected", self.name()),
+            )),
+            Ok(Err(err)) => Err(EventIoError::ConnectionError(err.to_string())),
+            Err(err) => Err(EventIoError::ConnectionError(err.to_string())),
         }
     }
 
@@ -109,7 +114,12 @@ impl EventConnectionUnsubscriber for SawtoothEventUnsubscriber {
                 &correlation_id,
                 &[], // An unsubscribe request has no content
             )
-            .map_err(|err| EventIoError(format!("Unable to send unsubscribe request: {}", err)))?
+            .map_err(|err| {
+                EventIoError::ConnectionError(format!(
+                    "Unable to send unsubscribe request: {}",
+                    err
+                ))
+            })?
             .get_timeout(Duration::from_secs(SHUTDOWN_TIMEOUT))
         {
             Ok(msg) => {
@@ -135,14 +145,15 @@ fn content_of_type<M: protobuf::Message>(
     msg: Message,
 ) -> Result<M, EventIoError> {
     if msg.get_message_type() != expected_type {
-        return Err(EventIoError(format!(
+        return Err(EventIoError::ConnectionError(format!(
             "Unexpected message type: expected {:?} but was {:?}",
             expected_type,
             msg.get_message_type()
         )));
     }
 
-    protobuf::parse_from_bytes(msg.get_content()).map_err(EventIoError::from)
+    protobuf::parse_from_bytes(msg.get_content())
+        .map_err(|err| EventIoError::ConnectionError(err.to_string()))
 }
 
 fn create_subscription_request(
@@ -204,20 +215,16 @@ fn correlation_id() -> String {
     since_the_epoch.as_millis().to_string()
 }
 
-impl From<protobuf::ProtobufError> for EventIoError {
-    fn from(err: protobuf::ProtobufError) -> Self {
-        EventIoError(format!("Wire protocol error: {}", &err))
-    }
-}
-
 impl From<ReceiveError> for EventIoError {
     fn from(err: ReceiveError) -> Self {
-        EventIoError(format!("Unable to receive message: {}", &err))
+        EventIoError::ConnectionError(format!("Unable to receive message: {}", &err))
     }
 }
 
 impl From<SendError> for EventIoError {
     fn from(err: SendError) -> Self {
-        EventIoError(format!("Unable to send message: {}", &err))
+        EventIoError::ConnectionError(format!("Unable to send message: {}", &err))
+    }
+}
     }
 }

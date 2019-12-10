@@ -41,12 +41,20 @@ impl fmt::Display for EventError {
 }
 
 #[derive(Debug)]
-pub struct EventIoError(pub String);
+pub enum EventIoError {
+    ConnectionError(String),
+    InvalidMessage(String),
+}
 
 impl Error for EventIoError {}
 
 impl fmt::Display for EventIoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Event IO Error: {}", self.0)
+        match self {
+            Self::ConnectionError(err) => {
+                write!(f, "event connection encountered an error: {}", err)
+            }
+            Self::InvalidMessage(err) => write!(f, "connection received invalid message: {}", err),
+        }
     }
 }
