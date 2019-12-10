@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+use std::convert::TryInto;
+
 use diesel::prelude::*;
 use diesel::result::Error;
 use grid_sdk::{
@@ -27,12 +29,6 @@ use grid_sdk::{
         },
     },
     protos::FromBytes,
-};
-use protobuf;
-use sawtooth_sdk::messages::{
-    events::Event,
-    events::Event_Attribute,
-    transaction_receipt::{StateChange, StateChangeList, StateChange_Type},
 };
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -49,30 +45,26 @@ use crate::database::{
 };
 
 use super::{
-    error::EventError, EventHandler, GRID_NAMESPACE, GRID_PRODUCT, GRID_SCHEMA, PIKE_AGENT,
-    PIKE_NAMESPACE, PIKE_ORG, TRACK_AND_TRACE_NAMESPACE, TRACK_AND_TRACE_PROPERTY,
-    TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
+    CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA, PIKE_AGENT,
+    PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
 };
 
-pub struct BlockEventHandler {
+pub struct DatabaseEventHandler {
     connection_pool: ConnectionPool,
 }
 
-impl BlockEventHandler {
+impl DatabaseEventHandler {
     pub fn new(connection_pool: ConnectionPool) -> Self {
         Self { connection_pool }
     }
 }
 
-impl EventHandler for BlockEventHandler {
-    fn handle_events(&self, events: &[Event]) -> Result<(), EventError> {
-        let block = get_block(events)?;
-        let db_ops = get_db_operations(events, block.block_num)?;
+impl EventHandler for DatabaseEventHandler {
+    fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
+        debug!("Received commit event: ({}, {:?})", event.id, event.height);
 
-        debug!(
-            "Received sawtooth/block-commit ({}, {}, {})",
-            block.block_id, block.block_num, block.state_root_hash
-        );
+        let block = create_db_block_from_commit_event(event)?;
+        let db_ops = create_db_operations_from_block(event)?;
 
         trace!("The following operations will be performed: {:#?}", db_ops);
 
@@ -113,311 +105,300 @@ impl EventHandler for BlockEventHandler {
     }
 }
 
-fn get_block(events: &[Event]) -> Result<Block, EventError> {
-    events
-        .iter()
-        .filter(|event| event.get_event_type() == "sawtooth/block-commit")
-        .map(|event| {
-            let attributes = event.get_attributes();
-            Ok(Block {
-                block_id: require_attr(attributes, "block_id")?,
-                block_num: require_attr(attributes, "block_num")?
-                    .parse::<i64>()
-                    .map_err(|err| {
-                        EventError(format!("block_num was not a valid number: {}", err))
-                    })?,
-                state_root_hash: require_attr(attributes, "state_root_hash")?,
-            })
-        })
-        .last()
-        .unwrap_or_else(|| Err(EventError("No block found".into())))
+fn create_db_block_from_commit_event(event: &CommitEvent) -> Result<Block, EventError> {
+    let block_id = event.id.clone();
+    let block_num = commit_event_height_to_block_num(event.height)?;
+    let state_root_hash = "".into();
+    Ok(Block {
+        block_id,
+        block_num,
+        state_root_hash,
+    })
 }
 
-fn require_attr(attributes: &[Event_Attribute], key: &str) -> Result<String, EventError> {
-    attributes
-        .iter()
-        .find(|attr| attr.get_key() == key)
-        .map(|attr| attr.get_value().to_owned())
-        .ok_or_else(|| EventError(format!("Unable to find {}", key)))
-}
-
-fn get_db_operations(
-    events: &[Event],
-    block_num: i64,
+fn create_db_operations_from_block(
+    event: &CommitEvent,
 ) -> Result<Vec<DbInsertOperation>, EventError> {
-    events
+    let block_num = commit_event_height_to_block_num(event.height)?;
+    event
+        .state_changes
         .iter()
-        .filter(|event| event.get_event_type() == "sawtooth/state-delta")
-        .filter_map(|event| protobuf::parse_from_bytes::<StateChangeList>(&event.data).ok())
-        .flat_map(|mut state_changes| state_changes.take_state_changes().into_iter())
-        .filter(|state_change| {
-            &state_change.address[0..6] == PIKE_NAMESPACE
-                || &state_change.address[0..6] == GRID_NAMESPACE
-                || &state_change.address[0..6] == TRACK_AND_TRACE_NAMESPACE
-        })
-        .map(|state_change| state_change_to_db_operation(&state_change, block_num))
+        .map(|state_change| state_change_to_db_operation(state_change, block_num))
         .collect::<Result<Vec<DbInsertOperation>, EventError>>()
+}
+
+fn commit_event_height_to_block_num(height: Option<u64>) -> Result<i64, EventError> {
+    height
+        .ok_or_else(|| EventError("event height cannot be none".into()))?
+        .try_into()
+        .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err)))
 }
 
 fn state_change_to_db_operation(
     state_change: &StateChange,
     block_num: i64,
 ) -> Result<DbInsertOperation, EventError> {
-    match &state_change.address[0..8] {
-        PIKE_AGENT => {
-            let agents = AgentList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
-                .agents()
-                .iter()
-                .map(|agent| NewAgent {
-                    public_key: agent.public_key().to_string(),
-                    org_id: agent.org_id().to_string(),
-                    active: *agent.active(),
-                    roles: agent.roles().to_vec(),
-                    metadata: json!(agent.metadata().iter().fold(HashMap::new(), |mut acc, md| {
-                        acc.insert(md.key().to_string(), md.value().to_string());
-                        acc
-                    })),
-                    start_block_num: block_num,
-                    end_block_num: db::MAX_BLOCK_NUM,
-                    source: None,
-                })
-                .collect::<Vec<NewAgent>>();
-
-            Ok(DbInsertOperation::Agents(agents))
-        }
-        PIKE_ORG => {
-            let orgs = OrganizationList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse organization list {}", err)))?
-                .organizations()
-                .iter()
-                .map(|org| NewOrganization {
-                    org_id: org.org_id().to_string(),
-                    name: org.name().to_string(),
-                    address: org.address().to_string(),
-                    metadata: org
-                        .metadata()
-                        .iter()
-                        .map(|md| {
-                            json!({
-                                md.key(): md.value()
-                            })
-                        })
-                        .collect::<Vec<JsonValue>>(),
-                    start_block_num: block_num,
-                    end_block_num: db::MAX_BLOCK_NUM,
-                    source: None,
-                })
-                .collect::<Vec<NewOrganization>>();
-
-            Ok(DbInsertOperation::Organizations(orgs))
-        }
-        GRID_SCHEMA => {
-            let schema_defs = SchemaList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
-                .schemas()
-                .iter()
-                .map(|state_schema| {
-                    let schema = NewGridSchema {
-                        name: state_schema.name().to_string(),
-                        description: state_schema.description().to_string(),
-                        owner: state_schema.owner().to_string(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
-                        source: None,
-                    };
-
-                    let definitions = make_property_definitions(
-                        block_num,
-                        state_schema.name(),
-                        state_schema.properties(),
-                    );
-
-                    (schema, definitions)
-                })
-                .collect::<Vec<(NewGridSchema, Vec<NewGridPropertyDefinition>)>>();
-
-            let definitions = schema_defs
-                .clone()
-                .into_iter()
-                .flat_map(|(_, d)| d.into_iter())
-                .collect();
-
-            let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
-
-            Ok(DbInsertOperation::GridSchemas(schemas, definitions))
-        }
-        TRACK_AND_TRACE_PROPERTY if &state_change.address[66..] == "0000" => {
-            let properties = PropertyList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
-                .properties()
-                .iter()
-                .map(|prop| {
-                    let property = NewProperty {
-                        name: prop.name().to_string(),
-                        record_id: prop.record_id().to_string(),
-                        property_definition: prop.property_definition().name().to_string(),
-                        current_page: *prop.current_page() as i32,
-                        wrapped: *prop.wrapped(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
-                        source: None,
-                    };
-
-                    let reporters = prop
-                        .reporters()
-                        .iter()
-                        .map(|reporter| NewReporter {
-                            property_name: prop.name().to_string(),
-                            record_id: prop.record_id().to_string(),
-                            public_key: reporter.public_key().to_string(),
-                            authorized: *reporter.authorized(),
-                            reporter_index: *reporter.index() as i32,
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
-                            source: None,
-                        })
-                        .collect::<Vec<NewReporter>>();
-
-                    (property, reporters)
-                })
-                .collect::<Vec<(NewProperty, Vec<NewReporter>)>>();
-
-            let reporters = properties
-                .clone()
-                .into_iter()
-                .flat_map(|(_, r)| r.into_iter())
-                .collect();
-
-            let properties = properties.into_iter().map(|(s, _)| s).collect();
-
-            Ok(DbInsertOperation::Properties(properties, reporters))
-        }
-        TRACK_AND_TRACE_PROPERTY => {
-            let property_pages = PropertyPageList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse property page list {}", err)))?
-                .property_pages()
-                .to_vec();
-
-            let mut reported_values: Vec<NewReportedValue> = vec![];
-            for page in property_pages {
-                page.reported_values().to_vec().iter().try_fold(
-                    &mut reported_values,
-                    |acc, value| match make_reported_values(
-                        block_num,
-                        page.record_id(),
-                        value.value().name(),
-                        value,
-                    ) {
-                        Ok(mut vals) => {
-                            acc.append(&mut vals);
-                            Ok(acc)
-                        }
-                        Err(err) => Err(err),
-                    },
-                )?;
-            }
-
-            Ok(DbInsertOperation::ReportedValues(reported_values))
-        }
-        TRACK_AND_TRACE_PROPOSAL => {
-            let proposals = ProposalList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
-                .proposals()
-                .iter()
-                .map(|proposal| NewProposal {
-                    record_id: proposal.record_id().to_string(),
-                    timestamp: *proposal.timestamp() as i64,
-                    issuing_agent: proposal.issuing_agent().to_string(),
-                    receiving_agent: proposal.receiving_agent().to_string(),
-                    role: format!("{:?}", proposal.role()),
-                    properties: proposal.properties().to_vec(),
-                    status: format!("{:?}", proposal.status()),
-                    terms: proposal.terms().to_string(),
-                    start_block_num: block_num,
-                    end_block_num: db::MAX_BLOCK_NUM,
-                    source: None,
-                })
-                .collect::<Vec<NewProposal>>();
-
-            Ok(DbInsertOperation::Proposals(proposals))
-        }
-        TRACK_AND_TRACE_RECORD => {
-            let record_list = RecordList::from_bytes(&state_change.value)
-                .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
-                .records()
-                .to_vec();
-
-            let records = record_list
-                .iter()
-                .map(|record| NewRecord {
-                    record_id: record.record_id().to_string(),
-                    final_: *record.field_final(),
-                    schema: record.schema().to_string(),
-                    owners: record
-                        .owners()
-                        .iter()
-                        .map(|x| x.agent_id().to_string())
-                        .collect(),
-                    custodians: record
-                        .custodians()
-                        .iter()
-                        .map(|x| x.agent_id().to_string())
-                        .collect(),
-                    start_block_num: block_num,
-                    end_block_num: db::MAX_BLOCK_NUM,
-                    source: None,
-                })
-                .collect::<Vec<NewRecord>>();
-
-            let mut associated_agents = record_list
-                .iter()
-                .flat_map(|record| {
-                    record.owners().iter().map(move |agent| NewAssociatedAgent {
-                        agent_id: agent.agent_id().to_string(),
-                        record_id: record.record_id().to_string(),
-                        role: "OWNER".to_string(),
-                        timestamp: *agent.timestamp() as i64,
+    match state_change {
+        StateChange::Set { key, value } => match &key[0..8] {
+            PIKE_AGENT => {
+                let agents = AgentList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
+                    .agents()
+                    .iter()
+                    .map(|agent| NewAgent {
+                        public_key: agent.public_key().to_string(),
+                        org_id: agent.org_id().to_string(),
+                        active: *agent.active(),
+                        roles: agent.roles().to_vec(),
+                        metadata: json!(agent.metadata().iter().fold(
+                            HashMap::new(),
+                            |mut acc, md| {
+                                acc.insert(md.key().to_string(), md.value().to_string());
+                                acc
+                            }
+                        )),
                         start_block_num: block_num,
                         end_block_num: db::MAX_BLOCK_NUM,
                         source: None,
                     })
-                })
-                .collect::<Vec<NewAssociatedAgent>>();
+                    .collect::<Vec<NewAgent>>();
 
-            associated_agents.append(
-                &mut record_list
+                Ok(DbInsertOperation::Agents(agents))
+            }
+            PIKE_ORG => {
+                let orgs = OrganizationList::from_bytes(&value)
+                    .map_err(|err| {
+                        EventError(format!("Failed to parse organization list {}", err))
+                    })?
+                    .organizations()
                     .iter()
-                    .flat_map(|record| {
-                        record
-                            .custodians()
+                    .map(|org| NewOrganization {
+                        org_id: org.org_id().to_string(),
+                        name: org.name().to_string(),
+                        address: org.address().to_string(),
+                        metadata: org
+                            .metadata()
                             .iter()
-                            .map(move |agent| NewAssociatedAgent {
-                                agent_id: agent.agent_id().to_string(),
-                                role: "CUSTODIAN".to_string(),
-                                record_id: record.record_id().to_string(),
-                                timestamp: *agent.timestamp() as i64,
+                            .map(|md| {
+                                json!({
+                                    md.key(): md.value()
+                                })
+                            })
+                            .collect::<Vec<JsonValue>>(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
+                    })
+                    .collect::<Vec<NewOrganization>>();
+
+                Ok(DbInsertOperation::Organizations(orgs))
+            }
+            GRID_SCHEMA => {
+                let schema_defs = SchemaList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
+                    .schemas()
+                    .iter()
+                    .map(|state_schema| {
+                        let schema = NewGridSchema {
+                            name: state_schema.name().to_string(),
+                            description: state_schema.description().to_string(),
+                            owner: state_schema.owner().to_string(),
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                            source: None,
+                        };
+
+                        let definitions = make_property_definitions(
+                            block_num,
+                            state_schema.name(),
+                            state_schema.properties(),
+                        );
+
+                        (schema, definitions)
+                    })
+                    .collect::<Vec<(NewGridSchema, Vec<NewGridPropertyDefinition>)>>();
+
+                let definitions = schema_defs
+                    .clone()
+                    .into_iter()
+                    .flat_map(|(_, d)| d.into_iter())
+                    .collect();
+
+                let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
+
+                Ok(DbInsertOperation::GridSchemas(schemas, definitions))
+            }
+            TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
+                let properties = PropertyList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse property list {}", err)))?
+                    .properties()
+                    .iter()
+                    .map(|prop| {
+                        let property = NewProperty {
+                            name: prop.name().to_string(),
+                            record_id: prop.record_id().to_string(),
+                            property_definition: prop.property_definition().name().to_string(),
+                            current_page: *prop.current_page() as i32,
+                            wrapped: *prop.wrapped(),
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                            source: None,
+                        };
+
+                        let reporters = prop
+                            .reporters()
+                            .iter()
+                            .map(|reporter| NewReporter {
+                                property_name: prop.name().to_string(),
+                                record_id: prop.record_id().to_string(),
+                                public_key: reporter.public_key().to_string(),
+                                authorized: *reporter.authorized(),
+                                reporter_index: *reporter.index() as i32,
                                 start_block_num: block_num,
                                 end_block_num: db::MAX_BLOCK_NUM,
                                 source: None,
                             })
-                    })
-                    .collect::<Vec<NewAssociatedAgent>>(),
-            );
+                            .collect::<Vec<NewReporter>>();
 
-            Ok(DbInsertOperation::Records(records, associated_agents))
-        }
-        GRID_PRODUCT => match &state_change.field_type {
-            StateChange_Type::TYPE_UNSET => Err(EventError("Not implement".to_owned())),
-            StateChange_Type::SET => {
-                let product_tuple = ProductList::from_bytes(&state_change.value)
+                        (property, reporters)
+                    })
+                    .collect::<Vec<(NewProperty, Vec<NewReporter>)>>();
+
+                let reporters = properties
+                    .clone()
+                    .into_iter()
+                    .flat_map(|(_, r)| r.into_iter())
+                    .collect();
+
+                let properties = properties.into_iter().map(|(s, _)| s).collect();
+
+                Ok(DbInsertOperation::Properties(properties, reporters))
+            }
+            TRACK_AND_TRACE_PROPERTY => {
+                let property_pages = PropertyPageList::from_bytes(&value)
+                    .map_err(|err| {
+                        EventError(format!("Failed to parse property page list {}", err))
+                    })?
+                    .property_pages()
+                    .to_vec();
+
+                let mut reported_values: Vec<NewReportedValue> = vec![];
+                for page in property_pages {
+                    page.reported_values().to_vec().iter().try_fold(
+                        &mut reported_values,
+                        |acc, value| match make_reported_values(
+                            block_num,
+                            page.record_id(),
+                            value.value().name(),
+                            value,
+                        ) {
+                            Ok(mut vals) => {
+                                acc.append(&mut vals);
+                                Ok(acc)
+                            }
+                            Err(err) => Err(err),
+                        },
+                    )?;
+                }
+
+                Ok(DbInsertOperation::ReportedValues(reported_values))
+            }
+            TRACK_AND_TRACE_PROPOSAL => {
+                let proposals = ProposalList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
+                    .proposals()
+                    .iter()
+                    .map(|proposal| NewProposal {
+                        record_id: proposal.record_id().to_string(),
+                        timestamp: *proposal.timestamp() as i64,
+                        issuing_agent: proposal.issuing_agent().to_string(),
+                        receiving_agent: proposal.receiving_agent().to_string(),
+                        role: format!("{:?}", proposal.role()),
+                        properties: proposal.properties().to_vec(),
+                        status: format!("{:?}", proposal.status()),
+                        terms: proposal.terms().to_string(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
+                    })
+                    .collect::<Vec<NewProposal>>();
+
+                Ok(DbInsertOperation::Proposals(proposals))
+            }
+            TRACK_AND_TRACE_RECORD => {
+                let record_list = RecordList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse record list {}", err)))?
+                    .records()
+                    .to_vec();
+
+                let records = record_list
+                    .iter()
+                    .map(|record| NewRecord {
+                        record_id: record.record_id().to_string(),
+                        final_: *record.field_final(),
+                        schema: record.schema().to_string(),
+                        owners: record
+                            .owners()
+                            .iter()
+                            .map(|x| x.agent_id().to_string())
+                            .collect(),
+                        custodians: record
+                            .custodians()
+                            .iter()
+                            .map(|x| x.agent_id().to_string())
+                            .collect(),
+                        start_block_num: block_num,
+                        end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
+                    })
+                    .collect::<Vec<NewRecord>>();
+
+                let mut associated_agents = record_list
+                    .iter()
+                    .flat_map(|record| {
+                        record.owners().iter().map(move |agent| NewAssociatedAgent {
+                            agent_id: agent.agent_id().to_string(),
+                            record_id: record.record_id().to_string(),
+                            role: "OWNER".to_string(),
+                            timestamp: *agent.timestamp() as i64,
+                            start_block_num: block_num,
+                            end_block_num: db::MAX_BLOCK_NUM,
+                            source: None,
+                        })
+                    })
+                    .collect::<Vec<NewAssociatedAgent>>();
+
+                associated_agents.append(
+                    &mut record_list
+                        .iter()
+                        .flat_map(|record| {
+                            record
+                                .custodians()
+                                .iter()
+                                .map(move |agent| NewAssociatedAgent {
+                                    agent_id: agent.agent_id().to_string(),
+                                    role: "CUSTODIAN".to_string(),
+                                    record_id: record.record_id().to_string(),
+                                    timestamp: *agent.timestamp() as i64,
+                                    start_block_num: block_num,
+                                    end_block_num: db::MAX_BLOCK_NUM,
+                                    source: None,
+                                })
+                        })
+                        .collect::<Vec<NewAssociatedAgent>>(),
+                );
+
+                Ok(DbInsertOperation::Records(records, associated_agents))
+            }
+            GRID_PRODUCT => {
+                let product_tuple = ProductList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
                     .iter()
                     .fold((Vec::new(), Vec::new()), |mut acc, product| {
                         let new_product = NewProduct {
                             product_id: product.product_id().to_string(),
-                            product_address: state_change.address.to_string(),
+                            product_address: key.to_string(),
                             product_namespace: format!("{:?}", product.product_type()),
                             owner: product.owner().to_string(),
                             start_block_num: block_num,
@@ -429,7 +410,7 @@ fn state_change_to_db_operation(
                         let mut properties = make_product_property_values(
                             block_num,
                             product.product_id(),
-                            &state_change.address.to_string(),
+                            &key,
                             product.properties(),
                         );
                         acc.1.append(&mut properties);
@@ -442,15 +423,21 @@ fn state_change_to_db_operation(
                     product_tuple.1,
                 ))
             }
-            StateChange_Type::DELETE => Ok(DbInsertOperation::RemoveProduct(
-                state_change.address.to_string(),
-                block_num,
-            )),
+            _ => Err(EventError(format!(
+                "could not handle state change; unknown key: {}",
+                key
+            ))),
         },
-        _ => Err(EventError(format!(
-            "Could not handle state change unknown address: {}",
-            &state_change.address
-        ))),
+        StateChange::Delete { key } => {
+            if &key[0..8] == GRID_PRODUCT {
+                Ok(DbInsertOperation::RemoveProduct(key.to_string(), block_num))
+            } else {
+                Err(EventError(format!(
+                    "could not handle state change; unexpected delete of key {}",
+                    key
+                )))
+            }
+        }
     }
 }
 

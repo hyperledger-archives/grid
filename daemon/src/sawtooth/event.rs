@@ -93,9 +93,9 @@ impl EventConnection for SawtoothConnection {
         Ok(SawtoothEventUnsubscriber { message_sender })
     }
 
-    fn recv(&self) -> Result<Vec<SawtoothEvent>, EventIoError> {
+    fn recv(&self) -> Result<CommitEvent, EventIoError> {
         match self.get_receiver().recv() {
-            Ok(Ok(msg)) => extract_events(msg),
+            Ok(Ok(msg)) => extract_event(msg),
             Ok(Err(ReceiveError::DisconnectedError)) => Err(EventIoError::ConnectionError(
                 format!("{} has disconnected", self.name()),
             )),
@@ -206,19 +206,22 @@ fn make_event_filter(namespace: &str) -> EventSubscription {
     event_subscription
 }
 
-fn extract_events(msg: Message) -> Result<Vec<SawtoothEvent>, EventIoError> {
+fn extract_event(msg: Message) -> Result<CommitEvent, EventIoError> {
     if msg.get_message_type() != Message_MessageType::CLIENT_EVENTS {
-        warn!("Received unexpected message: {:?}", msg.get_message_type());
-        return Ok(vec![]);
+        return Err(EventIoError::InvalidMessage(format!(
+            "Received unexpected message: {:?}",
+            msg.get_message_type()
+        )));
     }
 
-    match protobuf::parse_from_bytes::<SawtoothEventList>(msg.get_content()) {
-        Ok(mut event_list) => Ok(event_list.take_events().to_vec()),
-        Err(err) => {
-            warn!("Unable to parse event list; ignoring: {}", err);
-            Ok(vec![])
-        }
-    }
+    let sawtooth_events = protobuf::parse_from_bytes::<SawtoothEventList>(msg.get_content())
+        .map_err(|err| {
+            EventIoError::InvalidMessage(format!("Unable to parse event list: {}", err))
+        })?
+        .take_events()
+        .to_vec();
+
+    CommitEvent::try_from(sawtooth_events.as_slice())
 }
 
 impl TryFrom<&[SawtoothEvent]> for CommitEvent {
