@@ -1189,7 +1189,7 @@ impl AdminServiceShared {
             .iter()
             .map(|service| {
                 debug!(
-                    "Stoping service {} in circuit {}",
+                    "Stopping service {} in circuit {}",
                     service.service_type, service.circuit
                 );
                 self.orchestrator.shutdown_service(&service)
