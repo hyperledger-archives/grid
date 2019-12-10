@@ -28,8 +28,7 @@ pub use schemas::*;
 
 use crate::database::ConnectionPool;
 
-use actix::{Actor, Context, SyncContext};
-use sawtooth_sdk::messaging::stream::MessageSender;
+use actix::{Actor, SyncContext};
 
 pub struct DbExecutor {
     connection_pool: ConnectionPool,
@@ -42,20 +41,6 @@ impl Actor for DbExecutor {
 impl DbExecutor {
     pub fn new(connection_pool: ConnectionPool) -> DbExecutor {
         DbExecutor { connection_pool }
-    }
-}
-
-pub struct SawtoothMessageSender {
-    sender: Box<dyn MessageSender>,
-}
-
-impl Actor for SawtoothMessageSender {
-    type Context = Context<Self>;
-}
-
-impl SawtoothMessageSender {
-    pub fn new(sender: Box<dyn MessageSender>) -> SawtoothMessageSender {
-        SawtoothMessageSender { sender }
     }
 }
 
