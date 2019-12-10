@@ -63,7 +63,7 @@ impl EventConnection for SawtoothConnection {
     }
 
     fn subscribe(
-        &self,
+        &mut self,
         namespaces: &[&str],
         last_commit_id: &str,
     ) -> Result<Self::Unsubscriber, EventIoError> {

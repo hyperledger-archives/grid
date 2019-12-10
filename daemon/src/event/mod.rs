@@ -99,7 +99,7 @@ pub trait EventConnection: Send {
     fn recv(&self) -> Result<CommitEvent, EventIoError>;
 
     fn subscribe(
-        &self,
+        &mut self,
         namespaces: &[&str],
         last_commit_id: &str,
     ) -> Result<Self::Unsubscriber, EventIoError>;
@@ -130,7 +130,7 @@ pub struct EventProcessor<Conn: EventConnection> {
 
 impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
     pub fn start(
-        connection: Conn,
+        mut connection: Conn,
         last_known_commit_id: &str,
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
