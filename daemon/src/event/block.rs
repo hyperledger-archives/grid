@@ -180,6 +180,7 @@ fn state_change_to_db_operation(
                     })),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
+                    source: None,
                 })
                 .collect::<Vec<NewAgent>>();
 
@@ -205,6 +206,7 @@ fn state_change_to_db_operation(
                         .collect::<Vec<JsonValue>>(),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
+                    source: None,
                 })
                 .collect::<Vec<NewOrganization>>();
 
@@ -222,6 +224,7 @@ fn state_change_to_db_operation(
                         owner: state_schema.owner().to_string(),
                         start_block_num: block_num,
                         end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
                     };
 
                     let definitions = make_property_definitions(
@@ -258,6 +261,7 @@ fn state_change_to_db_operation(
                         wrapped: *prop.wrapped(),
                         start_block_num: block_num,
                         end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
                     };
 
                     let reporters = prop
@@ -271,6 +275,7 @@ fn state_change_to_db_operation(
                             reporter_index: *reporter.index() as i32,
                             start_block_num: block_num,
                             end_block_num: db::MAX_BLOCK_NUM,
+                            source: None,
                         })
                         .collect::<Vec<NewReporter>>();
 
@@ -331,6 +336,7 @@ fn state_change_to_db_operation(
                     terms: proposal.terms().to_string(),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
+                    source: None,
                 })
                 .collect::<Vec<NewProposal>>();
 
@@ -360,6 +366,7 @@ fn state_change_to_db_operation(
                         .collect(),
                     start_block_num: block_num,
                     end_block_num: db::MAX_BLOCK_NUM,
+                    source: None,
                 })
                 .collect::<Vec<NewRecord>>();
 
@@ -373,6 +380,7 @@ fn state_change_to_db_operation(
                         timestamp: *agent.timestamp() as i64,
                         start_block_num: block_num,
                         end_block_num: db::MAX_BLOCK_NUM,
+                        source: None,
                     })
                 })
                 .collect::<Vec<NewAssociatedAgent>>();
@@ -391,6 +399,7 @@ fn state_change_to_db_operation(
                                 timestamp: *agent.timestamp() as i64,
                                 start_block_num: block_num,
                                 end_block_num: db::MAX_BLOCK_NUM,
+                                source: None,
                             })
                     })
                     .collect::<Vec<NewAssociatedAgent>>(),
@@ -413,6 +422,7 @@ fn state_change_to_db_operation(
                             owner: product.owner().to_string(),
                             start_block_num: block_num,
                             end_block_num: db::MAX_BLOCK_NUM,
+                            source: None,
                         };
                         acc.0.push(new_product);
 
@@ -597,6 +607,7 @@ fn make_property_definitions(
                 .collect(),
             start_block_num,
             end_block_num: db::MAX_BLOCK_NUM,
+            source: None,
         });
 
         if !def.struct_properties().is_empty() {
@@ -642,6 +653,7 @@ fn make_product_property_values(
             )),
             start_block_num,
             end_block_num: db::MAX_BLOCK_NUM,
+            source: None,
         });
 
         if !val.struct_values().is_empty() {
