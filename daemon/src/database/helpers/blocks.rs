@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::Block;
+use super::models::{Block, NewBlock};
 use super::schema::{block, chain_record};
 use super::MAX_BLOCK_NUM;
 
@@ -29,7 +29,7 @@ use diesel::{
 
 const NULL_BLOCK_ID: &str = "0000000000000000";
 
-pub fn insert_block(conn: &PgConnection, block: &Block) -> QueryResult<()> {
+pub fn insert_block(conn: &PgConnection, block: &NewBlock) -> QueryResult<()> {
     insert_into(block::table)
         .values(block)
         .execute(conn)

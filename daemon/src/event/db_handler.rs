@@ -37,7 +37,7 @@ use std::i64;
 use crate::database::{
     helpers as db,
     models::{
-        Block, LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition,
+        LatLongValue, NewAgent, NewAssociatedAgent, NewBlock, NewGridPropertyDefinition,
         NewGridSchema, NewOrganization, NewProduct, NewProductPropertyValue, NewProperty,
         NewProposal, NewRecord, NewReportedValue, NewReporter,
     },
@@ -105,14 +105,16 @@ impl EventHandler for DatabaseEventHandler {
     }
 }
 
-fn create_db_block_from_commit_event(event: &CommitEvent) -> Result<Block, EventError> {
+fn create_db_block_from_commit_event(event: &CommitEvent) -> Result<NewBlock, EventError> {
     let block_id = event.id.clone();
     let block_num = commit_event_height_to_block_num(event.height)?;
     let state_root_hash = "".into();
-    Ok(Block {
+    let source = Some(event.source.clone());
+    Ok(NewBlock {
         block_id,
         block_num,
         state_root_hash,
+        source,
     })
 }
 

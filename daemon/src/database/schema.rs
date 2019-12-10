@@ -45,10 +45,12 @@ table! {
 }
 
 table! {
-    block (block_id) {
+    block (id) {
+        id -> Int8,
         block_id -> Varchar,
         block_num -> Int8,
         state_root_hash -> Varchar,
+        source -> Nullable<Text>,
     }
 }
 
