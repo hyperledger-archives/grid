@@ -14,8 +14,6 @@
 
 //! Provides an empty-list implemenation of the NodeRegistry trait.
 
-use std::collections::HashMap;
-
 use super::{
     MetadataPredicate, Node, NodeRegistryError, NodeRegistryReader, NodeRegistryWriter,
     RwNodeRegistry,
@@ -45,19 +43,11 @@ impl NodeRegistryReader for NoOpNodeRegistry {
 }
 
 impl NodeRegistryWriter for NoOpNodeRegistry {
-    fn add_node(&self, _node: Node) -> Result<(), NodeRegistryError> {
+    fn insert_node(&self, _node: Node) -> Result<(), NodeRegistryError> {
         Err(NodeRegistryError::UnableToAddNode(
             "operation not supported".into(),
             None,
         ))
-    }
-
-    fn update_node(
-        &self,
-        identity: &str,
-        _updates: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError> {
-        Err(NodeRegistryError::NotFoundError(identity.to_string()))
     }
 
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {

@@ -123,29 +123,13 @@ pub trait NodeRegistryReader: Send + Sync {
 
 /// Provides Node Registry write capabilities.
 pub trait NodeRegistryWriter: Send + Sync {
-    /// Registers a new node.
+    /// Adds a new node to the registry, or replaces an existing node with the same identity.
     ///
     /// # Arguments
     ///
-    /// * `node` - The node to be added to the registry.
+    /// * `node` - The node to be added to or updated in the registry.
     ///
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError>;
-
-    /// Updates a node with the given identity.
-    /// The node's exiting metadata properties that are not in the updates map will not be
-    /// changed. New properties that are not already in the nodes's metadata will be added to
-    /// the metadata.
-    ///
-    /// # Arguments
-    ///
-    ///  * `identity` - The Splinter identity of the node.
-    ///  * `updates` - A map containing the updated properties.
-    ///
-    fn update_node(
-        &self,
-        identity: &str,
-        updates: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError>;
+    fn insert_node(&self, node: Node) -> Result<(), NodeRegistryError>;
 
     /// Deletes a node with the given identity.
     ///
@@ -202,16 +186,8 @@ impl<NW> NodeRegistryWriter for Box<NW>
 where
     NW: NodeRegistryWriter + ?Sized,
 {
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
-        (**self).add_node(node)
-    }
-
-    fn update_node(
-        &self,
-        identity: &str,
-        updates: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError> {
-        (**self).update_node(identity, updates)
+    fn insert_node(&self, node: Node) -> Result<(), NodeRegistryError> {
+        (**self).insert_node(node)
     }
 
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {
