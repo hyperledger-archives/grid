@@ -71,7 +71,7 @@ node ('master') {
         // Use a docker container to build and protogen, so that the Jenkins
         // environment doesn't need all the dependencies.
         stage("Build Test Dependencies") {
-            sh 'VERSION=AUTO_STRICT REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose-installed.yaml build --force-rm'
+            sh 'VERSION=AUTO_STRICT REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
             sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
         }
 
@@ -100,7 +100,7 @@ node ('master') {
 
         stage("Archive Build artifacts") {
             sh 'mkdir -p build/debs'
-            sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd-installed:${ISOLATION_ID} bash -c "cp /tmp/grid*.deb /debs && chown -R ${JENKINS_UID} /debs"'
+            sh 'docker run --rm -v $(pwd)/build/debs/:/debs gridd:${ISOLATION_ID} bash -c "cp /tmp/grid*.deb /debs && chown -R ${JENKINS_UID} /debs"'
             archiveArtifacts artifacts: '*.tgz, *.zip'
             archiveArtifacts artifacts: 'build/debs/*.deb', allowEmptyArchive: true
             archiveArtifacts artifacts: 'docs/build/html/**, docs/build/latex/*.pdf'
