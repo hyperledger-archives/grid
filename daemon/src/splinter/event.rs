@@ -43,7 +43,7 @@ pub struct ScabbardEventConnectionFactory {
 }
 
 impl ScabbardEventConnectionFactory {
-    /// Constructs a new factory connecting to a specific splinter node.
+    /// Construct a new factory connecting to a specific splinter node.
     pub fn new(node_endpoint: &str) -> Self {
         Self {
             node_endpoint: node_endpoint.into(),
@@ -51,7 +51,7 @@ impl ScabbardEventConnectionFactory {
         }
     }
 
-    /// Create an ScabbardEventConnection on a given circuit and service.
+    /// Create a ScabbardEventConnection on a given circuit and service.
     pub fn create_connection(
         &self,
         circuit_id: &str,
@@ -70,7 +70,7 @@ impl ScabbardEventConnectionFactory {
         ))
     }
 
-    /// Shuts down all open Scabbard event connections.
+    /// Shut down all open Scabbard event connections.
     pub fn shutdown_all(self) -> Result<(), ScabbardEventConnectionError> {
         self.reactor.shutdown().map_err(|err| {
             ScabbardEventConnectionError(format!(
@@ -111,7 +111,7 @@ impl ScabbardEventConnection {
 }
 
 impl EventConnection for ScabbardEventConnection {
-    type Unsubscriber = ScabbardEventEventUnsubscriber;
+    type Unsubscriber = ScabbardEventUnsubscriber;
 
     fn name(&self) -> &str {
         &self.name
@@ -167,7 +167,10 @@ impl EventConnection for ScabbardEventConnection {
         let mut connection_state = self.connection_state.borrow_mut();
         *connection_state = ConnectionState::Connected(receiver);
 
-        Ok(ScabbardEventEventUnsubscriber { name: self.name.clone(), unsubscribe_sender })
+        Ok(ScabbardEventUnsubscriber {
+            name: self.name.clone(),
+            unsubscribe_sender,
+        })
     }
 
     fn recv(&self) -> Result<CommitEvent, EventIoError> {
@@ -217,14 +220,15 @@ impl EventConnection for ScabbardEventConnection {
 }
 
 /// EventConnectionUnsubscriber for Scabbard.
-pub struct ScabbardEventEventUnsubscriber {
+pub struct ScabbardEventUnsubscriber {
     name: String,
     unsubscribe_sender: SyncSender<ConnectionCommand>,
 }
 
-impl EventConnectionUnsubscriber for ScabbardEventEventUnsubscriber {
+impl EventConnectionUnsubscriber for ScabbardEventUnsubscriber {
     fn unsubscribe(self) -> Result<(), EventIoError> {
-        if self.unsubscribe_sender
+        if self
+            .unsubscribe_sender
             .send(ConnectionCommand::Shutdown)
             .is_err()
         {
