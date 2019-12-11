@@ -57,7 +57,7 @@ fn run() -> Result<(), DaemonError> {
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
         (about: "Daemon Package for Hyperledger Grid")
-        (@arg connect: -C --connect +takes_value "connection endpoint for validator")
+        (@arg connect: -C --connect +takes_value "connection endpoint for sawtooth or splinter")
         (@arg verbose: -v +multiple "Log verbosely")
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
@@ -77,7 +77,11 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    let sawtooth_connection = SawtoothConnection::new(config.validator_endpoint());
+    let sawtooth_connection = if config.endpoint().is_sawtooth() {
+        SawtoothConnection::new(&config.endpoint().url())
+    } else {
+        panic!("Unsupported endpoint type: {}", config.endpoint().url());
+    };
 
     let connection_pool = database::create_connection_pool(config.database_url())?;
 

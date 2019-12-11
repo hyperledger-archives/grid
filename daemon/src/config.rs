@@ -19,14 +19,14 @@ use crate::error::ConfigurationError;
 
 #[derive(Debug)]
 pub struct GridConfig {
-    validator_endpoint: String,
+    endpoint: Endpoint,
     rest_api_endpoint: String,
     database_url: String,
 }
 
 impl GridConfig {
-    pub fn validator_endpoint(&self) -> &str {
-        &self.validator_endpoint
+    pub fn endpoint(&self) -> &Endpoint {
+        &self.endpoint
     }
 
     pub fn rest_api_endpoint(&self) -> &str {
@@ -37,8 +37,65 @@ impl GridConfig {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Endpoint {
+    backend: Backend,
+    url: String,
+}
+
+impl Endpoint {
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
+    pub fn is_sawtooth(&self) -> bool {
+        self.backend == Backend::Sawtooth
+    }
+}
+
+impl From<&str> for Endpoint {
+    fn from(s: &str) -> Self {
+        let mut s = s.to_lowercase();
+
+        if s.starts_with("splinter:") {
+            let mut url = s.replace("splinter:", "");
+            if !url.starts_with("tcp://") {
+                url.insert_str(0, "tcp://");
+            }
+
+            Endpoint {
+                backend: Backend::Splinter,
+                url,
+            }
+        } else if s.starts_with("sawtooth:") {
+            let mut url = s.replace("sawtooth:", "");
+            if !url.starts_with("tcp://") {
+                url.insert_str(0, "tcp://");
+            }
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url,
+            }
+        } else {
+            if !s.starts_with("tcp://") {
+                s.insert_str(0, "tcp://");
+            }
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: s,
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Backend {
+    Splinter,
+    Sawtooth,
+}
+
 pub struct GridConfigBuilder {
-    validator_endpoint: Option<String>,
+    endpoint: Option<Endpoint>,
     rest_api_endpoint: Option<String>,
     database_url: Option<String>,
 }
@@ -46,7 +103,10 @@ pub struct GridConfigBuilder {
 impl Default for GridConfigBuilder {
     fn default() -> Self {
         Self {
-            validator_endpoint: Some("tcp://127.0.0.1:4004".to_owned()),
+            endpoint: Some(Endpoint {
+                url: "tcp://127.0.0.1:4004".to_owned(),
+                backend: Backend::Sawtooth,
+            }),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
             database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
         }
@@ -56,16 +116,10 @@ impl Default for GridConfigBuilder {
 impl GridConfigBuilder {
     pub fn with_cli_args(&mut self, matches: &clap::ArgMatches<'_>) -> Self {
         Self {
-            validator_endpoint: matches
+            endpoint: matches
                 .value_of("connect")
-                .map(|c| {
-                    let mut connect = ToOwned::to_owned(c);
-                    if !connect.contains("tcp://") {
-                        connect.insert_str(0, "tcp://");
-                    }
-                    connect
-                })
-                .or_else(|| self.validator_endpoint.take()),
+                .map(Endpoint::from)
+                .or_else(|| self.endpoint.take()),
 
             rest_api_endpoint: matches
                 .value_of("bind")
@@ -81,10 +135,10 @@ impl GridConfigBuilder {
 
     pub fn build(mut self) -> Result<GridConfig, ConfigurationError> {
         Ok(GridConfig {
-            validator_endpoint: self
-                .validator_endpoint
+            endpoint: self
+                .endpoint
                 .take()
-                .ok_or_else(|| ConfigurationError::MissingValue("validator_endpoint".to_owned()))?,
+                .ok_or_else(|| ConfigurationError::MissingValue("endpoint".to_owned()))?,
             rest_api_endpoint: self
                 .rest_api_endpoint
                 .take()
@@ -119,7 +173,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("tcp://validator:4004", config.validator_endpoint());
+        assert_eq!("tcp://validator:4004", config.endpoint().url());
         assert_eq!("rest_api:8080", config.rest_api_endpoint());
     }
 
@@ -135,7 +189,67 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("tcp://127.0.0.1:4004", config.validator_endpoint());
+        assert_eq!("tcp://127.0.0.1:4004", config.endpoint().url());
         assert_eq!("127.0.0.1:8080", config.rest_api_endpoint());
+    }
+
+    #[test]
+    fn test_endpoint_splinter_prefix() {
+        let endpoint = Endpoint::from("splinter:tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Splinter,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_sawtooth_prefix() {
+        let endpoint = Endpoint::from("sawtooth:tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_no_prefix() {
+        let endpoint = Endpoint::from("tcp://localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_capitals() {
+        let endpoint = Endpoint::from("SAWTOOTH:TCP://LOCALHOST:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Sawtooth,
+                url: "tcp://localhost:8080".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_endpoint_no_protocol() {
+        let endpoint = Endpoint::from("splinter:localhost:8080");
+        assert_eq!(
+            endpoint,
+            Endpoint {
+                backend: Backend::Splinter,
+                url: "tcp://localhost:8080".into()
+            }
+        );
     }
 }
