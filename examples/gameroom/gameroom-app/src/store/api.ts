@@ -224,8 +224,19 @@ export async function listProposals(): Promise<GameroomProposal[]> {
 }
 
 async function getNode(id: string): Promise<Node> {
-    const response = await gameroomAPI.get(`/nodes/${id}`);
-    return response.data.data as Node;
+    try {
+      const response = await gameroomAPI.get(`/nodes/${id}`);
+      return response.data.data as Node;
+    } catch (e) {
+      console.warn(`Node with ID: ${id} not found. It may have been removed from the registry.`);
+      return {
+        identity: id,
+        metadata: {
+          endpoint: 'unknown',
+          organization: id,
+        },
+      };
+    }
 }
 
 export async function proposalVote(ballot: Ballot, proposalID: string,
