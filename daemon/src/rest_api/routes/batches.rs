@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::rest_api::{error::RestApiResponseError, routes::SawtoothMessageSender, AppState};
+use crate::rest_api::{error::RestApiResponseError, AppState};
+use sawtooth_sdk::messaging::zmq_stream::ZmqMessageSender;
 
-use actix::{Context, Handler, Message};
 use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
 use futures::future;
 use futures::future::Future;
@@ -34,22 +34,14 @@ use uuid::Uuid;
 
 const DEFAULT_TIME_OUT: u32 = 300; // Max timeout 300 seconds == 5 minutes
 
-struct SubmitBatches {
-    batch_list: BatchList,
-    response_url: Url,
+pub struct SubmitBatches {
+    pub batch_list: BatchList,
+    pub response_url: Url,
 }
 
-impl Message for SubmitBatches {
-    type Result = Result<BatchStatusLink, RestApiResponseError>;
-}
-
-struct BatchStatuses {
-    batch_ids: Vec<String>,
-    wait: Option<u32>,
-}
-
-impl Message for BatchStatuses {
-    type Result = Result<Vec<BatchStatus>, RestApiResponseError>;
+pub struct BatchStatuses {
+    pub batch_ids: Vec<String>,
+    pub wait: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -95,17 +87,46 @@ pub struct BatchStatusLink {
     pub link: String,
 }
 
-impl Handler<SubmitBatches> for SawtoothMessageSender {
-    type Result = Result<BatchStatusLink, RestApiResponseError>;
+pub trait BatchSubmitter: Send + 'static {
+    fn submit_batches(
+        &self,
+        submit_batches: SubmitBatches,
+    ) -> Result<BatchStatusLink, RestApiResponseError>;
 
-    fn handle(&mut self, msg: SubmitBatches, _: &mut Context<Self>) -> Self::Result {
+    fn batch_status(
+        &self,
+        batch_statuses: BatchStatuses,
+    ) -> Result<Vec<BatchStatus>, RestApiResponseError>;
+
+    fn clone_box(&self) -> Box<dyn BatchSubmitter>;
+}
+
+impl Clone for Box<dyn BatchSubmitter> {
+    fn clone(&self) -> Box<dyn BatchSubmitter> {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone)]
+pub struct SawtoothBatchSubmitter {
+    sender: ZmqMessageSender,
+}
+
+impl SawtoothBatchSubmitter {
+    pub fn new(sender: ZmqMessageSender) -> Self {
+        Self { sender }
+    }
+}
+
+impl BatchSubmitter for SawtoothBatchSubmitter {
+    fn submit_batches(&self, msg: SubmitBatches) -> Result<BatchStatusLink, RestApiResponseError> {
         let mut client_submit_request = ClientBatchSubmitRequest::new();
         client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
             msg.batch_list.get_batches().to_vec(),
         ));
 
         let response_status: ClientBatchSubmitResponse = query_validator(
-            &*self.sender,
+            &self.sender,
             Message_MessageType::CLIENT_BATCH_SUBMIT_REQUEST,
             &client_submit_request,
         )?;
@@ -130,12 +151,8 @@ impl Handler<SubmitBatches> for SawtoothMessageSender {
             Err(err) => Err(err),
         }
     }
-}
 
-impl Handler<BatchStatuses> for SawtoothMessageSender {
-    type Result = Result<Vec<BatchStatus>, RestApiResponseError>;
-
-    fn handle(&mut self, msg: BatchStatuses, _: &mut Context<Self>) -> Self::Result {
+    fn batch_status(&self, msg: BatchStatuses) -> Result<Vec<BatchStatus>, RestApiResponseError> {
         let mut batch_status_request = ClientBatchStatusRequest::new();
         batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
         match msg.wait {
@@ -149,12 +166,16 @@ impl Handler<BatchStatuses> for SawtoothMessageSender {
         }
 
         let response_status: ClientBatchStatusResponse = query_validator(
-            &*self.sender,
+            &self.sender,
             Message_MessageType::CLIENT_BATCH_STATUS_REQUEST,
             &batch_status_request,
         )?;
 
         process_batch_status_response(response_status)
+    }
+
+    fn clone_box(&self) -> Box<dyn BatchSubmitter> {
+        Box::new(self.clone())
     }
 }
 
@@ -177,18 +198,13 @@ pub fn submit_batches(
                 Err(err) => return Box::new(future::err(err.into())),
             };
 
-            let res = state
-                .sawtooth_connection
-                .send(SubmitBatches {
-                    batch_list,
-                    response_url,
-                })
-                .from_err()
-                .and_then(|res| match res {
-                    Ok(link) => Ok(HttpResponse::Ok().json(link)),
-                    Err(err) => Err(err),
-                });
-            Box::new(res)
+            match state.batch_submitter.submit_batches(SubmitBatches {
+                batch_list,
+                response_url,
+            }) {
+                Ok(link) => Box::new(future::ok(HttpResponse::Ok().json(link))),
+                Err(err) => Box::new(future::err(err)),
+            }
         },
     )
 }
@@ -251,22 +267,20 @@ pub fn get_batch_statuses(
         Err(err) => return Box::new(future::err(err.into())),
     };
 
-    state
-        .sawtooth_connection
-        .send(BatchStatuses { batch_ids, wait })
-        .from_err()
-        .and_then(|res| match res {
-            Ok(batch_statuses) => Ok(HttpResponse::Ok().json(BatchStatusResponse {
-                data: batch_statuses,
-                link: response_url,
-            })),
-            Err(err) => Err(err),
-        })
-        .responder()
+    match state
+        .batch_submitter
+        .batch_status(BatchStatuses { batch_ids, wait })
+    {
+        Ok(batch_statuses) => Box::new(future::ok(HttpResponse::Ok().json(BatchStatusResponse {
+            data: batch_statuses,
+            link: response_url,
+        }))),
+        Err(err) => Box::new(future::err(err)),
+    }
 }
 
-fn query_validator<T: protobuf::Message, C: protobuf::Message>(
-    sender: &dyn MessageSender,
+pub fn query_validator<T: protobuf::Message, C: protobuf::Message, MS: MessageSender>(
+    sender: &MS,
     message_type: Message_MessageType,
     message: &C,
 ) -> Result<T, RestApiResponseError> {
@@ -302,7 +316,7 @@ fn query_validator<T: protobuf::Message, C: protobuf::Message>(
     })
 }
 
-fn process_validator_response(
+pub fn process_validator_response(
     status: ClientBatchSubmitResponse_Status,
 ) -> Result<(), RestApiResponseError> {
     match status {
@@ -318,7 +332,7 @@ fn process_validator_response(
     }
 }
 
-fn process_batch_status_response(
+pub fn process_batch_status_response(
     response: ClientBatchStatusResponse,
 ) -> Result<Vec<BatchStatus>, RestApiResponseError> {
     let status = response.get_status();

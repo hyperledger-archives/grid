@@ -36,7 +36,10 @@ use sawtooth_sdk::{
         },
         validator::{Message, Message_MessageType},
     },
-    messaging::stream::{MessageSender, ReceiveError, SendError},
+    messaging::{
+        stream::{MessageSender, ReceiveError, SendError},
+        zmq_stream::ZmqMessageSender,
+    },
 };
 
 use crate::event::{
@@ -112,7 +115,7 @@ impl EventConnection for SawtoothConnection {
 }
 
 pub struct SawtoothEventUnsubscriber {
-    message_sender: Box<dyn MessageSender + Send>,
+    message_sender: ZmqMessageSender,
 }
 
 impl EventConnectionUnsubscriber for SawtoothEventUnsubscriber {
