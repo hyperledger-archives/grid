@@ -26,6 +26,8 @@ services:
     build:
       context: .
       dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
@@ -46,6 +48,8 @@ services:
     build:
       context: .
       dockerfile: contracts/schema/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
@@ -65,6 +69,8 @@ services:
     build:
       context: .
       dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
@@ -83,6 +89,8 @@ services:
     build:
       context: .
       dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |

@@ -27,6 +27,7 @@ services:
         - http_proxy
         - https_proxy
         - no_proxy
+        - REPO_VERSION=${REPO_VERSION}
 
   validator:
     image: hyperledger/sawtooth-validator:1.1

@@ -21,6 +21,8 @@ COPY sdk/ /build/sdk/
 WORKDIR /build/contracts/track_and_trace
 
 # Build the contract
+ARG REPO_VERSION
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
 RUN cargo build --target wasm32-unknown-unknown --release
 
 # -------------=== track_and_trace submitter build ===-------------
