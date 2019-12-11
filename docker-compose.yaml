@@ -171,6 +171,7 @@ services:
         --bind rest-api:8008
 
   gridd:
+    image: gridd
     container_name: gridd
     build:
       context: .
