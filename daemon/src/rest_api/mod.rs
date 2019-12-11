@@ -30,6 +30,8 @@ use crate::submitter::BatchSubmitter;
 use actix::{Addr, SyncArbiter};
 use actix_web::{http::Method, server, App};
 
+const SYNC_ARBITER_THREAD_COUNT: usize = 2;
+
 #[derive(Clone)]
 pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
@@ -41,8 +43,9 @@ impl AppState {
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
         connection_pool: ConnectionPool,
     ) -> Self {
-        let database_connection =
-            SyncArbiter::start(2, move || DbExecutor::new(connection_pool.clone()));
+        let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
+            DbExecutor::new(connection_pool.clone())
+        });
 
         AppState {
             batch_submitter,
