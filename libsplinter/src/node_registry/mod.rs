@@ -111,6 +111,14 @@ pub trait NodeRegistryReader: Send + Sync {
     ///  * `identity` - The Splinter identity of the node.
     ///
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError>;
+
+    fn has_node(&self, identity: &str) -> Result<bool, NodeRegistryError> {
+        match self.fetch_node(identity) {
+            Ok(_) => Ok(true),
+            Err(NodeRegistryError::NotFoundError(_)) => Ok(false),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 /// Provides Node Registry write capabilities.
@@ -183,6 +191,10 @@ where
 
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
         (**self).fetch_node(identity)
+    }
+
+    fn has_node(&self, identity: &str) -> Result<bool, NodeRegistryError> {
+        (**self).has_node(identity)
     }
 }
 
