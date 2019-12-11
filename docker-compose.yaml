@@ -196,6 +196,17 @@ services:
               --database-url postgres://grid:grid_example@db/grid
         "
 
+  grid-cli:
+    image: grid-cli
+    container_name: grid-cli
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    entrypoint: |
+        tail -f /dev/null
+
   sabre-tp:
     image: hyperledger/sawtooth-sabre-tp:latest
     container_name: sawtooth-sabre-tp
