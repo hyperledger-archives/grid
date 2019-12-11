@@ -105,5 +105,12 @@ node ('master') {
             archiveArtifacts artifacts: 'build/debs/*.deb', allowEmptyArchive: true
             archiveArtifacts artifacts: 'docs/build/html/**, docs/build/latex/*.pdf'
         }
+
+        if (env.BRANCH_NAME == 'master') {
+            stage("Build grid-dev image") {
+                sh 'docker build -f ci/grid-dev -t hyperledger/grid-dev .'
+                sh 'docker push hyperledger/grid-dev'
+            }
+        }
     }
 }
