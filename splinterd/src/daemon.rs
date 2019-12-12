@@ -38,7 +38,11 @@ use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
-use splinter::node_registry::{self, RwNodeRegistry};
+use splinter::node_registry::{
+    self,
+    rest_api::{make_nodes_identity_resource, make_nodes_resource},
+    RwNodeRegistry,
+};
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;
 use splinter::protos::circuit::CircuitMessageType;
@@ -363,8 +367,8 @@ impl SplinterDaemon {
                     routes::get_status(node_id.clone(), service_endpoint.clone())
                 }),
             )
-            .add_resource(routes::make_nodes_identity_resource(node_registry.clone()))
-            .add_resource(routes::make_nodes_resource(node_registry.clone()))
+            .add_resource(make_nodes_identity_resource(node_registry.clone()))
+            .add_resource(make_nodes_resource(node_registry.clone()))
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources);

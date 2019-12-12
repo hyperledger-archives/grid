@@ -16,11 +16,9 @@
 #[cfg(feature = "circuit-read")]
 mod circuit;
 mod keys;
-mod node;
 mod status;
 
 #[cfg(feature = "circuit-read")]
 pub use circuit::CircuitResourceProvider;
 pub use keys::KeyRegistryManager;
-pub use node::*;
 pub use status::*;

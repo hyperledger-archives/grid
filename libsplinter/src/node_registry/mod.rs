@@ -14,6 +14,7 @@
 
 pub mod error;
 pub mod noop;
+pub mod rest_api;
 pub mod yaml;
 
 use std::collections::HashMap;
