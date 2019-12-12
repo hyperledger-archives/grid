@@ -177,6 +177,7 @@ services:
       context: .
       dockerfile: daemon/Dockerfile
       args:
+        - CARGO_ARGS=${CARGO_ARGS}
         - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8080
@@ -203,6 +204,7 @@ services:
       context: .
       dockerfile: cli/Dockerfile
       args:
+        - CARGO_ARGS=${CARGO_ARGS}
         - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
         tail -f /dev/null
