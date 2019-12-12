@@ -20,12 +20,11 @@ use std::fmt::Write;
 use serde::Serializer;
 use splinter::actix_web::{error::BlockingError, web, HttpResponse};
 use splinter::futures::{future::IntoFuture, Future};
-use splinter::{
-    keys::{KeyInfo, KeyRegistry, KeyRegistryError},
-    rest_api::{Method, Resource, RestResourceProvider},
+use splinter::keys::{KeyInfo, KeyRegistry, KeyRegistryError};
+use splinter::rest_api::{
+    paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
+    Method, Resource, RestResourceProvider,
 };
-
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
 struct ListKeyInfoResponse {

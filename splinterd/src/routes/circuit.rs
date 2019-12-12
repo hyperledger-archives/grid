@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
 use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use splinter::circuit::{
     AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType, SplinterState,
 };
 use splinter::futures::{future::IntoFuture, Future};
-use splinter::rest_api::{Method, Resource, RestResourceProvider};
+use splinter::rest_api::{
+    paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
+    Method, Resource, RestResourceProvider,
+};
 
 use std::collections::HashMap;
 use std::error::Error as StdError;

@@ -40,6 +40,7 @@ log = "0.3.0"
 mio = "0.6"
 mio-extras = "2"
 openssl = "0.10"
+percent-encoding = "2.0"
 protobuf = "2"
 rand = { version = "0.7", optional = true }
 sawtooth = { version = "0.2", default-features = false, features = ["lmdb-store", "receipt-store"] }
