@@ -30,10 +30,20 @@ use super::schema::{
 
 #[derive(Insertable, Queryable)]
 #[table_name = "block"]
-pub struct Block {
+pub struct NewBlock {
     pub block_id: String,
     pub block_num: i64,
     pub state_root_hash: String,
+    pub source: Option<String>,
+}
+
+#[derive(Queryable, Debug)]
+pub struct Block {
+    pub id: i64,
+    pub block_id: String,
+    pub block_num: i64,
+    pub state_root_hash: String,
+    pub source: Option<String>,
 }
 
 #[derive(Insertable, Debug)]
