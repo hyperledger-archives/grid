@@ -35,6 +35,7 @@ mod rest_api;
 mod sawtooth;
 #[cfg(feature = "splinter")]
 mod splinter;
+mod submitter;
 
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -46,8 +47,8 @@ use crate::config::GridConfigBuilder;
 use crate::database::{error::DatabaseError, helpers as db};
 use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
-use crate::sawtooth::connection::SawtoothConnection;
-use rest_api::{AppState, SawtoothBatchSubmitter};
+use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
+use rest_api::AppState;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -62,12 +62,13 @@ mod test {
     };
     use crate::rest_api::{
         error::RestApiResponseError,
-        routes::{
-            batches::{process_batch_status_response, process_validator_response, query_validator},
-            AgentSlice, BatchStatusResponse, OrganizationSlice,
-        },
+        routes::{AgentSlice, OrganizationSlice},
         AppState,
     };
+    use crate::sawtooth::batch_submitter::{
+        process_batch_status_response, process_validator_response, query_validator,
+    };
+    use crate::submitter::*;
 
     use actix_web::{http, http::Method, test::TestServer, HttpMessage};
     use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
