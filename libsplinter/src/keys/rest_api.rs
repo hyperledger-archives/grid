@@ -18,13 +18,15 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 
 use serde::Serializer;
-use splinter::actix_web::{error::BlockingError, web, HttpResponse};
-use splinter::futures::{future::IntoFuture, Future};
-use splinter::keys::{KeyInfo, KeyRegistry, KeyRegistryError};
-use splinter::rest_api::{
+
+use crate::actix_web::{error::BlockingError, web, HttpResponse};
+use crate::futures::{future::IntoFuture, Future};
+use crate::rest_api::{
     paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
     Method, Resource, RestResourceProvider,
 };
+
+use super::{KeyInfo, KeyRegistry, KeyRegistryError};
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
 struct ListKeyInfoResponse {

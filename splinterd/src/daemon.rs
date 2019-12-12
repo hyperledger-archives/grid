@@ -27,7 +27,10 @@ use splinter::circuit::handlers::{
     CircuitMessageHandler, ServiceConnectRequestHandler, ServiceDisconnectRequestHandler,
 };
 use splinter::circuit::SplinterState;
-use splinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
+use splinter::keys::{
+    insecure::AllowAllKeyPermissionManager, rest_api::KeyRegistryManager,
+    storage::StorageKeyRegistry,
+};
 use splinter::mesh::Mesh;
 use splinter::network::auth::handlers::{
     create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
@@ -347,7 +350,7 @@ impl SplinterDaemon {
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
         })?;
-        let key_registry_manager = routes::KeyRegistryManager::new(key_registry);
+        let key_registry_manager = KeyRegistryManager::new(key_registry);
 
         let node_registry = create_node_registry(&self.registry_config)?;
 

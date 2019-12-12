@@ -26,6 +26,7 @@
 
 mod error;
 pub mod insecure;
+pub mod rest_api;
 pub mod storage;
 
 use std::collections::HashMap;
