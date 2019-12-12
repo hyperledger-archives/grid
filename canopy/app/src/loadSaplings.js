@@ -15,6 +15,7 @@
  */
 
 import promiseLoader from 'promiseLoader';
+import styleLoader from 'styleLoader';
 import { getUserSaplings, getConfigSaplings } from './getSaplings.macro';
 
 async function loadCurrentSapling(userSaplingsResponse) {
@@ -48,6 +49,21 @@ async function loadCurrentSapling(userSaplingsResponse) {
   return false;
 }
 
+async function loadSaplingStyles(saplingResponse) {
+  const saplingStyleFiles = saplingResponse
+    .map(sapling => sapling.styleFiles)
+    .flatMap(style => style);
+
+  if (saplingStyleFiles.length === 0) {
+    return false;
+  }
+
+  await Promise.all(
+    saplingStyleFiles.map(styleFile => styleLoader(`http://${styleFile}`))
+  );
+  return true;
+}
+
 async function loadConfigSaplings(configSaplingResponse) {
   // Config Saplings need to be loaded with every page load.
   // An example of a Config Saplings would be a module to handle
@@ -74,11 +90,15 @@ export async function loadAllSaplings() {
     getConfigSaplings()
   ]);
 
-  const configSaplingsAreLoaded = await loadConfigSaplings(
-    configSaplingResponse
-  );
+  const configSaplingsAreLoaded = await Promise.all([
+    loadConfigSaplings(configSaplingResponse),
+    loadSaplingStyles(configSaplingResponse)
+  ]);
 
-  const saplingIsLoaded = await loadCurrentSapling(userSaplingsResponse);
+  const saplingIsLoaded = await Promise.all([
+    loadCurrentSapling(userSaplingsResponse),
+    loadSaplingStyles(userSaplingsResponse)
+  ]);
 
   return {
     saplingIsLoaded,
