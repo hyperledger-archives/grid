@@ -14,19 +14,16 @@
 
 mod error;
 mod messages;
+mod pacemaker;
 
 use std;
 use std::collections::HashMap;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex, MutexGuard,
-};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
-use std::time::Duration;
 
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender, TrySendError};
 pub use error::ConnectionManagerError;
 pub use messages::{CmMessage, CmNotification, CmPayload, CmRequest, CmResponse, CmResponseStatus};
+use pacemaker::Pacemaker;
 use protobuf::Message;
 use uuid::Uuid;
 
@@ -35,23 +32,23 @@ use crate::protos::network::{NetworkHeartbeat, NetworkMessage, NetworkMessageTyp
 use crate::transport::Transport;
 
 const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
+const CHANNEL_CAPACITY: usize = 15;
 
 pub struct ConnectionManager {
-    hb_monitor: HeartbeatMonitor,
-    connection_state: Arc<Mutex<ConnectionState>>,
+    pacemaker: Pacemaker,
+    connection_state: Option<ConnectionState>,
     join_handle: Option<thread::JoinHandle<()>>,
-    sender: Option<Sender<CmMessage>>,
+    sender: Option<SyncSender<CmMessage>>,
     shutdown_handle: Option<ShutdownHandle>,
 }
 
 impl ConnectionManager {
     pub fn new(mesh: Mesh, transport: Box<dyn Transport + Send>) -> Self {
-        let connection_state = Arc::new(Mutex::new(ConnectionState::new(mesh, transport)));
-        let hb_monitor =
-            HeartbeatMonitor::new(connection_state.clone(), DEFAULT_HEARTBEAT_INTERVAL);
+        let connection_state = Some(ConnectionState::new(mesh, transport));
+        let pacemaker = Pacemaker::new(DEFAULT_HEARTBEAT_INTERVAL);
 
         Self {
-            hb_monitor,
+            pacemaker,
             connection_state,
             join_handle: None,
             sender: None,
@@ -60,8 +57,10 @@ impl ConnectionManager {
     }
 
     pub fn start(&mut self) -> Result<Connector, ConnectionManagerError> {
-        let (sender, recv) = unbounded();
-        let connection_state = self.connection_state.clone();
+        let (sender, recv) = sync_channel(CHANNEL_CAPACITY);
+        let mut state = self.connection_state.take().ok_or_else(|| {
+            ConnectionManagerError::StartUpError("Service has already started".into())
+        })?;
 
         let join_handle = thread::Builder::new()
             .name("Connection Manager".into())
@@ -77,24 +76,10 @@ impl ConnectionManager {
                             subscribers.remove(id);
                         }
                         Ok(CmMessage::Request(req)) => {
-                            let mut state = match connection_state.lock() {
-                                Ok(s) => s,
-                                Err(err) => {
-                                    notify_subscribers(
-                                        &mut subscribers,
-                                        vec![CmNotification::FatalError {
-                                            error: ConnectionManagerError::StatePoisoned,
-                                            message: format!("State has been poisoned {:?}", err),
-                                        }],
-                                    );
-                                    break;
-                                }
-                            };
-
                             handle_request(req, &mut state);
                         }
-                        Ok(CmMessage::HeartbeatNotifications(notifications)) => {
-                            notify_subscribers(&mut subscribers, notifications)
+                        Ok(CmMessage::SendHeartbeats) => {
+                            send_heartbeats(&mut state, &mut subscribers)
                         }
                         Err(_) => {
                             warn!("All senders have disconnected");
@@ -104,11 +89,11 @@ impl ConnectionManager {
                 }
             })?;
 
-        self.hb_monitor.start(sender.clone())?;
+        self.pacemaker.start(sender.clone())?;
         self.join_handle = Some(join_handle);
         self.shutdown_handle = Some(ShutdownHandle {
             sender: sender.clone(),
-            hb_shutdown_handle: self.hb_monitor.shutdown_handle().unwrap(),
+            pacemaker_shutdown_handle: self.pacemaker.shutdown_handle().unwrap(),
         });
         self.sender = Some(sender.clone());
 
@@ -120,7 +105,7 @@ impl ConnectionManager {
     }
 
     pub fn await_shutdown(self) {
-        self.hb_monitor.await_shutdown();
+        self.pacemaker.await_shutdown();
 
         let join_handle = if let Some(jh) = self.join_handle {
             jh
@@ -147,160 +132,28 @@ impl ConnectionManager {
     }
 }
 
-struct HeartbeatMonitor {
-    connection_state: Arc<Mutex<ConnectionState>>,
-    interval: u64,
-    join_handle: Option<thread::JoinHandle<()>>,
-    shutdown_handle: Option<HbShutdownHandle>,
-}
-
-impl HeartbeatMonitor {
-    fn new(connection_state: Arc<Mutex<ConnectionState>>, interval: u64) -> Self {
-        Self {
-            connection_state,
-            interval,
-            join_handle: None,
-            shutdown_handle: None,
-        }
-    }
-
-    fn start(&mut self, cm_sender: Sender<CmMessage>) -> Result<(), ConnectionManagerError> {
-        if self.join_handle.is_some() {
-            return Ok(());
-        }
-
-        let running = Arc::new(AtomicBool::new(true));
-
-        let running_clone = running.clone();
-        let connection_state = self.connection_state.clone();
-        let interval = self.interval;
-        let join_handle = thread::Builder::new()
-            .name("Heartbeat Monitor".into())
-            .spawn(move || {
-                info!("Starting heartbeat manager");
-                let heartbeat_message = match create_heartbeat() {
-                    Ok(h) => h,
-                    Err(err) => {
-                        error!("Failed to create heartbeat message: {:?}", err);
-                        return;
-                    }
-                };
-
-                while running_clone.load(Ordering::SeqCst) {
-                    thread::sleep(Duration::from_secs(interval));
-                        let mut state = match connection_state.lock() {
-                            Ok(s) => s,
-                            Err(_) => {
-                                error!("Connection manager panicked while holding state");
-                                break;
-                            }
-                        };
-
-                        let mut notifications = Vec::new();
-
-                        for (endpoint, metadata) in state.connection_metadata() {
-                            info!("Sending heartbeat to {}", endpoint);
-                            if let Err(err) = state
-                                .mesh()
-                                .send(Envelope::new(metadata.id, heartbeat_message.clone()))
-                            {
-                                error!(
-                                    "failed to send heartbeat: {:?} attempting reconnection",
-                                    err
-                                );
-
-                                notifications.push(CmNotification::HeartbeatSendFail {
-                                    endpoint: endpoint.clone(),
-                                    message: format!("{:?}", err),
-                                });
-
-                                if let Err(err) = state.reconnect(&endpoint) {
-                                    error!("Connection reattempt failed: {:?}", err);
-                                    notifications.push(CmNotification::ReconnectAttemptFailed {
-                                        endpoint: endpoint.clone(),
-                                        message: format!("{:?}", err),
-                                    });
-                                } else {
-                                    notifications.push(CmNotification::ReconnectAttemptSuccess {
-                                        endpoint: endpoint.clone(),
-                                    });
-                                }
-                            } else {
-                                notifications.push(CmNotification::HeartbeatSent {
-                                    endpoint: endpoint.clone(),
-                                });
-                            }
-                        }
-
-                        info!("Sending notifications to connection manager");
-                        if let Err(err) = cm_sender.send(CmMessage::HeartbeatNotifications(notifications)) {
-                            error!("Connection manager has disconnected before shutting down heartbeat monitor {:?}", err);
-                            break;
-                        }
-                }
-            })?;
-
-        self.join_handle = Some(join_handle);
-        self.shutdown_handle = Some(HbShutdownHandle { running });
-
-        Ok(())
-    }
-
-    fn shutdown_handle(&self) -> Option<HbShutdownHandle> {
-        self.shutdown_handle.clone()
-    }
-
-    fn await_shutdown(self) {
-        let join_handle = if let Some(jh) = self.join_handle {
-            jh
-        } else {
-            return;
-        };
-
-        if let Err(err) = join_handle.join() {
-            error!("Failed to shutdown heartbeat monitor gracefully: {:?}", err);
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Connector {
-    sender: Sender<CmMessage>,
+    sender: SyncSender<CmMessage>,
 }
 
 impl Connector {
     pub fn request_connection(&self, endpoint: &str) -> Result<CmResponse, ConnectionManagerError> {
-        let (sender, recv) = bounded(1);
+        self.send_payload(CmPayload::AddConnection {
+            endpoint: endpoint.to_string(),
+        })
+    }
 
-        let message = CmMessage::Request(CmRequest {
-            sender,
-            payload: CmPayload::AddConnection {
-                endpoint: endpoint.to_string(),
-            },
-        });
-
-        match self.sender.try_send(message) {
-            Ok(()) => (),
-            Err(TrySendError::Full(_)) => {
-                return Err(ConnectionManagerError::SendTimeoutError(
-                    "Connection manager message queue is full".into(),
-                ))
-            }
-            Err(TrySendError::Disconnected(_)) => {
-                return Err(ConnectionManagerError::SendMessageError(
-                    "The connection manager is no longer running".into(),
-                ))
-            }
-        };
-
-        recv.recv()
-            .map_err(|err| ConnectionManagerError::SendMessageError(format!("{:?}", err)))
+    pub fn remove_connection(&self, endpoint: &str) -> Result<CmResponse, ConnectionManagerError> {
+        self.send_payload(CmPayload::RemoveConnection {
+            endpoint: endpoint.to_string(),
+        })
     }
 
     pub fn subscribe(&self) -> Result<NotificationHandler, ConnectionManagerError> {
         let id = Uuid::new_v4().to_string();
-        let (send, recv) = unbounded();
-        match self.sender.try_send(CmMessage::Subscribe(id.clone(), send)) {
+        let (send, recv) = sync_channel(1);
+        match self.sender.send(CmMessage::Subscribe(id.clone(), send)) {
             Ok(()) => Ok(NotificationHandler {
                 id,
                 recv,
@@ -311,38 +164,45 @@ impl Connector {
             )),
         }
     }
+
+    fn send_payload(&self, payload: CmPayload) -> Result<CmResponse, ConnectionManagerError> {
+        let (sender, recv) = sync_channel(1);
+
+        let message = CmMessage::Request(CmRequest { sender, payload });
+
+        match self.sender.send(message) {
+            Ok(()) => (),
+            Err(_) => {
+                return Err(ConnectionManagerError::SendMessageError(
+                    "The connection manager is no longer running".into(),
+                ))
+            }
+        };
+
+        recv.recv()
+            .map_err(|err| ConnectionManagerError::SendMessageError(format!("{:?}", err)))
+    }
 }
 
 #[derive(Clone)]
 pub struct ShutdownHandle {
-    sender: Sender<CmMessage>,
-    hb_shutdown_handle: HbShutdownHandle,
+    sender: SyncSender<CmMessage>,
+    pacemaker_shutdown_handle: pacemaker::ShutdownHandle,
 }
 
 impl ShutdownHandle {
     pub fn shutdown(&self) {
-        self.hb_shutdown_handle.shutdown();
+        self.pacemaker_shutdown_handle.shutdown();
 
-        if let Err(_) = self.sender.send(CmMessage::Shutdown) {
+        if self.sender.send(CmMessage::Shutdown).is_err() {
             warn!("Connection manager is no longer running");
         }
     }
 }
 
-#[derive(Clone)]
-struct HbShutdownHandle {
-    running: Arc<AtomicBool>,
-}
-
-impl HbShutdownHandle {
-    pub fn shutdown(&self) {
-        self.running.store(false, Ordering::SeqCst)
-    }
-}
-
 pub struct NotificationHandler {
     id: String,
-    sender: Sender<CmMessage>,
+    sender: SyncSender<CmMessage>,
     recv: Receiver<Vec<CmNotification>>,
 }
 
@@ -377,7 +237,7 @@ struct ConnectionMetadata {
 struct ConnectionState {
     connections: HashMap<String, ConnectionMetadata>,
     mesh: Mesh,
-    transport: Box<dyn Transport + Send>,
+    transport: Box<dyn Transport>,
 }
 
 impl ConnectionState {
@@ -391,7 +251,7 @@ impl ConnectionState {
 
     fn add_connection(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
         if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count = meta.ref_count + 1;
+            meta.ref_count += 1;
         } else {
             let connection = self.transport.connect(endpoint).map_err(|err| {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
@@ -419,7 +279,7 @@ impl ConnectionState {
         endpoint: &str,
     ) -> Result<Option<ConnectionMetadata>, ConnectionManagerError> {
         let meta = if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count = meta.ref_count - 1;
+            meta.ref_count -= 1;
             meta.clone()
         } else {
             return Ok(None);
@@ -449,37 +309,102 @@ impl ConnectionState {
     }
 }
 
-fn handle_request(req: CmRequest, state: &mut MutexGuard<ConnectionState>) {
-    let result = match req.payload {
-        CmPayload::AddConnection { ref endpoint } => state.add_connection(endpoint),
+fn handle_request(req: CmRequest, state: &mut ConnectionState) {
+    let response = match req.payload {
+        CmPayload::AddConnection { ref endpoint } => {
+            if let Err(err) = state.add_connection(endpoint) {
+                CmResponse::AddConnection {
+                    status: CmResponseStatus::Error,
+                    error_message: Some(format!("{:?}", err)),
+                }
+            } else {
+                CmResponse::AddConnection {
+                    status: CmResponseStatus::OK,
+                    error_message: None,
+                }
+            }
+        }
+        CmPayload::RemoveConnection { ref endpoint } => match state.remove_connection(endpoint) {
+            Ok(Some(_)) => CmResponse::RemoveConnection {
+                status: CmResponseStatus::OK,
+                error_message: None,
+            },
+            Ok(None) => CmResponse::RemoveConnection {
+                status: CmResponseStatus::ConnectionNotFound,
+                error_message: None,
+            },
+            Err(err) => CmResponse::RemoveConnection {
+                status: CmResponseStatus::Error,
+                error_message: Some(format!("{:?}", err)),
+            },
+        },
     };
 
-    let response = match result {
-        Ok(()) => CmResponse::AddConnection {
-            status: CmResponseStatus::OK,
-            error_message: None,
-        },
-        Err(err) => CmResponse::AddConnection {
-            status: CmResponseStatus::Error,
-            error_message: Some(format!("{:?}", err)),
-        },
-    };
-
-    if let Err(_) = req.sender.send(response) {
+    if req.sender.send(response).is_err() {
         error!("Requester has dropped its connection to connection manager");
     }
 }
 
 fn notify_subscribers(
-    subscribers: &mut HashMap<String, Sender<Vec<CmNotification>>>,
+    subscribers: &mut HashMap<String, SyncSender<Vec<CmNotification>>>,
     notifications: Vec<CmNotification>,
 ) {
     for (id, sender) in subscribers.clone() {
-        if let Err(_) = sender.send(notifications.clone()) {
+        if sender.send(notifications.clone()).is_err() {
             warn!("subscriber has dropped its connection to connection manager");
             subscribers.remove(&id);
         }
     }
+}
+
+fn send_heartbeats(
+    state: &mut ConnectionState,
+    subscribers: &mut HashMap<String, SyncSender<Vec<CmNotification>>>,
+) {
+    let heartbeat_message = match create_heartbeat() {
+        Ok(h) => h,
+        Err(err) => {
+            error!("Failed to create heartbeat message: {:?}", err);
+            return;
+        }
+    };
+    let mut notifications = Vec::new();
+
+    for (endpoint, metadata) in state.connection_metadata() {
+        info!("Sending heartbeat to {}", endpoint);
+        if let Err(err) = state
+            .mesh()
+            .send(Envelope::new(metadata.id, heartbeat_message.clone()))
+        {
+            error!(
+                "failed to send heartbeat: {:?} attempting reconnection",
+                err
+            );
+
+            notifications.push(CmNotification::HeartbeatSendFail {
+                endpoint: endpoint.clone(),
+                message: format!("{:?}", err),
+            });
+
+            if let Err(err) = state.reconnect(&endpoint) {
+                error!("Connection reattempt failed: {:?}", err);
+                notifications.push(CmNotification::ReconnectAttemptFailed {
+                    endpoint: endpoint.clone(),
+                    message: format!("{:?}", err),
+                });
+            } else {
+                notifications.push(CmNotification::ReconnectAttemptSuccess {
+                    endpoint: endpoint.clone(),
+                });
+            }
+        } else {
+            notifications.push(CmNotification::HeartbeatSent {
+                endpoint: endpoint.clone(),
+            });
+        }
+    }
+
+    notify_subscribers(subscribers, notifications);
 }
 
 fn create_heartbeat() -> Result<Vec<u8>, ConnectionManagerError> {
@@ -642,7 +567,7 @@ pub mod tests {
     #[test]
     fn test_heartbeat_notifications_raw_tcp() {
         let mut transport = Box::new(RawTransport::default());
-        let mut listener = transport.listen("tcp://localhost:8080").unwrap();
+        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
         let mesh = Mesh::new(512, 128);
         let mesh_clone = mesh.clone();
 
@@ -655,7 +580,7 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         let response = connector
-            .request_connection("tcp://localhost:8080")
+            .request_connection("tcp://localhost:3030")
             .unwrap();
 
         assert_eq!(
@@ -672,7 +597,7 @@ pub mod tests {
 
         assert!(notifications.iter().any(|x| *x
             == CmNotification::HeartbeatSent {
-                endpoint: "tcp://localhost:8080".to_string(),
+                endpoint: "tcp://localhost:3030".to_string(),
             }));
 
         // Verify mesh received heartbeat
@@ -682,6 +607,70 @@ pub mod tests {
         assert_eq!(
             heartbeat.get_message_type(),
             NetworkMessageType::NETWORK_HEARTBEAT
+        );
+    }
+
+    #[test]
+    fn test_remove_connection() {
+        let mut transport = Box::new(RawTransport::default());
+        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
+        let mesh = Mesh::new(512, 128);
+        let mesh_clone = mesh.clone();
+
+        thread::spawn(move || {
+            let conn = listener.accept().unwrap();
+            mesh_clone.add(conn).unwrap();
+        });
+
+        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let connector = cm.start().unwrap();
+
+        let add_response = connector
+            .request_connection("tcp://localhost:3030")
+            .unwrap();
+
+        assert_eq!(
+            add_response,
+            CmResponse::AddConnection {
+                status: CmResponseStatus::OK,
+                error_message: None
+            }
+        );
+
+        let remove_response = connector.remove_connection("tcp://localhost:3030").unwrap();
+
+        assert_eq!(
+            remove_response,
+            CmResponse::RemoveConnection {
+                status: CmResponseStatus::OK,
+                error_message: None
+            }
+        );
+    }
+
+    #[test]
+    fn test_remove_nonexistent_connection() {
+        let mut transport = Box::new(RawTransport::default());
+        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
+        let mesh = Mesh::new(512, 128);
+        let mesh_clone = mesh.clone();
+
+        thread::spawn(move || {
+            let conn = listener.accept().unwrap();
+            mesh_clone.add(conn).unwrap();
+        });
+
+        let mut cm = ConnectionManager::new(mesh.clone(), transport);
+        let connector = cm.start().unwrap();
+
+        let remove_response = connector.remove_connection("tcp://localhost:3030").unwrap();
+
+        assert_eq!(
+            remove_response,
+            CmResponse::RemoveConnection {
+                status: CmResponseStatus::ConnectionNotFound,
+                error_message: None,
+            }
         );
     }
 }

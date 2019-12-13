@@ -12,31 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crossbeam_channel::Sender;
+use std::sync::mpsc::SyncSender;
 
 use crate::network::connection_manager::error::ConnectionManagerError;
 
 pub enum CmMessage {
     Shutdown,
-    Subscribe(String, Sender<Vec<CmNotification>>),
+    Subscribe(String, SyncSender<Vec<CmNotification>>),
     UnSubscribe(String),
     Request(CmRequest),
-    HeartbeatNotifications(Vec<CmNotification>),
+    SendHeartbeats,
 }
 
 pub struct CmRequest {
-    pub sender: Sender<CmResponse>,
+    pub sender: SyncSender<CmResponse>,
     pub payload: CmPayload,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum CmPayload {
     AddConnection { endpoint: String },
+    RemoveConnection { endpoint: String },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum CmResponse {
     AddConnection {
+        status: CmResponseStatus,
+        error_message: Option<String>,
+    },
+    RemoveConnection {
         status: CmResponseStatus,
         error_message: Option<String>,
     },
@@ -46,6 +51,7 @@ pub enum CmResponse {
 pub enum CmResponseStatus {
     OK,
     Error,
+    ConnectionNotFound,
 }
 
 /// Messages that will be dispatched to all
