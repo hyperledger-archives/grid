@@ -34,13 +34,11 @@ struct UsernamePassword {
 }
 
 /// Defines a REST endpoint to add a user and credentials to the database
-/// The payload should be in the JSON format
-/// ```
+/// The payload should be in the JSON format:
 ///   {
 ///       "username": <username of new user>
 ///       "hashed_password": <hash of the password the user will use to log in>
 ///   }
-/// ```
 pub fn make_register_route(
     credentials_store: Arc<SplinterCredentialsStore>,
     user_store: Arc<SplinterUserStore>,
