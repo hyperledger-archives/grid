@@ -35,7 +35,6 @@ openssl = "0.10"
 protobuf = "2"
 serde = "1.0.80"
 serde_derive = "1.0.80"
-serde_yaml = "0.8"
 splinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
 tempdir = "0.3"
 toml = "0.4.8"
@@ -52,7 +51,7 @@ experimental = [
     "health",
 ]
 
-circuit-read = []
+circuit-read = ["splinter/circuit-read"]
 config-builder = []
 config-toml = ["config-builder"]
 generate-certs = []

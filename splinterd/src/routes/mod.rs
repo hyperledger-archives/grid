@@ -13,10 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "circuit-read")]
-mod circuit;
 mod status;
 
-#[cfg(feature = "circuit-read")]
-pub use circuit::CircuitResourceProvider;
 pub use status::*;

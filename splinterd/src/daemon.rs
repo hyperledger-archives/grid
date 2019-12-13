@@ -26,6 +26,8 @@ use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
     CircuitMessageHandler, ServiceConnectRequestHandler, ServiceDisconnectRequestHandler,
 };
+#[cfg(feature = "circuit-read")]
+use splinter::circuit::rest_api::CircuitResourceProvider;
 use splinter::circuit::SplinterState;
 use splinter::keys::{
     insecure::AllowAllKeyPermissionManager, rest_api::KeyRegistryManager,
@@ -65,8 +67,6 @@ use splinter::transport::{
 
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
-#[cfg(feature = "circuit-read")]
-use crate::routes::CircuitResourceProvider;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
