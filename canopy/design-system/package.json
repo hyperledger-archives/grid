@@ -2,14 +2,24 @@
   "name": "canopy-design-system",
   "version": "0.1.0",
   "private": true,
+  "main": "lib/components.min.js",
+  "componentsMain": "lib/components.js",
+  "componentsBrowser": "lib/components.umd.js",
+  "componentsModule": "lib/components.es.js",
+  "files": [
+    "/lib"
+  ],
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "app:build": "react-scripts build",
+    "build": "yarn rollup:build",
+    "postbuild": "yarn pack && tar -xvzf *.tgz && rm -rf package *.tgz",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "format": "prettier --write \"**/*.+(js|jsx|json|css|scss|md)\"",
     "lint": "eslint .",
-    "rollup:build": "cd src/themes; each '**/*.js' -- rollup -c $PWD/../../rollup.config.js -o $PWD/../../dist/%p $PWD/%p; cd ../../dist; each '**/*.js' -- rm $PWD/%p"
+    "rollup:build": "NODE_ENV=production rollup -c && yarn rollup:clean",
+    "rollup:clean": "cd lib/themes; each '*/index.js' -- rm index.js"
   },
   "husky": {
     "hooks": {
@@ -28,7 +38,23 @@
       "last 1 safari version"
     ]
   },
+  "peerDependencies": {
+    "react": "^16.x",
+    "react-dom": "^16.10.2",
+    "prop-types": "^15.7.2",
+    "react-router-dom": "^5.1.2",
+    "react-scripts": "^3.2.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-regular-svg-icons": "^5.11.2",
+    "@fortawesome/free-solid-svg-icons": "^5.12.0",
+    "@fortawesome/react-fontawesome": "^0.1.8"
+  },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-regular-svg-icons": "^5.11.2",
+    "@fortawesome/free-solid-svg-icons": "^5.12.0",
+    "@fortawesome/react-fontawesome": "^0.1.8",
+    "babel-plugin-module-resolver": "^4.0.0",
     "classnames": "^2.2.6",
     "node-sass": "^4.12.0",
     "prop-types": "^15.7.2",
@@ -57,6 +83,13 @@
     "postcss-clean": "^1.1.0",
     "prettier": "^1.18.2",
     "rollup": "^1.26.0",
-    "rollup-plugin-sass": "^1.2.2"
+    "rollup-plugin-analyzer": "^3.2.2",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-peer-deps-external": "^2.2.0",
+    "rollup-plugin-sass": "^1.2.2",
+    "rollup-plugin-terser": "^5.1.3",
+    "rollup-plugin-uglify": "^6.0.4"
   }
 }

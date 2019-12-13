@@ -14,18 +14,33 @@
  * limitations under the License.
  */
 import sass from 'rollup-plugin-sass';
+import babel from 'rollup-plugin-babel';
+import commonjs from 'rollup-plugin-commonjs';
+import resolve from 'rollup-plugin-node-resolve';
+import external from 'rollup-plugin-peer-deps-external';
+import analyzer from 'rollup-plugin-analyzer';
+import { terser } from 'rollup-plugin-terser';
+import { uglify } from 'rollup-plugin-uglify';
 import autoprefixer from 'autoprefixer';
 import postcss from 'postcss';
 import base64 from 'postcss-base64';
 import clean from 'postcss-clean';
+import fs from 'fs';
+import packageJSON from './package.json';
+
+const themes = fs.readdirSync('./src/themes');
+const components = './src/components.js';
+const minifyExtension = pathToFile => pathToFile.replace(/\.js$/, '.min.js');
 
 const opts = {
   extensions: ['.png', '.svg']
 };
 
-export default [
-  {
+const themeBundles = themes.map(theme => {
+  return {
+    input: `./src/themes/${theme}/index.js`,
     output: {
+      file: `lib/themes/${theme}/index.js`,
       format: 'esm'
     },
     plugins: [
@@ -36,6 +51,159 @@ export default [
             .process(css)
             .then(result => result.css)
       })
+    ]
+  };
+});
+
+export default [
+  // style themes
+  ...themeBundles,
+  // commonjs
+  {
+    input: components,
+    output: {
+      file: packageJSON.componentsMain,
+      format: 'cjs',
+      sourcemap: true
+    },
+    plugins: [
+      babel({
+        exclude: '/node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      analyzer()
+    ]
+  },
+  {
+    input: components,
+    output: {
+      file: minifyExtension(packageJSON.componentsMain),
+      format: 'cjs',
+      sourcemap: true
+    },
+    plugins: [
+      babel({
+        exclude: 'node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      uglify(),
+      analyzer()
+    ]
+  },
+  // UMD
+  {
+    input: components,
+    output: {
+      file: packageJSON.componentsBrowser,
+      format: 'umd',
+      sourcemap: true,
+      name: 'canopyDesignSystem',
+      globals: {
+        react: 'React'
+      }
+    },
+    plugins: [
+      babel({
+        exclude: 'node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      analyzer()
+    ]
+  },
+  {
+    input: components,
+    output: {
+      file: minifyExtension(packageJSON.componentsBrowser),
+      format: 'umd',
+      sourcemap: true,
+      name: 'canopyDesignSystem',
+      globals: {
+        react: 'React'
+      }
+    },
+    plugins: [
+      babel({
+        exclude: 'node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      terser(),
+      analyzer()
+    ]
+  },
+  // ES
+  {
+    input: components,
+    output: {
+      file: packageJSON.componentsModule,
+      format: 'es',
+      sourcemap: true,
+      exports: 'named'
+    },
+    plugins: [
+      babel({
+        exclude: 'node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      analyzer()
+    ]
+  },
+  {
+    input: components,
+    output: {
+      file: minifyExtension(packageJSON.componentsModule),
+      format: 'es',
+      sourcemap: true,
+      exports: 'named'
+    },
+    plugins: [
+      babel({
+        exclude: 'node_modules/**',
+        runtimeHelpers: true
+      }),
+      external(),
+      resolve(),
+      commonjs({
+        namedExports: {
+          'react-is': ['isValidElementType']
+        }
+      }),
+      terser(),
+      analyzer()
     ]
   }
 ];
