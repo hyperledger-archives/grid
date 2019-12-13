@@ -1,4 +1,5 @@
 # Copyright (c) 2019 Target Brands, Inc.
+# Copyright 2019 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,75 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:bionic as GRID-PRODUCT-BUILDER
+FROM hyperledger/grid-dev as grid-product-builder
 
-RUN apt-get update \
-&& apt-get install gnupg -y
-
-# Install base dependencies
-RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
- && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 44FC67F19B2466EA \
- || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 44FC67F19B2466EA) \
- && apt-get update \
- && apt-get install -y -q \
-    build-essential \
-    curl \
-    gcc \
-    g++ \
-    libpq-dev \
-    libssl-dev \
-    libsasl2-dev \
-    libzmq3-dev \
-    openssl \
-    pkg-config \
-    sabre-cli \
-    unzip \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-ENV PATH=$PATH:/protoc3/bin:/root/.cargo/bin
-
-# Install Rust
-RUN curl https://sh.rustup.rs -sSf > /usr/bin/rustup-init \
- && chmod +x /usr/bin/rustup-init \
- && rustup-init -y
-
-RUN rustup update \
- && rustup target add wasm32-unknown-unknown
-
-# Install protoc
-RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
- && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
- && rm protoc-3.7.1-linux-x86_64.zip
-
-RUN mkdir /build
-
-# Copy grid sdk dependency
+COPY contracts/product /build/contracts/product
 COPY sdk/ /build/sdk/
-
-# Create empty cargo project
-WORKDIR /build
-RUN mkdir contracts \
-   && USER=root cargo new --bin contracts/product
-
-# Copy over Cargo.toml file
-COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
 
 # Do a release build to cache dependencies
 WORKDIR /build/contracts/product
-RUN cargo build --release
-
-# Remove the auto-generated .rs files and the built files
-RUN rm src/*.rs
-RUN rm ./target/release/grid-product-tp* ./target/release/deps/grid_product*
-
-# Copy over source files
-COPY contracts/product/src /build/contracts/product/src
 
 # Build the contract
+ARG REPO_VERSION
+RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
 RUN cargo build --target wasm32-unknown-unknown --release
 
-# Copy the contract definition
-COPY contracts/product/product.yaml /build/contracts/product/product.yaml
+# -------------=== product submitter build ===-------------
 
-ENTRYPOINT []
+FROM hyperledger/sawtooth-sabre-cli
+
+COPY --from=grid-product-builder \
+     /build/target/wasm32-unknown-unknown/release/grid-product-tp.wasm /tmp
+
+# Copy the contract definition
+COPY contracts/product/product.yaml /tmp

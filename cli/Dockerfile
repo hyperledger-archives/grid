@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2019 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as grid-pike-builder
+FROM hyperledger/grid-dev as grid-cli-builder
 
-COPY contracts/pike /build/contracts/pike
-COPY sdk/ /build/sdk/
+COPY cli /build/cli
+COPY daemon /build/daemon
+COPY sdk /build/sdk
 
-# Do a release build to cache dependencies
-WORKDIR /build/contracts/pike
-
-# Build the contract
+# Build the grid-cli package
+WORKDIR /build/cli
 ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo build --target wasm32-unknown-unknown --release
+RUN cargo deb --deb-version $REPO_VERSION
 
-# -------------=== pike submitter build ===-------------
-
+# -------------=== grid-cli docker build ===-------------
 FROM hyperledger/sawtooth-sabre-cli
 
-COPY --from=grid-pike-builder \
-     /build/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm /tmp
+COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
 
-# Copy the contract definition
-COPY contracts/pike/pike.yaml /tmp
+RUN apt-get update \
+ && dpkg --unpack /tmp/grid-cli*.deb \
+ && apt-get -f -y install
+
+CMD ["tail -f /dev/null"]

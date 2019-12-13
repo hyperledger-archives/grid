@@ -26,13 +26,15 @@ services:
     build:
       context: .
       dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create grid_track_and_trace --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre upload --filename track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create a43b46 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm a43b46 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm 621dee01 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
@@ -46,13 +48,15 @@ services:
     build:
       context: .
       dockerfile: contracts/schema/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create grid_schema --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre upload --filename schema.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/schema.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee01 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm 621dee01 grid_schema --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm cad11d grid_schema --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
@@ -65,13 +69,15 @@ services:
     build:
       context: .
       dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create pike --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre upload --filename pike.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/pike.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre perm cad11d pike --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= pike contract is loaded =========---------'
@@ -83,13 +89,15 @@ services:
     build:
       context: .
       dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     volumes:
       - grid-shared:/grid-shared
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         sabre cr --create grid_product --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre upload --filename product.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre upload --filename /tmp/product.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create cad11d --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee01 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee02 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
@@ -163,10 +171,13 @@ services:
         --bind rest-api:8008
 
   gridd:
+    image: gridd:${ISOLATION_ID}
     container_name: gridd
     build:
       context: .
       dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8080
     ports:
@@ -184,6 +195,17 @@ services:
           gridd -vv -b gridd:8080 -C tcp://validator:4004 \
               --database-url postgres://grid:grid_example@db/grid
         "
+
+  grid-cli:
+    image: grid-cli:${ISOLATION_ID}
+    container_name: grid-cli
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    entrypoint: |
+        tail -f /dev/null
 
   sabre-tp:
     image: hyperledger/sawtooth-sabre-tp:latest

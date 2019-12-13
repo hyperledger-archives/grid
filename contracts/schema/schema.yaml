@@ -14,7 +14,7 @@
 
 name: grid_schema
 version: '1.0'
-wasm: target/wasm32-unknown-unknown/release/grid-schema-tp.wasm
+wasm: /tmp/grid-schema-tp.wasm
 inputs:
   - '621dee01'
   - 'cad11d'
