@@ -171,7 +171,7 @@ services:
         --bind rest-api:8008
 
   gridd:
-    image: gridd
+    image: gridd:${ISOLATION_ID}
     container_name: gridd
     build:
       context: .
@@ -197,7 +197,7 @@ services:
         "
 
   grid-cli:
-    image: grid-cli
+    image: grid-cli:${ISOLATION_ID}
     container_name: grid-cli
     build:
       context: .
