@@ -19,6 +19,7 @@
 mod consensus;
 mod error;
 mod factory;
+mod rest_api;
 mod shared;
 mod state;
 
