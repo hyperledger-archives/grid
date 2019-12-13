@@ -50,4 +50,6 @@ protoc-rust = "2"
 [features]
 default = []
 
+stable = ["default"]
+
 experimental = []

@@ -12,4 +12,6 @@ splinter = { path = "../../libsplinter" }
 [features]
 default = []
 
+stable = ["default"]
+
 experimental = []

@@ -31,4 +31,6 @@ simple_logger = "0.4.0"
 [features]
 default = []
 
+stable = ["default"]
+
 experimental = []

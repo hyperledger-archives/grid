@@ -29,4 +29,6 @@ url = "1.7.1"
 [features]
 default = []
 
+stable = ["default"]
+
 experimental = []

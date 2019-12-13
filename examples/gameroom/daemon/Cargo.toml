@@ -47,12 +47,16 @@ tokio = "0.1"
 uuid = { version = "0.7", features = ["v4"]}
 
 [features]
-test-node-endpoint = []
-test-authorization-handler = []
-
 default = []
 
+stable = ["default"]
+
 experimental = []
+
+# These are test-only features, so they will not be in `default`, `stable`,
+# or `experimental`
+test-authorization-handler = []
+test-node-endpoint = []
 
 [[bin]]
 name = "gameroomd"
