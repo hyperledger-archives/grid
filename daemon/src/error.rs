@@ -31,6 +31,7 @@ pub enum DaemonError {
     RestApiError(RestApiServerError),
     StartUpError(Box<dyn Error>),
     ShutdownError(String),
+    UnsupportedEndpoint(String),
 }
 
 impl Error for DaemonError {
@@ -43,6 +44,7 @@ impl Error for DaemonError {
             DaemonError::RestApiError(err) => Some(err),
             DaemonError::StartUpError(err) => Some(&**err),
             DaemonError::ShutdownError(_) => None,
+            DaemonError::UnsupportedEndpoint(_) => None,
         }
     }
 }
@@ -59,6 +61,7 @@ impl fmt::Display for DaemonError {
             DaemonError::RestApiError(e) => write!(f, "Rest API error: {}", e),
             DaemonError::StartUpError(e) => write!(f, "Start-up error: {}", e),
             DaemonError::ShutdownError(msg) => write!(f, "Unable to cleanly shutdown: {}", msg),
+            DaemonError::UnsupportedEndpoint(msg) => write!(f, "{}", msg),
         }
     }
 }

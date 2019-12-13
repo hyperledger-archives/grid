@@ -80,7 +80,10 @@ fn run() -> Result<(), DaemonError> {
     let sawtooth_connection = if config.endpoint().is_sawtooth() {
         SawtoothConnection::new(&config.endpoint().url())
     } else {
-        panic!("Unsupported endpoint type: {}", config.endpoint().url());
+        return Err(DaemonError::UnsupportedEndpoint(format!(
+            "Unsupported endpoint type: {}",
+            config.endpoint().url()
+        )));
     };
 
     let connection_pool = database::create_connection_pool(config.database_url())?;
