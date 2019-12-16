@@ -42,13 +42,18 @@ url = "1.7.1"
 base64 = "0.10"
 byteorder = "1"
 
+[dependencies.splinter]
+git = "https://github.com/cargill/splinter"
+optional = true
+features = [ "events" ]
+
 [features]
-default = ["sawtooth"]
+default = ["sawtooth-support"]
 
-stable = ["sawtooth"]
+stable = ["sawtooth-support"]
 
-experimental = ["splinter"]
+experimental = ["splinter-support"]
 
-sawtooth = []
-splinter = []
+sawtooth-support = []
+splinter-support = ["splinter"]
 test-api = []
