@@ -16,8 +16,9 @@ pub mod error;
 pub mod noop;
 pub mod yaml;
 
-pub use error::NodeRegistryError;
 use std::collections::HashMap;
+
+pub use error::NodeRegistryError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
@@ -27,27 +28,77 @@ pub struct Node {
     pub metadata: HashMap<String, String>,
 }
 
+/// A predicate on a key/value pair in a Node's metadata table.
+///
+/// Each variant is an operator, and supplies a tuple representing a key/value pair. It is applied
+/// by the comparison operator on the value found at the given key (the first item in the tuple)
+/// against the predicate's value (the second item in the tuple).
+///
+/// If the item is missing in a node's metadata table, the predicate returns false.
+#[derive(Clone)]
+pub enum MetadataPredicate {
+    /// Applies the `==` operator.
+    Eq(String, String),
+    /// Applies the `!=` operator.
+    Ne(String, String),
+    /// Applies the `>` operator.
+    Gt(String, String),
+    /// Applies the `>=` operator.
+    Ge(String, String),
+    /// Applies the `<` operator.
+    Lt(String, String),
+    /// Applies the `<=` operator.
+    Le(String, String),
+}
+
+impl MetadataPredicate {
+    /// Apply this predicate against a given node.
+    pub fn apply(&self, node: &Node) -> bool {
+        match self {
+            MetadataPredicate::Eq(key, val) => {
+                node.metadata.get(key).map(|v| v == val).unwrap_or(false)
+            }
+            MetadataPredicate::Ne(key, val) => {
+                node.metadata.get(key).map(|v| v != val).unwrap_or(false)
+            }
+            MetadataPredicate::Gt(key, val) => {
+                node.metadata.get(key).map(|v| v > val).unwrap_or(false)
+            }
+            MetadataPredicate::Ge(key, val) => {
+                node.metadata.get(key).map(|v| v >= val).unwrap_or(false)
+            }
+            MetadataPredicate::Lt(key, val) => {
+                node.metadata.get(key).map(|v| v < val).unwrap_or(false)
+            }
+            MetadataPredicate::Le(key, val) => {
+                node.metadata.get(key).map(|v| v <= val).unwrap_or(false)
+            }
+        }
+    }
+}
+
 /// Provides Node Registry read capabilities.
 pub trait NodeRegistryReader: Send + Sync {
-    /// Returns a list of nodes.
+    /// Returns an iterator over the nodes in the registry.
     ///
     /// # Arguments
     ///
-    /// * `filters` - A map that defines list filters. The key is the property to be filtered by
-    /// and the value is a tuple. The first item of the tuple defines the operator "=", "<", ">",
-    /// "<=" or "<=". The second item in the tuple is the value to compare the node property
-    /// against. If the filters map has more than one key-value pair, this function should return
-    /// only nodes that match all the provided filters.
+    /// * `predicates` - A list of of predicates to be applied to the resulting list. These are
+    /// applied as an AND, from a query perspective. If the list is empty, it is the equivalent of
+    /// no predicates (i.e. return all).
+    fn list_nodes<'a, 'b: 'a>(
+        &'b self,
+        predicates: &'a [MetadataPredicate],
+    ) -> Result<Box<dyn Iterator<Item = Node> + Send + 'a>, NodeRegistryError>;
+
+    /// Returns the count of nodes in the registry.
     ///
-    /// * `limit` - The maximum number of items to return
+    /// # Arguments
     ///
-    /// * `offset` - The index of the resource to start the resulting array
-    fn list_nodes(
-        &self,
-        filters: Option<HashMap<String, (String, String)>>,
-        limit: Option<usize>,
-        offset: Option<usize>,
-    ) -> Result<Vec<Node>, NodeRegistryError>;
+    /// * `predicates` - A list of of predicates to be applied before counting the nodes. These are
+    /// applied as an AND, from a query perspective. If the list is empty, it is the equivalent of
+    /// no predicates (i.e. return all).
+    fn count_nodes(&self, predicates: &[MetadataPredicate]) -> Result<u32, NodeRegistryError>;
 
     /// Returns a node with the given identity.
     ///
@@ -115,13 +166,15 @@ impl<NR> NodeRegistryReader for Box<NR>
 where
     NR: NodeRegistryReader + ?Sized,
 {
-    fn list_nodes(
-        &self,
-        filters: Option<HashMap<String, (String, String)>>,
-        limit: Option<usize>,
-        offset: Option<usize>,
-    ) -> Result<Vec<Node>, NodeRegistryError> {
-        (**self).list_nodes(filters, limit, offset)
+    fn list_nodes<'a, 'b: 'a>(
+        &'b self,
+        predicates: &'a [MetadataPredicate],
+    ) -> Result<Box<dyn Iterator<Item = Node> + Send + 'a>, NodeRegistryError> {
+        (**self).list_nodes(predicates)
+    }
+
+    fn count_nodes(&self, predicates: &[MetadataPredicate]) -> Result<u32, NodeRegistryError> {
+        (**self).count_nodes(predicates)
     }
 
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {

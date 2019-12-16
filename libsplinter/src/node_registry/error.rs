@@ -22,9 +22,6 @@ pub enum NodeRegistryError {
     /// This error is returned when the user attempts to create a node with an identity that
     /// already exists.
     DuplicateNodeError(String),
-    /// This error is returned when the user attempts to filter the nodes list using an invalid
-    /// filter.
-    InvalidFilterError(String),
     /// This error is returned when an internal error occurred
     InternalError(Box<dyn Error + Send>),
     /// This error is returned when the user cannot create a node in the registry
@@ -36,7 +33,6 @@ impl Error for NodeRegistryError {
         match self {
             NodeRegistryError::NotFoundError(_) => None,
             NodeRegistryError::DuplicateNodeError(_) => None,
-            NodeRegistryError::InvalidFilterError(_) => None,
             NodeRegistryError::InternalError(err) => Some(err.as_ref()),
             // Unfortunately, have to match on both arms to return the expected result
             NodeRegistryError::UnableToAddNode(_, Some(err)) => Some(err.as_ref()),
@@ -50,7 +46,6 @@ impl fmt::Display for NodeRegistryError {
         match self {
             NodeRegistryError::NotFoundError(e) => write!(f, "Node not found: {}", e),
             NodeRegistryError::DuplicateNodeError(e) => write!(f, "Duplicate identity: {}", e),
-            NodeRegistryError::InvalidFilterError(e) => write!(f, "Invalid filter: {}", e),
             NodeRegistryError::InternalError(e) => write!(f, "Internal error: {}", e),
             NodeRegistryError::UnableToAddNode(msg, err) => write!(
                 f,

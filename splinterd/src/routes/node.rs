@@ -17,7 +17,9 @@ use percent_encoding::utf8_percent_encode;
 use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use splinter::futures::{future::IntoFuture, stream::Stream, Future};
 use splinter::{
-    node_registry::{error::NodeRegistryError, Node, NodeRegistryReader, NodeRegistryWriter},
+    node_registry::{
+        error::NodeRegistryError, MetadataPredicate, Node, NodeRegistryReader, NodeRegistryWriter,
+    },
     rest_api::{Method, Resource},
 };
 use std::collections::HashMap;
@@ -246,10 +248,15 @@ where
         None => None,
     };
 
+    let predicates = match to_predicates(filters) {
+        Ok(predicates) => predicates,
+        Err(err) => return Box::new(HttpResponse::BadRequest().json(err).into_future()),
+    };
+
     Box::new(query_list_nodes(
         registry,
         link,
-        filters,
+        predicates,
         Some(offset),
         Some(limit),
     ))
@@ -258,42 +265,55 @@ where
 fn query_list_nodes<NR>(
     registry: web::Data<NR>,
     link: String,
-    filters: Option<Filter>,
+    filters: Vec<MetadataPredicate>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error>
 where
     NR: NodeRegistryReader + 'static,
 {
-    web::block(
-        move || match registry.list_nodes(filters.clone(), None, None) {
-            Ok(nodes) => Ok((registry, filters, nodes.len(), link, limit, offset)),
-            Err(err) => Err(err),
-        },
-    )
-    .and_then(|(registry, filters, total_count, link, limit, offset)| {
-        web::block(move || match registry.list_nodes(filters, limit, offset) {
-            Ok(nodes) => Ok((nodes, link, limit, offset, total_count)),
+    let count_filters = filters.clone();
+    web::block(move || match registry.count_nodes(&count_filters) {
+        Ok(count) => Ok((registry, count)),
+        Err(err) => Err(err),
+    })
+    .and_then(move |(registry, total_count)| {
+        web::block(move || match registry.list_nodes(&filters) {
+            Ok(nodes_iter) => Ok(ListNodesResponse {
+                data: nodes_iter
+                    .skip(offset.as_ref().copied().unwrap_or(0))
+                    .take(limit.as_ref().copied().unwrap_or(std::usize::MAX))
+                    .collect::<Vec<_>>(),
+                paging: get_response_paging_info(limit, offset, &link, total_count as usize),
+            }),
             Err(err) => Err(err),
         })
     })
     .then(|res| match res {
-        Ok((nodes, link, limit, offset, total_count)) => {
-            Ok(HttpResponse::Ok().json(ListNodesResponse {
-                data: nodes,
-                paging: get_response_paging_info(limit, offset, &link, total_count),
-            }))
+        Ok(list_res) => Ok(HttpResponse::Ok().json(list_res)),
+        Err(err) => {
+            error!("Unable to list nodes: {}", err);
+            Ok(HttpResponse::InternalServerError().into())
         }
-        Err(err) => match err {
-            BlockingError::Error(err) => match err {
-                NodeRegistryError::InvalidFilterError(err) => {
-                    Ok(HttpResponse::BadRequest().json(err))
-                }
-                _ => Ok(HttpResponse::InternalServerError().into()),
-            },
-            _ => Ok(HttpResponse::InternalServerError().into()),
-        },
     })
+}
+
+fn to_predicates(filters: Option<Filter>) -> Result<Vec<MetadataPredicate>, String> {
+    match filters {
+        Some(filters) => filters
+            .into_iter()
+            .map(|(key, (operator, value))| match operator.as_str() {
+                "=" => Ok(MetadataPredicate::Eq(key, value)),
+                ">" => Ok(MetadataPredicate::Gt(key, value)),
+                "<" => Ok(MetadataPredicate::Lt(key, value)),
+                ">=" => Ok(MetadataPredicate::Ge(key, value)),
+                "<=" => Ok(MetadataPredicate::Le(key, value)),
+                "!=" => Ok(MetadataPredicate::Ne(key, value)),
+                _ => Err(format!("{} is not a valid operator", operator)),
+            })
+            .collect(),
+        None => Ok(vec![]),
+    }
 }
 
 fn add_node<NW>(
