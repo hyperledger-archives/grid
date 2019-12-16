@@ -81,6 +81,7 @@ pub mod signing;
 pub mod storage;
 pub mod transport;
 
-pub use actix_http;
+#[cfg(feature = "rest-api")]
 pub use actix_web;
+#[cfg(feature = "rest-api")]
 pub use futures;
