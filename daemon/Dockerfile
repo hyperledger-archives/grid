@@ -20,18 +20,23 @@ COPY sdk /build/sdk
 
 # Build the gridd package
 WORKDIR /build/daemon
+ARG CARGO_ARGS
 ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # Build the grid-cli package
 WORKDIR /build/cli
+ARG CARGO_ARGS
 ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION
+RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # -------------=== gridd docker build ===-------------
 FROM ubuntu:bionic
+
+ARG CARGO_ARGS
+RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
