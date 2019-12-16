@@ -39,6 +39,7 @@ pub mod error;
 mod factory;
 mod processor;
 mod registry;
+#[cfg(feature = "rest-api")]
 mod rest_api;
 pub mod scabbard;
 mod sender;

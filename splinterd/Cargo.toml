@@ -35,7 +35,7 @@ openssl = "0.10"
 protobuf = "2"
 serde = "1.0.80"
 serde_derive = "1.0.80"
-splinter = { path = "../libsplinter", features = ["sawtooth-signing-compat"] }
+splinter = { path = "../libsplinter", features = ["rest-api", "sawtooth-signing-compat"] }
 tempdir = "0.3"
 toml = "0.4.8"
 

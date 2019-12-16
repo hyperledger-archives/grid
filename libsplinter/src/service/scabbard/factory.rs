@@ -114,6 +114,7 @@ impl ServiceFactory for ScabbardFactory {
         Ok(Box::new(service))
     }
 
+    #[cfg(feature = "rest-api")]
     fn get_rest_endpoints(&self) -> Vec<crate::service::rest_api::ServiceEndpoint> {
         vec![
             super::rest_api::make_add_batches_to_queue_endpoint(),

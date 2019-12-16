@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod error;
+#[cfg(feature = "rest-api")]
 mod rest_api;
 
 use std::collections::HashMap;

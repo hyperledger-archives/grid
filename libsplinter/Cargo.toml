@@ -70,6 +70,7 @@ default = []
 stable = [
     "default",
     "events",
+    "rest-api",
     "sawtooth-signing-compat",
 ]
 
@@ -90,6 +91,7 @@ circuit-read = []
 connection-manager = []
 database = ["diesel", "diesel_migrations"]
 events = ["hyper", "tokio", "awc"]
+rest-api = []
 sawtooth-signing-compat = ["sawtooth-sdk"]
 zmq-transport = ["zmq"]
 
@@ -107,6 +109,7 @@ features = [
     "connection-manager",
     "database",
     "events",
+    "rest-api",
     "sawtooth-signing-compat",
     "ursa-compat",
     "zmq-transport",

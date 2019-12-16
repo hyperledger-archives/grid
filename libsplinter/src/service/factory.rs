@@ -31,5 +31,6 @@ pub trait ServiceFactory: Send {
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError>;
 
+    #[cfg(feature = "rest-api")]
     fn get_rest_endpoints(&self) -> Vec<super::rest_api::ServiceEndpoint>;
 }
