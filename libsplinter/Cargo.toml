@@ -78,7 +78,6 @@ experimental = [
     "biome-notifications",
     "connection-manager",
     "database",
-    "ursa-compat",
     "zmq-transport",
 ]
 
@@ -89,8 +88,13 @@ connection-manager = []
 database = ["diesel", "diesel_migrations"]
 events = ["hyper", "tokio", "awc"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
-ursa-compat = ["ursa"]
 zmq-transport = ["zmq"]
+
+# The following features are broken and should not be used.
+
+# The `ursa` dependency is currently broken, and will need to be fixed before
+# the `ursa-compat` feature can be added back to `experimental`.
+ursa-compat = ["ursa"]
 
 [package.metadata.docs.rs]
 features = [
