@@ -24,7 +24,9 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
 
 pub use error::ConnectionManagerError;
-pub use messages::{CmMessage, CmNotification, CmPayload, CmRequest, CmResponse, CmResponseStatus};
+pub use messages::{
+    CmMessage, CmPayload, CmRequest, CmResponse, CmResponseStatus, ConnectionManagerNotification,
+};
 use pacemaker::Pacemaker;
 use protobuf::Message;
 
@@ -194,12 +196,14 @@ impl ShutdownHandle {
 }
 
 pub struct NotificationIter {
-    recv: Receiver<CmNotification>,
+    recv: Receiver<ConnectionManagerNotification>,
 }
 
 #[cfg(feature = "connection-manager-notification-iter-try-next")]
 impl NotificationIter {
-    pub fn try_next(&self) -> Result<Option<CmNotification>, ConnectionManagerError> {
+    pub fn try_next(
+        &self,
+    ) -> Result<Option<ConnectionManagerNotification>, ConnectionManagerError> {
         match self.recv.try_recv() {
             Ok(notifications) => Ok(Some(notifications)),
             Err(TryRecvError::Empty) => Ok(None),
@@ -211,7 +215,7 @@ impl NotificationIter {
 }
 
 impl Iterator for NotificationIter {
-    type Item = CmNotification;
+    type Item = ConnectionManagerNotification;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.recv.recv() {
@@ -344,8 +348,8 @@ fn handle_request(req: CmRequest, state: &mut ConnectionState) {
 }
 
 fn notify_subscribers(
-    subscribers: &mut Vec<SyncSender<CmNotification>>,
-    notification: CmNotification,
+    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+    notification: ConnectionManagerNotification,
 ) {
     subscribers.retain(|sender| {
         if sender.send(notification.clone()).is_err() {
@@ -356,7 +360,10 @@ fn notify_subscribers(
     });
 }
 
-fn send_heartbeats(state: &mut ConnectionState, subscribers: &mut Vec<SyncSender<CmNotification>>) {
+fn send_heartbeats(
+    state: &mut ConnectionState,
+    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+) {
     let heartbeat_message = match create_heartbeat() {
         Ok(h) => h,
         Err(err) => {
@@ -377,7 +384,7 @@ fn send_heartbeats(state: &mut ConnectionState, subscribers: &mut Vec<SyncSender
 
             notify_subscribers(
                 subscribers,
-                CmNotification::HeartbeatSendFail {
+                ConnectionManagerNotification::HeartbeatSendFail {
                     endpoint: endpoint.clone(),
                     message: format!("{:?}", err),
                 },
@@ -387,7 +394,7 @@ fn send_heartbeats(state: &mut ConnectionState, subscribers: &mut Vec<SyncSender
                 error!("Connection reattempt failed: {:?}", err);
                 notify_subscribers(
                     subscribers,
-                    CmNotification::ReconnectAttemptFailed {
+                    ConnectionManagerNotification::ReconnectAttemptFailed {
                         endpoint: endpoint.clone(),
                         message: format!("{:?}", err),
                     },
@@ -395,7 +402,7 @@ fn send_heartbeats(state: &mut ConnectionState, subscribers: &mut Vec<SyncSender
             } else {
                 notify_subscribers(
                     subscribers,
-                    CmNotification::ReconnectAttemptSuccess {
+                    ConnectionManagerNotification::ReconnectAttemptSuccess {
                         endpoint: endpoint.clone(),
                     },
                 );
@@ -403,7 +410,7 @@ fn send_heartbeats(state: &mut ConnectionState, subscribers: &mut Vec<SyncSender
         } else {
             notify_subscribers(
                 subscribers,
-                CmNotification::HeartbeatSent {
+                ConnectionManagerNotification::HeartbeatSent {
                     endpoint: endpoint.clone(),
                 },
             );
@@ -539,7 +546,7 @@ pub mod tests {
 
         assert!(
             notification
-                == CmNotification::HeartbeatSent {
+                == ConnectionManagerNotification::HeartbeatSent {
                     endpoint: "inproc://test".to_string(),
                 }
         );
@@ -587,7 +594,7 @@ pub mod tests {
 
         assert!(
             notification
-                == CmNotification::HeartbeatSent {
+                == ConnectionManagerNotification::HeartbeatSent {
                     endpoint: "tcp://localhost:3030".to_string(),
                 }
         );
@@ -689,7 +696,7 @@ pub mod tests {
 
         let join_handle = thread::spawn(move || {
             for _ in 0..5 {
-                send.send(CmNotification::HeartbeatSent {
+                send.send(ConnectionManagerNotification::HeartbeatSent {
                     endpoint: "tcp://localhost:3030".to_string(),
                 })
                 .unwrap();
@@ -700,7 +707,7 @@ pub mod tests {
         for n in nh {
             assert_eq!(
                 n,
-                CmNotification::HeartbeatSent {
+                ConnectionManagerNotification::HeartbeatSent {
                     endpoint: "tcp://localhost:3030".to_string()
                 }
             );
