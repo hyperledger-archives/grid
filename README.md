@@ -90,9 +90,9 @@ For example, to build only the Private XO demo, navigate to
 `examples/private_xo`, then run `cargo build`.
 
 To build Splinter using Docker, run
-`docker-compose -f docker-compose-installed.yaml` from the root directory.
-This command builds Docker images for all of the Splinter components,
-including `libsplinter` (the main library), `splinterd`
+`docker-compose -f docker-compose-installed.yaml build` from the root
+directory. This command builds Docker images for all of the Splinter
+components, including `libsplinter` (the main library), `splinterd`
 (the splinter daemon), the CLI, the client, and all examples in the `examples`
 directory.
 
