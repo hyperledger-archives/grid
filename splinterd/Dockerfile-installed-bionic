@@ -16,7 +16,6 @@
 
 FROM splintercommunity/splinter-dev as BUILDER
 
-COPY protos /build/protos
 COPY libsplinter /build/libsplinter
 COPY services/health /build/services/health
 COPY splinterd/ /build/splinterd

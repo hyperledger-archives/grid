@@ -16,7 +16,6 @@ FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
 COPY client /build/client
-COPY protos /build/protos
 COPY libsplinter /build/libsplinter
 COPY cli /build/cli
 

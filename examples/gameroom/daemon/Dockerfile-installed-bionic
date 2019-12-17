@@ -16,10 +16,8 @@ FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
 COPY examples/gameroom/database /build/examples/gameroom/database
-COPY protos /build/protos
 COPY examples/gameroom/daemon/ /build/examples/gameroom/daemon
 COPY libsplinter /build/libsplinter
-COPY protos/ /build/protos
 
 # Build the project
 WORKDIR /build/examples/gameroom/daemon
