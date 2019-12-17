@@ -31,9 +31,9 @@ services:
             echo \"Running stable feature tests...\" && \
             (cd libsplinter && cargo test --features stable) &&
             (cd splinterd && cargo test --features stable) &&
-            echo \"Running stable+experimental feature tests...\" && \
-            (cd libsplinter && cargo test --features stable experimental) &&
-            (cd splinterd && cargo test --features stable experimental)
+            echo \"Running experimental feature tests...\" && \
+            (cd libsplinter && cargo test --features experimental) &&
+            (cd splinterd && cargo test --features experimental)
         "
     stop_signal: SIGKILL
 
