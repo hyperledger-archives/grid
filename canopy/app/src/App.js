@@ -19,6 +19,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useUserState, UserProvider } from 'UserStore';
 import SideNav from 'components/navigation/SideNav';
 import { loadAllSaplings } from './loadSaplings';
+import { loadSharedConfig } from './loadSharedConfig';
 
 import 'App.scss';
 
@@ -28,6 +29,7 @@ function App() {
   const saplingDomNode = useRef(null);
   const [userSaplingManifests, setUserSaplingManifests] = useState([]);
   const [user, setUser] = useUserState();
+  const [sharedConfig, setSharedConfig] = useState({});
 
   const appSapling = useRef(null);
   const configSaplings = useRef({});
@@ -43,11 +45,18 @@ function App() {
 
   window.$CANOPY.setUser = setUser;
   window.$CANOPY.getUser = () => user;
+  window.$CANOPY.getSharedConfig = () => sharedConfig;
 
   // This useEffect with zero dependencies will run only when the component first loads.
   useEffect(() => {
     (async () => {
-      const { userSaplingsResponse } = await loadAllSaplings();
+      // handle all (simulated) HTTP requests concurrently
+      const [
+        { userSaplingsResponse },
+        sharedConfigResponse
+      ] = await Promise.all([loadAllSaplings(), loadSharedConfig()]);
+
+      setSharedConfig(sharedConfigResponse);
       setUserSaplingManifests(userSaplingsResponse);
 
       // Load the config saplings
