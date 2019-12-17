@@ -13,7 +13,12 @@
 # limitations under the License.
 
 [features]
+default = []
+
+stable = ["default"]
+
 experimental = ["health"]
+
 health = ["reqwest", "serde_json"]
 
 [package]

@@ -26,13 +26,14 @@ services:
       - ../:/project/splinter
     command: |
         bash -c "
+            echo \"Running default feature tests...\" && \
             cargo test && \
-            echo \"Running experimental feature tests...\" && \
-            (cd libsplinter && cargo test --features experimental) &&
-            (cd splinterd && cargo test --features experimental) &&
-            echo \"Running optional feature tests...\" && \
-            cargo test signing::sawtooth --manifest-path libsplinter/Cargo.toml \
-                --features \"sawtooth-signing-compat\"
+            echo \"Running stable feature tests...\" && \
+            (cd libsplinter && cargo test --features stable) &&
+            (cd splinterd && cargo test --features stable) &&
+            echo \"Running stable+experimental feature tests...\" && \
+            (cd libsplinter && cargo test --features stable experimental) &&
+            (cd splinterd && cargo test --features stable experimental)
         "
     stop_signal: SIGKILL
 

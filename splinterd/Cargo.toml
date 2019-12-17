@@ -45,16 +45,18 @@ toml = "0.4.8"
 [features]
 default = ["generate-certs"]
 
+stable = ["default"]
+
 experimental = [
+    "circuit-read",
     "config-builder",
     "config-toml",
-    "circuit-read",
     "health",
 ]
 
+circuit-read = []
 config-builder = []
 config-toml = ["config-builder"]
-circuit-read = []
 generate-certs = []
 
 [package.metadata.deb]

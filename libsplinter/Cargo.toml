@@ -66,33 +66,45 @@ glob = "0.2"
 [features]
 default = []
 
-experimental = [
-    "zmq-transport",
-    "biome",
-    "biome-notifications",
-    "database",
-    "connection-manager",
+stable = [
+    "default",
+    "events",
+    "sawtooth-signing-compat",
 ]
 
-connection-manager = []
-zmq-transport = ["zmq"]
-ursa-compat = ["ursa"]
-sawtooth-signing-compat = ["sawtooth-sdk"]
-events = ["hyper", "tokio", "awc"]
-biome = ["database", "jsonwebtoken", "rand"]
-biome-credentials = ["biome", "database", "bcrypt"]
-biome-notifications = ["biome", "database"]
-database = ["diesel", "diesel_migrations"]
-
-[package.metadata.docs.rs]
-features = [
-    "zmq-transport",
-    "ursa-compat",
-    "sawtooth-signing-compat",
-    "events",
+experimental = [
     "biome",
     "biome-credentials",
     "biome-notifications",
-    "database",
     "connection-manager",
+    "database",
+    "zmq-transport",
+]
+
+biome = ["database", "jsonwebtoken", "rand"]
+biome-credentials = ["biome", "database", "bcrypt"]
+biome-notifications = ["biome", "database"]
+connection-manager = []
+database = ["diesel", "diesel_migrations"]
+events = ["hyper", "tokio", "awc"]
+sawtooth-signing-compat = ["sawtooth-sdk"]
+zmq-transport = ["zmq"]
+
+# The following features are broken and should not be used.
+
+# The `ursa` dependency is currently broken, and will need to be fixed before
+# the `ursa-compat` feature can be added back to `experimental`.
+ursa-compat = ["ursa"]
+
+[package.metadata.docs.rs]
+features = [
+    "biome",
+    "biome-credentials",
+    "biome-notifications",
+    "connection-manager",
+    "database",
+    "events",
+    "sawtooth-signing-compat",
+    "ursa-compat",
+    "zmq-transport",
   ]
