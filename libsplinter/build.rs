@@ -28,7 +28,7 @@ use protoc_rust::Customize;
 
 fn main() {
     // Generate protobuf files
-    let proto_src_files = glob_simple("../protos/*.proto");
+    let proto_src_files = glob_simple("./protos/*.proto");
     println!("{:?}", proto_src_files);
 
     let out_dir = env::var("OUT_DIR").expect("No OUT_DIR env variable");
@@ -62,7 +62,7 @@ fn main() {
             .iter()
             .map(|a| a.as_ref())
             .collect::<Vec<&str>>(),
-        includes: &["src", "../protos"],
+        includes: &["src", "protos"],
         customize: Customize::default(),
     })
     .expect("unable to run protoc");

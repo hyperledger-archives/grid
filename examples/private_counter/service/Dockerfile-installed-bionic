@@ -17,7 +17,6 @@ FROM splintercommunity/splinter-dev as BUILDER
 # Copy over source files
 COPY examples/private_counter/protos /build/examples/private_counter/protos
 COPY examples/private_counter/service /build/examples/private_counter/service
-COPY protos /build/protos
 COPY libsplinter /build/libsplinter
 
 # Build the package

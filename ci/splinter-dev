@@ -47,9 +47,6 @@ RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.7.1/proto
     && unzip -o protoc-3.7.1-linux-x86_64.zip -d /usr/local \
     && rm protoc-3.7.1-linux-x86_64.zip
 
-# Copy dependencies
-COPY protos /build/protos
-
 # Create empty cargo projects for top-level projects
 WORKDIR /build
 RUN USER=root cargo new --bin cli
@@ -77,6 +74,7 @@ COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY client/Cargo.toml /build/client/Cargo.toml
 COPY libsplinter/build.rs /build/libsplinter/build.rs
 COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
+COPY libsplinter/protos /build/libsplinter/protos
 COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
 
 COPY examples/gameroom/daemon/Cargo.toml \

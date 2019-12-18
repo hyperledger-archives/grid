@@ -14,8 +14,7 @@
 
 FROM splintercommunity/splinter-dev as BUILDER
 
-COPY protos/ /build/protos/
-COPY libsplinter/src /build/libsplinter/src
+COPY libsplinter /build/libsplinter
 COPY examples/private_xo /build/examples/private_xo
 
 # Build the package
