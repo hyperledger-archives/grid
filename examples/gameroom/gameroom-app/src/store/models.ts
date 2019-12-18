@@ -43,9 +43,10 @@ export interface UserAuthResponse {
 
 export interface Node {
   identity: string;
+  endpoint: string;
+  display_name: string;
   metadata: {
     organization: string;
-    endpoint: string;
   };
 }
 

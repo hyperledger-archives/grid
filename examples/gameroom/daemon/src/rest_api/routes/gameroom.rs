@@ -122,21 +122,13 @@ pub fn propose_gameroom(
             .iter()
             .map(|node| SplinterNode {
                 node_id: node.identity.to_string(),
-                endpoint: node
-                    .metadata
-                    .get("endpoint")
-                    .unwrap_or(&"".to_string())
-                    .to_string(),
+                endpoint: node.endpoint.to_string(),
             })
             .collect::<Vec<SplinterNode>>();
 
         members.push(SplinterNode {
             node_id: node_info.identity.to_string(),
-            endpoint: node_info
-                .metadata
-                .get("endpoint")
-                .unwrap_or(&"".to_string())
-                .to_string(),
+            endpoint: node_info.endpoint.to_string(),
         });
         let partial_circuit_id = members.iter().fold(String::new(), |mut acc, member| {
             acc.push_str(&format!("::{}", member.node_id));

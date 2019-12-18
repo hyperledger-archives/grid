@@ -18,12 +18,16 @@ pub mod yaml;
 
 use std::collections::HashMap;
 
-pub use error::NodeRegistryError;
+pub use error::{InvalidNodeError, NodeRegistryError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
-    /// The Splinter identity of the node.
+    /// The Splinter identity of the node; must be unique in the registry.
     pub identity: String,
+    /// The endpoint the node can be reached at; must be unique in the registry.
+    pub endpoint: String,
+    /// A human-readable name for the node.
+    pub display_name: String,
     /// A map with node metadata.
     pub metadata: HashMap<String, String>,
 }
@@ -107,33 +111,25 @@ pub trait NodeRegistryReader: Send + Sync {
     ///  * `identity` - The Splinter identity of the node.
     ///
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError>;
+
+    fn has_node(&self, identity: &str) -> Result<bool, NodeRegistryError> {
+        match self.fetch_node(identity) {
+            Ok(_) => Ok(true),
+            Err(NodeRegistryError::NotFoundError(_)) => Ok(false),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 /// Provides Node Registry write capabilities.
 pub trait NodeRegistryWriter: Send + Sync {
-    /// Registers a new node.
+    /// Adds a new node to the registry, or replaces an existing node with the same identity.
     ///
     /// # Arguments
     ///
-    /// * `node` - The node to be added to the registry.
+    /// * `node` - The node to be added to or updated in the registry.
     ///
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError>;
-
-    /// Updates a node with the given identity.
-    /// The node's exiting metadata properties that are not in the updates map will not be
-    /// changed. New properties that are not already in the nodes's metadata will be added to
-    /// the metadata.
-    ///
-    /// # Arguments
-    ///
-    ///  * `identity` - The Splinter identity of the node.
-    ///  * `updates` - A map containing the updated properties.
-    ///
-    fn update_node(
-        &self,
-        identity: &str,
-        updates: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError>;
+    fn insert_node(&self, node: Node) -> Result<(), NodeRegistryError>;
 
     /// Deletes a node with the given identity.
     ///
@@ -180,22 +176,18 @@ where
     fn fetch_node(&self, identity: &str) -> Result<Node, NodeRegistryError> {
         (**self).fetch_node(identity)
     }
+
+    fn has_node(&self, identity: &str) -> Result<bool, NodeRegistryError> {
+        (**self).has_node(identity)
+    }
 }
 
 impl<NW> NodeRegistryWriter for Box<NW>
 where
     NW: NodeRegistryWriter + ?Sized,
 {
-    fn add_node(&self, node: Node) -> Result<(), NodeRegistryError> {
-        (**self).add_node(node)
-    }
-
-    fn update_node(
-        &self,
-        identity: &str,
-        updates: HashMap<String, String>,
-    ) -> Result<(), NodeRegistryError> {
-        (**self).update_node(identity, updates)
+    fn insert_node(&self, node: Node) -> Result<(), NodeRegistryError> {
+        (**self).insert_node(node)
     }
 
     fn delete_node(&self, identity: &str) -> Result<(), NodeRegistryError> {

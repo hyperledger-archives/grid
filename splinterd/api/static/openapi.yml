@@ -286,7 +286,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         403:
-          description: The node already exists
+          description: The node already exists or is invalid
           content:
             application/json:
               schema:
@@ -320,8 +320,9 @@ paths:
         - name: filter
           in: query
           description: |
-            url-encodeded stringified JSON containing property filters in the format
-              {NODE_PROPERTY:[{"operator":OPERATOR,"value":VALUE}]}
+            url-encodeded stringified JSON containing property filters on the
+            node's metadata properties in the format
+              {METADATA_PROPERTY:[{"operator":OPERATOR,"value":VALUE}]}
           required: false
           schema:
             type: string
@@ -382,14 +383,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-    patch:
+    put:
       tags:
         - Node Registry
-      description: Update a node in the Node Registry
+      description: Add a node to or replace a node in the Node Registry. This action is idempotent.
       parameters:
         - name: identity
           in: path
-          description: identity of node to update
+          description: identity of node to add/replace
           required: true
           schema:
             type: string
@@ -398,18 +399,18 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/RegisteredNode'
       responses:
         200:
-          description: The node in the registry has been updated
+          description: The node in the registry has been replaced
         400:
           description: The request was malformed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        404:
-          description: The node with {identity} was not found
+        403:
+          description: The node was invalid
           content:
             application/json:
               schema:
@@ -565,11 +566,19 @@ components:
       properties:
         identity:
           type: string
-      additionalProperties: true
+        endpoint:
+          type: string
+        display_name:
+          type: string
+        metadata:
+          type: object
       example:
         identity: node-123123-asdf
-        company: Cargill
-        status: Up
+        endpoint: tls://12.0.0.123:8431
+        display_name: Cargill - Node 1
+        metadata:
+          company: Cargill
+          status: Up
 
     PublicKeyInfo:
       type: object

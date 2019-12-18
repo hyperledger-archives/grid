@@ -231,8 +231,9 @@ async function getNode(id: string): Promise<Node> {
       console.warn(`Node with ID: ${id} not found. It may have been removed from the registry.`);
       return {
         identity: id,
+        endpoint: 'unknown',
+        display_name: 'unknown',
         metadata: {
-          endpoint: 'unknown',
           organization: id,
         },
       };

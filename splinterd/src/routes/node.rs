@@ -18,7 +18,8 @@ use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpRes
 use splinter::futures::{future::IntoFuture, stream::Stream, Future};
 use splinter::{
     node_registry::{
-        error::NodeRegistryError, MetadataPredicate, Node, NodeRegistryReader, NodeRegistryWriter,
+        error::{InvalidNodeError, NodeRegistryError},
+        MetadataPredicate, Node, NodeRegistryReader, NodeRegistryWriter,
     },
     rest_api::{Method, Resource},
 };
@@ -42,8 +43,8 @@ where
         .add_method(Method::Get, move |r, _| {
             fetch_node(r, web::Data::new(registry.clone()))
         })
-        .add_method(Method::Patch, move |r, p| {
-            update_node(r, p, web::Data::new(registry1.clone()))
+        .add_method(Method::Put, move |r, p| {
+            put_node(r, p, web::Data::new(registry1.clone()))
         })
         .add_method(Method::Delete, move |r, _| {
             delete_node(r, web::Data::new(registry2.clone()))
@@ -90,7 +91,7 @@ where
     )
 }
 
-fn update_node<NW>(
+fn put_node<NW>(
     request: HttpRequest,
     payload: web::Payload,
     registry: web::Data<NW>,
@@ -98,7 +99,7 @@ fn update_node<NW>(
 where
     NW: NodeRegistryWriter + 'static,
 {
-    let identity = request
+    let path_identity = request
         .match_info()
         .get("identity")
         .unwrap_or("")
@@ -111,35 +112,45 @@ where
                 Ok::<_, Error>(body)
             })
             .into_future()
-            .and_then(
-                move |body| match serde_json::from_slice::<HashMap<String, String>>(&body) {
-                    Ok(updates) => Box::new(
-                        web::block(move || registry.update_node(&identity, updates)).then(|res| {
-                            Ok(match res {
-                                Ok(_) => HttpResponse::Ok().finish(),
-                                Err(err) => match err {
-                                    BlockingError::Error(err) => match err {
-                                        NodeRegistryError::NotFoundError(err) => {
-                                            HttpResponse::NotFound().json(err)
-                                        }
-                                        _ => HttpResponse::InternalServerError()
-                                            .json(format!("{}", err)),
-                                    },
+            .and_then(move |body| match serde_json::from_slice::<Node>(&body) {
+                Ok(node) => Box::new(
+                    web::block(move || {
+                        if node.identity != path_identity {
+                            Err(NodeRegistryError::InvalidNode(
+                                InvalidNodeError::InvalidIdentity(
+                                    node.identity,
+                                    "node identity cannot be changed".into(),
+                                ),
+                            ))
+                        } else {
+                            registry.insert_node(node)
+                        }
+                    })
+                    .then(|res| {
+                        Ok(match res {
+                            Ok(_) => HttpResponse::Ok().finish(),
+                            Err(err) => match err {
+                                BlockingError::Error(err) => match err {
+                                    NodeRegistryError::InvalidNode(err) => {
+                                        HttpResponse::Forbidden()
+                                            .json(format!("node is invalid: {}", err))
+                                    }
                                     _ => {
                                         HttpResponse::InternalServerError().json(format!("{}", err))
                                     }
                                 },
-                            })
-                        }),
-                    )
-                        as Box<dyn Future<Item = HttpResponse, Error = Error>>,
-                    Err(err) => Box::new(
-                        HttpResponse::BadRequest()
-                            .json(format!("invalid updates: {}", err))
-                            .into_future(),
-                    ),
-                },
-            ),
+                                _ => HttpResponse::InternalServerError().json(format!("{}", err)),
+                            },
+                        })
+                    }),
+                )
+                    as Box<dyn Future<Item = HttpResponse, Error = Error>>,
+                Err(err) => Box::new(
+                    HttpResponse::BadRequest()
+                        .json(format!("invalid node: {}", err))
+                        .into_future(),
+                ),
+            }),
     )
 }
 
@@ -321,7 +332,7 @@ fn add_node<NW>(
     registry: web::Data<NW>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>>
 where
-    NW: NodeRegistryWriter + 'static,
+    NW: NodeRegistryReader + NodeRegistryWriter + 'static,
 {
     Box::new(
         payload
@@ -332,21 +343,34 @@ where
             })
             .into_future()
             .and_then(move |body| match serde_json::from_slice::<Node>(&body) {
-                Ok(node) => Box::new(web::block(move || registry.add_node(node)).then(|res| {
-                    Ok(match res {
-                        Ok(_) => HttpResponse::Ok().finish(),
-                        Err(err) => match err {
-                            BlockingError::Error(err) => match err {
-                                NodeRegistryError::DuplicateNodeError(id) => {
-                                    HttpResponse::Forbidden()
-                                        .json(format!("node with with ID ({}) already exists", id))
-                                }
+                Ok(node) => Box::new(
+                    web::block(move || {
+                        if registry.has_node(&node.identity)? {
+                            Err(NodeRegistryError::InvalidNode(
+                                InvalidNodeError::DuplicateIdentity(node.identity),
+                            ))
+                        } else {
+                            registry.insert_node(node)
+                        }
+                    })
+                    .then(|res| {
+                        Ok(match res {
+                            Ok(_) => HttpResponse::Ok().finish(),
+                            Err(err) => match err {
+                                BlockingError::Error(err) => match err {
+                                    NodeRegistryError::InvalidNode(err) => {
+                                        HttpResponse::Forbidden()
+                                            .json(format!("node is invalid: {}", err))
+                                    }
+                                    _ => {
+                                        HttpResponse::InternalServerError().json(format!("{}", err))
+                                    }
+                                },
                                 _ => HttpResponse::InternalServerError().json(format!("{}", err)),
                             },
-                            _ => HttpResponse::InternalServerError().json(format!("{}", err)),
-                        },
-                    })
-                }))
+                        })
+                    }),
+                )
                     as Box<dyn Future<Item = HttpResponse, Error = Error>>,
                 Err(err) => Box::new(
                     HttpResponse::BadRequest()
@@ -430,24 +454,25 @@ mod tests {
     }
 
     #[test]
-    /// Test the PATCH /nodes/{identity} route for updating the metadata of a node in the registry.
-    fn test_update_node() {
+    /// Test the PUT /nodes/{identity} route for adding or updating a node in the registry.
+    fn test_put_node() {
         run_test(|test_yaml_file_path| {
-            write_to_file(&test_yaml_file_path, &[get_node_1()]);
+            let mut node = get_node_1();
+            write_to_file(&test_yaml_file_path, &[node.clone()]);
 
             let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
             let mut app = test::init_service(
                 App::new().data(node_registry.clone()).service(
                     web::resource("/nodes/{identity}")
-                        .route(web::patch().to_async(update_node::<YamlNodeRegistry>))
+                        .route(web::patch().to_async(put_node::<YamlNodeRegistry>))
                         .route(web::get().to_async(fetch_node::<YamlNodeRegistry>)),
                 ),
             );
 
-            // Verify invalid updates (e.g. no updates) gets a BAD_REQUEST response
+            // Verify no body (e.g. no updated Node) gets a BAD_REQUEST response
             let req = test::TestRequest::patch()
-                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .uri(&format!("/nodes/{}", &node.identity))
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
@@ -455,16 +480,15 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
             // Verify that updating an existing node gets an OK response and the fetched node has
-            // the updated metadata
-            let updated_key = "location".to_string();
-            let updated_value = "Minneapolis".to_string();
-            let mut updates = HashMap::new();
-            updates.insert(updated_key.clone(), updated_value.clone());
+            // the updated values
+            node.endpoint = "12.0.0.123:8432".to_string();
+            node.metadata
+                .insert("location".to_string(), "Minneapolis".to_string());
 
             let req = test::TestRequest::patch()
-                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .uri(&format!("/nodes/{}", &node.identity))
                 .header(header::CONTENT_TYPE, "application/json")
-                .set_json(&updates)
+                .set_json(&node)
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
@@ -472,30 +496,28 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
 
             let req = test::TestRequest::get()
-                .uri(&format!("/nodes/{}", get_node_1().identity))
+                .uri(&format!("/nodes/{}", &node.identity))
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
 
             assert_eq!(resp.status(), StatusCode::OK);
-            let node: Node = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
-            assert_eq!(
-                node.metadata
-                    .get(&updated_key)
-                    .expect("updated value doesn't exist"),
-                &updated_value
-            );
+            let updated_node: Node = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+            assert_eq!(updated_node, node);
 
-            // Verify that updating a non-existent node gets a NOT_FOUND response
+            // Verify that attempting to change the node identity gets a FORBIDDEN response
+            let old_identity = node.identity.clone();
+            node.identity = "Node-789".into();
+
             let req = test::TestRequest::patch()
-                .uri(&format!("/nodes/{}", get_node_2().identity))
+                .uri(&format!("/nodes/{}", &old_identity))
                 .header(header::CONTENT_TYPE, "application/json")
-                .set_json(&updates)
+                .set_json(&node)
                 .to_request();
 
             let resp = test::call_service(&mut app, req);
 
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+            assert_eq!(resp.status(), StatusCode::FORBIDDEN);
         })
     }
 
@@ -629,9 +651,13 @@ mod tests {
 
             let node_registry = new_yaml_node_registry(test_yaml_file_path);
 
-            let mut app = test::init_service(App::new().data(node_registry.clone()).service(
-                web::resource("/nodes").route(web::post().to_async(add_node::<YamlNodeRegistry>)),
-            ));
+            let mut app = test::init_service(
+                App::new().data(node_registry.clone()).service(
+                    web::resource("/nodes")
+                        .route(web::post().to_async(add_node::<YamlNodeRegistry>))
+                        .route(web::get().to_async(fetch_node::<YamlNodeRegistry>)),
+                ),
+            );
 
             // Verify an invalid node gets a BAD_REQUEST response
             let req = test::TestRequest::post()
@@ -702,20 +728,22 @@ mod tests {
 
     fn get_node_1() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "12.0.0.123:8431".to_string());
         metadata.insert("company".to_string(), "Bitwise IO".to_string());
         Node {
             identity: "Node-123".to_string(),
+            endpoint: "12.0.0.123:8431".to_string(),
+            display_name: "Bitwise IO - Node 1".to_string(),
             metadata,
         }
     }
 
     fn get_node_2() -> Node {
         let mut metadata = HashMap::new();
-        metadata.insert("url".to_string(), "13.0.0.123:8434".to_string());
         metadata.insert("company".to_string(), "Cargill".to_string());
         Node {
             identity: "Node-456".to_string(),
+            endpoint: "13.0.0.123:8434".to_string(),
+            display_name: "Cargill - Node 1".to_string(),
             metadata,
         }
     }
