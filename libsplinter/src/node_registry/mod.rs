@@ -95,6 +95,16 @@ impl MetadataPredicate {
             }
         }
     }
+
+    /// Returns the Eq predicate for the given key and value
+    pub fn eq<S: Into<String>>(key: S, value: S) -> MetadataPredicate {
+        MetadataPredicate::Eq(key.into(), value.into())
+    }
+
+    /// Returns the Ne predicate for the given key and value
+    pub fn ne<S: Into<String>>(key: S, value: S) -> MetadataPredicate {
+        MetadataPredicate::Ne(key.into(), value.into())
+    }
 }
 
 /// Provides Node Registry read capabilities.
