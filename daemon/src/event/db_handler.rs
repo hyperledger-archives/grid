@@ -63,16 +63,16 @@ impl EventHandler for DatabaseEventHandler {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: ({}, {:?})", event.id, event.height);
 
-        let commit = create_db_commit_from_commit_event(event)?;
-        let db_ops =
-            create_db_operations_from_state_changes(&event.state_changes, commit.commit_num)?;
-
-        trace!("The following operations will be performed: {:#?}", db_ops);
-
         let conn = self
             .connection_pool
             .get()
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
+
+        let commit = create_db_commit_from_commit_event(event, &conn)?;
+        let db_ops =
+            create_db_operations_from_state_changes(&event.state_changes, commit.commit_num)?;
+
+        trace!("The following operations will be performed: {:#?}", db_ops);
 
         conn.build_transaction()
             .run::<_, Error, _>(|| {
@@ -106,9 +106,12 @@ impl EventHandler for DatabaseEventHandler {
     }
 }
 
-fn create_db_commit_from_commit_event(event: &CommitEvent) -> Result<NewCommit, EventError> {
+fn create_db_commit_from_commit_event(
+    event: &CommitEvent,
+    conn: &PgConnection,
+) -> Result<NewCommit, EventError> {
     let commit_id = event.id.clone();
-    let commit_num = commit_event_height_to_commit_num(event.height)?;
+    let commit_num = commit_event_height_to_commit_num(event.height, conn)?;
     let source = Some(event.source.clone());
     Ok(NewCommit {
         commit_id,
@@ -117,11 +120,22 @@ fn create_db_commit_from_commit_event(event: &CommitEvent) -> Result<NewCommit, 
     })
 }
 
-fn commit_event_height_to_commit_num(height: Option<u64>) -> Result<i64, EventError> {
-    height
-        .ok_or_else(|| EventError("event height cannot be none".into()))?
-        .try_into()
-        .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err)))
+// If height is `Some`, convert to i64; if height is `None`, get next commit_num from the database.
+fn commit_event_height_to_commit_num(
+    height: Option<u64>,
+    conn: &PgConnection,
+) -> Result<i64, EventError> {
+    match height {
+        Some(height_u64) => height_u64
+            .try_into()
+            .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err))),
+        None => db::get_next_commit_num(conn).map_err(|err| {
+            EventError(format!(
+                "failed to get next commit_num from database: {}",
+                err
+            ))
+        }),
+    }
 }
 
 fn create_db_operations_from_state_changes(

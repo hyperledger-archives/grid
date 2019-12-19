@@ -20,7 +20,7 @@ use super::schema::{chain_record, commit};
 use super::MAX_COMMIT_NUM;
 
 use diesel::{
-    dsl::{delete, insert_into, update},
+    dsl::{delete, insert_into, max, update},
     pg::PgConnection,
     prelude::*,
     result::Error::NotFound,
@@ -77,5 +77,15 @@ pub fn get_current_commit_id(conn: &PgConnection) -> QueryResult<String> {
             } else {
                 Err(err)
             }
+        })
+}
+
+pub fn get_next_commit_num(conn: &PgConnection) -> QueryResult<i64> {
+    commit::table
+        .select(max(commit::commit_num))
+        .first(conn)
+        .map(|option: Option<i64>| match option {
+            Some(num) => num + 1,
+            None => 0,
         })
 }
