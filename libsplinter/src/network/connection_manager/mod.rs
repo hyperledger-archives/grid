@@ -18,14 +18,17 @@ mod pacemaker;
 
 use std;
 use std::collections::HashMap;
+#[cfg(feature = "connection-manager-notification-iter-try-next")]
+use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
 
 pub use error::ConnectionManagerError;
-pub use messages::{CmMessage, CmNotification, CmPayload, CmRequest, CmResponse, CmResponseStatus};
+pub use messages::{
+    CmMessage, CmPayload, CmRequest, CmResponse, CmResponseStatus, ConnectionManagerNotification,
+};
 use pacemaker::Pacemaker;
 use protobuf::Message;
-use uuid::Uuid;
 
 use crate::mesh::{Envelope, Mesh};
 use crate::protos::network::{NetworkHeartbeat, NetworkMessage, NetworkMessageType};
@@ -65,15 +68,12 @@ impl ConnectionManager {
         let join_handle = thread::Builder::new()
             .name("Connection Manager".into())
             .spawn(move || {
-                let mut subscribers = HashMap::new();
+                let mut subscribers = Vec::new();
                 loop {
                     match recv.recv() {
                         Ok(CmMessage::Shutdown) => break,
-                        Ok(CmMessage::Subscribe(id, sender)) => {
-                            subscribers.insert(id, sender);
-                        }
-                        Ok(CmMessage::UnSubscribe(ref id)) => {
-                            subscribers.remove(id);
+                        Ok(CmMessage::Subscribe(sender)) => {
+                            subscribers.push(sender);
                         }
                         Ok(CmMessage::Request(req)) => {
                             handle_request(req, &mut state);
@@ -150,15 +150,10 @@ impl Connector {
         })
     }
 
-    pub fn subscribe(&self) -> Result<NotificationHandler, ConnectionManagerError> {
-        let id = Uuid::new_v4().to_string();
-        let (send, recv) = sync_channel(1);
-        match self.sender.send(CmMessage::Subscribe(id.clone(), send)) {
-            Ok(()) => Ok(NotificationHandler {
-                id,
-                recv,
-                sender: self.sender.clone(),
-            }),
+    pub fn subscribe(&self) -> Result<NotificationIter, ConnectionManagerError> {
+        let (send, recv) = sync_channel(CHANNEL_CAPACITY);
+        match self.sender.send(CmMessage::Subscribe(send)) {
+            Ok(()) => Ok(NotificationIter { recv }),
             Err(_) => Err(ConnectionManagerError::SendMessageError(
                 "The connection manager is no longer running".into(),
             )),
@@ -200,29 +195,36 @@ impl ShutdownHandle {
     }
 }
 
-pub struct NotificationHandler {
-    id: String,
-    sender: SyncSender<CmMessage>,
-    recv: Receiver<Vec<CmNotification>>,
+pub struct NotificationIter {
+    recv: Receiver<ConnectionManagerNotification>,
 }
 
-impl NotificationHandler {
-    pub fn listen(&self) -> Result<Vec<CmNotification>, ConnectionManagerError> {
-        match self.recv.recv() {
-            Ok(notifications) => Ok(notifications),
-            Err(_) => Err(ConnectionManagerError::SendMessageError(
+#[cfg(feature = "connection-manager-notification-iter-try-next")]
+impl NotificationIter {
+    pub fn try_next(
+        &self,
+    ) -> Result<Option<ConnectionManagerNotification>, ConnectionManagerError> {
+        match self.recv.try_recv() {
+            Ok(notifications) => Ok(Some(notifications)),
+            Err(TryRecvError::Empty) => Ok(None),
+            Err(TryRecvError::Disconnected) => Err(ConnectionManagerError::SendMessageError(
                 "The connection manager is no longer running".into(),
             )),
         }
     }
+}
 
-    pub fn unsubscribe(&self) -> Result<(), ConnectionManagerError> {
-        let message = CmMessage::UnSubscribe(self.id.clone());
-        match self.sender.send(message) {
-            Ok(()) => Ok(()),
-            Err(_) => Err(ConnectionManagerError::SendMessageError(
-                "Unsubscribe request timed out".into(),
-            )),
+impl Iterator for NotificationIter {
+    type Item = ConnectionManagerNotification;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.recv.recv() {
+            Ok(notification) => Some(notification),
+            Err(_) => {
+                // This is expected if the connection manager shuts down before
+                // this end
+                None
+            }
         }
     }
 }
@@ -346,20 +348,21 @@ fn handle_request(req: CmRequest, state: &mut ConnectionState) {
 }
 
 fn notify_subscribers(
-    subscribers: &mut HashMap<String, SyncSender<Vec<CmNotification>>>,
-    notifications: Vec<CmNotification>,
+    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+    notification: ConnectionManagerNotification,
 ) {
-    for (id, sender) in subscribers.clone() {
-        if sender.send(notifications.clone()).is_err() {
-            warn!("subscriber has dropped its connection to connection manager");
-            subscribers.remove(&id);
+    subscribers.retain(|sender| {
+        if sender.send(notification.clone()).is_err() {
+            false
+        } else {
+            true
         }
-    }
+    });
 }
 
 fn send_heartbeats(
     state: &mut ConnectionState,
-    subscribers: &mut HashMap<String, SyncSender<Vec<CmNotification>>>,
+    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
 ) {
     let heartbeat_message = match create_heartbeat() {
         Ok(h) => h,
@@ -368,8 +371,6 @@ fn send_heartbeats(
             return;
         }
     };
-    let mut notifications = Vec::new();
-
     for (endpoint, metadata) in state.connection_metadata() {
         info!("Sending heartbeat to {}", endpoint);
         if let Err(err) = state
@@ -381,30 +382,40 @@ fn send_heartbeats(
                 err
             );
 
-            notifications.push(CmNotification::HeartbeatSendFail {
-                endpoint: endpoint.clone(),
-                message: format!("{:?}", err),
-            });
+            notify_subscribers(
+                subscribers,
+                ConnectionManagerNotification::HeartbeatSendFail {
+                    endpoint: endpoint.clone(),
+                    message: format!("{:?}", err),
+                },
+            );
 
             if let Err(err) = state.reconnect(&endpoint) {
                 error!("Connection reattempt failed: {:?}", err);
-                notifications.push(CmNotification::ReconnectAttemptFailed {
-                    endpoint: endpoint.clone(),
-                    message: format!("{:?}", err),
-                });
+                notify_subscribers(
+                    subscribers,
+                    ConnectionManagerNotification::ReconnectAttemptFailed {
+                        endpoint: endpoint.clone(),
+                        message: format!("{:?}", err),
+                    },
+                );
             } else {
-                notifications.push(CmNotification::ReconnectAttemptSuccess {
-                    endpoint: endpoint.clone(),
-                });
+                notify_subscribers(
+                    subscribers,
+                    ConnectionManagerNotification::ReconnectAttemptSuccess {
+                        endpoint: endpoint.clone(),
+                    },
+                );
             }
         } else {
-            notifications.push(CmNotification::HeartbeatSent {
-                endpoint: endpoint.clone(),
-            });
+            notify_subscribers(
+                subscribers,
+                ConnectionManagerNotification::HeartbeatSent {
+                    endpoint: endpoint.clone(),
+                },
+            );
         }
     }
-
-    notify_subscribers(subscribers, notifications);
 }
 
 fn create_heartbeat() -> Result<Vec<u8>, ConnectionManagerError> {
@@ -435,22 +446,6 @@ pub mod tests {
         let mut cm = ConnectionManager::new(mesh, transport);
 
         cm.start().unwrap();
-        cm.shutdown_and_wait();
-    }
-
-    #[test]
-    fn test_notification_handler_subscribe_unsubscribe() {
-        let mut transport = Box::new(InprocTransport::default());
-        transport.listen("inproc://test").unwrap();
-        let mesh = Mesh::new(512, 128);
-
-        let mut cm = ConnectionManager::new(mesh, transport);
-
-        let connector = cm.start().unwrap();
-
-        let subscriber = connector.subscribe().unwrap();
-        subscriber.unsubscribe().unwrap();
-
         cm.shutdown_and_wait();
     }
 
@@ -545,14 +540,16 @@ pub mod tests {
             }
         );
 
-        let subscriber = connector.subscribe().unwrap();
+        let mut subscriber = connector.subscribe().unwrap();
 
-        let notifications = subscriber.listen().unwrap();
+        let notification = subscriber.next().unwrap();
 
-        assert!(notifications.iter().any(|x| *x
-            == CmNotification::HeartbeatSent {
-                endpoint: "inproc://test".to_string(),
-            }));
+        assert!(
+            notification
+                == ConnectionManagerNotification::HeartbeatSent {
+                    endpoint: "inproc://test".to_string(),
+                }
+        );
 
         // Verify mesh received heartbeat
 
@@ -591,14 +588,16 @@ pub mod tests {
             }
         );
 
-        let subscriber = connector.subscribe().unwrap();
+        let mut subscriber = connector.subscribe().unwrap();
 
-        let notifications = subscriber.listen().unwrap();
+        let notification = subscriber.next().unwrap();
 
-        assert!(notifications.iter().any(|x| *x
-            == CmNotification::HeartbeatSent {
-                endpoint: "tcp://localhost:3030".to_string(),
-            }));
+        assert!(
+            notification
+                == ConnectionManagerNotification::HeartbeatSent {
+                    endpoint: "tcp://localhost:3030".to_string(),
+                }
+        );
 
         // Verify mesh received heartbeat
 
@@ -672,5 +671,51 @@ pub mod tests {
                 error_message: None,
             }
         );
+    }
+
+    #[test]
+    /// Tests that notifier iterator correctly exists when sender
+    /// is dropped.
+    ///
+    /// Procedure:
+    ///
+    /// The test creates a sync channel and a notifier, then it
+    /// creates a thread that send HeartbeatSent notifications to
+    /// the notifier.
+    ///
+    /// Asserts:
+    ///
+    /// The notifications sent are received by the NotificationIter
+    /// correctly
+    ///
+    /// That the total number of notifications sent equals 5
+    fn test_notifications_handler_iterator() {
+        let (send, recv) = sync_channel(2);
+
+        let nh = NotificationIter { recv };
+
+        let join_handle = thread::spawn(move || {
+            for _ in 0..5 {
+                send.send(ConnectionManagerNotification::HeartbeatSent {
+                    endpoint: "tcp://localhost:3030".to_string(),
+                })
+                .unwrap();
+            }
+        });
+
+        let mut notifications_sent = 0;
+        for n in nh {
+            assert_eq!(
+                n,
+                ConnectionManagerNotification::HeartbeatSent {
+                    endpoint: "tcp://localhost:3030".to_string()
+                }
+            );
+            notifications_sent += 1;
+        }
+
+        assert_eq!(notifications_sent, 5);
+
+        join_handle.join().unwrap();
     }
 }

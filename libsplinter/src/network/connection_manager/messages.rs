@@ -18,8 +18,7 @@ use crate::network::connection_manager::error::ConnectionManagerError;
 
 pub enum CmMessage {
     Shutdown,
-    Subscribe(String, SyncSender<Vec<CmNotification>>),
-    UnSubscribe(String),
+    Subscribe(SyncSender<ConnectionManagerNotification>),
     Request(CmRequest),
     SendHeartbeats,
 }
@@ -57,7 +56,7 @@ pub enum CmResponseStatus {
 /// Messages that will be dispatched to all
 /// subscription handlers
 #[derive(Debug, PartialEq, Clone)]
-pub enum CmNotification {
+pub enum ConnectionManagerNotification {
     FatalError {
         error: ConnectionManagerError,
         message: String,
