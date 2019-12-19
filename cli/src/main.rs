@@ -14,6 +14,8 @@
 
 #[macro_use]
 extern crate log;
+#[cfg(feature = "database")]
+extern crate diesel;
 
 mod action;
 mod error;
@@ -112,6 +114,26 @@ fn run() -> Result<(), CliError> {
         );
     }
 
+    #[cfg(feature = "database")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("database")
+                .about("Database commands")
+                .subcommand(
+                    SubCommand::with_name("migrate")
+                        .about("Runs database migrations for the enabled Splinter features")
+                        .arg(
+                            Arg::with_name("connect")
+                                .short("C")
+                                .takes_value(true)
+                                .help("Database connection URI"),
+                        ),
+                ),
+        )
+    }
+
     let matches = app.get_matches();
 
     // set default to info
@@ -148,6 +170,15 @@ fn run() -> Result<(), CliError> {
             "health",
             SubcommandActions::new().with_command("status", health::StatusAction),
         );
+    }
+
+    #[cfg(feature = "database")]
+    {
+        use action::database;
+        subcommands = subcommands.with_command(
+            "database",
+            SubcommandActions::new().with_command("migrate", database::MigrateAction),
+        )
     }
     subcommands.run(Some(&matches), &mut logger_handle)
 }

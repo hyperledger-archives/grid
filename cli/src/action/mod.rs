@@ -14,6 +14,8 @@
 // limitations under the License.
 pub mod admin;
 pub mod certs;
+#[cfg(feature = "database")]
+pub mod database;
 #[cfg(feature = "health")]
 pub mod health;
 
