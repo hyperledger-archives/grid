@@ -64,7 +64,8 @@ impl EventHandler for DatabaseEventHandler {
         debug!("Received commit event: ({}, {:?})", event.id, event.height);
 
         let commit = create_db_commit_from_commit_event(event)?;
-        let db_ops = create_db_operations_from_commit(event)?;
+        let db_ops =
+            create_db_operations_from_state_changes(&event.state_changes, commit.commit_num)?;
 
         trace!("The following operations will be performed: {:#?}", db_ops);
 
@@ -116,22 +117,21 @@ fn create_db_commit_from_commit_event(event: &CommitEvent) -> Result<NewCommit, 
     })
 }
 
-fn create_db_operations_from_commit(
-    event: &CommitEvent,
-) -> Result<Vec<DbInsertOperation>, EventError> {
-    let commit_num = commit_event_height_to_commit_num(event.height)?;
-    event
-        .state_changes
-        .iter()
-        .map(|state_change| state_change_to_db_operation(state_change, commit_num))
-        .collect::<Result<Vec<DbInsertOperation>, EventError>>()
-}
-
 fn commit_event_height_to_commit_num(height: Option<u64>) -> Result<i64, EventError> {
     height
         .ok_or_else(|| EventError("event height cannot be none".into()))?
         .try_into()
         .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err)))
+}
+
+fn create_db_operations_from_state_changes(
+    state_changes: &[StateChange],
+    commit_num: i64,
+) -> Result<Vec<DbInsertOperation>, EventError> {
+    state_changes
+        .iter()
+        .map(|state_change| state_change_to_db_operation(state_change, commit_num))
+        .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
 fn state_change_to_db_operation(
