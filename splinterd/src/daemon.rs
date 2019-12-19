@@ -98,6 +98,8 @@ pub struct SplinterDaemon {
     network: Network,
     node_id: String,
     rest_api_endpoint: String,
+    #[cfg(feature = "database")]
+    db_url: String,
     registry_config: RegistryConfig,
     storage_type: String,
 }
@@ -600,6 +602,8 @@ pub struct SplinterDaemonBuilder {
     initial_peers: Option<Vec<String>>,
     node_id: Option<String>,
     rest_api_endpoint: Option<String>,
+    #[cfg(feature = "database")]
+    db_url: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     storage_type: Option<String>,
@@ -643,6 +647,12 @@ impl SplinterDaemonBuilder {
 
     pub fn with_rest_api_endpoint(mut self, value: String) -> Self {
         self.rest_api_endpoint = Some(value);
+        self
+    }
+
+    #[cfg(feature = "database")]
+    pub fn with_db_url(mut self, value: String) -> Self {
+        self.db_url = Some(value);
         self
     }
 
@@ -703,6 +713,11 @@ impl SplinterDaemonBuilder {
             CreateError::MissingRequiredField("Missing field: rest_api_endpoint".to_string())
         })?;
 
+        #[cfg(feature = "database")]
+        let db_url = self.db_url.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: db_url".to_string())
+        })?;
+
         let storage_type = self.storage_type.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_type".to_string())
         })?;
@@ -725,6 +740,8 @@ impl SplinterDaemonBuilder {
             network,
             node_id,
             rest_api_endpoint,
+            #[cfg(feature = "database")]
+            db_url,
             registry_config,
             key_registry_location,
             storage_type,
