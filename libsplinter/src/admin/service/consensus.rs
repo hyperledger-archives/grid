@@ -228,7 +228,7 @@ impl ProposalManager for AdminProposalManager {
             .clone();
 
         let (hash, _) = shared
-            .propose_change(circuit_payload.clone())
+            .propose_change(circuit_payload)
             .map_err(|err| ProposalManagerError::Internal(Box::new(err)))?;
 
         // check if hash is the expected hash stored in summary

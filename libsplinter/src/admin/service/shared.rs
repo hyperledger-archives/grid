@@ -187,7 +187,7 @@ impl AdminServiceShared {
     ) -> Result<Self, ServiceError> {
         let location = {
             if let Ok(s) = env::var(STATE_DIR_ENV) {
-                s.to_string()
+                s
             } else {
                 DEFAULT_STATE_DIR.to_string()
             }
@@ -206,7 +206,7 @@ impl AdminServiceShared {
             std::num::NonZeroUsize::new(DEFAULT_IN_MEMORY_EVENT_LIMIT).unwrap(),
         ));
         Ok(AdminServiceShared {
-            node_id: node_id.to_string(),
+            node_id,
             network_sender: None,
             open_proposals,
             uninitialized_circuits: Default::default(),
@@ -467,8 +467,7 @@ impl AdminServiceShared {
                             "Received vote for a proposal that does not exist: circuit id {}",
                             proposal_vote.circuit_id
                         ))
-                    })?
-                    .clone();
+                    })?;
 
                 let mut verifiers = vec![];
                 for member in circuit_proposal.get_circuit_proposal().get_members() {

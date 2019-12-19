@@ -154,13 +154,12 @@ impl ServiceOrchestrator {
             .map_err(|err| NewOrchestratorError(Box::new(err)))?;
 
         // Start thread that handles outgoing messages that need to be sent to the splinter node.
-        let outgoing_mesh = mesh.clone();
         let outgoing_running = running.clone();
         let outgoing_join_handle = thread::Builder::new()
             .name("Orchestrator Outgoing".into())
             .spawn(move || {
                 if let Err(err) =
-                    run_outgoing_loop(outgoing_mesh, outgoing_running, network_receiver, mesh_id)
+                    run_outgoing_loop(mesh, outgoing_running, network_receiver, mesh_id)
                 {
                     error!(
                         "Terminating orchestrator outgoing thread due to error: {}",

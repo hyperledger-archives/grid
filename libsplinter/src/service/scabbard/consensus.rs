@@ -62,7 +62,7 @@ impl ScabbardConsensusManager {
             service_id.clone(),
             proposal_update_tx.clone(),
             shared.clone(),
-            state.clone(),
+            state,
         );
         let consensus_network_sender =
             ScabbardConsensusNetworkSender::new(service_id.clone(), shared);

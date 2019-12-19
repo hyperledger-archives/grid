@@ -85,7 +85,7 @@ impl ApiGameroomMember {
     fn from(db_circuit_member: GameroomMember) -> Self {
         ApiGameroomMember {
             node_id: db_circuit_member.node_id.to_string(),
-            endpoint: db_circuit_member.endpoint.to_string(),
+            endpoint: db_circuit_member.endpoint,
         }
     }
 }
@@ -98,14 +98,13 @@ pub fn fetch_proposal(
         web::block(move || get_proposal_from_db(pool, *proposal_id)).then(|res| match res {
             Ok(proposal) => Ok(HttpResponse::Ok().json(SuccessResponse::new(proposal))),
             Err(err) => match err {
-                error::BlockingError::Error(err) => {
-                    match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
-                        _ => Ok(HttpResponse::BadRequest()
-                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                     }
-                }
+                    _ => Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string()))),
+                },
                 error::BlockingError::Canceled => {
                     debug!("Internal Server Error: {}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
@@ -221,10 +220,12 @@ pub fn proposal_vote(
             Err(err) => match err {
                 error::BlockingError::Error(err) => {
                     match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
-                        RestApiResponseError::BadRequest(err) => Ok(HttpResponse::BadRequest()
-                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                        RestApiResponseError::NotFound(err) => {
+                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                        }
+                        RestApiResponseError::BadRequest(err) => {
+                            Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&err)))
+                        }
                         _ => Ok(HttpResponse::InternalServerError()
                             .json(ErrorResponse::internal_error())),
                     }

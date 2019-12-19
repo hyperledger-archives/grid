@@ -111,7 +111,7 @@ impl BiomeRestConfigBuilder {
         let password_encryption_cost = PasswordEncryptionCost::try_from(
             self.password_encryption_cost.unwrap_or_default().as_ref(),
         )
-        .map_err(|err| BiomeRestConfigBuilderError::InvalidValue(err.to_string()))?;
+        .map_err(BiomeRestConfigBuilderError::InvalidValue)?;
 
         Ok(BiomeRestConfig {
             issuer,

@@ -329,8 +329,11 @@ impl SplinterDaemon {
         let admin_service = AdminService::new(
             &self.node_id,
             orchestrator,
-            peer_connector.clone(),
-            Box::new(auth_manager.clone()),
+            peer_connector,
+            Box::new(auth_manager),
+            // Allowing possibly redundant clone of `state` since it will be needed again if the
+            // `circuit-read` feature is enabled
+            #[allow(clippy::redundant_clone)]
             state.clone(),
             Box::new(signature_verifier),
             key_registry.clone(),
@@ -368,8 +371,7 @@ impl SplinterDaemon {
 
         #[cfg(feature = "circuit-read")]
         {
-            let circuit_resource =
-                CircuitResourceProvider::new(self.node_id.to_string(), state.clone());
+            let circuit_resource = CircuitResourceProvider::new(self.node_id.to_string(), state);
             rest_api_builder = rest_api_builder.add_resources(circuit_resource.resources());
         }
 
@@ -378,6 +380,9 @@ impl SplinterDaemon {
         let (admin_shutdown_handle, service_processor_join_handle) =
             Self::start_admin_service(inproc_transport, admin_service, Arc::clone(&running))?;
 
+        // Allowing possibly redundant clone of `running` since it will be needed again if the
+        // `health` feature is enabled
+        #[allow(clippy::redundant_clone)]
         let r = running.clone();
         ctrlc::set_handler(move || {
             info!("Received Shutdown");
@@ -660,7 +665,7 @@ impl SplinterDaemonBuilder {
         })?;
 
         let mesh = Mesh::new(512, 128);
-        let network = Network::new(mesh.clone(), heartbeat_interval)
+        let network = Network::new(mesh, heartbeat_interval)
             .map_err(|err| CreateError::NetworkError(err.to_string()))?;
 
         let storage_location = self.storage_location.ok_or_else(|| {
@@ -798,8 +803,7 @@ fn set_up_circuit_dispatcher(
     );
 
     // Circuit Admin handlers
-    let admin_direct_message_handler =
-        AdminDirectMessageHandler::new(node_id.to_string(), state.clone());
+    let admin_direct_message_handler = AdminDirectMessageHandler::new(node_id.to_string(), state);
     dispatcher.set_handler(
         CircuitMessageType::ADMIN_DIRECT_MESSAGE,
         Box::new(admin_direct_message_handler),

@@ -402,7 +402,7 @@ impl SplinterState {
     fn write_circuit_directory(&self) -> Result<(), WriteError> {
         // Replace stored state with the current splinter state
         let mut storage = get_storage(self.storage_location(), || self.circuit_directory.clone())
-            .map_err(|err| WriteError::GetStorageError(err.to_string()))?;
+            .map_err(WriteError::GetStorageError)?;
 
         // when this is dropped the new state will be written to storage
         **storage.write() = self.circuit_directory.clone();

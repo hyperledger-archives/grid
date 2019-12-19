@@ -59,7 +59,7 @@ impl Handler<CircuitMessageType, AdminDirectMessage> for AdminDirectMessageHandl
         // peer_id to send back the error message
         let (msg_bytes, msg_recipient) = self.create_response(msg, context)?;
         // either forward the direct message or send back an error message.
-        let send_request = SendRequest::new(msg_recipient.to_string(), msg_bytes);
+        let send_request = SendRequest::new(msg_recipient, msg_bytes);
         sender.send(send_request)?;
         Ok(())
     }

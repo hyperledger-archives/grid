@@ -104,7 +104,7 @@ pub fn batch_statuses(req: &mut Request) -> IronResult<Response> {
             data: ids
                 .iter()
                 .map(|batch_id| BatchStatus::PENDING {
-                    id: batch_id.to_string(),
+                    id: (*batch_id).to_string(),
                 })
                 .collect(),
             link,
