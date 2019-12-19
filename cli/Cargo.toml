@@ -17,9 +17,26 @@ default = []
 
 stable = ["default"]
 
-experimental = ["health"]
+experimental = [
+    "health",
+    "database",
+    "database-migrate-biome-credentials",
+    "database-migrate-biome-notifications",
+    "database-migrate-biome-users",
+]
 
 health = ["reqwest", "serde_json"]
+
+database = ["splinter/database", "diesel"]
+database-migrate-biome-users = ["splinter/biome", "database"]
+database-migrate-biome-credentials = [
+    "splinter/biome-credentials",
+    "database-migrate-biome-users",
+]
+database-migrate-biome-notifications = [
+    "splinter/biome-notifications",
+    "database-migrate-biome-users",
+]
 
 [package]
 name = "splinter-cli"
@@ -34,6 +51,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2"
+diesel = { version = "1.0", features = ["postgres"], optional = true }
 flexi_logger = "0.14"
 libc = "0.2"
 log = "0.4"
