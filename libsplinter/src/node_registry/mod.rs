@@ -34,6 +34,20 @@ pub struct Node {
     pub metadata: HashMap<String, String>,
 }
 
+impl Node {
+    /// Constructs a new node with the given identity and endpoint.
+    ///
+    /// The display_name and metadata fields will be empty.
+    pub fn new<S: Into<String>>(identity: S, endpoint: S) -> Self {
+        Self {
+            identity: identity.into(),
+            endpoint: endpoint.into(),
+            display_name: String::new(),
+            metadata: Default::default(),
+        }
+    }
+}
+
 /// A predicate on a key/value pair in a Node's metadata table.
 ///
 /// Each variant is an operator, and supplies a tuple representing a key/value pair. It is applied
