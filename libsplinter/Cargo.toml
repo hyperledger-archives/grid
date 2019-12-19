@@ -81,6 +81,7 @@ experimental = [
     "connection-manager-notification-iter-try-next",
     "database",
     "matrix",
+    "node-registry-unified",
     "zmq-transport",
 ]
 
@@ -92,8 +93,9 @@ connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel", "diesel_migrations"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
-rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
 matrix = []
+node-registry-unified = []
+rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 zmq-transport = ["zmq"]
 
@@ -113,6 +115,7 @@ features = [
     "database",
     "database",
     "events",
+    "node-registry-unified",
     "rest-api",
     "sawtooth-signing-compat",
     "ursa-compat",

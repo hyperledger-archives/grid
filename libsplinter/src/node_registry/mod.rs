@@ -16,11 +16,15 @@ pub mod error;
 pub mod noop;
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
+#[cfg(feature = "node-registry-unified")]
+pub mod unified;
 pub mod yaml;
 
 use std::collections::HashMap;
 
 pub use error::{InvalidNodeError, NodeRegistryError};
+#[cfg(feature = "node-registry-unified")]
+pub use unified::UnifiedNodeRegistry;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
