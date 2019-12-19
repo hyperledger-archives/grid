@@ -156,7 +156,7 @@ impl TrackAndTraceTransactionHandler {
             .with_schema(schema_name.to_string())
             .with_field_final(false)
             .with_owners(vec![owner.clone()])
-            .with_custodians(vec![owner.clone()])
+            .with_custodians(vec![owner])
             .build()
             .map_err(|err| map_builder_error_to_apply_error(err, "Record"))?;
 
@@ -791,7 +791,6 @@ impl TrackAndTraceTransactionHandler {
                             let mut record_custodians = proposal_record.custodians().to_vec();
                             record_custodians.push(new_custodian);
                             let updated_record = proposal_record
-                                .clone()
                                 .into_builder()
                                 .with_custodians(record_custodians)
                                 .build()

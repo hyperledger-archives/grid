@@ -41,7 +41,7 @@ pub fn get_pike_prefix() -> String {
 pub fn hash(to_hash: &str, num: usize) -> String {
     let mut sha = Sha512::new();
     sha.input_str(to_hash);
-    let temp = sha.result_str().to_string();
+    let temp = sha.result_str();
     let hash = match temp.get(..num) {
         Some(x) => x,
         None => "",

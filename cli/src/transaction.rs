@@ -183,7 +183,7 @@ impl BatchBuilder {
         batch_header.set_transaction_ids(protobuf::RepeatedField::from_vec(vec![txn
             .header_signature
             .clone()]));
-        batch_header.set_signer_public_key(public_key.clone());
+        batch_header.set_signer_public_key(public_key);
         batch.set_transactions(protobuf::RepeatedField::from_vec(vec![txn]));
 
         let batch_header_bytes = batch_header.write_to_bytes()?;

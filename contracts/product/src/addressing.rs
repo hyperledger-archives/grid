@@ -30,7 +30,7 @@ pub fn get_product_prefix() -> String {
 pub fn hash(to_hash: &str, num: usize) -> String {
     let mut sha = Sha512::new();
     sha.input_str(to_hash);
-    let temp = sha.result_str().to_string();
+    let temp = sha.result_str();
     let hash = temp.get(..num).expect("PANIC! Hashing Out of Bounds Error");
     hash.to_string()
 }
