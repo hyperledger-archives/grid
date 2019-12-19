@@ -20,8 +20,8 @@ use crate::database::models::LatLong;
 table! {
     agent (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         public_key -> Varchar,
         org_id -> Varchar,
         active -> Bool,
@@ -36,8 +36,8 @@ table! {
         id -> Int8,
         record_id -> Text,
         role -> Text,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         agent_id -> Text,
         timestamp -> Int8,
         source -> Nullable<Text>,
@@ -45,10 +45,10 @@ table! {
 }
 
 table! {
-    block (id) {
+    commit (id) {
         id -> Int8,
-        block_id -> Varchar,
-        block_num -> Int8,
+        commit_id -> Varchar,
+        commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -56,8 +56,8 @@ table! {
 table! {
     chain_record (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -65,8 +65,8 @@ table! {
 table! {
     grid_property_definition (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         name -> Text,
         schema_name -> Text,
         data_type -> Text,
@@ -82,8 +82,8 @@ table! {
 table! {
     grid_schema (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         name -> Text,
         description -> Text,
         owner -> Text,
@@ -98,8 +98,8 @@ table! {
         name -> Varchar,
         address -> Varchar,
         metadata -> Array<Json>,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -111,8 +111,8 @@ table! {
         product_address -> Varchar,
         product_namespace -> Text,
         owner -> Varchar,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -133,8 +133,8 @@ table! {
         enum_value -> Nullable<Int4>,
         struct_values -> Nullable<Array<Text>>,
         lat_long_value -> Nullable<LatLong>,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -142,8 +142,8 @@ table! {
 table! {
     property (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         name -> Text,
         record_id -> Text,
         property_definition -> Text,
@@ -156,8 +156,8 @@ table! {
 table! {
     proposal (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         record_id -> Text,
         timestamp -> Int8,
         issuing_agent -> Text,
@@ -173,8 +173,8 @@ table! {
 table! {
     record (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         record_id -> Text,
         schema -> Text,
         #[sql_name = "final"]
@@ -190,8 +190,8 @@ table! {
     use super::LatLong;
     reported_value (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         property_name -> Text,
         record_id -> Text,
         reporter_index -> Int4,
@@ -211,8 +211,8 @@ table! {
 table! {
     reporter (id) {
         id -> Int8,
-        start_block_num -> Int8,
-        end_block_num -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
         property_name -> Text,
         record_id -> Text,
         public_key -> Text,
@@ -242,8 +242,8 @@ table! {
         public_key ->  Nullable<Text>,
         authorized ->  Nullable<Bool>,
         metadata ->  Nullable<Json>,
-        reported_value_end_block_num -> Int8,
-        reporter_end_block_num ->  Nullable<Int8>,
+        reported_value_end_commit_num -> Int8,
+        reporter_end_commit_num ->  Nullable<Int8>,
         source -> Nullable<Text>,
     }
 }
@@ -257,7 +257,7 @@ table! {
         authorized -> Bool,
         reporter_index -> Int4,
         metadata -> Nullable<Json>,
-        reporter_end_block_num -> Int8,
+        reporter_end_commit_num -> Int8,
         source -> Nullable<Text>,
     }
 }
@@ -265,7 +265,7 @@ table! {
 allow_tables_to_appear_in_same_query!(
     agent,
     associated_agent,
-    block,
+    commit,
     chain_record,
     grid_property_definition,
     grid_schema,

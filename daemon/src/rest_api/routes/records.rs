@@ -559,7 +559,7 @@ fn parse_reported_values(
             conn,
             &reported_value.property_name,
             &reported_value.record_id,
-            reported_value.reported_value_end_block_num,
+            reported_value.reported_value_end_commit_num,
             &vals,
         )?)
     } else {
@@ -573,7 +573,7 @@ fn parse_struct_values(
     conn: &ConnectionPool,
     property_name: &str,
     record_id: &str,
-    reported_value_end_block_num: i64,
+    reported_value_end_commit_num: i64,
     struct_values: &[String],
 ) -> Result<Vec<StructPropertyValue>, RestApiResponseError> {
     let mut inner_values = vec![];
@@ -584,7 +584,7 @@ fn parse_struct_values(
             &*conn.get()?,
             &record_id,
             &struct_property_name,
-            Some(reported_value_end_block_num),
+            Some(reported_value_end_commit_num),
         )?
         .ok_or_else(|| {
             RestApiResponseError::NotFoundError(format!(
@@ -603,7 +603,7 @@ fn parse_struct_values(
                 conn,
                 &struct_property_name,
                 record_id,
-                struct_value.reported_value_end_block_num,
+                struct_value.reported_value_end_commit_num,
                 &struct_value_names,
             )?;
             inner_values.push(StructPropertyValue::from_model(

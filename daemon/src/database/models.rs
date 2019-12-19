@@ -24,23 +24,23 @@ use serde_json::Value as JsonValue;
 use std::io::Write;
 
 use super::schema::{
-    agent, associated_agent, block, grid_property_definition, grid_schema, organization, product,
+    agent, associated_agent, commit, grid_property_definition, grid_schema, organization, product,
     product_property_value, property, proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
-#[table_name = "block"]
-pub struct NewBlock {
-    pub block_id: String,
-    pub block_num: i64,
+#[table_name = "commit"]
+pub struct NewCommit {
+    pub commit_id: String,
+    pub commit_num: i64,
     pub source: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
-pub struct Block {
+pub struct Commit {
     pub id: i64,
-    pub block_id: String,
-    pub block_num: i64,
+    pub commit_id: String,
+    pub commit_num: i64,
     pub source: Option<String>,
 }
 
@@ -54,8 +54,8 @@ pub struct NewAgent {
     pub metadata: JsonValue,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -65,8 +65,8 @@ pub struct Agent {
     ///  This is the record id for the slowly-changing-dimensions table.
     pub id: i64,
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub public_key: String,
     pub org_id: String,
     pub active: bool,
@@ -84,8 +84,8 @@ pub struct NewOrganization {
     pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -100,8 +100,8 @@ pub struct Organization {
     pub metadata: Vec<JsonValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -115,8 +115,8 @@ pub struct NewProduct {
     pub owner: String,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -131,8 +131,8 @@ pub struct Product {
     pub owner: String,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -153,8 +153,8 @@ pub struct NewProductPropertyValue {
     pub lat_long_value: Option<LatLongValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -177,8 +177,8 @@ pub struct ProductPropertyValue {
     pub lat_long_value: Option<LatLongValue>,
 
     // The indicators of the start and stop for the slowly-changing dimensions.
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
 
     pub source: Option<String>,
 }
@@ -186,8 +186,8 @@ pub struct ProductPropertyValue {
 #[derive(Clone, Insertable, Debug)]
 #[table_name = "grid_schema"]
 pub struct NewGridSchema {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub description: String,
     pub owner: String,
@@ -198,8 +198,8 @@ pub struct NewGridSchema {
 #[derive(Queryable, Debug)]
 pub struct GridSchema {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub description: String,
     pub owner: String,
@@ -209,8 +209,8 @@ pub struct GridSchema {
 #[derive(Clone, Insertable, Debug)]
 #[table_name = "grid_property_definition"]
 pub struct NewGridPropertyDefinition {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub schema_name: String,
     pub data_type: String,
@@ -226,8 +226,8 @@ pub struct NewGridPropertyDefinition {
 #[derive(Queryable, Debug)]
 pub struct GridPropertyDefinition {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub schema_name: String,
     pub data_type: String,
@@ -273,8 +273,8 @@ impl FromSql<LatLong, Pg> for LatLongValue {
 pub struct NewAssociatedAgent {
     pub record_id: String,
     pub role: String,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub agent_id: String,
     pub timestamp: i64,
     pub source: Option<String>,
@@ -286,8 +286,8 @@ pub struct AssociatedAgent {
     pub id: i64,
     pub record_id: String,
     pub role: String,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub agent_id: String,
     pub timestamp: i64,
     pub source: Option<String>,
@@ -296,8 +296,8 @@ pub struct AssociatedAgent {
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "property"]
 pub struct NewProperty {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub record_id: String,
     pub property_definition: String,
@@ -310,8 +310,8 @@ pub struct NewProperty {
 #[derive(Queryable, Debug, Clone)]
 pub struct Property {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub name: String,
     pub record_id: String,
     pub property_definition: String,
@@ -323,8 +323,8 @@ pub struct Property {
 #[derive(Insertable, Debug)]
 #[table_name = "proposal"]
 pub struct NewProposal {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub record_id: String,
     pub timestamp: i64,
     pub issuing_agent: String,
@@ -339,8 +339,8 @@ pub struct NewProposal {
 #[derive(Queryable, Debug, Clone)]
 pub struct Proposal {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub record_id: String,
     pub timestamp: i64,
     pub issuing_agent: String,
@@ -355,8 +355,8 @@ pub struct Proposal {
 #[derive(Insertable, Debug)]
 #[table_name = "record"]
 pub struct NewRecord {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub record_id: String,
     pub schema: String,
     pub final_: bool,
@@ -369,8 +369,8 @@ pub struct NewRecord {
 #[derive(Queryable, Debug)]
 pub struct Record {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub record_id: String,
     pub schema: String,
     pub final_: bool,
@@ -382,8 +382,8 @@ pub struct Record {
 #[derive(Insertable, Debug, Clone, Default)]
 #[table_name = "reported_value"]
 pub struct NewReportedValue {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -403,8 +403,8 @@ pub struct NewReportedValue {
 #[derive(Queryable, Debug)]
 pub struct ReportedValue {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -423,8 +423,8 @@ pub struct ReportedValue {
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "reporter"]
 pub struct NewReporter {
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub property_name: String,
     pub record_id: String,
     pub public_key: String,
@@ -437,8 +437,8 @@ pub struct NewReporter {
 #[derive(Queryable, Debug)]
 pub struct Reporter {
     pub id: i64,
-    pub start_block_num: i64,
-    pub end_block_num: i64,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub property_name: String,
     pub record_id: String,
     pub public_key: String,
@@ -465,8 +465,8 @@ pub struct ReportedValueReporterToAgentMetadata {
     pub public_key: Option<String>,
     pub authorized: Option<bool>,
     pub metadata: Option<JsonValue>,
-    pub reported_value_end_block_num: i64,
-    pub reporter_end_block_num: Option<i64>,
+    pub reported_value_end_commit_num: i64,
+    pub reporter_end_commit_num: Option<i64>,
     pub source: Option<String>,
 }
 

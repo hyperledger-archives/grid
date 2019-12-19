@@ -17,7 +17,7 @@
 
 use super::models::{NewProduct, NewProductPropertyValue, Product, ProductPropertyValue};
 use super::schema::{product, product_property_value};
-use super::MAX_BLOCK_NUM;
+use super::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{insert_into, update},
@@ -29,7 +29,7 @@ use diesel::{
 
 pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryResult<()> {
     for prod in products {
-        update_prod_end_block_num(conn, &prod.product_id, prod.start_block_num)?;
+        update_prod_end_commit_num(conn, &prod.product_id, prod.start_commit_num)?;
     }
 
     insert_into(product::table)
@@ -43,7 +43,7 @@ pub fn insert_product_property_values(
     property_values: &[NewProductPropertyValue],
 ) -> QueryResult<()> {
     for value in property_values {
-        update_prod_property_values(conn, &value.product_id, value.start_block_num)?;
+        update_prod_property_values(conn, &value.product_id, value.start_commit_num)?;
     }
 
     insert_into(product_property_value::table)
@@ -55,15 +55,15 @@ pub fn insert_product_property_values(
 pub fn delete_product(
     conn: &PgConnection,
     address: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(product::table)
         .filter(
             product::product_address
                 .eq(address)
-                .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(product::end_block_num.eq(current_block_num))
+        .set(product::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -71,31 +71,31 @@ pub fn delete_product(
 pub fn delete_product_property_values(
     conn: &PgConnection,
     address: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(product_property_value::table)
         .filter(
             product_property_value::product_address
                 .eq(address)
-                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(product_property_value::end_block_num.eq(current_block_num))
+        .set(product_property_value::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
 
-fn update_prod_end_block_num(
+fn update_prod_end_commit_num(
     conn: &PgConnection,
     product_id: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(product::table)
         .filter(
             product::product_id
                 .eq(product_id)
-                .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(product::end_block_num.eq(current_block_num))
+        .set(product::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -103,15 +103,15 @@ fn update_prod_end_block_num(
 fn update_prod_property_values(
     conn: &PgConnection,
     product_id: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(product_property_value::table)
         .filter(
             product_property_value::product_id
                 .eq(product_id)
-                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(product_property_value::end_block_num.eq(current_block_num))
+        .set(product_property_value::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -119,14 +119,14 @@ fn update_prod_property_values(
 pub fn list_products(conn: &PgConnection) -> QueryResult<Vec<Product>> {
     product::table
         .select(product::all_columns)
-        .filter(product::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(product::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<Product>(conn)
 }
 
 pub fn list_product_property_values(conn: &PgConnection) -> QueryResult<Vec<ProductPropertyValue>> {
     product_property_value::table
         .select(product_property_value::all_columns)
-        .filter(product_property_value::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<ProductPropertyValue>(conn)
 }
 
@@ -136,7 +136,7 @@ pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Optio
         .filter(
             product::product_id
                 .eq(product_id)
-                .and(product::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .first(conn)
         .map(Some)
@@ -152,7 +152,7 @@ pub fn fetch_product_property_values(
         .filter(
             product_property_value::product_id
                 .eq(product_id)
-                .and(product_property_value::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .load::<ProductPropertyValue>(conn)
 }

@@ -15,9 +15,9 @@
  * -----------------------------------------------------------------------------
  */
 
-use super::models::{Block, NewBlock};
-use super::schema::{block, chain_record};
-use super::MAX_BLOCK_NUM;
+use super::models::{Commit, NewCommit};
+use super::schema::{chain_record, commit};
+use super::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{delete, insert_into, update},
@@ -27,50 +27,53 @@ use diesel::{
     QueryResult,
 };
 
-const NULL_BLOCK_ID: &str = "0000000000000000";
+const NULL_COMMIT_ID: &str = "0000000000000000";
 
-pub fn insert_block(conn: &PgConnection, block: &NewBlock) -> QueryResult<()> {
-    insert_into(block::table)
-        .values(block)
+pub fn insert_commit(conn: &PgConnection, commit: &NewCommit) -> QueryResult<()> {
+    insert_into(commit::table)
+        .values(commit)
         .execute(conn)
         .map(|_| ())
 }
 
-pub fn resolve_fork(conn: &PgConnection, block_num: i64) -> QueryResult<()> {
+pub fn resolve_fork(conn: &PgConnection, commit_num: i64) -> QueryResult<()> {
     delete(chain_record::table)
-        .filter(chain_record::start_block_num.ge(block_num))
+        .filter(chain_record::start_commit_num.ge(commit_num))
         .execute(conn)?;
 
     update(chain_record::table)
-        .filter(chain_record::end_block_num.ge(block_num))
-        .set(chain_record::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(chain_record::end_commit_num.ge(commit_num))
+        .set(chain_record::end_commit_num.eq(MAX_COMMIT_NUM))
         .execute(conn)?;
 
-    delete(block::table)
-        .filter(block::block_num.ge(block_num))
+    delete(commit::table)
+        .filter(commit::commit_num.ge(commit_num))
         .execute(conn)?;
 
     Ok(())
 }
 
-pub fn get_block_by_block_num(conn: &PgConnection, block_num: i64) -> QueryResult<Option<Block>> {
-    block::table
-        .select(block::all_columns)
-        .filter(block::block_num.eq(&block_num))
+pub fn get_commit_by_commit_num(
+    conn: &PgConnection,
+    commit_num: i64,
+) -> QueryResult<Option<Commit>> {
+    commit::table
+        .select(commit::all_columns)
+        .filter(commit::commit_num.eq(&commit_num))
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
-pub fn get_current_block_id(conn: &PgConnection) -> QueryResult<String> {
-    block::table
-        .select(block::block_id)
-        .order_by(block::block_num.desc())
+pub fn get_current_commit_id(conn: &PgConnection) -> QueryResult<String> {
+    commit::table
+        .select(commit::commit_id)
+        .order_by(commit::commit_num.desc())
         .limit(1)
         .first(conn)
         .or_else(|err| {
             if err == NotFound {
-                Ok(NULL_BLOCK_ID.into())
+                Ok(NULL_COMMIT_ID.into())
             } else {
                 Err(err)
             }
