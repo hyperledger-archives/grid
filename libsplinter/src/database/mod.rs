@@ -40,7 +40,7 @@ pub fn create_connection_pool(database_url: &str) -> Result<ConnectionPool, Data
 pub fn run_migrations(conn: &PgConnection) -> Result<(), DatabaseError> {
     embedded_migrations::run(conn).map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?;
 
-    info!("Successfully applied migrations");
+    info!("Successfully applied setup migrations");
 
     Ok(())
 }
