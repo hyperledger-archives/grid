@@ -20,6 +20,8 @@ pub enum CliError {
     InvalidSubcommand,
     ActionError(String),
     EnvironmentError(String),
+    #[cfg(feature = "database")]
+    DatabaseError(String),
 }
 
 impl Error for CliError {}
@@ -33,6 +35,8 @@ impl fmt::Display for CliError {
             CliError::EnvironmentError(msg) => {
                 write!(f, "action encountered an environment error: {}", msg)
             }
+            #[cfg(feature = "database")]
+            CliError::DatabaseError(msg) => write!(f, "database error: {}", msg),
         }
     }
 }
