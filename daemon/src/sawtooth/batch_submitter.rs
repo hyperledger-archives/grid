@@ -63,7 +63,7 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
                     .collect::<Vec<_>>()
                     .join(",");
 
-                let mut response_url = msg.response_url.clone();
+                let mut response_url = msg.response_url;
                 response_url.set_query(Some(&format!("id={}", batch_query)));
 
                 Ok(BatchStatusLink {

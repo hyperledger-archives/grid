@@ -105,7 +105,7 @@ fn run() -> Result<(), DaemonError> {
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
         &current_block,
-        event_handlers![DatabaseEventHandler::new(connection_pool.clone())],
+        event_handlers![DatabaseEventHandler::new(connection_pool)],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 

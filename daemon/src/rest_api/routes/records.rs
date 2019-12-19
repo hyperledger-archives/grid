@@ -227,7 +227,7 @@ impl Handler<FetchRecord> for DbExecutor {
         .collect::<Result<Vec<PropertySlice>, _>>()?;
 
         let associated_agents =
-            db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
+            db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id])?;
 
         Ok(RecordSlice::from_models(
             &record,
@@ -431,9 +431,7 @@ fn parse_value(
         "Struct" => {
             let value = struct_values.ok_or_else(|| {
                 RestApiResponseError::DatabaseError(
-                    "ReportedValue is of Struct data_type, but is missing struct value"
-                        .to_string()
-                        .to_string(),
+                    "ReportedValue is of Struct data_type, but is missing struct value".to_string(),
                 )
             })?;
 
@@ -539,7 +537,7 @@ fn parse_property_slice(
         &active_reporters,
         &data_type.clone().unwrap_or_else(|| "Unknown".to_string()),
         &updates,
-        property_value_slice.clone(),
+        property_value_slice,
     );
 
     Ok(property_info)
