@@ -49,7 +49,6 @@ table! {
         id -> Int8,
         block_id -> Varchar,
         block_num -> Int8,
-        state_root_hash -> Varchar,
         source -> Nullable<Text>,
     }
 }

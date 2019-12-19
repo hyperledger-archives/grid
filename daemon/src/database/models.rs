@@ -33,7 +33,6 @@ use super::schema::{
 pub struct NewBlock {
     pub block_id: String,
     pub block_num: i64,
-    pub state_root_hash: String,
     pub source: Option<String>,
 }
 
@@ -42,7 +41,6 @@ pub struct Block {
     pub id: i64,
     pub block_id: String,
     pub block_num: i64,
-    pub state_root_hash: String,
     pub source: Option<String>,
 }
 

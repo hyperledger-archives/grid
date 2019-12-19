@@ -108,12 +108,10 @@ impl EventHandler for DatabaseEventHandler {
 fn create_db_block_from_commit_event(event: &CommitEvent) -> Result<NewBlock, EventError> {
     let block_id = event.id.clone();
     let block_num = commit_event_height_to_block_num(event.height)?;
-    let state_root_hash = "".into();
     let source = Some(event.source.clone());
     Ok(NewBlock {
         block_id,
         block_num,
-        state_root_hash,
         source,
     })
 }
