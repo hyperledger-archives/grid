@@ -226,7 +226,7 @@ fn handle_skip(
     let client_key_path = private_cert_path.join(CLIENT_KEY);
     let server_key_path = private_cert_path.join(SERVER_KEY);
     let ca_key_path = private_cert_path.join(CA_KEY);
-    let cert_path = cert_dir.to_path_buf();
+    let cert_path = cert_dir;
     let mut ca;
 
     // if all exists, log existence and return
@@ -452,10 +452,10 @@ fn write_ca(
 ) -> Result<(PKey<Private>, X509), CliError> {
     let (ca_key, ca_cert) = make_ca_cert()?;
 
-    write_file(cert_path.clone(), CA_CERT, &ca_cert.to_pem()?)?;
+    write_file(cert_path, CA_CERT, &ca_cert.to_pem()?)?;
 
     write_file(
-        private_cert_path.clone(),
+        private_cert_path,
         CA_KEY,
         &ca_key.private_key_to_pem_pkcs8()?,
     )?;
@@ -473,10 +473,10 @@ fn write_server(
 ) -> Result<(), CliError> {
     let (server_key, server_cert) = make_ca_signed_cert(ca_cert, ca_key, common_name)?;
 
-    write_file(cert_path.clone(), SERVER_CERT, &server_cert.to_pem()?)?;
+    write_file(cert_path, SERVER_CERT, &server_cert.to_pem()?)?;
 
     write_file(
-        private_cert_path.clone(),
+        private_cert_path,
         SERVER_KEY,
         &server_key.private_key_to_pem_pkcs8()?,
     )?;
@@ -493,10 +493,10 @@ fn write_client(
 ) -> Result<(), CliError> {
     let (server_key, server_cert) = make_ca_signed_cert(ca_cert, ca_key, common_name)?;
 
-    write_file(cert_path.clone(), CLIENT_CERT, &server_cert.to_pem()?)?;
+    write_file(cert_path, CLIENT_CERT, &server_cert.to_pem()?)?;
 
     write_file(
-        private_cert_path.clone(),
+        private_cert_path,
         CLIENT_KEY,
         &server_key.private_key_to_pem_pkcs8()?,
     )?;

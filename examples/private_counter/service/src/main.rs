@@ -184,8 +184,8 @@ fn main() -> Result<(), ServiceError> {
 
     let (sender_thread, receiver_thread) = start_service_loop(
         format!("private-counter-{}", Uuid::new_v4()),
-        (send.clone(), recv),
-        network.clone(),
+        (send, recv),
+        network,
         state.clone(),
         running.clone(),
     )?;
@@ -284,10 +284,9 @@ fn start_service_loop(
         })?;
 
     let recv_network = network.clone();
-    let reply_sender = send.clone();
     let receiver_thread = Builder::new()
         .name("NetworkReceiver".into())
-        .spawn(move || run_service_loop(recv_network, &reply_sender, auth_identity, state, running))
+        .spawn(move || run_service_loop(recv_network, &send, auth_identity, state, running))
         .map_err(|err| ServiceError(format!("Unable to start network receiver thread: {}", err)))?;
 
     let connect_request_msg_bytes = create_connect_request()

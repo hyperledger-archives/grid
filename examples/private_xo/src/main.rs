@@ -131,7 +131,7 @@ fn main() -> Result<(), CliError> {
         consensus_msg_tx,
         proposal_update_tx,
         pending_proposal,
-        network.clone(),
+        network,
         running,
     )?;
 

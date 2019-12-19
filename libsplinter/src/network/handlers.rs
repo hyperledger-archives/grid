@@ -26,7 +26,7 @@ pub struct NetworkEchoHandler {
 impl Handler<NetworkMessageType, NetworkEcho> for NetworkEchoHandler {
     fn handle(
         &self,
-        msg: NetworkEcho,
+        mut msg: NetworkEcho,
         context: &MessageContext<NetworkMessageType>,
         sender: &dyn Sender<SendRequest>,
     ) -> Result<(), DispatchError> {
@@ -42,7 +42,6 @@ impl Handler<NetworkMessageType, NetworkEcho> for NetworkEchoHandler {
             }
         };
 
-        let mut msg = msg.clone();
         msg.set_time_to_live(msg.get_time_to_live() - 1);
         if msg.get_time_to_live() <= 0 {
             return Ok(());

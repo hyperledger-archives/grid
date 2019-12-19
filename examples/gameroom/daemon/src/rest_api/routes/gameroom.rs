@@ -72,7 +72,7 @@ impl ApiGameroom {
                 .map(ApiGameroomMember::from)
                 .collect(),
             alias: db_gameroom.alias.to_string(),
-            status: db_gameroom.status.to_string(),
+            status: db_gameroom.status,
         }
     }
 }
@@ -87,7 +87,7 @@ impl ApiGameroomMember {
     fn from(db_circuit_member: DbGameroomMember) -> Self {
         ApiGameroomMember {
             node_id: db_circuit_member.node_id.to_string(),
-            endpoint: db_circuit_member.endpoint.to_string(),
+            endpoint: db_circuit_member.endpoint,
         }
     }
 }
@@ -106,7 +106,7 @@ pub fn propose_gameroom(
             Err(err) => match err {
                 RestApiResponseError::BadRequest(message) => {
                     return HttpResponse::BadRequest()
-                        .json(ErrorResponse::bad_request(&message.to_string()))
+                        .json(ErrorResponse::bad_request(&message))
                         .into_future();
                 }
                 _ => {
@@ -442,14 +442,13 @@ pub fn fetch_gameroom(
         web::block(move || fetch_gameroom_from_db(pool, &circuit_id)).then(|res| match res {
             Ok(gameroom) => Ok(HttpResponse::Ok().json(gameroom)),
             Err(err) => match err {
-                error::BlockingError::Error(err) => {
-                    match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
-                        _ => Ok(HttpResponse::BadRequest()
-                            .json(ErrorResponse::bad_request(&err.to_string()))),
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                     }
-                }
+                    _ => Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string()))),
+                },
                 error::BlockingError::Canceled => {
                     debug!("Internal Server Error: {}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))

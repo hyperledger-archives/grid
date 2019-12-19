@@ -74,7 +74,7 @@ pub fn create_authorization_dispatcher(
 
     auth_dispatcher.set_handler(
         AuthorizationMessageType::AUTHORIZATION_ERROR,
-        Box::new(AuthorizationErrorHandler::new(auth_manager.clone())),
+        Box::new(AuthorizationErrorHandler::new(auth_manager)),
     );
 
     auth_dispatcher

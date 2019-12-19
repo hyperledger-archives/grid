@@ -72,8 +72,9 @@ pub fn fetch_xo(
                 Ok(xo_game) => Ok(HttpResponse::Ok().json(SuccessResponse::new(xo_game))),
                 Err(err) => match err {
                     error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        RestApiResponseError::NotFound(err) => {
+                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                        }
                         _ => Ok(HttpResponse::BadRequest()
                             .json(ErrorResponse::bad_request(&err.to_string()))),
                     },

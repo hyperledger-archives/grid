@@ -67,8 +67,9 @@ pub fn fetch_notificaiton(
                 Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
                 Err(err) => match err {
                     error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        RestApiResponseError::NotFound(err) => {
+                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                        }
                         _ => Ok(HttpResponse::BadRequest()
                             .json(ErrorResponse::bad_request(&err.to_string()))),
                     },
@@ -159,8 +160,9 @@ pub fn read_notification(
                 Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
                 Err(err) => match err {
                     error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => Ok(HttpResponse::NotFound()
-                            .json(ErrorResponse::not_found(&err.to_string()))),
+                        RestApiResponseError::NotFound(err) => {
+                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                        }
                         _ => Ok(HttpResponse::BadRequest()
                             .json(ErrorResponse::bad_request(&err.to_string()))),
                     },

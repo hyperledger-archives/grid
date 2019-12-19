@@ -125,13 +125,12 @@ pub fn start_service_loop(
         });
 
     let recv_network = network.clone();
-    let reply_sender = send.clone();
     let _ = Builder::new()
         .name("NetworkReceiver".into())
         .spawn(move || {
             run_service_loop(
                 recv_network,
-                &reply_sender,
+                &send,
                 consensus_msg_sender,
                 proposal_update_sender,
                 pending_proposal,

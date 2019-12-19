@@ -118,7 +118,7 @@ fn run() -> Result<(), GameroomDaemonError> {
         config.rest_api_endpoint(),
         config.splinterd_url(),
         node,
-        connection_pool.clone(),
+        connection_pool,
         public_key.as_hex(),
     )?;
 

@@ -270,7 +270,7 @@ fn main() {
 
     let location = {
         if let Ok(s) = env::var(STATE_DIR_ENV) {
-            s.to_string()
+            s
         } else {
             DEFAULT_STATE_DIR.to_string()
         }
@@ -332,7 +332,7 @@ fn main() {
         .with_initial_peers(initial_peers)
         .with_node_id(node_id)
         .with_rest_api_endpoint(rest_api_endpoint)
-        .with_registry_backend(registry_backend.clone())
+        .with_registry_backend(registry_backend)
         .with_storage_type(storage_type)
         .with_heartbeat_interval(heartbeat_interval);
 
@@ -430,7 +430,7 @@ fn get_transport(
 
             let cert_location = {
                 if let Ok(s) = env::var(CERT_DIR_ENV) {
-                    s.to_string()
+                    s
                 } else {
                     DEFAULT_CERT_DIR.to_string()
                 }

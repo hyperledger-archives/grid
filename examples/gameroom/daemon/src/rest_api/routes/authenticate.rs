@@ -126,7 +126,7 @@ fn authenticate_user(
             return Ok(AuthResponseData {
                 email: user.email.to_string(),
                 public_key: user.public_key.to_string(),
-                encrypted_private_key: user.encrypted_private_key.to_string(),
+                encrypted_private_key: user.encrypted_private_key,
             });
         }
     }
