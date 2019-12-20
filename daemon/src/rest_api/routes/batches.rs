@@ -14,43 +14,43 @@
 
 use std::collections::HashMap;
 
-use actix_web::{AsyncResponder, HttpMessage, HttpRequest, HttpResponse, Query, State};
+use actix_web::{error::Error as ActixError, web, HttpRequest, HttpResponse};
 use futures::future;
-use futures::future::Future;
+use futures::future::{Future, IntoFuture};
 use sawtooth_sdk::messages::batch::BatchList;
 use serde::Deserialize;
 
-use crate::rest_api::{error::RestApiResponseError, AppState};
+use crate::rest_api::error::RestApiResponseError;
+use crate::rest_api::AppState;
 use crate::submitter::{BatchStatusResponse, BatchStatuses, SubmitBatches, DEFAULT_TIME_OUT};
 
 pub fn submit_batches(
-    (req, state): (HttpRequest<AppState>, State<AppState>),
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.body().from_err().and_then(
-        move |body| -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-            let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
-                Ok(batch_list) => batch_list,
-                Err(err) => {
-                    return Box::new(future::err(RestApiResponseError::BadRequest(format!(
-                        "Protobuf message was badly formatted. {}",
-                        err.to_string()
-                    ))));
-                }
-            };
-            let response_url = match req.url_for_static("batch_statuses") {
-                Ok(url) => url,
-                Err(err) => return Box::new(future::err(err.into())),
-            };
+    req: HttpRequest,
+    body: web::Bytes,
+    state: web::Data<AppState>,
+) -> impl Future<Item = HttpResponse, Error = ActixError> {
+    let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
+        Ok(batch_list) => batch_list,
+        Err(err) => {
+            return RestApiResponseError::BadRequest(format!(
+                "Protobuf message was badly formatted. {}",
+                err.to_string()
+            ))
+            .future_box()
+        }
+    };
+    let response_url = match req.url_for_static("batch_statuses") {
+        Ok(url) => url,
+        Err(err) => return Box::new(future::err(err.into())),
+    };
 
-            match state.batch_submitter.submit_batches(SubmitBatches {
-                batch_list,
-                response_url,
-            }) {
-                Ok(link) => Box::new(future::ok(HttpResponse::Ok().json(link))),
-                Err(err) => Box::new(future::err(err)),
-            }
-        },
-    )
+    match state.batch_submitter.submit_batches(SubmitBatches {
+        batch_list,
+        response_url,
+    }) {
+        Ok(link) => Box::new(HttpResponse::Ok().json(link).into_future()),
+        Err(err) => err.future_box(),
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -59,19 +59,17 @@ struct Params {
 }
 
 pub fn get_batch_statuses(
-    (state, query, req): (
-        State<AppState>,
-        Query<HashMap<String, String>>,
-        HttpRequest<AppState>,
-    ),
-) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
+    req: HttpRequest,
+    state: web::Data<AppState>,
+    query: web::Query<HashMap<String, String>>,
+) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
     let batch_ids = match query.get("id") {
         Some(ids) => ids.split(',').map(ToString::to_string).collect(),
         None => {
-            return future::err(RestApiResponseError::BadRequest(
+            return RestApiResponseError::BadRequest(
                 "Request for statuses missing id query.".to_string(),
-            ))
-            .responder();
+            )
+            .future_box();
         }
     };
 
@@ -92,12 +90,12 @@ pub fn get_batch_statuses(
                         }
                     }
                     Err(_) => {
-                        return future::err(RestApiResponseError::BadRequest(format!(
+                        return RestApiResponseError::BadRequest(format!(
                             "Query wait has invalid value {}. \
                              It should set to false or a a time in seconds to wait for the commit",
                             wait_time
-                        )))
-                        .responder();
+                        ))
+                        .future_box();
                     }
                 }
             }
@@ -108,17 +106,23 @@ pub fn get_batch_statuses(
 
     let response_url = match req.url_for_static("batch_statuses") {
         Ok(url) => format!("{}?{}", url, req.query_string()),
-        Err(err) => return Box::new(future::err(err.into())),
+        Err(err) => {
+            return Box::new(future::err(err.into()));
+        }
     };
 
     match state
         .batch_submitter
         .batch_status(BatchStatuses { batch_ids, wait })
     {
-        Ok(batch_statuses) => Box::new(future::ok(HttpResponse::Ok().json(BatchStatusResponse {
-            data: batch_statuses,
-            link: response_url,
-        }))),
-        Err(err) => Box::new(future::err(err)),
+        Ok(batch_statuses) => Box::new(
+            HttpResponse::Ok()
+                .json(BatchStatusResponse {
+                    data: batch_statuses,
+                    link: response_url,
+                })
+                .into_future(),
+        ),
+        Err(err) => err.future_box(),
     }
 }

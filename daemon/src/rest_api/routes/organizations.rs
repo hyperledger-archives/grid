@@ -16,7 +16,7 @@ use crate::database::{helpers as db, models::Organization};
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -59,9 +59,9 @@ impl Handler<ListOrganizations> for DbExecutor {
 }
 
 pub fn list_organizations(
-    req: HttpRequest<AppState>,
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(ListOrganizations)
         .from_err()
@@ -99,10 +99,10 @@ impl Handler<FetchOrganization> for DbExecutor {
 }
 
 pub fn fetch_organization(
-    req: HttpRequest<AppState>,
-    organization_id: Path<String>,
+    state: web::Data<AppState>,
+    organization_id: web::Path<String>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchOrganization {
             organization_id: organization_id.into_inner(),

@@ -24,7 +24,7 @@ use crate::database::{
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as JsonValue};
@@ -179,16 +179,18 @@ impl Handler<ListRecords> for DbExecutor {
 }
 
 pub fn list_records(
-    req: HttpRequest<AppState>,
+    state: web::Data<AppState>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
-        .database_connection
-        .send(ListRecords)
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(records) => Ok(HttpResponse::Ok().json(records)),
-            Err(err) => Err(err),
-        })
+    Box::new(
+        state
+            .database_connection
+            .send(ListRecords)
+            .from_err()
+            .and_then(move |res| match res {
+                Ok(records) => Ok(HttpResponse::Ok().json(records)),
+                Err(err) => Err(err),
+            }),
+    )
 }
 
 struct FetchRecord {
@@ -239,10 +241,10 @@ impl Handler<FetchRecord> for DbExecutor {
 }
 
 pub fn fetch_record(
-    req: HttpRequest<AppState>,
-    record_id: Path<String>,
+    state: web::Data<AppState>,
+    record_id: web::Path<String>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchRecord {
             record_id: record_id.into_inner(),
@@ -454,10 +456,10 @@ impl Message for FetchRecordProperty {
 }
 
 pub fn fetch_record_property(
-    req: HttpRequest<AppState>,
-    params: Path<(String, String)>,
+    state: web::Data<AppState>,
+    params: web::Path<(String, String)>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchRecordProperty {
             record_id: params.0.clone(),

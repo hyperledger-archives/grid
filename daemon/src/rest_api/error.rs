@@ -15,9 +15,13 @@
 use crate::database::DatabaseError;
 
 use actix::MailboxError;
-use actix_web::error::{PayloadError, ResponseError, UrlGenerationError};
-use actix_web::HttpResponse;
+use actix_web::error::{PayloadError, UrlGenerationError};
+use actix_web::{
+    error::{Error as ActixError, ResponseError},
+    HttpResponse,
+};
 use diesel;
+use futures::future::{Future, IntoFuture};
 use std::error::Error;
 
 use std::fmt;
@@ -94,6 +98,34 @@ impl fmt::Display for RestApiResponseError {
     }
 }
 
+// impl ResponseError trait allows to convert our errors into http responses with appropriate data
+impl RestApiResponseError {
+    pub fn future_box(self) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
+        match self {
+            RestApiResponseError::BadRequest(ref message) => {
+                Box::new(HttpResponse::BadRequest().json(message).into_future())
+            }
+            RestApiResponseError::SawtoothConnectionError(ref message) => Box::new(
+                HttpResponse::ServiceUnavailable()
+                    .json(message)
+                    .into_future(),
+            ),
+            RestApiResponseError::DatabaseError(ref message) => Box::new(
+                HttpResponse::ServiceUnavailable()
+                    .json(message)
+                    .into_future(),
+            ),
+            RestApiResponseError::NotFoundError(ref message) => {
+                Box::new(HttpResponse::NotFound().json(message).into_future())
+            }
+            _ => Box::new(
+                HttpResponse::InternalServerError()
+                    .json("Internal Server Error")
+                    .into_future(),
+            ),
+        }
+    }
+}
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
 impl ResponseError for RestApiResponseError {
     fn error_response(&self) -> HttpResponse {

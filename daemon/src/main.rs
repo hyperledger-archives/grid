@@ -48,7 +48,6 @@ use crate::database::{error::DatabaseError, helpers as db};
 use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
-use rest_api::AppState;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -97,10 +96,11 @@ fn run() -> Result<(), DaemonError> {
         sawtooth_connection.get_sender(),
     ));
 
-    let app_state = AppState::new(batch_submitter, connection_pool.clone());
-
-    let (rest_api_shutdown_handle, rest_api_join_handle) =
-        rest_api::run(config.rest_api_endpoint(), app_state)?;
+    let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
+        config.rest_api_endpoint(),
+        connection_pool.clone(),
+        batch_submitter,
+    )?;
 
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
