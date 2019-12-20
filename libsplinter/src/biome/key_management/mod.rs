@@ -15,6 +15,7 @@
 //! Provides an API for storing key pairs and associating them with users.
 
 pub mod database;
+pub(in crate::biome) mod store;
 
 use database::postgres::models::KeyModel;
 
