@@ -83,7 +83,8 @@ impl MetadataPredicate {
                 node.metadata.get(key).map(|v| v == val).unwrap_or(false)
             }
             MetadataPredicate::Ne(key, val) => {
-                node.metadata.get(key).map(|v| v != val).unwrap_or(false)
+                // This returns true, if not found.  I.e. `val != nil == true`
+                node.metadata.get(key).map(|v| v != val).unwrap_or(true)
             }
             MetadataPredicate::Gt(key, val) => {
                 node.metadata.get(key).map(|v| v > val).unwrap_or(false)
