@@ -18,10 +18,14 @@
 //!
 //! * `biome-credentials`: API to register and authenticate a user using an username and password.
 //!   Not recommend for use in production.
+//! * `biome-key-management`: API to store and retrieve encrypted private keys.
 //! * `biome-notifications`: API to create and manage user notifications.
 
 #[cfg(feature = "biome-credentials")]
 pub mod credentials;
+
+#[cfg(feature = "biome-key-management")]
+pub mod key_management;
 
 #[cfg(feature = "biome-notifications")]
 pub mod notifications;
