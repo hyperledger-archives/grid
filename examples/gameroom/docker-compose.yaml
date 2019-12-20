@@ -144,10 +144,12 @@ services:
           done && \
           # Copy the generated key registry to its expected location
           cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
-          splinterd --generate-certs -c ./configs/splinterd-node-acme.toml -vv \
+          splinter cert generate && \
+          splinterd -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \
-              --bind 0.0.0.0:8085
+              --bind 0.0.0.0:8085 \
+              --insecure
         "
 
     db-bubba:
@@ -251,8 +253,10 @@ services:
           done && \
           # Copy the generated key registry to its expected location
           cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
-          splinterd --generate-certs -c ./configs/splinterd-node-bubba.toml -vv \
+          splinter cert generate && \
+          splinterd -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \
-              --bind 0.0.0.0:8085
+              --bind 0.0.0.0:8085 \
+              --insecure
         "
