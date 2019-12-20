@@ -14,6 +14,10 @@
 
 //! Provides an API for storing key pairs and associating them with users.
 
+pub mod database;
+
+use database::postgres::models::KeyModel;
+
 // Represents a public and private key pair
 pub struct Key {
     public_key: String,
@@ -45,6 +49,27 @@ impl Key {
             encrypted_private_key: encrypted_private_key.to_string(),
             user_id: user_id.to_string(),
             display_name: display_name.to_string(),
+        }
+    }
+}
+
+impl From<KeyModel> for Key {
+    fn from(key: KeyModel) -> Self {
+        Key {
+            public_key: key.public_key,
+            encrypted_private_key: key.encrypted_private_key,
+            user_id: key.user_id,
+            display_name: key.display_name,
+        }
+    }
+}
+impl Into<KeyModel> for Key {
+    fn into(self) -> KeyModel {
+        KeyModel {
+            public_key: self.public_key,
+            encrypted_private_key: self.encrypted_private_key,
+            user_id: self.user_id,
+            display_name: self.display_name,
         }
     }
 }
