@@ -17,6 +17,7 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
+#[cfg(feature = "rest-api")]
 extern crate serde_json;
 #[macro_use]
 #[cfg(feature = "database")]
@@ -73,12 +74,14 @@ pub mod network;
 pub mod node_registry;
 pub mod orchestrator;
 pub mod protos;
+#[cfg(feature = "rest-api")]
 pub mod rest_api;
 pub mod service;
 pub mod signing;
 pub mod storage;
 pub mod transport;
 
-pub use actix_http;
+#[cfg(feature = "rest-api")]
 pub use actix_web;
+#[cfg(feature = "rest-api")]
 pub use futures;

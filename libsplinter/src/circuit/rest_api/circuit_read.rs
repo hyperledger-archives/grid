@@ -12,41 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET};
-use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use splinter::circuit::{
-    AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType, SplinterState,
-};
-use splinter::futures::{future::IntoFuture, Future};
-use splinter::rest_api::{Method, Resource, RestResourceProvider};
-
 use std::collections::HashMap;
-use std::error::Error as StdError;
 use std::sync::{Arc, RwLock};
 
-#[derive(Debug)]
-pub enum CircuitRouteError {
-    NotFound(String),
-    PoisonedLock,
-}
+use crate::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use crate::circuit::{
+    AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType, SplinterState,
+};
+use crate::futures::{future::IntoFuture, Future};
+use crate::rest_api::{
+    paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
+    Method, Resource,
+};
 
-impl StdError for CircuitRouteError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            CircuitRouteError::NotFound(_) => None,
-            CircuitRouteError::PoisonedLock => None,
-        }
-    }
-}
-
-impl std::fmt::Display for CircuitRouteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            CircuitRouteError::NotFound(msg) => write!(f, "Circuit not found: {}", msg),
-            CircuitRouteError::PoisonedLock => write!(f, "Splinter State lock was poisoned"),
-        }
-    }
-}
+use super::CircuitRouteError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CircuitResponse {
@@ -66,40 +45,19 @@ pub struct ListCircuitsResponse {
     paging: Paging,
 }
 
-#[derive(Clone)]
-pub struct CircuitResourceProvider {
-    node_id: String,
-    state: Arc<RwLock<SplinterState>>,
-}
-
-impl CircuitResourceProvider {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
-        Self { node_id, state }
-    }
-}
-
-impl RestResourceProvider for CircuitResourceProvider {
-    fn resources(&self) -> Vec<Resource> {
-        vec![
-            make_fetch_circuit_resource(self.state.clone()),
-            make_list_circuits_resource(self.state.clone()),
-        ]
-    }
-}
-
-fn make_fetch_circuit_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
+pub fn make_fetch_circuit_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
     Resource::build("/circuits/{circuit_id}").add_method(Method::Get, move |r, _| {
         fetch_circuit(r, web::Data::new(state.clone()))
     })
 }
 
-fn make_list_circuits_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
+pub fn make_list_circuits_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
     Resource::build("/circuits").add_method(Method::Get, move |r, _| {
         list_circuits(r, web::Data::new(state.clone()))
     })
 }
 
-pub fn fetch_circuit(
+fn fetch_circuit(
     request: HttpRequest,
     state: web::Data<Arc<RwLock<SplinterState>>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
@@ -149,7 +107,7 @@ pub fn fetch_circuit(
     )
 }
 
-pub fn list_circuits(
+fn list_circuits(
     req: HttpRequest,
     state: web::Data<Arc<RwLock<SplinterState>>>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
@@ -300,14 +258,16 @@ fn query_list_circuits(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::panic;
 
-    use splinter::actix_web::{
+    use crate::actix_web::{
         http::{header, StatusCode},
         test, web, App,
     };
-    use splinter::circuit::{directory::CircuitDirectory, Circuit, ServiceDefinition};
-    use splinter::storage::get_storage;
+    use crate::circuit::{
+        directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
+        Roster, RouteType, ServiceDefinition,
+    };
+    use crate::storage::get_storage;
 
     #[test]
     /// Tests a GET /circuit/{identity} request returns the expected circuit.

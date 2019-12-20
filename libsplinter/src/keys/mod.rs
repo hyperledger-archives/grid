@@ -26,6 +26,8 @@
 
 mod error;
 pub mod insecure;
+#[cfg(feature = "rest-api")]
+pub mod rest_api;
 pub mod storage;
 
 use std::collections::HashMap;

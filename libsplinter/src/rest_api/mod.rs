@@ -53,6 +53,7 @@
 
 mod errors;
 mod events;
+pub mod paging;
 mod response_models;
 
 use actix_web::{
@@ -60,6 +61,7 @@ use actix_web::{
     HttpServer,
 };
 use futures::{future::FutureResult, stream::Stream, Future, IntoFuture};
+use percent_encoding::{AsciiSet, CONTROLS};
 use protobuf::{self, Message};
 use std::boxed::Box;
 use std::sync::{mpsc, Arc};
@@ -70,6 +72,21 @@ pub use errors::{ResponseError, RestApiServerError};
 pub use events::{new_websocket_event_sender, EventSender};
 
 pub use response_models::ErrorResponse;
+
+const QUERY_ENCODE_SET: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'<')
+    .add(b'>')
+    .add(b'`')
+    .add(b'=')
+    .add(b'!')
+    .add(b'{')
+    .add(b'}')
+    .add(b'[')
+    .add(b']')
+    .add(b':')
+    .add(b',');
 
 /// A `RestResourceProvider` provides a list of resources that are consumed by `RestApi`.
 pub trait RestResourceProvider {
@@ -359,6 +376,10 @@ pub fn into_bytes(payload: web::Payload) -> impl Future<Item = Vec<u8>, Error = 
         })
         .and_then(|body| Ok(body.to_vec()))
         .into_future()
+}
+
+pub fn percent_encode_filter_query(input: &str) -> String {
+    percent_encoding::utf8_percent_encode(input, QUERY_ENCODE_SET).to_string()
 }
 
 #[cfg(test)]

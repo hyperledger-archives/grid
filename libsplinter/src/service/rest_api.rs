@@ -12,22 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
-//!
-//! ## Features
-//!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-notifications`: API to create and manage user notifications.
+use std::sync::Arc;
 
-#[cfg(feature = "biome-credentials")]
-pub mod credentials;
+use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
+use crate::futures::Future;
+use crate::rest_api::Method;
 
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
+use super::Service;
 
-#[cfg(feature = "rest-api")]
-pub mod rest_api;
-pub mod secrets;
-pub mod sessions;
-pub mod users;
+type Handler = Arc<
+    dyn Fn(
+            HttpRequest,
+            web::Payload,
+            &dyn Service,
+        ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
+        + Send
+        + Sync
+        + 'static,
+>;
+
+#[derive(Clone)]
+pub struct ServiceEndpoint {
+    pub service_type: String,
+    pub route: String,
+    pub method: Method,
+    pub handler: Handler,
+}

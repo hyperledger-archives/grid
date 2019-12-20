@@ -19,6 +19,7 @@ pub(in crate::biome) mod credentials_store;
 
 pub mod database;
 mod error;
+#[cfg(feature = "rest-api")]
 pub(in crate::biome) mod rest_resources;
 
 use std::convert::TryFrom;

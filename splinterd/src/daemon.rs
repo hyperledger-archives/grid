@@ -26,8 +26,13 @@ use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
     CircuitMessageHandler, ServiceConnectRequestHandler, ServiceDisconnectRequestHandler,
 };
+#[cfg(feature = "circuit-read")]
+use splinter::circuit::rest_api::CircuitResourceProvider;
 use splinter::circuit::SplinterState;
-use splinter::keys::{insecure::AllowAllKeyPermissionManager, storage::StorageKeyRegistry};
+use splinter::keys::{
+    insecure::AllowAllKeyPermissionManager, rest_api::KeyRegistryManager,
+    storage::StorageKeyRegistry,
+};
 use splinter::mesh::Mesh;
 use splinter::network::auth::handlers::{
     create_authorization_dispatcher, AuthorizationMessageHandler, NetworkAuthGuardHandler,
@@ -38,7 +43,11 @@ use splinter::network::handlers::{NetworkEchoHandler, NetworkHeartbeatHandler};
 use splinter::network::peer::PeerConnector;
 use splinter::network::sender::{NetworkMessageSender, SendRequest};
 use splinter::network::{ConnectionError, Network, PeerUpdateError, RecvTimeoutError, SendError};
-use splinter::node_registry::{self, RwNodeRegistry};
+use splinter::node_registry::{
+    self,
+    rest_api::{make_nodes_identity_resource, make_nodes_resource},
+    RwNodeRegistry,
+};
 use splinter::orchestrator::{NewOrchestratorError, ServiceOrchestrator};
 use splinter::protos::authorization::AuthorizationMessageType;
 use splinter::protos::circuit::CircuitMessageType;
@@ -58,8 +67,6 @@ use splinter::transport::{
 
 use crate::registry_config::{RegistryConfig, RegistryConfigBuilder, RegistryConfigError};
 use crate::routes;
-#[cfg(feature = "circuit-read")]
-use crate::routes::CircuitResourceProvider;
 
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
@@ -343,7 +350,7 @@ impl SplinterDaemon {
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
         })?;
-        let key_registry_manager = routes::KeyRegistryManager::new(key_registry);
+        let key_registry_manager = KeyRegistryManager::new(key_registry);
 
         let node_registry = create_node_registry(&self.registry_config)?;
 
@@ -363,8 +370,8 @@ impl SplinterDaemon {
                     routes::get_status(node_id.clone(), service_endpoint.clone())
                 }),
             )
-            .add_resource(routes::make_nodes_identity_resource(node_registry.clone()))
-            .add_resource(routes::make_nodes_resource(node_registry.clone()))
+            .add_resource(make_nodes_identity_resource(node_registry.clone()))
+            .add_resource(make_nodes_resource(node_registry.clone()))
             .add_resources(key_registry_manager.resources())
             .add_resources(admin_service.resources())
             .add_resources(orchestrator_resources);

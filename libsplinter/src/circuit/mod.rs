@@ -11,8 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 pub mod directory;
 pub mod handlers;
+#[cfg(feature = "rest-api")]
+pub mod rest_api;
 pub mod service;
 
 use serde_derive::{Deserialize, Serialize};

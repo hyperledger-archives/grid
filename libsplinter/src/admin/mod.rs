@@ -14,5 +14,6 @@
 
 pub mod error;
 pub mod messages;
+#[cfg(feature = "rest-api")]
 pub mod rest_api;
 pub mod service;

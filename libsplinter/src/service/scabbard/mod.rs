@@ -19,6 +19,8 @@
 mod consensus;
 mod error;
 mod factory;
+#[cfg(feature = "rest-api")]
+mod rest_api;
 mod shared;
 mod state;
 

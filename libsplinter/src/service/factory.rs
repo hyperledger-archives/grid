@@ -13,32 +13,8 @@
 // limitations under the License.
 
 use std::collections::HashMap;
-use std::sync::Arc;
-
-use crate::actix_web::{web, Error as ActixError, HttpRequest, HttpResponse};
-use crate::futures::Future;
-use crate::rest_api::Method;
 
 use super::{FactoryCreateError, Service};
-
-type Handler = Arc<
-    dyn Fn(
-            HttpRequest,
-            web::Payload,
-            &dyn Service,
-        ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
-        + Send
-        + Sync
-        + 'static,
->;
-
-#[derive(Clone)]
-pub struct ServiceEndpoint {
-    pub service_type: String,
-    pub route: String,
-    pub method: Method,
-    pub handler: Handler,
-}
 
 /// A `ServiceFactory` creates services.
 pub trait ServiceFactory: Send {
@@ -55,5 +31,6 @@ pub trait ServiceFactory: Send {
         args: HashMap<String, String>,
     ) -> Result<Box<dyn Service>, FactoryCreateError>;
 
-    fn get_rest_endpoints(&self) -> Vec<ServiceEndpoint>;
+    #[cfg(feature = "rest-api")]
+    fn get_rest_endpoints(&self) -> Vec<super::rest_api::ServiceEndpoint>;
 }

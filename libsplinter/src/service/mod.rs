@@ -39,12 +39,14 @@ pub mod error;
 mod factory;
 mod processor;
 mod registry;
+#[cfg(feature = "rest-api")]
+mod rest_api;
 pub mod scabbard;
 mod sender;
 
 use std::any::Any;
 
-pub use factory::{ServiceEndpoint, ServiceFactory};
+pub use factory::ServiceFactory;
 pub use processor::JoinHandles;
 pub use processor::ServiceProcessor;
 pub use processor::ShutdownHandle;

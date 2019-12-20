@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
-use percent_encoding::utf8_percent_encode;
-use splinter::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use splinter::futures::{future::IntoFuture, stream::Stream, Future};
-use splinter::{
-    node_registry::{
-        error::{InvalidNodeError, NodeRegistryError},
-        MetadataPredicate, Node, NodeRegistryReader, NodeRegistryWriter,
-    },
-    rest_api::{Method, Resource},
-};
 use std::collections::HashMap;
+
+use crate::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use crate::futures::{future::IntoFuture, stream::Stream, Future};
+use crate::rest_api::{
+    paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
+    percent_encode_filter_query, Method, Resource,
+};
+
+use super::{
+    error::{InvalidNodeError, NodeRegistryError},
+    MetadataPredicate, Node, NodeRegistryReader, NodeRegistryWriter,
+};
 
 type Filter = HashMap<String, (String, String)>;
 
@@ -239,10 +240,7 @@ where
     let filters = match query.get("filter") {
         Some(value) => match serde_json::from_str(value) {
             Ok(val) => {
-                link.push_str(&format!(
-                    "filter={}&",
-                    utf8_percent_encode(value, QUERY_ENCODE_SET).to_string()
-                ));
+                link.push_str(&format!("filter={}&", percent_encode_filter_query(value)));
                 Some(val)
             }
             Err(err) => {
@@ -384,18 +382,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use splinter::node_registry::yaml::YamlNodeRegistry;
-    use splinter::node_registry::Node;
     use std::collections::HashMap;
     use std::env;
     use std::fs::{remove_file, File};
     use std::panic;
     use std::thread;
 
-    use splinter::actix_web::{
+    use crate::actix_web::{
         http::{header, StatusCode},
         test, web, App,
     };
+    use crate::node_registry::yaml::YamlNodeRegistry;
 
     fn new_yaml_node_registry(file_path: &str) -> YamlNodeRegistry {
         YamlNodeRegistry::new(file_path).expect("Error creating YamlNodeRegistry")
@@ -594,9 +591,7 @@ mod tests {
                 web::resource("/nodes").route(web::get().to_async(list_nodes::<YamlNodeRegistry>)),
             ));
 
-            let filter =
-                utf8_percent_encode("{\"company\":[\"=\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
-                    .to_string();
+            let filter = percent_encode_filter_query("{\"company\":[\"=\",\"Bitwise IO\"]}");
 
             let req = test::TestRequest::get()
                 .uri(&format!("/nodes?filter={}", filter))
@@ -628,9 +623,7 @@ mod tests {
                 web::resource("/nodes").route(web::get().to_async(list_nodes::<YamlNodeRegistry>)),
             ));
 
-            let filter =
-                utf8_percent_encode("{\"company\":[\"*\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
-                    .to_string();
+            let filter = percent_encode_filter_query("{\"company\":[\"*\",\"Bitwise IO\"]}");
 
             let req = test::TestRequest::get()
                 .uri(&format!("/nodes?filter={}", filter))
