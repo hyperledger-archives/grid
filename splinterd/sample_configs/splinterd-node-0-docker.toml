@@ -34,3 +34,6 @@ transport = "tls"
 
 # Rest api address.
 bind = "0.0.0.0:8080"
+
+# List of certificate authority certificates (*.pem files).
+ca_certs = "/etc/splinter/certs/generated_ca.pem"

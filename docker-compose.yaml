@@ -33,10 +33,11 @@ services:
         - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
+        splinter cert generate && \
         splinterd \
-            --generate-certs \
             -c ./configs/splinterd-node-0-docker.toml \
             --registry-file ./node_registries/nodes.yaml \
+            --insecure \
             -vv
       "
 
