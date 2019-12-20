@@ -141,6 +141,34 @@ pub enum RemoveError {
     ReceiverDisconnected,
 }
 
+impl Error for RemoveError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            RemoveError::Io(err) => Some(err),
+            RemoveError::NotFound => None,
+            RemoveError::SenderDisconnected(_) => None,
+            RemoveError::ReceiverDisconnected => None,
+        }
+    }
+}
+
+impl fmt::Display for RemoveError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RemoveError::Io(ref err) => {
+                write!(f, "io error while trying to remove connection {}", err)
+            }
+            RemoveError::NotFound => write!(f, "unable to remove connection, connection not found"),
+            RemoveError::SenderDisconnected(_) => {
+                write!(f, "unable to remove connection, sender disconnected")
+            }
+            RemoveError::ReceiverDisconnected => {
+                write!(f, "unable to remove connection, receiver disconnected")
+            }
+        }
+    }
+}
+
 impl From<mio_channel::SendError<ControlRequest>> for RemoveError {
     fn from(err: mio_channel::SendError<ControlRequest>) -> Self {
         match err {

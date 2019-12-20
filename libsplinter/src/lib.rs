@@ -69,6 +69,8 @@ pub mod database;
 pub mod events;
 mod hex;
 pub mod keys;
+#[cfg(feature = "matrix")]
+mod matrix;
 pub mod mesh;
 pub mod network;
 pub mod node_registry;
