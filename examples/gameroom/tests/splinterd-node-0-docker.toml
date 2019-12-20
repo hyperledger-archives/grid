@@ -40,3 +40,6 @@ registry_backend = "FILE"
 
 # Node Registry file
 registry_file = "/project/tests/sample_node_registry.yaml"
+
+# List of certificate authority certificates (*.pem files).
+ca_certs = "/etc/splinter/certs/generated_ca.pem"
