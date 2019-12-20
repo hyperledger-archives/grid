@@ -16,11 +16,15 @@ pub mod error;
 pub mod noop;
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
+#[cfg(feature = "node-registry-unified")]
+pub mod unified;
 pub mod yaml;
 
 use std::collections::HashMap;
 
 pub use error::{InvalidNodeError, NodeRegistryError};
+#[cfg(feature = "node-registry-unified")]
+pub use unified::UnifiedNodeRegistry;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node {
@@ -32,6 +36,20 @@ pub struct Node {
     pub display_name: String,
     /// A map with node metadata.
     pub metadata: HashMap<String, String>,
+}
+
+impl Node {
+    /// Constructs a new node with the given identity and endpoint.
+    ///
+    /// The display_name and metadata fields will be empty.
+    pub fn new<S: Into<String>>(identity: S, endpoint: S) -> Self {
+        Self {
+            identity: identity.into(),
+            endpoint: endpoint.into(),
+            display_name: String::new(),
+            metadata: Default::default(),
+        }
+    }
 }
 
 /// A predicate on a key/value pair in a Node's metadata table.
@@ -65,7 +83,8 @@ impl MetadataPredicate {
                 node.metadata.get(key).map(|v| v == val).unwrap_or(false)
             }
             MetadataPredicate::Ne(key, val) => {
-                node.metadata.get(key).map(|v| v != val).unwrap_or(false)
+                // This returns true, if not found.  I.e. `val != nil == true`
+                node.metadata.get(key).map(|v| v != val).unwrap_or(true)
             }
             MetadataPredicate::Gt(key, val) => {
                 node.metadata.get(key).map(|v| v > val).unwrap_or(false)
@@ -80,6 +99,16 @@ impl MetadataPredicate {
                 node.metadata.get(key).map(|v| v <= val).unwrap_or(false)
             }
         }
+    }
+
+    /// Returns the Eq predicate for the given key and value
+    pub fn eq<S: Into<String>>(key: S, value: S) -> MetadataPredicate {
+        MetadataPredicate::Eq(key.into(), value.into())
+    }
+
+    /// Returns the Ne predicate for the given key and value
+    pub fn ne<S: Into<String>>(key: S, value: S) -> MetadataPredicate {
+        MetadataPredicate::Ne(key.into(), value.into())
     }
 }
 
