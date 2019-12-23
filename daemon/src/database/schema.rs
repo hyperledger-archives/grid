@@ -262,6 +262,58 @@ table! {
     }
 }
 
+table! {
+    grid_circuit (circuit_id) {
+        circuit_id -> Text,
+        authorization_type -> Text,
+        persistence -> Text,
+        durability -> Text,
+        routes -> Text,
+        circuit_management_type -> Text,
+        alias -> Text,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
+
+table! {
+    grid_circuit_proposal (id) {
+        id -> Int8,
+        proposal_type -> Text,
+        circuit_id -> Text,
+        circuit_hash -> Text,
+        requester -> Text,
+        requester_node_id -> Text,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
+
+table! {
+    grid_circuit_member (id) {
+        id -> Int8,
+        circuit_id -> Text,
+        node_id -> Text,
+        endpoint -> Text,
+        status -> Text,
+        created_time -> Timestamp,
+        updated_time -> Timestamp,
+    }
+}
+
+table! {
+    grid_circuit_proposal_vote_record (id) {
+        id -> Int8,
+        proposal_id -> Int8,
+        voter_public_key -> Text,
+        voter_node_id -> Text,
+        vote -> Text,
+        created_time -> Timestamp,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     agent,
     associated_agent,

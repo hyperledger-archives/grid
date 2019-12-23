@@ -22,10 +22,12 @@ use diesel::serialize::{self, Output, ToSql, WriteTuple};
 use diesel::sql_types;
 use serde_json::Value as JsonValue;
 use std::io::Write;
+use std::time::SystemTime;
 
 use super::schema::{
-    agent, associated_agent, commit, grid_property_definition, grid_schema, organization, product,
-    product_property_value, property, proposal, record, reported_value, reporter,
+    agent, associated_agent, commit, grid_circuit, grid_circuit_member, grid_circuit_proposal,
+    grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, organization,
+    product, product_property_value, property, proposal, record, reported_value, reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -468,6 +470,96 @@ pub struct ReportedValueReporterToAgentMetadata {
     pub reported_value_end_commit_num: i64,
     pub reporter_end_commit_num: Option<i64>,
     pub source: Option<String>,
+}
+
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "grid_circuit"]
+#[primary_key(circuit_id)]
+pub struct GridCircuit {
+    pub circuit_id: String,
+    pub authorization_type: String,
+    pub persistence: String,
+    pub durability: String,
+    pub routes: String,
+    pub circuit_management_type: String,
+    pub alias: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "grid_circuit_proposal"]
+#[belongs_to(GridCircuit, foreign_key = "circuit_id")]
+pub struct GridCircuitProposal {
+    pub id: i64,
+    pub proposal_type: String,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub requester: String,
+    pub requester_node_id: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "grid_circuit_proposal"]
+pub struct NewGridCircuitProposal {
+    pub proposal_type: String,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub requester: String,
+    pub requester_node_id: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "grid_circuit_member"]
+#[belongs_to(GridCircuit, foreign_key = "circuit_id")]
+pub struct GridCircuitMember {
+    pub id: i64,
+    pub circuit_id: String,
+    pub node_id: String,
+    pub endpoint: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "grid_circuit_member"]
+pub struct NewGridCircuitMember {
+    pub circuit_id: String,
+    pub node_id: String,
+    pub endpoint: String,
+    pub status: String,
+    pub created_time: SystemTime,
+    pub updated_time: SystemTime,
+}
+
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "grid_circuit_proposal_vote_record"]
+#[belongs_to(GridCircuitProposal, foreign_key = "proposal_id")]
+pub struct GridCircuitProposalVoteRecord {
+    pub id: i64,
+    pub proposal_id: i64,
+    pub voter_public_key: String,
+    pub voter_node_id: String,
+    pub vote: String,
+    pub created_time: SystemTime,
+}
+
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "grid_circuit_proposal_vote_record"]
+pub struct NewGridCircuitProposalVoteRecord {
+    pub proposal_id: i64,
+    pub voter_public_key: String,
+    pub voter_node_id: String,
+    pub vote: String,
+    pub created_time: SystemTime,
 }
 
 #[cfg(test)]
