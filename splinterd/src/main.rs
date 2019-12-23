@@ -35,7 +35,6 @@ use crate::config::{Config, ConfigError};
 #[cfg(feature = "config-toml")]
 use crate::config::{ConfigBuilder, TomlConfig};
 use crate::daemon::SplinterDaemonBuilder;
-#[cfg(feature = "generate-certs")]
 use clap::Arg;
 use clap::{clap_app, crate_version};
 use openssl::error::ErrorStack;

@@ -100,7 +100,8 @@ services:
         - REPO_VERSION=${REPO_VERSION}
     entrypoint: |
       bash -c "
-        splinterd --generate-certs -c ./project/tests/splinterd-node-0-docker.toml -vv
+        splinter cert generate && \
+        splinterd -c ./project/tests/splinterd-node-0-docker.toml --insecure -vv
       "
 
   db-cypress-test:
