@@ -45,11 +45,15 @@ use crate::error::CliError;
 
 use actions::{agents, database, keygen, organizations as orgs, products, schemas};
 
+#[cfg(feature = "admin-keygen")]
+use actions::admin;
+
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn run() -> Result<(), CliError> {
-    let matches = clap_app!(myapp =>
+    #[allow(unused_mut)]
+    let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
@@ -158,8 +162,46 @@ fn run() -> Result<(), CliError> {
                 (@arg product_id: +takes_value +required "ID of product")
             )
         )
-    )
-    .get_matches();
+    );
+
+    #[cfg(feature = "admin-keygen")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("admin")
+                .about("Administrative commands for gridd")
+                .setting(clap::AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("keygen")
+                        .about("Generates keys for gridd to use to sign transactions and batches.")
+                        .arg(
+                            Arg::with_name("directory")
+                                .long("dir")
+                                .short("d")
+                                .takes_value(true)
+                                .help(
+                                    "Specify the directory for the key files; \
+                                     defaults to /etc/grid/keys",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("force")
+                                .long("force")
+                                .conflicts_with("skip")
+                                .help("Overwrite files if they exist"),
+                        )
+                        .arg(
+                            Arg::with_name("skip")
+                                .long("skip")
+                                .conflicts_with("force")
+                                .help("Check if files exist; generate if missing"),
+                        ),
+                ),
+        );
+    }
+
+    let matches = app.get_matches();
 
     match matches.occurrences_of("verbose") {
         0 => simple_logger::init_with_level(log::Level::Warn),
@@ -174,6 +216,21 @@ fn run() -> Result<(), CliError> {
     let wait = value_t!(matches, "wait", u64).unwrap_or(0);
 
     match matches.subcommand() {
+        #[cfg(feature = "admin-keygen")]
+        ("admin", Some(m)) => match m.subcommand() {
+            ("keygen", Some(m)) => {
+                let conflict_strategy = if m.is_present("force") {
+                    admin::ConflictStrategy::Force
+                } else if m.is_present("skip") {
+                    admin::ConflictStrategy::Skip
+                } else {
+                    admin::ConflictStrategy::Error
+                };
+
+                admin::do_keygen(m.value_of("directory"), conflict_strategy)?;
+            }
+            _ => unreachable!(),
+        },
         ("agent", Some(m)) => match m.subcommand() {
             ("create", Some(m)) => {
                 let create_agent = CreateAgentActionBuilder::new()
