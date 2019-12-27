@@ -45,6 +45,8 @@ default = []
 stable = ["default"]
 
 experimental = [
+    "biome",
+    "biome-credentials",
     "circuit-read",
     "config-builder",
     "config-toml",
@@ -52,6 +54,8 @@ experimental = [
     "proposal-read"
 ]
 
+biome = ["splinter/biome", "database"]
+biome-credentials = ["splinter/biome-credentials", "biome"]
 circuit-read = ["splinter/circuit-read"]
 proposal-read = ["splinter/proposal-read"]
 config-builder = []
