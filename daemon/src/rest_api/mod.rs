@@ -28,7 +28,8 @@ use crate::rest_api::routes::{
 };
 use crate::submitter::BatchSubmitter;
 use actix::{Addr, SyncArbiter};
-use actix_web::{http::Method, server, App};
+use actix_web::{web, App, HttpServer, Result};
+use futures::Future;
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 
@@ -64,51 +65,10 @@ impl RestApiShutdownHandle {
     }
 }
 
-fn create_app(app_state: AppState) -> App<AppState> {
-    App::with_state(app_state)
-        .resource("/batches", |r| {
-            r.method(Method::POST).with_async(submit_batches)
-        })
-        .resource("/batch_statuses", |r| {
-            r.name("batch_statuses");
-            r.method(Method::GET).with_async(get_batch_statuses)
-        })
-        .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
-        .resource("/agent/{public_key}", |r| {
-            r.method(Method::GET).with_async(fetch_agent)
-        })
-        .resource("/organization", |r| {
-            r.method(Method::GET).with_async(list_organizations)
-        })
-        .resource("/organization/{id}", |r| {
-            r.method(Method::GET).with_async(fetch_organization)
-        })
-        .resource("/product", |r| {
-            r.method(Method::GET).with_async(list_products)
-        })
-        .resource("/product/{id}", |r| {
-            r.method(Method::GET).with_async(fetch_product)
-        })
-        .resource("/schema", |r| {
-            r.method(Method::GET).with_async(list_grid_schemas)
-        })
-        .resource("/schema/{name}", |r| {
-            r.method(Method::GET).with_async(fetch_grid_schema)
-        })
-        .resource("/record", |r| {
-            r.method(Method::GET).with_async(list_records)
-        })
-        .resource("/record/{record_id}", |r| {
-            r.method(Method::GET).with_async(fetch_record)
-        })
-        .resource("/record/{record_id}/property/{property_name}", |r| {
-            r.method(Method::GET).with_async(fetch_record_property)
-        })
-}
-
 pub fn run(
     bind_url: &str,
-    app_state: AppState,
+    database_connection: ConnectionPool,
+    batch_submitter: Box<dyn BatchSubmitter + 'static>,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -116,24 +76,82 @@ pub fn run(
     ),
     RestApiServerError,
 > {
-    let (tx, rx) = mpsc::channel();
     let bind_url = bind_url.to_owned();
+    let (tx, rx) = mpsc::channel();
+
     let join_handle = thread::Builder::new()
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            info!("Starting Rest API at {}", &bind_url);
-            let addr = server::new(move || create_app(app_state.clone()))
-                .bind(bind_url)?
-                .disable_signals()
-                .system_exit()
-                .start();
+            let state = AppState::new(batch_submitter, database_connection);
+
+            let addr = HttpServer::new(move || {
+                App::new()
+                    .data(state.clone())
+                    .service(web::resource("batches").route(web::post().to_async(submit_batches)))
+                    .service(
+                        web::resource("/batch_statuses")
+                            .route(web::get().to_async(get_batch_statuses)),
+                    )
+                    .service(
+                        web::scope("/agent")
+                            .service(web::resource("").route(web::get().to_async(list_agents)))
+                            .service(
+                                web::resource("/{public_key}")
+                                    .route(web::get().to_async(fetch_agent)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/organization")
+                            .service(
+                                web::resource("").route(web::get().to_async(list_organizations)),
+                            )
+                            .service(
+                                web::resource("/{id}")
+                                    .route(web::get().to_async(fetch_organization)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/product")
+                            .service(web::resource("").route(web::get().to_async(list_products)))
+                            .service(
+                                web::resource("/{id}").route(web::get().to_async(fetch_product)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/schema")
+                            .service(
+                                web::resource("").route(web::get().to_async(list_grid_schemas)),
+                            )
+                            .service(
+                                web::resource("/{name}")
+                                    .route(web::get().to_async(fetch_grid_schema)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/record")
+                            .service(web::resource("").route(web::get().to_async(list_records)))
+                            .service(
+                                web::scope("/{record_id}")
+                                    .service(
+                                        web::resource("").route(web::get().to_async(fetch_record)),
+                                    )
+                                    .service(
+                                        web::resource("/property/{property_name}")
+                                            .route(web::get().to_async(fetch_record_property)),
+                                    ),
+                            ),
+                    )
+            })
+            .bind(bind_url)?
+            .disable_signals()
+            .system_exit()
+            .start();
 
             tx.send(addr).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
-
-            sys.run();
+            sys.run()?;
 
             info!("Rest API terminating");
 
@@ -146,7 +164,9 @@ pub fn run(
 
     let do_shutdown = Box::new(move || {
         debug!("Shutting down Rest API");
-        addr.do_send(server::StopServer { graceful: true });
+        if let Err(err) = addr.stop(true).wait() {
+            error!("Failed to shutdown rest api cleanly: {:?}", err);
+        }
         debug!("Graceful signal sent to Rest API");
 
         Ok(())

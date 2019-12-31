@@ -16,7 +16,7 @@ use crate::database::{helpers as db, models::Agent};
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -62,17 +62,18 @@ impl Handler<ListAgents> for DbExecutor {
 }
 
 pub fn list_agents(
-    req: HttpRequest<AppState>,
+    state: web::Data<AppState>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    req.state()
-        .database_connection
-        .send(ListAgents)
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
-            Err(err) => Err(err),
-        })
-        .responder()
+    Box::new(
+        state
+            .database_connection
+            .send(ListAgents)
+            .from_err()
+            .and_then(move |res| match res {
+                Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
+                Err(err) => Err(err),
+            }),
+    )
 }
 
 struct FetchAgent {
@@ -102,10 +103,10 @@ impl Handler<FetchAgent> for DbExecutor {
 }
 
 pub fn fetch_agent(
-    req: HttpRequest<AppState>,
-    public_key: Path<String>,
+    state: web::Data<AppState>,
+    public_key: web::Path<String>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
+    state
         .database_connection
         .send(FetchAgent {
             public_key: public_key.into_inner(),

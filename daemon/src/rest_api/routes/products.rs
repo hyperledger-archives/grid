@@ -23,7 +23,7 @@ use crate::database::{
 use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
 
 use actix::{Handler, Message, SyncContext};
-use actix_web::{AsyncResponder, HttpRequest, HttpResponse, Path};
+use actix_web::{web, HttpResponse};
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -139,17 +139,18 @@ impl Handler<ListProducts> for DbExecutor {
 }
 
 pub fn list_products(
-    req: HttpRequest<AppState>,
+    state: web::Data<AppState>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    req.state()
-        .database_connection
-        .send(ListProducts)
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(products) => Ok(HttpResponse::Ok().json(products)),
-            Err(err) => Err(err),
-        })
-        .responder()
+    Box::new(
+        state
+            .database_connection
+            .send(ListProducts)
+            .from_err()
+            .and_then(move |res| match res {
+                Ok(products) => Ok(HttpResponse::Ok().json(products)),
+                Err(err) => Err(err),
+            }),
+    )
 }
 
 struct FetchProduct {
@@ -182,17 +183,19 @@ impl Handler<FetchProduct> for DbExecutor {
 }
 
 pub fn fetch_product(
-    req: HttpRequest<AppState>,
-    product_id: Path<String>,
+    state: web::Data<AppState>,
+    product_id: web::Path<String>,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    req.state()
-        .database_connection
-        .send(FetchProduct {
-            product_id: product_id.into_inner(),
-        })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(product) => Ok(HttpResponse::Ok().json(product)),
-            Err(err) => Err(err),
-        })
+    Box::new(
+        state
+            .database_connection
+            .send(FetchProduct {
+                product_id: product_id.into_inner(),
+            })
+            .from_err()
+            .and_then(move |res| match res {
+                Ok(product) => Ok(HttpResponse::Ok().json(product)),
+                Err(err) => Err(err),
+            }),
+    )
 }

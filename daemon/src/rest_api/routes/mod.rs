@@ -70,7 +70,9 @@ mod test {
     };
     use crate::submitter::*;
 
-    use actix_web::{http, http::Method, test::TestServer, HttpMessage};
+    use actix_http::HttpService;
+    use actix_http_test::{block_on, TestServer, TestServerRuntime};
+    use actix_web::{http, web, App};
     use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
     use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
@@ -256,53 +258,74 @@ mod test {
         database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
     }
 
-    fn create_test_server(response_type: ResponseType) -> TestServer {
-        TestServer::build_with_state(move || {
-            let mock_sender = MockMessageSender::new(response_type);
-            let mock_batch_submitter = Box::new(MockBatchSubmitter {
-                sender: mock_sender,
-            });
-            AppState::new(mock_batch_submitter, get_connection_pool())
-        })
-        .start(|app| {
-            app.resource("/batch_statuses", |r| {
-                r.name("batch_statuses");
-                r.method(Method::GET).with_async(get_batch_statuses)
-            })
-            .resource("/batches", |r| {
-                r.method(Method::POST).with_async(submit_batches)
-            })
-            .resource("/agent", |r| r.method(Method::GET).with_async(list_agents))
-            .resource("/agent/{public_key}", |r| {
-                r.method(Method::GET).with_async(fetch_agent)
-            })
-            .resource("/organization", |r| {
-                r.method(Method::GET).with_async(list_organizations)
-            })
-            .resource("/organization/{id}", |r| {
-                r.method(Method::GET).with_async(fetch_organization)
-            })
-            .resource("/product", |r| {
-                r.method(Method::GET).with_async(list_products)
-            })
-            .resource("/product/{id}", |r| {
-                r.method(Method::GET).with_async(fetch_product)
-            })
-            .resource("/schema", |r| {
-                r.method(Method::GET).with_async(list_grid_schemas)
-            })
-            .resource("/schema/{name}", |r| {
-                r.method(Method::GET).with_async(fetch_grid_schema)
-            })
-            .resource("/record", |r| {
-                r.method(Method::GET).with_async(list_records)
-            })
-            .resource("/record/{record_id}", |r| {
-                r.method(Method::GET).with_async(fetch_record)
-            })
-            .resource("/record/{record_id}/property/{property_name}", |r| {
-                r.method(Method::GET).with_async(fetch_record_property)
-            });
+    fn create_test_server(response_type: ResponseType) -> TestServerRuntime {
+        TestServer::new(move || {
+            let state = {
+                let mock_sender = MockMessageSender::new(response_type);
+                let mock_batch_submitter = Box::new(MockBatchSubmitter {
+                    sender: mock_sender,
+                });
+                AppState::new(mock_batch_submitter, get_connection_pool())
+            };
+            HttpService::new(
+                App::new()
+                    .data(state)
+                    .service(web::resource("batches").route(web::post().to_async(submit_batches)))
+                    .service(
+                        web::resource("/batch_statuses")
+                            .name("batch_statuses")
+                            .route(web::get().to_async(get_batch_statuses)),
+                    )
+                    .service(
+                        web::scope("/agent")
+                            .service(web::resource("").route(web::get().to_async(list_agents)))
+                            .service(
+                                web::resource("/{public_key}")
+                                    .route(web::get().to_async(fetch_agent)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/organization")
+                            .service(
+                                web::resource("").route(web::get().to_async(list_organizations)),
+                            )
+                            .service(
+                                web::resource("/{id}")
+                                    .route(web::get().to_async(fetch_organization)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/product")
+                            .service(web::resource("").route(web::get().to_async(list_products)))
+                            .service(
+                                web::resource("/{id}").route(web::get().to_async(fetch_product)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/schema")
+                            .service(
+                                web::resource("").route(web::get().to_async(list_grid_schemas)),
+                            )
+                            .service(
+                                web::resource("/{name}")
+                                    .route(web::get().to_async(fetch_grid_schema)),
+                            ),
+                    )
+                    .service(
+                        web::scope("/record")
+                            .service(web::resource("").route(web::get().to_async(list_records)))
+                            .service(
+                                web::scope("/{record_id}")
+                                    .service(
+                                        web::resource("").route(web::get().to_async(fetch_record)),
+                                    )
+                                    .service(
+                                        web::resource("/property/{property_name}")
+                                            .route(web::get().to_async(fetch_record_property)),
+                                    ),
+                            ),
+                    ),
+            )
         })
     }
 
@@ -319,17 +342,16 @@ mod test {
     ///
     #[test]
     fn test_get_batch_status_one_id() {
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/batch_statuses?id={}", BATCH_ID_1),
+                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
@@ -361,20 +383,19 @@ mod test {
     ///
     #[test]
     fn test_get_batch_status_multiple_ids() {
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!(
+                srv.url(&format!(
                     "/batch_statuses?id={},{},{}",
                     BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
-                ),
+                )),
             )
-            .finish()
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
@@ -410,17 +431,17 @@ mod test {
     ///
     #[test]
     fn test_get_batch_status_invalid_id() {
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseInvalidId);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseInvalidId);
 
-        let request = srv
-            .client(
+        let response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/batch_statuses?id={}", BATCH_ID_1),
+                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .finish()
-            .unwrap();
+            .send(),
+        )
+        .unwrap();
 
-        let response = srv.execute(request.send()).unwrap();
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
 
@@ -434,17 +455,17 @@ mod test {
     ///
     #[test]
     fn test_get_batch_status_internal_error() {
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseInternalError);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseInternalError);
 
-        let request = srv
-            .client(
+        let response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/batch_statuses?id={}", BATCH_ID_1),
+                srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .finish()
-            .unwrap();
+            .send(),
+        )
+        .unwrap();
 
-        let response = srv.execute(request.send()).unwrap();
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -459,17 +480,20 @@ mod test {
     ///
     #[test]
     fn test_get_batch_status_wait_error() {
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let request = srv
-            .client(
+        let response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/batch_statuses?id={}&wait=not_a_number", BATCH_ID_1),
+                srv.url(&format!(
+                    "/batch_statuses?id={}&wait=not_a_number",
+                    BATCH_ID_1
+                )),
             )
-            .finish()
-            .unwrap();
+            .send(),
+        )
+        .unwrap();
 
-        let response = srv.execute(request.send()).unwrap();
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
 
@@ -484,14 +508,13 @@ mod test {
     ///
     #[test]
     fn test_post_batches_ok() {
-        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseOK);
 
-        let request = srv
-            .client(http::Method::POST, "/batches")
-            .body(get_batch_list())
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::POST, srv.url("/batches"))
+                .send_body(get_batch_list()),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
@@ -513,14 +536,13 @@ mod test {
     ///
     #[test]
     fn test_post_batches_invalid_batch() {
-        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseInvalidBatch);
+        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInvalidBatch);
 
-        let request = srv
-            .client(http::Method::POST, "/batches")
-            .body(get_batch_list())
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::POST, srv.url("/batches"))
+                .send_body(get_batch_list()),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -535,14 +557,13 @@ mod test {
     ///
     #[test]
     fn test_post_batches_internal_error() {
-        let mut srv = create_test_server(ResponseType::ClientBatchSubmitResponseInternalError);
+        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInternalError);
 
-        let request = srv
-            .client(http::Method::POST, "/batches")
-            .body(get_batch_list())
-            .unwrap();
-
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::POST, srv.url("/batches"))
+                .send_body(get_batch_list()),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -559,11 +580,11 @@ mod test {
     fn test_list_agents() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
-        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/agent")).send()).unwrap();
         assert!(response.status().is_success());
         let body: Vec<AgentSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -573,8 +594,8 @@ mod test {
         populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
         // Making another request to the database
-        let request = srv.client(http::Method::GET, "/agent").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/agent")).send()).unwrap();
 
         assert!(response.status().is_success());
         let body: Vec<AgentSlice> =
@@ -593,14 +614,14 @@ mod test {
     fn test_list_organizations_empty() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/organization")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::GET, srv.url("/organization"))
+                .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -615,17 +636,17 @@ mod test {
     fn test_list_organizations() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_organization());
 
         // Making another request to the database
-        let request = srv
-            .client(http::Method::GET, "/organization")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::GET, srv.url("/organization"))
+                .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -647,17 +668,17 @@ mod test {
     fn test_list_organizations_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of organization with the same org_id to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
 
         // Making another request to the database
-        let request = srv
-            .client(http::Method::GET, "/organization")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::GET, srv.url("/organization"))
+                .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -677,14 +698,14 @@ mod test {
     fn test_fetch_organization_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/organization/not_a_valid_id")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
+                .send(),
+        )
+        .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -696,17 +717,20 @@ mod test {
     fn test_fetch_organization_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_organization());
 
         // Making another request to the database
-        let request = srv
-            .client(http::Method::GET, &format!("/organization/{}", KEY2))
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(
+                http::Method::GET,
+                srv.url(&format!("/organization/{}", KEY2)),
+            )
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -726,17 +750,20 @@ mod test {
     fn test_fetch_organization_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
 
         // Making another request to the database
-        let request = srv
-            .client(http::Method::GET, &format!("/organization/{}", KEY3))
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(
+                http::Method::GET,
+                srv.url(&format!("/organization/{}", KEY3)),
+            )
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let org: OrganizationSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -754,16 +781,16 @@ mod test {
     fn test_fetch_agent_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         //Adds an agent to the test database
         populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
-        let request = srv
-            .client(http::Method::GET, &format!("/agent/{}", KEY1))
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
+                .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let agent: AgentSlice = serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
@@ -778,14 +805,14 @@ mod test {
     fn test_fetch_agent_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clear the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/agent/unknown_public_key")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::GET, srv.url("/agent/unknown_public_key"))
+                .send(),
+        )
+        .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -798,26 +825,26 @@ mod test {
     fn test_list_schemas() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
         clear_grid_schema_table(&test_pool.get().unwrap());
-        let request = srv.client(http::Method::GET, "/schema").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/schema")).send()).unwrap();
         assert!(response.status().is_success());
         let empty_body: Vec<GridSchemaSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
         populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
-        let request = srv.client(http::Method::GET, "/schema").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/schema")).send()).unwrap();
         assert!(response.status().is_success());
         let body: Vec<GridSchemaSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(body.len(), 1);
 
         let test_schema = body.first().unwrap();
-        assert_eq!(test_schema.name, "Test Grid Schema".to_string());
+        assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
     }
@@ -830,20 +857,20 @@ mod test {
     fn test_fetch_schema_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/schema/{}", "Test Grid Schema".to_string()),
+                srv.url(&format!("/schema/{}", "TestGridSchema".to_string())),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let test_schema: GridSchemaSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
-        assert_eq!(test_schema.name, "Test Grid Schema".to_string());
+        assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
     }
@@ -856,13 +883,13 @@ mod test {
     fn test_fetch_schema_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_grid_schema_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/schema/not_in_database")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::GET, srv.url("/schema/not_in_database"))
+                .send(),
+        )
+        .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -875,19 +902,19 @@ mod test {
     fn test_list_products() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the product table in the test database
         clear_product_table(&test_pool.get().unwrap());
-        let request = srv.client(http::Method::GET, "/product").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/product")).send()).unwrap();
         assert!(response.status().is_success());
         let empty_body: Vec<ProductSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
         populate_product_table(&test_pool.get().unwrap(), &get_product());
-        let request = srv.client(http::Method::GET, "/product").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/product")).send()).unwrap();
         assert!(response.status().is_success());
         let body: Vec<ProductSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -909,16 +936,16 @@ mod test {
     fn test_fetch_product_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_product_table(&test_pool.get().unwrap(), &get_product());
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/product/{}", "041205707820".to_string()),
+                srv.url(&format!("/product/{}", "041205707820".to_string())),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let test_product: ProductSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -937,13 +964,13 @@ mod test {
     fn test_fetch_product_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_product_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/product/not_in_database")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::GET, srv.url("/product/not_in_database"))
+                .send(),
+        )
+        .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -955,7 +982,7 @@ mod test {
     fn test_list_records() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
@@ -963,30 +990,30 @@ mod test {
             &test_pool.get().unwrap(),
             &get_grid_property_definition_for_record(),
         );
-        populate_record_table(&test_pool.get().unwrap(), &get_record("Test Record"));
+        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord"));
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
             &get_property_for_record(),
             &get_reported_value_for_property_record(),
             &get_reporter_for_property_record(),
         );
-        let request = srv
-            .client(http::Method::GET, &format!("/record"))
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(http::Method::GET, srv.url(&format!("/record")))
+                .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
-        assert_eq!(test_record.record_id, "Test Record".to_string());
-        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
         assert_eq!(test_record.properties.len(), 2);
         assert_eq!(test_record.properties[0].name, "TestProperty1");
-        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].record_id, "TestRecord");
         assert_eq!(test_record.properties[0].data_type, "String");
         assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
         assert_eq!(test_record.properties[0].updates.len(), 1);
@@ -1027,7 +1054,7 @@ mod test {
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
-        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].record_id, "TestRecord");
         assert_eq!(test_record.properties[1].data_type, "Boolean");
         assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
         assert_eq!(test_record.properties[1].updates.len(), 1);
@@ -1096,21 +1123,21 @@ mod test {
     fn test_list_records_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
 
         // Making another request to the database
-        let request = srv.client(http::Method::GET, "/record").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/record")).send()).unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
-        assert_eq!(test_record.record_id, "Test Record".to_string());
-        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.r#final, true);
     }
 
@@ -1123,7 +1150,7 @@ mod test {
     fn test_list_records_multiple() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(&test_pool.get().unwrap(), &get_multuple_records());
@@ -1135,8 +1162,8 @@ mod test {
         );
 
         // Making another request to the database
-        let request = srv.client(http::Method::GET, "/record").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response =
+            block_on(srv.request(http::Method::GET, srv.url("/record")).send()).unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
@@ -1157,11 +1184,11 @@ mod test {
     fn test_fetch_record_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
         populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
         populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
-        populate_record_table(&test_pool.get().unwrap(), &get_record("Test Record"));
+        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord"));
         populate_property_definition_table(
             &test_pool.get().unwrap(),
             &get_grid_property_definition_for_record(),
@@ -1172,25 +1199,25 @@ mod test {
             &get_reported_value_for_property_record(),
             &get_reporter_for_property_record(),
         );
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/record/{}", "Test Record".to_string()),
+                srv.url(&format!("/record/{}", "TestRecord".to_string())),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let test_record: RecordSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
-        assert_eq!(test_record.record_id, "Test Record".to_string());
-        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
         assert_eq!(test_record.custodian, KEY2.to_string());
 
         assert_eq!(test_record.properties.len(), 2);
         assert_eq!(test_record.properties[0].name, "TestProperty1");
-        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].record_id, "TestRecord");
         assert_eq!(test_record.properties[0].data_type, "String");
         assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
         assert_eq!(test_record.properties[0].updates.len(), 1);
@@ -1231,7 +1258,7 @@ mod test {
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
-        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].record_id, "TestRecord");
         assert_eq!(test_record.properties[1].data_type, "Boolean");
         assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
         assert_eq!(test_record.properties[1].updates.len(), 1);
@@ -1298,7 +1325,7 @@ mod test {
     fn test_fetch_record_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
             &test_pool.get().unwrap(),
             &get_grid_property_definition_for_record(),
@@ -1315,26 +1342,26 @@ mod test {
             &get_associated_agents_updated(),
         );
         populate_proposal_table(&test_pool.get().unwrap(), &get_updated_proposal());
-        let request = srv
-            .client(
+        let mut response = block_on(
+            srv.request(
                 http::Method::GET,
-                &format!("/record/{}", "Test Record".to_string()),
+                srv.url(&format!("/record/{}", "TestRecord".to_string())),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
         assert!(response.status().is_success());
         let test_record: RecordSlice =
             serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
 
-        assert_eq!(test_record.record_id, "Test Record".to_string());
-        assert_eq!(test_record.schema, "Test Grid Schema".to_string());
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY2.to_string());
         assert_eq!(test_record.custodian, KEY1.to_string());
 
         assert_eq!(test_record.properties.len(), 2);
         assert_eq!(test_record.properties[0].name, "TestProperty1");
-        assert_eq!(test_record.properties[0].record_id, "Test Record");
+        assert_eq!(test_record.properties[0].record_id, "TestRecord");
         assert_eq!(test_record.properties[0].data_type, "String");
         assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
         assert_eq!(test_record.properties[0].updates.len(), 1);
@@ -1375,7 +1402,7 @@ mod test {
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
-        assert_eq!(test_record.properties[1].record_id, "Test Record");
+        assert_eq!(test_record.properties[1].record_id, "TestRecord");
         assert_eq!(test_record.properties[1].data_type, "Boolean");
         assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
         assert_eq!(test_record.properties[1].updates.len(), 1);
@@ -1440,13 +1467,13 @@ mod test {
     fn test_fetch_record_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_record_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(http::Method::GET, "/record/not_in_database")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let response = block_on(
+            srv.request(http::Method::GET, srv.url("/record/not_in_database"))
+                .send(),
+        )
+        .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1458,7 +1485,7 @@ mod test {
     fn test_fetch_record_property_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
             &test_pool.get().unwrap(),
             &get_grid_property_definition_struct_for_record(),
@@ -1470,11 +1497,14 @@ mod test {
             &get_reported_value(),
             &get_reporter(),
         );
-        let request = srv
-            .client(http::Method::GET, "/record/record_01/property/TestProperty")
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut response = block_on(
+            srv.request(
+                http::Method::GET,
+                srv.url("/record/record_01/property/TestProperty"),
+            )
+            .send(),
+        )
+        .unwrap();
 
         assert!(response.status().is_success());
 
@@ -1638,16 +1668,16 @@ mod test {
     fn test_fetch_property_name_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_tnt_property_table(&test_pool.get().unwrap());
-        let request = srv
-            .client(
+        let response = block_on(
+            srv.request(
                 http::Method::GET,
-                "/record/record_01/property/not_in_database",
+                srv.url("/record/record_01/property/not_in_database"),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
@@ -1660,21 +1690,21 @@ mod test {
     fn test_fetch_property_record_id_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let mut srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
             &get_property(),
             &get_reported_value(),
             &get_reporter(),
         );
-        let request = srv
-            .client(
+        let response = block_on(
+            srv.request(
                 http::Method::GET,
-                "/record/not_in_database/property/TestProperty",
+                srv.url("/record/not_in_database/property/TestProperty"),
             )
-            .finish()
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send(),
+        )
+        .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
@@ -1839,7 +1869,7 @@ mod test {
         vec![NewGridSchema {
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
-            name: "Test Grid Schema".to_string(),
+            name: "TestGridSchema".to_string(),
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
             source: None,
@@ -1865,7 +1895,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 1,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
                 source: None,
             },
@@ -1874,7 +1904,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 1,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
                 source: None,
             },
@@ -1888,7 +1918,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 1,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
                 source: None,
             },
@@ -1897,7 +1927,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 1,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
                 source: None,
             },
@@ -1906,7 +1936,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 2,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
                 source: None,
             },
@@ -1915,7 +1945,7 @@ mod test {
                 end_block_num: MAX_BLOCK_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 2,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
                 source: None,
             },
@@ -1926,7 +1956,7 @@ mod test {
         vec![NewProposal {
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
-            record_id: "Test Record".to_string(),
+            record_id: "TestRecord".to_string(),
             timestamp: 1,
             issuing_agent: KEY1.to_string(),
             receiving_agent: KEY2.to_string(),
@@ -1943,7 +1973,7 @@ mod test {
             NewProposal {
                 start_block_num: 0,
                 end_block_num: 1,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 timestamp: 1,
                 issuing_agent: KEY1.to_string(),
                 receiving_agent: KEY2.to_string(),
@@ -1956,7 +1986,7 @@ mod test {
             NewProposal {
                 start_block_num: 1,
                 end_block_num: MAX_BLOCK_NUM,
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 timestamp: 1,
                 issuing_agent: KEY1.to_string(),
                 receiving_agent: KEY2.to_string(),
@@ -1974,7 +2004,7 @@ mod test {
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
             record_id: record_id.to_string(),
-            schema: "Test Grid Schema".to_string(),
+            schema: "TestGridSchema".to_string(),
             final_: false,
             owners: vec![KEY1.to_string()],
             custodians: vec![KEY2.to_string()],
@@ -1987,8 +2017,8 @@ mod test {
             NewRecord {
                 start_block_num: 0,
                 end_block_num: 1,
-                record_id: "Test Record".to_string(),
-                schema: "Test Grid Schema".to_string(),
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
@@ -1997,8 +2027,8 @@ mod test {
             NewRecord {
                 start_block_num: 1,
                 end_block_num: MAX_BLOCK_NUM,
-                record_id: "Test Record".to_string(),
-                schema: "Test Grid Schema".to_string(),
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
                 final_: true,
                 owners: vec![KEY2.to_string(), KEY1.to_string()],
                 custodians: vec![KEY1.to_string(), KEY2.to_string()],
@@ -2012,8 +2042,8 @@ mod test {
             NewRecord {
                 start_block_num: 0,
                 end_block_num: 1,
-                record_id: "Test Record".to_string(),
-                schema: "Test Grid Schema".to_string(),
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
@@ -2022,8 +2052,8 @@ mod test {
             NewRecord {
                 start_block_num: 1,
                 end_block_num: MAX_BLOCK_NUM,
-                record_id: "Test Record".to_string(),
-                schema: "Test Grid Schema".to_string(),
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
                 final_: true,
                 owners: vec![KEY2.to_string(), KEY1.to_string()],
                 custodians: vec![KEY1.to_string(), KEY2.to_string()],
@@ -2032,8 +2062,8 @@ mod test {
             NewRecord {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
-                record_id: "Test Record 2".to_string(),
-                schema: "Test Grid Schema".to_string(),
+                record_id: "TestRecord 2".to_string(),
+                schema: "TestGridSchema".to_string(),
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
@@ -2068,7 +2098,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "TestProperty1".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 property_definition: "property_definition_1".to_string(),
                 current_page: 1,
                 wrapped: false,
@@ -2078,7 +2108,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "TestProperty2".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 property_definition: "property_definition_2".to_string(),
                 current_page: 1,
                 wrapped: false,
@@ -2093,7 +2123,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 property_name: "TestProperty1".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 public_key: KEY1.to_string(),
                 authorized: true,
                 reporter_index: 0,
@@ -2103,7 +2133,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 property_name: "TestProperty2".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 public_key: KEY2.to_string(),
                 authorized: true,
                 reporter_index: 0,
@@ -2118,7 +2148,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 property_name: "TestProperty1".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 reporter_index: 0,
                 timestamp: 5,
                 data_type: "String".to_string(),
@@ -2135,7 +2165,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 property_name: "TestProperty2".to_string(),
-                record_id: "Test Record".to_string(),
+                record_id: "TestRecord".to_string(),
                 reporter_index: 0,
                 timestamp: 5,
                 data_type: "Boolean".to_string(),
@@ -2289,7 +2319,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "Definition Name".to_string(),
-                schema_name: "Test Grid Schema".to_string(),
+                schema_name: "TestGridSchema".to_string(),
                 data_type: "Lightbulb".to_string(),
                 required: false,
                 description: "Definition Description".to_string(),
@@ -2302,7 +2332,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "Other Definition Name".to_string(),
-                schema_name: "Test Grid Schema".to_string(),
+                schema_name: "TestGridSchema".to_string(),
                 data_type: "New Lightbulb".to_string(),
                 required: false,
                 description: "Definition Description".to_string(),
@@ -2319,7 +2349,7 @@ mod test {
             start_block_num: 0,
             end_block_num: MAX_BLOCK_NUM,
             name: "TestProperty".to_string(),
-            schema_name: "Test Grid Schema".to_string(),
+            schema_name: "TestGridSchema".to_string(),
             data_type: "Struct".to_string(),
             required: false,
             description: "Definition Description".to_string(),
@@ -2336,7 +2366,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "TestProperty1".to_string(),
-                schema_name: "Test Grid Schema".to_string(),
+                schema_name: "TestGridSchema".to_string(),
                 data_type: "String".to_string(),
                 required: false,
                 description: "Definition Description".to_string(),
@@ -2349,7 +2379,7 @@ mod test {
                 start_block_num: 0,
                 end_block_num: MAX_BLOCK_NUM,
                 name: "TestProperty2".to_string(),
-                schema_name: "Test Grid Schema".to_string(),
+                schema_name: "TestGridSchema".to_string(),
                 data_type: "Boolean".to_string(),
                 required: false,
                 description: "Definition Description".to_string(),
