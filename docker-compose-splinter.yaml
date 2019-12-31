@@ -87,6 +87,21 @@ services:
         cp /tmp/grid-schema*.scar /usr/share/scar
       "
 
+  tnt-contract-builder:
+    image: tnt-contract-builder
+    container_name: tnt-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-track-and-trace*.scar /usr/share/scar
+      "
+
   db:
     image: postgres
     container_name: db
