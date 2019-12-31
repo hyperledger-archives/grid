@@ -69,6 +69,10 @@ jobs:
       script:
         - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit
 
+    - stage: Cron only
+      if: type = cron
+      script: docker-compose -f tests/test-splinter-cron.yaml up --abort-on-container-exit unit-test-splinter
+
     - stage: Publish docker images
       language: generic
       before_deploy:
