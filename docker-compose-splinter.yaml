@@ -15,6 +15,7 @@
 version: '3.6'
 
 volumes:
+  contracts-shared:
   splinter-shared:
 
 services:
@@ -40,6 +41,21 @@ services:
           gridd -vv -b gridd:8080 -C tcp://validator:4004 \
               --database-url postgres://grid:grid_example@db/grid
         "
+
+  pike-contract-builder:
+    image: pike-contract-builder
+    container_name: pike-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-pike*.scar /usr/share/scar
+      "
 
   db:
     image: postgres
@@ -73,6 +89,7 @@ services:
     image: splintercommunity/splinterd:latest
     container_name: splinterd
     volumes:
+      - contracts-shared:/usr/share/scar
       - splinter-shared:/splinter_shared
     entrypoint: |
       bash -c "

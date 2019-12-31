@@ -25,6 +25,20 @@ ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
 RUN cargo build --target wasm32-unknown-unknown --release
 
+# Build a scar file
+# Copy the packaging directory
+COPY contracts/pike/packaging/scar/* \
+     /build/contracts/pike/packaging/scar/
+
+# Copy the contract to the packaging directory
+RUN cp /build/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm \
+    packaging/scar
+
+WORKDIR /build/contracts/pike/packaging/scar
+
+# Create .scar file
+RUN tar -jcvf /tmp/grid-pike_${REPO_VERSION}.scar .
+
 # -------------=== pike submitter build ===-------------
 
 FROM hyperledger/sawtooth-sabre-cli
@@ -34,3 +48,6 @@ COPY --from=grid-pike-builder \
 
 # Copy the contract definition
 COPY contracts/pike/pike.yaml /tmp
+
+COPY --from=grid-pike-builder \
+    /tmp/grid-pike*.scar /tmp
