@@ -57,6 +57,21 @@ services:
         cp /tmp/grid-pike*.scar /usr/share/scar
       "
 
+  product-contract-builder:
+    image: product-contract-builder
+    container_name: product-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-product*.scar /usr/share/scar
+      "
+
   db:
     image: postgres
     container_name: db
