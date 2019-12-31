@@ -587,7 +587,9 @@ pub mod tests {
     #[test]
     fn test_heartbeat_notifications_raw_tcp() {
         let mut transport = Box::new(RawTransport::default());
-        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
+        let mut listener = transport.listen("tcp://localhost:0").unwrap();
+        let endpoint = listener.endpoint();
+
         let mesh = Mesh::new(512, 128);
         let mesh_clone = mesh.clone();
 
@@ -599,9 +601,7 @@ pub mod tests {
         let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
-        let response = connector
-            .request_connection("tcp://localhost:3030")
-            .unwrap();
+        let response = connector.request_connection(&endpoint).unwrap();
 
         assert_eq!(
             response,
@@ -615,12 +615,7 @@ pub mod tests {
 
         let notification = subscriber.next().unwrap();
 
-        assert!(
-            notification
-                == ConnectionManagerNotification::HeartbeatSent {
-                    endpoint: "tcp://localhost:3030".to_string(),
-                }
-        );
+        assert!(notification == ConnectionManagerNotification::HeartbeatSent { endpoint });
 
         // Verify mesh received heartbeat
 
@@ -635,7 +630,8 @@ pub mod tests {
     #[test]
     fn test_remove_connection() {
         let mut transport = Box::new(RawTransport::default());
-        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
+        let mut listener = transport.listen("tcp://localhost:0").unwrap();
+        let endpoint = listener.endpoint();
         let mesh = Mesh::new(512, 128);
         let mesh_clone = mesh.clone();
 
@@ -647,9 +643,7 @@ pub mod tests {
         let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
-        let add_response = connector
-            .request_connection("tcp://localhost:3030")
-            .unwrap();
+        let add_response = connector.request_connection(&endpoint).unwrap();
 
         assert_eq!(
             add_response,
@@ -659,7 +653,7 @@ pub mod tests {
             }
         );
 
-        let remove_response = connector.remove_connection("tcp://localhost:3030").unwrap();
+        let remove_response = connector.remove_connection(&endpoint).unwrap();
 
         assert_eq!(
             remove_response,
@@ -673,7 +667,8 @@ pub mod tests {
     #[test]
     fn test_remove_nonexistent_connection() {
         let mut transport = Box::new(RawTransport::default());
-        let mut listener = transport.listen("tcp://localhost:3030").unwrap();
+        let mut listener = transport.listen("tcp://localhost:0").unwrap();
+        let endpoint = listener.endpoint();
         let mesh = Mesh::new(512, 128);
         let mesh_clone = mesh.clone();
 
@@ -685,7 +680,7 @@ pub mod tests {
         let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
         let connector = cm.start().unwrap();
 
-        let remove_response = connector.remove_connection("tcp://localhost:3030").unwrap();
+        let remove_response = connector.remove_connection(&endpoint).unwrap();
 
         assert_eq!(
             remove_response,
