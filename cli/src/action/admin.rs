@@ -41,8 +41,8 @@ const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 pub struct KeyGenAction;
 
 impl Action for KeyGenAction {
-    fn run<'a>(
-        &mut self,
+    fn reconfigure_logging<'a>(
+        &self,
         arg_matches: Option<&ArgMatches<'a>>,
         logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
@@ -51,6 +51,12 @@ impl Action for KeyGenAction {
         if args.is_present("quiet") {
             logger_handle.parse_new_spec("error");
         }
+
+        Ok(())
+    }
+
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
         let key_name = args.value_of("key_name").unwrap_or("splinter");
         let key_dir = args
@@ -77,8 +83,8 @@ impl Action for KeyGenAction {
 pub struct KeyRegistryGenerationAction;
 
 impl Action for KeyRegistryGenerationAction {
-    fn run<'a>(
-        &mut self,
+    fn reconfigure_logging<'a>(
+        &self,
         arg_matches: Option<&ArgMatches<'a>>,
         logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
@@ -87,6 +93,12 @@ impl Action for KeyRegistryGenerationAction {
         if args.is_present("quiet") {
             logger_handle.parse_new_spec("error");
         }
+
+        Ok(())
+    }
+
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
         let registry_spec_path = args
             .value_of("registry_spec_path")

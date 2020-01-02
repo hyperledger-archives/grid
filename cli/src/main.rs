@@ -265,7 +265,8 @@ fn run() -> Result<(), CliError> {
         );
     }
 
-    subcommands.run(Some(&matches), &mut logger_handle)
+    subcommands.reconfigure_logging(Some(&matches), &mut logger_handle)?;
+    subcommands.run(Some(&matches))
 }
 
 fn main() {

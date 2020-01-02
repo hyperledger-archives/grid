@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use clap::ArgMatches;
-use flexi_logger::ReconfigurationHandle;
 
 use crate::error::CliError;
 
@@ -22,11 +21,7 @@ use super::Action;
 pub struct CircuitCreateAction;
 
 impl Action for CircuitCreateAction {
-    fn run<'a>(
-        &mut self,
-        arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
         let url = args.value_of("url").unwrap_or("http://localhost:8085");
         let key = args.value_of("private_key_file").unwrap_or("splinter");
@@ -51,11 +46,7 @@ enum Vote {
 pub struct CircuitVoteAction;
 
 impl Action for CircuitVoteAction {
-    fn run<'a>(
-        &mut self,
-        arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
         let url = args.value_of("url").unwrap_or("http://localhost:8085");
         let key = args.value_of("private_key_file").unwrap_or("splinter");

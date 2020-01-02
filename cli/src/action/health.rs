@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use clap::ArgMatches;
-use flexi_logger::ReconfigurationHandle;
 use reqwest;
 use serde_json::Value;
 
@@ -23,11 +22,7 @@ use crate::error::CliError;
 pub struct StatusAction;
 
 impl Action for StatusAction {
-    fn run<'a>(
-        &mut self,
-        arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let url = if let Some(args) = arg_matches {
             args.value_of("url").unwrap_or("http://localhost:8085")
         } else {
