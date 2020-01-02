@@ -20,8 +20,8 @@ extern crate diesel;
 mod action;
 mod error;
 
+use crate::action::{admin, certs, Action, SubcommandActions};
 use crate::error::CliError;
-use action::{admin, certs, Action, SubcommandActions};
 
 use clap::clap_app;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
@@ -134,6 +134,79 @@ fn run() -> Result<(), CliError> {
         )
     }
 
+    #[cfg(feature = "circuit")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("circuit")
+                .about("Provides circuit management functionality")
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Propose that a new circuit is created")
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .takes_value(true)
+                                .help("URL of Splinter Daemon"),
+                        )
+                        .arg(
+                            Arg::with_name("private_key_file")
+                                .value_name("private-key-file")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Path to private key file"),
+                        )
+                        .arg(
+                            Arg::with_name("path")
+                                .takes_value(true)
+                                .required(true)
+                                .help("Path to a yaml file that defines the circuit proposal"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("vote")
+                        .about("Vote on a new circuit proposal")
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .takes_value(true)
+                                .help("URL of Splinter Daemon"),
+                        )
+                        .arg(
+                            Arg::with_name("private_key_file")
+                                .value_name("private-key-file")
+                                .short("k")
+                                .takes_value(true)
+                                .help("Path to private key file"),
+                        )
+                        .arg(
+                            Arg::with_name("circuit_id")
+                                .value_name("circuit-id")
+                                .takes_value(true)
+                                .required(true)
+                                .help("The circuit id of the proposed circuit"),
+                        )
+                        .arg(
+                            Arg::with_name("accept")
+                                .required(true)
+                                .long("accept")
+                                .conflicts_with("reject")
+                                .possible_values(&["accept", "reject"])
+                                .help("Accept the proposal"),
+                        )
+                        .arg(
+                            Arg::with_name("reject")
+                                .required(true)
+                                .long("reject")
+                                .conflicts_with("accept")
+                                .possible_values(&["accept", "reject"])
+                                .help("Reject the proposal"),
+                        ),
+                ),
+        );
+    }
+
     let matches = app.get_matches();
 
     // set default to info
@@ -180,6 +253,18 @@ fn run() -> Result<(), CliError> {
             SubcommandActions::new().with_command("migrate", database::MigrateAction),
         )
     }
+
+    #[cfg(feature = "circuit")]
+    {
+        use action::circuit;
+        subcommands = subcommands.with_command(
+            "circuit",
+            SubcommandActions::new()
+                .with_command("create", circuit::CircuitCreateAction)
+                .with_command("vote", circuit::CircuitVoteAction),
+        );
+    }
+
     subcommands.run(Some(&matches), &mut logger_handle)
 }
 

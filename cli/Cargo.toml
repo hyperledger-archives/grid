@@ -18,6 +18,7 @@ default = []
 stable = ["default"]
 
 experimental = [
+    "circuit",
     "health",
     "database",
     "database-migrate-biome-credentials",
@@ -25,6 +26,7 @@ experimental = [
     "database-migrate-biome-users",
 ]
 
+circuit = ["reqwest"]
 health = ["reqwest", "serde_json"]
 
 database = ["splinter/database", "diesel"]
