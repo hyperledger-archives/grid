@@ -15,6 +15,7 @@
 version: '3.6'
 
 volumes:
+  contracts-shared:
   splinter-shared:
 
 services:
@@ -24,6 +25,8 @@ services:
     build:
       context: .
       dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
     expose:
       - 8080
     ports:
@@ -40,6 +43,66 @@ services:
           gridd -vv -b gridd:8080 -C tcp://validator:4004 \
               --database-url postgres://grid:grid_example@db/grid
         "
+
+  pike-contract-builder:
+    image: pike-contract-builder
+    container_name: pike-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-pike*.scar /usr/share/scar
+      "
+
+  product-contract-builder:
+    image: product-contract-builder
+    container_name: product-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-product*.scar /usr/share/scar
+      "
+
+  schema-contract-builder:
+    image: schema-contract-builder
+    container_name: schema-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/schema/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-schema*.scar /usr/share/scar
+      "
+
+  tnt-contract-builder:
+    image: tnt-contract-builder
+    container_name: tnt-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-track-and-trace*.scar /usr/share/scar
+      "
 
   db:
     image: postgres
@@ -73,6 +136,7 @@ services:
     image: splintercommunity/splinterd:latest
     container_name: splinterd
     volumes:
+      - contracts-shared:/usr/share/scar
       - splinter-shared:/splinter_shared
     entrypoint: |
       bash -c "
