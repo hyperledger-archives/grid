@@ -29,8 +29,8 @@ impl Action for StatusAction {
             "http://localhost:8085"
         };
 
-        let status: Value = reqwest::get(&format!("{}/health/status", url))
-            .and_then(|mut res| res.json())
+        let status: Value = reqwest::blocking::get(&format!("{}/health/status", url))
+            .and_then(|res| res.json())
             .map_err(|err| CliError::ActionError(format!("{:?}", err)))?;
 
         println!(
