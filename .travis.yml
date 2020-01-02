@@ -73,9 +73,13 @@ jobs:
       language: generic
       before_deploy:
         - docker login -u splintercommunity -p $DOCKER_TOKEN
-        - REPO_VERSION=$(./bin/get_version) ISOLATION_ID="master" docker-compose -f docker-compose-installed.yaml build
       deploy:
-        provider: script
-        script: ISOLATION_ID="master" docker-compose -f docker-compose-installed.yaml push
-        on:
-          branch: master
+        - provider: script
+          script: bash ci/publish-docker master
+          on:
+            branch: master
+        - provider: script
+          script: bash ci/publish-docker
+          on:
+            tags: true
+            all_branches: true
