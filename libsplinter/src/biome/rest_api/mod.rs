@@ -49,6 +49,7 @@ use std::sync::Arc;
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
+#[cfg(feature = "biome-key-management")]
 use super::key_management::store::postgres::PostgresKeyStore;
 use super::secrets::{AutoSecretManager, SecretManager};
 use super::users::user_store::SplinterUserStore;
@@ -70,8 +71,7 @@ pub struct BiomeRestResourceManager {
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
     user_store: Arc<SplinterUserStore>,
-    // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
-    #[allow(dead_code)]
+    #[cfg(feature = "biome-key-management")]
     key_store: Arc<PostgresKeyStore>,
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
@@ -117,6 +117,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
 #[derive(Default)]
 pub struct BiomeRestResourceManagerBuilder {
     user_store: Option<SplinterUserStore>,
+    #[cfg(feature = "biome-key-management")]
     key_store: Option<PostgresKeyStore>,
     rest_config: Option<BiomeRestConfig>,
     token_secret_manager: Option<Arc<dyn SecretManager>>,
@@ -140,6 +141,7 @@ impl BiomeRestResourceManagerBuilder {
     /// # Arguments
     ///
     /// * `pool`: ConnectionPool to database that will serve as backend for KeyStore
+    #[cfg(feature = "biome-key-management")]
     pub fn with_key_store(mut self, pool: ConnectionPool) -> BiomeRestResourceManagerBuilder {
         self.key_store = Some(PostgresKeyStore::new(pool));
         self
@@ -190,6 +192,7 @@ impl BiomeRestResourceManagerBuilder {
                 "Missing user store".to_string(),
             )
         })?;
+        #[cfg(feature = "biome-key-management")]
         let key_store = self.key_store.ok_or_else(|| {
             BiomeRestResourceManagerBuilderError::MissingRequiredField(
                 "MissingKeyStore".to_string(),
@@ -210,6 +213,7 @@ impl BiomeRestResourceManagerBuilder {
 
         Ok(BiomeRestResourceManager {
             user_store: Arc::new(user_store),
+            #[cfg(feature = "biome-key-management")]
             key_store: Arc::new(key_store),
             rest_config: Arc::new(rest_config),
             token_secret_manager,
