@@ -23,7 +23,7 @@ use splinter::biome::credentials::database::run_migrations as run_biome_credenti
 #[cfg(feature = "database-migrate-biome-notifications")]
 use splinter::biome::notifications::database::run_migrations as run_biome_notifications_migrations;
 #[cfg(feature = "database-migrate-biome-user")]
-use splinter::biome::user::database::run_migrations as run_biome_user_migrations;
+use splinter::biome::user::store::run_postgres_migrations as run_biome_user_migrations;
 use splinter::database::run_migrations as run_setup_migrations;
 
 pub struct MigrateAction;

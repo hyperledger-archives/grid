@@ -15,10 +15,8 @@
 //! Defines methods and utilities to interact with user tables in the database.
 
 pub(super) mod helpers;
-pub(in crate::biome) mod models;
-pub(super) mod schema;
 
-embed_migrations!("./src/biome/user/database/migrations");
+embed_migrations!("./src/biome/user/store/diesel/postgres/migrations");
 
 use diesel::pg::PgConnection;
 

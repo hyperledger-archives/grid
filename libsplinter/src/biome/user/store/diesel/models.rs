@@ -12,14 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::UserModel;
-use super::super::schema::splinter_user;
+use super::schema::*;
+use super::SplinterUser;
 
-use diesel::{dsl::insert_into, pg::PgConnection, prelude::*, QueryResult};
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "splinter_user"]
+#[primary_key(id)]
+pub struct UserModel {
+    pub id: String,
+}
 
-pub fn insert_user(conn: &PgConnection, user: UserModel) -> QueryResult<()> {
-    insert_into(splinter_user::table)
-        .values(&vec![user])
-        .execute(conn)
-        .map(|_| ())
+impl From<UserModel> for SplinterUser {
+    fn from(user: UserModel) -> Self {
+        SplinterUser { id: user.id }
+    }
+}
+
+impl Into<UserModel> for SplinterUser {
+    fn into(self) -> UserModel {
+        UserModel { id: self.id }
+    }
 }

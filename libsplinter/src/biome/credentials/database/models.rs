@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::schema::*;
-use crate::biome::user::database::models::UserModel;
+use crate::biome::user::store::diesel::models::UserModel;
 
 #[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[table_name = "user_credentials"]
