@@ -18,7 +18,7 @@ pub(super) mod helpers;
 pub(in crate::biome) mod models;
 pub(super) mod schema;
 
-embed_migrations!("./src/biome/users/database/migrations");
+embed_migrations!("./src/biome/user/database/migrations");
 
 use diesel::pg::PgConnection;
 
@@ -33,7 +33,7 @@ use crate::database::error::DatabaseError;
 pub fn run_migrations(conn: &PgConnection) -> Result<(), DatabaseError> {
     embedded_migrations::run(conn).map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?;
 
-    info!("Successfully applied biome users migrations");
+    info!("Successfully applied biome user migrations");
 
     Ok(())
 }

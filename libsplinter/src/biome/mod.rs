@@ -34,4 +34,4 @@ pub mod notifications;
 pub mod rest_api;
 pub mod secrets;
 pub mod sessions;
-pub mod users;
+pub mod user;

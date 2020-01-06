@@ -23,7 +23,7 @@ use splinter::biome::credentials::database::run_migrations as run_biome_credenti
 #[cfg(feature = "database-migrate-biome-notifications")]
 use splinter::biome::notifications::database::run_migrations as run_biome_notifications_migrations;
 #[cfg(feature = "database-migrate-biome-users")]
-use splinter::biome::users::database::run_migrations as run_biome_users_migrations;
+use splinter::biome::user::database::run_migrations as run_biome_user_migrations;
 use splinter::database::run_migrations as run_setup_migrations;
 
 pub struct MigrateAction;
@@ -49,7 +49,7 @@ impl Action for MigrateAction {
         })?;
 
         #[cfg(feature = "database-migrate-biome-users")]
-        run_biome_users_migrations(&connection).map_err(|err| {
+        run_biome_user_migrations(&connection).map_err(|err| {
             CliError::DatabaseError(format!("Unable to run Biome users migrations: {}", err))
         })?;
         #[cfg(feature = "database-migrate-biome-credentials")]
