@@ -13,11 +13,14 @@
 // limitations under the License.
 
 pub(in crate::biome) mod models;
+mod operations;
 pub(in super::super) mod postgres;
 mod schema;
 
 use super::{SplinterUser, UserStore, UserStoreError};
 use crate::database::ConnectionPool;
+use operations::add_user::UserStoreAddUserOperation as _;
+use operations::UserStoreOperations;
 
 /// Manages creating, updating and fetching SplinterUser from the databae
 pub struct SplinterUserStore {
@@ -37,14 +40,7 @@ impl SplinterUserStore {
 
 impl UserStore<SplinterUser> for SplinterUserStore {
     fn add_user(&self, user: SplinterUser) -> Result<(), UserStoreError> {
-        let user_model = user.into();
-        postgres::helpers::insert_user(&*self.connection_pool.get()?, user_model).map_err(
-            |err| UserStoreError::OperationError {
-                context: "Failed to add user".to_string(),
-                source: Box::new(err),
-            },
-        )?;
-        Ok(())
+        UserStoreOperations::new(&*self.connection_pool.get()?).add_user(user.into())
     }
 
     fn update_user(&self, _updated_user: SplinterUser) -> Result<(), UserStoreError> {
