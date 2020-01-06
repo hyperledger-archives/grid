@@ -25,12 +25,15 @@ pub struct CreateCircuit {
     pub roster: Vec<SplinterService>,
     pub members: Vec<SplinterNode>,
     pub authorization_type: AuthorizationType,
+    #[serde(default)]
     pub persistence: PersistenceType,
     pub durability: DurabilityType,
+    #[serde(default)]
     pub routes: RouteType,
     pub circuit_management_type: String,
     #[serde(serialize_with = "as_hex")]
     #[serde(deserialize_with = "deserialize_hex")]
+    #[serde(default)]
     pub application_metadata: Vec<u8>,
 }
 
@@ -150,6 +153,12 @@ pub enum PersistenceType {
     Any,
 }
 
+impl Default for PersistenceType {
+    fn default() -> Self {
+        PersistenceType::Any
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DurabilityType {
     NoDurability,
@@ -158,6 +167,12 @@ pub enum DurabilityType {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum RouteType {
     Any,
+}
+
+impl Default for RouteType {
+    fn default() -> Self {
+        RouteType::Any
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -189,6 +204,7 @@ pub struct SplinterService {
     pub service_id: String,
     pub service_type: String,
     pub allowed_nodes: Vec<String>,
+    #[serde(default)]
     pub arguments: Vec<(String, String)>,
 }
 
