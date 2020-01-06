@@ -147,6 +147,7 @@ fn run() -> Result<(), CliError> {
                         .arg(
                             Arg::with_name("url")
                                 .short("U")
+                                .long("url")
                                 .takes_value(true)
                                 .help("URL of Splinter Daemon"),
                         )
@@ -154,6 +155,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("private_key_file")
                                 .value_name("private-key-file")
                                 .short("k")
+                                .long("key")
                                 .takes_value(true)
                                 .help("Path to private key file"),
                         )
@@ -170,6 +172,7 @@ fn run() -> Result<(), CliError> {
                         .arg(
                             Arg::with_name("url")
                                 .short("U")
+                                .long("url")
                                 .takes_value(true)
                                 .help("URL of Splinter Daemon"),
                         )
@@ -177,6 +180,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("private_key_file")
                                 .value_name("private-key-file")
                                 .short("k")
+                                .long("key")
                                 .takes_value(true)
                                 .help("Path to private key file"),
                         )
