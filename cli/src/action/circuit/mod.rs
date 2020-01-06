@@ -15,7 +15,11 @@
 mod api;
 mod payload;
 
+use std::fs::File;
+use std::io::Read;
+
 use clap::ArgMatches;
+use splinter::admin::messages::CreateCircuit;
 
 use crate::error::CliError;
 
@@ -39,8 +43,42 @@ impl Action for CircuitCreateAction {
     }
 }
 
-fn create_circuit_proposal(_url: &str, _key: &str, _path: &str) -> Result<(), CliError> {
-    unimplemented!()
+fn create_circuit_proposal(
+    url: &str,
+    private_key_file: &str,
+    proposal_path: &str,
+) -> Result<(), CliError> {
+    let client = api::SplinterRestClient::new(url);
+    let requester_node = client.fetch_node_id()?;
+    let private_key_hex = read_private_key(private_key_file)?;
+
+    let proposal_file = File::open(proposal_path).map_err(|err| {
+        CliError::EnvironmentError(format!("Unable to open {}: {}", proposal_path, err))
+    })?;
+
+    let create_request: CreateCircuit = serde_yaml::from_reader(proposal_file).map_err(|err| {
+        CliError::EnvironmentError(format!("Unable to parse {}: {}", proposal_path, err))
+    })?;
+
+    let signed_payload =
+        payload::make_signed_payload(&requester_node, &private_key_hex, create_request)?;
+
+    client.submit_admin_payload(signed_payload)
+}
+
+/// Reads a private key from the given file name.
+pub fn read_private_key(file_name: &str) -> Result<String, CliError> {
+    let mut file = File::open(file_name).map_err(|err| {
+        CliError::EnvironmentError(format!("Unable to open {}: {}", file_name, err))
+    })?;
+
+    let mut buf = String::new();
+
+    file.read_to_string(&mut buf).map_err(|err| {
+        CliError::EnvironmentError(format!("Unable to read {}: {}", file_name, err))
+    })?;
+
+    Ok(buf)
 }
 
 enum Vote {
