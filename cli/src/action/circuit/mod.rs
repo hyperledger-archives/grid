@@ -27,7 +27,9 @@ impl Action for CircuitCreateAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
         let url = args.value_of("url").unwrap_or("http://localhost:8085");
-        let key = args.value_of("private_key_file").unwrap_or("splinter");
+        let key = args
+            .value_of("private_key_file")
+            .unwrap_or("./splinter.priv");
         let path = match args.value_of("path") {
             Some(path) => path,
             None => return Err(CliError::ActionError("Path is required".into())),
