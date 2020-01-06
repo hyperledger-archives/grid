@@ -60,3 +60,11 @@ experimental = ["splinter-support"]
 sawtooth-support = []
 splinter-support = ["splinter"]
 test-api = []
+
+[package.metadata.deb]
+maintainer = "The Hyperledger Grid Team"
+depends = "$auto"
+assets = [
+    ["target/release/gridd", "/usr/bin/gridd", "755"]
+]
+maintainer-scripts = "packaging/ubuntu"

@@ -15,6 +15,8 @@
  * -----------------------------------------------------------------------------
  */
 
+#[cfg(feature = "admin-keygen")]
+pub mod admin;
 pub mod agents;
 pub mod database;
 pub mod keygen;

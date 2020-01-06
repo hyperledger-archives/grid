@@ -47,4 +47,5 @@ stable = ["sawtooth"]
 experimental = ["splinter"]
 
 sawtooth = []
-splinter = []
+splinter = ["admin-keygen"]
+admin-keygen = []
