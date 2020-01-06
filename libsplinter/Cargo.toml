@@ -77,6 +77,7 @@ experimental = [
     "biome-credentials",
     "biome-key-management",
     "biome-notifications",
+    "biome-user",
     "circuit-read",
     "connection-manager",
     "connection-manager-notification-iter-try-next",
@@ -87,9 +88,10 @@ experimental = [
 ]
 
 biome = ["database", "jsonwebtoken", "rand"]
-biome-credentials = ["biome", "database", "bcrypt"]
+biome-credentials = ["biome", "biome-user", "database", "bcrypt"]
 biome-key-management = ["biome", "database"]
 biome-notifications = ["biome", "database"]
+biome-user = ["biome", "database"]
 circuit-read = []
 connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
