@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Users are central entity in the biome module. They represent a real person who uses a splinter
-//! application.
+//! Users are the central entity in the biome module. They represent a real person who uses
+//! a Splinter application.
 
 pub mod store;
