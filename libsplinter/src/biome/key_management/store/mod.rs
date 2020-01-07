@@ -33,9 +33,16 @@ pub trait KeyStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `key` - The key with the updated information
+    /// * `public_key`: The public key of the key record to be updated.
+    /// * `user_id`: The ID owner of the key record to be updated.
+    /// * `new_display_name`: The new display name of the key record.
     ///
-    fn update_key(&self, updated_key: T) -> Result<(), KeyStoreError>;
+    fn update_key(
+        &self,
+        public_key: &str,
+        user_id: &str,
+        new_display_name: &str,
+    ) -> Result<(), KeyStoreError>;
 
     /// Removes a key from the underlying storage
     ///

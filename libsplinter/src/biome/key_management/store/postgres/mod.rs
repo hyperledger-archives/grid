@@ -70,7 +70,12 @@ impl KeyStore<Key> for PostgresKeyStore {
         Ok(())
     }
 
-    fn update_key(&self, _updated_key: Key) -> Result<(), KeyStoreError> {
+    fn update_key(
+        &self,
+        _public_key: &str,
+        _user_id: &str,
+        _new_display_name: &str,
+    ) -> Result<(), KeyStoreError> {
         unimplemented!()
     }
 
