@@ -19,7 +19,7 @@ pub use error::KeyStoreError;
 
 /// Defines methods for CRUD operations and fetching and listing keys
 /// without defining a storage strategy
-pub trait KeyStore<T> {
+pub trait KeyStore<T>: Sync + Send {
     /// Adds a key to the underlying storage
     ///
     /// # Arguments
