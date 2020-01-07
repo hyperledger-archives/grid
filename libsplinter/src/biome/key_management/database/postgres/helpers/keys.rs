@@ -30,3 +30,14 @@ pub fn list_keys_with_user_id(conn: &PgConnection, user_id: &str) -> QueryResult
 pub fn list_keys(conn: &PgConnection) -> QueryResult<Vec<KeyModel>> {
     keys::table.load::<KeyModel>(conn)
 }
+
+pub fn update_key(
+    conn: &PgConnection,
+    user_id: &str,
+    public_key: &str,
+    display_name: &str,
+) -> QueryResult<usize> {
+    diesel::update(keys::table.find((public_key, user_id)))
+        .set((keys::display_name.eq(display_name),))
+        .execute(conn)
+}
