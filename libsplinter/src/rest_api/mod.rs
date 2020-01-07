@@ -193,8 +193,7 @@ impl Resource {
             ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
             + Send
             + Sync
-            + 'static
-            + Clone,
+            + 'static,
     {
         Self::build(route).add_method(method, handle)
     }
@@ -214,8 +213,7 @@ impl Resource {
             ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
             + Send
             + Sync
-            + 'static
-            + Clone,
+            + 'static,
     {
         self.methods.push((method, Arc::new(Box::new(handle))));
         self
