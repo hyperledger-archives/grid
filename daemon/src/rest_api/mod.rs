@@ -18,6 +18,7 @@ mod routes;
 use std::sync::mpsc;
 use std::thread;
 
+use crate::config::Endpoint;
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::routes::DbExecutor;
@@ -37,12 +38,14 @@ const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     database_connection: Addr<DbExecutor>,
+    endpoint: Endpoint,
 }
 
 impl AppState {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
         connection_pool: ConnectionPool,
+        endpoint: Endpoint,
     ) -> Self {
         let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
             DbExecutor::new(connection_pool.clone())
@@ -69,6 +72,7 @@ pub fn run(
     bind_url: &str,
     database_connection: ConnectionPool,
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
+    endpoint: Endpoint,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -83,7 +87,7 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let state = AppState::new(batch_submitter, database_connection);
+            let state = AppState::new(batch_submitter, database_connection, endpoint);
 
             let addr = HttpServer::new(move || {
                 App::new()

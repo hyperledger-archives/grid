@@ -100,6 +100,7 @@ fn run() -> Result<(), DaemonError> {
         config.rest_api_endpoint(),
         connection_pool.clone(),
         batch_submitter,
+        config.endpoint().clone(),
     )?;
 
     let evt_processor = EventProcessor::start(

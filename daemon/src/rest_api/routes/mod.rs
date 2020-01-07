@@ -47,6 +47,7 @@ impl DbExecutor {
 #[cfg(all(feature = "test-api", test))]
 mod test {
     use super::*;
+    use crate::config::Endpoint;
     use crate::database;
     use crate::database::{
         helpers::MAX_COMMIT_NUM,
@@ -265,7 +266,11 @@ mod test {
                 let mock_batch_submitter = Box::new(MockBatchSubmitter {
                     sender: mock_sender,
                 });
-                AppState::new(mock_batch_submitter, get_connection_pool())
+                AppState::new(
+                    mock_batch_submitter,
+                    get_connection_pool(),
+                    Endpoint::from("tcp://localhost:9090"),
+                )
             };
             HttpService::new(
                 App::new()
