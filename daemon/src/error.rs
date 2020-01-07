@@ -21,6 +21,8 @@ use log;
 use crate::database::DatabaseError;
 use crate::event::EventProcessorError;
 use crate::rest_api::RestApiServerError;
+#[cfg(feature = "splinter-support")]
+use crate::splinter::error::AppAuthHandlerError;
 
 #[derive(Debug)]
 pub enum DaemonError {
@@ -32,6 +34,8 @@ pub enum DaemonError {
     StartUpError(Box<dyn Error>),
     ShutdownError(String),
     UnsupportedEndpoint(String),
+    #[cfg(feature = "splinter-support")]
+    AppAuthHandlerError(AppAuthHandlerError),
 }
 
 impl Error for DaemonError {
@@ -45,6 +49,8 @@ impl Error for DaemonError {
             DaemonError::StartUpError(err) => Some(&**err),
             DaemonError::ShutdownError(_) => None,
             DaemonError::UnsupportedEndpoint(_) => None,
+            #[cfg(feature = "splinter-support")]
+            DaemonError::AppAuthHandlerError(err) => Some(err),
         }
     }
 }
@@ -62,6 +68,10 @@ impl fmt::Display for DaemonError {
             DaemonError::StartUpError(e) => write!(f, "Start-up error: {}", e),
             DaemonError::ShutdownError(msg) => write!(f, "Unable to cleanly shutdown: {}", msg),
             DaemonError::UnsupportedEndpoint(msg) => write!(f, "{}", msg),
+            #[cfg(feature = "splinter-support")]
+            DaemonError::AppAuthHandlerError(e) => {
+                write!(f, "Application Authorization Handler Error: {}", e)
+            }
         }
     }
 }
@@ -110,5 +120,12 @@ impl From<EventProcessorError> for DaemonError {
 impl From<DatabaseError> for DaemonError {
     fn from(err: DatabaseError) -> Self {
         DaemonError::DatabaseError(Box::new(err))
+    }
+}
+
+#[cfg(feature = "splinter-support")]
+impl From<AppAuthHandlerError> for DaemonError {
+    fn from(err: AppAuthHandlerError) -> DaemonError {
+        DaemonError::AppAuthHandlerError(err)
     }
 }

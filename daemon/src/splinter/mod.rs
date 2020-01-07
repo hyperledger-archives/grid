@@ -15,5 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
+pub mod app_auth_handler;
 pub mod batch_submitter;
+pub mod error;
 pub mod event;

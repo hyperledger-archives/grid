@@ -25,6 +25,9 @@ extern crate diesel_migrations;
 extern crate log;
 #[macro_use]
 extern crate serde_json;
+#[cfg(feature = "splinter-support")]
+#[macro_use]
+extern crate serde;
 
 mod config;
 mod database;
