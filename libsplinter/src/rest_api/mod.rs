@@ -93,7 +93,7 @@ pub trait RestResourceProvider {
     fn resources(&self) -> Vec<Resource>;
 }
 
-type HandlerFunction = Box<
+pub type HandlerFunction = Box<
     dyn Fn(HttpRequest, web::Payload) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
         + Send
         + Sync
