@@ -41,14 +41,23 @@ pub fn make_key_management_route(
     key_store: Arc<dyn KeyStore<Key>>,
     secret_manager: Arc<dyn SecretManager>,
 ) -> Resource {
-    Resource::build("/biome/users/{user_id}/keys").add_method(
-        Method::Post,
-        handle_post(
-            rest_config.clone(),
-            key_store.clone(),
-            secret_manager.clone(),
-        ),
-    )
+    Resource::build("/biome/users/{user_id}/keys")
+        .add_method(
+            Method::Post,
+            handle_post(
+                rest_config.clone(),
+                key_store.clone(),
+                secret_manager.clone(),
+            ),
+        )
+        .add_method(
+            Method::Get,
+            handle_get(
+                rest_config.clone(),
+                key_store.clone(),
+                secret_manager.clone(),
+            ),
+        )
 }
 
 fn handle_post(
@@ -128,6 +137,61 @@ fn handle_post(
                 }
             }
         }))
+    })
+}
+
+fn handle_get(
+    rest_config: Arc<BiomeRestConfig>,
+    key_store: Arc<dyn KeyStore<Key>>,
+    secret_manager: Arc<dyn SecretManager>,
+) -> HandlerFunction {
+    Box::new(move |request, _| {
+        let key_store = key_store.clone();
+        let user_id = match request.match_info().get("user_id") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("User ID is not in path request");
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        };
+
+        match authorize_user(&request, &user_id, &secret_manager, &rest_config) {
+            AuthorizationResult::Authorized => (),
+            AuthorizationResult::Unauthorized(msg) => {
+                return Box::new(
+                    HttpResponse::Unauthorized()
+                        .json(ErrorResponse::unauthorized(&msg))
+                        .into_future(),
+                )
+            }
+            AuthorizationResult::Failed => {
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        }
+
+        match key_store.list_keys(Some(&user_id)) {
+            Ok(keys) => Box::new(
+                HttpResponse::Ok()
+                    .json(json!({ "data": keys }))
+                    .into_future(),
+            ),
+            Err(err) => {
+                debug!("Failed to fetch keys {}", err);
+                Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                )
+            }
+        }
     })
 }
 

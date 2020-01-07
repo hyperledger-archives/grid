@@ -24,6 +24,7 @@ pub(in crate::biome) mod store;
 use database::postgres::models::KeyModel;
 
 // Represents a public and private key pair
+#[derive(Serialize)]
 pub struct Key {
     public_key: String,
     encrypted_private_key: String,
