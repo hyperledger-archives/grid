@@ -51,6 +51,10 @@ impl Endpoint {
     pub fn is_sawtooth(&self) -> bool {
         self.backend == Backend::Sawtooth
     }
+
+    pub fn is_splinter(&self) -> bool {
+        self.backend == Backend::Splinter
+    }
 }
 
 impl From<&str> for Endpoint {
