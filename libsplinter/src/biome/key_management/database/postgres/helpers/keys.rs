@@ -17,6 +17,6 @@ use super::super::schema::keys;
 
 use diesel::{dsl::insert_into, pg::PgConnection, prelude::*, QueryResult};
 
-pub fn insert_key(conn: &PgConnection, key: KeyModel) -> QueryResult<usize> {
-    insert_into(keys::table).values(&vec![key]).execute(conn)
+pub fn insert_key(conn: &PgConnection, key: &KeyModel) -> QueryResult<usize> {
+    insert_into(keys::table).values(vec![key]).execute(conn)
 }
