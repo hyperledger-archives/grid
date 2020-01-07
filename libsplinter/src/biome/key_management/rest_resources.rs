@@ -35,6 +35,13 @@ struct NewKey {
     encrypted_private_key: String,
     display_name: String,
 }
+
+#[derive(Deserialize)]
+struct UpdatedKey {
+    public_key: String,
+    new_display_name: String,
+}
+
 /// Defines a REST endpoint for managing keys
 pub fn make_key_management_route(
     rest_config: Arc<BiomeRestConfig>,
@@ -57,6 +64,10 @@ pub fn make_key_management_route(
                 key_store.clone(),
                 secret_manager.clone(),
             ),
+        )
+        .add_method(
+            Method::Patch,
+            handle_patch(rest_config, key_store, secret_manager),
         )
 }
 
@@ -192,6 +203,81 @@ fn handle_get(
                 )
             }
         }
+    })
+}
+
+fn handle_patch(
+    rest_config: Arc<BiomeRestConfig>,
+    key_store: Arc<dyn KeyStore<Key>>,
+    secret_manager: Arc<dyn SecretManager>,
+) -> HandlerFunction {
+    Box::new(move |request, payload| {
+        let key_store = key_store.clone();
+        let user_id = match request.match_info().get("user_id") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("User ID is not in path request");
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        };
+
+        match authorize_user(&request, &user_id, &secret_manager, &rest_config) {
+            AuthorizationResult::Authorized => (),
+            AuthorizationResult::Unauthorized(msg) => {
+                return Box::new(
+                    HttpResponse::Unauthorized()
+                        .json(ErrorResponse::unauthorized(&msg))
+                        .into_future(),
+                )
+            }
+            AuthorizationResult::Failed => {
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        }
+
+        Box::new(into_bytes(payload).and_then(move |bytes| {
+            let updated_key = match serde_json::from_slice::<UpdatedKey>(&bytes) {
+                Ok(val) => val,
+                Err(err) => {
+                    debug!("Error parsing payload {}", err);
+                    return HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&format!(
+                            "Failed to parse payload: {}",
+                            err
+                        )))
+                        .into_future();
+                }
+            };
+
+            match key_store.update_key(
+                &updated_key.public_key,
+                &user_id,
+                &updated_key.new_display_name,
+            ) {
+                Ok(()) => HttpResponse::Ok()
+                    .json(json!({ "message": "Key updated successfully" }))
+                    .into_future(),
+                Err(err) => {
+                    debug!("Failed to update key {}", err);
+                    match err {
+                        KeyStoreError::NotFoundError(msg) => HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&msg))
+                            .into_future(),
+                        _ => HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error())
+                            .into_future(),
+                    }
+                }
+            }
+        }))
     })
 }
 
