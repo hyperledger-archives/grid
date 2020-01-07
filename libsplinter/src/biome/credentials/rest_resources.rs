@@ -21,7 +21,7 @@ use crate::rest_api::{into_bytes, ErrorResponse, Method, Resource};
 
 use super::super::rest_api::BiomeRestConfig;
 use super::super::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
-use super::super::users::{user_store::SplinterUserStore, SplinterUser, UserStore};
+use super::super::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
 use super::{
     credentials_store::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
     UserCredentialsBuilder,
