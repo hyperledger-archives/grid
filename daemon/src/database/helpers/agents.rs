@@ -17,7 +17,7 @@
 
 use super::models::{Agent, NewAgent};
 use super::schema::agent;
-use super::MAX_BLOCK_NUM;
+use super::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{insert_into, update},
@@ -29,7 +29,7 @@ use diesel::{
 
 pub fn insert_agents(conn: &PgConnection, agents: &[NewAgent]) -> QueryResult<()> {
     for agent in agents {
-        update_agent_end_block_num(conn, &agent.public_key, agent.start_block_num)?;
+        update_agent_end_commit_num(conn, &agent.public_key, agent.start_commit_num)?;
     }
 
     insert_into(agent::table)
@@ -38,18 +38,18 @@ pub fn insert_agents(conn: &PgConnection, agents: &[NewAgent]) -> QueryResult<()
         .map(|_| ())
 }
 
-fn update_agent_end_block_num(
+fn update_agent_end_commit_num(
     conn: &PgConnection,
     public_key: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(agent::table)
         .filter(
             agent::public_key
                 .eq(public_key)
-                .and(agent::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(agent::end_block_num.eq(current_block_num))
+        .set(agent::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -57,7 +57,7 @@ fn update_agent_end_block_num(
 pub fn get_agents(conn: &PgConnection) -> QueryResult<Vec<Agent>> {
     agent::table
         .select(agent::all_columns)
-        .filter(agent::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<Agent>(conn)
 }
 
@@ -67,7 +67,7 @@ pub fn get_agent(conn: &PgConnection, public_key: &str) -> QueryResult<Option<Ag
         .filter(
             agent::public_key
                 .eq(public_key)
-                .and(agent::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .first(conn)
         .map(Some)

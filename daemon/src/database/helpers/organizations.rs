@@ -17,7 +17,7 @@
 
 use super::models::{NewOrganization, Organization};
 use super::schema::organization;
-use super::MAX_BLOCK_NUM;
+use super::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{insert_into, update},
@@ -32,7 +32,7 @@ pub fn insert_organizations(
     organizations: &[NewOrganization],
 ) -> QueryResult<()> {
     for org in organizations {
-        update_org_end_block_num(conn, &org.org_id, org.start_block_num)?;
+        update_org_end_commit_num(conn, &org.org_id, org.start_commit_num)?;
     }
 
     insert_into(organization::table)
@@ -41,18 +41,18 @@ pub fn insert_organizations(
         .map(|_| ())
 }
 
-fn update_org_end_block_num(
+fn update_org_end_commit_num(
     conn: &PgConnection,
     org_id: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(organization::table)
         .filter(
             organization::org_id
                 .eq(org_id)
-                .and(organization::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(organization::end_block_num.eq(current_block_num))
+        .set(organization::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -60,7 +60,7 @@ fn update_org_end_block_num(
 pub fn list_organizations(conn: &PgConnection) -> QueryResult<Vec<Organization>> {
     organization::table
         .select(organization::all_columns)
-        .filter(organization::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<Organization>(conn)
 }
 
@@ -73,7 +73,7 @@ pub fn fetch_organization(
         .filter(
             organization::org_id
                 .eq(organization_id)
-                .and(organization::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .first(conn)
         .map(Some)

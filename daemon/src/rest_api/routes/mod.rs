@@ -49,7 +49,7 @@ mod test {
     use super::*;
     use crate::database;
     use crate::database::{
-        helpers::MAX_BLOCK_NUM,
+        helpers::MAX_COMMIT_NUM,
         models::{
             LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
             NewOrganization, NewProduct, NewProductPropertyValue, NewProperty, NewProposal,
@@ -662,7 +662,7 @@ mod test {
     /// with a list containing one organization, when there's two records for the same
     /// organization_id. The rest-api should return a list with a single organization with the
     /// record that contains the most recent information for that organization
-    /// (end_block_num == MAX_BLOCK_NUM)
+    /// (end_commit_num == MAX_COMMIT_NUM)
     ///
     #[test]
     fn test_list_organizations_updated() {
@@ -744,7 +744,7 @@ mod test {
     /// with a single organization, when there's two records for the same
     /// organization_id. The rest-api should return a single organization with the
     /// record that contains the most recent information for that organization
-    /// (end_block_num == MAX_BLOCK_NUM)
+    /// (end_commit_num == MAX_COMMIT_NUM)
     ///
     #[test]
     fn test_fetch_organization_updated_ok() {
@@ -1117,7 +1117,7 @@ mod test {
     /// with a list containing one record, when there's two records for the same
     /// record_id. The rest-api should return a list with a single record with the
     /// record that contains the most recent information for that record
-    /// (end_block_num == MAX_BLOCK_NUM)
+    /// (end_commit_num == MAX_COMMIT_NUM)
     ///
     #[test]
     fn test_list_records_updated() {
@@ -1779,8 +1779,8 @@ mod test {
             active: true,
             roles: vec![],
             metadata: JsonValue::Object(Map::new()),
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             source: None,
         }]
     }
@@ -1793,8 +1793,8 @@ mod test {
                 active: true,
                 roles: vec!["OWNER".to_string()],
                 metadata: JsonValue::Object(Map::new()),
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 source: None,
             },
             NewAgent {
@@ -1803,8 +1803,8 @@ mod test {
                 active: true,
                 roles: vec!["CUSTODIAN".to_string()],
                 metadata: JsonValue::Object(Map::new()),
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 source: None,
             },
         ]
@@ -1826,8 +1826,8 @@ mod test {
             name: ORG_NAME_1.to_string(),
             address: ADDRESS_1.to_string(),
             metadata: vec![],
-            start_block_num: 1,
-            end_block_num: database::helpers::MAX_BLOCK_NUM,
+            start_commit_num: 1,
+            end_commit_num: database::helpers::MAX_COMMIT_NUM,
             source: None,
         }]
     }
@@ -1839,8 +1839,8 @@ mod test {
                 name: ORG_NAME_2.to_string(),
                 address: ADDRESS_2.to_string(),
                 metadata: vec![],
-                start_block_num: 2,
-                end_block_num: 4,
+                start_commit_num: 2,
+                end_commit_num: 4,
                 source: None,
             },
             NewOrganization {
@@ -1848,8 +1848,8 @@ mod test {
                 name: ORG_NAME_2.to_string(),
                 address: UPDATED_ADDRESS_2.to_string(),
                 metadata: vec![],
-                start_block_num: 4,
-                end_block_num: database::helpers::MAX_BLOCK_NUM,
+                start_commit_num: 4,
+                end_commit_num: database::helpers::MAX_COMMIT_NUM,
                 source: None,
             },
         ]
@@ -1867,8 +1867,8 @@ mod test {
 
     fn get_grid_schema() -> Vec<NewGridSchema> {
         vec![NewGridSchema {
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             name: "TestGridSchema".to_string(),
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
@@ -1882,8 +1882,8 @@ mod test {
             product_address: "test_address".to_string(),
             product_namespace: "Grid Product".to_string(),
             owner: "phillips001".to_string(),
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             source: None,
         }]
     }
@@ -1891,8 +1891,8 @@ mod test {
     fn get_associated_agents() -> Vec<NewAssociatedAgent> {
         vec![
             NewAssociatedAgent {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
@@ -1900,8 +1900,8 @@ mod test {
                 source: None,
             },
             NewAssociatedAgent {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
@@ -1914,8 +1914,8 @@ mod test {
     fn get_associated_agents_updated() -> Vec<NewAssociatedAgent> {
         vec![
             NewAssociatedAgent {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
@@ -1923,8 +1923,8 @@ mod test {
                 source: None,
             },
             NewAssociatedAgent {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
@@ -1932,8 +1932,8 @@ mod test {
                 source: None,
             },
             NewAssociatedAgent {
-                start_block_num: 1,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 1,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY2.to_string(),
                 timestamp: 2,
                 record_id: "TestRecord".to_string(),
@@ -1941,8 +1941,8 @@ mod test {
                 source: None,
             },
             NewAssociatedAgent {
-                start_block_num: 1,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 1,
+                end_commit_num: MAX_COMMIT_NUM,
                 agent_id: KEY1.to_string(),
                 timestamp: 2,
                 record_id: "TestRecord".to_string(),
@@ -1954,8 +1954,8 @@ mod test {
 
     fn get_proposal() -> Vec<NewProposal> {
         vec![NewProposal {
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             record_id: "TestRecord".to_string(),
             timestamp: 1,
             issuing_agent: KEY1.to_string(),
@@ -1971,8 +1971,8 @@ mod test {
     fn get_updated_proposal() -> Vec<NewProposal> {
         vec![
             NewProposal {
-                start_block_num: 0,
-                end_block_num: 1,
+                start_commit_num: 0,
+                end_commit_num: 1,
                 record_id: "TestRecord".to_string(),
                 timestamp: 1,
                 issuing_agent: KEY1.to_string(),
@@ -1984,8 +1984,8 @@ mod test {
                 source: None,
             },
             NewProposal {
-                start_block_num: 1,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 1,
+                end_commit_num: MAX_COMMIT_NUM,
                 record_id: "TestRecord".to_string(),
                 timestamp: 1,
                 issuing_agent: KEY1.to_string(),
@@ -2001,8 +2001,8 @@ mod test {
 
     fn get_record(record_id: &str) -> Vec<NewRecord> {
         vec![NewRecord {
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             record_id: record_id.to_string(),
             schema: "TestGridSchema".to_string(),
             final_: false,
@@ -2015,8 +2015,8 @@ mod test {
     fn get_updated_record() -> Vec<NewRecord> {
         vec![
             NewRecord {
-                start_block_num: 0,
-                end_block_num: 1,
+                start_commit_num: 0,
+                end_commit_num: 1,
                 record_id: "TestRecord".to_string(),
                 schema: "TestGridSchema".to_string(),
                 final_: false,
@@ -2025,8 +2025,8 @@ mod test {
                 source: None,
             },
             NewRecord {
-                start_block_num: 1,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 1,
+                end_commit_num: MAX_COMMIT_NUM,
                 record_id: "TestRecord".to_string(),
                 schema: "TestGridSchema".to_string(),
                 final_: true,
@@ -2040,8 +2040,8 @@ mod test {
     fn get_multuple_records() -> Vec<NewRecord> {
         vec![
             NewRecord {
-                start_block_num: 0,
-                end_block_num: 1,
+                start_commit_num: 0,
+                end_commit_num: 1,
                 record_id: "TestRecord".to_string(),
                 schema: "TestGridSchema".to_string(),
                 final_: false,
@@ -2050,8 +2050,8 @@ mod test {
                 source: None,
             },
             NewRecord {
-                start_block_num: 1,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 1,
+                end_commit_num: MAX_COMMIT_NUM,
                 record_id: "TestRecord".to_string(),
                 schema: "TestGridSchema".to_string(),
                 final_: true,
@@ -2060,8 +2060,8 @@ mod test {
                 source: None,
             },
             NewRecord {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 record_id: "TestRecord 2".to_string(),
                 schema: "TestGridSchema".to_string(),
                 final_: false,
@@ -2095,8 +2095,8 @@ mod test {
     fn get_property_for_record() -> Vec<NewProperty> {
         vec![
             NewProperty {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "TestProperty1".to_string(),
                 record_id: "TestRecord".to_string(),
                 property_definition: "property_definition_1".to_string(),
@@ -2105,8 +2105,8 @@ mod test {
                 source: None,
             },
             NewProperty {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "TestProperty2".to_string(),
                 record_id: "TestRecord".to_string(),
                 property_definition: "property_definition_2".to_string(),
@@ -2120,8 +2120,8 @@ mod test {
     fn get_reporter_for_property_record() -> Vec<NewReporter> {
         vec![
             NewReporter {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty1".to_string(),
                 record_id: "TestRecord".to_string(),
                 public_key: KEY1.to_string(),
@@ -2130,8 +2130,8 @@ mod test {
                 source: None,
             },
             NewReporter {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty2".to_string(),
                 record_id: "TestRecord".to_string(),
                 public_key: KEY2.to_string(),
@@ -2145,8 +2145,8 @@ mod test {
     fn get_reported_value_for_property_record() -> Vec<NewReportedValue> {
         vec![
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty1".to_string(),
                 record_id: "TestRecord".to_string(),
                 reporter_index: 0,
@@ -2162,8 +2162,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty2".to_string(),
                 record_id: "TestRecord".to_string(),
                 reporter_index: 0,
@@ -2182,8 +2182,8 @@ mod test {
     }
     fn get_property() -> Vec<NewProperty> {
         vec![NewProperty {
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             name: "TestProperty".to_string(),
             record_id: "record_01".to_string(),
             property_definition: "property_definition_1".to_string(),
@@ -2196,8 +2196,8 @@ mod test {
     fn get_reporter() -> Vec<NewReporter> {
         vec![
             NewReporter {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
                 public_key: KEY1.to_string(),
@@ -2206,8 +2206,8 @@ mod test {
                 source: None,
             },
             NewReporter {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
                 public_key: KEY2.to_string(),
@@ -2229,8 +2229,8 @@ mod test {
             active: true,
             roles: vec![],
             metadata: JsonValue::Object(metadata.clone()),
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             source: None,
         };
 
@@ -2243,8 +2243,8 @@ mod test {
             active: true,
             roles: vec![],
             metadata: JsonValue::Object(metadata),
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             source: None,
         };
 
@@ -2316,8 +2316,8 @@ mod test {
     fn get_property_definition() -> Vec<NewGridPropertyDefinition> {
         vec![
             NewGridPropertyDefinition {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "Definition Name".to_string(),
                 schema_name: "TestGridSchema".to_string(),
                 data_type: "Lightbulb".to_string(),
@@ -2329,8 +2329,8 @@ mod test {
                 source: None,
             },
             NewGridPropertyDefinition {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "Other Definition Name".to_string(),
                 schema_name: "TestGridSchema".to_string(),
                 data_type: "New Lightbulb".to_string(),
@@ -2346,8 +2346,8 @@ mod test {
 
     fn get_grid_property_definition_struct_for_record() -> Vec<NewGridPropertyDefinition> {
         vec![NewGridPropertyDefinition {
-            start_block_num: 0,
-            end_block_num: MAX_BLOCK_NUM,
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
             name: "TestProperty".to_string(),
             schema_name: "TestGridSchema".to_string(),
             data_type: "Struct".to_string(),
@@ -2363,8 +2363,8 @@ mod test {
     fn get_grid_property_definition_for_record() -> Vec<NewGridPropertyDefinition> {
         vec![
             NewGridPropertyDefinition {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "TestProperty1".to_string(),
                 schema_name: "TestGridSchema".to_string(),
                 data_type: "String".to_string(),
@@ -2376,8 +2376,8 @@ mod test {
                 source: None,
             },
             NewGridPropertyDefinition {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 name: "TestProperty2".to_string(),
                 schema_name: "TestGridSchema".to_string(),
                 data_type: "Boolean".to_string(),
@@ -2413,8 +2413,8 @@ mod test {
     fn get_product_property_value() -> Vec<NewProductPropertyValue> {
         vec![
             NewProductPropertyValue {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 product_id: "041205707820".to_string(),
                 product_address: "test_address".to_string(),
                 property_name: "Test Grid Product".to_string(),
@@ -2429,8 +2429,8 @@ mod test {
                 source: None,
             },
             NewProductPropertyValue {
-                start_block_num: 0,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
                 product_id: "041205707820".to_string(),
                 product_address: "test_address".to_string(),
                 property_name: "Test Grid Product".to_string(),
@@ -2520,8 +2520,8 @@ mod test {
     fn get_reported_value() -> Vec<NewReportedValue> {
         vec![
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_StructProperty_StringProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2537,8 +2537,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_StructProperty_StringProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2554,8 +2554,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_StructProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2574,8 +2574,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_StructProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2594,8 +2594,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2611,8 +2611,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2628,8 +2628,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2651,8 +2651,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2674,8 +2674,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_LatLongProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2691,8 +2691,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_LatLongProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2708,8 +2708,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_NumberProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2725,8 +2725,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_NumberProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2742,8 +2742,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_EnumProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2759,8 +2759,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_EnumProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,
@@ -2776,8 +2776,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 2,
-                end_block_num: MAX_BLOCK_NUM,
+                start_commit_num: 2,
+                end_commit_num: MAX_COMMIT_NUM,
                 property_name: "TestProperty_BytesProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
@@ -2793,8 +2793,8 @@ mod test {
                 source: None,
             },
             NewReportedValue {
-                start_block_num: 0,
-                end_block_num: 2,
+                start_commit_num: 0,
+                end_commit_num: 2,
                 property_name: "TestProperty_BytesProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 1,

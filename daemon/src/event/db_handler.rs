@@ -37,7 +37,7 @@ use std::i64;
 use crate::database::{
     helpers as db,
     models::{
-        LatLongValue, NewAgent, NewAssociatedAgent, NewBlock, NewGridPropertyDefinition,
+        LatLongValue, NewAgent, NewAssociatedAgent, NewCommit, NewGridPropertyDefinition,
         NewGridSchema, NewOrganization, NewProduct, NewProductPropertyValue, NewProperty,
         NewProposal, NewRecord, NewReportedValue, NewReporter,
     },
@@ -63,36 +63,37 @@ impl EventHandler for DatabaseEventHandler {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: ({}, {:?})", event.id, event.height);
 
-        let block = create_db_block_from_commit_event(event)?;
-        let db_ops = create_db_operations_from_block(event)?;
-
-        trace!("The following operations will be performed: {:#?}", db_ops);
-
         let conn = self
             .connection_pool
             .get()
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
 
+        let commit = create_db_commit_from_commit_event(event, &conn)?;
+        let db_ops =
+            create_db_operations_from_state_changes(&event.state_changes, commit.commit_num)?;
+
+        trace!("The following operations will be performed: {:#?}", db_ops);
+
         conn.build_transaction()
             .run::<_, Error, _>(|| {
-                match db::get_block_by_block_num(&conn, block.block_num) {
-                    Ok(Some(ref b)) if b.block_id != block.block_id => {
-                        db::resolve_fork(&conn, block.block_num)?;
+                match db::get_commit_by_commit_num(&conn, commit.commit_num) {
+                    Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
+                        db::resolve_fork(&conn, commit.commit_num)?;
                         info!(
-                            "Fork detected. Replaced {} at height {}, with block {}.",
-                            &b.block_id, &b.block_num, &block.block_id
+                            "Fork detected. Replaced {} at height {}, with commit {}.",
+                            &b.commit_id, &b.commit_num, &commit.commit_id
                         );
-                        db::insert_block(&conn, &block)?;
+                        db::insert_commit(&conn, &commit)?;
                     }
                     Ok(Some(_)) => {
                         info!(
-                            "Block {} at height {} is duplicate no action taken",
-                            &block.block_id, block.block_num
+                            "Commit {} at height {} is duplicate no action taken",
+                            &commit.commit_id, commit.commit_num
                         );
                     }
                     Ok(None) => {
-                        info!("Received new block {}", block.block_id);
-                        db::insert_block(&conn, &block)?;
+                        info!("Received new commit {}", commit.commit_id);
+                        db::insert_commit(&conn, &commit)?;
                     }
                     Err(err) => {
                         return Err(err);
@@ -105,40 +106,51 @@ impl EventHandler for DatabaseEventHandler {
     }
 }
 
-fn create_db_block_from_commit_event(event: &CommitEvent) -> Result<NewBlock, EventError> {
-    let block_id = event.id.clone();
-    let block_num = commit_event_height_to_block_num(event.height)?;
-    let state_root_hash = "".into();
+fn create_db_commit_from_commit_event(
+    event: &CommitEvent,
+    conn: &PgConnection,
+) -> Result<NewCommit, EventError> {
+    let commit_id = event.id.clone();
+    let commit_num = commit_event_height_to_commit_num(event.height, conn)?;
     let source = Some(event.source.clone());
-    Ok(NewBlock {
-        block_id,
-        block_num,
-        state_root_hash,
+    Ok(NewCommit {
+        commit_id,
+        commit_num,
         source,
     })
 }
 
-fn create_db_operations_from_block(
-    event: &CommitEvent,
-) -> Result<Vec<DbInsertOperation>, EventError> {
-    let block_num = commit_event_height_to_block_num(event.height)?;
-    event
-        .state_changes
-        .iter()
-        .map(|state_change| state_change_to_db_operation(state_change, block_num))
-        .collect::<Result<Vec<DbInsertOperation>, EventError>>()
+// If height is `Some`, convert to i64; if height is `None`, get next commit_num from the database.
+fn commit_event_height_to_commit_num(
+    height: Option<u64>,
+    conn: &PgConnection,
+) -> Result<i64, EventError> {
+    match height {
+        Some(height_u64) => height_u64
+            .try_into()
+            .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err))),
+        None => db::get_next_commit_num(conn).map_err(|err| {
+            EventError(format!(
+                "failed to get next commit_num from database: {}",
+                err
+            ))
+        }),
+    }
 }
 
-fn commit_event_height_to_block_num(height: Option<u64>) -> Result<i64, EventError> {
-    height
-        .ok_or_else(|| EventError("event height cannot be none".into()))?
-        .try_into()
-        .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err)))
+fn create_db_operations_from_state_changes(
+    state_changes: &[StateChange],
+    commit_num: i64,
+) -> Result<Vec<DbInsertOperation>, EventError> {
+    state_changes
+        .iter()
+        .map(|state_change| state_change_to_db_operation(state_change, commit_num))
+        .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
 fn state_change_to_db_operation(
     state_change: &StateChange,
-    block_num: i64,
+    commit_num: i64,
 ) -> Result<DbInsertOperation, EventError> {
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
@@ -159,8 +171,8 @@ fn state_change_to_db_operation(
                                 acc
                             }
                         )),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
+                        start_commit_num: commit_num,
+                        end_commit_num: db::MAX_COMMIT_NUM,
                         source: None,
                     })
                     .collect::<Vec<NewAgent>>();
@@ -187,8 +199,8 @@ fn state_change_to_db_operation(
                                 })
                             })
                             .collect::<Vec<JsonValue>>(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
+                        start_commit_num: commit_num,
+                        end_commit_num: db::MAX_COMMIT_NUM,
                         source: None,
                     })
                     .collect::<Vec<NewOrganization>>();
@@ -205,13 +217,13 @@ fn state_change_to_db_operation(
                             name: state_schema.name().to_string(),
                             description: state_schema.description().to_string(),
                             owner: state_schema.owner().to_string(),
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
+                            start_commit_num: commit_num,
+                            end_commit_num: db::MAX_COMMIT_NUM,
                             source: None,
                         };
 
                         let definitions = make_property_definitions(
-                            block_num,
+                            commit_num,
                             state_schema.name(),
                             state_schema.properties(),
                         );
@@ -242,8 +254,8 @@ fn state_change_to_db_operation(
                             property_definition: prop.property_definition().name().to_string(),
                             current_page: *prop.current_page() as i32,
                             wrapped: *prop.wrapped(),
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
+                            start_commit_num: commit_num,
+                            end_commit_num: db::MAX_COMMIT_NUM,
                             source: None,
                         };
 
@@ -256,8 +268,8 @@ fn state_change_to_db_operation(
                                 public_key: reporter.public_key().to_string(),
                                 authorized: *reporter.authorized(),
                                 reporter_index: *reporter.index() as i32,
-                                start_block_num: block_num,
-                                end_block_num: db::MAX_BLOCK_NUM,
+                                start_commit_num: commit_num,
+                                end_commit_num: db::MAX_COMMIT_NUM,
                                 source: None,
                             })
                             .collect::<Vec<NewReporter>>();
@@ -289,7 +301,7 @@ fn state_change_to_db_operation(
                     page.reported_values().to_vec().iter().try_fold(
                         &mut reported_values,
                         |acc, value| match make_reported_values(
-                            block_num,
+                            commit_num,
                             page.record_id(),
                             value.value().name(),
                             value,
@@ -319,8 +331,8 @@ fn state_change_to_db_operation(
                         properties: proposal.properties().to_vec(),
                         status: format!("{:?}", proposal.status()),
                         terms: proposal.terms().to_string(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
+                        start_commit_num: commit_num,
+                        end_commit_num: db::MAX_COMMIT_NUM,
                         source: None,
                     })
                     .collect::<Vec<NewProposal>>();
@@ -349,8 +361,8 @@ fn state_change_to_db_operation(
                             .iter()
                             .map(|x| x.agent_id().to_string())
                             .collect(),
-                        start_block_num: block_num,
-                        end_block_num: db::MAX_BLOCK_NUM,
+                        start_commit_num: commit_num,
+                        end_commit_num: db::MAX_COMMIT_NUM,
                         source: None,
                     })
                     .collect::<Vec<NewRecord>>();
@@ -363,8 +375,8 @@ fn state_change_to_db_operation(
                             record_id: record.record_id().to_string(),
                             role: "OWNER".to_string(),
                             timestamp: *agent.timestamp() as i64,
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
+                            start_commit_num: commit_num,
+                            end_commit_num: db::MAX_COMMIT_NUM,
                             source: None,
                         })
                     })
@@ -382,8 +394,8 @@ fn state_change_to_db_operation(
                                     role: "CUSTODIAN".to_string(),
                                     record_id: record.record_id().to_string(),
                                     timestamp: *agent.timestamp() as i64,
-                                    start_block_num: block_num,
-                                    end_block_num: db::MAX_BLOCK_NUM,
+                                    start_commit_num: commit_num,
+                                    end_commit_num: db::MAX_COMMIT_NUM,
                                     source: None,
                                 })
                         })
@@ -403,14 +415,14 @@ fn state_change_to_db_operation(
                             product_address: key.to_string(),
                             product_namespace: format!("{:?}", product.product_type()),
                             owner: product.owner().to_string(),
-                            start_block_num: block_num,
-                            end_block_num: db::MAX_BLOCK_NUM,
+                            start_commit_num: commit_num,
+                            end_commit_num: db::MAX_COMMIT_NUM,
                             source: None,
                         };
                         acc.0.push(new_product);
 
                         let mut properties = make_product_property_values(
-                            block_num,
+                            commit_num,
                             product.product_id(),
                             &key,
                             product.properties(),
@@ -432,7 +444,10 @@ fn state_change_to_db_operation(
         },
         StateChange::Delete { key } => {
             if &key[0..8] == GRID_PRODUCT {
-                Ok(DbInsertOperation::RemoveProduct(key.to_string(), block_num))
+                Ok(DbInsertOperation::RemoveProduct(
+                    key.to_string(),
+                    commit_num,
+                ))
             } else {
                 Err(EventError(format!(
                     "could not handle state change; unexpected delete of key {}",
@@ -481,16 +496,16 @@ impl DbInsertOperation {
                 db::insert_products(conn, products)?;
                 db::insert_product_property_values(conn, properties)
             }
-            DbInsertOperation::RemoveProduct(ref address, current_block_num) => {
-                db::delete_product(conn, address, current_block_num)?;
-                db::delete_product_property_values(conn, address, current_block_num)
+            DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
+                db::delete_product(conn, address, current_commit_num)?;
+                db::delete_product_property_values(conn, address, current_commit_num)
             }
         }
     }
 }
 
 fn make_reported_values(
-    start_block_num: i64,
+    start_commit_num: i64,
     record_id: &str,
     property_name: &str,
     reported_value: &ReportedValue,
@@ -502,8 +517,8 @@ fn make_reported_values(
         record_id: record_id.to_string(),
         reporter_index: *reported_value.reporter_index() as i32,
         timestamp: *reported_value.timestamp() as i64,
-        start_block_num,
-        end_block_num: db::MAX_BLOCK_NUM,
+        start_commit_num,
+        end_commit_num: db::MAX_COMMIT_NUM,
         data_type: format!("{:?}", reported_value.value().data_type()),
         ..NewReportedValue::default()
     };
@@ -555,7 +570,7 @@ fn make_reported_values(
                 .map_err(|err| EventError(format!("Failed to build ReportedValue: {:?}", err)))
             {
                 Ok(temp_val) => match make_reported_values(
-                    start_block_num,
+                    start_commit_num,
                     record_id,
                     &property_name,
                     &temp_val,
@@ -574,7 +589,7 @@ fn make_reported_values(
 }
 
 fn make_property_definitions(
-    start_block_num: i64,
+    start_commit_num: i64,
     schema_name: &str,
     definitions: &[PropertyDefinition],
 ) -> Vec<NewGridPropertyDefinition> {
@@ -594,14 +609,14 @@ fn make_property_definitions(
                 .iter()
                 .map(|x| x.name().to_string())
                 .collect(),
-            start_block_num,
-            end_block_num: db::MAX_BLOCK_NUM,
+            start_commit_num,
+            end_commit_num: db::MAX_COMMIT_NUM,
             source: None,
         });
 
         if !def.struct_properties().is_empty() {
             properties.append(&mut make_property_definitions(
-                start_block_num,
+                start_commit_num,
                 schema_name,
                 def.struct_properties(),
             ));
@@ -612,7 +627,7 @@ fn make_property_definitions(
 }
 
 fn make_product_property_values(
-    start_block_num: i64,
+    start_commit_num: i64,
     product_id: &str,
     product_address: &str,
     values: &[PropertyValue],
@@ -640,14 +655,14 @@ fn make_product_property_values(
                 *val.lat_long_value().latitude(),
                 *val.lat_long_value().longitude(),
             )),
-            start_block_num,
-            end_block_num: db::MAX_BLOCK_NUM,
+            start_commit_num,
+            end_commit_num: db::MAX_COMMIT_NUM,
             source: None,
         });
 
         if !val.struct_values().is_empty() {
             properties.append(&mut make_product_property_values(
-                start_block_num,
+                start_commit_num,
                 product_id,
                 product_address,
                 val.struct_values(),

@@ -17,7 +17,7 @@
 
 use super::models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 use super::schema::{grid_property_definition, grid_schema};
-use super::MAX_BLOCK_NUM;
+use super::MAX_COMMIT_NUM;
 
 use diesel::{
     dsl::{insert_into, update},
@@ -29,7 +29,7 @@ use diesel::{
 
 pub fn insert_grid_schemas(conn: &PgConnection, schemas: &[NewGridSchema]) -> QueryResult<()> {
     for schema in schemas {
-        update_grid_schema_end_block_num(conn, &schema.name, schema.start_block_num)?;
+        update_grid_schema_end_commit_num(conn, &schema.name, schema.start_commit_num)?;
     }
 
     insert_into(grid_schema::table)
@@ -43,11 +43,11 @@ pub fn insert_grid_property_definitions(
     definitions: &[NewGridPropertyDefinition],
 ) -> QueryResult<()> {
     for definition in definitions {
-        update_definition_end_block_num(
+        update_definition_end_commit_num(
             conn,
             &definition.name,
             &definition.schema_name,
-            definition.start_block_num,
+            definition.start_commit_num,
         )?;
     }
 
@@ -57,36 +57,36 @@ pub fn insert_grid_property_definitions(
         .map(|_| ())
 }
 
-pub fn update_grid_schema_end_block_num(
+pub fn update_grid_schema_end_commit_num(
     conn: &PgConnection,
     name: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(grid_schema::table)
         .filter(
             grid_schema::name
                 .eq(name)
-                .and(grid_schema::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(grid_schema::end_block_num.eq(current_block_num))
+        .set(grid_schema::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
 
-pub fn update_definition_end_block_num(
+pub fn update_definition_end_commit_num(
     conn: &PgConnection,
     name: &str,
     schema_name: &str,
-    current_block_num: i64,
+    current_commit_num: i64,
 ) -> QueryResult<()> {
     update(grid_property_definition::table)
         .filter(
             grid_property_definition::schema_name
                 .eq(schema_name)
                 .and(grid_property_definition::name.eq(name))
-                .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
-        .set(grid_property_definition::end_block_num.eq(current_block_num))
+        .set(grid_property_definition::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -94,7 +94,7 @@ pub fn update_definition_end_block_num(
 pub fn list_grid_schemas(conn: &PgConnection) -> QueryResult<Vec<GridSchema>> {
     grid_schema::table
         .select(grid_schema::all_columns)
-        .filter(grid_schema::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<GridSchema>(conn)
 }
 
@@ -103,7 +103,7 @@ pub fn list_grid_property_definitions(
 ) -> QueryResult<Vec<GridPropertyDefinition>> {
     grid_property_definition::table
         .select(grid_property_definition::all_columns)
-        .filter(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM))
+        .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM))
         .load::<GridPropertyDefinition>(conn)
 }
 
@@ -113,7 +113,7 @@ pub fn fetch_grid_schema(conn: &PgConnection, name: &str) -> QueryResult<Option<
         .filter(
             grid_schema::name
                 .eq(name)
-                .and(grid_schema::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .first(conn)
         .map(Some)
@@ -129,7 +129,7 @@ pub fn list_grid_property_definitions_with_schema_name(
         .filter(
             grid_property_definition::schema_name
                 .eq(schema_name)
-                .and(grid_property_definition::end_block_num.eq(MAX_BLOCK_NUM)),
+                .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .load::<GridPropertyDefinition>(conn)
 }

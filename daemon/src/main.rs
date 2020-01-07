@@ -89,8 +89,8 @@ fn run() -> Result<(), DaemonError> {
 
     let connection_pool = database::create_connection_pool(config.database_url())?;
 
-    let current_block =
-        db::get_current_block_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
+    let current_commit =
+        db::get_current_commit_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
 
     let batch_submitter = Box::new(SawtoothBatchSubmitter::new(
         sawtooth_connection.get_sender(),
@@ -104,7 +104,7 @@ fn run() -> Result<(), DaemonError> {
 
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
-        &current_block,
+        &current_commit,
         event_handlers![DatabaseEventHandler::new(connection_pool)],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
