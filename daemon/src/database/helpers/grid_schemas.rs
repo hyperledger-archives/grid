@@ -91,30 +91,63 @@ pub fn update_definition_end_commit_num(
         .map(|_| ())
 }
 
-pub fn list_grid_schemas(conn: &PgConnection) -> QueryResult<Vec<GridSchema>> {
-    grid_schema::table
+pub fn list_grid_schemas(
+    conn: &PgConnection,
+    service_id: Option<&str>,
+) -> QueryResult<Vec<GridSchema>> {
+    let mut query = grid_schema::table
+        .into_boxed()
         .select(grid_schema::all_columns)
-        .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<GridSchema>(conn)
+        .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(grid_schema::service_id.eq(service_id));
+    } else {
+        query = query.filter(grid_schema::service_id.is_null());
+    }
+
+    query.load::<GridSchema>(conn)
 }
 
 pub fn list_grid_property_definitions(
     conn: &PgConnection,
+    service_id: Option<&str>,
 ) -> QueryResult<Vec<GridPropertyDefinition>> {
-    grid_property_definition::table
+    let mut query = grid_property_definition::table
+        .into_boxed()
         .select(grid_property_definition::all_columns)
-        .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<GridPropertyDefinition>(conn)
+        .filter(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(grid_property_definition::service_id.eq(service_id));
+    } else {
+        query = query.filter(grid_property_definition::service_id.is_null());
+    }
+
+    query.load::<GridPropertyDefinition>(conn)
 }
 
-pub fn fetch_grid_schema(conn: &PgConnection, name: &str) -> QueryResult<Option<GridSchema>> {
-    grid_schema::table
+pub fn fetch_grid_schema(
+    conn: &PgConnection,
+    name: &str,
+    service_id: Option<&str>,
+) -> QueryResult<Option<GridSchema>> {
+    let mut query = grid_schema::table
+        .into_boxed()
         .select(grid_schema::all_columns)
         .filter(
             grid_schema::name
                 .eq(name)
                 .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(grid_schema::service_id.eq(service_id));
+    } else {
+        query = query.filter(grid_schema::service_id.is_null());
+    }
+
+    query
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
@@ -123,13 +156,21 @@ pub fn fetch_grid_schema(conn: &PgConnection, name: &str) -> QueryResult<Option<
 pub fn list_grid_property_definitions_with_schema_name(
     conn: &PgConnection,
     schema_name: &str,
+    service_id: Option<&str>,
 ) -> QueryResult<Vec<GridPropertyDefinition>> {
-    grid_property_definition::table
+    let mut query = grid_property_definition::table
+        .into_boxed()
         .select(grid_property_definition::all_columns)
         .filter(
             grid_property_definition::schema_name
                 .eq(schema_name)
                 .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .load::<GridPropertyDefinition>(conn)
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(grid_property_definition::service_id.eq(service_id));
+    } else {
+        query = query.filter(grid_property_definition::service_id.is_null());
+    }
+    query.load::<GridPropertyDefinition>(conn)
 }

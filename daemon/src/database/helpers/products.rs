@@ -116,28 +116,58 @@ fn update_prod_property_values(
         .map(|_| ())
 }
 
-pub fn list_products(conn: &PgConnection) -> QueryResult<Vec<Product>> {
-    product::table
+pub fn list_products(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Product>> {
+    let mut query = product::table
+        .into_boxed()
         .select(product::all_columns)
-        .filter(product::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<Product>(conn)
+        .filter(product::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(product::service_id.eq(service_id));
+    } else {
+        query = query.filter(product::service_id.is_null());
+    }
+    query.load::<Product>(conn)
 }
 
-pub fn list_product_property_values(conn: &PgConnection) -> QueryResult<Vec<ProductPropertyValue>> {
-    product_property_value::table
+pub fn list_product_property_values(
+    conn: &PgConnection,
+    service_id: Option<&str>,
+) -> QueryResult<Vec<ProductPropertyValue>> {
+    let mut query = product_property_value::table
+        .into_boxed()
         .select(product_property_value::all_columns)
-        .filter(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<ProductPropertyValue>(conn)
+        .filter(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(product_property_value::service_id.eq(service_id));
+    } else {
+        query = query.filter(product_property_value::service_id.is_null());
+    }
+    query.load::<ProductPropertyValue>(conn)
 }
 
-pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Option<Product>> {
-    product::table
+pub fn fetch_product(
+    conn: &PgConnection,
+    product_id: &str,
+    service_id: Option<&str>,
+) -> QueryResult<Option<Product>> {
+    let mut query = product::table
+        .into_boxed()
         .select(product::all_columns)
         .filter(
             product::product_id
                 .eq(product_id)
                 .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(product::service_id.eq(service_id));
+    } else {
+        query = query.filter(product::service_id.is_null());
+    }
+
+    query
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
@@ -146,13 +176,21 @@ pub fn fetch_product(conn: &PgConnection, product_id: &str) -> QueryResult<Optio
 pub fn fetch_product_property_values(
     conn: &PgConnection,
     product_id: &str,
+    service_id: Option<&str>,
 ) -> QueryResult<Vec<ProductPropertyValue>> {
-    product_property_value::table
+    let mut query = product_property_value::table
+        .into_boxed()
         .select(product_property_value::all_columns)
         .filter(
             product_property_value::product_id
                 .eq(product_id)
                 .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .load::<ProductPropertyValue>(conn)
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(product_property_value::service_id.eq(service_id));
+    } else {
+        query = query.filter(product_property_value::service_id.is_null());
+    }
+    query.load::<ProductPropertyValue>(conn)
 }

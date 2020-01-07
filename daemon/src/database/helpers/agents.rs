@@ -54,21 +54,39 @@ fn update_agent_end_commit_num(
         .map(|_| ())
 }
 
-pub fn get_agents(conn: &PgConnection) -> QueryResult<Vec<Agent>> {
-    agent::table
+pub fn get_agents(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Agent>> {
+    let mut query = agent::table
+        .into_boxed()
         .select(agent::all_columns)
-        .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<Agent>(conn)
+        .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(agent::service_id.eq(service_id));
+    } else {
+        query = query.filter(agent::service_id.is_null());
+    }
+
+    query.load::<Agent>(conn)
 }
 
-pub fn get_agent(conn: &PgConnection, public_key: &str) -> QueryResult<Option<Agent>> {
-    agent::table
-        .select(agent::all_columns)
-        .filter(
-            agent::public_key
-                .eq(public_key)
-                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
+pub fn get_agent(
+    conn: &PgConnection,
+    public_key: &str,
+    service_id: Option<&str>,
+) -> QueryResult<Option<Agent>> {
+    let mut query = agent::table.into_boxed().select(agent::all_columns).filter(
+        agent::public_key
+            .eq(public_key)
+            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+    );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(agent::service_id.eq(service_id));
+    } else {
+        query = query.filter(agent::service_id.is_null());
+    }
+
+    query
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })

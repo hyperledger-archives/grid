@@ -76,15 +76,23 @@ pub fn update_associated_agent_end_commit_num(
 pub fn list_associated_agents(
     conn: &PgConnection,
     record_ids: &[String],
+    service_id: Option<&str>,
 ) -> QueryResult<Vec<AssociatedAgent>> {
-    associated_agent::table
+    let mut query = associated_agent::table
+        .into_boxed()
         .select(associated_agent::all_columns)
         .filter(
             associated_agent::end_commit_num
                 .eq(MAX_COMMIT_NUM)
                 .and(associated_agent::record_id.eq_any(record_ids)),
-        )
-        .load::<AssociatedAgent>(conn)
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(associated_agent::service_id.eq(service_id));
+    } else {
+        query = query.filter(associated_agent::service_id.is_null());
+    }
+    query.load::<AssociatedAgent>(conn)
 }
 
 pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> QueryResult<()> {
@@ -158,15 +166,27 @@ pub fn update_proposal_end_commit_num(
         .map(|_| ())
 }
 
-pub fn list_proposals(conn: &PgConnection, record_ids: &[String]) -> QueryResult<Vec<Proposal>> {
-    proposal::table
+pub fn list_proposals(
+    conn: &PgConnection,
+    record_ids: &[String],
+    service_id: Option<&str>,
+) -> QueryResult<Vec<Proposal>> {
+    let mut query = proposal::table
+        .into_boxed()
         .select(proposal::all_columns)
         .filter(
             proposal::end_commit_num
                 .eq(MAX_COMMIT_NUM)
                 .and(proposal::record_id.eq_any(record_ids)),
-        )
-        .load::<Proposal>(conn)
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(proposal::service_id.eq(service_id));
+    } else {
+        query = query.filter(proposal::service_id.is_null());
+    }
+
+    query.load::<Proposal>(conn)
 }
 
 pub fn insert_records(conn: &PgConnection, records: &[NewRecord]) -> QueryResult<()> {
@@ -209,11 +229,18 @@ pub fn fetch_record(conn: &PgConnection, record_id: &str) -> QueryResult<Option<
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
-pub fn list_records(conn: &PgConnection) -> QueryResult<Vec<Record>> {
-    record::table
+pub fn list_records(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Record>> {
+    let mut query = record::table
+        .into_boxed()
         .select(record::all_columns)
-        .filter(record::end_commit_num.eq(MAX_COMMIT_NUM))
-        .load::<Record>(conn)
+        .filter(record::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(record::service_id.eq(service_id));
+    } else {
+        query = query.filter(record::service_id.is_null());
+    }
+    query.load::<Record>(conn)
 }
 
 pub fn insert_reported_values(conn: &PgConnection, values: &[NewReportedValue]) -> QueryResult<()> {
@@ -291,8 +318,10 @@ pub fn fetch_property_with_data_type(
     conn: &PgConnection,
     record_id: &str,
     property_name: &str,
+    service_id: Option<&str>,
 ) -> QueryResult<Option<(Property, Option<String>)>> {
-    property::table
+    let mut query = property::table
+        .into_boxed()
         .left_join(
             record::table.on(property::record_id
                 .eq(record::record_id)
@@ -309,7 +338,14 @@ pub fn fetch_property_with_data_type(
                 .eq(property_name)
                 .and(property::record_id.eq(record_id))
                 .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(property::service_id.eq(service_id));
+    } else {
+        query = query.filter(property::service_id.is_null());
+    }
+    query
         .select((
             property::all_columns,
             grid_property_definition::data_type.nullable(),
@@ -344,8 +380,10 @@ pub fn fetch_reported_value_reporter_to_agent_metadata(
 pub fn list_properties_with_data_type(
     conn: &PgConnection,
     record_ids: &[String],
+    service_id: Option<&str>,
 ) -> QueryResult<Vec<(Property, Option<String>)>> {
-    property::table
+    let mut query = property::table
+        .into_boxed()
         .left_join(
             record::table.on(property::record_id
                 .eq(record::record_id)
@@ -361,7 +399,14 @@ pub fn list_properties_with_data_type(
             property::record_id
                 .eq_any(record_ids)
                 .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(property::service_id.eq(service_id));
+    } else {
+        query = query.filter(property::service_id.is_null());
+    }
+    query
         .select((
             property::all_columns,
             grid_property_definition::data_type.nullable(),
