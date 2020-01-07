@@ -15,7 +15,7 @@
 pub mod error;
 pub mod postgres;
 
-use error::KeyStoreError;
+pub use error::KeyStoreError;
 
 /// Defines methods for CRUD operations and fetching and listing keys
 /// without defining a storage strategy
