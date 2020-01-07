@@ -43,14 +43,19 @@ mod submitter;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(feature = "splinter-support")]
+use ::splinter::events::Reactor;
 use log::Level;
 use simple_logger;
 
-use crate::config::GridConfigBuilder;
-use crate::database::{error::DatabaseError, helpers as db};
+use crate::config::{GridConfig, GridConfigBuilder};
+use crate::database::{error::DatabaseError, helpers as db, ConnectionPool};
 use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
+#[cfg(feature = "sawtooth-support")]
 use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
+#[cfg(feature = "splinter-support")]
+use crate::splinter::{app_auth_handler, batch_submitter::SplinterBatchSubmitter};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -81,17 +86,24 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    let sawtooth_connection = if config.endpoint().is_sawtooth() {
-        SawtoothConnection::new(&config.endpoint().url())
+    let connection_pool = database::create_connection_pool(config.database_url())?;
+
+    if config.endpoint().is_sawtooth() {
+        run_sawtooth(config, connection_pool)?;
+    } else if config.endpoint().is_splinter() {
+        run_splinter(config, connection_pool)?;
     } else {
         return Err(DaemonError::UnsupportedEndpoint(format!(
             "Unsupported endpoint type: {}",
             config.endpoint().url()
         )));
     };
+    Ok(())
+}
 
-    let connection_pool = database::create_connection_pool(config.database_url())?;
-
+#[cfg(feature = "sawtooth-support")]
+fn run_sawtooth(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
+    let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
     let current_commit =
         db::get_current_commit_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
 
@@ -148,6 +160,59 @@ fn run() -> Result<(), DaemonError> {
         .and_then(|res| res.map_err(DaemonError::from))?;
 
     Ok(())
+}
+
+#[cfg(not(feature = "sawtooth-support"))]
+fn run_sawtooth(config: GridConfig, _connection_pool: ConnectionPool) -> Result<(), DaemonError> {
+    Err(DaemonError::UnsupportedEndpoint(format!(
+        "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
+        config.endpoint().url()
+    )))
+}
+
+#[cfg(feature = "splinter-support")]
+fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
+    app_auth_handler::run(config.endpoint().url().into(), Reactor::new().igniter())?;
+
+    let batch_submitter = Box::new(SplinterBatchSubmitter::new());
+
+    let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
+        config.rest_api_endpoint(),
+        connection_pool.clone(),
+        batch_submitter,
+        config.endpoint().clone(),
+    )?;
+
+    let ctrlc_triggered = AtomicBool::new(false);
+    ctrlc::set_handler(move || {
+        if ctrlc_triggered.load(Ordering::SeqCst) {
+            eprintln!("Aborting due to multiple Ctrl-C events");
+            process::exit(1);
+        }
+
+        ctrlc_triggered.store(true, Ordering::SeqCst);
+        if let Err(err) = rest_api_shutdown_handle.shutdown() {
+            error!("Unable to cleanly shutdown REST API server: {}", err);
+        }
+    })
+    .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
+    rest_api_join_handle
+        .join()
+        .map_err(|_| {
+            DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
+        })
+        .and_then(|res| res.map_err(DaemonError::from))?;
+
+    Ok(())
+}
+
+#[cfg(not(feature = "splinter-support"))]
+fn run_splinter(config: GridConfig, _connection_pool: ConnectionPool) -> Result<(), DaemonError> {
+    Err(DaemonError::UnsupportedEndpoint(format!(
+        "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
+        config.endpoint().url()
+    )))
 }
 
 fn main() {
