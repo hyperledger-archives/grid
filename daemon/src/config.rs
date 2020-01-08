@@ -55,31 +55,21 @@ impl Endpoint {
 
 impl From<&str> for Endpoint {
     fn from(s: &str) -> Self {
-        let mut s = s.to_lowercase();
+        let s = s.to_lowercase();
 
         if s.starts_with("splinter:") {
-            let mut url = s.replace("splinter:", "");
-            if !url.starts_with("tcp://") {
-                url.insert_str(0, "tcp://");
-            }
-
+            let url = s.replace("splinter:", "");
             Endpoint {
                 backend: Backend::Splinter,
                 url,
             }
         } else if s.starts_with("sawtooth:") {
-            let mut url = s.replace("sawtooth:", "");
-            if !url.starts_with("tcp://") {
-                url.insert_str(0, "tcp://");
-            }
+            let url = s.replace("sawtooth:", "");
             Endpoint {
                 backend: Backend::Sawtooth,
                 url,
             }
         } else {
-            if !s.starts_with("tcp://") {
-                s.insert_str(0, "tcp://");
-            }
             Endpoint {
                 backend: Backend::Sawtooth,
                 url: s,
@@ -173,7 +163,7 @@ mod test {
             .build()
             .expect("Unable to build configuration");
 
-        assert_eq!("tcp://validator:4004", config.endpoint().url());
+        assert_eq!("validator:4004", config.endpoint().url());
         assert_eq!("rest_api:8080", config.rest_api_endpoint());
     }
 
@@ -248,7 +238,7 @@ mod test {
             endpoint,
             Endpoint {
                 backend: Backend::Splinter,
-                url: "tcp://localhost:8080".into()
+                url: "localhost:8080".into()
             }
         );
     }
