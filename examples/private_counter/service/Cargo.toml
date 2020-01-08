@@ -14,7 +14,7 @@
 
 [package]
 name = "private-counter-service"
-version = "0.3.8"
+version = "0.3.9"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
