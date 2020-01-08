@@ -1,5 +1,40 @@
 # Release Notes
 
+## Changes in Splinter 0.3.8
+
+### Highlights:
+
+* A new "experimental" feature set.  Features marked as experimental are
+  available for use, but are subject to change.
+* The “splinter-cli” command has been renamed to “splinter”.
+
+### Deprecations and Breaking Changes:
+
+* The Splinter CLI name has changed from “splinter-cli” to “splinter”.
+  “splinter-cli” remains as an alias for “splinter”, but should be considered
+  deprecated as of this release.
+* The node registry trait was extensively updated to support iteration,
+  implementation-agnostic filtering, and simplified modifications.
+
+### Libsplinter:
+
+* The protobuf files are now under the libsplinter subdirectory.  This enables
+  publishing the "splinter" library crate.
+* NodeRegistry::list_nodes now returns an iterator.
+* NodeRegistry::update_node and add_node have been merged to
+  NodeRegistry::insert.
+* The REST API implementations for circuits, node registry, and key registry
+  have moved from splinterd to libsplinter.
+* A new "rest-api" stable feature includes the library functions mentioned
+  above.
+* New Biome features for user-related functionality such as credentials and key
+  management. (Biome is the libsplinter module that supports user management.)
+    - "biome"
+    - "biome-credentials"
+    - "biome-key-management"
+    - "biome-notifications"
+* A new "experimental" feature set that includes all experimental features.
+
 ## Changes in Splinter 0.3.7
 
 ### Highlights:
