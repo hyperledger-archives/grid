@@ -270,7 +270,7 @@ mod test {
             HttpService::new(
                 App::new()
                     .data(state)
-                    .service(web::resource("batches").route(web::post().to_async(submit_batches)))
+                    .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
                     .service(
                         web::resource("/batch_statuses")
                             .name("batch_statuses")
