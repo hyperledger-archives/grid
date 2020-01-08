@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::database::{helpers as db, models::Agent};
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
@@ -42,7 +44,9 @@ impl AgentSlice {
     }
 }
 
-struct ListAgents;
+struct ListAgents {
+    service_id: Option<String>,
+}
 
 impl Message for ListAgents {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
@@ -51,11 +55,12 @@ impl Message for ListAgents {
 impl Handler<ListAgents> for DbExecutor {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 
-    fn handle(&mut self, _msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
-        let fetched_agents = db::get_agents(&*self.connection_pool.get()?)?
-            .iter()
-            .map(|agent| AgentSlice::from_agent(agent))
-            .collect();
+    fn handle(&mut self, msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
+        let fetched_agents =
+            db::get_agents(&*self.connection_pool.get()?, msg.service_id.as_deref())?
+                .iter()
+                .map(|agent| AgentSlice::from_agent(agent))
+                .collect();
 
         Ok(fetched_agents)
     }
@@ -63,11 +68,15 @@ impl Handler<ListAgents> for DbExecutor {
 
 pub fn list_agents(
     state: web::Data<AppState>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     Box::new(
         state
             .database_connection
-            .send(ListAgents)
+            .send(ListAgents {
+                service_id: query.into_inner().service_id,
+            })
             .from_err()
             .and_then(move |res| match res {
                 Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
@@ -78,6 +87,7 @@ pub fn list_agents(
 
 struct FetchAgent {
     public_key: String,
+    service_id: Option<String>,
 }
 
 impl Message for FetchAgent {
@@ -88,7 +98,11 @@ impl Handler<FetchAgent> for DbExecutor {
     type Result = Result<AgentSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
-        let fetched_agent = match db::get_agent(&*self.connection_pool.get()?, &msg.public_key)? {
+        let fetched_agent = match db::get_agent(
+            &*self.connection_pool.get()?,
+            &msg.public_key,
+            msg.service_id.as_deref(),
+        )? {
             Some(agent) => AgentSlice::from_agent(&agent),
             None => {
                 return Err(RestApiResponseError::NotFoundError(format!(
@@ -105,11 +119,14 @@ impl Handler<FetchAgent> for DbExecutor {
 pub fn fetch_agent(
     state: web::Data<AppState>,
     public_key: web::Path<String>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
         .send(FetchAgent {
             public_key: public_key.into_inner(),
+            service_id: query.into_inner().service_id,
         })
         .from_err()
         .and_then(move |res| match res {
