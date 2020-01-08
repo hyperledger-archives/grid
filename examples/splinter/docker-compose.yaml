@@ -1,0 +1,253 @@
+# Copyright 2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+version: '3.6'
+
+volumes:
+  contracts-shared:
+  key-registry:
+
+services:
+
+# ---== shared services ==---
+
+  pike-contract-builder:
+    image: pike-contract-builder
+    container_name: pike-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/pike/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-pike*.scar /usr/share/scar
+      "
+
+  product-contract-builder:
+    image: product-contract-builder
+    container_name: product-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/product/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-product*.scar /usr/share/scar
+      "
+
+  schema-contract-builder:
+    image: schema-contract-builder
+    container_name: schema-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/schema/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-schema*.scar /usr/share/scar
+      "
+
+  tnt-contract-builder:
+    image: tnt-contract-builder
+    container_name: tnt-contract-builder
+    build:
+      context: ../..
+      dockerfile: contracts/track_and_trace/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-track-and-trace*.scar /usr/share/scar
+      "
+
+  generate-key-registry:
+    image: splintercommunity/splinter-cli:master
+    volumes:
+      - key-registry:/key_registry
+      - ./configs:/input
+    command: |
+      bash -c "
+        if [ ! -f /key_registry/keys.yaml ]
+        then
+          splinter admin keyregistry \
+            -i /input/key_registry_spec.yaml \
+            -d /key_registry \
+            --force
+        fi
+      "
+
+
+# ---== alpha node ==---
+
+  db-alpha:
+    image: postgres
+    container_name: db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-alpha:
+    image: gridd
+    container_name: gridd-alpha
+    build:
+      context: ../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    entrypoint: |
+        bash -c "
+          # we need to wait for the db to have started.
+          until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q'; do
+              >&2 echo \"Database is unavailable - sleeping\"
+              sleep 1
+          done
+          grid -vv database migrate \
+              --database-url postgres://grid:grid_example@db-alpha/grid &&
+          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8044 \
+              --database-url postgres://grid:grid_example@db-alpha/grid
+        "
+
+  splinterd-alpha:
+    image: splintercommunity/splinterd:master
+    container_name: splinterd-alpha
+    expose:
+      - 8044
+    ports:
+      - "8044:8044"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - key-registry:/key_registry_shared
+      - ./configs:/configs
+    entrypoint: |
+      bash -c "
+        while [ ! -f /key_registry_shared/keys.yaml ]; do \
+          echo 'waiting for key registry'; \
+          sleep 1; \
+        done && \
+        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinterd -vv \
+        --registry-backend FILE \
+        --registry-file /configs/nodes.yaml \
+        --bind 0.0.0.0:8085 \
+        --network-endpoint 0.0.0.0:8044 \
+        --node-id alpha-node-000 \
+        --service-endpoint 0.0.0.0:8043 \
+        --storage yaml \
+        --transport tls \
+        --client-cert /etc/splinter/certs/client.crt \
+        --client-key /etc/splinter/certs/private/client.key \
+        --server-cert /etc/splinter/certs/server.crt \
+        --server-key /etc/splinter/certs/private/server.key \
+        --insecure
+      "
+
+
+# ---== beta node ==---
+
+  db-beta:
+    image: postgres
+    container_name: db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-beta:
+    image: gridd
+    container_name: gridd-beta
+    build:
+      context: ../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    expose:
+      - 8080
+    ports:
+      - "8081:8080"
+    entrypoint: |
+        bash -c "
+          # we need to wait for the db to have started.
+          until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q'; do
+              >&2 echo \"Database is unavailable - sleeping\"
+              sleep 1
+          done
+          grid -vv database migrate \
+              --database-url postgres://grid:grid_example@db-beta/grid &&
+          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8044 \
+              --database-url postgres://grid:grid_example@db-beta/grid
+        "
+
+  splinterd-beta:
+    image: splintercommunity/splinterd:master
+    container_name: splinterd-beta
+    expose:
+      - 8044
+    ports:
+      - "8045:8044"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - key-registry:/key_registry_shared
+      - ./configs:/configs
+    entrypoint: |
+      bash -c "
+        while [ ! -f /key_registry_shared/keys.yaml ]; do \
+          echo 'waiting for key registry'; \
+          sleep 1; \
+        done && \
+        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinterd -vv \
+        --registry-backend FILE \
+        --registry-file /configs/nodes.yaml \
+        --bind 0.0.0.0:8085 \
+        --network-endpoint 0.0.0.0:8044 \
+        --node-id beta-node-000 \
+        --service-endpoint 0.0.0.0:8043 \
+        --storage yaml \
+        --transport tls \
+        --client-cert /etc/splinter/certs/client.crt \
+        --client-key /etc/splinter/certs/private/client.key \
+        --server-cert /etc/splinter/certs/server.crt \
+        --server-key /etc/splinter/certs/private/server.key \
+        --insecure
+      "
