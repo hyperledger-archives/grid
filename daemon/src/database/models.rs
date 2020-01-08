@@ -35,7 +35,7 @@ use super::schema::{
 pub struct NewCommit {
     pub commit_id: String,
     pub commit_num: i64,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
@@ -43,7 +43,7 @@ pub struct Commit {
     pub id: i64,
     pub commit_id: String,
     pub commit_num: i64,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug)]
@@ -59,7 +59,7 @@ pub struct NewAgent {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
@@ -74,7 +74,7 @@ pub struct Agent {
     pub active: bool,
     pub roles: Vec<String>,
     pub metadata: JsonValue,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug)]
@@ -89,7 +89,7 @@ pub struct NewOrganization {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
@@ -105,7 +105,7 @@ pub struct Organization {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Clone, Insertable, Debug)]
@@ -120,7 +120,7 @@ pub struct NewProduct {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
@@ -136,7 +136,7 @@ pub struct Product {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Clone, Insertable, Debug)]
@@ -158,7 +158,7 @@ pub struct NewProductPropertyValue {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -182,7 +182,7 @@ pub struct ProductPropertyValue {
     pub start_commit_num: i64,
     pub end_commit_num: i64,
 
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Clone, Insertable, Debug)]
@@ -193,7 +193,7 @@ pub struct NewGridSchema {
     pub name: String,
     pub description: String,
     pub owner: String,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -205,7 +205,7 @@ pub struct GridSchema {
     pub name: String,
     pub description: String,
     pub owner: String,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Clone, Insertable, Debug)]
@@ -221,7 +221,7 @@ pub struct NewGridPropertyDefinition {
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
     pub struct_properties: Vec<String>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -238,7 +238,7 @@ pub struct GridPropertyDefinition {
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
     pub struct_properties: Vec<String>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(SqlType, QueryId, Debug, Clone, Copy)]
@@ -279,7 +279,7 @@ pub struct NewAssociatedAgent {
     pub end_commit_num: i64,
     pub agent_id: String,
     pub timestamp: i64,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -292,7 +292,7 @@ pub struct AssociatedAgent {
     pub end_commit_num: i64,
     pub agent_id: String,
     pub timestamp: i64,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -305,7 +305,7 @@ pub struct NewProperty {
     pub property_definition: String,
     pub current_page: i32,
     pub wrapped: bool,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -319,7 +319,7 @@ pub struct Property {
     pub property_definition: String,
     pub current_page: i32,
     pub wrapped: bool,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug)]
@@ -335,7 +335,7 @@ pub struct NewProposal {
     pub properties: Vec<String>,
     pub status: String,
     pub terms: String,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug, Clone)]
@@ -351,7 +351,7 @@ pub struct Proposal {
     pub properties: Vec<String>,
     pub status: String,
     pub terms: String,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug)]
@@ -364,7 +364,7 @@ pub struct NewRecord {
     pub final_: bool,
     pub owners: Vec<String>,
     pub custodians: Vec<String>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -378,7 +378,7 @@ pub struct Record {
     pub final_: bool,
     pub owners: Vec<String>,
     pub custodians: Vec<String>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug, Clone, Default)]
@@ -398,7 +398,7 @@ pub struct NewReportedValue {
     pub enum_value: Option<i32>,
     pub struct_values: Option<Vec<String>>,
     pub lat_long_value: Option<LatLongValue>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -419,7 +419,7 @@ pub struct ReportedValue {
     pub enum_value: Option<i32>,
     pub struct_values: Option<Vec<String>>,
     pub lat_long_value: Option<LatLongValue>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -432,7 +432,7 @@ pub struct NewReporter {
     pub public_key: String,
     pub authorized: bool,
     pub reporter_index: i32,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -446,7 +446,7 @@ pub struct Reporter {
     pub public_key: String,
     pub authorized: bool,
     pub reporter_index: i32,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Queryable, Debug)]
@@ -469,7 +469,7 @@ pub struct ReportedValueReporterToAgentMetadata {
     pub metadata: Option<JsonValue>,
     pub reported_value_end_commit_num: i64,
     pub reporter_end_commit_num: Option<i64>,
-    pub source: Option<String>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
