@@ -88,7 +88,7 @@ pub fn run(
             let addr = HttpServer::new(move || {
                 App::new()
                     .data(state.clone())
-                    .service(web::resource("batches").route(web::post().to_async(submit_batches)))
+                    .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
                     .service(
                         web::resource("/batch_statuses")
                             .route(web::get().to_async(get_batch_statuses)),
