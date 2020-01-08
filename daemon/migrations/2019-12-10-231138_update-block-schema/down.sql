@@ -17,6 +17,6 @@ ALTER TABLE block DROP CONSTRAINT pk_id;
 
 ALTER TABLE block DROP COLUMN id;
 
-ALTER TABLE block DROP COLUMN source;
+ALTER TABLE block DROP COLUMN service_id;
 
 ALTER TABLE block ADD CONSTRAINT pk_block_id PRIMARY KEY(block_id);
