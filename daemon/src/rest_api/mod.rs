@@ -91,6 +91,7 @@ pub fn run(
                     .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
                     .service(
                         web::resource("/batch_statuses")
+                            .name("batch_statuses")
                             .route(web::get().to_async(get_batch_statuses)),
                     )
                     .service(
