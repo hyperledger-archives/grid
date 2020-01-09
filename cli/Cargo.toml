@@ -23,21 +23,26 @@ experimental = [
     "database",
     "database-migrate-biome-credentials",
     "database-migrate-biome-notifications",
-    "database-migrate-biome-users",
+    "database-migrate-biome-user",
+    "postgres",
 ]
 
 circuit = ["reqwest"]
 health = ["reqwest", "serde_json"]
 
-database = ["splinter/database", "diesel"]
-database-migrate-biome-users = ["splinter/biome", "database"]
+database = ["splinter/database", "diesel", "postgres"]
+database-migrate-biome-user = ["splinter/biome-user", "database"]
 database-migrate-biome-credentials = [
     "splinter/biome-credentials",
-    "database-migrate-biome-users",
+    "database-migrate-biome-user",
 ]
 database-migrate-biome-notifications = [
     "splinter/biome-notifications",
-    "database-migrate-biome-users",
+    "database-migrate-biome-user",
+]
+postgres = [
+    "diesel/postgres",
+    "splinter/postgres",
 ]
 
 [package]

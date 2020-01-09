@@ -52,7 +52,7 @@ use crate::rest_api::{Resource, RestResourceProvider};
 #[cfg(feature = "biome-key-management")]
 use super::key_management::store::postgres::PostgresKeyStore;
 use super::secrets::{AutoSecretManager, SecretManager};
-use super::users::user_store::SplinterUserStore;
+use super::user::store::diesel::SplinterUserStore;
 
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;

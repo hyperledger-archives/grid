@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::schema::*;
+pub(super) mod add_user;
 
-#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
-#[table_name = "splinter_user"]
-#[primary_key(id)]
-pub struct UserModel {
-    pub id: String,
+pub(super) struct UserStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> UserStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        UserStoreOperations { conn }
+    }
 }

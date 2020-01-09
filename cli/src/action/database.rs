@@ -22,8 +22,8 @@ use diesel::{connection::Connection as _, pg::PgConnection};
 use splinter::biome::credentials::database::run_migrations as run_biome_credentials_migrations;
 #[cfg(feature = "database-migrate-biome-notifications")]
 use splinter::biome::notifications::database::run_migrations as run_biome_notifications_migrations;
-#[cfg(feature = "database-migrate-biome-users")]
-use splinter::biome::users::database::run_migrations as run_biome_users_migrations;
+#[cfg(feature = "database-migrate-biome-user")]
+use splinter::biome::user::store::run_postgres_migrations as run_biome_user_migrations;
 use splinter::database::run_migrations as run_setup_migrations;
 
 pub struct MigrateAction;
@@ -48,8 +48,8 @@ impl Action for MigrateAction {
             CliError::DatabaseError(format!("Unable to run Biome setup migrations: {}", err))
         })?;
 
-        #[cfg(feature = "database-migrate-biome-users")]
-        run_biome_users_migrations(&connection).map_err(|err| {
+        #[cfg(feature = "database-migrate-biome-user")]
+        run_biome_user_migrations(&connection).map_err(|err| {
             CliError::DatabaseError(format!("Unable to run Biome users migrations: {}", err))
         })?;
         #[cfg(feature = "database-migrate-biome-credentials")]

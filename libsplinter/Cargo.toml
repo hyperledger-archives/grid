@@ -29,7 +29,7 @@ awc = { version = "0.2", optional = true }
 bcrypt = {version = "0.6", optional = true}
 byteorder = "1"
 crossbeam-channel = "0.3"
-diesel = { version = "1.0", features = ["postgres", "r2d2", "serde_json"], optional = true }
+diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
 futures = { version = "0.1", optional = true }
 hyper = { version = "0.12", optional = true }
@@ -77,26 +77,30 @@ experimental = [
     "biome-credentials",
     "biome-key-management",
     "biome-notifications",
+    "biome-user",
     "circuit-read",
     "connection-manager",
     "connection-manager-notification-iter-try-next",
     "database",
     "matrix",
     "node-registry-unified",
+    "postgres",
     "zmq-transport",
 ]
 
 biome = ["database", "jsonwebtoken", "rand"]
-biome-credentials = ["biome", "database", "bcrypt"]
+biome-credentials = ["biome", "biome-user", "database", "bcrypt"]
 biome-key-management = ["biome", "database"]
 biome-notifications = ["biome", "database"]
+biome-user = ["biome", "database"]
 circuit-read = []
 connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
-database = ["diesel", "diesel_migrations"]
+database = ["diesel/postgres", "diesel_migrations"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
 matrix = []
 node-registry-unified = []
+postgres = ["diesel/postgres"]
 rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 zmq-transport = ["zmq"]

@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2020 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,14 @@
 // limitations under the License.
 
 //! Defines a basic representation of a user and provides an API to manage users.
-//!
-//! Users are central entity in the biome module. They represent a real person who uses a splinter
-//! application.
 
-pub mod database;
+#[cfg(feature = "diesel")]
+pub(in crate::biome) mod diesel;
 mod error;
-pub(in crate::biome) mod user_store;
 
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
 pub use error::UserStoreError;
-
-use database::models::UserModel;
 
 /// Represents a user of a splinter application
 pub struct SplinterUser {
@@ -96,15 +93,4 @@ pub trait UserStore<T> {
     ///  * `id` - The unique id of the user.
     ///
     fn is_user(&self, id: &str) -> Result<bool, UserStoreError>;
-}
-
-impl From<UserModel> for SplinterUser {
-    fn from(user: UserModel) -> Self {
-        SplinterUser { id: user.id }
-    }
-}
-impl Into<UserModel> for SplinterUser {
-    fn into(self) -> UserModel {
-        UserModel { id: self.id }
-    }
 }
