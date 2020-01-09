@@ -44,14 +44,12 @@ const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     database_connection: Addr<DbExecutor>,
-    endpoint: Endpoint,
 }
 
 impl AppState {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
         connection_pool: ConnectionPool,
-        endpoint: Endpoint,
     ) -> Self {
         let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
             DbExecutor::new(connection_pool.clone())
@@ -60,7 +58,6 @@ impl AppState {
         AppState {
             batch_submitter,
             database_connection,
-            endpoint,
         }
     }
 }
@@ -134,12 +131,13 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let state = AppState::new(batch_submitter, database_connection, endpoint);
+            let state = AppState::new(batch_submitter, database_connection);
 
             let addr = HttpServer::new(move || {
                 App::new()
                     .data(state.clone())
-                    .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
+                    .app_data(endpoint.clone())
+                    .service(web::resource("/batches").route(web::post().to(submit_batches)))
                     .service(
                         web::resource("/batch_statuses")
                             .name("batch_statuses")
