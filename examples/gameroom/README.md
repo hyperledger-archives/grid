@@ -22,6 +22,10 @@ SDK](https://github.com/hyperledger/sawtooth-sdk-rust/tree/master/examples/xo_ru
 This demo requires [Docker Engine](https://docs.docker.com/engine)
 and [Docker Compose](https://docs.docker.com/compose).
 
+**Note:** To run the demo with prebuilt images from Docker Hub, replace
+`docker-compose.yaml` with `docker-compose-dockerhub.yaml` in all commands
+below.
+
 1. Clone the [splinter repository](https://github.com/Cargill/splinter).
 
 1. To start Gameroom, run the following command from the Splinter root
