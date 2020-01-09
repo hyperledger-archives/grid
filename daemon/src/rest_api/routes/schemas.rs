@@ -22,7 +22,6 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -113,23 +112,18 @@ impl Handler<ListGridSchemas> for DbExecutor {
     }
 }
 
-pub fn list_grid_schemas(
+pub async fn list_grid_schemas(
     state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    Box::new(
-        state
-            .database_connection
-            .send(ListGridSchemas {
-                service_id: query.into_inner().service_id,
-            })
-            .from_err()
-            .and_then(move |res| match res {
-                Ok(schemas) => Ok(HttpResponse::Ok().json(schemas)),
-                Err(err) => Err(err),
-            }),
-    )
+) -> Result<HttpResponse, RestApiResponseError> {
+    state
+        .database_connection
+        .send(ListGridSchemas {
+            service_id: query.into_inner().service_id,
+        })
+        .await?
+        .map(|schemas| HttpResponse::Ok().json(schemas))
 }
 
 struct FetchGridSchema {
@@ -168,21 +162,18 @@ impl Handler<FetchGridSchema> for DbExecutor {
     }
 }
 
-pub fn fetch_grid_schema(
+pub async fn fetch_grid_schema(
     state: web::Data<AppState>,
     schema_name: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(FetchGridSchema {
             name: schema_name.into_inner(),
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(schema) => Ok(HttpResponse::Ok().json(schema)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|schema| HttpResponse::Ok().json(schema))
 }

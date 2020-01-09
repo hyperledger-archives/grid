@@ -19,7 +19,6 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -63,21 +62,18 @@ impl Handler<ListOrganizations> for DbExecutor {
     }
 }
 
-pub fn list_organizations(
+pub async fn list_organizations(
     state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(ListOrganizations {
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(organizations) => Ok(HttpResponse::Ok().json(organizations)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|organizations| HttpResponse::Ok().json(organizations))
 }
 
 struct FetchOrganization {
@@ -111,21 +107,18 @@ impl Handler<FetchOrganization> for DbExecutor {
     }
 }
 
-pub fn fetch_organization(
+pub async fn fetch_organization(
     state: web::Data<AppState>,
     organization_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(FetchOrganization {
             organization_id: organization_id.into_inner(),
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(organization) => Ok(HttpResponse::Ok().json(organization)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|organization| HttpResponse::Ok().json(organization))
 }
