@@ -47,6 +47,7 @@ impl DbExecutor {
 #[cfg(all(feature = "test-api", test))]
 mod test {
     use super::*;
+    use crate::config::Endpoint;
     use crate::database;
     use crate::database::{
         helpers::MAX_COMMIT_NUM,
@@ -265,7 +266,11 @@ mod test {
                 let mock_batch_submitter = Box::new(MockBatchSubmitter {
                     sender: mock_sender,
                 });
-                AppState::new(mock_batch_submitter, get_connection_pool())
+                AppState::new(
+                    mock_batch_submitter,
+                    get_connection_pool(),
+                    Endpoint::from("tcp://localhost:9090"),
+                )
             };
             HttpService::new(
                 App::new()
@@ -1781,7 +1786,7 @@ mod test {
             metadata: JsonValue::Object(Map::new()),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -1795,7 +1800,7 @@ mod test {
                 metadata: JsonValue::Object(Map::new()),
                 start_commit_num: 0,
                 end_commit_num: MAX_COMMIT_NUM,
-                source: None,
+                service_id: None,
             },
             NewAgent {
                 public_key: KEY2.to_string(),
@@ -1805,7 +1810,7 @@ mod test {
                 metadata: JsonValue::Object(Map::new()),
                 start_commit_num: 0,
                 end_commit_num: MAX_COMMIT_NUM,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -1828,7 +1833,7 @@ mod test {
             metadata: vec![],
             start_commit_num: 1,
             end_commit_num: database::helpers::MAX_COMMIT_NUM,
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -1841,7 +1846,7 @@ mod test {
                 metadata: vec![],
                 start_commit_num: 2,
                 end_commit_num: 4,
-                source: None,
+                service_id: None,
             },
             NewOrganization {
                 org_id: KEY3.to_string(),
@@ -1850,7 +1855,7 @@ mod test {
                 metadata: vec![],
                 start_commit_num: 4,
                 end_commit_num: database::helpers::MAX_COMMIT_NUM,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -1872,7 +1877,7 @@ mod test {
             name: "TestGridSchema".to_string(),
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -1884,7 +1889,7 @@ mod test {
             owner: "phillips001".to_string(),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -1897,7 +1902,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
-                source: None,
+                service_id: None,
             },
             NewAssociatedAgent {
                 start_commit_num: 0,
@@ -1906,7 +1911,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -1920,7 +1925,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
-                source: None,
+                service_id: None,
             },
             NewAssociatedAgent {
                 start_commit_num: 0,
@@ -1929,7 +1934,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
-                source: None,
+                service_id: None,
             },
             NewAssociatedAgent {
                 start_commit_num: 1,
@@ -1938,7 +1943,7 @@ mod test {
                 timestamp: 2,
                 record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
-                source: None,
+                service_id: None,
             },
             NewAssociatedAgent {
                 start_commit_num: 1,
@@ -1947,7 +1952,7 @@ mod test {
                 timestamp: 2,
                 record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -1964,7 +1969,7 @@ mod test {
             role: "OWNER".to_string(),
             status: "OPEN".to_string(),
             terms: "Proposal Terms".to_string(),
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -1981,7 +1986,7 @@ mod test {
                 role: "OWNER".to_string(),
                 status: "OPEN".to_string(),
                 terms: "Proposal Terms".to_string(),
-                source: None,
+                service_id: None,
             },
             NewProposal {
                 start_commit_num: 1,
@@ -1994,7 +1999,7 @@ mod test {
                 role: "OWNER".to_string(),
                 status: "CANCELED".to_string(),
                 terms: "Proposal Terms".to_string(),
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2008,7 +2013,7 @@ mod test {
             final_: false,
             owners: vec![KEY1.to_string()],
             custodians: vec![KEY2.to_string()],
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -2022,7 +2027,7 @@ mod test {
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
-                source: None,
+                service_id: None,
             },
             NewRecord {
                 start_commit_num: 1,
@@ -2032,7 +2037,7 @@ mod test {
                 final_: true,
                 owners: vec![KEY2.to_string(), KEY1.to_string()],
                 custodians: vec![KEY1.to_string(), KEY2.to_string()],
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2047,7 +2052,7 @@ mod test {
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
-                source: None,
+                service_id: None,
             },
             NewRecord {
                 start_commit_num: 1,
@@ -2057,7 +2062,7 @@ mod test {
                 final_: true,
                 owners: vec![KEY2.to_string(), KEY1.to_string()],
                 custodians: vec![KEY1.to_string(), KEY2.to_string()],
-                source: None,
+                service_id: None,
             },
             NewRecord {
                 start_commit_num: 0,
@@ -2067,7 +2072,7 @@ mod test {
                 final_: false,
                 owners: vec![KEY1.to_string()],
                 custodians: vec![KEY2.to_string()],
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2102,7 +2107,7 @@ mod test {
                 property_definition: "property_definition_1".to_string(),
                 current_page: 1,
                 wrapped: false,
-                source: None,
+                service_id: None,
             },
             NewProperty {
                 start_commit_num: 0,
@@ -2112,7 +2117,7 @@ mod test {
                 property_definition: "property_definition_2".to_string(),
                 current_page: 1,
                 wrapped: false,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2127,7 +2132,7 @@ mod test {
                 public_key: KEY1.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                source: None,
+                service_id: None,
             },
             NewReporter {
                 start_commit_num: 0,
@@ -2137,7 +2142,7 @@ mod test {
                 public_key: KEY2.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2159,7 +2164,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2176,7 +2181,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2189,7 +2194,7 @@ mod test {
             property_definition: "property_definition_1".to_string(),
             current_page: 1,
             wrapped: false,
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -2203,7 +2208,7 @@ mod test {
                 public_key: KEY1.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                source: None,
+                service_id: None,
             },
             NewReporter {
                 start_commit_num: 0,
@@ -2213,7 +2218,7 @@ mod test {
                 public_key: KEY2.to_string(),
                 authorized: true,
                 reporter_index: 1,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2231,7 +2236,7 @@ mod test {
             metadata: JsonValue::Object(metadata.clone()),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            source: None,
+            service_id: None,
         };
 
         let value2 = JsonValue::String("Jon Snow".to_string());
@@ -2245,7 +2250,7 @@ mod test {
             metadata: JsonValue::Object(metadata),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            source: None,
+            service_id: None,
         };
 
         vec![agent, agent2]
@@ -2326,7 +2331,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                source: None,
+                service_id: None,
             },
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2339,7 +2344,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2356,7 +2361,7 @@ mod test {
             number_exponent: 0,
             enum_options: vec![],
             struct_properties: vec![],
-            source: None,
+            service_id: None,
         }]
     }
 
@@ -2373,7 +2378,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                source: None,
+                service_id: None,
             },
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2386,7 +2391,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2426,7 +2431,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewProductPropertyValue {
                 start_commit_num: 0,
@@ -2442,7 +2447,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
         ]
     }
@@ -2534,7 +2539,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2551,7 +2556,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2571,7 +2576,7 @@ mod test {
                     "BoolProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2591,7 +2596,7 @@ mod test {
                     "BoolProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2608,7 +2613,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2625,7 +2630,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2648,7 +2653,7 @@ mod test {
                     "BytesProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2671,7 +2676,7 @@ mod test {
                     "BytesProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2688,7 +2693,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: Some(LatLongValue(2, 2)),
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2705,7 +2710,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: Some(LatLongValue(1, 1)),
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2722,7 +2727,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2739,7 +2744,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2756,7 +2761,7 @@ mod test {
                 enum_value: Some(2),
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2773,7 +2778,7 @@ mod test {
                 enum_value: Some(1),
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2790,7 +2795,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2807,7 +2812,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                source: None,
+                service_id: None,
             },
         ]
     }

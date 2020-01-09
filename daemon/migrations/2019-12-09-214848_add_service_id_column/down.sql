@@ -13,31 +13,32 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-ALTER TABLE agent ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE agent DROP COLUMN service_id;
 
-ALTER TABLE associated_agent ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE associated_agent DROP COLUMN service_id;
 
-ALTER TABLE grid_property_definition ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE grid_property_definition DROP COLUMN service_id;
 
-ALTER TABLE grid_schema ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE grid_schema DROP COLUMN service_id;
 
-ALTER TABLE organization ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE organization DROP COLUMN service_id;
 
-ALTER TABLE product ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE product DROP COLUMN service_id;
 
-ALTER TABLE product_property_value ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE product_property_value DROP COLUMN service_id;
 
-ALTER TABLE property ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE property DROP COLUMN service_id;
 
-ALTER TABLE proposal ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE proposal DROP COLUMN service_id;
 
-ALTER TABLE record ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE record DROP COLUMN service_id;
 
-ALTER TABLE reported_value ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE reported_value DROP COLUMN service_id;
 
-ALTER TABLE reporter ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE reporter DROP COLUMN service_id;
 
 DROP VIEW reported_value_reporter_to_agent_metadata;
+
 DROP VIEW reporter_to_agent_metadata;
 
 CREATE VIEW reporter_to_agent_metadata
@@ -49,8 +50,7 @@ AS
          authorized,
          reporter_index,
          metadata,
-         reporter_end_block_num,
-         source
+         reporter_end_block_num
   FROM   (SELECT Row_number()
                    OVER (
                      partition BY id
@@ -64,8 +64,7 @@ AS
                          reporter.public_key,
                          reporter.end_block_num AS "reporter_end_block_num",
                          agent.end_block_num    AS "agent_end_block_num",
-                         agent.metadata,
-                         agent.source
+                         agent.metadata
                   FROM   reporter
                          LEFT JOIN agent
                                 ON reporter.public_key = agent.public_key
@@ -93,8 +92,7 @@ AS
          authorized,
          metadata,
          reported_value_end_block_num,
-         reporter_end_block_num,
-         source
+         reporter_end_block_num
   FROM   (SELECT Row_number()
                    OVER (
                      partition BY id
@@ -118,8 +116,7 @@ AS
                          reporter_to_agent_metadata.reporter_end_block_num,
                          reporter_to_agent_metadata.public_key,
                          reporter_to_agent_metadata.authorized,
-                         reporter_to_agent_metadata.metadata,
-                         reported_value.source
+                         reporter_to_agent_metadata.metadata
                   FROM   reported_value
                          LEFT JOIN reporter_to_agent_metadata
                                 ON reported_value.record_id =
@@ -129,6 +126,6 @@ AS
                                    AND reported_value.reporter_index =
                                        reporter_to_agent_metadata.reporter_index
                                    AND reported_value.end_block_num <=
-                                       reporter_to_agent_metadata.reporter_end_block_num) AS
-                    join_tables) X
-    WHERE  rownum = 1;
+  reporter_to_agent_metadata.reporter_end_block_num) AS
+  join_tables) X
+  WHERE  rownum = 1;

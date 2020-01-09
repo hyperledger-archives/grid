@@ -41,7 +41,7 @@ const ALL_GRID_NAMESPACES: &[&str] = &[PIKE_NAMESPACE, GRID_NAMESPACE, TRACK_AND
 /// A notification that some source has committed a set of changes to state
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from
-    pub source: String,
+    pub service_id: String,
     /// An identifier that is unique among events from the source
     pub id: String,
     /// May be used to provide ordering of commits from the source. If `None`, ordering is not

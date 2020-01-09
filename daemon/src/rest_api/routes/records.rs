@@ -21,7 +21,9 @@ use crate::database::{
     ConnectionPool,
 };
 
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
@@ -123,7 +125,9 @@ impl RecordSlice {
     }
 }
 
-struct ListRecords;
+struct ListRecords {
+    service_id: Option<String>,
+}
 
 impl Message for ListRecords {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
@@ -132,25 +136,35 @@ impl Message for ListRecords {
 impl Handler<ListRecords> for DbExecutor {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
 
-    fn handle(&mut self, _msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
-        let records = db::list_records(&*self.connection_pool.get()?)?;
+    fn handle(&mut self, msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
+        let records = db::list_records(&*self.connection_pool.get()?, msg.service_id.as_deref())?;
 
         let record_ids: Vec<String> = records
             .iter()
             .map(|record| record.record_id.to_string())
             .collect();
 
-        let proposals = db::list_proposals(&*self.connection_pool.get()?, &record_ids)?;
-        let associated_agents =
-            db::list_associated_agents(&*self.connection_pool.get()?, &record_ids)?;
+        let proposals = db::list_proposals(
+            &*self.connection_pool.get()?,
+            &record_ids,
+            msg.service_id.as_deref(),
+        )?;
+        let associated_agents = db::list_associated_agents(
+            &*self.connection_pool.get()?,
+            &record_ids,
+            msg.service_id.as_deref(),
+        )?;
 
-        let properties =
-            db::list_properties_with_data_type(&*self.connection_pool.get()?, &record_ids)?
-                .iter()
-                .map(|(property, data_type)| {
-                    parse_property_slice(&self.connection_pool, property, data_type)
-                })
-                .collect::<Result<Vec<PropertySlice>, _>>()?;
+        let properties = db::list_properties_with_data_type(
+            &*self.connection_pool.get()?,
+            &record_ids,
+            msg.service_id.as_deref(),
+        )?
+        .iter()
+        .map(|(property, data_type)| {
+            parse_property_slice(&self.connection_pool, property, data_type)
+        })
+        .collect::<Result<Vec<PropertySlice>, _>>()?;
 
         Ok(records
             .iter()
@@ -180,11 +194,15 @@ impl Handler<ListRecords> for DbExecutor {
 
 pub fn list_records(
     state: web::Data<AppState>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     Box::new(
         state
             .database_connection
-            .send(ListRecords)
+            .send(ListRecords {
+                service_id: query.into_inner().service_id,
+            })
             .from_err()
             .and_then(move |res| match res {
                 Ok(records) => Ok(HttpResponse::Ok().json(records)),
@@ -195,6 +213,7 @@ pub fn list_records(
 
 struct FetchRecord {
     record_id: String,
+    service_id: Option<String>,
 }
 
 impl Message for FetchRecord {
@@ -215,12 +234,16 @@ impl Handler<FetchRecord> for DbExecutor {
             }
         };
 
-        let proposals =
-            db::list_proposals(&*self.connection_pool.get()?, &[msg.record_id.clone()])?;
+        let proposals = db::list_proposals(
+            &*self.connection_pool.get()?,
+            &[msg.record_id.clone()],
+            msg.service_id.as_deref(),
+        )?;
 
         let properties = db::list_properties_with_data_type(
             &*self.connection_pool.get()?,
             &[msg.record_id.clone()],
+            msg.service_id.as_deref(),
         )?
         .iter()
         .map(|(property, data_type)| {
@@ -228,8 +251,11 @@ impl Handler<FetchRecord> for DbExecutor {
         })
         .collect::<Result<Vec<PropertySlice>, _>>()?;
 
-        let associated_agents =
-            db::list_associated_agents(&*self.connection_pool.get()?, &[msg.record_id])?;
+        let associated_agents = db::list_associated_agents(
+            &*self.connection_pool.get()?,
+            &[msg.record_id],
+            msg.service_id.as_deref(),
+        )?;
 
         Ok(RecordSlice::from_models(
             &record,
@@ -243,11 +269,14 @@ impl Handler<FetchRecord> for DbExecutor {
 pub fn fetch_record(
     state: web::Data<AppState>,
     record_id: web::Path<String>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
         .send(FetchRecord {
             record_id: record_id.into_inner(),
+            service_id: query.into_inner().service_id,
         })
         .from_err()
         .and_then(move |res| match res {
@@ -449,6 +478,7 @@ fn parse_value(
 struct FetchRecordProperty {
     record_id: String,
     property_name: String,
+    service_id: Option<String>,
 }
 
 impl Message for FetchRecordProperty {
@@ -458,12 +488,15 @@ impl Message for FetchRecordProperty {
 pub fn fetch_record_property(
     state: web::Data<AppState>,
     params: web::Path<(String, String)>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
         .send(FetchRecordProperty {
             record_id: params.0.clone(),
             property_name: params.1.clone(),
+            service_id: query.into_inner().service_id,
         })
         .from_err()
         .and_then(move |res| match res {
@@ -480,6 +513,7 @@ impl Handler<FetchRecordProperty> for DbExecutor {
             &*self.connection_pool.get()?,
             &msg.record_id,
             &msg.property_name,
+            msg.service_id.as_deref(),
         )?
         .ok_or_else(|| {
             RestApiResponseError::NotFoundError(format!(

@@ -20,7 +20,9 @@ use crate::database::{
     models::{LatLongValue, Product, ProductPropertyValue},
 };
 
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
@@ -103,7 +105,9 @@ impl LatLongSlice {
     }
 }
 
-struct ListProducts;
+struct ListProducts {
+    service_id: Option<String>,
+}
 
 impl Message for ListProducts {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
@@ -112,39 +116,46 @@ impl Message for ListProducts {
 impl Handler<ListProducts> for DbExecutor {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
 
-    fn handle(&mut self, _msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
-        let mut product_properties =
-            db::list_product_property_values(&*self.connection_pool.get()?)?
-                .into_iter()
-                .fold(HashMap::new(), |mut acc, product_property| {
-                    acc.entry(product_property.product_id.to_string())
-                        .or_insert_with(|| vec![])
-                        .push(product_property);
-                    acc
-                });
+    fn handle(&mut self, msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
+        let mut product_properties = db::list_product_property_values(
+            &*self.connection_pool.get()?,
+            msg.service_id.as_deref(),
+        )?
+        .into_iter()
+        .fold(HashMap::new(), |mut acc, product_property| {
+            acc.entry(product_property.product_id.to_string())
+                .or_insert_with(|| vec![])
+                .push(product_property);
+            acc
+        });
 
-        let fetched_products = db::list_products(&*self.connection_pool.get()?)?
-            .iter()
-            .map(|product| {
-                ProductSlice::from_model(
-                    product,
-                    product_properties
-                        .remove(&product.product_id)
-                        .unwrap_or_else(|| vec![]),
-                )
-            })
-            .collect();
+        let fetched_products =
+            db::list_products(&*self.connection_pool.get()?, msg.service_id.as_deref())?
+                .iter()
+                .map(|product| {
+                    ProductSlice::from_model(
+                        product,
+                        product_properties
+                            .remove(&product.product_id)
+                            .unwrap_or_else(|| vec![]),
+                    )
+                })
+                .collect();
         Ok(fetched_products)
     }
 }
 
 pub fn list_products(
     state: web::Data<AppState>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     Box::new(
         state
             .database_connection
-            .send(ListProducts)
+            .send(ListProducts {
+                service_id: query.into_inner().service_id,
+            })
             .from_err()
             .and_then(move |res| match res {
                 Ok(products) => Ok(HttpResponse::Ok().json(products)),
@@ -155,6 +166,7 @@ pub fn list_products(
 
 struct FetchProduct {
     product_id: String,
+    service_id: Option<String>,
 }
 
 impl Message for FetchProduct {
@@ -165,7 +177,11 @@ impl Handler<FetchProduct> for DbExecutor {
     type Result = Result<ProductSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchProduct, _: &mut SyncContext<Self>) -> Self::Result {
-        let product = match db::fetch_product(&*self.connection_pool.get()?, &msg.product_id)? {
+        let product = match db::fetch_product(
+            &*self.connection_pool.get()?,
+            &msg.product_id,
+            msg.service_id.as_deref(),
+        )? {
             Some(product) => product,
             None => {
                 return Err(RestApiResponseError::NotFoundError(format!(
@@ -175,8 +191,11 @@ impl Handler<FetchProduct> for DbExecutor {
             }
         };
 
-        let product_properties =
-            db::fetch_product_property_values(&*self.connection_pool.get()?, &msg.product_id)?;
+        let product_properties = db::fetch_product_property_values(
+            &*self.connection_pool.get()?,
+            &msg.product_id,
+            msg.service_id.as_deref(),
+        )?;
 
         Ok(ProductSlice::from_model(&product, product_properties))
     }
@@ -185,12 +204,15 @@ impl Handler<FetchProduct> for DbExecutor {
 pub fn fetch_product(
     state: web::Data<AppState>,
     product_id: web::Path<String>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     Box::new(
         state
             .database_connection
             .send(FetchProduct {
                 product_id: product_id.into_inner(),
+                service_id: query.into_inner().service_id,
             })
             .from_err()
             .and_then(move |res| match res {

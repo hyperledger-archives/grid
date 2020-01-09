@@ -18,6 +18,7 @@ mod routes;
 use std::sync::mpsc;
 use std::thread;
 
+use crate::config::Endpoint;
 use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::routes::DbExecutor;
@@ -28,8 +29,14 @@ use crate::rest_api::routes::{
 };
 use crate::submitter::BatchSubmitter;
 use actix::{Addr, SyncArbiter};
-use actix_web::{web, App, HttpServer, Result};
+use actix_web::{
+    dev,
+    error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError},
+    web, App, FromRequest, HttpRequest, HttpServer, Result,
+};
+use futures::future;
 use futures::Future;
+use serde::{Deserialize, Serialize};
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 
@@ -37,12 +44,14 @@ const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     database_connection: Addr<DbExecutor>,
+    endpoint: Endpoint,
 }
 
 impl AppState {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
         connection_pool: ConnectionPool,
+        endpoint: Endpoint,
     ) -> Self {
         let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
             DbExecutor::new(connection_pool.clone())
@@ -51,7 +60,48 @@ impl AppState {
         AppState {
             batch_submitter,
             database_connection,
+            endpoint,
         }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryServiceId {
+    pub service_id: Option<String>,
+}
+
+pub struct AcceptServiceIdParam;
+
+impl FromRequest for AcceptServiceIdParam {
+    type Error = ActixError;
+    type Future = Box<dyn Future<Item = Self, Error = Self::Error>>;
+    type Config = ();
+
+    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
+        let endpoint: Endpoint = if let Some(state) = req.app_data::<AppState>() {
+            state.endpoint.clone()
+        } else {
+            return Box::new(future::err(ErrorInternalServerError("App state not found")));
+        };
+
+        let service_id =
+            if let Ok(query) = web::Query::<QueryServiceId>::from_query(req.query_string()) {
+                query.service_id.clone()
+            } else {
+                return Box::new(future::err(ErrorBadRequest("Malformed query param")));
+            };
+
+        if service_id.is_some() && endpoint.is_sawtooth() {
+            return Box::new(future::err(ErrorBadRequest(
+                "Circuit ID present, but grid is running in sawtooth mode",
+            )));
+        } else if service_id.is_none() && !endpoint.is_sawtooth() {
+            return Box::new(future::err(ErrorBadRequest(
+                "Circuit ID is not present, but grid is running in splinter mode",
+            )));
+        }
+
+        Box::new(future::ok(AcceptServiceIdParam))
     }
 }
 
@@ -69,6 +119,7 @@ pub fn run(
     bind_url: &str,
     database_connection: ConnectionPool,
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
+    endpoint: Endpoint,
 ) -> Result<
     (
         RestApiShutdownHandle,
@@ -83,7 +134,7 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let state = AppState::new(batch_submitter, database_connection);
+            let state = AppState::new(batch_submitter, database_connection, endpoint);
 
             let addr = HttpServer::new(move || {
                 App::new()

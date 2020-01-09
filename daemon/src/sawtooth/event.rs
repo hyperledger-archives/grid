@@ -235,7 +235,7 @@ impl TryFrom<&[SawtoothEvent]> for CommitEvent {
         let state_changes = get_state_changes(events)?;
 
         Ok(CommitEvent {
-            source: "".into(), // sawtooth is identified by the null source
+            service_id: "".into(), // sawtooth is identified by the null service_id
             id,
             height,
             state_changes,
@@ -386,7 +386,7 @@ mod tests {
         let commit_event = CommitEvent::try_from(sawtooth_events.as_slice())
             .expect("Failed to convert sawtooth events to a CommitEvent");
 
-        assert_eq!(&commit_event.source, "");
+        assert_eq!(&commit_event.service_id, "");
         assert_eq!(&commit_event.id, block_id);
         assert_eq!(commit_event.height, Some(block_num));
         assert_eq!(commit_event.state_changes.len(), grid_state_changes.len());

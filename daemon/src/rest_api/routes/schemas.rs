@@ -16,7 +16,9 @@ use crate::database::{
     helpers as db,
     models::{GridPropertyDefinition, GridSchema},
 };
-use crate::rest_api::{error::RestApiResponseError, routes::DbExecutor, AppState};
+use crate::rest_api::{
+    error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
+};
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
@@ -73,7 +75,9 @@ impl GridPropertyDefinitionSlice {
     }
 }
 
-struct ListGridSchemas;
+struct ListGridSchemas {
+    service_id: Option<String>,
+}
 
 impl Message for ListGridSchemas {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
@@ -82,36 +86,44 @@ impl Message for ListGridSchemas {
 impl Handler<ListGridSchemas> for DbExecutor {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 
-    fn handle(&mut self, _msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
-        let mut properties = db::list_grid_property_definitions(&*self.connection_pool.get()?)?
-            .into_iter()
-            .fold(HashMap::new(), |mut acc, definition| {
-                acc.entry(definition.schema_name.to_string())
-                    .or_insert_with(|| vec![])
-                    .push(definition);
-                acc
-            });
+    fn handle(&mut self, msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
+        let mut properties = db::list_grid_property_definitions(
+            &*self.connection_pool.get()?,
+            msg.service_id.as_deref(),
+        )?
+        .into_iter()
+        .fold(HashMap::new(), |mut acc, definition| {
+            acc.entry(definition.schema_name.to_string())
+                .or_insert_with(|| vec![])
+                .push(definition);
+            acc
+        });
 
-        let fetched_schemas = db::list_grid_schemas(&*self.connection_pool.get()?)?
-            .iter()
-            .map(|schema| {
-                GridSchemaSlice::from_schema(
-                    schema,
-                    properties.remove(&schema.name).unwrap_or_else(|| vec![]),
-                )
-            })
-            .collect();
+        let fetched_schemas =
+            db::list_grid_schemas(&*self.connection_pool.get()?, msg.service_id.as_deref())?
+                .iter()
+                .map(|schema| {
+                    GridSchemaSlice::from_schema(
+                        schema,
+                        properties.remove(&schema.name).unwrap_or_else(|| vec![]),
+                    )
+                })
+                .collect();
         Ok(fetched_schemas)
     }
 }
 
 pub fn list_grid_schemas(
     state: web::Data<AppState>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
     Box::new(
         state
             .database_connection
-            .send(ListGridSchemas)
+            .send(ListGridSchemas {
+                service_id: query.into_inner().service_id,
+            })
             .from_err()
             .and_then(move |res| match res {
                 Ok(schemas) => Ok(HttpResponse::Ok().json(schemas)),
@@ -122,6 +134,7 @@ pub fn list_grid_schemas(
 
 struct FetchGridSchema {
     name: String,
+    service_id: Option<String>,
 }
 
 impl Message for FetchGridSchema {
@@ -135,9 +148,13 @@ impl Handler<FetchGridSchema> for DbExecutor {
         let properties = db::list_grid_property_definitions_with_schema_name(
             &*self.connection_pool.get()?,
             &msg.name,
+            msg.service_id.as_deref(),
         )?;
-        let fetched_schema = match db::fetch_grid_schema(&*self.connection_pool.get()?, &msg.name)?
-        {
+        let fetched_schema = match db::fetch_grid_schema(
+            &*self.connection_pool.get()?,
+            &msg.name,
+            msg.service_id.as_deref(),
+        )? {
             Some(schema) => GridSchemaSlice::from_schema(&schema, properties),
             None => {
                 return Err(RestApiResponseError::NotFoundError(format!(
@@ -154,11 +171,14 @@ impl Handler<FetchGridSchema> for DbExecutor {
 pub fn fetch_grid_schema(
     state: web::Data<AppState>,
     schema_name: web::Path<String>,
+    query: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
     state
         .database_connection
         .send(FetchGridSchema {
             name: schema_name.into_inner(),
+            service_id: query.into_inner().service_id,
         })
         .from_err()
         .and_then(move |res| match res {
