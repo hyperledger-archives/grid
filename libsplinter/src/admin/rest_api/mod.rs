@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "proposal-read")]
+mod error;
+#[cfg(feature = "proposal-read")]
+mod proposals_read;
+
 use std::collections::HashMap;
 use std::time;
 
@@ -25,6 +30,9 @@ use crate::rest_api::{
 use crate::service::ServiceError;
 
 use super::messages::AdminServiceEvent;
+
+#[cfg(feature = "proposal-read")]
+use super::rest_api::proposals_read::{fetch_proposal, list_proposals};
 use super::service::{
     AdminCommands, AdminService, AdminServiceError, AdminServiceEventSubscriber,
     AdminSubscriberError,
@@ -32,10 +40,19 @@ use super::service::{
 
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
-        vec![
+        // Allowing unused_mut because resources must be mutable if feature proposal-read is enabled
+        #[allow(unused_mut)]
+        let mut resources = vec![
             make_application_handler_registration_route(self.commands()),
             make_submit_route(self.commands()),
-        ]
+        ];
+
+        #[cfg(feature = "proposal-read")]
+        resources.push(make_fetch_proposal_resource(self.commands()));
+        #[cfg(feature = "proposal-read")]
+        resources.push(make_list_proposals_resource(self.commands()));
+
+        resources
     }
 }
 
@@ -133,6 +150,24 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
                 Box::new(HttpResponse::InternalServerError().finish().into_future())
             }
         }
+    })
+}
+
+#[cfg(feature = "proposal-read")]
+pub fn make_fetch_proposal_resource<A: AdminCommands + Clone + 'static>(
+    admin_commands: A,
+) -> Resource {
+    Resource::build("admin/proposals/{circuit_id}").add_method(Method::Get, move |r, _| {
+        fetch_proposal(r, web::Data::new(admin_commands.clone()))
+    })
+}
+
+#[cfg(feature = "proposal-read")]
+pub fn make_list_proposals_resource<A: AdminCommands + Clone + 'static>(
+    admin_commands: A,
+) -> Resource {
+    Resource::build("admin/proposals").add_method(Method::Get, move |r, _| {
+        list_proposals(r, web::Data::new(admin_commands.clone()))
     })
 }
 

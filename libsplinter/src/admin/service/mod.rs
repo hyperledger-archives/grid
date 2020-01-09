@@ -35,7 +35,9 @@ use crate::network::{
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{AdminMessage, AdminMessage_Type, CircuitManagementPayload};
+use crate::protos::admin::{
+    AdminMessage, AdminMessage_Type, CircuitManagementPayload, CircuitProposal,
+};
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -76,6 +78,13 @@ pub trait AdminCommands: Send + Sync {
     ) -> Result<Events, AdminServiceError>;
 
     fn clone_boxed(&self) -> Box<dyn AdminCommands>;
+
+    fn fetch_proposal(
+        &self,
+        circuit_id: String,
+    ) -> Result<Option<CircuitProposal>, AdminServiceError>;
+
+    fn list_proposals(&self) -> Result<Vec<messages::CircuitProposal>, AdminServiceError>;
 }
 
 impl Clone for Box<dyn AdminCommands> {
@@ -382,6 +391,30 @@ impl AdminCommands for AdminServiceCommands {
 
     fn clone_boxed(&self) -> Box<dyn AdminCommands> {
         Box::new(self.clone())
+    }
+
+    fn fetch_proposal(
+        &self,
+        circuit_id: String,
+    ) -> Result<Option<CircuitProposal>, AdminServiceError> {
+        self.shared
+            .lock()
+            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
+            .get_proposal(&circuit_id)
+            .map_err(|err| {
+                AdminServiceError::general_error_with_source(
+                    "Unable to get proposal",
+                    Box::new(err),
+                )
+            })
+    }
+
+    fn list_proposals(&self) -> Result<Vec<messages::CircuitProposal>, AdminServiceError> {
+        Ok(self
+            .shared
+            .lock()
+            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
+            .get_proposals())
     }
 }
 
