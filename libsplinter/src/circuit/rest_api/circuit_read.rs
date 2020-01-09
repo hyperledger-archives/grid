@@ -194,11 +194,9 @@ fn query_list_circuits(
         let limit_value = limit.unwrap_or_else(|| circuits.len());
         if !circuits.is_empty() {
             if let Some(filter) = filters {
-                let circuits_data: Vec<CircuitResponse> = circuits
+                let filtered_circuits: Vec<CircuitResponse> = circuits
                     .into_iter()
                     .filter(|(_, circuit)| circuit.members().contains(&filter))
-                    .skip(offset_value)
-                    .take(limit_value)
                     .map(|(circuit_id, circuit)| CircuitResponse {
                         id: circuit_id,
                         auth: circuit.auth().clone(),
@@ -210,9 +208,17 @@ fn query_list_circuits(
                         circuit_management_type: circuit.circuit_management_type().to_string(),
                     })
                     .collect();
-                let total_count = circuits_data.len();
+
+                let total_count = filtered_circuits.len();
+                let circuits_data: Vec<CircuitResponse> = filtered_circuits
+                    .into_iter()
+                    .skip(offset_value)
+                    .take(limit_value)
+                    .collect();
+
                 Ok((circuits_data, link, limit, offset, total_count))
             } else {
+                let total_count = circuits.len();
                 let circuits_data: Vec<CircuitResponse> = circuits
                     .into_iter()
                     .skip(offset_value)
@@ -228,7 +234,6 @@ fn query_list_circuits(
                         circuit_management_type: circuit.circuit_management_type().to_string(),
                     })
                     .collect();
-                let total_count = circuits_data.len();
                 Ok((circuits_data, link, limit, offset, total_count))
             }
         } else {
