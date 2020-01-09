@@ -688,6 +688,10 @@ impl AdminServiceShared {
         Ok(self.open_proposals.get_proposal(circuit_id)?)
     }
 
+    pub fn get_proposals(&self) -> Vec<messages::CircuitProposal> {
+        self.open_proposals.get_proposals()
+    }
+
     pub fn remove_proposal(
         &mut self,
         circuit_id: &str,

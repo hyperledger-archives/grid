@@ -72,6 +72,10 @@ impl OpenProposals {
         self.proposal_registry.get_proposal(circuit_id)
     }
 
+    pub fn get_proposals(&self) -> Vec<messages::CircuitProposal> {
+        self.proposal_registry.get_proposals()
+    }
+
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
         self.proposal_registry.has_proposal(circuit_id)
     }
@@ -129,6 +133,13 @@ impl ProposalRegistry {
             Some(circuit_proposal) => Ok(Some(circuit_proposal.clone().into_proto()?)),
             None => Ok(None),
         }
+    }
+
+    pub fn get_proposals(&self) -> Vec<messages::CircuitProposal> {
+        self.proposals
+            .iter()
+            .map(|(_, proposal)| proposal.clone())
+            .collect()
     }
 
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
