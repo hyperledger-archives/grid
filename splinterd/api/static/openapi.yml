@@ -42,6 +42,83 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /admin/proposals:
+    get:
+      tags:
+          - Proposals
+      description: Experimental - List of proposals in Admin Service state
+      parameters:
+        - name: offset
+          in: query
+          description: paging offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: maximum number of items to return (max 100)
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: filter
+          in: query
+          description: circuit management type of the proposed circuit
+          required: false
+          schema:
+            type: string
+          example: "my-type"
+      responses:
+        200:
+          description: list of proposals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Proposal'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/proposals/{circuit_id}:
+    get:
+      tags:
+        - Proposals
+      description: Experimental - Fetch a proposal in Admin Service state by its circuit id
+      parameters:
+        - name: circuit_id
+          in: path
+          description: circuit id of the proposal to fetch
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Proposal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Proposal"
+        404:
+          description: The proposal with {circuit_id} was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /admin/submit:
     post:
       tags:
@@ -685,6 +762,59 @@ components:
         allowed_nodes:
           type: array
           item: string
+
+    Proposal:
+      type: object
+      properties:
+        proposal_type:
+          type: object
+          description: The type of circuit proposal
+          properties:
+            statusType:
+              type: string
+              enum:
+                - Create
+                - UpdateRoster
+                - AddNode
+                - RemoveNode
+                - Destroy
+        circuit_id:
+          type: string
+          example: "circuit-000"
+        ciircuit_hash:
+          type: string
+          example: "8ce518770b962429a953b10220905ac9adf86a855f0b085695f444edf991b8ca"
+        circuit_proposal:
+            type: object
+            properties:
+              data:
+                $ref: "#/components/schemas/Circuit"
+        votes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoteRecord'
+        requester:
+          type: string
+          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+        requester_node_id:
+          type: string
+          example: "node-000"
+
+    VoteRecord:
+      public_key:
+        type: string,
+        example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+      vote:
+        type: object
+        properties:
+          voteType:
+            type: string
+            enum:
+              - Accept
+              - Reject
+      voter_node_id:
+        type: string
+        example: "node-000"
 
     Paging:
       type: object
