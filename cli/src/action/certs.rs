@@ -52,8 +52,8 @@ const CA_CERT: &str = "generated_ca.pem";
 const CA_KEY: &str = "generated_ca.key";
 
 impl Action for CertGenAction {
-    fn run<'a>(
-        &mut self,
+    fn reconfigure_logging<'a>(
+        &self,
         arg_matches: Option<&ArgMatches<'a>>,
         logger_handle: &mut ReconfigurationHandle,
     ) -> Result<(), CliError> {
@@ -62,6 +62,12 @@ impl Action for CertGenAction {
         if args.is_present("quiet") {
             logger_handle.parse_new_spec("error");
         }
+
+        Ok(())
+    }
+
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
         let common_name = args
             .value_of("common_name")

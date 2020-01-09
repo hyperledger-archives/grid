@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use clap::ArgMatches;
-use flexi_logger::ReconfigurationHandle;
 
 use super::Action;
 use crate::error::CliError;
@@ -29,11 +28,7 @@ use splinter::database::run_migrations as run_setup_migrations;
 pub struct MigrateAction;
 
 impl Action for MigrateAction {
-    fn run<'a>(
-        &mut self,
-        arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let url = if let Some(args) = arg_matches {
             args.value_of("connect")
                 .unwrap_or("postgres://admin:admin@localhost:5432/splinterd")
