@@ -71,34 +71,34 @@ pub struct AcceptServiceIdParam;
 
 impl FromRequest for AcceptServiceIdParam {
     type Error = ActixError;
-    type Future = Box<dyn Future<Item = Self, Error = Self::Error>>;
+    type Future = future::Ready<Result<Self, Self::Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
-        let endpoint: Endpoint = if let Some(state) = req.app_data::<AppState>() {
-            state.endpoint.clone()
+        let endpoint: Endpoint = if let Some(endpoint) = req.app_data::<Endpoint>() {
+            endpoint.clone()
         } else {
-            return Box::new(future::err(ErrorInternalServerError("App state not found")));
+            return future::err(ErrorInternalServerError("App state not found"));
         };
 
         let service_id =
             if let Ok(query) = web::Query::<QueryServiceId>::from_query(req.query_string()) {
                 query.service_id.clone()
             } else {
-                return Box::new(future::err(ErrorBadRequest("Malformed query param")));
+                return future::err(ErrorBadRequest("Malformed query param"));
             };
 
         if service_id.is_some() && endpoint.is_sawtooth() {
-            return Box::new(future::err(ErrorBadRequest(
+            return future::err(ErrorBadRequest(
                 "Circuit ID present, but grid is running in sawtooth mode",
-            )));
+            ));
         } else if service_id.is_none() && !endpoint.is_sawtooth() {
-            return Box::new(future::err(ErrorBadRequest(
+            return future::err(ErrorBadRequest(
                 "Circuit ID is not present, but grid is running in splinter mode",
-            )));
+            ));
         }
 
-        Box::new(future::ok(AcceptServiceIdParam))
+        future::ok(AcceptServiceIdParam)
     }
 }
 
