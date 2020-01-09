@@ -121,9 +121,9 @@ fn run() -> Result<(), DaemonError> {
         }
 
         ctrlc_triggered.store(true, Ordering::SeqCst);
-        if let Err(err) = rest_api_shutdown_handle.shutdown() {
-            error!("Unable to cleanly shutdown REST API server: {}", err);
-        }
+
+        rest_api_shutdown_handle.shutdown();
+
         if let Err(err) = event_processor_shutdown_handle.shutdown() {
             error!("Unable to gracefully shutdown Event Processor: {}", err);
         }

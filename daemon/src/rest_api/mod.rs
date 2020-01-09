@@ -34,8 +34,8 @@ use actix_web::{
     error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError},
     web, App, FromRequest, HttpRequest, HttpServer, Result,
 };
+use futures::executor::block_on;
 use futures::future;
-use futures::Future;
 use serde::{Deserialize, Serialize};
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
@@ -106,12 +106,12 @@ impl FromRequest for AcceptServiceIdParam {
 }
 
 pub struct RestApiShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
+    server: dev::Server,
 }
 
 impl RestApiShutdownHandle {
-    pub fn shutdown(&self) -> Result<(), RestApiServerError> {
-        (*self.do_shutdown)()
+    pub fn shutdown(&self) {
+        block_on(self.server.stop(true));
     }
 }
 
@@ -210,19 +210,9 @@ pub fn run(
             Ok(())
         })?;
 
-    let addr = rx.recv().map_err(|err| {
+    let server = rx.recv().map_err(|err| {
         RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
-    let do_shutdown = Box::new(move || {
-        debug!("Shutting down Rest API");
-        if let Err(err) = addr.stop(true).wait() {
-            error!("Failed to shutdown rest api cleanly: {:?}", err);
-        }
-        debug!("Graceful signal sent to Rest API");
-
-        Ok(())
-    });
-
-    Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
+    Ok((RestApiShutdownHandle { server }, join_handle))
 }
