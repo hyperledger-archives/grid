@@ -21,7 +21,7 @@ use actix_web::{
     HttpResponse,
 };
 use diesel;
-use futures::future::{Future, IntoFuture};
+use futures::future::{Future, TryFutureExt};
 use std::error::Error;
 
 use std::fmt;
@@ -100,7 +100,7 @@ impl fmt::Display for RestApiResponseError {
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
 impl RestApiResponseError {
-    pub fn future_box(self) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>> {
+    pub fn future_box(self) -> Box<dyn Future<Output = Result<HttpResponse, ActixError>>> {
         match self {
             RestApiResponseError::BadRequest(ref message) => {
                 Box::new(HttpResponse::BadRequest().json(message).into_future())
