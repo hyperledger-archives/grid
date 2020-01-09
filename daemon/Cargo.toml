@@ -35,7 +35,7 @@ log = "0.4"
 protobuf = "2"
 sawtooth-sdk = "0.3"
 simple_logger = "1.0"
-futures = "0.1"
+futures = "0.3"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "0.6", features = ["v4"] }
