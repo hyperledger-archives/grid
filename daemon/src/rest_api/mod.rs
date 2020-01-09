@@ -141,54 +141,43 @@ pub fn run(
                     .service(
                         web::resource("/batch_statuses")
                             .name("batch_statuses")
-                            .route(web::get().to_async(get_batch_statuses)),
+                            .route(web::get().to(get_batch_statuses)),
                     )
                     .service(
                         web::scope("/agent")
-                            .service(web::resource("").route(web::get().to_async(list_agents)))
+                            .service(web::resource("").route(web::get().to(list_agents)))
                             .service(
-                                web::resource("/{public_key}")
-                                    .route(web::get().to_async(fetch_agent)),
+                                web::resource("/{public_key}").route(web::get().to(fetch_agent)),
                             ),
                     )
                     .service(
                         web::scope("/organization")
+                            .service(web::resource("").route(web::get().to(list_organizations)))
                             .service(
-                                web::resource("").route(web::get().to_async(list_organizations)),
-                            )
-                            .service(
-                                web::resource("/{id}")
-                                    .route(web::get().to_async(fetch_organization)),
+                                web::resource("/{id}").route(web::get().to(fetch_organization)),
                             ),
                     )
                     .service(
                         web::scope("/product")
-                            .service(web::resource("").route(web::get().to_async(list_products)))
-                            .service(
-                                web::resource("/{id}").route(web::get().to_async(fetch_product)),
-                            ),
+                            .service(web::resource("").route(web::get().to(list_products)))
+                            .service(web::resource("/{id}").route(web::get().to(fetch_product))),
                     )
                     .service(
                         web::scope("/schema")
+                            .service(web::resource("").route(web::get().to(list_grid_schemas)))
                             .service(
-                                web::resource("").route(web::get().to_async(list_grid_schemas)),
-                            )
-                            .service(
-                                web::resource("/{name}")
-                                    .route(web::get().to_async(fetch_grid_schema)),
+                                web::resource("/{name}").route(web::get().to(fetch_grid_schema)),
                             ),
                     )
                     .service(
                         web::scope("/record")
-                            .service(web::resource("").route(web::get().to_async(list_records)))
+                            .service(web::resource("").route(web::get().to(list_records)))
                             .service(
                                 web::scope("/{record_id}")
-                                    .service(
-                                        web::resource("").route(web::get().to_async(fetch_record)),
-                                    )
+                                    .service(web::resource("").route(web::get().to(fetch_record)))
                                     .service(
                                         web::resource("/property/{property_name}")
-                                            .route(web::get().to_async(fetch_record_property)),
+                                            .route(web::get().to(fetch_record_property)),
                                     ),
                             ),
                     )
@@ -196,7 +185,7 @@ pub fn run(
             .bind(bind_url)?
             .disable_signals()
             .system_exit()
-            .start();
+            .run();
 
             tx.send(addr).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
