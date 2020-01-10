@@ -196,7 +196,6 @@ fn run() -> Result<(), CliError> {
                                 .required(true)
                                 .long("accept")
                                 .conflicts_with("reject")
-                                .possible_values(&["accept", "reject"])
                                 .help("Accept the proposal"),
                         )
                         .arg(
@@ -204,7 +203,6 @@ fn run() -> Result<(), CliError> {
                                 .required(true)
                                 .long("reject")
                                 .conflicts_with("accept")
-                                .possible_values(&["accept", "reject"])
                                 .help("Reject the proposal"),
                         ),
                 ),
