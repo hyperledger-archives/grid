@@ -85,6 +85,7 @@ experimental = [
     "matrix",
     "node-registry-unified",
     "postgres",
+    "proposal-read",
     "zmq-transport",
 ]
 
@@ -94,6 +95,7 @@ biome-key-management = ["biome", "database"]
 biome-notifications = ["biome", "database"]
 biome-user = ["biome", "database"]
 circuit-read = []
+proposal-read = []
 connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel/postgres", "diesel_migrations"]

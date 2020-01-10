@@ -72,6 +72,10 @@ impl OpenProposals {
         self.proposal_registry.get_proposal(circuit_id)
     }
 
+    pub fn get_proposals(&self) -> Proposals {
+        self.proposal_registry.get_proposals()
+    }
+
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
         self.proposal_registry.has_proposal(circuit_id)
     }
@@ -131,7 +135,38 @@ impl ProposalRegistry {
         }
     }
 
+    pub fn get_proposals(&self) -> Proposals {
+        Proposals {
+            inner: Box::new(self.proposals.clone().into_iter()),
+            size: self.proposals.len(),
+        }
+    }
+
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
         self.proposals.contains_key(circuit_id)
+    }
+}
+
+/// An iterator over CircuitPropoals and the time that each occurred.
+pub struct Proposals {
+    inner: Box<dyn Iterator<Item = (String, messages::CircuitProposal)>>,
+    size: usize,
+}
+
+impl Proposals {
+    pub fn total(&self) -> usize {
+        self.size
+    }
+}
+
+impl Iterator for Proposals {
+    type Item = (String, messages::CircuitProposal);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size, Some(self.size))
     }
 }

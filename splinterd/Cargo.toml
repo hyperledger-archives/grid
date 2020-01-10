@@ -49,9 +49,11 @@ experimental = [
     "config-builder",
     "config-toml",
     "health",
+    "proposal-read"
 ]
 
 circuit-read = ["splinter/circuit-read"]
+proposal-read = ["splinter/proposal-read"]
 config-builder = []
 config-toml = ["config-builder"]
 generate-certs = []
