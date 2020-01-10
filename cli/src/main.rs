@@ -89,6 +89,37 @@ fn run() -> Result<(), CliError> {
         )
     );
 
+    #[cfg(feature = "keygen")]
+    {
+        use clap::{Arg, SubCommand};
+
+        app = app.subcommand(
+            SubCommand::with_name("keygen")
+                .about(
+                    "Generates secp256k1 keys. By default, keys are stored in\n\
+                     the user's home directory, $HOME/splinter/keys. The --admin\n\
+                     option generates keys for the Splinter daemon (splinterd) that\n\
+                     are stored in /etc/splinter/keys.",
+                )
+                .arg(
+                    Arg::with_name("key-name")
+                        .takes_value(true)
+                        .help("Name of keys generated; defaults to user name"),
+                )
+                .arg(
+                    Arg::with_name("force")
+                        .short("f")
+                        .long("force")
+                        .help("Overwrite files if they exist"),
+                )
+                .arg(
+                    Arg::with_name("admin")
+                        .long("admin")
+                        .help("Generate admin keys in /etc/splinter/keys"),
+                ),
+        )
+    }
+
     #[cfg(feature = "health")]
     {
         use clap::{Arg, SubCommand};
@@ -335,6 +366,12 @@ fn run() -> Result<(), CliError> {
                 .with_command("show", circuit::CircuitShowAction)
                 .with_command("proposals", circuit::CircuitProposalsAction),
         );
+    }
+
+    #[cfg(feature = "keygen")]
+    {
+        use action::keygen;
+        subcommands = subcommands.with_command("keygen", keygen::KeyGenAction);
     }
 
     subcommands.run(Some(&matches))
