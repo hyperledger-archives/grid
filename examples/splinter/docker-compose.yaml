@@ -104,6 +104,7 @@ services:
   db-alpha:
     image: postgres
     container_name: db-alpha
+    hostname: db-alpha
     restart: always
     expose:
       - 5432
@@ -115,6 +116,7 @@ services:
   gridd-alpha:
     image: gridd
     container_name: gridd-alpha
+    hostname: gridd-alpha
     build:
       context: ../..
       dockerfile: daemon/Dockerfile
@@ -139,8 +141,9 @@ services:
         "
 
   splinterd-alpha:
-    image: splintercommunity/splinterd:master
+    image: splintercommunity/splinterd:experimental
     container_name: splinterd-alpha
+    hostname: splinterd-alpha
     expose:
       - 8044
     ports:
@@ -182,6 +185,7 @@ services:
   db-beta:
     image: postgres
     container_name: db-beta
+    hostname: db-beta
     restart: always
     expose:
       - 5432
@@ -193,6 +197,7 @@ services:
   gridd-beta:
     image: gridd
     container_name: gridd-beta
+    hostname: gridd-beta
     build:
       context: ../..
       dockerfile: daemon/Dockerfile
@@ -217,8 +222,9 @@ services:
         "
 
   splinterd-beta:
-    image: splintercommunity/splinterd:master
+    image: splintercommunity/splinterd:experimental
     container_name: splinterd-beta
+    hostname: splinterd-beta
     expose:
       - 8044
     ports:
