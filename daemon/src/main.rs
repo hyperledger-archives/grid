@@ -191,9 +191,8 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         }
 
         ctrlc_triggered.store(true, Ordering::SeqCst);
-        if let Err(err) = rest_api_shutdown_handle.shutdown() {
-            error!("Unable to cleanly shutdown REST API server: {}", err);
-        }
+
+        rest_api_shutdown_handle.shutdown();
     })
     .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
 
