@@ -120,6 +120,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=${CARGO_ARGS}
     expose:
       - 8080
     ports:
@@ -133,7 +134,7 @@ services:
           done
           grid -vv database migrate \
               --database-url postgres://grid:grid_example@db-alpha/grid &&
-          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8044 \
+          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
               --database-url postgres://grid:grid_example@db-alpha/grid
         "
 
@@ -197,6 +198,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=${CARGO_ARGS}
     expose:
       - 8080
     ports:
@@ -210,7 +212,7 @@ services:
           done
           grid -vv database migrate \
               --database-url postgres://grid:grid_example@db-beta/grid &&
-          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8044 \
+          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
               --database-url postgres://grid:grid_example@db-beta/grid
         "
 

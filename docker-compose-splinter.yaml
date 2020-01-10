@@ -27,6 +27,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=${CARGO_ARGS}
     expose:
       - 8080
     ports:
@@ -40,7 +41,7 @@ services:
           done
           grid -vv database migrate \
               --database-url postgres://grid:grid_example@db/grid &&
-          gridd -vv -b gridd:8080 -C tcp://validator:4004 \
+          gridd -vv -b gridd:8080 -C splinter:http://splinterd:8085 \
               --database-url postgres://grid:grid_example@db/grid
         "
 
