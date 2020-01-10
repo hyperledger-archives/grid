@@ -118,10 +118,25 @@ impl Action for CircuitVoteAction {
 }
 
 fn vote_on_circuit_proposal(
-    _url: &str,
-    _key: &str,
-    _path: &str,
-    _vote: Vote,
+    url: &str,
+    key: &str,
+    circuit_id: &str,
+    vote: Vote,
 ) -> Result<(), CliError> {
-    unimplemented!()
+    let client = api::SplinterRestClient::new(url);
+    let private_key_hex = read_private_key(key)?;
+
+    let requester_node = client.fetch_node_id()?;
+    let proposal = client.fetch_proposal(circuit_id)?;
+
+    let circuit_vote = CircuitVote {
+        circuit_id: circuit_id.into(),
+        circuit_hash: proposal.circuit_hash,
+        vote,
+    };
+
+    let signed_payload =
+        payload::make_signed_payload(&requester_node, &private_key_hex, circuit_vote)?;
+
+    client.submit_admin_payload(signed_payload)
 }
