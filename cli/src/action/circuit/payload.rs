@@ -18,11 +18,13 @@ use sawtooth_sdk::signing::secp256k1;
 use splinter::admin::messages::CreateCircuit;
 use splinter::protos::admin::{
     CircuitCreateRequest, CircuitManagementPayload, CircuitManagementPayload_Action as Action,
-    CircuitManagementPayload_Header as Header,
+    CircuitManagementPayload_Header as Header, CircuitProposalVote, CircuitProposalVote_Vote,
 };
 use splinter::signing::{sawtooth, Signer};
 
 use crate::error::CliError;
+
+use super::{CircuitVote, Vote};
 
 /// A circuit action that has a type and can be converted into a protobuf-serializable struct.
 pub trait CircuitAction<M: Message> {
@@ -104,5 +106,29 @@ impl CircuitAction<CircuitCreateRequest> for CreateCircuit {
 impl ApplyToEnvelope for CircuitCreateRequest {
     fn apply(self, circuit_management_payload: &mut CircuitManagementPayload) {
         circuit_management_payload.set_circuit_create_request(self);
+    }
+}
+
+impl CircuitAction<CircuitProposalVote> for CircuitVote {
+    fn action_type(&self) -> Action {
+        Action::CIRCUIT_PROPOSAL_VOTE
+    }
+
+    fn into_proto(self) -> Result<CircuitProposalVote, CliError> {
+        let mut vote = CircuitProposalVote::new();
+        vote.set_vote(match self.vote {
+            Vote::Accept => CircuitProposalVote_Vote::ACCEPT,
+            Vote::Reject => CircuitProposalVote_Vote::REJECT,
+        });
+        vote.set_circuit_id(self.circuit_id);
+        vote.set_circuit_hash(self.circuit_hash);
+
+        Ok(vote)
+    }
+}
+
+impl ApplyToEnvelope for CircuitProposalVote {
+    fn apply(self, circuit_management_payload: &mut CircuitManagementPayload) {
+        circuit_management_payload.set_circuit_proposal_vote(self);
     }
 }

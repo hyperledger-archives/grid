@@ -81,9 +81,15 @@ pub fn read_private_key(file_name: &str) -> Result<String, CliError> {
     Ok(buf)
 }
 
-enum Vote {
+pub(self) enum Vote {
     Accept,
     Reject,
+}
+
+pub(self) struct CircuitVote {
+    circuit_id: String,
+    circuit_hash: String,
+    vote: Vote,
 }
 
 pub struct CircuitVoteAction;
