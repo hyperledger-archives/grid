@@ -122,7 +122,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=${CARGO_ARGS}
+        - CARGO_ARGS=-- --features experimental
     expose:
       - 8080
     ports:
@@ -203,7 +203,7 @@ services:
       dockerfile: daemon/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
-        - CARGO_ARGS=${CARGO_ARGS}
+        - CARGO_ARGS=-- --features experimental
     expose:
       - 8080
     ports:
