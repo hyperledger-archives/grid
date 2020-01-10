@@ -168,6 +168,16 @@ impl Connector {
         }
     }
 
+    pub fn list_connections(&self) -> Result<Vec<String>, ConnectionManagerError> {
+        match self.send_payload(CmPayload::ListConnections) {
+            Ok(CmResponse::ListConnections { endpoints }) => Ok(endpoints),
+            Err(err) => Err(err),
+            _ => {
+                panic!("This cannot return a response type that is not CmResponse::ListConnections")
+            }
+        }
+    }
+
     fn send_payload(&self, payload: CmPayload) -> Result<CmResponse, ConnectionManagerError> {
         let (sender, recv) = sync_channel(1);
 
@@ -361,6 +371,13 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
                 error_message: Some(format!("{:?}", err)),
             },
         },
+        CmPayload::ListConnections => CmResponse::ListConnections {
+            endpoints: state
+                .connection_metadata()
+                .iter()
+                .map(|(key, _)| key.to_string())
+                .collect(),
+        },
     };
 
     if req.sender.send(response).is_err() {
@@ -372,13 +389,7 @@ fn notify_subscribers(
     subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
     notification: ConnectionManagerNotification,
 ) {
-    subscribers.retain(|sender| {
-        if sender.send(notification.clone()).is_err() {
-            false
-        } else {
-            true
-        }
-    });
+    subscribers.retain(|sender| !sender.send(notification.clone()).is_err());
 }
 
 fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(

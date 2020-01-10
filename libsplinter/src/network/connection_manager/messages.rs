@@ -32,6 +32,7 @@ pub struct CmRequest {
 pub enum CmPayload {
     AddConnection { endpoint: String },
     RemoveConnection { endpoint: String },
+    ListConnections,
 }
 
 #[derive(Debug, PartialEq)]
@@ -43,6 +44,9 @@ pub enum CmResponse {
     RemoveConnection {
         status: CmResponseStatus,
         error_message: Option<String>,
+    },
+    ListConnections {
+        endpoints: Vec<String>,
     },
 }
 
