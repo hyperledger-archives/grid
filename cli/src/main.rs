@@ -297,7 +297,7 @@ fn run() -> Result<(), CliError> {
         .with_command(
             "admin",
             SubcommandActions::new()
-                .with_command("keygen", admin::KeyGenAction)
+                .with_command("keygen", admin::AdminKeyGenAction)
                 .with_command("keyregistry", admin::KeyRegistryGenerationAction),
         )
         .with_command(
