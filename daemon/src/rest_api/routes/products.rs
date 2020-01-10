@@ -26,7 +26,6 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -145,23 +144,18 @@ impl Handler<ListProducts> for DbExecutor {
     }
 }
 
-pub fn list_products(
+pub async fn list_products(
     state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    Box::new(
-        state
-            .database_connection
-            .send(ListProducts {
-                service_id: query.into_inner().service_id,
-            })
-            .from_err()
-            .and_then(move |res| match res {
-                Ok(products) => Ok(HttpResponse::Ok().json(products)),
-                Err(err) => Err(err),
-            }),
-    )
+) -> Result<HttpResponse, RestApiResponseError> {
+    state
+        .database_connection
+        .send(ListProducts {
+            service_id: query.into_inner().service_id,
+        })
+        .await?
+        .map(|products| HttpResponse::Ok().json(products))
 }
 
 struct FetchProduct {
@@ -201,23 +195,18 @@ impl Handler<FetchProduct> for DbExecutor {
     }
 }
 
-pub fn fetch_product(
+pub async fn fetch_product(
     state: web::Data<AppState>,
     product_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    Box::new(
-        state
-            .database_connection
-            .send(FetchProduct {
-                product_id: product_id.into_inner(),
-                service_id: query.into_inner().service_id,
-            })
-            .from_err()
-            .and_then(move |res| match res {
-                Ok(product) => Ok(HttpResponse::Ok().json(product)),
-                Err(err) => Err(err),
-            }),
-    )
+) -> Result<HttpResponse, RestApiResponseError> {
+    state
+        .database_connection
+        .send(FetchProduct {
+            product_id: product_id.into_inner(),
+            service_id: query.into_inner().service_id,
+        })
+        .await?
+        .map(|product| HttpResponse::Ok().json(product))
 }

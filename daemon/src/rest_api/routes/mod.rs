@@ -71,11 +71,12 @@ mod test {
     };
     use crate::submitter::*;
 
-    use actix_http::HttpService;
-    use actix_http_test::{block_on, TestServer, TestServerRuntime};
-    use actix_web::{http, web, App};
+    use actix_web::{
+        http,
+        test::{start, TestServer},
+        web, App,
+    };
     use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
-    use futures::future::Future;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
         ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
@@ -259,78 +260,56 @@ mod test {
         database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
     }
 
-    fn create_test_server(response_type: ResponseType) -> TestServerRuntime {
-        TestServer::new(move || {
+    fn create_test_server(response_type: ResponseType) -> TestServer {
+        start(move || {
             let state = {
                 let mock_sender = MockMessageSender::new(response_type);
                 let mock_batch_submitter = Box::new(MockBatchSubmitter {
                     sender: mock_sender,
                 });
-                AppState::new(
-                    mock_batch_submitter,
-                    get_connection_pool(),
-                    Endpoint::from("tcp://localhost:9090"),
-                )
+                AppState::new(mock_batch_submitter, get_connection_pool())
             };
-            HttpService::new(
-                App::new()
-                    .data(state)
-                    .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
-                    .service(
-                        web::resource("/batch_statuses")
-                            .name("batch_statuses")
-                            .route(web::get().to_async(get_batch_statuses)),
-                    )
-                    .service(
-                        web::scope("/agent")
-                            .service(web::resource("").route(web::get().to_async(list_agents)))
-                            .service(
-                                web::resource("/{public_key}")
-                                    .route(web::get().to_async(fetch_agent)),
-                            ),
-                    )
-                    .service(
-                        web::scope("/organization")
-                            .service(
-                                web::resource("").route(web::get().to_async(list_organizations)),
-                            )
-                            .service(
-                                web::resource("/{id}")
-                                    .route(web::get().to_async(fetch_organization)),
-                            ),
-                    )
-                    .service(
-                        web::scope("/product")
-                            .service(web::resource("").route(web::get().to_async(list_products)))
-                            .service(
-                                web::resource("/{id}").route(web::get().to_async(fetch_product)),
-                            ),
-                    )
-                    .service(
-                        web::scope("/schema")
-                            .service(
-                                web::resource("").route(web::get().to_async(list_grid_schemas)),
-                            )
-                            .service(
-                                web::resource("/{name}")
-                                    .route(web::get().to_async(fetch_grid_schema)),
-                            ),
-                    )
-                    .service(
-                        web::scope("/record")
-                            .service(web::resource("").route(web::get().to_async(list_records)))
-                            .service(
-                                web::scope("/{record_id}")
-                                    .service(
-                                        web::resource("").route(web::get().to_async(fetch_record)),
-                                    )
-                                    .service(
-                                        web::resource("/property/{property_name}")
-                                            .route(web::get().to_async(fetch_record_property)),
-                                    ),
-                            ),
-                    ),
-            )
+            App::new()
+                .data(state)
+                .app_data(Endpoint::from("tcp://localhost:9090"))
+                .service(web::resource("/batches").route(web::post().to(submit_batches)))
+                .service(
+                    web::resource("/batch_statuses")
+                        .name("batch_statuses")
+                        .route(web::get().to(get_batch_statuses)),
+                )
+                .service(
+                    web::scope("/agent")
+                        .service(web::resource("").route(web::get().to(list_agents)))
+                        .service(web::resource("/{public_key}").route(web::get().to(fetch_agent))),
+                )
+                .service(
+                    web::scope("/organization")
+                        .service(web::resource("").route(web::get().to(list_organizations)))
+                        .service(web::resource("/{id}").route(web::get().to(fetch_organization))),
+                )
+                .service(
+                    web::scope("/product")
+                        .service(web::resource("").route(web::get().to(list_products)))
+                        .service(web::resource("/{id}").route(web::get().to(fetch_product))),
+                )
+                .service(
+                    web::scope("/schema")
+                        .service(web::resource("").route(web::get().to(list_grid_schemas)))
+                        .service(web::resource("/{name}").route(web::get().to(fetch_grid_schema))),
+                )
+                .service(
+                    web::scope("/record")
+                        .service(web::resource("").route(web::get().to(list_records)))
+                        .service(
+                            web::scope("/{record_id}")
+                                .service(web::resource("").route(web::get().to(fetch_record)))
+                                .service(
+                                    web::resource("/property/{property_name}")
+                                        .route(web::get().to(fetch_record_property)),
+                                ),
+                        ),
+                )
         })
     }
 
@@ -345,23 +324,23 @@ mod test {
     ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
     ///        - a data property matching the batch statuses received
     ///
-    #[test]
-    fn test_get_batch_status_one_id() {
+    #[actix_rt::test]
+    async fn test_get_batch_status_one_id() {
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
         let deserialized: BatchStatusResponse =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(deserialized.data.len(), 1);
         assert_eq!(deserialized.data[0].id, BATCH_ID_1);
@@ -386,26 +365,26 @@ mod test {
     ///             `/batch_statuses?id={BATCH_ID_1},{BATCH_ID_2},{BATCH_ID_3}`
     ///        - a data property matching the batch statuses received
     ///
-    #[test]
-    fn test_get_batch_status_multiple_ids() {
+    #[actix_rt::test]
+    async fn test_get_batch_status_multiple_ids() {
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!(
                     "/batch_statuses?id={},{},{}",
                     BATCH_ID_1, BATCH_ID_2, BATCH_ID_3
                 )),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
         let deserialized: BatchStatusResponse =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(deserialized.data.len(), 3);
         assert_eq!(deserialized.data[0].id, BATCH_ID_1);
@@ -434,18 +413,18 @@ mod test {
     ///    It should send back a response with status BadRequest:
     ///        - with an error message explaining the error
     ///
-    #[test]
-    fn test_get_batch_status_invalid_id() {
+    #[actix_rt::test]
+    async fn test_get_batch_status_invalid_id() {
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseInvalidId);
 
-        let response = block_on(
-            srv.request(
+        let response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -458,18 +437,18 @@ mod test {
     ///    It will receive a Protobuf response with status InternalError
     ///    It should send back a response with status InternalError
     ///
-    #[test]
-    fn test_get_batch_status_internal_error() {
+    #[actix_rt::test]
+    async fn test_get_batch_status_internal_error() {
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseInternalError);
 
-        let response = block_on(
-            srv.request(
+        let response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/batch_statuses?id={}", BATCH_ID_1)),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -483,21 +462,21 @@ mod test {
     ///        - wait param set to "not_a_number"
     ///    It should send back a response with status BadRequest
     ///
-    #[test]
-    fn test_get_batch_status_wait_error() {
+    #[actix_rt::test]
+    async fn test_get_batch_status_wait_error() {
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
 
-        let response = block_on(
-            srv.request(
+        let response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!(
                     "/batch_statuses?id={}&wait=not_a_number",
                     BATCH_ID_1
                 )),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -511,20 +490,20 @@ mod test {
     ///    It should send back a JSON response with:
     ///        - a link property that ends in '/batch_statuses?id=BATCH_ID_1'
     ///
-    #[test]
-    fn test_post_batches_ok() {
+    #[actix_rt::test]
+    async fn test_post_batches_ok() {
         let srv = create_test_server(ResponseType::ClientBatchSubmitResponseOK);
 
-        let mut response = block_on(
-            srv.request(http::Method::POST, srv.url("/batches"))
-                .send_body(get_batch_list()),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::POST, srv.url("/batches"))
+            .send_body(get_batch_list())
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::OK);
 
         let deserialized: BatchStatusLink =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert!(deserialized
             .link
@@ -539,15 +518,15 @@ mod test {
     ///    It will receive a Protobuf response with status INVALID_BATCH
     ///    It should send back a response with BadRequest status
     ///
-    #[test]
-    fn test_post_batches_invalid_batch() {
+    #[actix_rt::test]
+    async fn test_post_batches_invalid_batch() {
         let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInvalidBatch);
 
-        let response = block_on(
-            srv.request(http::Method::POST, srv.url("/batches"))
-                .send_body(get_batch_list()),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::POST, srv.url("/batches"))
+            .send_body(get_batch_list())
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::BAD_REQUEST);
     }
@@ -560,15 +539,15 @@ mod test {
     ///    It will receive a Protobuf response with status INTERNAL_ERROR
     ///    It should send back a response with InternalError status
     ///
-    #[test]
-    fn test_post_batches_internal_error() {
+    #[actix_rt::test]
+    async fn test_post_batches_internal_error() {
         let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInternalError);
 
-        let response = block_on(
-            srv.request(http::Method::POST, srv.url("/batches"))
-                .send_body(get_batch_list()),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::POST, srv.url("/batches"))
+            .send_body(get_batch_list())
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -581,30 +560,36 @@ mod test {
     ///     It will receive a response with status Ok
     ///     It should send back a response with:
     ///         - body containing a list of Agents
-    #[test]
-    fn test_list_agents() {
+    #[actix_rt::test]
+    async fn test_list_agents() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/agent")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/agent"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<AgentSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(body.is_empty());
 
         // Adds a single Agent to the test database
         populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
         // Making another request to the database
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/agent")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/agent"))
+            .send()
+            .await
+            .unwrap();
 
         assert!(response.status().is_success());
         let body: Vec<AgentSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let agent = body.first().unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
@@ -615,21 +600,21 @@ mod test {
     /// Verifies a GET /organization responds with an Ok response
     ///     with an empty organization table
     ///
-    #[test]
-    fn test_list_organizations_empty() {
+    #[actix_rt::test]
+    async fn test_list_organizations_empty() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
-        let mut response = block_on(
-            srv.request(http::Method::GET, srv.url("/organization"))
-                .send(),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/organization"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(body.is_empty());
     }
 
@@ -637,8 +622,8 @@ mod test {
     /// Verifies a GET /organization responds with an Ok response
     ///     with a list containing one organization
     ///
-    #[test]
-    fn test_list_organizations() {
+    #[actix_rt::test]
+    async fn test_list_organizations() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -647,14 +632,14 @@ mod test {
         populate_organization_table(&test_pool.get().unwrap(), get_organization());
 
         // Making another request to the database
-        let mut response = block_on(
-            srv.request(http::Method::GET, srv.url("/organization"))
-                .send(),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/organization"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let org = body.first().unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
@@ -669,8 +654,8 @@ mod test {
     /// record that contains the most recent information for that organization
     /// (end_commit_num == MAX_COMMIT_NUM)
     ///
-    #[test]
-    fn test_list_organizations_updated() {
+    #[actix_rt::test]
+    async fn test_list_organizations_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -679,14 +664,14 @@ mod test {
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
 
         // Making another request to the database
-        let mut response = block_on(
-            srv.request(http::Method::GET, srv.url("/organization"))
-                .send(),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/organization"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<OrganizationSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let org = body.first().unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
@@ -699,18 +684,18 @@ mod test {
     /// Verifies a GET /organization/{id} responds with NotFound response
     /// when there is no organization with the specified id.
     ///
-    #[test]
-    fn test_fetch_organization_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_organization_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
-                .send(),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -718,8 +703,8 @@ mod test {
     /// Verifies a GET /organization/{id} responds with Ok response
     /// when there is an organization with the specified id.
     ///
-    #[test]
-    fn test_fetch_organization_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_organization_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -728,17 +713,17 @@ mod test {
         populate_organization_table(&test_pool.get().unwrap(), get_organization());
 
         // Making another request to the database
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/organization/{}", KEY2)),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let org: OrganizationSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_1.to_string());
         assert_eq!(org.org_id, KEY2.to_string());
         assert_eq!(org.address, ADDRESS_1.to_string());
@@ -751,8 +736,8 @@ mod test {
     /// record that contains the most recent information for that organization
     /// (end_commit_num == MAX_COMMIT_NUM)
     ///
-    #[test]
-    fn test_fetch_organization_updated_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_organization_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -761,17 +746,17 @@ mod test {
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
 
         // Making another request to the database
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/organization/{}", KEY3)),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let org: OrganizationSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(org.name, ORG_NAME_2.to_string());
         assert_eq!(org.org_id, KEY3.to_string());
         // Checks is returned the organization with the most recent information
@@ -782,8 +767,8 @@ mod test {
     /// Verifies a GET /agent/{public_key} responds with an Ok response
     ///     with an Agent with the specified public key.
     ///
-    #[test]
-    fn test_fetch_agent_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_agent_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -791,13 +776,14 @@ mod test {
         //Adds an agent to the test database
         populate_agent_table(&test_pool.get().unwrap(), &get_agent());
 
-        let mut response = block_on(
-            srv.request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
-                .send(),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
+            .send()
+            .await
+            .unwrap();
+
         assert!(response.status().is_success());
-        let agent: AgentSlice = serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+        let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(agent.public_key, KEY1.to_string());
         assert_eq!(agent.org_id, KEY2.to_string());
     }
@@ -806,18 +792,18 @@ mod test {
     /// Verifies a GET /agent/{public_key} responds with a Not Found response
     ///     when the public key is not assigned to any Agent.
     ///
-    #[test]
-    fn test_fetch_agent_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_agent_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clear the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(http::Method::GET, srv.url("/agent/unknown_public_key"))
-                .send(),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::GET, srv.url("/agent/unknown_public_key"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -826,26 +812,32 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Grid Schemas.
-    #[test]
-    fn test_list_schemas() {
+    #[actix_rt::test]
+    async fn test_list_schemas() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
         clear_grid_schema_table(&test_pool.get().unwrap());
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/schema")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/schema"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let empty_body: Vec<GridSchemaSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
         populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/schema")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/schema"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<GridSchemaSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
 
         let test_schema = body.first().unwrap();
@@ -858,23 +850,23 @@ mod test {
     /// Verifies a GET /schema/{name} responds with an OK response
     ///     and the Grid Schema with the specified name
     ///
-    #[test]
-    fn test_fetch_schema_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_schema_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/schema/{}", "TestGridSchema".to_string())),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let test_schema: GridSchemaSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(test_schema.name, "TestGridSchema".to_string());
         assert_eq!(test_schema.owner, "phillips001".to_string());
         assert_eq!(test_schema.properties.len(), 2);
@@ -884,17 +876,17 @@ mod test {
     /// Verifies a GET /schema/{name} responds with a Not Found error
     ///     when there is no Grid Schema with the specified name
     ///
-    #[test]
-    fn test_fetch_schema_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_schema_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_grid_schema_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(http::Method::GET, srv.url("/schema/not_in_database"))
-                .send(),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::GET, srv.url("/schema/not_in_database"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -903,26 +895,32 @@ mod test {
     ///
     ///     The TestServer will receive a request with no parameters,
     ///         then will respond with an Ok status and a list of Products.
-    #[test]
-    fn test_list_products() {
+    #[actix_rt::test]
+    async fn test_list_products() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         // Clears the product table in the test database
         clear_product_table(&test_pool.get().unwrap());
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/product")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/product"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let empty_body: Vec<ProductSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
         populate_product_table(&test_pool.get().unwrap(), &get_product());
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/product")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/product"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<ProductSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
 
         let test_product = body.first().unwrap();
@@ -937,23 +935,23 @@ mod test {
     /// Verifies a GET /product/{id} responds with an OK response
     ///     and the Product with the specified id
     ///
-    #[test]
-    fn test_fetch_product_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_product_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         populate_product_table(&test_pool.get().unwrap(), &get_product());
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/product/{}", "041205707820".to_string())),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let test_product: ProductSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(test_product.product_id, "041205707820".to_string());
         assert_eq!(test_product.product_address, "test_address".to_string());
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
@@ -965,17 +963,17 @@ mod test {
     /// Verifies a GET /product/{id} responds with a Not Found error
     ///     when there is no Product with the specified id
     ///
-    #[test]
-    fn test_fetch_product_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_product_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_product_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(http::Method::GET, srv.url("/product/not_in_database"))
-                .send(),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::GET, srv.url("/product/not_in_database"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -983,8 +981,8 @@ mod test {
     /// Verifies a GET /record responds with an Ok response
     ///     with a list containing one record
     ///
-    #[test]
-    fn test_list_records() {
+    #[actix_rt::test]
+    async fn test_list_records() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1002,14 +1000,14 @@ mod test {
             &get_reported_value_for_property_record(),
             &get_reporter_for_property_record(),
         );
-        let mut response = block_on(
-            srv.request(http::Method::GET, srv.url(&format!("/record")))
-                .send(),
-        )
-        .unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url(&format!("/record")))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
@@ -1124,8 +1122,8 @@ mod test {
     /// record that contains the most recent information for that record
     /// (end_commit_num == MAX_COMMIT_NUM)
     ///
-    #[test]
-    fn test_list_records_updated() {
+    #[actix_rt::test]
+    async fn test_list_records_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1134,11 +1132,14 @@ mod test {
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
 
         // Making another request to the database
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/record")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/record"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(body.len(), 1);
         let test_record = body.first().unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
@@ -1151,8 +1152,8 @@ mod test {
     /// with a list containing two records, when there's two records with differing
     /// record_ids, one of which has been updated.
     ///
-    #[test]
-    fn test_list_records_multiple() {
+    #[actix_rt::test]
+    async fn test_list_records_multiple() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1167,11 +1168,14 @@ mod test {
         );
 
         // Making another request to the database
-        let mut response =
-            block_on(srv.request(http::Method::GET, srv.url("/record")).send()).unwrap();
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/record"))
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let body: Vec<RecordSlice> =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(body.len(), 2);
         let record_1 = &body[0];
@@ -1185,8 +1189,8 @@ mod test {
     /// Verifies a GET /record/{record_id} responds with an OK response
     ///     and the Record with the specified record ID.
     ///
-    #[test]
-    fn test_fetch_record_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_record_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1204,17 +1208,17 @@ mod test {
             &get_reported_value_for_property_record(),
             &get_reporter_for_property_record(),
         );
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/record/{}", "TestRecord".to_string())),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let test_record: RecordSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
         assert_eq!(test_record.owner, KEY1.to_string());
@@ -1326,8 +1330,8 @@ mod test {
     ///     and the Record with the specified record ID after the Record's
     ///     owners, custodians, and proposals have been updated.
     ///
-    #[test]
-    fn test_fetch_record_updated_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_record_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1347,17 +1351,17 @@ mod test {
             &get_associated_agents_updated(),
         );
         populate_proposal_table(&test_pool.get().unwrap(), &get_updated_proposal());
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url(&format!("/record/{}", "TestRecord".to_string())),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
         assert!(response.status().is_success());
         let test_record: RecordSlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(test_record.record_id, "TestRecord".to_string());
         assert_eq!(test_record.schema, "TestGridSchema".to_string());
@@ -1468,17 +1472,17 @@ mod test {
     /// Verifies a GET /record/{record_id} responds with a Not Found error
     ///     when there is no Record with the specified record_id.
     ///
-    #[test]
-    fn test_fetch_record_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_record_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_record_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(http::Method::GET, srv.url("/record/not_in_database"))
-                .send(),
-        )
-        .unwrap();
+        let response = srv
+            .request(http::Method::GET, srv.url("/record/not_in_database"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
 
@@ -1486,8 +1490,8 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with an OK response
     ///     and the infomation on the Property requested
     ///
-    #[test]
-    fn test_fetch_record_property_ok() {
+    #[actix_rt::test]
+    async fn test_fetch_record_property_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1502,19 +1506,19 @@ mod test {
             &get_reported_value(),
             &get_reporter(),
         );
-        let mut response = block_on(
-            srv.request(
+        let mut response = srv
+            .request(
                 http::Method::GET,
                 srv.url("/record/record_01/property/TestProperty"),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert!(response.status().is_success());
 
         let property_info: PropertySlice =
-            serde_json::from_slice(&*response.body().wait().unwrap()).unwrap();
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(property_info.data_type, "Struct".to_string());
 
@@ -1669,20 +1673,20 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
     /// error when there is no property with the specified property_name.
     ///
-    #[test]
-    fn test_fetch_property_name_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_property_name_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
         clear_tnt_property_table(&test_pool.get().unwrap());
-        let response = block_on(
-            srv.request(
+        let response = srv
+            .request(
                 http::Method::GET,
                 srv.url("/record/record_01/property/not_in_database"),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }
@@ -1691,8 +1695,8 @@ mod test {
     /// Verifies a GET /record/{record_id}/property/{property_name} responds with a Not Found
     /// error when there is no record with the specified record_id.
     ///
-    #[test]
-    fn test_fetch_property_record_id_not_found() {
+    #[actix_rt::test]
+    async fn test_fetch_property_record_id_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
@@ -1702,14 +1706,14 @@ mod test {
             &get_reported_value(),
             &get_reporter(),
         );
-        let response = block_on(
-            srv.request(
+        let response = srv
+            .request(
                 http::Method::GET,
                 srv.url("/record/not_in_database/property/TestProperty"),
             )
-            .send(),
-        )
-        .unwrap();
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
     }

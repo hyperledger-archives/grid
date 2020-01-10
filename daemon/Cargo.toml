@@ -23,11 +23,9 @@ name = "gridd"
 path = "src/main.rs"
 
 [dependencies]
-actix = "0.8"
-actix-service = "0.2"
-actix-http = "0.2"
-actix-http-test = "0.2"
-actix-web = "1.0"
+actix = "0.9"
+actix-web = "2.0"
+actix-rt = "1.0"
 clap = "2"
 ctrlc = "3.0"
 diesel = { version = "1.0.0", features = ["postgres", "r2d2", "serde_json"] }
@@ -37,7 +35,7 @@ log = "0.4"
 protobuf = "2"
 sawtooth-sdk = "0.3"
 simple_logger = "1.0"
-futures = "0.1"
+futures = "0.3"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "0.6", features = ["v4"] }

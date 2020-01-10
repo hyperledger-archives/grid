@@ -27,7 +27,6 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as JsonValue};
 
@@ -192,23 +191,18 @@ impl Handler<ListRecords> for DbExecutor {
     }
 }
 
-pub fn list_records(
+pub async fn list_records(
     state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
-    Box::new(
-        state
-            .database_connection
-            .send(ListRecords {
-                service_id: query.into_inner().service_id,
-            })
-            .from_err()
-            .and_then(move |res| match res {
-                Ok(records) => Ok(HttpResponse::Ok().json(records)),
-                Err(err) => Err(err),
-            }),
-    )
+) -> Result<HttpResponse, RestApiResponseError> {
+    state
+        .database_connection
+        .send(ListRecords {
+            service_id: query.into_inner().service_id,
+        })
+        .await?
+        .map(|records| HttpResponse::Ok().json(records))
 }
 
 struct FetchRecord {
@@ -266,23 +260,20 @@ impl Handler<FetchRecord> for DbExecutor {
     }
 }
 
-pub fn fetch_record(
+pub async fn fetch_record(
     state: web::Data<AppState>,
     record_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(FetchRecord {
             record_id: record_id.into_inner(),
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(record) => Ok(HttpResponse::Ok().json(record)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|record| HttpResponse::Ok().json(record))
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -485,12 +476,12 @@ impl Message for FetchRecordProperty {
     type Result = Result<PropertySlice, RestApiResponseError>;
 }
 
-pub fn fetch_record_property(
+pub async fn fetch_record_property(
     state: web::Data<AppState>,
     params: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(FetchRecordProperty {
@@ -498,11 +489,8 @@ pub fn fetch_record_property(
             property_name: params.1.clone(),
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(record) => Ok(HttpResponse::Ok().json(record)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|record| HttpResponse::Ok().json(record))
 }
 
 impl Handler<FetchRecordProperty> for DbExecutor {

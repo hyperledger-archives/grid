@@ -19,7 +19,6 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
-use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -60,29 +59,24 @@ impl Handler<ListAgents> for DbExecutor {
             db::get_agents(&*self.connection_pool.get()?, msg.service_id.as_deref())?
                 .iter()
                 .map(|agent| AgentSlice::from_agent(agent))
-                .collect();
+                .collect::<Vec<AgentSlice>>();
 
         Ok(fetched_agents)
     }
 }
 
-pub fn list_agents(
+pub async fn list_agents(
     state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> Box<dyn Future<Item = HttpResponse, Error = RestApiResponseError>> {
-    Box::new(
-        state
-            .database_connection
-            .send(ListAgents {
-                service_id: query.into_inner().service_id,
-            })
-            .from_err()
-            .and_then(move |res| match res {
-                Ok(agents) => Ok(HttpResponse::Ok().json(agents)),
-                Err(err) => Err(err),
-            }),
-    )
+) -> Result<HttpResponse, RestApiResponseError> {
+    state
+        .database_connection
+        .send(ListAgents {
+            service_id: query.into_inner().service_id,
+        })
+        .await?
+        .map(|agents| HttpResponse::Ok().json(agents))
 }
 
 struct FetchAgent {
@@ -116,21 +110,18 @@ impl Handler<FetchAgent> for DbExecutor {
     }
 }
 
-pub fn fetch_agent(
+pub async fn fetch_agent(
     state: web::Data<AppState>,
     public_key: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
-) -> impl Future<Item = HttpResponse, Error = RestApiResponseError> {
+) -> Result<HttpResponse, RestApiResponseError> {
     state
         .database_connection
         .send(FetchAgent {
             public_key: public_key.into_inner(),
             service_id: query.into_inner().service_id,
         })
-        .from_err()
-        .and_then(move |res| match res {
-            Ok(agent) => Ok(HttpResponse::Ok().json(agent)),
-            Err(err) => Err(err),
-        })
+        .await?
+        .map(|agent| HttpResponse::Ok().json(agent))
 }

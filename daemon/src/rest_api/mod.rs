@@ -34,8 +34,8 @@ use actix_web::{
     error::{Error as ActixError, ErrorBadRequest, ErrorInternalServerError},
     web, App, FromRequest, HttpRequest, HttpServer, Result,
 };
+use futures::executor::block_on;
 use futures::future;
-use futures::Future;
 use serde::{Deserialize, Serialize};
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
@@ -44,14 +44,12 @@ const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     database_connection: Addr<DbExecutor>,
-    endpoint: Endpoint,
 }
 
 impl AppState {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
         connection_pool: ConnectionPool,
-        endpoint: Endpoint,
     ) -> Self {
         let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
             DbExecutor::new(connection_pool.clone())
@@ -60,7 +58,6 @@ impl AppState {
         AppState {
             batch_submitter,
             database_connection,
-            endpoint,
         }
     }
 }
@@ -74,44 +71,44 @@ pub struct AcceptServiceIdParam;
 
 impl FromRequest for AcceptServiceIdParam {
     type Error = ActixError;
-    type Future = Box<dyn Future<Item = Self, Error = Self::Error>>;
+    type Future = future::Ready<Result<Self, Self::Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
-        let endpoint: Endpoint = if let Some(state) = req.app_data::<AppState>() {
-            state.endpoint.clone()
+        let endpoint: Endpoint = if let Some(endpoint) = req.app_data::<Endpoint>() {
+            endpoint.clone()
         } else {
-            return Box::new(future::err(ErrorInternalServerError("App state not found")));
+            return future::err(ErrorInternalServerError("App state not found"));
         };
 
         let service_id =
             if let Ok(query) = web::Query::<QueryServiceId>::from_query(req.query_string()) {
                 query.service_id.clone()
             } else {
-                return Box::new(future::err(ErrorBadRequest("Malformed query param")));
+                return future::err(ErrorBadRequest("Malformed query param"));
             };
 
         if service_id.is_some() && endpoint.is_sawtooth() {
-            return Box::new(future::err(ErrorBadRequest(
+            return future::err(ErrorBadRequest(
                 "Circuit ID present, but grid is running in sawtooth mode",
-            )));
+            ));
         } else if service_id.is_none() && !endpoint.is_sawtooth() {
-            return Box::new(future::err(ErrorBadRequest(
+            return future::err(ErrorBadRequest(
                 "Circuit ID is not present, but grid is running in splinter mode",
-            )));
+            ));
         }
 
-        Box::new(future::ok(AcceptServiceIdParam))
+        future::ok(AcceptServiceIdParam)
     }
 }
 
 pub struct RestApiShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
+    server: dev::Server,
 }
 
 impl RestApiShutdownHandle {
-    pub fn shutdown(&self) -> Result<(), RestApiServerError> {
-        (*self.do_shutdown)()
+    pub fn shutdown(&self) {
+        block_on(self.server.stop(true));
     }
 }
 
@@ -134,63 +131,53 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let state = AppState::new(batch_submitter, database_connection, endpoint);
+            let state = AppState::new(batch_submitter, database_connection);
 
             let addr = HttpServer::new(move || {
                 App::new()
                     .data(state.clone())
-                    .service(web::resource("/batches").route(web::post().to_async(submit_batches)))
+                    .app_data(endpoint.clone())
+                    .service(web::resource("/batches").route(web::post().to(submit_batches)))
                     .service(
                         web::resource("/batch_statuses")
                             .name("batch_statuses")
-                            .route(web::get().to_async(get_batch_statuses)),
+                            .route(web::get().to(get_batch_statuses)),
                     )
                     .service(
                         web::scope("/agent")
-                            .service(web::resource("").route(web::get().to_async(list_agents)))
+                            .service(web::resource("").route(web::get().to(list_agents)))
                             .service(
-                                web::resource("/{public_key}")
-                                    .route(web::get().to_async(fetch_agent)),
+                                web::resource("/{public_key}").route(web::get().to(fetch_agent)),
                             ),
                     )
                     .service(
                         web::scope("/organization")
+                            .service(web::resource("").route(web::get().to(list_organizations)))
                             .service(
-                                web::resource("").route(web::get().to_async(list_organizations)),
-                            )
-                            .service(
-                                web::resource("/{id}")
-                                    .route(web::get().to_async(fetch_organization)),
+                                web::resource("/{id}").route(web::get().to(fetch_organization)),
                             ),
                     )
                     .service(
                         web::scope("/product")
-                            .service(web::resource("").route(web::get().to_async(list_products)))
-                            .service(
-                                web::resource("/{id}").route(web::get().to_async(fetch_product)),
-                            ),
+                            .service(web::resource("").route(web::get().to(list_products)))
+                            .service(web::resource("/{id}").route(web::get().to(fetch_product))),
                     )
                     .service(
                         web::scope("/schema")
+                            .service(web::resource("").route(web::get().to(list_grid_schemas)))
                             .service(
-                                web::resource("").route(web::get().to_async(list_grid_schemas)),
-                            )
-                            .service(
-                                web::resource("/{name}")
-                                    .route(web::get().to_async(fetch_grid_schema)),
+                                web::resource("/{name}").route(web::get().to(fetch_grid_schema)),
                             ),
                     )
                     .service(
                         web::scope("/record")
-                            .service(web::resource("").route(web::get().to_async(list_records)))
+                            .service(web::resource("").route(web::get().to(list_records)))
                             .service(
                                 web::scope("/{record_id}")
-                                    .service(
-                                        web::resource("").route(web::get().to_async(fetch_record)),
-                                    )
+                                    .service(web::resource("").route(web::get().to(fetch_record)))
                                     .service(
                                         web::resource("/property/{property_name}")
-                                            .route(web::get().to_async(fetch_record_property)),
+                                            .route(web::get().to(fetch_record_property)),
                                     ),
                             ),
                     )
@@ -198,7 +185,7 @@ pub fn run(
             .bind(bind_url)?
             .disable_signals()
             .system_exit()
-            .start();
+            .run();
 
             tx.send(addr).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
@@ -210,19 +197,9 @@ pub fn run(
             Ok(())
         })?;
 
-    let addr = rx.recv().map_err(|err| {
+    let server = rx.recv().map_err(|err| {
         RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
-    let do_shutdown = Box::new(move || {
-        debug!("Shutting down Rest API");
-        if let Err(err) = addr.stop(true).wait() {
-            error!("Failed to shutdown rest api cleanly: {:?}", err);
-        }
-        debug!("Graceful signal sent to Rest API");
-
-        Ok(())
-    });
-
-    Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
+    Ok((RestApiShutdownHandle { server }, join_handle))
 }
