@@ -13,14 +13,17 @@
 # limitations under the License.
 
 - identity: 'acme-node-000'
+  endpoint: 'tls://acme-node-000:8044'
+  display_name: 'acme-node-000'
   metadata:
     organization: 'ACME Corporation'
-    endpoint: 'tls://acme-node-000:8044'
 - identity: 'acme-node-001'
+  endpoint: 'tls://acme-node-001:8044'
+  display_name: 'acme-node-001'
   metadata:
     organization: 'ACME Corporation'
-    endpoint: 'tls://acme-node-001:8044'
 - identity: 'acme-node-002'
+  endpoint: 'tls://acme-node-002:8044'
+  display_name: 'acme-node-002'
   metadata:
     organization: 'ACME Corporation'
-    endpoint: 'tls://acme-node-002:8044'
