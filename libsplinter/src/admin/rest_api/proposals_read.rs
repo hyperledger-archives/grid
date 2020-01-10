@@ -150,12 +150,12 @@ fn query_list_proposals<A: AdminCommands + Clone + 'static>(
             .list_proposals()
             .map_err(|err| ProposalRouteError::InternalError(err.to_string()))?;
         let offset_value = offset.unwrap_or(0);
-        let limit_value = limit.unwrap_or_else(|| proposals.len());
-        if !proposals.is_empty() {
+        let limit_value = limit.unwrap_or_else(|| proposals.total());
+        if proposals.total() != 0 {
             if let Some(filter) = filters {
                 let filtered_proposals: Vec<CircuitProposal> = proposals
-                    .into_iter()
-                    .filter(|proposal| proposal.circuit.circuit_management_type == filter)
+                    .filter(|(_, proposal)| proposal.circuit.circuit_management_type == filter)
+                    .map(|(_, proposal)| proposal)
                     .collect();
 
                 let total_count = filtered_proposals.len();
@@ -168,17 +168,17 @@ fn query_list_proposals<A: AdminCommands + Clone + 'static>(
 
                 Ok((proposals_data, link, limit, offset, total_count))
             } else {
-                let total_count = proposals.len();
+                let total_count = proposals.total();
                 let proposals_data: Vec<CircuitProposal> = proposals
-                    .into_iter()
                     .skip(offset_value)
                     .take(limit_value)
+                    .map(|(_, proposal)| proposal)
                     .collect();
 
                 Ok((proposals_data, link, limit, offset, total_count))
             }
         } else {
-            Ok((vec![], link, limit, offset, proposals.len()))
+            Ok((vec![], link, limit, offset, proposals.total()))
         }
     })
     .then(|res| match res {

@@ -51,7 +51,7 @@ use crate::storage::sets::mem::DurableBTreeSet;
 use super::error::{AdminSharedError, MarshallingError};
 use super::mailbox::Mailbox;
 use super::messages;
-use super::open_proposals::OpenProposals;
+use super::open_proposals::{OpenProposals, Proposals};
 use super::{admin_service_id, sha256, AdminServiceEventSubscriber, AdminSubscriberError, Events};
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -688,7 +688,7 @@ impl AdminServiceShared {
         Ok(self.open_proposals.get_proposal(circuit_id)?)
     }
 
-    pub fn get_proposals(&self) -> Vec<messages::CircuitProposal> {
+    pub fn get_proposals(&self) -> Proposals {
         self.open_proposals.get_proposals()
     }
 
