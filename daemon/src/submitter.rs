@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+use std::pin::Pin;
+
+use futures::prelude::*;
 use sawtooth_sdk::messages::batch::BatchList;
 use sawtooth_sdk::messages::client_batch_submit::ClientBatchStatus;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use url::Url;
 
 use crate::rest_api::error::RestApiResponseError;
@@ -26,12 +29,12 @@ pub trait BatchSubmitter: Send + 'static {
     fn submit_batches(
         &self,
         submit_batches: SubmitBatches,
-    ) -> Result<BatchStatusLink, RestApiResponseError>;
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>>;
 
     fn batch_status(
         &self,
         batch_statuses: BatchStatuses,
-    ) -> Result<Vec<BatchStatus>, RestApiResponseError>;
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>>;
 
     fn clone_box(&self) -> Box<dyn BatchSubmitter>;
 }
@@ -44,11 +47,13 @@ impl Clone for Box<dyn BatchSubmitter> {
 pub struct SubmitBatches {
     pub batch_list: BatchList,
     pub response_url: Url,
+    pub service_id: Option<String>,
 }
 
 pub struct BatchStatuses {
     pub batch_ids: Vec<String>,
     pub wait: Option<u32>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

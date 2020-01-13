@@ -172,13 +172,13 @@ fn run_sawtooth(config: GridConfig, _connection_pool: ConnectionPool) -> Result<
 
 #[cfg(feature = "splinter-support")]
 fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
-    app_auth_handler::run(config.endpoint().url().into(), Reactor::new().igniter())?;
+    app_auth_handler::run(config.endpoint().url(), Reactor::new().igniter())?;
 
-    let batch_submitter = Box::new(SplinterBatchSubmitter::new());
+    let batch_submitter = Box::new(SplinterBatchSubmitter::new(config.endpoint().url()));
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
-        connection_pool.clone(),
+        connection_pool,
         batch_submitter,
         config.endpoint().clone(),
     )?;

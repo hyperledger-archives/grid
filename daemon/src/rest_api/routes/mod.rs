@@ -77,6 +77,7 @@ mod test {
         web, App,
     };
     use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
+    use futures::prelude::*;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
         ClientBatchStatus, ClientBatchStatusRequest, ClientBatchStatusResponse,
@@ -87,6 +88,7 @@ mod test {
 
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
     use serde_json::{Map, Value as JsonValue};
+    use std::pin::Pin;
     use std::sync::mpsc::channel;
 
     static DATABASE_URL: &str = "postgres://grid_test:grid_test@test_server:5432/grid_test";
@@ -126,6 +128,15 @@ mod test {
         }
     }
 
+    macro_rules! try_fut {
+        ($try_expr:expr) => {
+            match $try_expr {
+                Ok(res) => res,
+                Err(err) => return futures::future::err(err).boxed(),
+            }
+        };
+    }
+
     struct MockBatchSubmitter {
         sender: MockMessageSender,
     }
@@ -134,43 +145,48 @@ mod test {
         fn submit_batches(
             &self,
             msg: SubmitBatches,
-        ) -> Result<BatchStatusLink, RestApiResponseError> {
+        ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>>
+        {
             let mut client_submit_request = ClientBatchSubmitRequest::new();
             client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
                 msg.batch_list.get_batches().to_vec(),
             ));
 
-            let response_status: ClientBatchSubmitResponse = query_validator(
+            let response_status: ClientBatchSubmitResponse = try_fut!(query_validator(
                 &self.sender,
                 Message_MessageType::CLIENT_BATCH_SUBMIT_REQUEST,
                 &client_submit_request,
-            )?;
+            ));
 
-            match process_validator_response(response_status.get_status()) {
-                Ok(_) => {
-                    let batch_query = msg
-                        .batch_list
-                        .get_batches()
-                        .iter()
-                        .map(Batch::get_header_signature)
-                        .collect::<Vec<_>>()
-                        .join(",");
+            future::ready(
+                match process_validator_response(response_status.get_status()) {
+                    Ok(_) => {
+                        let batch_query = msg
+                            .batch_list
+                            .get_batches()
+                            .iter()
+                            .map(Batch::get_header_signature)
+                            .collect::<Vec<_>>()
+                            .join(",");
 
-                    let mut response_url = msg.response_url.clone();
-                    response_url.set_query(Some(&format!("id={}", batch_query)));
+                        let mut response_url = msg.response_url.clone();
+                        response_url.set_query(Some(&format!("id={}", batch_query)));
 
-                    Ok(BatchStatusLink {
-                        link: response_url.to_string(),
-                    })
-                }
-                Err(err) => Err(err),
-            }
+                        Ok(BatchStatusLink {
+                            link: response_url.to_string(),
+                        })
+                    }
+                    Err(err) => Err(err),
+                },
+            )
+            .boxed()
         }
 
         fn batch_status(
             &self,
             msg: BatchStatuses,
-        ) -> Result<Vec<BatchStatus>, RestApiResponseError> {
+        ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>>
+        {
             let mut batch_status_request = ClientBatchStatusRequest::new();
             batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
             match msg.wait {
@@ -183,13 +199,13 @@ mod test {
                 }
             }
 
-            let response_status: ClientBatchStatusResponse = query_validator(
+            let response_status: ClientBatchStatusResponse = try_fut!(query_validator(
                 &self.sender,
                 Message_MessageType::CLIENT_BATCH_STATUS_REQUEST,
                 &batch_status_request,
-            )?;
+            ));
 
-            process_batch_status_response(response_status)
+            future::ready(process_batch_status_response(response_status)).boxed()
         }
 
         fn clone_box(&self) -> Box<dyn BatchSubmitter> {

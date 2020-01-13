@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::pin::Pin;
 use std::time::Duration;
 
+use futures::prelude::*;
 use sawtooth_sdk::messages::batch::Batch;
 use sawtooth_sdk::messages::client_batch_submit::{
     ClientBatchStatusRequest, ClientBatchStatusResponse, ClientBatchStatusResponse_Status,
@@ -40,21 +42,33 @@ impl SawtoothBatchSubmitter {
     }
 }
 
+macro_rules! try_fut {
+    ($try_expr:expr) => {
+        match $try_expr {
+            Ok(res) => res,
+            Err(err) => return futures::future::err(err).boxed(),
+        }
+    };
+}
+
 impl BatchSubmitter for SawtoothBatchSubmitter {
-    fn submit_batches(&self, msg: SubmitBatches) -> Result<BatchStatusLink, RestApiResponseError> {
+    fn submit_batches(
+        &self,
+        msg: SubmitBatches,
+    ) -> Pin<Box<dyn Future<Output = Result<BatchStatusLink, RestApiResponseError>> + Send>> {
         let mut client_submit_request = ClientBatchSubmitRequest::new();
         client_submit_request.set_batches(protobuf::RepeatedField::from_vec(
             msg.batch_list.get_batches().to_vec(),
         ));
 
-        let response_status: ClientBatchSubmitResponse = query_validator(
+        let response_status: ClientBatchSubmitResponse = try_fut!(query_validator(
             &self.sender,
             Message_MessageType::CLIENT_BATCH_SUBMIT_REQUEST,
             &client_submit_request,
-        )?;
+        ));
 
-        match process_validator_response(response_status.get_status()) {
-            Ok(_) => {
+        future::ready(
+            process_validator_response(response_status.get_status()).map(|_| {
                 let batch_query = msg
                     .batch_list
                     .get_batches()
@@ -66,15 +80,18 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
                 let mut response_url = msg.response_url;
                 response_url.set_query(Some(&format!("id={}", batch_query)));
 
-                Ok(BatchStatusLink {
+                BatchStatusLink {
                     link: response_url.to_string(),
-                })
-            }
-            Err(err) => Err(err),
-        }
+                }
+            }),
+        )
+        .boxed()
     }
 
-    fn batch_status(&self, msg: BatchStatuses) -> Result<Vec<BatchStatus>, RestApiResponseError> {
+    fn batch_status(
+        &self,
+        msg: BatchStatuses,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<BatchStatus>, RestApiResponseError>> + Send>> {
         let mut batch_status_request = ClientBatchStatusRequest::new();
         batch_status_request.set_batch_ids(protobuf::RepeatedField::from_vec(msg.batch_ids));
         match msg.wait {
@@ -87,13 +104,13 @@ impl BatchSubmitter for SawtoothBatchSubmitter {
             }
         }
 
-        let response_status: ClientBatchStatusResponse = query_validator(
+        let response_status: ClientBatchStatusResponse = try_fut!(query_validator(
             &self.sender,
             Message_MessageType::CLIENT_BATCH_STATUS_REQUEST,
             &batch_status_request,
-        )?;
+        ));
 
-        process_batch_status_response(response_status)
+        future::ready(process_batch_status_response(response_status)).boxed()
     }
 
     fn clone_box(&self) -> Box<dyn BatchSubmitter> {

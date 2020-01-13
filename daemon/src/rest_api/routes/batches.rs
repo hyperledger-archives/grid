@@ -19,13 +19,15 @@ use sawtooth_sdk::messages::batch::BatchList;
 use serde::Deserialize;
 
 use crate::rest_api::error::RestApiResponseError;
-use crate::rest_api::AppState;
+use crate::rest_api::{AcceptServiceIdParam, AppState, QueryServiceId};
 use crate::submitter::{BatchStatusResponse, BatchStatuses, SubmitBatches, DEFAULT_TIME_OUT};
 
 pub async fn submit_batches(
     req: HttpRequest,
     body: web::Bytes,
     state: web::Data<AppState>,
+    query_service_id: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
     let batch_list: BatchList = match protobuf::parse_from_bytes(&*body) {
         Ok(batch_list) => batch_list,
@@ -44,7 +46,9 @@ pub async fn submit_batches(
         .submit_batches(SubmitBatches {
             batch_list,
             response_url,
+            service_id: query_service_id.into_inner().service_id,
         })
+        .await
         .map(|link| HttpResponse::Ok().json(link))
 }
 
@@ -57,6 +61,8 @@ pub async fn get_batch_statuses(
     req: HttpRequest,
     state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
+    query_service_id: web::Query<QueryServiceId>,
+    _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
     let batch_ids = match query.get("id") {
         Some(ids) => ids.split(',').map(ToString::to_string).collect(),
@@ -86,7 +92,7 @@ pub async fn get_batch_statuses(
                     Err(_) => {
                         return Err(RestApiResponseError::BadRequest(format!(
                             "Query wait has invalid value {}. \
-                             It should set to false or a a time in seconds to wait for the commit",
+                             It should set to false or a time in seconds to wait for the commit",
                             wait_time
                         )));
                     }
@@ -104,14 +110,18 @@ pub async fn get_batch_statuses(
         }
     };
 
-    match state
+    state
         .batch_submitter
-        .batch_status(BatchStatuses { batch_ids, wait })
-    {
-        Ok(batch_statuses) => Ok(HttpResponse::Ok().json(BatchStatusResponse {
-            data: batch_statuses,
-            link: response_url,
-        })),
-        Err(err) => Err(err),
-    }
+        .batch_status(BatchStatuses {
+            batch_ids,
+            wait,
+            service_id: query_service_id.into_inner().service_id,
+        })
+        .await
+        .map(|batch_statuses| {
+            HttpResponse::Ok().json(BatchStatusResponse {
+                data: batch_statuses,
+                link: response_url,
+            })
+        })
 }
