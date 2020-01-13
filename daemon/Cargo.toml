@@ -26,6 +26,7 @@ path = "src/main.rs"
 actix = "0.9"
 actix-web = "2.0"
 actix-rt = "1.0"
+reqwest = { version = "0.10.1", optional = true, features = ["json"] }
 clap = "2"
 ctrlc = "3.0"
 diesel = { version = "1.0.0", features = ["postgres", "r2d2", "serde_json"] }
@@ -56,7 +57,7 @@ stable = ["sawtooth-support"]
 experimental = ["splinter-support"]
 
 sawtooth-support = []
-splinter-support = ["splinter"]
+splinter-support = ["splinter", "reqwest"]
 test-api = []
 
 [package.metadata.deb]
