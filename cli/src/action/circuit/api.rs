@@ -157,12 +157,44 @@ impl<'a> SplinterRestClient<'a> {
                 ))),
             })
     }
-}
 
-#[derive(Deserialize)]
-pub struct CircuitProposal {
-    pub circuit_id: String,
-    pub circuit_hash: String,
+    pub fn list_proposals(&self, filter: Option<&str>) -> Result<ProposalListSlice, CliError> {
+        let mut request = format!("{}/admin/proposals", self.url);
+        if let Some(filter) = filter {
+            request = format!("{}?filter={}", &request, &filter);
+        }
+
+        Client::new()
+            .get(&request)
+            .send()
+            .map_err(|err| CliError::ActionError(err.to_string()))
+            .and_then(|res| match res.status() {
+                StatusCode::OK => Ok(res
+                    .json::<ProposalListSlice>()
+                    .map_err(|err| CliError::ActionError(err.to_string()))?),
+                StatusCode::BAD_REQUEST | StatusCode::INTERNAL_SERVER_ERROR => {
+                    let message = res
+                        .json::<ServerError>()
+                        .map_err(|err| {
+                            CliError::ActionError(format!(
+                                "Unable to parse error response: {}",
+                                err
+                            ))
+                        })?
+                        .message;
+
+                    Err(CliError::ActionError(format!(
+                        "Unable to fetch proposals: {}",
+                        message
+                    )))
+                }
+                _ => Err(CliError::ActionError(format!(
+                    "Received unknown response status: {}",
+                    res.status()
+                ))),
+            })
+    }
+
 }
 
 #[derive(Deserialize)]
@@ -191,6 +223,71 @@ pub struct CircuitSlice {
 pub struct CircuitListSlice {
     pub data: Vec<CircuitSlice>,
     pub paging: Paging,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct ProposalSlice {
+    pub proposal_type: String,
+    pub circuit_id: String,
+    pub circuit_hash: String,
+    pub circuit: ProposalCircuitSlice,
+    pub votes: Vec<VoteRecord>,
+    pub requester: String,
+    pub requester_node_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct ProposalCircuitSlice {
+    pub circuit_id: String,
+    pub authorization_type: AuthorizationType,
+    pub persistence: PersistenceType,
+    pub durability: DurabilityType,
+    pub routes: RouteType,
+    pub circuit_management_type: String,
+    pub members: Vec<CircuitMembers>,
+    pub roster: Vec<CircuitService>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CircuitMembers {
+    pub node_id: String,
+    pub endpoint: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct CircuitService {
+    pub service_id: String,
+    pub service_type: String,
+    pub allowed_nodes: Vec<String>,
+    pub arguments: Vec<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct ProposalListSlice {
+    pub data: Vec<ProposalSlice>,
+    pub paging: Paging,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct VoteRecord {
+    pub public_key: String,
+    pub vote: Vote,
+    pub voter_node_id: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum Vote {
+    Accept,
+    Reject,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ProposalType {
+    Create,
+    UpdateRoster,
+    AddNode,
+    RemoveNode,
+    Destroy,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
