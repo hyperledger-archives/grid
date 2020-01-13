@@ -48,6 +48,7 @@ pub async fn submit_batches(
             response_url,
             service_id: query_service_id.into_inner().service_id,
         })
+        .await
         .map(|link| HttpResponse::Ok().json(link))
 }
 
@@ -109,15 +110,18 @@ pub async fn get_batch_statuses(
         }
     };
 
-    match state.batch_submitter.batch_status(BatchStatuses {
-        batch_ids,
-        wait,
-        service_id: query_service_id.into_inner().service_id,
-    }) {
-        Ok(batch_statuses) => Ok(HttpResponse::Ok().json(BatchStatusResponse {
-            data: batch_statuses,
-            link: response_url,
-        })),
-        Err(err) => Err(err),
-    }
+    state
+        .batch_submitter
+        .batch_status(BatchStatuses {
+            batch_ids,
+            wait,
+            service_id: query_service_id.into_inner().service_id,
+        })
+        .await
+        .map(|batch_statuses| {
+            HttpResponse::Ok().json(BatchStatusResponse {
+                data: batch_statuses,
+                link: response_url,
+            })
+        })
 }
