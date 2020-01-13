@@ -31,9 +31,16 @@ below.
 1. To start Gameroom, run the following command from the Splinter root
    directory:
 
-     ```
-     docker-compose -f examples/gameroom/docker-compose.yaml up
-     ```
+    ```
+    docker-compose -f examples/gameroom/docker-compose.yaml up --build
+    ```
+
+    **Note:** To run Gameroom with experimental features enabled, set an
+    environment variable in your shell before running the command above. For
+    example: `export 'CARGO_ARGS=-- --features experimental'`. To go back to
+    building with default features, unset the environment variable:
+    `unset CARGO_ARGS`
+
 1. To extract private keys to use in the web application, run bash using the
    `generate-key-registry` image and read the private key.  For example, to get
    Alice's private key:
