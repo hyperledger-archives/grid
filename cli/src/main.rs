@@ -298,14 +298,24 @@ fn run() -> Result<(), CliError> {
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("schema", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                schemas::do_create_schemas(&url, key, wait, m.value_of("path").unwrap())?
+            ("create", Some(m)) => schemas::do_create_schemas(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("update", Some(m)) => schemas::do_update_schemas(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("list", Some(_)) => schemas::do_list_schemas(&url, service_id)?,
+            ("show", Some(m)) => {
+                schemas::do_show_schema(&url, m.value_of("name").unwrap(), service_id)?
             }
-            ("update", Some(m)) => {
-                schemas::do_update_schemas(&url, key, wait, m.value_of("path").unwrap())?
-            }
-            ("list", Some(_)) => schemas::do_list_schemas(&url)?,
-            ("show", Some(m)) => schemas::do_show_schema(&url, m.value_of("name").unwrap())?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("database", Some(m)) => match m.subcommand() {
