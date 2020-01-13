@@ -74,19 +74,6 @@ impl<'a> SplinterRestClient<'a> {
             })
     }
 
-    pub fn fetch_proposal(&self, circuit_id: &str) -> Result<CircuitProposal, CliError> {
-        Client::new()
-            .get(&format!("{}/admin/proposals/{}", self.url, circuit_id))
-            .send()
-            .and_then(|res| res.json())
-            .map_err(|err| {
-                CliError::ActionError(format!(
-                    "Unable to fetch circuit proposal {}: {}",
-                    circuit_id, err
-                ))
-            })
-    }
-
     pub fn list_circuits(&self, filter: Option<&str>) -> Result<CircuitListSlice, CliError> {
         let mut request = format!("{}/circuits", self.url);
         if let Some(filter) = filter {
@@ -195,6 +182,39 @@ impl<'a> SplinterRestClient<'a> {
             })
     }
 
+    pub fn fetch_proposal(&self, circuit_id: &str) -> Result<Option<ProposalSlice>, CliError> {
+        Client::new()
+            .get(&format!("{}/admin/proposals/{}", self.url, circuit_id))
+            .send()
+            .map_err(|err| CliError::ActionError(err.to_string()))
+            .and_then(|res| match res.status() {
+                StatusCode::OK => Ok(Some(
+                    res.json::<ProposalSlice>()
+                        .map_err(|err| CliError::ActionError(err.to_string()))?,
+                )),
+                StatusCode::NOT_FOUND => Ok(None),
+                StatusCode::BAD_REQUEST | StatusCode::INTERNAL_SERVER_ERROR => {
+                    let message = res
+                        .json::<ServerError>()
+                        .map_err(|err| {
+                            CliError::ActionError(format!(
+                                "Unable to parse error response: {}",
+                                err
+                            ))
+                        })?
+                        .message;
+
+                    Err(CliError::ActionError(format!(
+                        "Unable to fetch proposal: {}",
+                        message
+                    )))
+                }
+                _ => Err(CliError::ActionError(format!(
+                    "Received unknown response status: {}",
+                    res.status()
+                ))),
+            })
+    }
 }
 
 #[derive(Deserialize)]

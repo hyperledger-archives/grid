@@ -129,16 +129,23 @@ fn vote_on_circuit_proposal(
     let requester_node = client.fetch_node_id()?;
     let proposal = client.fetch_proposal(circuit_id)?;
 
-    let circuit_vote = CircuitVote {
-        circuit_id: circuit_id.into(),
-        circuit_hash: proposal.circuit_hash,
-        vote,
-    };
+    if let Some(proposal) = proposal {
+        let circuit_vote = CircuitVote {
+            circuit_id: circuit_id.into(),
+            circuit_hash: proposal.circuit_hash,
+            vote,
+        };
 
-    let signed_payload =
-        payload::make_signed_payload(&requester_node, &private_key_hex, circuit_vote)?;
+        let signed_payload =
+            payload::make_signed_payload(&requester_node, &private_key_hex, circuit_vote)?;
 
-    client.submit_admin_payload(signed_payload)
+        client.submit_admin_payload(signed_payload)
+    } else {
+        Err(CliError::ActionError(format!(
+            "Proposal for {} does not exist",
+            circuit_id
+        )))
+    }
 }
 
 pub struct CircuitListAction;
