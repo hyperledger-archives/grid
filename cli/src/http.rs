@@ -23,13 +23,23 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Instant;
 
-pub fn submit_batches(url: &str, mut wait: u64, batch_list: &BatchList) -> Result<(), CliError> {
+pub fn submit_batches(
+    url: &str,
+    mut wait: u64,
+    batch_list: &BatchList,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
     let bytes = batch_list.write_to_bytes()?;
 
     let client = Client::new();
 
+    let mut final_url = format!("{}/batches", url);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+    debug!("url {}", final_url);
     let batch_link = client
-        .post(&format!("{}/batches", url))
+        .post(&final_url)
         .body(bytes)
         .send()?
         .json::<BatchStatusLink>()?;

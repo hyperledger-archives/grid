@@ -62,6 +62,8 @@ fn run() -> Result<(), CliError> {
         (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
         (@arg key: -k +takes_value "base name for private key file")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg service_id: --service_id +takes_value "The ID of the service the payload should be \
+            sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
             (about: "Update or create agent")
             (@setting SubcommandRequiredElseHelp)
@@ -215,6 +217,8 @@ fn run() -> Result<(), CliError> {
 
     let wait = value_t!(matches, "wait", u64).unwrap_or(0);
 
+    let service_id = matches.value_of("service_id");
+
     match matches.subcommand() {
         #[cfg(feature = "admin-keygen")]
         ("admin", Some(m)) => match m.subcommand() {
@@ -247,7 +251,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_create_agent(&url, key, wait, create_agent)?
+                agents::do_create_agent(&url, key, wait, create_agent, service_id)?
             }
             ("update", Some(m)) => {
                 let update_agent = UpdateAgentActionBuilder::new()
@@ -264,7 +268,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_update_agent(&url, key, wait, update_agent)?
+                agents::do_update_agent(&url, key, wait, update_agent, service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
@@ -278,7 +282,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_create_organization(&url, key, wait, create_org)?
+                orgs::do_create_organization(&url, key, wait, create_org, service_id)?
             }
             ("update", Some(m)) => {
                 let update_org = UpdateOrganizationActionBuilder::new()
@@ -289,19 +293,29 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_update_organization(&url, key, wait, update_org)?
+                orgs::do_update_organization(&url, key, wait, update_org, service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("schema", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                schemas::do_create_schemas(&url, key, wait, m.value_of("path").unwrap())?
+            ("create", Some(m)) => schemas::do_create_schemas(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("update", Some(m)) => schemas::do_update_schemas(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("list", Some(_)) => schemas::do_list_schemas(&url, service_id)?,
+            ("show", Some(m)) => {
+                schemas::do_show_schema(&url, m.value_of("name").unwrap(), service_id)?
             }
-            ("update", Some(m)) => {
-                schemas::do_update_schemas(&url, key, wait, m.value_of("path").unwrap())?
-            }
-            ("list", Some(_)) => schemas::do_list_schemas(&url)?,
-            ("show", Some(m)) => schemas::do_show_schema(&url, m.value_of("name").unwrap())?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("database", Some(m)) => match m.subcommand() {
@@ -317,22 +331,31 @@ fn run() -> Result<(), CliError> {
             m.value_of("key_dir"),
         )?,
         ("product", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                products::do_create_products(&url, key, wait, m.value_of("path").unwrap())?
-            }
-            ("update", Some(m)) => {
-                products::do_update_products(&url, key, wait, m.value_of("path").unwrap())?
-            }
+            ("create", Some(m)) => products::do_create_products(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("update", Some(m)) => products::do_update_products(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
             ("delete", Some(m)) => products::do_delete_products(
                 &url,
                 key,
                 wait,
                 m.value_of("product_id").unwrap(),
                 m.value_of("product_type").unwrap(),
+                service_id,
             )?,
-            ("list", Some(_)) => products::do_list_products(&url)?,
+            ("list", Some(_)) => products::do_list_products(&url, service_id)?,
             ("show", Some(m)) => {
-                products::do_show_products(&url, m.value_of("product_id").unwrap())?
+                products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },

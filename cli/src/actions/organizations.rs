@@ -30,6 +30,7 @@ pub fn do_create_organization(
     key: Option<String>,
     wait: u64,
     create_org: CreateOrganizationAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::CreateOrganization)
@@ -45,7 +46,7 @@ pub fn do_create_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 pub fn do_update_organization(
@@ -53,6 +54,7 @@ pub fn do_update_organization(
     key: Option<String>,
     wait: u64,
     update_org: UpdateOrganizationAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::UpdateOrganization)
@@ -68,5 +70,5 @@ pub fn do_update_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }

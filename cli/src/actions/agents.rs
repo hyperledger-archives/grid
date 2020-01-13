@@ -28,6 +28,7 @@ pub fn do_create_agent(
     key: Option<String>,
     wait: u64,
     create_agent: CreateAgentAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::CreateAgent)
@@ -43,7 +44,7 @@ pub fn do_create_agent(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 pub fn do_update_agent(
@@ -51,6 +52,7 @@ pub fn do_update_agent(
     key: Option<String>,
     wait: u64,
     update_agent: UpdateAgentAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::UpdateAgent)
@@ -66,5 +68,5 @@ pub fn do_update_agent(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
