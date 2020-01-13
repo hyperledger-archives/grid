@@ -147,7 +147,7 @@ impl ProposalRegistry {
     }
 }
 
-/// An iterator over CircuitPropoals and the time that each occurred.
+/// An iterator over CircuitProposals and the time that each occurred.
 pub struct Proposals {
     inner: Box<dyn Iterator<Item = (String, messages::CircuitProposal)>>,
     size: usize,
