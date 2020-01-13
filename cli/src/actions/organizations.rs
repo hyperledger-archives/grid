@@ -46,7 +46,7 @@ pub fn do_create_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 pub fn do_update_organization(
@@ -70,5 +70,5 @@ pub fn do_update_organization(
         )?
         .create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }

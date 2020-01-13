@@ -121,7 +121,7 @@ pub fn do_create_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 pub fn do_update_schemas(
@@ -146,7 +146,7 @@ pub fn do_update_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError> {

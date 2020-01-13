@@ -154,7 +154,7 @@ pub fn do_create_products(
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductCreate(ProductCreateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 /**
@@ -174,7 +174,7 @@ pub fn do_update_products(
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductUpdate(ProductUpdateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 /**
@@ -199,7 +199,7 @@ pub fn do_delete_products(
         product_id,
     )?];
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list)
+    submit_batches(url, wait, &batch_list, service_id)
 }
 
 /**
