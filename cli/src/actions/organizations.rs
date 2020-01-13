@@ -30,6 +30,7 @@ pub fn do_create_organization(
     key: Option<String>,
     wait: u64,
     create_org: CreateOrganizationAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::CreateOrganization)
@@ -53,6 +54,7 @@ pub fn do_update_organization(
     key: Option<String>,
     wait: u64,
     update_org: UpdateOrganizationAction,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payload = PikePayloadBuilder::new()
         .with_action(Action::UpdateOrganization)

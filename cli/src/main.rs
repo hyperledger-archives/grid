@@ -282,7 +282,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_create_organization(&url, key, wait, create_org)?
+                orgs::do_create_organization(&url, key, wait, create_org, service_id)?
             }
             ("update", Some(m)) => {
                 let update_org = UpdateOrganizationActionBuilder::new()
@@ -293,7 +293,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_update_organization(&url, key, wait, update_org)?
+                orgs::do_update_organization(&url, key, wait, update_org, service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
