@@ -146,6 +146,7 @@ services:
     hostname: splinterd-alpha
     expose:
       - 8044
+      - 8085
     ports:
       - "8044:8044"
     volumes:
@@ -227,6 +228,7 @@ services:
     hostname: splinterd-beta
     expose:
       - 8044
+      - 8085
     ports:
       - "8045:8044"
     volumes:
