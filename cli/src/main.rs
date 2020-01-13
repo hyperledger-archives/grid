@@ -321,22 +321,31 @@ fn run() -> Result<(), CliError> {
             m.value_of("key_dir"),
         )?,
         ("product", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                products::do_create_products(&url, key, wait, m.value_of("path").unwrap())?
-            }
-            ("update", Some(m)) => {
-                products::do_update_products(&url, key, wait, m.value_of("path").unwrap())?
-            }
+            ("create", Some(m)) => products::do_create_products(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
+            ("update", Some(m)) => products::do_update_products(
+                &url,
+                key,
+                wait,
+                m.value_of("path").unwrap(),
+                service_id,
+            )?,
             ("delete", Some(m)) => products::do_delete_products(
                 &url,
                 key,
                 wait,
                 m.value_of("product_id").unwrap(),
                 m.value_of("product_type").unwrap(),
+                service_id,
             )?,
-            ("list", Some(_)) => products::do_list_products(&url)?,
+            ("list", Some(_)) => products::do_list_products(&url, service_id)?,
             ("show", Some(m)) => {
-                products::do_show_products(&url, m.value_of("product_id").unwrap())?
+                products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },

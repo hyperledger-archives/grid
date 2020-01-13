@@ -105,12 +105,13 @@ pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
  *
  * url - Url for the REST API
  */
-pub fn do_list_products(url: &str) -> Result<(), CliError> {
+pub fn do_list_products(url: &str, service_id: Option<&str>) -> Result<(), CliError> {
     let client = Client::new();
-    let products = client
-        .get(&format!("{}/product", url))
-        .send()?
-        .json::<Vec<GridProduct>>()?;
+    let mut final_url = format!("{}/product", url);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+    let products = client.get(&final_url).send()?.json::<Vec<GridProduct>>()?;
     products.iter().for_each(|product| display_product(product));
     Ok(())
 }
@@ -121,12 +122,17 @@ pub fn do_list_products(url: &str) -> Result<(), CliError> {
  * url - Url for the REST API
  * product_id - e.g. GTIN
  */
-pub fn do_show_products(url: &str, product_id: &str) -> Result<(), CliError> {
+pub fn do_show_products(
+    url: &str,
+    product_id: &str,
+    service_id: Option<&str>,
+) -> Result<(), CliError> {
     let client = Client::new();
-    let product = client
-        .get(&format!("{}/product/{}", url, product_id))
-        .send()?
-        .json::<GridProduct>()?;
+    let mut final_url = format!("{}/product/{}", url, product_id);
+    if let Some(service_id) = service_id {
+        final_url = format!("{}?service_id={}", final_url, service_id);
+    }
+    let product = client.get(&final_url).send()?.json::<GridProduct>()?;
     display_product(&product);
     Ok(())
 }
@@ -144,6 +150,7 @@ pub fn do_create_products(
     key: Option<String>,
     wait: u64,
     path: &str,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductCreate(ProductCreateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
@@ -163,6 +170,7 @@ pub fn do_update_products(
     key: Option<String>,
     wait: u64,
     path: &str,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductUpdate(ProductUpdateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
@@ -183,6 +191,7 @@ pub fn do_delete_products(
     wait: u64,
     product_id: &str,
     product_type: &str,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
     let parsed_product_type = parse_value_as_product_type(product_type)?;
     let payloads = vec![generate_delete_product_payload(
