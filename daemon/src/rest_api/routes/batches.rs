@@ -91,7 +91,7 @@ pub async fn get_batch_statuses(
                     Err(_) => {
                         return Err(RestApiResponseError::BadRequest(format!(
                             "Query wait has invalid value {}. \
-                             It should set to false or a a time in seconds to wait for the commit",
+                             It should set to false or a time in seconds to wait for the commit",
                             wait_time
                         )));
                     }
