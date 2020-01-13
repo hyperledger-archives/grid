@@ -251,7 +251,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_create_agent(&url, key, wait, create_agent)?
+                agents::do_create_agent(&url, key, wait, create_agent, service_id)?
             }
             ("update", Some(m)) => {
                 let update_agent = UpdateAgentActionBuilder::new()
@@ -268,7 +268,7 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_update_agent(&url, key, wait, update_agent)?
+                agents::do_update_agent(&url, key, wait, update_agent, service_id)?
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
