@@ -227,7 +227,7 @@ fn run() -> Result<(), CliError> {
                 )
                 .subcommand(
                     SubCommand::with_name("show")
-                        .about("Show a specific circuit")
+                        .about("Show a specific circuit or proposal")
                         .arg(
                             Arg::with_name("url")
                                 .short("U")
@@ -247,6 +247,27 @@ fn run() -> Result<(), CliError> {
                                 .help("Format of the circuit")
                                 .possible_values(&["yaml", "json"])
                                 .default_value("yaml")
+                                .takes_value(true),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("proposals")
+                        .about("List the circuit proposals")
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .long("url")
+                                .help("The URL of the Splinter daemon REST API")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("management_type")
+                                .short("m")
+                                .long("management-type")
+                                .long_help(
+                                    "Filter the circuit proposals by the circuit \
+                                     management type of the circuits",
+                                )
                                 .takes_value(true),
                         ),
                 ),
@@ -309,7 +330,8 @@ fn run() -> Result<(), CliError> {
                 .with_command("create", circuit::CircuitCreateAction)
                 .with_command("vote", circuit::CircuitVoteAction)
                 .with_command("list", circuit::CircuitListAction)
-                .with_command("show", circuit::CircuitShowAction),
+                .with_command("show", circuit::CircuitShowAction)
+                .with_command("proposals", circuit::CircuitProposalsAction),
         );
     }
 

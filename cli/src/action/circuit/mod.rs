@@ -201,22 +201,90 @@ impl Action for CircuitShowAction {
 fn show_circuit(url: &str, circuit_id: &str, format: &str) -> Result<(), CliError> {
     let client = api::SplinterRestClient::new(url);
     let circuit = client.fetch_circuit(circuit_id)?;
-    match format {
-        "json" => println!(
-            "{}",
-            serde_json::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
-                "Cannot format circuit into json: {}",
-                err
-            )))?
-        ),
-        // default is yaml
-        _ => println!(
-            "{}",
-            serde_yaml::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
-                "Cannot format circuit into yaml: {}",
-                err
-            )))?
-        ),
+    let mut print_circuit = false;
+    let mut print_proposal = false;
+    if let Some(circuit) = circuit {
+        print_circuit = true;
+        match format {
+            "json" => println!(
+                "\n {}",
+                serde_json::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
+                    "Cannot format circuit into json: {}",
+                    err
+                )))?
+            ),
+            // default is yaml
+            _ => println!(
+                "{}",
+                serde_yaml::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
+                    "Cannot format circuit into yaml: {}",
+                    err
+                )))?
+            ),
+        }
     }
+
+    let proposal = client.fetch_proposal(circuit_id)?;
+
+    if let Some(proposal) = proposal {
+        print_proposal = true;
+        match format {
+            "json" => println!(
+                "\n {}",
+                serde_json::to_string(&proposal).map_err(|err| CliError::ActionError(format!(
+                    "Cannot format proposal into json: {}",
+                    err
+                )))?
+            ),
+            // default is yaml
+            _ => println!(
+                "{}",
+                serde_yaml::to_string(&proposal).map_err(|err| CliError::ActionError(format!(
+                    "Cannot format proposal into yaml: {}",
+                    err
+                )))?
+            ),
+        }
+    }
+
+    if !print_circuit && !print_proposal {
+        return Err(CliError::ActionError(format!(
+            "Proposal for {} does not exist",
+            circuit_id
+        )));
+    }
+
+    Ok(())
+}
+
+pub struct CircuitProposalsAction;
+
+impl Action for CircuitProposalsAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+
+        let filter = args.value_of("management_type");
+
+        list_proposals(url, filter)
+    }
+}
+
+fn list_proposals(url: &str, filter: Option<&str>) -> Result<(), CliError> {
+    let client = api::SplinterRestClient::new(url);
+
+    let proposals = client.list_proposals(filter)?;
+    println!(
+        "{0: <80} | {1: <30}",
+        "CIRCUIT ID", "CIRCUIT MANAGEMENT TYPE",
+    );
+    println!("{}", "-".repeat(110));
+    proposals.data.iter().for_each(|proposal| {
+        println!(
+            "{0: <80} | {1: <30}",
+            proposal.circuit_id, proposal.circuit.circuit_management_type,
+        );
+    });
     Ok(())
 }
