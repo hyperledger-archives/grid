@@ -124,15 +124,17 @@ impl<'a> SplinterRestClient<'a> {
             })
     }
 
-    pub fn fetch_circuit(&self, circuit_id: &str) -> Result<CircuitSlice, CliError> {
+    pub fn fetch_circuit(&self, circuit_id: &str) -> Result<Option<CircuitSlice>, CliError> {
         Client::new()
             .get(&format!("{}/circuits/{}", self.url, circuit_id))
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
             .and_then(|res| match res.status() {
-                StatusCode::OK => Ok(res
-                    .json::<CircuitSlice>()
-                    .map_err(|err| CliError::ActionError(err.to_string()))?),
+                StatusCode::OK => Ok(Some(
+                    res.json::<CircuitSlice>()
+                        .map_err(|err| CliError::ActionError(err.to_string()))?,
+                )),
+                StatusCode::NOT_FOUND => Ok(None),
                 StatusCode::BAD_REQUEST | StatusCode::INTERNAL_SERVER_ERROR => {
                     let message = res
                         .json::<ServerError>()
