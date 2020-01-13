@@ -62,6 +62,8 @@ fn run() -> Result<(), CliError> {
         (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
         (@arg key: -k +takes_value "base name for private key file")
         (@arg verbose: -v +multiple "Log verbosely")
+        (@arg service_id: --service_id +takes_value "The ID of the service the payload should be \
+            sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
             (about: "Update or create agent")
             (@setting SubcommandRequiredElseHelp)
@@ -214,6 +216,8 @@ fn run() -> Result<(), CliError> {
     let key = matches.value_of("key").map(ToString::to_string);
 
     let wait = value_t!(matches, "wait", u64).unwrap_or(0);
+
+    let service_id = matches.value_of("service_id");
 
     match matches.subcommand() {
         #[cfg(feature = "admin-keygen")]
