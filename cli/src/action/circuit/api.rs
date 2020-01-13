@@ -72,6 +72,25 @@ impl<'a> SplinterRestClient<'a> {
                 ))),
             })
     }
+
+    pub fn fetch_proposal(&self, circuit_id: &str) -> Result<CircuitProposal, CliError> {
+        Client::new()
+            .get(&format!("{}/admin/proposals/{}", self.url, circuit_id))
+            .send()
+            .and_then(|res| res.json())
+            .map_err(|err| {
+                CliError::ActionError(format!(
+                    "Unable to fetch circuit proposal {}: {}",
+                    circuit_id, err
+                ))
+            })
+    }
+}
+
+#[derive(Deserialize)]
+pub struct CircuitProposal {
+    pub circuit_id: String,
+    pub circuit_hash: String,
 }
 
 #[derive(Deserialize)]
