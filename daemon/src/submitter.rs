@@ -44,11 +44,13 @@ impl Clone for Box<dyn BatchSubmitter> {
 pub struct SubmitBatches {
     pub batch_list: BatchList,
     pub response_url: Url,
+    pub service_id: Option<String>,
 }
 
 pub struct BatchStatuses {
     pub batch_ids: Vec<String>,
     pub wait: Option<u32>,
+    pub service_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
