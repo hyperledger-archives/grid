@@ -136,11 +136,12 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use clap::{Arg, SubCommand};
+        use clap::{AppSettings, Arg, SubCommand};
 
         app = app.subcommand(
             SubCommand::with_name("circuit")
                 .about("Provides circuit management functionality")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("create")
                         .about("Propose that a new circuit is created")
@@ -205,6 +206,49 @@ fn run() -> Result<(), CliError> {
                                 .conflicts_with("accept")
                                 .help("Reject the proposal"),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List the circuits")
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .long("url")
+                                .help("The URL of the Splinter daemon REST API")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("member")
+                                .short("m")
+                                .long("member")
+                                .help("Filter the circuits by a node ID in the member list")
+                                .takes_value(true),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show a specific circuit")
+                        .arg(
+                            Arg::with_name("url")
+                                .short("U")
+                                .long("url")
+                                .help("The URL of the Splinter daemon REST API")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("circuit")
+                                .help("The circuit ID of the circuit to be shown")
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("f")
+                                .long("format")
+                                .help("Format of the circuit")
+                                .possible_values(&["yaml", "json"])
+                                .default_value("yaml")
+                                .takes_value(true),
+                        ),
                 ),
         );
     }
@@ -263,7 +307,9 @@ fn run() -> Result<(), CliError> {
             "circuit",
             SubcommandActions::new()
                 .with_command("create", circuit::CircuitCreateAction)
-                .with_command("vote", circuit::CircuitVoteAction),
+                .with_command("vote", circuit::CircuitVoteAction)
+                .with_command("list", circuit::CircuitListAction)
+                .with_command("show", circuit::CircuitShowAction),
         );
     }
 
