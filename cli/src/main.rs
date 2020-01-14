@@ -32,6 +32,7 @@ mod transaction;
 mod yaml_parser;
 
 use clap::ArgMatches;
+use flexi_logger::{LogSpecBuilder, Logger};
 use grid_sdk::protocol::pike::{
     payload::{
         CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
@@ -39,7 +40,6 @@ use grid_sdk::protocol::pike::{
     },
     state::{KeyValueEntry, KeyValueEntryBuilder},
 };
-use simple_logger;
 
 use crate::error::CliError;
 
@@ -205,11 +205,16 @@ fn run() -> Result<(), CliError> {
 
     let matches = app.get_matches();
 
-    match matches.occurrences_of("verbose") {
-        0 => simple_logger::init_with_level(log::Level::Warn),
-        1 => simple_logger::init_with_level(log::Level::Info),
-        _ => simple_logger::init_with_level(log::Level::Debug),
-    }?;
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    };
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+
+    Logger::with(log_spec_builder.build()).start()?;
 
     let url = matches.value_of("url").unwrap_or("http://localhost:8000");
 

@@ -28,9 +28,11 @@ cfg_if! {
         #[macro_use]
         extern crate log;
         extern crate sawtooth_sdk;
-        extern crate simple_logger;
+        extern crate flexi_logger;
 
-        use log::LogLevel;
+        use std::process;
+
+        use flexi_logger::{LogSpecBuilder, Logger};
         use sawtooth_sdk::processor::TransactionProcessor;
         use handler::PikeTransactionHandler;
     }
@@ -53,13 +55,20 @@ fn main() {
          "increase output verbosity"))
     .get_matches();
 
-    let logger = match matches.occurrences_of("verbose") {
-        1 => simple_logger::init_with_level(LogLevel::Info),
-        2 => simple_logger::init_with_level(LogLevel::Debug),
-        0 | _ => simple_logger::init_with_level(LogLevel::Warn),
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
     };
 
-    logger.expect("Failed to create logger");
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+
+    match Logger::with(log_spec_builder.build()).start() {
+        Ok(_) => (),
+        Err(_) => process::exit(1),
+    };
 
     let connect = matches
         .value_of("connect")

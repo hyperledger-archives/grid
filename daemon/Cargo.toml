@@ -35,7 +35,7 @@ grid-sdk = { path = "../sdk" }
 log = "0.4"
 protobuf = "2"
 sawtooth-sdk = "0.3"
-simple_logger = "1.0"
+flexi_logger = "0.14"
 futures = "0.3"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }

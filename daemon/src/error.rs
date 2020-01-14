@@ -16,8 +16,6 @@
 use std::error::Error;
 use std::fmt;
 
-use log;
-
 use crate::database::DatabaseError;
 use crate::event::EventProcessorError;
 use crate::rest_api::RestApiServerError;
@@ -27,7 +25,7 @@ use crate::splinter::error::AppAuthHandlerError;
 #[derive(Debug)]
 pub enum DaemonError {
     DatabaseError(Box<dyn Error>),
-    LoggingInitializationError(Box<log::SetLoggerError>),
+    LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
     EventProcessorError(Box<EventProcessorError>),
     RestApiError(RestApiServerError),
@@ -76,8 +74,8 @@ impl fmt::Display for DaemonError {
     }
 }
 
-impl From<log::SetLoggerError> for DaemonError {
-    fn from(err: log::SetLoggerError) -> DaemonError {
+impl From<flexi_logger::FlexiLoggerError> for DaemonError {
+    fn from(err: flexi_logger::FlexiLoggerError) -> DaemonError {
         DaemonError::LoggingInitializationError(Box::new(err))
     }
 }

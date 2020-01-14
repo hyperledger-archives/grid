@@ -45,8 +45,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "splinter-support")]
 use ::splinter::events::Reactor;
-use log::Level;
-use simple_logger;
+use flexi_logger::{LogSpecBuilder, Logger};
 
 use crate::config::{GridConfig, GridConfigBuilder};
 use crate::database::{error::DatabaseError, helpers as db, ConnectionPool};
@@ -75,12 +74,15 @@ fn run() -> Result<(), DaemonError> {
     .get_matches();
 
     let log_level = match matches.occurrences_of("verbose") {
-        0 => Level::Warn,
-        1 => Level::Info,
-        2 => Level::Debug,
-        _ => Level::Trace,
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
     };
-    simple_logger::init_with_level(log_level)?;
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+
+    Logger::with(log_spec_builder.build()).start()?;
 
     let config = GridConfigBuilder::default()
         .with_cli_args(&matches)

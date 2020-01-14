@@ -25,7 +25,7 @@ path = "src/main.rs"
 [dependencies]
 clap = "2"
 log = "0.4"
-simple_logger = "1.0"
+flexi_logger = "0.14"
 sawtooth-sdk = "0.3"
 sabre-sdk = "0.4"
 grid-sdk = { path = "../sdk" }
