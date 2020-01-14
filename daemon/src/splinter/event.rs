@@ -120,32 +120,34 @@ impl EventConnection for ScabbardEventConnection {
     fn subscribe(
         &mut self,
         _namespaces: &[&str],
-        last_commit_id: &str,
+        last_commit_id: Option<&str>,
     ) -> Result<Self::Unsubscriber, EventIoError> {
         let (sender, receiver) = sync_channel(128);
 
         let source = self.name.clone();
         let unsubscribe_sender = sender.clone();
-        let mut state_delta_ws = WebSocketClient::new(
-            &format!("{}?last_seen_event={}", self.connection_url, last_commit_id),
-            move |_, event: StateChangeEvent| {
-                match sender.try_send(ConnectionCommand::Message(event)) {
-                    Ok(_) => (),
-                    Err(TrySendError::Full(ConnectionCommand::Message(event))) => {
-                        error!(
-                            "dropping commit event {} from {} due to back pressure",
-                            event.id, source
-                        );
-                    }
-                    Err(TrySendError::Full(ConnectionCommand::Shutdown)) => {
-                        // This shouldn't happen, since we never send this type
-                        unreachable!()
-                    }
-                    Err(TrySendError::Disconnected(_)) => return WsResponse::Close,
+        let url = if let Some(last_commit_id) = last_commit_id {
+            format!("{}?last_seen_event={}", self.connection_url, last_commit_id)
+        } else {
+            self.connection_url.clone()
+        };
+        let mut state_delta_ws = WebSocketClient::new(&url, move |_, event: StateChangeEvent| {
+            match sender.try_send(ConnectionCommand::Message(event)) {
+                Ok(_) => (),
+                Err(TrySendError::Full(ConnectionCommand::Message(event))) => {
+                    error!(
+                        "dropping commit event {} from {} due to back pressure",
+                        event.id, source
+                    );
                 }
-                WsResponse::Empty
-            },
-        );
+                Err(TrySendError::Full(ConnectionCommand::Shutdown)) => {
+                    // This shouldn't happen, since we never send this type
+                    unreachable!()
+                }
+                Err(TrySendError::Disconnected(_)) => return WsResponse::Close,
+            }
+            WsResponse::Empty
+        });
 
         state_delta_ws.on_error(move |err, ctx| {
             error!(

@@ -27,8 +27,6 @@ use diesel::{
     QueryResult,
 };
 
-const NULL_COMMIT_ID: &str = "0000000000000000";
-
 pub fn insert_commit(conn: &PgConnection, commit: &NewCommit) -> QueryResult<()> {
     insert_into(commit::table)
         .values(commit)
@@ -65,19 +63,14 @@ pub fn get_commit_by_commit_num(
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
-pub fn get_current_commit_id(conn: &PgConnection) -> QueryResult<String> {
+pub fn get_current_commit_id(conn: &PgConnection) -> QueryResult<Option<String>> {
     commit::table
         .select(commit::commit_id)
         .order_by(commit::commit_num.desc())
         .limit(1)
         .first(conn)
-        .or_else(|err| {
-            if err == NotFound {
-                Ok(NULL_COMMIT_ID.into())
-            } else {
-                Err(err)
-            }
-        })
+        .map(Some)
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
 
 pub fn get_next_commit_num(conn: &PgConnection) -> QueryResult<i64> {

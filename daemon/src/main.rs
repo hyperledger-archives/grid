@@ -120,7 +120,7 @@ fn run_sawtooth(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
 
     let evt_processor = EventProcessor::start(
         sawtooth_connection,
-        &current_commit,
+        current_commit.as_ref().map(String::as_str),
         event_handlers![DatabaseEventHandler::new(connection_pool)],
     )
     .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
