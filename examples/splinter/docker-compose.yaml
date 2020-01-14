@@ -17,6 +17,8 @@ version: '3.6'
 volumes:
   contracts-shared:
   key-registry:
+  gridd-alpha:
+  gridd-beta:
 
 services:
 
@@ -123,6 +125,8 @@ services:
       args:
         - REPO_VERSION=${REPO_VERSION}
         - CARGO_ARGS=-- --features experimental
+    volumes:
+      - gridd-alpha:/etc/grid/keys
     expose:
       - 8080
     ports:
@@ -134,6 +138,7 @@ services:
               >&2 echo \"Database is unavailable - sleeping\"
               sleep 1
           done
+          grid -vv admin keygen --skip && \
           grid -vv database migrate \
               --database-url postgres://grid:grid_example@db-alpha/grid &&
           gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
@@ -204,6 +209,8 @@ services:
       args:
         - REPO_VERSION=${REPO_VERSION}
         - CARGO_ARGS=-- --features experimental
+    volumes:
+      - gridd-beta:/etc/grid/keys
     expose:
       - 8080
     ports:
@@ -215,6 +222,7 @@ services:
               >&2 echo \"Database is unavailable - sleeping\"
               sleep 1
           done
+          grid -vv admin keygen --skip && \
           grid -vv database migrate \
               --database-url postgres://grid:grid_example@db-beta/grid &&
           gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
