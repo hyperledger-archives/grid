@@ -81,6 +81,8 @@ fn run() -> Result<(), DaemonError> {
     };
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
+    log_spec_builder.module("hyper", log::LevelFilter::Warn);
+    log_spec_builder.module("tokio", log::LevelFilter::Warn);
 
     Logger::with(log_spec_builder.build()).start()?;
 

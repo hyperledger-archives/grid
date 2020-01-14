@@ -64,7 +64,6 @@ fn main() {
 
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
-
     match Logger::with(log_spec_builder.build()).start() {
         Ok(_) => (),
         Err(_) => process::exit(1),
