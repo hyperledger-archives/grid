@@ -16,6 +16,8 @@
 //! `transact` library for state. Scabbard uses two-phase consensus to reach agreement on
 //! transactions.
 
+#[cfg(feature = "scabbard-client")]
+pub mod client;
 mod consensus;
 mod error;
 mod factory;

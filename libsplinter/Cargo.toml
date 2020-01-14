@@ -35,6 +35,7 @@ atomicwrites = "0.2"
 awc = { version = "0.2", optional = true }
 bcrypt = {version = "0.6", optional = true}
 byteorder = "1"
+bzip2 = { version = "0.3", optional = true }
 crossbeam-channel = "0.3"
 diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
 diesel_migrations = { version = "1.4", optional = true }
@@ -48,6 +49,7 @@ openssl = "0.10"
 percent-encoding = { version = "2.0", optional = true }
 protobuf = "2"
 rand = { version = "0.7", optional = true }
+reqwest = { version = "0.10", optional = true, features = ["blocking", "json"] }
 sawtooth = { version = "0.2", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.4"
 sawtooth-sdk = { version = "0.3", optional = true }
@@ -55,6 +57,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
+tar = { version = "0.4", optional = true }
 tokio = { version = "0.1.22", optional = true }
 transact = { version = "0.1", features = ["sawtooth-compat"] }
 url = "1.7.1"
@@ -63,6 +66,7 @@ uuid = { version = "0.7", features = ["v4"]}
 zmq = { version = "0.9", optional = true }
 
 [dev-dependencies]
+serial_test = "0.3"
 tempdir = "0.3"
 
 [build-dependencies]
@@ -93,6 +97,7 @@ experimental = [
     "node-registry-unified",
     "postgres",
     "proposal-read",
+    "scabbard-client",
     "zmq-transport",
 ]
 
@@ -112,6 +117,7 @@ node-registry-unified = []
 postgres = ["diesel/postgres"]
 rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
+scabbard-client = ["bzip2", "futures", "reqwest", "sawtooth-sdk", "tar"]
 zmq-transport = ["zmq"]
 
 # The following features are broken and should not be used.
