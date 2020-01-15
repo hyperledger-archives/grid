@@ -48,6 +48,7 @@ fn run() -> Result<(), CliError> {
         (author: "Cargill")
         (about: "Command line for Splinter")
         (@arg verbose: -v +multiple +global "Log verbosely")
+        (@arg quiet: -q --quiet +global "Do not display output")
         (@setting SubcommandRequiredElseHelp)
         (@subcommand admin =>
             (about: "Administrative commands")
@@ -57,7 +58,6 @@ fn run() -> Result<(), CliError> {
                 (@arg key_dir: -d --("key-dir") +takes_value
                  "Name of the directory in which to create the keys; defaults to current working directory")
                 (@arg force: --force "Overwrite files if they exist")
-                (@arg quiet: -q --quiet "Do not display output")
             )
             (@subcommand keyregistry =>
                 (about: "Generates a key registry yaml file and keys, based on a registry \
@@ -73,7 +73,6 @@ fn run() -> Result<(), CliError> {
                  "Name of the input key registry specification; \
                  defaults to \"./key_registry_spec.yaml\"")
                 (@arg force: --force "Overwrite files if they exist")
-                (@arg quiet: -q --quiet "Do not display output")
             )
         )
         (@subcommand cert =>
@@ -86,7 +85,6 @@ fn run() -> Result<(), CliError> {
                   "Name of the directory in which to create the certificates")
                 (@arg force: --force  conflicts_with[skip] "Overwrite files if they exist")
                 (@arg skip: --skip conflicts_with[force] "Check if files exists, generate if missing")
-                (@arg quiet: -q --quiet "Do not display output")
             )
         )
     );
@@ -277,16 +275,20 @@ fn run() -> Result<(), CliError> {
     let matches = app.get_matches();
 
     // set default to info
-    let log_level = match matches.occurrences_of("verbose") {
-        0 => log::LevelFilter::Info,
-        1 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
+    let log_level = if matches.is_present("quiet") {
+        log::LevelFilter::Error
+    } else {
+        match matches.occurrences_of("verbose") {
+            0 => log::LevelFilter::Info,
+            1 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
+        }
     };
 
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
 
-    let mut logger_handle = Logger::with(log_spec_builder.build())
+    Logger::with(log_spec_builder.build())
         .format(log_format)
         .start()
         .expect("Failed to create logger");
@@ -335,7 +337,6 @@ fn run() -> Result<(), CliError> {
         );
     }
 
-    subcommands.reconfigure_logging(Some(&matches), &mut logger_handle)?;
     subcommands.run(Some(&matches))
 }
 
