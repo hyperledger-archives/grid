@@ -87,7 +87,7 @@ pub fn load_signing_key(name: Option<String>) -> Result<Secp256k1PrivateKey, Cli
     f.read_to_string(&mut contents)?;
 
     let key_str = match contents.lines().next() {
-        Some(k) => k,
+        Some(k) => k.trim(),
         None => {
             return Err(CliError::UserError(format!(
                 "Empty key file: {}",

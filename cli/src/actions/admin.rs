@@ -25,6 +25,8 @@ use sawtooth_sdk::signing;
 
 use crate::error::CliError;
 
+use super::write_hex_to_file;
+
 const DEFAULT_KEY_DIR: &str = "/etc/grid/keys";
 
 pub enum ConflictStrategy {
@@ -109,7 +111,7 @@ pub fn do_keygen(
         .mode(0o644)
         .open(public_key_path.as_path())?;
 
-    public_key_file.write_all(public_key.as_hex().as_bytes())?;
+    write_hex_to_file(&public_key.as_hex(), &mut public_key_file)?;
 
     if private_key_path.exists() {
         println!("Overwriting file: {:?}", private_key_path);
@@ -122,7 +124,7 @@ pub fn do_keygen(
         .mode(0o640)
         .open(private_key_path.as_path())?;
 
-    private_key_file.write_all(private_key.as_hex().as_bytes())?;
+    write_hex_to_file(&private_key.as_hex(), &mut private_key_file)?;
 
     Ok(())
 }
