@@ -20,6 +20,7 @@ RUN apt-get update \
     build-essential \
     curl \
     gcc \
+    git \
     g++ \
     libpq-dev \
     libssl-dev \
