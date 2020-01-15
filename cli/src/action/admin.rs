@@ -282,10 +282,7 @@ fn create_key_pair(
             .mode(0o640)
             .open(private_key_path.as_path())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-
-        private_key_file
-            .write(private_key.as_hex().as_bytes())
-            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+        write_hex_to_file(&private_key.as_hex(), &mut private_key_file)?;
     }
 
     {
@@ -301,10 +298,7 @@ fn create_key_pair(
             .mode(0o644)
             .open(public_key_path.as_path())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
-
-        public_key_file
-            .write(public_key.as_hex().as_bytes())
-            .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
+        write_hex_to_file(&public_key.as_hex(), &mut public_key_file)?;
     }
     if change_permissions {
         chown(private_key_path.as_path(), key_dir_uid, key_dir_gid)?;
@@ -312,4 +306,9 @@ fn create_key_pair(
     }
 
     Ok(public_key.as_slice().to_vec())
+}
+
+/// Write the given hex string to the given file, appending a newline at the end.
+fn write_hex_to_file(hex: &str, file: &mut File) -> Result<(), CliError> {
+    writeln!(file, "{}", hex).map_err(|err| CliError::EnvironmentError(format!("{}", err)))
 }
