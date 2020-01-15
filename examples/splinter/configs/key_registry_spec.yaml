@@ -23,3 +23,8 @@ beta:
   metadata:
     gameroom/first-name: bob
     gameroom/organization: Beta
+gamma:
+  node_id: gamma-node-000
+  metadata:
+    gameroom/first-name: grace
+    gameroom/organization: Gamma

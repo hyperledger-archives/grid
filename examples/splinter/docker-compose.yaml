@@ -19,6 +19,7 @@ volumes:
   key-registry:
   gridd-alpha:
   gridd-beta:
+  gridd-gamma:
 
 services:
 
@@ -258,6 +259,89 @@ services:
         --bind 0.0.0.0:8085 \
         --network-endpoint 0.0.0.0:8044 \
         --node-id beta-node-000 \
+        --service-endpoint 0.0.0.0:8043 \
+        --storage yaml \
+        --transport tls \
+        --client-cert /etc/splinter/certs/client.crt \
+        --client-key /etc/splinter/certs/private/client.key \
+        --server-cert /etc/splinter/certs/server.crt \
+        --server-key /etc/splinter/certs/private/server.key \
+        --insecure
+      "
+
+# ---== gamma node ==---
+
+  db-gamma:
+    image: postgres
+    container_name: db-gamma
+    hostname: db-gamma
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: grid
+      POSTGRES_PASSWORD: grid_example
+      POSTGRES_DB: grid
+
+  gridd-gamma:
+    image: gridd
+    container_name: gridd-gamma
+    hostname: gridd-gamma
+    build:
+      context: ../..
+      dockerfile: daemon/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+        - CARGO_ARGS=-- --features experimental
+    volumes:
+      - gridd-gamma:/etc/grid/keys
+    expose:
+      - 8080
+    ports:
+      - "8082:8080"
+    entrypoint: |
+        bash -c "
+          # we need to wait for the db to have started.
+          until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q'; do
+              >&2 echo \"Database is unavailable - sleeping\"
+              sleep 1
+          done
+          grid -vv admin keygen --skip && \
+          grid -vv database migrate \
+              --database-url postgres://grid:grid_example@db-gamma/grid &&
+          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
+              --database-url postgres://grid:grid_example@db-gamma/grid
+        "
+
+  splinterd-gamma:
+    image: splintercommunity/splinterd:experimental
+    container_name: splinterd-gamma
+    hostname: splinterd-gamma
+    expose:
+      - 8044
+    ports:
+      - "8046:8044"
+    volumes:
+      - contracts-shared:/usr/share/scar
+      - key-registry:/key_registry_shared
+      - ./configs:/configs
+    entrypoint: |
+      bash -c "
+        while [ ! -f /key_registry_shared/keys.yaml ]; do \
+          echo 'waiting for key registry'; \
+          sleep 1; \
+        done && \
+        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinterd -vv \
+        --registry-backend FILE \
+        --registry-file /configs/nodes.yaml \
+        --bind 0.0.0.0:8085 \
+        --network-endpoint 0.0.0.0:8044 \
+        --node-id gamma-node-000 \
         --service-endpoint 0.0.0.0:8043 \
         --storage yaml \
         --transport tls \
