@@ -18,7 +18,7 @@
 use std::cell::RefCell;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
 
-use splinter::events::{Igniter, Reactor, WebSocketClient, WebSocketError, WsResponse};
+use splinter::events::{Igniter, WebSocketClient, WebSocketError, WsResponse};
 use splinter::service::scabbard::{StateChange as ScabbardStateChange, StateChangeEvent};
 
 use crate::event::{
@@ -39,15 +39,15 @@ impl std::fmt::Display for ScabbardEventConnectionError {
 /// Constructs ScabbardEventConnections to receive events.
 pub struct ScabbardEventConnectionFactory {
     node_endpoint: String,
-    reactor: Reactor,
+    igniter: Igniter,
 }
 
 impl ScabbardEventConnectionFactory {
     /// Construct a new factory connecting to a specific splinter node.
-    pub fn new(node_endpoint: &str) -> Self {
+    pub fn new(node_endpoint: &str, igniter: Igniter) -> Self {
         Self {
             node_endpoint: node_endpoint.into(),
-            reactor: Reactor::new(),
+            igniter,
         }
     }
 
@@ -66,18 +66,8 @@ impl ScabbardEventConnectionFactory {
         Ok(ScabbardEventConnection::new(
             source,
             connection_url,
-            self.reactor.igniter(),
+            self.igniter.clone(),
         ))
-    }
-
-    /// Shut down all open Scabbard event connections.
-    pub fn shutdown_all(self) -> Result<(), ScabbardEventConnectionError> {
-        self.reactor.shutdown().map_err(|err| {
-            ScabbardEventConnectionError(format!(
-                "unable to shutdown splinter event reactor: {}",
-                err
-            ))
-        })
     }
 }
 
