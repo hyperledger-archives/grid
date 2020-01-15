@@ -61,7 +61,7 @@ fn run() -> Result<(), CliError> {
         (@arg url: --url  +takes_value "URL for the REST API")
         (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
         (@arg key: -k +takes_value "base name for private key file")
-        (@arg verbose: -v +multiple "Log verbosely")
+        (@arg verbose: -v +multiple +global "Log verbosely")
         (@arg service_id: --service_id +takes_value "The ID of the service the payload should be \
             sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
