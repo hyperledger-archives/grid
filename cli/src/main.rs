@@ -47,7 +47,7 @@ fn run() -> Result<(), CliError> {
         (version: VERSION)
         (author: "Cargill")
         (about: "Command line for Splinter")
-        (@arg verbose: -v +multiple "Log verbosely")
+        (@arg verbose: -v +multiple +global "Log verbosely")
         (@setting SubcommandRequiredElseHelp)
         (@subcommand admin =>
             (about: "Administrative commands")
