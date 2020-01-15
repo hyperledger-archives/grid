@@ -25,6 +25,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2"
+diesel = { version = "1.0", features = ["postgres"] }
+diesel_migrations = "1.4"
 flexi_logger = "0.14"
 log = "0.4"
 

@@ -14,6 +14,8 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate diesel_migrations;
 
 mod action;
 mod error;
@@ -41,7 +43,8 @@ fn run() -> Result<(), CliError> {
                 .help("log verbosely")
                 .short("v")
                 .multiple(true),
-        );
+        )
+        .subcommand(action::database::get_subcommand());
 
     let matches = app.get_matches();
 
@@ -53,7 +56,10 @@ fn run() -> Result<(), CliError> {
 
     setup_logging(log_level);
 
-    Ok(())
+    match matches.subcommand() {
+        ("database", Some(matches)) => action::database::handle_database_subcommand(matches),
+        (unknown_subcmd, _) => Err(CliError::InvalidSubcommand(unknown_subcmd.into())),
+    }
 }
 
 fn setup_logging(log_level: log::LevelFilter) {
