@@ -30,11 +30,12 @@ cfg_if! {
         extern crate sawtooth_sdk;
         extern crate flexi_logger;
 
-        use std::process;
+        mod error;
 
         use flexi_logger::{LogSpecBuilder, Logger};
         use sawtooth_sdk::processor::TransactionProcessor;
         use handler::PikeTransactionHandler;
+        use error::CliError;
     }
 }
 
@@ -45,7 +46,7 @@ pub mod handler;
 //use handler::PikeTransactionHandler;
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() {
+fn main() -> Result<(), CliError> {
     let matches = clap_app!(wasm_store_tp =>
         (version: crate_version!())
         (about: "Implements the Pike transaction family")
@@ -64,10 +65,7 @@ fn main() {
 
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
-    match Logger::with(log_spec_builder.build()).start() {
-        Ok(_) => (),
-        Err(_) => process::exit(1),
-    };
+    Logger::with(log_spec_builder.build()).start()?;
 
     let connect = matches
         .value_of("connect")
@@ -78,6 +76,8 @@ fn main() {
 
     processor.add_handler(&handler);
     processor.start();
+
+    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]
