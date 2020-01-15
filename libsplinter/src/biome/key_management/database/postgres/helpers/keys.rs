@@ -17,6 +17,27 @@ use super::super::schema::keys;
 
 use diesel::{dsl::insert_into, pg::PgConnection, prelude::*, QueryResult};
 
-pub fn insert_key(conn: &PgConnection, key: KeyModel) -> QueryResult<usize> {
-    insert_into(keys::table).values(&vec![key]).execute(conn)
+pub fn insert_key(conn: &PgConnection, key: &KeyModel) -> QueryResult<usize> {
+    insert_into(keys::table).values(vec![key]).execute(conn)
+}
+
+pub fn list_keys_with_user_id(conn: &PgConnection, user_id: &str) -> QueryResult<Vec<KeyModel>> {
+    keys::table
+        .filter(keys::user_id.eq(user_id))
+        .load::<KeyModel>(conn)
+}
+
+pub fn list_keys(conn: &PgConnection) -> QueryResult<Vec<KeyModel>> {
+    keys::table.load::<KeyModel>(conn)
+}
+
+pub fn update_key(
+    conn: &PgConnection,
+    user_id: &str,
+    public_key: &str,
+    display_name: &str,
+) -> QueryResult<usize> {
+    diesel::update(keys::table.find((public_key, user_id)))
+        .set((keys::display_name.eq(display_name),))
+        .execute(conn)
 }

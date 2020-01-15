@@ -67,7 +67,7 @@ use std::boxed::Box;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
-pub use errors::{ResponseError, RestApiServerError};
+pub use errors::{RequestError, ResponseError, RestApiServerError};
 
 pub use events::{new_websocket_event_sender, EventSender};
 
@@ -93,7 +93,7 @@ pub trait RestResourceProvider {
     fn resources(&self) -> Vec<Resource>;
 }
 
-type HandlerFunction = Box<
+pub type HandlerFunction = Box<
     dyn Fn(HttpRequest, web::Payload) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
         + Send
         + Sync
@@ -193,8 +193,7 @@ impl Resource {
             ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
             + Send
             + Sync
-            + 'static
-            + Clone,
+            + 'static,
     {
         Self::build(route).add_method(method, handle)
     }
@@ -214,8 +213,7 @@ impl Resource {
             ) -> Box<dyn Future<Item = HttpResponse, Error = ActixError>>
             + Send
             + Sync
-            + 'static
-            + Clone,
+            + 'static,
     {
         self.methods.push((method, Arc::new(Box::new(handle))));
         self
@@ -380,6 +378,29 @@ pub fn into_bytes(payload: web::Payload) -> impl Future<Item = Vec<u8>, Error = 
 
 pub fn percent_encode_filter_query(input: &str) -> String {
     percent_encoding::utf8_percent_encode(input, QUERY_ENCODE_SET).to_string()
+}
+
+pub fn require_header(header_key: &str, request: &HttpRequest) -> Result<String, RequestError> {
+    let header = request.headers().get(header_key).ok_or_else(|| {
+        RequestError::MissingHeader(format!("Header {} not included in Request", header_key))
+    })?;
+    Ok(header
+        .to_str()
+        .map_err(|err| RequestError::InvalidHeaderValue(format!("Invalid header value: {}", err)))?
+        .to_string())
+}
+
+pub fn get_authorization_token(request: &HttpRequest) -> Result<String, RequestError> {
+    let auth_header = require_header("Authorization", &request)?;
+    Ok(auth_header
+        .split_whitespace()
+        .last()
+        .ok_or_else(|| {
+            RequestError::InvalidHeaderValue(
+                "Authorization token not included in request".to_string(),
+            )
+        })?
+        .to_string())
 }
 
 #[cfg(test)]

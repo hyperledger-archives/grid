@@ -14,4 +14,4 @@
 
 mod keys;
 
-pub use keys::insert_key;
+pub use keys::{insert_key, list_keys, list_keys_with_user_id, update_key};

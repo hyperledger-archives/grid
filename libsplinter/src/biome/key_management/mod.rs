@@ -15,11 +15,16 @@
 //! Provides an API for storing key pairs and associating them with users.
 
 pub mod database;
+
+#[cfg(feature = "rest-api")]
+pub(in crate::biome) mod rest_resources;
+
 pub(in crate::biome) mod store;
 
 use database::postgres::models::KeyModel;
 
 // Represents a public and private key pair
+#[derive(Serialize)]
 pub struct Key {
     public_key: String,
     encrypted_private_key: String,
