@@ -51,6 +51,11 @@ version = "0.3.9"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+description = """\
+    Splinter is a privacy-focused platform for distributed applications that \
+    provides a blockchain-inspired networking environment for communication \
+    and transactions between organizations.
+"""
 
 [[bin]]
 name = "splinter"

@@ -18,6 +18,10 @@ version = "0.3.9"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+description = """\
+    Private XO is a demo Splinter application that allows you to play games of \
+    tic tac toe.
+"""
 
 [[bin]]
 name = "private-xo"

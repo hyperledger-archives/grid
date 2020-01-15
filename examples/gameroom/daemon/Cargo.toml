@@ -18,6 +18,12 @@ version = "0.3.9"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+description = """\
+    Gameroom is an example Splinter application that allows you to set up \
+    private, multi-party circuits (called "gamerooms") and play tic tac toe \
+    with shared state, as managed by two-phase-commit consensus between the \
+    participants.
+"""
 
 [dependencies]
 actix = { version = "0.8", default-features = false }
