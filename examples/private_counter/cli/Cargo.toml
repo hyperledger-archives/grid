@@ -18,6 +18,10 @@ version = "0.3.9"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
+description = """\
+    Private Counter is an example Splinter application that "counts" \
+    (adds numbers to a shared counter) on a multi-party Splinter circuit.
+"""
 
 [[bin]]
 name = "pcounter"
