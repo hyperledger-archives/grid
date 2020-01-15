@@ -22,7 +22,7 @@ use crate::database::DatabaseError;
 use crate::event::EventProcessorError;
 use crate::rest_api::RestApiServerError;
 #[cfg(feature = "splinter-support")]
-use crate::splinter::error::AppAuthHandlerError;
+use crate::splinter::app_auth_handler::error::AppAuthHandlerError;
 
 #[derive(Debug)]
 pub enum DaemonError {

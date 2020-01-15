@@ -15,12 +15,14 @@
  * -----------------------------------------------------------------------------
  */
 
-use crate::splinter::error::AppAuthHandlerError;
+pub mod error;
 
 use splinter::{
     admin::messages::AdminServiceEvent,
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
 };
+
+use crate::app_auth_handler::error::AppAuthHandlerError;
 
 /// default value if the client should attempt to reconnet if ws connection is lost
 const RECONNECT: bool = true;
