@@ -101,7 +101,7 @@ pub trait EventConnection: Send {
     fn subscribe(
         &mut self,
         namespaces: &[&str],
-        last_commit_id: &str,
+        last_commit_id: Option<&str>,
     ) -> Result<Self::Unsubscriber, EventIoError>;
 
     fn close(self) -> Result<(), EventIoError>;
@@ -121,7 +121,7 @@ impl<EC: EventConnection> EventConnection for Box<EC> {
     fn subscribe(
         &mut self,
         namespaces: &[&str],
-        last_commit_id: &str,
+        last_commit_id: Option<&str>,
     ) -> Result<Self::Unsubscriber, EventIoError> {
         (**self).subscribe(namespaces, last_commit_id)
     }
@@ -155,7 +155,7 @@ pub struct EventProcessor<Conn: EventConnection> {
 impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
     pub fn start(
         mut connection: Conn,
-        last_known_commit_id: &str,
+        last_known_commit_id: Option<&str>,
         event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<Self, EventProcessorError> {
         let unsubscriber = connection

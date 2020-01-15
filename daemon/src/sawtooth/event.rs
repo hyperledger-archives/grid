@@ -48,6 +48,7 @@ use crate::event::{
 
 use super::connection::SawtoothConnection;
 
+const NULL_BLOCK_ID: &str = "0000000000000000";
 const BLOCK_COMMIT_EVENT_TYPE: &str = "sawtooth/block-commit";
 const STATE_CHANGE_EVENT_TYPE: &str = "sawtooth/state-delta";
 const BLOCK_ID_ATTR: &str = "block_id";
@@ -65,11 +66,12 @@ impl EventConnection for SawtoothConnection {
     fn subscribe(
         &mut self,
         namespaces: &[&str],
-        last_commit_id: &str,
+        last_commit_id: Option<&str>,
     ) -> Result<Self::Unsubscriber, EventIoError> {
         let message_sender = self.get_sender();
 
-        let request = create_subscription_request(last_commit_id, namespaces);
+        let request =
+            create_subscription_request(last_commit_id.unwrap_or(NULL_BLOCK_ID), namespaces);
         let mut future = message_sender.send(
             Message_MessageType::CLIENT_EVENTS_SUBSCRIBE_REQUEST,
             &correlation_id(),
