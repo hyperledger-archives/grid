@@ -19,12 +19,12 @@ RUN apt-get update \
  && apt-get install -y -q \
     build-essential \
     curl \
+    g++ \
     gcc \
     git \
-    g++ \
     libpq-dev \
-    libssl-dev \
     libsasl2-dev \
+    libssl-dev \
     libzmq3-dev \
     openssl \
     pkg-config \
