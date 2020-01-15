@@ -55,7 +55,10 @@ use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 #[cfg(feature = "sawtooth-support")]
 use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
 #[cfg(feature = "splinter-support")]
-use crate::splinter::{app_auth_handler, batch_submitter::SplinterBatchSubmitter};
+use crate::splinter::{
+    app_auth_handler, batch_submitter::SplinterBatchSubmitter,
+    event::ScabbardEventConnectionFactory,
+};
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -172,7 +175,17 @@ fn run_sawtooth(config: GridConfig, _connection_pool: ConnectionPool) -> Result<
 
 #[cfg(feature = "splinter-support")]
 fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
-    app_auth_handler::run(config.endpoint().url(), Reactor::new().igniter())?;
+    let reactor = Reactor::new();
+
+    let scabbard_event_connection_factory =
+        ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
+
+    app_auth_handler::run(
+        config.endpoint().url().into(),
+        scabbard_event_connection_factory,
+        connection_pool.clone(),
+        reactor.igniter(),
+    )?;
 
     let batch_submitter = Box::new(SplinterBatchSubmitter::new(config.endpoint().url()));
 
@@ -202,6 +215,10 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
             DaemonError::ShutdownError("Unable to cleanly join the REST API thread".into())
         })
         .and_then(|res| res.map_err(DaemonError::from))?;
+
+    if let Err(err) = reactor.shutdown() {
+        error!("unable to shutdown splinter event reactor: {}", err)
+    }
 
     Ok(())
 }
