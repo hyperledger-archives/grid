@@ -16,6 +16,7 @@
  */
 
 pub mod error;
+mod node;
 
 use splinter::{
     admin::messages::AdminServiceEvent,
