@@ -393,11 +393,17 @@ pub trait StateSubscriber: Send {
     fn handle_event(&self, event: StateChangeEvent) -> Result<(), StateSubscriberError>;
 }
 
+#[derive(PartialEq)]
+enum EventQuery {
+    Fetch(Option<String>),
+    Exhausted,
+}
+
 /// An iterator that wraps the `TransactionReceiptStore` and returns `StateChangeEvent`s using an
 /// in-memory cache.
 pub struct Events {
     transaction_receipt_store: Arc<RwLock<TransactionReceiptStore>>,
-    start_id: Option<String>,
+    query: EventQuery,
     cache: VecDeque<StateChangeEvent>,
 }
 
@@ -408,7 +414,7 @@ impl Events {
     ) -> Result<Self, ScabbardStateError> {
         let mut iter = Events {
             transaction_receipt_store,
-            start_id,
+            query: EventQuery::Fetch(start_id),
             cache: VecDeque::default(),
         };
         iter.reload_cache()?;
@@ -416,33 +422,41 @@ impl Events {
     }
 
     fn reload_cache(&mut self) -> Result<(), ScabbardStateError> {
-        let transaction_receipt_store = self.transaction_receipt_store.read().map_err(|err| {
-            ScabbardStateError(format!("transaction receipt store lock poisoned: {}", err))
-        })?;
+        match self.query {
+            EventQuery::Fetch(ref start_id) => {
+                let transaction_receipt_store =
+                    self.transaction_receipt_store.read().map_err(|err| {
+                        ScabbardStateError(format!(
+                            "transaction receipt store lock poisoned: {}",
+                            err
+                        ))
+                    })?;
 
-        self.cache = if let Some(id) = &self.start_id {
-            transaction_receipt_store.iter_since_id(id.clone())
-        } else {
-            transaction_receipt_store.iter()
+                self.cache = if let Some(id) = start_id.as_ref() {
+                    transaction_receipt_store.iter_since_id(id.clone())
+                } else {
+                    transaction_receipt_store.iter()
+                }
+                .map_err(|err| {
+                    ScabbardStateError(format!(
+                        "failed to get transaction receipts from store: {}",
+                        err
+                    ))
+                })?
+                .take(ITER_CACHE_SIZE)
+                .map(|ref receipt| receipt_into_scabbard_state_change_event(receipt))
+                .collect::<VecDeque<_>>();
+
+                self.query = self
+                    .cache
+                    .back()
+                    .map(|event| EventQuery::Fetch(Some(event.id.clone())))
+                    .unwrap_or(EventQuery::Exhausted);
+
+                Ok(())
+            }
+            EventQuery::Exhausted => Ok(()),
         }
-        .map_err(|err| {
-            ScabbardStateError(format!(
-                "failed to get transaction receipts from store: {}",
-                err
-            ))
-        })?
-        .take(ITER_CACHE_SIZE)
-        .map(|ref receipt| receipt_into_scabbard_state_change_event(receipt))
-        .collect::<VecDeque<_>>();
-
-        self.start_id = Some(
-            self.cache
-                .back()
-                .map(|event| event.id.clone())
-                .unwrap_or_else(|| "".into()),
-        );
-
-        Ok(())
     }
 }
 
@@ -450,7 +464,7 @@ impl Iterator for Events {
     type Item = StateChangeEvent;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cache.is_empty() {
+        if self.cache.is_empty() && self.query != EventQuery::Exhausted {
             if let Err(err) = self.reload_cache() {
                 error!("Unable to reload iterator cache: {}", err);
             }
@@ -615,6 +629,33 @@ mod tests {
     use super::*;
 
     const TEMP_DB_SIZE: usize = 1 << 30; // 1024 ** 3
+
+    /// Verify that an empty receipt store returns an empty iterator
+    #[test]
+    fn empty_event_iterator() {
+        let temp_db_path = get_temp_db_path();
+
+        let test_result = std::panic::catch_unwind(|| {
+            let transaction_receipt_store =
+                Arc::new(RwLock::new(TransactionReceiptStore::new(Box::new(
+                    LmdbOrderedStore::new(&temp_db_path, Some(TEMP_DB_SIZE))
+                        .expect("Failed to create LMDB store"),
+                ))));
+
+            // Test without a specified start
+            let all_events = Events::new(transaction_receipt_store.clone(), None)
+                .expect("failed to get iterator for all events");
+            let all_event_ids = all_events.map(|event| event.id.clone()).collect::<Vec<_>>();
+            assert!(
+                all_event_ids.is_empty(),
+                "All events should have been empty"
+            );
+        });
+
+        std::fs::remove_file(temp_db_path.as_path()).expect("Failed to remove temp DB file");
+
+        assert!(test_result.is_ok());
+    }
 
     /// Verify that the event iterator works as expected.
     #[test]

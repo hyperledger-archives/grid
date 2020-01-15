@@ -64,10 +64,18 @@ pub fn make_subscribe_endpoint() -> ServiceEndpoint {
 
             let last_seen_event_id = query.remove("last_seen_event");
 
-            if let Some(ref id) = last_seen_event_id {
-                debug!("Getting all state-delta events since {}", id);
-            } else {
-                debug!("Getting all state-delta events");
+            match last_seen_event_id {
+                Some(ref id) if id.trim().is_empty() => {
+                    return Box::new(
+                        HttpResponse::BadRequest()
+                            .json(json!({
+                                "message": "last_seen_event must not be empty",
+                            }))
+                            .into_future(),
+                    );
+                }
+                Some(ref id) => debug!("Getting all state-delta events since {}", id),
+                None => debug!("Getting all state-delta events"),
             }
 
             let unseen_events = match scabbard.get_events_since(last_seen_event_id) {
