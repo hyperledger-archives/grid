@@ -62,6 +62,7 @@ fn run() -> Result<(), CliError> {
         (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
         (@arg key: -k +takes_value "base name for private key file")
         (@arg verbose: -v +multiple +global "Log verbosely")
+        (@arg quiet: -q --quiet +global "Do not display output")
         (@arg service_id: --service_id +takes_value "The ID of the service the payload should be \
             sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
@@ -205,11 +206,15 @@ fn run() -> Result<(), CliError> {
 
     let matches = app.get_matches();
 
-    let log_level = match matches.occurrences_of("verbose") {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
+    let log_level = if matches.is_present("quiet") {
+        log::LevelFilter::Error
+    } else {
+        match matches.occurrences_of("verbose") {
+            0 => log::LevelFilter::Warn,
+            1 => log::LevelFilter::Info,
+            2 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
+        }
     };
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
