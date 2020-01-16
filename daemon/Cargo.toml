@@ -17,6 +17,12 @@ name = "grid-daemon"
 version = "0.1.0"
 authors = ["Contributors to Hyperledger Grid"]
 edition = "2018"
+license = "Apache-2.0"
+description = """\
+    Hyperledger Grid is a platform for building supply chain solutions. It \
+    provides a growing set of tools that accelerate development for supply \
+    chain smart contracts and client interfaces.
+"""
 
 [[bin]]
 name = "gridd"
@@ -45,7 +51,7 @@ base64 = "0.10"
 byteorder = "1"
 
 [dependencies.splinter]
-git = "https://github.com/cargill/splinter"
+version = "0.3"
 optional = true
 features = [ "events" ]
 
