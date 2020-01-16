@@ -25,6 +25,7 @@ COPY splinterd/ /build/splinterd
 WORKDIR /build/splinterd
 ARG REPO_VERSION
 ARG CARGO_ARGS
+ARG SPLINTERD_ARGS
 RUN sed -i -e s/version.*$/version\ =\ \"${REPO_VERSION}\"/ Cargo.toml
 RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 RUN mv /build/target/debian/splinter-daemon*.deb /tmp
@@ -43,6 +44,8 @@ FROM ubuntu:bionic
 
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
+ARG SPLINTERD_ARGS
+RUN echo "SPLINTERD_ARGS = '$SPLINTERD_ARGS'" > SPLINTERD_ARGS
 
 COPY --from=builder /tmp/splinter-*.deb /tmp/
 

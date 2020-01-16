@@ -21,6 +21,8 @@ use crossbeam_channel;
 #[cfg(feature = "health")]
 use health::HealthService;
 use splinter::admin::service::{admin_service_id, AdminService};
+#[cfg(feature = "biome")]
+use splinter::biome::rest_api::{BiomeRestResourceManager, BiomeRestResourceManagerBuilder};
 use splinter::circuit::directory::CircuitDirectory;
 use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
@@ -29,6 +31,8 @@ use splinter::circuit::handlers::{
 #[cfg(feature = "circuit-read")]
 use splinter::circuit::rest_api::CircuitResourceProvider;
 use splinter::circuit::SplinterState;
+#[cfg(feature = "biome")]
+use splinter::database::{self, ConnectionPool};
 use splinter::keys::{
     insecure::AllowAllKeyPermissionManager, rest_api::KeyRegistryManager,
     storage::StorageKeyRegistry,
@@ -98,6 +102,8 @@ pub struct SplinterDaemon {
     network: Network,
     node_id: String,
     rest_api_endpoint: String,
+    #[cfg(feature = "database")]
+    db_url: String,
     registry_config: RegistryConfig,
     storage_type: String,
 }
@@ -382,6 +388,12 @@ impl SplinterDaemon {
             rest_api_builder = rest_api_builder.add_resources(circuit_resource.resources());
         }
 
+        #[cfg(feature = "biome")]
+        {
+            let biome_resources = build_biome_routes(&self.db_url)?;
+            rest_api_builder = rest_api_builder.add_resources(biome_resources.resources());
+        }
+
         let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api_builder.build()?.run()?;
 
         let (admin_shutdown_handle, service_processor_join_handle) =
@@ -591,6 +603,31 @@ fn start_health_service(
     })?
 }
 
+#[cfg(feature = "biome")]
+fn build_biome_routes(db_url: &str) -> Result<BiomeRestResourceManager, StartError> {
+    info!("Adding biome routes");
+    let connection_pool: ConnectionPool =
+        database::create_connection_pool(db_url).map_err(|err| {
+            StartError::RestApiError(format!(
+                "Unable to connect to the splinter databaase: {}",
+                err
+            ))
+        })?;
+    let mut biome_rest_provider_builder: BiomeRestResourceManagerBuilder = Default::default();
+    biome_rest_provider_builder =
+        biome_rest_provider_builder.with_user_store(connection_pool.clone());
+    #[cfg(feature = "biome-credentials")]
+    {
+        biome_rest_provider_builder =
+            biome_rest_provider_builder.with_credentials_store(connection_pool.clone());
+    }
+    let biome_rest_provider = biome_rest_provider_builder.build().map_err(|err| {
+        StartError::RestApiError(format!("Unable to build Biome REST routes: {}", err))
+    })?;
+
+    Ok(biome_rest_provider)
+}
+
 #[derive(Default)]
 pub struct SplinterDaemonBuilder {
     storage_location: Option<String>,
@@ -600,6 +637,8 @@ pub struct SplinterDaemonBuilder {
     initial_peers: Option<Vec<String>>,
     node_id: Option<String>,
     rest_api_endpoint: Option<String>,
+    #[cfg(feature = "database")]
+    db_url: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     storage_type: Option<String>,
@@ -643,6 +682,12 @@ impl SplinterDaemonBuilder {
 
     pub fn with_rest_api_endpoint(mut self, value: String) -> Self {
         self.rest_api_endpoint = Some(value);
+        self
+    }
+
+    #[cfg(feature = "database")]
+    pub fn with_db_url(mut self, value: String) -> Self {
+        self.db_url = Some(value);
         self
     }
 
@@ -703,6 +748,11 @@ impl SplinterDaemonBuilder {
             CreateError::MissingRequiredField("Missing field: rest_api_endpoint".to_string())
         })?;
 
+        #[cfg(feature = "database")]
+        let db_url = self.db_url.ok_or_else(|| {
+            CreateError::MissingRequiredField("Missing field: db_url".to_string())
+        })?;
+
         let storage_type = self.storage_type.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_type".to_string())
         })?;
@@ -725,6 +775,8 @@ impl SplinterDaemonBuilder {
             network,
             node_id,
             rest_api_endpoint,
+            #[cfg(feature = "database")]
+            db_url,
             registry_config,
             key_registry_location,
             storage_type,

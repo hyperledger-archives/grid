@@ -28,6 +28,8 @@ pub struct ConfigBuilder {
     peers: Option<Vec<String>>,
     node_id: Option<String>,
     bind: Option<String>,
+    #[cfg(feature = "database")]
+    database: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
@@ -49,6 +51,8 @@ impl ConfigBuilder {
             peers: None,
             node_id: None,
             bind: None,
+            #[cfg(feature = "database")]
+            database: None,
             registry_backend: None,
             registry_file: None,
             heartbeat_interval: None,
@@ -120,6 +124,12 @@ impl ConfigBuilder {
         self
     }
 
+    #[cfg(feature = "database")]
+    pub fn with_database(mut self, database: String) -> Self {
+        self.database = Some(database);
+        self
+    }
+
     pub fn with_registry_backend(mut self, registry_backend: String) -> Self {
         self.registry_backend = Some(registry_backend);
         self
@@ -150,6 +160,8 @@ impl ConfigBuilder {
             peers: self.peers,
             node_id: self.node_id,
             bind: self.bind,
+            #[cfg(feature = "database")]
+            database: self.database,
             registry_backend: self.registry_backend,
             registry_file: self.registry_file,
             heartbeat_interval: self.heartbeat_interval,

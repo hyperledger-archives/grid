@@ -164,6 +164,14 @@ fn main() {
             .takes_value(true),
     );
 
+    #[cfg(feature = "database")]
+    let app = app.arg(
+        Arg::with_name("database")
+            .long("database")
+            .long_help("DB connection url")
+            .takes_value(true),
+    );
+
     #[cfg(feature = "generate-certs")]
     let app = app
         .arg(
@@ -292,6 +300,14 @@ fn main() {
         .or_else(|| Some("127.0.0.1:8080".to_string()))
         .expect("Must provide a url for REST API endpoint");
 
+    #[cfg(feature = "database")]
+    let db_url = matches
+        .value_of("database")
+        .map(String::from)
+        .or_else(|| config.database())
+        .or_else(|| Some("127.0.0.1:5432".to_string()))
+        .expect("Must provide a url for database");
+
     let registry_backend = matches
         .value_of("registry_backend")
         .map(String::from)
@@ -302,11 +318,20 @@ fn main() {
         .map(String::from)
         .or_else(|| config.registry_file());
 
+    // Allow unused mut for experimental features
+    #[allow(unused_mut)]
+    let mut feature_fields = "".to_string();
+
+    #[cfg(feature = "database")]
+    {
+        feature_fields = format!("{}, db_url: {}", feature_fields, db_url);
+    }
+
     debug!(
         "Configuration: {{ storage_type: {}, storage_location: {}, key_registry_location: {}, {}, \
          service_endpoint: {}, network_endpoint: {}, initial_peers: {:?}, node_id: {}, \
          rest_api_endpoint: {}, registry_backend: {:?}, registry_file: {:?}, \
-         heartbeat_interval: {} }}",
+         heartbeat_interval: {}{} }}",
         storage_type,
         storage_location,
         key_registry_location,
@@ -319,6 +344,7 @@ fn main() {
         registry_backend,
         registry_file,
         heartbeat_interval,
+        feature_fields,
     );
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
@@ -332,6 +358,11 @@ fn main() {
         .with_registry_backend(registry_backend)
         .with_storage_type(storage_type)
         .with_heartbeat_interval(heartbeat_interval);
+
+    #[cfg(feature = "database")]
+    {
+        daemon_builder = daemon_builder.with_db_url(db_url);
+    }
 
     if let Some(registry_file) = registry_file {
         daemon_builder = daemon_builder.with_registry_file(registry_file);

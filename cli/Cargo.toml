@@ -45,6 +45,9 @@ postgres = [
     "splinter/postgres",
 ]
 
+# Aliases - used to map libsplinter feature names to their CLI counterparts
+biome-credentials = ["database-migrate-biome-credentials"]
+
 [package]
 name = "splinter-cli"
 version = "0.3.9"

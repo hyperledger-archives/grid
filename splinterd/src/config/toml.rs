@@ -34,6 +34,8 @@ pub struct TomlConfig {
     peers: Option<Vec<String>>,
     node_id: Option<String>,
     bind: Option<String>,
+    #[cfg(feature = "database")]
+    database: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
@@ -96,6 +98,11 @@ impl TomlConfig {
         self.bind.take()
     }
 
+    #[cfg(feature = "database")]
+    pub fn take_database(&mut self) -> Option<String> {
+        self.database.take()
+    }
+
     pub fn take_registry_backend(&mut self) -> Option<String> {
         self.registry_backend.take()
     }
@@ -147,6 +154,12 @@ impl TomlConfig {
         }
         if let Some(x) = self.take_bind() {
             builder = builder.with_bind(x);
+        }
+        #[cfg(feature = "database")]
+        {
+            if let Some(x) = self.take_database() {
+                builder = builder.with_database(x);
+            }
         }
         if let Some(x) = self.take_registry_backend() {
             builder = builder.with_registry_backend(x);

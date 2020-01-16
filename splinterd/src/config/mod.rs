@@ -49,6 +49,8 @@ pub struct Config {
     peers: Option<Vec<String>>,
     node_id: Option<String>,
     bind: Option<String>,
+    #[cfg(feature = "database")]
+    database: Option<String>,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
@@ -113,6 +115,11 @@ impl Config {
 
     pub fn bind(&self) -> Option<String> {
         self.bind.clone()
+    }
+
+    #[cfg(feature = "database")]
+    pub fn database(&self) -> Option<String> {
+        self.database.clone()
     }
 
     pub fn registry_backend(&self) -> Option<String> {
