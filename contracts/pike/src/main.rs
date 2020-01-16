@@ -28,11 +28,14 @@ cfg_if! {
         #[macro_use]
         extern crate log;
         extern crate sawtooth_sdk;
-        extern crate simple_logger;
+        extern crate flexi_logger;
 
-        use log::LogLevel;
+        mod error;
+
+        use flexi_logger::{LogSpecBuilder, Logger};
         use sawtooth_sdk::processor::TransactionProcessor;
         use handler::PikeTransactionHandler;
+        use error::CliError;
     }
 }
 
@@ -43,7 +46,7 @@ pub mod handler;
 //use handler::PikeTransactionHandler;
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() {
+fn main() -> Result<(), CliError> {
     let matches = clap_app!(wasm_store_tp =>
         (version: crate_version!())
         (about: "Implements the Pike transaction family")
@@ -53,13 +56,16 @@ fn main() {
          "increase output verbosity"))
     .get_matches();
 
-    let logger = match matches.occurrences_of("verbose") {
-        1 => simple_logger::init_with_level(LogLevel::Info),
-        2 => simple_logger::init_with_level(LogLevel::Debug),
-        0 | _ => simple_logger::init_with_level(LogLevel::Warn),
+    let log_level = match matches.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
     };
 
-    logger.expect("Failed to create logger");
+    let mut log_spec_builder = LogSpecBuilder::new();
+    log_spec_builder.default(log_level);
+    Logger::with(log_spec_builder.build()).start()?;
 
     let connect = matches
         .value_of("connect")
@@ -70,6 +76,8 @@ fn main() {
 
     processor.add_handler(&handler);
     processor.start();
+
+    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use grid_sdk::protos;
-use log;
 use protobuf;
 use reqwest;
 use sabre_sdk;
@@ -25,7 +24,7 @@ use std::io;
 
 #[derive(Debug)]
 pub enum CliError {
-    LoggingInitializationError(Box<log::SetLoggerError>),
+    LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     InvalidYamlError(String),
     PayloadError(String),
     UserError(String),
@@ -76,8 +75,8 @@ impl std::fmt::Display for CliError {
     }
 }
 
-impl From<log::SetLoggerError> for CliError {
-    fn from(err: log::SetLoggerError) -> Self {
+impl From<flexi_logger::FlexiLoggerError> for CliError {
+    fn from(err: flexi_logger::FlexiLoggerError) -> Self {
         CliError::LoggingInitializationError(Box::new(err))
     }
 }
