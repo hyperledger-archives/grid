@@ -47,7 +47,7 @@ below.
 
     ```
     $ docker-compose -f examples/gameroom/docker-compose.yaml run generate-key-registry bash
-    root@<container-id>:/# cat /key_registry/alice.priv; echo ""
+    root@<container-id>:/# cat /key_registry/alice.priv
     <the private key value>
     root@<container-id>:/#
     ```
