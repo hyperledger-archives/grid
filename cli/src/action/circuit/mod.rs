@@ -73,12 +73,12 @@ pub fn read_private_key(file_name: &str) -> Result<String, CliError> {
     })?;
 
     let mut buf = String::new();
-
     file.read_to_string(&mut buf).map_err(|err| {
         CliError::EnvironmentError(format!("Unable to read {}: {}", file_name, err))
     })?;
+    let key = buf.trim();
 
-    Ok(buf)
+    Ok(key)
 }
 
 pub(self) enum Vote {
