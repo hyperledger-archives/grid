@@ -26,7 +26,6 @@ use std::ffi::CString;
 use std::path::Path;
 
 use clap::ArgMatches;
-use flexi_logger::ReconfigurationHandle;
 use libc;
 
 use super::error::CliError;
@@ -35,15 +34,6 @@ use super::error::CliError;
 ///
 /// An Action is a single subcommand for CLI operations.
 pub trait Action {
-    /// Modify logging for the subcommand, if necessary.  Default implementation is a no-op.
-    fn reconfigure_logging<'a>(
-        &self,
-        _arg_matches: Option<&ArgMatches<'a>>,
-        _logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
-        Ok(())
-    }
-
     /// Run a CLI Action with the given args
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError>;
 }
@@ -71,22 +61,6 @@ impl<'a> SubcommandActions<'a> {
 }
 
 impl<'s> Action for SubcommandActions<'s> {
-    fn reconfigure_logging<'a>(
-        &self,
-        arg_matches: Option<&ArgMatches<'a>>,
-        logger_handle: &mut ReconfigurationHandle,
-    ) -> Result<(), CliError> {
-        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-
-        let (subcommand, args) = args.subcommand();
-
-        if let Some(action) = self.actions.get(subcommand) {
-            action.reconfigure_logging(args, logger_handle)
-        } else {
-            Err(CliError::InvalidSubcommand)
-        }
-    }
-
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
