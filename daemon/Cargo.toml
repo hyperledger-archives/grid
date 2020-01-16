@@ -45,7 +45,7 @@ base64 = "0.10"
 byteorder = "1"
 
 [dependencies.splinter]
-git = "https://github.com/cargill/splinter"
+version = "0.3"
 optional = true
 features = [ "events" ]
 
