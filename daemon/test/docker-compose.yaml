@@ -15,15 +15,15 @@
 version: "2.1"
 
 services:
-    test_server:
-        image: postgres
-        restart: always
-        ports:
-            - '5433:5432'
-        environment:
-            POSTGRES_USER: grid_test
-            POSTGRES_PASSWORD: grid_test
-            POSTGRES_DB: grid_test
+  test_server:
+    image: postgres
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: grid_test
+      POSTGRES_PASSWORD: grid_test
+      POSTGRES_DB: grid_test
 
   daemon:
     build:
