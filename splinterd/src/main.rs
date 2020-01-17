@@ -120,9 +120,9 @@ fn main() {
         (about: "Splinter Daemon")
         (@arg config: -c --config +takes_value)
         (@arg node_id: --("node-id") +takes_value
-          "Unique id for the node ")
+          "Unique ID for the node ")
         (@arg storage: --("storage") +takes_value
-          "Storage type used for node, default yaml")
+          "Storage type used for the node; defaults to yaml")
         (@arg transport: --("transport") +takes_value
           "Transport type for sockets, either raw or tls")
         (@arg network_endpoint: -n --("network-endpoint") +takes_value
@@ -132,19 +132,19 @@ fn main() {
         (@arg peers: --peer +takes_value +multiple
           "Endpoint that service will connect to, ip:port")
         (@arg ca_file: --("ca-file") +takes_value
-          "File path to the trusted ca cert")
+          "File path to the trusted CA certificate")
         (@arg cert_dir: --("cert-dir") +takes_value
-          "Path to the directory where the certs and keys are")
+          "Path to the directory where the certificates and keys are")
         (@arg client_cert: --("client-cert") +takes_value
-          "File path to the cert for the node when connecting to a node")
+          "File path to the certificate for the node when connecting to a node")
         (@arg server_cert: --("server-cert") +takes_value
-          "File path to the cert for the node when connecting to a node")
+          "File path to the certificate for the node when connecting to a node")
         (@arg server_key:  --("server-key") +takes_value
           "File path to the key for the node when connecting to a node as server")
         (@arg client_key:  --("client-key") +takes_value
           "File path to the key for the node when connecting to a node as client")
         (@arg insecure:  --("insecure")
-          "If set tls should accept all peer certificates")
+          "If set to tls, should accept all peer certificates")
         (@arg bind: --("bind") +takes_value
           "Connection endpoint for REST API")
         (@arg registry_backend: --("registry-backend") +takes_value
@@ -158,7 +158,7 @@ fn main() {
         Arg::with_name("heartbeat_interval")
             .long("heartbeat")
             .long_help(
-                "How often heartbeat should be sent in seconds, defaults to 30 seconds,\
+                "How often heartbeat should be sent, in seconds; defaults to 30 seconds,\
                  0 means off",
             )
             .takes_value(true),
@@ -168,7 +168,7 @@ fn main() {
     let app = app.arg(
         Arg::with_name("database")
             .long("database")
-            .long_help("DB connection url")
+            .long_help("DB connection URL")
             .takes_value(true),
     );
 
@@ -178,15 +178,15 @@ fn main() {
             Arg::with_name("generate_certs")
                 .long("generate-certs")
                 .long_help(
-                    "Deprecated: if set, the certs will be generated and insecure will be false, \
-                     only use for development",
+                    "Deprecated: If set, certificates will be generated and insecure will be false; \
+                     use only for development",
                 ),
         )
         .arg(
             Arg::with_name("common_name")
                 .long("common-name")
                 .long_help(
-                    "Deprecated: the common name that should be used in the generated cert, \
+                    "Deprecated: The common name that should be used in the generated certificate; \
                      defaults to localhost",
                 )
                 .takes_value(true),
@@ -226,7 +226,7 @@ fn main() {
         .value_of("node_id")
         .map(String::from)
         .or_else(|| config.node_id())
-        .expect("Must provide a unique node id");
+        .expect("Must provide a unique node ID");
 
     let storage_type = matches
         .value_of("storage")
@@ -298,7 +298,7 @@ fn main() {
         .map(String::from)
         .or_else(|| config.bind())
         .or_else(|| Some("127.0.0.1:8080".to_string()))
-        .expect("Must provide a url for REST API endpoint");
+        .expect("Must provide a URL for the REST API endpoint");
 
     #[cfg(feature = "database")]
     let db_url = matches
@@ -306,7 +306,7 @@ fn main() {
         .map(String::from)
         .or_else(|| config.database())
         .or_else(|| Some("127.0.0.1:5432".to_string()))
-        .expect("Must provide a url for database");
+        .expect("Must provide a URL for the database");
 
     let registry_backend = matches
         .value_of("registry_backend")
@@ -548,7 +548,7 @@ fn get_transport(
                             let cert_dir_path = Path::new(&cert_dir);
                             let ca_path = cert_dir_path.join(CA_PEM);
                             if !ca_path.is_file() {
-                                error!("Ca file not found: {:?}", ca_path);
+                                error!("CA file not found: {:?}", ca_path);
                                 return None;
                             }
                             let ca_file: Option<String> =

@@ -167,7 +167,7 @@ impl SplinterDaemon {
         let peer_connector = PeerConnector::new(self.network.clone(), Box::new(transport));
         let auth_manager = AuthorizationManager::new(self.network.clone(), self.node_id.clone());
 
-        info!("Starting SpinterNode with id {}", self.node_id);
+        info!("Starting SpinterNode with ID {}", self.node_id);
 
         let network = self.network.clone();
         let (send, recv) = crossbeam_channel::bounded(5);
@@ -241,7 +241,7 @@ impl SplinterDaemon {
                 };
                 debug!("Received connection from {}", connection.remote_endpoint());
                 match network_clone.add_connection(connection) {
-                    Ok(peer_id) => debug!("Added connection with id {}", peer_id),
+                    Ok(peer_id) => debug!("Added connection with ID {}", peer_id),
                     Err(err) => error!("Failed to add connection to network: {}", err),
                 };
             }
@@ -408,11 +408,11 @@ impl SplinterDaemon {
             r.store(false, Ordering::SeqCst);
 
             if let Err(err) = admin_shutdown_handle.shutdown() {
-                error!("Unable to cleanly shutdown Admin Service: {}", err);
+                error!("Unable to cleanly shut down Admin service: {}", err);
             }
 
             if let Err(err) = rest_api_shutdown_handle.shutdown() {
-                error!("Unable to cleanly shutdown REST API server: {}", err);
+                error!("Unable to cleanly shut down REST API server: {}", err);
             }
         })
         .expect("Error setting Ctrl-C handler");
@@ -609,7 +609,7 @@ fn build_biome_routes(db_url: &str) -> Result<BiomeRestResourceManager, StartErr
     let connection_pool: ConnectionPool =
         database::create_connection_pool(db_url).map_err(|err| {
             StartError::RestApiError(format!(
-                "Unable to connect to the splinter databaase: {}",
+                "Unable to connect to the Splinter database: {}",
                 err
             ))
         })?;
