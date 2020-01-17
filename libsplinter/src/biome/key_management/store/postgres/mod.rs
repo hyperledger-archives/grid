@@ -33,6 +33,8 @@ impl PostgresKeyStore {
     ///
     ///  * `connection_pool`: connection pool to the PostgreSQL database
     ///
+    // Allow dead code if biome-key-management feature is not enabled
+    #[allow(dead_code)]
     pub fn new(connection_pool: ConnectionPool) -> Self {
         PostgresKeyStore { connection_pool }
     }
