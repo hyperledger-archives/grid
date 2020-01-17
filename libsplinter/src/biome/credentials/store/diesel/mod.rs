@@ -21,6 +21,7 @@ mod schema;
 use super::{CredentialsStore, CredentialsStoreError, UserCredentials, UsernameId};
 use crate::database::ConnectionPool;
 use models::UserCredentialsModel;
+use operations::add_credentials::CredentialsStoreAddCredentialsOperation as _;
 use operations::get_usernames::CredentialsStoreGetUsernamesOperation as _;
 use operations::CredentialsStoreOperations;
 
@@ -43,6 +44,10 @@ impl SplinterCredentialsStore {
 }
 
 impl CredentialsStore<UserCredentials> for SplinterCredentialsStore {
+    fn add_credentials(&self, credentials: UserCredentials) -> Result<(), CredentialsStoreError> {
+        CredentialsStoreOperations::new(&*self.connection_pool.get()?).add_credentials(credentials)
+    }
+
     fn get_usernames(&self) -> Result<Vec<UsernameId>, CredentialsStoreError> {
         CredentialsStoreOperations::new(&*self.connection_pool.get()?).get_usernames()
     }

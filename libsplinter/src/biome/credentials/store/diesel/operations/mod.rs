@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub(super) mod add_credentials;
 pub(super) mod get_usernames;
 
 pub(super) struct CredentialsStoreOperations<'a, C> {

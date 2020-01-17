@@ -61,7 +61,7 @@ pub use error::BiomeRestResourceManagerBuilderError;
 
 #[cfg(feature = "biome-credentials")]
 use super::credentials::{
-    rest_resources::{make_list_route},
+    rest_resources::{make_list_route, make_login_route, make_register_route, make_user_routes},
     store::diesel::SplinterCredentialsStore,
 };
 
@@ -102,6 +102,10 @@ impl RestResourceProvider for BiomeRestResourceManager {
                     credentials_store.clone(),
                     self.rest_config.clone(),
                     Arc::new(AccessTokenIssuer::new(self.token_secret_manager.clone())),
+                ));
+                resources.push(make_user_routes(
+                    credentials_store.clone(),
+                    self.user_store.clone(),
                 ));
                 resources.push(make_list_route(credentials_store.clone()));
             }
