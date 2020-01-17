@@ -73,7 +73,7 @@ fn run() -> Result<(), CliError> {
                 (@arg org_id: +takes_value +required "organization ID")
                 (@arg public_key: +takes_value +required "public key")
                 (@arg active: "Is user active")
-                (@arg roles: --roles +takes_value +multiple "Roles assigned to agent")
+                (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
                 (@arg metadata: --metadata +takes_value +multiple
                     "Comma-separated key value pairs stored in metadata")
             )
@@ -82,7 +82,7 @@ fn run() -> Result<(), CliError> {
                 (@arg org_id: +takes_value +required "organization ID")
                 (@arg public_key: +takes_value +required "public key")
                 (@arg active: "Is user active")
-                (@arg roles: --roles +takes_value +multiple "Roles assigned to agent")
+                (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
                 (@arg metadata: --metadata +takes_value +multiple
                     "Comma-separated key value pairs stored in metadata")
             )
@@ -252,7 +252,7 @@ fn run() -> Result<(), CliError> {
                     .with_public_key(m.value_of("public_key").unwrap().into())
                     .with_active(m.is_present("active"))
                     .with_roles(
-                        m.values_of("roles")
+                        m.values_of("role")
                             .unwrap_or_default()
                             .map(String::from)
                             .collect::<Vec<String>>(),
@@ -269,7 +269,7 @@ fn run() -> Result<(), CliError> {
                     .with_public_key(m.value_of("public_key").unwrap().into())
                     .with_active(m.is_present("active"))
                     .with_roles(
-                        m.values_of("roles")
+                        m.values_of("role")
                             .unwrap_or_default()
                             .map(String::from)
                             .collect::<Vec<String>>(),
