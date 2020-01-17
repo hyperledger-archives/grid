@@ -17,8 +17,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, SystemTimeError, UNIX_EPOCH};
 
-use serde::Serialize;
-
 use super::ClaimsBuildError;
 
 /// Defines payload of a JWT Token

@@ -389,7 +389,7 @@ fn notify_subscribers(
     subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
     notification: ConnectionManagerNotification,
 ) {
-    subscribers.retain(|sender| !sender.send(notification.clone()).is_err());
+    subscribers.retain(|sender| sender.send(notification.clone()).is_ok());
 }
 
 fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(

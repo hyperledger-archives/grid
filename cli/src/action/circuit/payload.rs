@@ -58,7 +58,7 @@ where
 
     let signing_context = secp256k1::Secp256k1Context::new();
     let private_key = secp256k1::Secp256k1PrivateKey::from_hex(private_key)
-        .map_err(|_| CliError::ActionError(format!("Invalid private key provided")))?;
+        .map_err(|_| CliError::ActionError("Invalid private key provided".into()))?;
 
     let signer = sawtooth::SawtoothSecp256k1RefSigner::new(&signing_context, private_key).map_err(
         |err| CliError::ActionError(format!("Unable to create signer from private key: {}", err)),
