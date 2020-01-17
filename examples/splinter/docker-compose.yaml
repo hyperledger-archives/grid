@@ -135,7 +135,7 @@ services:
     entrypoint: |
         bash -c "
           # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q'; do
+          until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
               >&2 echo \"Database is unavailable - sleeping\"
               sleep 1
           done
@@ -219,7 +219,7 @@ services:
     entrypoint: |
         bash -c "
           # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q'; do
+          until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
               >&2 echo \"Database is unavailable - sleeping\"
               sleep 1
           done
@@ -302,7 +302,7 @@ services:
     entrypoint: |
         bash -c "
           # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q'; do
+          until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q' > /dev/null 2>&1; do
               >&2 echo \"Database is unavailable - sleeping\"
               sleep 1
           done
