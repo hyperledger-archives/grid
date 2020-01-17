@@ -68,30 +68,43 @@ const HEARTBEAT_DEFAULT: u64 = 30;
 
 #[cfg(not(feature = "config-toml"))]
 fn load_toml_config(config_file_path: &str) -> Config {
-    File::open(config_file_path)
-        .map_err(ConfigError::from)
-        .and_then(Config::from_file)
-        .unwrap_or_else(|err| {
-            warn!("Unable to load {}: {}", config_file_path, err);
-            Config::default()
-        })
+    match File::open(config_file_path) {
+        Ok(f) => Config::from_file(f),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            debug!("Configuration file not found: {}", config_file_path);
+            Ok(Config::default())
+        }
+        Err(err) => Err(ConfigError::from(err)),
+    }
+    .unwrap_or_else(|err| {
+        warn!(
+            "Unable to load configuration file {}: {}",
+            config_file_path, err
+        );
+        Config::default()
+    })
 }
 
 #[cfg(feature = "config-toml")]
 fn load_toml_config(config_file_path: &str) -> Config {
     let mut config_builder = ConfigBuilder::new();
 
-    match fs::read_to_string(config_file_path)
-        .map_err(ConfigError::from)
-        .and_then(TomlConfig::new)
-    {
-        Ok(toml_config) => {
-            config_builder = toml_config.apply_to_builder(config_builder);
+    match fs::read_to_string(config_file_path) {
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            debug!("Configuration file not found: {}", config_file_path)
         }
-        Err(err) => {
-            warn!("Unable to load {}: {}", config_file_path, err);
-        }
-    };
+        result => match result.map_err(ConfigError::from).and_then(TomlConfig::new) {
+            Ok(toml_config) => {
+                config_builder = toml_config.apply_to_builder(config_builder);
+            }
+            Err(err) => {
+                warn!(
+                    "Unable to load configuration file {}: {}",
+                    config_file_path, err
+                );
+            }
+        },
+    }
 
     config_builder.build()
 }
