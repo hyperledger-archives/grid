@@ -129,8 +129,7 @@ pub fn create_key_pair(
             .open(private_key_path.as_path())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        private_key_file
-            .write(private_key.as_hex().as_bytes())
+        writeln!(&private_key_file, "{}", private_key.as_hex())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
     }
 
@@ -148,8 +147,7 @@ pub fn create_key_pair(
             .open(public_key_path.as_path())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
 
-        public_key_file
-            .write(public_key.as_hex().as_bytes())
+        writeln!(&public_key_file, "{}", public_key.as_hex())
             .map_err(|err| CliError::EnvironmentError(format!("{}", err)))?;
     }
     if change_permissions {
