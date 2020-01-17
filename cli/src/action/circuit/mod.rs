@@ -76,7 +76,7 @@ pub fn read_private_key(file_name: &str) -> Result<String, CliError> {
     file.read_to_string(&mut buf).map_err(|err| {
         CliError::EnvironmentError(format!("Unable to read {}: {}", file_name, err))
     })?;
-    let key = buf.trim();
+    let key = buf.trim().to_string();
 
     Ok(key)
 }
