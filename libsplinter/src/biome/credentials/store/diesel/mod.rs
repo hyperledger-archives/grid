@@ -26,6 +26,7 @@ use operations::fetch_credential_by_id::CredentialsStoreFetchCredentialByIdOpera
 use operations::fetch_credential_by_username::CredentialsStoreFetchCredentialByUsernameOperation as _;
 use operations::fetch_username::CredentialsStoreFetchUsernameOperation as _;
 use operations::get_usernames::CredentialsStoreGetUsernamesOperation as _;
+use operations::update_credentials::CredentialsStoreUpdateCredentialsOperation as _;
 use operations::CredentialsStoreOperations;
 
 /// Manages creating, updating and fetching SplinterCredentials from the database
@@ -49,6 +50,16 @@ impl SplinterCredentialsStore {
 impl CredentialsStore<UserCredentials> for SplinterCredentialsStore {
     fn add_credentials(&self, credentials: UserCredentials) -> Result<(), CredentialsStoreError> {
         CredentialsStoreOperations::new(&*self.connection_pool.get()?).add_credentials(credentials)
+    }
+
+    fn update_credentials(
+        &self,
+        user_id: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<(), CredentialsStoreError> {
+        CredentialsStoreOperations::new(&*self.connection_pool.get()?)
+            .update_credentials(user_id, username, password)
     }
 
     fn fetch_credential_by_user_id(

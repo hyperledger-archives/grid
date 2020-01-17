@@ -15,6 +15,7 @@
 pub(super) mod add_user;
 pub(super) mod fetch_user;
 pub(super) mod list_users;
+pub(super) mod update_user;
 
 pub(super) struct UserStoreOperations<'a, C> {
     conn: &'a C,

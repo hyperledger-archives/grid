@@ -23,6 +23,7 @@ use crate::database::ConnectionPool;
 use operations::add_user::UserStoreAddUserOperation as _;
 use operations::fetch_user::UserStoreFetchUserOperation as _;
 use operations::list_users::UserStoreListUsersOperation as _;
+use operations::update_user::UserStoreUpdateUserOperation as _;
 use operations::UserStoreOperations;
 
 /// Manages creating, updating and fetching SplinterUser from the databae
@@ -48,8 +49,8 @@ impl UserStore<SplinterUser> for SplinterUserStore {
         UserStoreOperations::new(&*self.connection_pool.get()?).add_user(user.into())
     }
 
-    fn update_user(&self, _updated_user: SplinterUser) -> Result<(), UserStoreError> {
-        unimplemented!()
+    fn update_user(&self, updated_user: SplinterUser) -> Result<(), UserStoreError> {
+        UserStoreOperations::new(&*self.connection_pool.get()?).update_user(updated_user)
     }
 
     fn remove_user(&self, _id: &str) -> Result<SplinterUser, UserStoreError> {
