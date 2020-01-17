@@ -80,7 +80,7 @@ pub fn do_keygen(
             }
 
             if public_key_path.exists() && private_key_path.exists() {
-                println!("Admin keys exist; skipping generation");
+                debug!("Admin keys exist; skipping generation");
                 return Ok(());
             }
         }
@@ -101,9 +101,9 @@ pub fn do_keygen(
     let public_key = context.get_public_key(&*private_key)?;
 
     if public_key_path.exists() {
-        println!("Overwriting file: {:?}", public_key_path);
+        debug!("Overwriting file: {:?}", public_key_path);
     } else {
-        println!("Writing file: {:?}", public_key_path);
+        debug!("Writing file: {:?}", public_key_path);
     }
     let mut public_key_file = OpenOptions::new()
         .write(true)
@@ -114,9 +114,9 @@ pub fn do_keygen(
     write_hex_to_file(&public_key.as_hex(), &mut public_key_file)?;
 
     if private_key_path.exists() {
-        println!("Overwriting file: {:?}", private_key_path);
+        debug!("Overwriting file: {:?}", private_key_path);
     } else {
-        println!("Writing file: {:?}", private_key_path);
+        debug!("Writing file: {:?}", private_key_path);
     }
     let mut private_key_file = OpenOptions::new()
         .write(true)
