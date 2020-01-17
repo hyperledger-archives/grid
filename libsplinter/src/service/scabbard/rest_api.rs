@@ -174,7 +174,7 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 };
 
             let ids = if let Some(ids) = query.get("ids") {
-                ids.split(',').map(String::from).collect()
+                ids.split(',').map(String::from).collect::<Vec<_>>()
             } else {
                 return Box::new(
                     HttpResponse::BadRequest()
@@ -185,7 +185,7 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 );
             };
 
-            if let Ok(status) = scabbard.get_batch_info(ids) {
+            if let Ok(status) = scabbard.get_batch_info(&ids) {
                 Box::new(HttpResponse::Ok().json(status).into_future())
             } else {
                 Box::new(HttpResponse::InternalServerError().finish().into_future())

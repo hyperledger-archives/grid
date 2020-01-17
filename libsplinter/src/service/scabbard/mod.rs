@@ -147,7 +147,7 @@ impl Scabbard {
         }
     }
 
-    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ScabbardError> {
+    pub fn get_batch_info(&self, ids: &[String]) -> Result<Vec<BatchInfo>, ScabbardError> {
         let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
 
         Ok(ids
