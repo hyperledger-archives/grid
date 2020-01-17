@@ -23,3 +23,14 @@ pub mod keygen;
 pub mod organizations;
 pub mod products;
 pub mod schemas;
+
+use std::fs::File;
+use std::io::Write;
+
+use crate::error::CliError;
+
+/// Write the given hex string to the given file, appending a newline at the end.
+fn write_hex_to_file(hex: &str, file: &mut File) -> Result<(), CliError> {
+    writeln!(file, "{}", hex)?;
+    Ok(())
+}

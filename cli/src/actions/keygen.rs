@@ -15,13 +15,18 @@
  * limitations under the License.
  * ------------------------------------------------------------------------------
  */
-use crate::error::CliError;
-use sawtooth_sdk::signing;
+
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::PathBuf;
+
+use sawtooth_sdk::signing;
 use users::get_current_username;
+
+use crate::error::CliError;
+
+use super::write_hex_to_file;
 
 /// Generates a public/private key pair that can be used to sign transactions.
 /// If no directory is provided, the keys are created in the default directory
@@ -100,7 +105,7 @@ pub fn generate_keys(
         .mode(0o644)
         .open(public_key_path.as_path())?;
 
-    public_key_file.write_all(public_key.as_hex().as_bytes())?;
+    write_hex_to_file(&public_key.as_hex(), &mut public_key_file)?;
 
     if private_key_path.exists() {
         info!("Overwriting file: {:?}", private_key_path);
@@ -114,6 +119,8 @@ pub fn generate_keys(
         .open(private_key_path.as_path())?;
 
     private_key_file.write_all(private_key.as_hex().as_bytes())?;
+
+    write_hex_to_file(&private_key.as_hex(), &mut private_key_file)?;
 
     Ok(())
 }
