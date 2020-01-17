@@ -73,7 +73,7 @@ pub trait UserStore<T> {
     ///
     ///  * `id` - The unique id of the user to be removed
     ///
-    fn remove_user(&self, id: &str) -> Result<T, UserStoreError>;
+    fn remove_user(&self, id: &str) -> Result<(), UserStoreError>;
 
     /// Fetches a user from the underlying storage
     ///

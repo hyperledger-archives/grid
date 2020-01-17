@@ -21,6 +21,7 @@ mod schema;
 use super::{SplinterUser, UserStore, UserStoreError};
 use crate::database::ConnectionPool;
 use operations::add_user::UserStoreAddUserOperation as _;
+use operations::delete_user::UserStoreDeleteUserOperation as _;
 use operations::fetch_user::UserStoreFetchUserOperation as _;
 use operations::list_users::UserStoreListUsersOperation as _;
 use operations::update_user::UserStoreUpdateUserOperation as _;
@@ -53,8 +54,8 @@ impl UserStore<SplinterUser> for SplinterUserStore {
         UserStoreOperations::new(&*self.connection_pool.get()?).update_user(updated_user)
     }
 
-    fn remove_user(&self, _id: &str) -> Result<SplinterUser, UserStoreError> {
-        unimplemented!()
+    fn remove_user(&self, id: &str) -> Result<(), UserStoreError> {
+        UserStoreOperations::new(&*self.connection_pool.get()?).delete_user(id)
     }
 
     fn fetch_user(&self, id: &str) -> Result<SplinterUser, UserStoreError> {
