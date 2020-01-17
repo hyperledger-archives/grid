@@ -761,7 +761,8 @@ components:
           example: scabbard
         allowed_nodes:
           type: array
-          item: string
+          items:
+            type: string
 
     Proposal:
       type: object
@@ -801,20 +802,22 @@ components:
           example: "node-000"
 
     VoteRecord:
-      public_key:
-        type: string,
-        example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
-      vote:
-        type: object
-        properties:
-          voteType:
-            type: string
-            enum:
-              - Accept
-              - Reject
-      voter_node_id:
-        type: string
-        example: "node-000"
+      type: object
+      properties:
+        public_key:
+          type: string
+          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+        vote:
+          type: object
+          properties:
+            voteType:
+              type: string
+              enum:
+                - Accept
+                - Reject
+        voter_node_id:
+          type: string
+          example: "node-000"
 
     Paging:
       type: object
