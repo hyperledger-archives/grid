@@ -21,6 +21,7 @@ mod schema;
 use super::{SplinterUser, UserStore, UserStoreError};
 use crate::database::ConnectionPool;
 use operations::add_user::UserStoreAddUserOperation as _;
+use operations::fetch_user::UserStoreFetchUserOperation as _;
 use operations::list_users::UserStoreListUsersOperation as _;
 use operations::UserStoreOperations;
 
@@ -55,8 +56,8 @@ impl UserStore<SplinterUser> for SplinterUserStore {
         unimplemented!()
     }
 
-    fn fetch_user(&self, _id: &str) -> Result<SplinterUser, UserStoreError> {
-        unimplemented!()
+    fn fetch_user(&self, id: &str) -> Result<SplinterUser, UserStoreError> {
+        UserStoreOperations::new(&*self.connection_pool.get()?).fetch_user(id)
     }
 
     fn list_users(&self) -> Result<Vec<SplinterUser>, UserStoreError> {

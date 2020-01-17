@@ -22,6 +22,9 @@ use super::{CredentialsStore, CredentialsStoreError, UserCredentials, UsernameId
 use crate::database::ConnectionPool;
 use models::UserCredentialsModel;
 use operations::add_credentials::CredentialsStoreAddCredentialsOperation as _;
+use operations::fetch_credential_by_id::CredentialsStoreFetchCredentialByIdOperation as _;
+use operations::fetch_credential_by_username::CredentialsStoreFetchCredentialByUsernameOperation as _;
+use operations::fetch_username::CredentialsStoreFetchUsernameOperation as _;
 use operations::get_usernames::CredentialsStoreGetUsernamesOperation as _;
 use operations::CredentialsStoreOperations;
 
@@ -46,6 +49,26 @@ impl SplinterCredentialsStore {
 impl CredentialsStore<UserCredentials> for SplinterCredentialsStore {
     fn add_credentials(&self, credentials: UserCredentials) -> Result<(), CredentialsStoreError> {
         CredentialsStoreOperations::new(&*self.connection_pool.get()?).add_credentials(credentials)
+    }
+
+    fn fetch_credential_by_user_id(
+        &self,
+        user_id: &str,
+    ) -> Result<UserCredentials, CredentialsStoreError> {
+        CredentialsStoreOperations::new(&*self.connection_pool.get()?)
+            .fetch_credential_by_id(user_id)
+    }
+
+    fn fetch_credential_by_username(
+        &self,
+        username: &str,
+    ) -> Result<UserCredentials, CredentialsStoreError> {
+        CredentialsStoreOperations::new(&*self.connection_pool.get()?)
+            .fetch_credential_by_username(username)
+    }
+
+    fn fetch_username_by_id(&self, user_id: &str) -> Result<UsernameId, CredentialsStoreError> {
+        CredentialsStoreOperations::new(&*self.connection_pool.get()?).fetch_username_by_id(user_id)
     }
 
     fn get_usernames(&self) -> Result<Vec<UsernameId>, CredentialsStoreError> {

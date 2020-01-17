@@ -221,3 +221,51 @@ pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Reso
         })
     })
 }
+
+/// Defines REST endpoints to fetch a specific user
+pub fn make_user_routes(
+    credentials_store: Arc<SplinterCredentialsStore>,
+    user_store: Arc<SplinterUserStore>,
+) -> Resource {
+    let credentials_store_fetch = credentials_store.clone();
+    Resource::build("/biome/users/{id}")
+        .add_method(Method::Get, move |request, _| {
+            add_fetch_user_method(request, credentials_store_fetch.clone())
+        })
+}
+
+/// Defines a REST endpoint to fetch a user from the database
+/// returns the user's ID and username
+fn add_fetch_user_method(
+    request: HttpRequest,
+    credentials_store: Arc<SplinterCredentialsStore>,
+) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+    let user_id = if let Some(t) = request.match_info().get("id") {
+        t.to_string()
+    } else {
+        return Box::new(
+            HttpResponse::BadRequest()
+                .json(ErrorResponse::bad_request(
+                    &"Failed to process request: no user id".to_string(),
+                ))
+                .into_future(),
+        );
+    };
+    Box::new(match credentials_store.fetch_username_by_id(&user_id) {
+        Ok(user) => HttpResponse::Ok().json(user).into_future(),
+        Err(err) => {
+            debug!("Failed to get user from the database {}", err);
+            match err {
+                CredentialsStoreError::NotFoundError(_) => HttpResponse::NotFound()
+                    .json(ErrorResponse::not_found(&format!(
+                        "User ID not found: {}",
+                        &user_id
+                    )))
+                    .into_future(),
+                _ => HttpResponse::InternalServerError()
+                    .json(ErrorResponse::internal_error())
+                    .into_future(),
+            }
+        }
+    })
+}
