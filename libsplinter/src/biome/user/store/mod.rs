@@ -85,13 +85,5 @@ pub trait UserStore<T> {
 
     /// List all users from the underlying storage
     ///
-    fn list_users(&self, id: &str) -> Result<Vec<T>, UserStoreError>;
-
-    /// Checks that a user with the given id exists
-    ///
-    /// # Arguments
-    ///
-    ///  * `id` - The unique id of the user.
-    ///
-    fn is_user(&self, id: &str) -> Result<bool, UserStoreError>;
+    fn list_users(&self) -> Result<Vec<T>, UserStoreError>;
 }

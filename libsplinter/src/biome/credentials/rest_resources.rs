@@ -205,3 +205,19 @@ pub fn make_login_route(
         }))
     })
 }
+
+/// Defines a REST endpoint to list users from the db
+pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Resource {
+    Resource::build("/biome/users").add_method(Method::Get, move |_, _| {
+        let credentials_store = credentials_store.clone();
+        Box::new(match credentials_store.get_usernames() {
+            Ok(users) => HttpResponse::Ok().json(users).into_future(),
+            Err(err) => {
+                debug!("Failed to get users from the database {}", err);
+                HttpResponse::InternalServerError()
+                    .json(ErrorResponse::internal_error())
+                    .into_future()
+            }
+        })
+    })
+}

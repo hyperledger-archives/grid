@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub(super) mod add_user;
+pub(super) mod list_users;
 
 pub(super) struct UserStoreOperations<'a, C> {
     conn: &'a C,
