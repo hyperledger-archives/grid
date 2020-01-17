@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod credentials;
+pub(super) struct CredentialsStoreOperations<'a, C> {
+    conn: &'a C,
+}
 
-pub use credentials::{fetch_credential_by_username, insert_credential};
+impl<'a, C> CredentialsStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        CredentialsStoreOperations { conn }
+    }
+}

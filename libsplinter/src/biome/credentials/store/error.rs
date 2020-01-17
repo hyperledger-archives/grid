@@ -42,6 +42,7 @@ pub enum CredentialsStoreError {
     /// Represents error occured when an attempt is made to add a new credential with a
     /// username that already exists in the database
     DuplicateError(String),
+    // Represents the specific case where a query returns no records
     NotFoundError(String),
 }
 
@@ -103,6 +104,8 @@ impl From<DatabaseError> for CredentialsStoreError {
 pub enum UserCredentialsBuilderError {
     /// Returned when a required field was not set
     MissingRequiredField(String),
+    /// Returned when an error occurs building the credentials
+    BuildError(Box<dyn Error>),
     /// Returned when a error occurs while attempting to encrypt the password
     EncryptionError(Box<dyn Error>),
 }
@@ -111,6 +114,7 @@ impl Error for UserCredentialsBuilderError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             UserCredentialsBuilderError::MissingRequiredField(_) => None,
+            UserCredentialsBuilderError::BuildError(err) => Some(&**err),
             UserCredentialsBuilderError::EncryptionError(err) => Some(&**err),
         }
     }
@@ -121,6 +125,9 @@ impl fmt::Display for UserCredentialsBuilderError {
         match *self {
             UserCredentialsBuilderError::MissingRequiredField(ref s) => {
                 write!(f, "failed to build user credentials: {}", s)
+            }
+            UserCredentialsBuilderError::BuildError(ref s) => {
+                write!(f, "failed to build credentials: {}", s)
             }
             UserCredentialsBuilderError::EncryptionError(ref s) => {
                 write!(f, "failed encrypt password: {}", s)

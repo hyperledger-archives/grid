@@ -15,15 +15,15 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::actix_web::HttpResponse;
+use crate::actix_web::{web::Payload, Error, HttpRequest, HttpResponse};
 use crate::futures::{Future, IntoFuture};
 use crate::rest_api::{into_bytes, ErrorResponse, Method, Resource};
 
 use super::super::rest_api::BiomeRestConfig;
 use super::super::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
 use super::super::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
-use super::{
-    credentials_store::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
+use super::store::{
+    diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
     UserCredentialsBuilder,
 };
 

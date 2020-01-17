@@ -12,19 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Defines methods and utilities to interact with credentials tables in the database.
+//! Defines methods and utilities to interact with user tables in the database.
 
-pub(super) mod helpers;
-pub(super) mod models;
-pub(super) mod schema;
-
-embed_migrations!("./src/biome/credentials/database/migrations");
+embed_migrations!("./src/biome/credentials/store/diesel/postgres/migrations");
 
 use diesel::pg::PgConnection;
 
 use crate::database::error::DatabaseError;
 
-/// Run database migrations to create tables defined in the credentials module
+/// Run database migrations to create tables defined in the user module
 ///
 /// # Arguments
 ///

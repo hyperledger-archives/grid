@@ -23,6 +23,7 @@ pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
 pub use error::UserStoreError;
 
 /// Represents a user of a splinter application
+#[derive(Serialize)]
 pub struct SplinterUser {
     id: String,
 }

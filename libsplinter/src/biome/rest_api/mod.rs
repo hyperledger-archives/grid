@@ -61,8 +61,7 @@ pub use error::BiomeRestResourceManagerBuilderError;
 
 #[cfg(feature = "biome-credentials")]
 use super::credentials::{
-    credentials_store::SplinterCredentialsStore,
-    rest_resources::{make_login_route, make_register_route},
+    store::diesel::SplinterCredentialsStore,
 };
 
 #[allow(unused_imports)]
