@@ -619,7 +619,7 @@ fn build_biome_routes(db_url: &str) -> Result<BiomeRestResourceManager, StartErr
     #[cfg(feature = "biome-credentials")]
     {
         biome_rest_provider_builder =
-            biome_rest_provider_builder.with_credentials_store(connection_pool.clone());
+            biome_rest_provider_builder.with_credentials_store(connection_pool);
     }
     let biome_rest_provider = biome_rest_provider_builder.build().map_err(|err| {
         StartError::RestApiError(format!("Unable to build Biome REST routes: {}", err))
