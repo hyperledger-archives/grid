@@ -576,6 +576,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: wait
+          in: query
+          description: time (in seconds) to wait for batches to be committed
+          required: false
+          schema:
+            type: integer
+            default: 300
       responses:
         200:
           description: Batch has been submitted

@@ -473,7 +473,7 @@ impl Iterator for Events {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "statusType", content = "message")]
 pub enum BatchStatus {
     Unknown,
@@ -507,7 +507,7 @@ impl From<BatchExecutionResult> for BatchStatus {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ValidTransaction {
     transaction_id: String,
 }
@@ -520,7 +520,7 @@ impl From<TransactionReceipt> for ValidTransaction {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct InvalidTransaction {
     transaction_id: String,
     error_message: String,
@@ -537,7 +537,7 @@ impl From<InvalidTransactionResult> for InvalidTransaction {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchInfo {
     pub id: String,
     pub status: BatchStatus,
