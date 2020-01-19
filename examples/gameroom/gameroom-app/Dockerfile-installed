@@ -15,7 +15,7 @@
 # build stage
 FROM node:lts-alpine as build-stage
 
-RUN apk update && apk add python g++ make && rm -rf /var/cache/apk/*
+RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
 WORKDIR /app
 COPY examples/gameroom/gameroom-app/package*.json ./
 RUN npm install
@@ -28,10 +28,16 @@ WORKDIR ./dist
 ARG REPO_VERSION
 RUN tar c -z . -f ../gameroom_ui_${VUE_APP_BRAND}_v${REPO_VERSION}.tar.gz
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # prod stage
 FROM httpd:2.4 as prod-stage
 
 COPY --from=build-stage /app/gameroom_ui_*.tar.gz /tmp
+COPY --from=build-stage /commit-hash /commit-hash
 RUN tar -xzvf /tmp/gameroom_ui_*.tar.gz -C /usr/local/apache2/htdocs/
 
 RUN echo "\

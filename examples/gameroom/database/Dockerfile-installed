@@ -12,7 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+FROM postgres:alpine as BUILDER
+
+RUN apk update \
+ && apk add git
+
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
+# -------------=== gameroom db docker build ===-------------
+
 FROM postgres:alpine
+
+COPY --from=BUILDER /commit-hash /commit-hash
 
 COPY examples/gameroom/database/tables/gameroom_tables.sql \
      /docker-entrypoint-initdb.d/

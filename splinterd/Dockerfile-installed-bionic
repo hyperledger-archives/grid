@@ -38,6 +38,11 @@ RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Car
 RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 RUN mv /build/target/debian/splinter-cli*.deb /tmp
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # -------------=== splinterd docker build ===-------------
 
 FROM ubuntu:bionic
@@ -48,6 +53,7 @@ ARG SPLINTERD_ARGS
 RUN echo "SPLINTERD_ARGS = '$SPLINTERD_ARGS'" > SPLINTERD_ARGS
 
 COPY --from=builder /tmp/splinter-*.deb /tmp/
+COPY --from=builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && dpkg --unpack /tmp/splinter-*.deb \
