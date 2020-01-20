@@ -307,10 +307,7 @@ impl Network {
         let mesh_id = match rwlock_read_unwrap!(self.peers).get_mesh_id(peer_id) {
             Some(mesh_id) => *mesh_id,
             None => {
-                return Err(SendError::NoPeerError(format!(
-                    "Send Error: No peer with peer_id {} found",
-                    peer_id
-                )));
+                return Err(SendError::NoPeerError(peer_id.to_string()));
             }
         };
 
@@ -397,9 +394,20 @@ pub enum SendError {
     MeshError(String),
 }
 
+impl std::error::Error for SendError {}
+
+impl std::fmt::Display for SendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SendError::NoPeerError(msg) => write!(f, "no peer with peer_id {} found", msg),
+            SendError::MeshError(msg) => write!(f, "received error from mesh: {}", msg),
+        }
+    }
+}
+
 impl From<MeshSendError> for SendError {
-    fn from(recv_error: MeshSendError) -> Self {
-        SendError::MeshError(format!("Send Error: {:?}", recv_error))
+    fn from(send_error: MeshSendError) -> Self {
+        SendError::MeshError(send_error.to_string())
     }
 }
 
