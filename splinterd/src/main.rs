@@ -623,6 +623,80 @@ fn get_transport(
 }
 
 #[derive(Debug)]
+pub enum UserError {
+    TransportError(GetTransportError),
+    MissingArgument(String),
+    InvalidArgument(String),
+
+    DaemonError {
+        context: String,
+        source: Option<Box<dyn Error>>,
+    },
+}
+
+impl UserError {
+    pub fn daemon_error(context: &str) -> Self {
+        UserError::DaemonError {
+            context: context.into(),
+            source: None,
+        }
+    }
+
+    pub fn daemon_err_with_source(context: &str, err: Box<dyn Error>) -> Self {
+        UserError::DaemonError {
+            context: context.into(),
+            source: Some(err),
+        }
+    }
+}
+
+impl Error for UserError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            UserError::TransportError(err) => Some(err),
+            UserError::MissingArgument(_) => None,
+            UserError::InvalidArgument(_) => None,
+            UserError::DaemonError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for UserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UserError::TransportError(err) => write!(f, "unable to get transport: {}", err),
+            UserError::MissingArgument(msg) => write!(f, "missing required argument: {}", msg),
+            UserError::InvalidArgument(msg) => write!(f, "required argument is invalid: {}", msg),
+            UserError::DaemonError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
+        }
+    }
+}
+
+impl From<StartError> for UserError {
+    fn from(error: StartError) -> Self {
+        UserError::daemon_err_with_source("unable to start the Splinter daemon", Box::new(error))
+    }
+}
+
+impl From<GetTransportError> for UserError {
+    fn from(error: GetTransportError) -> Self {
+        UserError::TransportError(error)
+    }
+}
+
+#[derive(Debug)]
 pub enum GetTransportError {
     CertError(String),
     NotSupportedError(String),
