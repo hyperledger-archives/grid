@@ -896,6 +896,20 @@ pub enum CreateError {
     NetworkError(String),
 }
 
+impl Error for CreateError {}
+
+impl fmt::Display for CreateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CreateError::MissingRequiredField(msg) => write!(f, "missing required field: {}", msg),
+            CreateError::NodeRegistryError(msg) => {
+                write!(f, "node registry raised an error: {}", msg)
+            }
+            CreateError::NetworkError(msg) => write!(f, "network raised an error: {}", msg),
+        }
+    }
+}
+
 impl From<RegistryConfigError> for CreateError {
     fn from(err: RegistryConfigError) -> Self {
         CreateError::NodeRegistryError(format!("Error configuring Node Registry: {}", err))
