@@ -46,6 +46,8 @@ use splinter::transport::Transport;
 use tempdir::TempDir;
 
 use std::env;
+use std::error::Error;
+use std::fmt;
 use std::fs;
 #[cfg(not(feature = "config-toml"))]
 use std::fs::File;
@@ -628,6 +630,42 @@ pub enum GetTransportError {
     #[cfg(feature = "generate-certs")]
     OpensslError(ErrorStack),
     IoError(io::Error),
+}
+
+impl Error for GetTransportError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            GetTransportError::CertError(_) => None,
+            GetTransportError::NotSupportedError(_) => None,
+            GetTransportError::TlsTransportError(err) => Some(err),
+            #[cfg(feature = "generate-certs")]
+            GetTransportError::OpensslError(err) => Some(err),
+            GetTransportError::IoError(err) => Some(err),
+        }
+    }
+}
+
+impl fmt::Display for GetTransportError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GetTransportError::CertError(msg) => {
+                write!(f, "unable to retrieve certificate: {}", msg)
+            }
+            GetTransportError::NotSupportedError(msg) => {
+                write!(f, "received transport type that is not supported: {}", msg)
+            }
+            GetTransportError::TlsTransportError(err) => {
+                write!(f, "unable to create TLS transport: {}", err)
+            }
+            #[cfg(feature = "generate-certs")]
+            GetTransportError::OpensslError(err) => {
+                write!(f, "unable to generate certificates: {}", err)
+            }
+            GetTransportError::IoError(err) => {
+                write!(f, "unable to get transport due to IoError: {}", err)
+            }
+        }
+    }
 }
 
 #[cfg(feature = "generate-certs")]
