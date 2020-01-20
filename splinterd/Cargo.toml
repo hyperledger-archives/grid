@@ -36,7 +36,7 @@ ctrlc = "3.0"
 flexi_logger = "0.14"
 health = { path = "../services/health", optional = true }
 log = "0.4"
-openssl = "0.10"
+openssl = { version = "0.10", optional = true }
 protobuf = "2"
 serde = "1.0.80"
 serde_derive = "1.0.80"
@@ -66,7 +66,7 @@ proposal-read = ["splinter/proposal-read"]
 config-builder = []
 config-toml = ["config-builder"]
 database = ["splinter/database"]
-generate-certs = []
+generate-certs = ["openssl"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

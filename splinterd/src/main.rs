@@ -37,6 +37,7 @@ use crate::config::{ConfigBuilder, TomlConfig};
 use crate::daemon::SplinterDaemonBuilder;
 use clap::Arg;
 use clap::{clap_app, crate_version};
+#[cfg(feature = "generate-certs")]
 use openssl::error::ErrorStack;
 use splinter::transport::raw::RawTransport;
 use splinter::transport::tls::{TlsInitError, TlsTransport};
@@ -624,6 +625,7 @@ pub enum GetTransportError {
     CertError(String),
     NotSupportedError(String),
     TlsTransportError(TlsInitError),
+    #[cfg(feature = "generate-certs")]
     OpensslError(ErrorStack),
     IoError(io::Error),
 }
@@ -641,6 +643,7 @@ impl From<TlsInitError> for GetTransportError {
     }
 }
 
+#[cfg(feature = "generate-certs")]
 impl From<ErrorStack> for GetTransportError {
     fn from(error_stack: ErrorStack) -> Self {
         GetTransportError::OpensslError(error_stack)
