@@ -138,7 +138,10 @@ impl PeerMap {
 
             Ok(())
         } else {
-            Err(PeerUpdateError {})
+            Err(PeerUpdateError {
+                old_peer_id,
+                new_peer_id,
+            })
         }
     }
 
@@ -441,7 +444,22 @@ impl From<RemoveError> for ConnectionError {
 }
 
 #[derive(Debug)]
-pub struct PeerUpdateError {}
+pub struct PeerUpdateError {
+    pub old_peer_id: String,
+    pub new_peer_id: String,
+}
+
+impl std::error::Error for PeerUpdateError {}
+
+impl std::fmt::Display for PeerUpdateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "unable to update peer {} to {}",
+            self.old_peer_id, self.new_peer_id
+        )
+    }
+}
 
 #[cfg(test)]
 pub mod tests {
