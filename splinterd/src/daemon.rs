@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::error::Error;
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -132,7 +134,7 @@ impl SplinterDaemon {
         // Load initial state from the configured storage location and create the new
         // SplinterState from the retrieved circuit directory
         let storage = get_storage(&self.storage_location, CircuitDirectory::new)
-            .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?;
+            .map_err(StartError::StorageError)?;
 
         let circuit_directory = storage.read().clone();
         let state = Arc::new(RwLock::new(SplinterState::new(
@@ -336,7 +338,7 @@ impl SplinterDaemon {
 
         let key_registry = Box::new(
             StorageKeyRegistry::new(self.key_registry_location.clone())
-                .map_err(|err| StartError::StorageError(format!("Storage Error: {}", err)))?,
+                .map_err(|err| StartError::StorageError(format!("{}", err)))?,
         );
 
         let admin_service = AdminService::new(
@@ -914,9 +916,34 @@ pub enum StartError {
     ThreadError(String),
 }
 
+impl Error for StartError {}
+
+impl fmt::Display for StartError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StartError::TransportError(msg) => write!(f, "transport returned an error: {}", msg),
+            StartError::NetworkError(msg) => write!(f, "network returned an error: {}", msg),
+            StartError::StorageError(msg) => write!(f, "unable to set up storage: {}", msg),
+            StartError::ProtocolError(msg) => write!(f, "unable to parse protocol: {}", msg),
+            StartError::RestApiError(msg) => write!(f, "REST API encountered an error: {}", msg),
+            StartError::AdminServiceError(msg) => {
+                write!(f, "the admin service encountered an error: {}", msg)
+            }
+            #[cfg(feature = "health")]
+            StartError::HealthServiceError(msg) => {
+                write!(f, "the health service encountered an error: {}", msg)
+            }
+            StartError::OrchestratorError(msg) => {
+                write!(f, "the orchestrator encountered an error: {}", msg)
+            }
+            StartError::ThreadError(msg) => write!(f, "a thread encountered an error: {}", msg),
+        }
+    }
+}
+
 impl From<RestApiServerError> for StartError {
     fn from(rest_api_error: RestApiServerError) -> Self {
-        StartError::RestApiError(format!("Rest Api Server Error: {}", rest_api_error))
+        StartError::RestApiError(rest_api_error.to_string())
     }
 }
 
@@ -940,25 +967,25 @@ impl From<ConnectError> for StartError {
 
 impl From<ConnectionError> for StartError {
     fn from(connection_error: ConnectionError) -> Self {
-        StartError::NetworkError(format!("Network Error: {:?}", connection_error))
+        StartError::NetworkError(connection_error.to_string())
     }
 }
 
 impl From<SendError> for StartError {
     fn from(send_error: SendError) -> Self {
-        StartError::NetworkError(format!("Network Error: {:?}", send_error))
+        StartError::NetworkError(send_error.to_string())
     }
 }
 
 impl From<PeerUpdateError> for StartError {
     fn from(update_error: PeerUpdateError) -> Self {
-        StartError::NetworkError(format!("Network Peer Update Error: {:?}", update_error))
+        StartError::NetworkError(update_error.to_string())
     }
 }
 
 impl From<protobuf::ProtobufError> for StartError {
     fn from(err: protobuf::ProtobufError) -> Self {
-        StartError::ProtocolError(format!("Protocol Format Error: {:?}", err))
+        StartError::ProtocolError(err.to_string())
     }
 }
 
