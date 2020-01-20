@@ -20,6 +20,8 @@ use openssl::ssl::{
 };
 use url::{ParseError, Url};
 
+use std::error::Error;
+use std::fmt;
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -243,6 +245,16 @@ impl Evented for TlsConnection {
 #[derive(Debug)]
 pub enum TlsInitError {
     ProtocolError(String),
+}
+
+impl Error for TlsInitError {}
+
+impl fmt::Display for TlsInitError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TlsInitError::ProtocolError(msg) => write!(f, "unable to initialize TLS: {}", msg),
+        }
+    }
 }
 
 impl From<ErrorStack> for TlsInitError {
