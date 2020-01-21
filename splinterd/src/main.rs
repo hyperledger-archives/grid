@@ -34,9 +34,10 @@ use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 use crate::config::{Config, ConfigError};
 #[cfg(feature = "config-toml")]
 use crate::config::{ConfigBuilder, TomlConfig};
-use crate::daemon::SplinterDaemonBuilder;
-use clap::Arg;
+use crate::daemon::{SplinterDaemonBuilder, StartError};
 use clap::{clap_app, crate_version};
+use clap::{Arg, ArgMatches};
+#[cfg(feature = "generate-certs")]
 use openssl::error::ErrorStack;
 use splinter::transport::raw::RawTransport;
 use splinter::transport::tls::{TlsInitError, TlsTransport};
@@ -45,6 +46,8 @@ use splinter::transport::Transport;
 use tempdir::TempDir;
 
 use std::env;
+use std::error::Error;
+use std::fmt;
 use std::fs;
 #[cfg(not(feature = "config-toml"))]
 use std::fs::File;
@@ -224,6 +227,13 @@ fn main() {
         .start()
         .expect("Failed to create logger");
 
+    if let Err(err) = start_daemon(matches) {
+        error!("Failed to start daemon, {}", err);
+        std::process::exit(1);
+    }
+}
+
+fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     debug!("Loading configuration file");
 
     // get provided config file or search default location
@@ -233,41 +243,35 @@ fn main() {
 
     let config = load_toml_config(config_file_path);
 
-    // Currently only YamlStorage is supported
-
     let node_id = matches
         .value_of("node_id")
         .map(String::from)
         .or_else(|| config.node_id())
-        .expect("Must provide a unique node ID");
+        .ok_or_else(|| UserError::MissingArgument("node_id".into()))?;
 
     let storage_type = matches
         .value_of("storage")
         .map(String::from)
         .or_else(|| config.storage())
-        .or_else(|| Some(String::from("yaml")))
-        .expect("No Storage Provided");
+        .unwrap_or_else(|| String::from("yaml"));
 
     let transport_type = matches
         .value_of("transport")
         .map(String::from)
         .or_else(|| config.transport())
-        .or_else(|| Some(String::from("raw")))
-        .expect("No Transport Provided");
+        .unwrap_or_else(|| String::from("raw"));
 
     let service_endpoint = matches
         .value_of("service_endpoint")
         .map(String::from)
         .or_else(|| config.service_endpoint())
-        .or_else(|| Some("127.0.0.1:8043".to_string()))
-        .expect("Must provide a valid service endpoint");
+        .unwrap_or_else(|| "127.0.0.1:8043".to_string());
 
     let network_endpoint = matches
         .value_of("network_endpoint")
         .map(String::from)
         .or_else(|| config.network_endpoint())
-        .or_else(|| Some("127.0.0.1:8044".to_string()))
-        .expect("Must provide a valid network endpoint");
+        .unwrap_or_else(|| "127.0.0.1:8044".to_string());
 
     let initial_peers = matches
         .values_of("peers")
@@ -278,13 +282,7 @@ fn main() {
     let heartbeat_interval = value_t!(matches.value_of("heartbeat_interval"), u64)
         .unwrap_or_else(|_| config.heartbeat_interval().unwrap_or(HEARTBEAT_DEFAULT));
 
-    let (transport, transport_log) = match get_transport(&transport_type, &matches, &config) {
-        Ok(transport) => transport,
-        Err(err) => {
-            error!("An error occurred while getting transport {:?}", err);
-            std::process::exit(1);
-        }
-    };
+    let (transport, transport_log) = get_transport(&transport_type, &matches, &config)?;
 
     let location = {
         if let Ok(s) = env::var(STATE_DIR_ENV) {
@@ -297,29 +295,37 @@ fn main() {
     let storage_location = match &storage_type as &str {
         "yaml" => format!("{}{}", location, "circuits.yaml"),
         "memory" => "memory".to_string(),
-        _ => panic!("Storage type is not supported: {}", storage_type),
+        _ => {
+            return Err(UserError::InvalidArgument(format!(
+                "storage type is not supported: {}",
+                storage_type
+            )))
+        }
     };
 
     let key_registry_location = match &storage_type as &str {
         "yaml" => format!("{}{}", location, "keys.yaml"),
         "memory" => "memory".to_string(),
-        _ => panic!("Storage type is not supported: {}", storage_type),
+        _ => {
+            return Err(UserError::InvalidArgument(format!(
+                "storage type is not supported: {}",
+                storage_type
+            )))
+        }
     };
 
     let rest_api_endpoint = matches
         .value_of("bind")
         .map(String::from)
         .or_else(|| config.bind())
-        .or_else(|| Some("127.0.0.1:8080".to_string()))
-        .expect("Must provide a URL for the REST API endpoint");
+        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
 
     #[cfg(feature = "database")]
     let db_url = matches
         .value_of("database")
         .map(String::from)
         .or_else(|| config.database())
-        .or_else(|| Some("127.0.0.1:5432".to_string()))
-        .expect("Must provide a URL for the database");
+        .unwrap_or_else(|| "127.0.0.1:5432".to_string());
 
     let registry_backend = matches
         .value_of("registry_backend")
@@ -381,18 +387,11 @@ fn main() {
         daemon_builder = daemon_builder.with_registry_file(registry_file);
     }
 
-    let mut node = match daemon_builder.build() {
-        Ok(node) => node,
-        Err(err) => {
-            error!("An error occurred while creating daemon {:?}", err);
-            std::process::exit(1);
-        }
-    };
-
-    if let Err(err) = node.start(transport) {
-        error!("Failed to start daemon {:?}", err);
-        std::process::exit(1);
-    }
+    let mut node = daemon_builder.build().map_err(|err| {
+        UserError::daemon_err_with_source("unable to build the Splinter daemon", Box::new(err))
+    })?;
+    node.start(transport)?;
+    Ok(())
 }
 
 fn get_transport(
@@ -481,8 +480,7 @@ fn get_transport(
                 .value_of("cert_dir")
                 .map(String::from)
                 .or_else(|| config.cert_dir())
-                .or_else(|| Some(cert_location))
-                .expect("Must provide a valid client certificate");
+                .unwrap_or(cert_location);
 
             let client_cert = matches
                 .value_of("client_cert")
@@ -498,7 +496,9 @@ fn get_transport(
                     let client_cert: Option<String> = client_cert.to_str().map(ToOwned::to_owned);
                     client_cert
                 })
-                .expect("Must provide a valid client certificate");
+                .ok_or_else(|| {
+                    GetTransportError::CertError("must provide a valid client certificate".into())
+                })?;
 
             let server_cert = matches
                 .value_of("server_cert")
@@ -514,7 +514,9 @@ fn get_transport(
                     let server_cert: Option<String> = server_cert.to_str().map(ToOwned::to_owned);
                     server_cert
                 })
-                .expect("Must provide a valid server certificate");
+                .ok_or_else(|| {
+                    GetTransportError::CertError("must provide a valid server certificate".into())
+                })?;
 
             let server_key_file = matches
                 .value_of("server_key")
@@ -530,7 +532,9 @@ fn get_transport(
                     let server_key: Option<String> = server_key.to_str().map(ToOwned::to_owned);
                     server_key
                 })
-                .expect("Must provide a valid key path");
+                .ok_or_else(|| {
+                    GetTransportError::CertError("must provide a valid server key path".into())
+                })?;
 
             let client_key_file = matches
                 .value_of("client_key")
@@ -546,7 +550,9 @@ fn get_transport(
                     let client_key: Option<String> = client_key.to_str().map(ToOwned::to_owned);
                     client_key
                 })
-                .expect("Must provide a valid key path");
+                .ok_or_else(|| {
+                    GetTransportError::CertError("must provide a valid client key path".into())
+                })?;
 
             let ca_file = {
                 if matches.is_present("insecure") {
@@ -568,7 +574,11 @@ fn get_transport(
                                 cert_dir_path.join(CA_PEM).to_str().map(ToOwned::to_owned);
                             ca_file
                         })
-                        .expect("Must provide a valid file containing ca certs");
+                        .ok_or_else(|| {
+                            GetTransportError::CertError(
+                                "must provide a valid file containing ca certs".into(),
+                            )
+                        })?;
                     Some(ca_file)
                 }
             };
@@ -620,12 +630,123 @@ fn get_transport(
 }
 
 #[derive(Debug)]
+pub enum UserError {
+    TransportError(GetTransportError),
+    MissingArgument(String),
+    InvalidArgument(String),
+
+    DaemonError {
+        context: String,
+        source: Option<Box<dyn Error>>,
+    },
+}
+
+impl UserError {
+    pub fn daemon_error(context: &str) -> Self {
+        UserError::DaemonError {
+            context: context.into(),
+            source: None,
+        }
+    }
+
+    pub fn daemon_err_with_source(context: &str, err: Box<dyn Error>) -> Self {
+        UserError::DaemonError {
+            context: context.into(),
+            source: Some(err),
+        }
+    }
+}
+
+impl Error for UserError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            UserError::TransportError(err) => Some(err),
+            UserError::MissingArgument(_) => None,
+            UserError::InvalidArgument(_) => None,
+            UserError::DaemonError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for UserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UserError::TransportError(err) => write!(f, "unable to get transport: {}", err),
+            UserError::MissingArgument(msg) => write!(f, "missing required argument: {}", msg),
+            UserError::InvalidArgument(msg) => write!(f, "required argument is invalid: {}", msg),
+            UserError::DaemonError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
+        }
+    }
+}
+
+impl From<StartError> for UserError {
+    fn from(error: StartError) -> Self {
+        UserError::daemon_err_with_source("unable to start the Splinter daemon", Box::new(error))
+    }
+}
+
+impl From<GetTransportError> for UserError {
+    fn from(error: GetTransportError) -> Self {
+        UserError::TransportError(error)
+    }
+}
+
+#[derive(Debug)]
 pub enum GetTransportError {
     CertError(String),
     NotSupportedError(String),
     TlsTransportError(TlsInitError),
+    #[cfg(feature = "generate-certs")]
     OpensslError(ErrorStack),
     IoError(io::Error),
+}
+
+impl Error for GetTransportError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            GetTransportError::CertError(_) => None,
+            GetTransportError::NotSupportedError(_) => None,
+            GetTransportError::TlsTransportError(err) => Some(err),
+            #[cfg(feature = "generate-certs")]
+            GetTransportError::OpensslError(err) => Some(err),
+            GetTransportError::IoError(err) => Some(err),
+        }
+    }
+}
+
+impl fmt::Display for GetTransportError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GetTransportError::CertError(msg) => {
+                write!(f, "unable to retrieve certificate: {}", msg)
+            }
+            GetTransportError::NotSupportedError(msg) => {
+                write!(f, "received transport type that is not supported: {}", msg)
+            }
+            GetTransportError::TlsTransportError(err) => {
+                write!(f, "unable to create TLS transport: {}", err)
+            }
+            #[cfg(feature = "generate-certs")]
+            GetTransportError::OpensslError(err) => {
+                write!(f, "unable to generate certificates: {}", err)
+            }
+            GetTransportError::IoError(err) => {
+                write!(f, "unable to get transport due to IoError: {}", err)
+            }
+        }
+    }
 }
 
 #[cfg(feature = "generate-certs")]
@@ -641,6 +762,7 @@ impl From<TlsInitError> for GetTransportError {
     }
 }
 
+#[cfg(feature = "generate-certs")]
 impl From<ErrorStack> for GetTransportError {
     fn from(error_stack: ErrorStack) -> Self {
         GetTransportError::OpensslError(error_stack)

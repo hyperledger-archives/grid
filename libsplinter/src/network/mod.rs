@@ -138,7 +138,10 @@ impl PeerMap {
 
             Ok(())
         } else {
-            Err(PeerUpdateError {})
+            Err(PeerUpdateError {
+                old_peer_id,
+                new_peer_id,
+            })
         }
     }
 
@@ -304,10 +307,7 @@ impl Network {
         let mesh_id = match rwlock_read_unwrap!(self.peers).get_mesh_id(peer_id) {
             Some(mesh_id) => *mesh_id,
             None => {
-                return Err(SendError::NoPeerError(format!(
-                    "Send Error: No peer with peer_id {} found",
-                    peer_id
-                )));
+                return Err(SendError::NoPeerError(peer_id.to_string()));
             }
         };
 
@@ -394,9 +394,20 @@ pub enum SendError {
     MeshError(String),
 }
 
+impl std::error::Error for SendError {}
+
+impl std::fmt::Display for SendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SendError::NoPeerError(msg) => write!(f, "no peer with peer_id {} found", msg),
+            SendError::MeshError(msg) => write!(f, "received error from mesh: {}", msg),
+        }
+    }
+}
+
 impl From<MeshSendError> for SendError {
-    fn from(recv_error: MeshSendError) -> Self {
-        SendError::MeshError(format!("Send Error: {:?}", recv_error))
+    fn from(send_error: MeshSendError) -> Self {
+        SendError::MeshError(send_error.to_string())
     }
 }
 
@@ -441,7 +452,22 @@ impl From<RemoveError> for ConnectionError {
 }
 
 #[derive(Debug)]
-pub struct PeerUpdateError {}
+pub struct PeerUpdateError {
+    pub old_peer_id: String,
+    pub new_peer_id: String,
+}
+
+impl std::error::Error for PeerUpdateError {}
+
+impl std::fmt::Display for PeerUpdateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "unable to update peer {} to {}",
+            self.old_peer_id, self.new_peer_id
+        )
+    }
+}
 
 #[cfg(test)]
 pub mod tests {
