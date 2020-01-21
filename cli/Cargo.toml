@@ -50,7 +50,7 @@ biome-credentials = ["database-migrate-biome-credentials"]
 
 [package]
 name = "splinter-cli"
-version = "0.3.9"
+version = "0.3.10"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"

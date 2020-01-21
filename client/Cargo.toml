@@ -14,7 +14,7 @@
 
 [package]
 name = "splinter-client"
-version = "0.3.9"
+version = "0.3.10"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
