@@ -55,6 +55,7 @@ experimental = [
     "biome-key-management",
     "circuit-read",
     "config-builder",
+    "config-default",
     "config-toml",
     "health",
     "proposal-read"
@@ -66,6 +67,7 @@ biome-key-management = ["splinter/biome-key-management", "biome"]
 circuit-read = ["splinter/circuit-read"]
 proposal-read = ["splinter/proposal-read"]
 config-builder = []
+config-default = ["config-builder"]
 config-toml = ["config-builder"]
 database = ["splinter/database"]
 generate-certs = ["openssl"]
