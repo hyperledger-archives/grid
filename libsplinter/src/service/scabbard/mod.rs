@@ -16,6 +16,8 @@
 //! `transact` library for state. Scabbard uses two-phase consensus to reach agreement on
 //! transactions.
 
+#[cfg(feature = "scabbard-client")]
+pub mod client;
 mod consensus;
 mod error;
 mod factory;
@@ -147,7 +149,7 @@ impl Scabbard {
         }
     }
 
-    pub fn get_batch_info(&self, ids: Vec<String>) -> Result<Vec<BatchInfo>, ScabbardError> {
+    pub fn get_batch_info(&self, ids: &[String]) -> Result<Vec<BatchInfo>, ScabbardError> {
         let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
 
         Ok(ids
