@@ -1,4 +1,4 @@
-// Copyright 2018 Cargill Incorporated
+// Copyright 2018-2020 Cargill Incorporated
 // Copyright 2018 Bitwise IO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
