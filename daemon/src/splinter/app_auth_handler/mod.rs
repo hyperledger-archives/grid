@@ -27,7 +27,7 @@ use splinter::{
 use crate::database::ConnectionPool;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::splinter::{
-    app_auth_handler::{error::AppAuthHandlerError, node::get_node_id},
+    app_auth_handler::{error::AppAuthHandlerError, node::get_node_id, sabre::setup_grid},
     event::ScabbardEventConnectionFactory,
 };
 
@@ -59,15 +59,21 @@ pub fn run(
     event_connection_factory: ScabbardEventConnectionFactory,
     connection_pool: ConnectionPool,
     igniter: Igniter,
+    scabbard_admin_key: String,
 ) -> Result<(), AppAuthHandlerError> {
     let registration_route = format!("{}/ws/admin/register/grid", &splinterd_url);
 
     let node_id = get_node_id(splinterd_url.clone())?;
 
     let mut ws = WebSocketClient::new(&registration_route, move |_ctx, event| {
-        if let Err(err) =
-            process_admin_event(event, &event_connection_factory, &connection_pool, &node_id)
-        {
+        if let Err(err) = process_admin_event(
+            event,
+            &event_connection_factory,
+            &connection_pool,
+            &node_id,
+            &scabbard_admin_key,
+            &splinterd_url,
+        ) {
             error!("Failed to process admin event: {}", err);
         }
         WsResponse::Empty
@@ -102,6 +108,8 @@ fn process_admin_event(
     event_connection_factory: &ScabbardEventConnectionFactory,
     connection_pool: &ConnectionPool,
     node_id: &str,
+    scabbard_admin_key: &str,
+    splinterd_url: &str,
 ) -> Result<(), AppAuthHandlerError> {
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
@@ -133,6 +141,12 @@ fn process_admin_event(
             )
             .map_err(|err| AppAuthHandlerError::EventProcessorError(err.0))?;
 
+            setup_grid(
+                scabbard_admin_key,
+                &splinterd_url,
+                &service_id,
+                &msg_proposal.circuit_id,
+            )?;
             Ok(())
         }
         _ => Ok(()),

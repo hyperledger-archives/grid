@@ -181,6 +181,9 @@ fn run_sawtooth(config: GridConfig, _connection_pool: ConnectionPool) -> Result<
 fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
+    let scabbard_admin_key = load_scabbard_admin_key(&config.admin_key_dir())
+        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
@@ -189,6 +192,7 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         scabbard_event_connection_factory,
         connection_pool.clone(),
         reactor.igniter(),
+        scabbard_admin_key,
     )?;
 
     let batch_submitter = Box::new(SplinterBatchSubmitter::new(config.endpoint().url()));
