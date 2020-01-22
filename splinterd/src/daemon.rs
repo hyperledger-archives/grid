@@ -105,7 +105,9 @@ pub struct SplinterDaemon {
     node_id: String,
     rest_api_endpoint: String,
     #[cfg(feature = "database")]
-    db_url: String,
+    db_url: Option<String>,
+    #[cfg(feature = "biome")]
+    biome_enabled: bool,
     registry_config: RegistryConfig,
     storage_type: String,
 }
@@ -392,8 +394,15 @@ impl SplinterDaemon {
 
         #[cfg(feature = "biome")]
         {
-            let biome_resources = build_biome_routes(&self.db_url)?;
-            rest_api_builder = rest_api_builder.add_resources(biome_resources.resources());
+            if self.biome_enabled {
+                let db_url = self.db_url.as_ref().ok_or_else(|| {
+                    StartError::StorageError(
+                        "biome was enabled but the builder failed to require the db URL".into(),
+                    )
+                })?;
+                let biome_resources = build_biome_routes(&db_url)?;
+                rest_api_builder = rest_api_builder.add_resources(biome_resources.resources());
+            }
         }
 
         let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api_builder.build()?.run()?;
@@ -641,6 +650,8 @@ pub struct SplinterDaemonBuilder {
     rest_api_endpoint: Option<String>,
     #[cfg(feature = "database")]
     db_url: Option<String>,
+    #[cfg(feature = "biome")]
+    biome_enabled: bool,
     registry_backend: Option<String>,
     registry_file: Option<String>,
     storage_type: Option<String>,
@@ -688,8 +699,14 @@ impl SplinterDaemonBuilder {
     }
 
     #[cfg(feature = "database")]
-    pub fn with_db_url(mut self, value: String) -> Self {
-        self.db_url = Some(value);
+    pub fn with_db_url(mut self, value: Option<String>) -> Self {
+        self.db_url = value;
+        self
+    }
+
+    #[cfg(feature = "biome")]
+    pub fn enable_biome(mut self, enabled: bool) -> Self {
+        self.biome_enabled = enabled;
         self
     }
 
@@ -751,9 +768,16 @@ impl SplinterDaemonBuilder {
         })?;
 
         #[cfg(feature = "database")]
-        let db_url = self.db_url.ok_or_else(|| {
-            CreateError::MissingRequiredField("Missing field: db_url".to_string())
-        })?;
+        let db_url = self.db_url;
+
+        #[cfg(feature = "biome")]
+        {
+            if self.biome_enabled && db_url.is_none() {
+                return Err(CreateError::MissingRequiredField(
+                    "db_url is required to enable biome features.".to_string(),
+                ));
+            }
+        }
 
         let storage_type = self.storage_type.ok_or_else(|| {
             CreateError::MissingRequiredField("Missing field: storage_type".to_string())
@@ -779,6 +803,8 @@ impl SplinterDaemonBuilder {
             rest_api_endpoint,
             #[cfg(feature = "database")]
             db_url,
+            #[cfg(feature = "biome")]
+            biome_enabled: self.biome_enabled,
             registry_config,
             key_registry_location,
             storage_type,

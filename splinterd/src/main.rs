@@ -188,6 +188,13 @@ fn main() {
             .takes_value(true),
     );
 
+    #[cfg(feature = "biome")]
+    let app = app.arg(
+        Arg::with_name("biome_enabled")
+            .long("enable-biome")
+            .long_help("Enable the biome subsystem"),
+    );
+
     #[cfg(feature = "generate-certs")]
     let app = app
         .arg(
@@ -324,8 +331,10 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     let db_url = matches
         .value_of("database")
         .map(String::from)
-        .or_else(|| config.database())
-        .unwrap_or_else(|| "127.0.0.1:5432".to_string());
+        .or_else(|| config.database());
+
+    #[cfg(feature = "biome")]
+    let biome_enabled: bool = matches.is_present("biome_enabled");
 
     let registry_backend = matches
         .value_of("registry_backend")
@@ -343,7 +352,12 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     #[cfg(feature = "database")]
     {
-        feature_fields = format!("{}, db_url: {}", feature_fields, db_url);
+        feature_fields = format!("{}, db_url: {:?}", feature_fields, db_url);
+    }
+
+    #[cfg(feature = "biome")]
+    {
+        feature_fields = format!("{}, biome_enabled: {}", feature_fields, biome_enabled);
     }
 
     debug!(
@@ -381,6 +395,11 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     #[cfg(feature = "database")]
     {
         daemon_builder = daemon_builder.with_db_url(db_url);
+    }
+
+    #[cfg(feature = "biome")]
+    {
+        daemon_builder = daemon_builder.enable_biome(biome_enabled);
     }
 
     if let Some(registry_file) = registry_file {
