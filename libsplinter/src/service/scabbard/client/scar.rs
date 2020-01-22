@@ -175,6 +175,9 @@ mod tests {
     // that are used by all tests. Each test is annotated with `#[serial(scar_path)]` to enforce
     // this.
 
+    /// Verify that a .scar file can be loaded by providing the name + extension of a .scar file
+    /// that is located in one of the paths specified by the SCAR_PATH environment variable.
+    /// Example: `mock.scar` -> `/path/to/mock.scar`, SCAR_PATH contains `/path/to`
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_from_path_with_file_extension_successful() {
@@ -183,6 +186,10 @@ mod tests {
             .expect("failed to perform upload action");
     }
 
+    /// Verify that a .scar file can be loaded by providing the name of a .scar file, without a
+    /// file extension, that is located in one of the paths specified by the SCAR_PATH environment
+    /// variable.
+    /// Example: `mock` -> `/path/to/mock.scar`, SCAR_PATH contains `/path/to`
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_from_path_without_file_extension_successful() {
@@ -191,6 +198,8 @@ mod tests {
             .expect("failed to perform upload action");
     }
 
+    /// Verify that a .scar file can be loaded by providing a full path to the .scar file.
+    /// Example: `/path/to/mock.scar`
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_from_file_successful() {
@@ -199,6 +208,7 @@ mod tests {
             .expect("failed to perform upload action");
     }
 
+    /// Verify that an error is returned when attempting to load a non-existent .scar file.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_file_not_found() {
@@ -208,6 +218,8 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Verify that an error is returned when attempting to load a .scar file from SCAR_PATH, but
+    /// SCAR_PATH is not set.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_path_not_set() {
@@ -215,6 +227,8 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Verify that an error is returned when attempting to load a .scar file from SCAR_PATH, but
+    /// the specified .scar file cannout be found in SCAR_PATH.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_not_found_in_path() {
@@ -224,6 +238,8 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Verify that an error is returned when attempting to load a .scar file that does not contain
+    /// a `manifest.yaml` file.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_manifest_not_found() {
@@ -233,6 +249,8 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Verify that an error is returned when attempting to load a .scar file whose `manifest.yaml`
+    /// is invalidly formatted.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_manifest_invalid() {
@@ -240,6 +258,8 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Verify that an error is returned when attempting to load a .scar file that does not contain
+    /// a .wasm smart contract.
     #[test]
     #[serial(scar_path)]
     fn load_smart_contract_contract_not_found() {
@@ -247,6 +267,9 @@ mod tests {
         assert!(SabreSmartContractDefinition::new_from_scar(&setup.scar).is_err());
     }
 
+    /// Builder for setting up the test environment. By default, the builder will create a valid
+    /// environment for loading a .scar file from SCAR_PATH with the filename + extension of the
+    /// .scar file.
     struct UploadTestSetup {
         temp_dir: TempDir,
         set_contract: bool,
@@ -328,6 +351,8 @@ mod tests {
         }
     }
 
+    /// This handle is used to keep the temp directory open (since it is removed when dropped) and
+    /// to provide the value of the `scar` argument for testing.
     struct SetupHandle {
         _temp_dir: TempDir,
         scar: String,
@@ -338,6 +363,8 @@ mod tests {
         TempDir::new(&thread_id).expect("failed to create temp dir")
     }
 
+    /// Add a mock .scar file to the given directory, with the given manifest file (as bytes) and
+    /// with or without a mock contract (as specified by `add_contract`).
     fn add_mock_scar_to_dir(dir: &Path, manifest: Option<Vec<u8>>, add_contract: bool) {
         let scar_file_path = dir.join(MOCK_SCAR_FILENAME);
         let scar = File::create(scar_file_path.as_path()).expect("failed to create scar file");
