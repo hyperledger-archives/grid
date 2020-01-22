@@ -22,6 +22,8 @@ pub struct GridConfig {
     endpoint: Endpoint,
     rest_api_endpoint: String,
     database_url: String,
+    #[cfg(feature = "splinter-support")]
+    admin_key_dir: String,
 }
 
 impl GridConfig {
@@ -32,8 +34,14 @@ impl GridConfig {
     pub fn rest_api_endpoint(&self) -> &str {
         &self.rest_api_endpoint
     }
+
     pub fn database_url(&self) -> &str {
         &self.database_url
+    }
+
+    #[cfg(feature = "splinter-support")]
+    pub fn admin_key_dir(&self) -> &str {
+        &self.admin_key_dir
     }
 }
 
@@ -92,6 +100,8 @@ pub struct GridConfigBuilder {
     endpoint: Option<Endpoint>,
     rest_api_endpoint: Option<String>,
     database_url: Option<String>,
+    #[cfg(feature = "splinter-support")]
+    admin_key_dir: Option<String>,
 }
 
 impl Default for GridConfigBuilder {
@@ -103,6 +113,8 @@ impl Default for GridConfigBuilder {
             }),
             rest_api_endpoint: Some("127.0.0.1:8080".to_owned()),
             database_url: Some("postgres://grid:grid_example@localhost/grid".to_owned()),
+            #[cfg(feature = "splinter-support")]
+            admin_key_dir: Some("/etc/grid/keys".to_owned()),
         }
     }
 }
@@ -124,6 +136,12 @@ impl GridConfigBuilder {
                 .value_of("database_url")
                 .map(ToOwned::to_owned)
                 .or_else(|| self.database_url.take()),
+
+            #[cfg(feature = "splinter-support")]
+            admin_key_dir: matches
+                .value_of("admin_key_dir")
+                .map(ToOwned::to_owned)
+                .or_else(|| self.admin_key_dir.take()),
         }
     }
 
@@ -141,6 +159,11 @@ impl GridConfigBuilder {
                 .database_url
                 .take()
                 .ok_or_else(|| ConfigurationError::MissingValue("database_url".to_owned()))?,
+            #[cfg(feature = "splinter-support")]
+            admin_key_dir: self
+                .admin_key_dir
+                .take()
+                .ok_or_else(|| ConfigurationError::MissingValue("admin_key_dir".to_owned()))?,
         })
     }
 }

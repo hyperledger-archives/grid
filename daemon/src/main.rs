@@ -56,7 +56,7 @@ use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::Sawto
 #[cfg(feature = "splinter-support")]
 use crate::splinter::{
     app_auth_handler, batch_submitter::SplinterBatchSubmitter,
-    event::ScabbardEventConnectionFactory,
+    event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -73,7 +73,7 @@ fn run() -> Result<(), DaemonError> {
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
-    )
+        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"))
     .get_matches();
 
     let log_level = match matches.occurrences_of("verbose") {
