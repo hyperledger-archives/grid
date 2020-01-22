@@ -127,6 +127,7 @@ services:
         - REPO_VERSION=${REPO_VERSION}
         - CARGO_ARGS=-- --features experimental
     volumes:
+      - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
     expose:
       - 8080
@@ -211,6 +212,7 @@ services:
         - REPO_VERSION=${REPO_VERSION}
         - CARGO_ARGS=-- --features experimental
     volumes:
+      - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
     expose:
       - 8080
@@ -294,6 +296,7 @@ services:
         - REPO_VERSION=${REPO_VERSION}
         - CARGO_ARGS=-- --features experimental
     volumes:
+      - contracts-shared:/usr/share/scar
       - gridd-gamma:/etc/grid/keys
     expose:
       - 8080
