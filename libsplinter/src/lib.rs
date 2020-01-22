@@ -75,6 +75,8 @@ pub mod mesh;
 pub mod network;
 pub mod node_registry;
 pub mod orchestrator;
+#[cfg(feature = "rest-api")]
+mod protocol;
 pub mod protos;
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
