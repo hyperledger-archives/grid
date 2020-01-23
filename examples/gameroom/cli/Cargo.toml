@@ -12,18 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[workspace]
+[package]
+name = "gameroom-cli"
+version = "0.1.0"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
 
-members = [
-    "cli",
-    "client",
-    "libsplinter",
-    "splinterd",
-    "examples/private_counter/cli",
-    "examples/private_counter/service",
-    "examples/private_xo",
-    "examples/gameroom/cli",
-    "examples/gameroom/database",
-    "examples/gameroom/daemon",
-    "services/health"
-]
+[[bin]]
+name = "gameroom"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2"
+diesel = { version = "1.0", features = ["postgres"] }
+diesel_migrations = "1.4"
+flexi_logger = "0.14"
+log = "0.4"
+
+[features]
+default = []
+
+stable = ["default"]
+
+experimental = []
+
+[package.metadata.deb]
+maintainer = "The Splinter Team"
+depends = "$auto"
