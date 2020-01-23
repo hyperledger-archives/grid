@@ -63,6 +63,7 @@ const PRODUCT_CONTRACT_FILENAME: &str = "grid-product_0.1.0-dev.scar";
 
 pub fn setup_grid(
     scabbard_admin_key: &str,
+    proposed_admin_pubkeys: Vec<String>,
     splinterd_url: &str,
     service_id: &str,
     circuit_id: &str,
@@ -71,6 +72,16 @@ pub fn setup_grid(
     let factory = CryptoFactory::new(&*context);
     let private_key = Secp256k1PrivateKey::from_hex(&scabbard_admin_key)?;
     let signer = factory.new_signer(&private_key);
+
+    // The node with the first key in the list of scabbard admins is responsible for setting up xo
+    let public_key = signer.get_public_key()?.as_hex();
+    let is_submitter = match proposed_admin_pubkeys.get(0) {
+        Some(submitting_key) => &public_key == submitting_key,
+        None => false,
+    };
+    if !is_submitter {
+        return Ok(());
+    }
 
     // Make Pike transactions
     let pike_contract = SabreSmartContractDefinition::new_from_scar(&format!(

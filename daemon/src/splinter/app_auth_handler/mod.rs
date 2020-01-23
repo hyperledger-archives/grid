@@ -19,6 +19,8 @@ pub mod error;
 mod node;
 mod sabre;
 
+use std::collections::HashMap;
+
 use splinter::{
     admin::messages::AdminServiceEvent,
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
@@ -114,14 +116,14 @@ fn process_admin_event(
     debug!("Received the event at {}", event.timestamp);
     match event.admin_event {
         AdminServiceEvent::CircuitReady(msg_proposal) => {
-            let service_id = match msg_proposal.circuit.roster.iter().find_map(|service| {
+            let service = match msg_proposal.circuit.roster.iter().find_map(|service| {
                 if service.allowed_nodes.contains(&node_id.to_string()) {
-                    Some(service.service_id.clone())
+                    Some(service)
                 } else {
                     None
                 }
             }) {
-                Some(id) => id,
+                Some(service) => service,
                 None => {
                     debug!(
                         "New circuit does not have any services for this node: {}",
@@ -131,8 +133,27 @@ fn process_admin_event(
                 }
             };
 
+            let scabbard_args: HashMap<_, _> = service.arguments.iter().cloned().collect();
+
+            let proposed_admin_pubkeys = scabbard_args
+                .get("admin_keys")
+                .ok_or_else(|| {
+                    AppAuthHandlerError::InvalidMessageError(
+                        "Scabbard Service is not properly configured with \"admin_keys\" argument."
+                            .into(),
+                    )
+                })
+                .and_then(|keys_str| {
+                    serde_json::from_str::<Vec<String>>(keys_str).map_err(|err| {
+                        AppAuthHandlerError::InvalidMessageError(format!(
+                            "unable to parse application metadata: {}",
+                            err
+                        ))
+                    })
+                })?;
+
             let event_connection = event_connection_factory
-                .create_connection(&msg_proposal.circuit_id, &service_id)?;
+                .create_connection(&msg_proposal.circuit_id, &service.service_id)?;
 
             EventProcessor::start(
                 event_connection,
@@ -143,8 +164,9 @@ fn process_admin_event(
 
             setup_grid(
                 scabbard_admin_key,
+                proposed_admin_pubkeys,
                 &splinterd_url,
-                &service_id,
+                &service.service_id,
                 &msg_proposal.circuit_id,
             )?;
             Ok(())
