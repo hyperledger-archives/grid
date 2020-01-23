@@ -63,7 +63,7 @@ fn run() -> Result<(), CliError> {
         (@arg key: -k +takes_value "base name for private key file")
         (@arg verbose: -v +multiple +global "Log verbosely")
         (@arg quiet: -q --quiet +global "Do not display output")
-        (@arg service_id: --service_id +takes_value "The ID of the service the payload should be \
+        (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
             sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
             (about: "Update or create agent")
