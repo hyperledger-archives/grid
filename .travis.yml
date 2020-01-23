@@ -79,7 +79,11 @@ jobs:
         - docker login -u splintercommunity -p $DOCKER_TOKEN
       deploy:
         - provider: script
-          script: bash ci/publish-docker master
+          script:
+            - if [ "$TRAVIS_EVENT_TYPE" == "cron" ];
+              then bash -c "export 'CARGO_ARGS=-- --features experimental'; ci/publish-docker experimental"
+              else bash ci/publish-docker master;
+              fi
           on:
             branch: master
         - provider: script
