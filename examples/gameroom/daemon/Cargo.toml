@@ -25,6 +25,10 @@ description = """\
     participants.
 """
 
+[[bin]]
+name = "gameroomd"
+path = "src/main.rs"
+
 [dependencies]
 actix = { version = "0.8", default-features = false }
 actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
@@ -63,10 +67,6 @@ experimental = []
 # or `experimental`
 test-authorization-handler = []
 test-node-endpoint = []
-
-[[bin]]
-name = "gameroomd"
-path = "src/main.rs"
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"
