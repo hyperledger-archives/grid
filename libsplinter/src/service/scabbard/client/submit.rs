@@ -41,6 +41,7 @@ pub fn submit_batches(
 
     let body = batches.write_to_bytes()?;
 
+    debug!("Submitting batches via {}", url);
     let request = Client::new().post(url).body(body);
     let response = perform_request(request)?;
 
@@ -51,9 +52,14 @@ pub fn submit_batches(
     Ok(batch_link.link)
 }
 
-pub fn wait_for_batches(url: &str, wait: u64) -> Result<(), Error> {
-    let url = parse_http_url(&format!("{}&wait={}", url, wait))?;
+pub fn wait_for_batches(base_url: &str, batch_link: &str, wait: u64) -> Result<(), Error> {
+    let url = if batch_link.starts_with("http") || batch_link.starts_with("https") {
+        parse_http_url(&format!("{}&wait={}", batch_link, wait))?
+    } else {
+        parse_http_url(&format!("{}{}&wait={}", base_url, batch_link, wait))?
+    };
 
+    debug!("Checking batches via {}", url);
     let request = Client::new().get(url);
     let response = perform_request(request)?;
 

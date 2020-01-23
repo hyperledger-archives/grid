@@ -45,7 +45,7 @@ impl ScabbardClient {
     ) -> Result<(), Error> {
         let batch_link = submit_batches(&self.url, circuit_id, service_id, batches)?;
         if let Some(wait_secs) = wait {
-            wait_for_batches(&batch_link, wait_secs)
+            wait_for_batches(&self.url, &batch_link, wait_secs)
         } else {
             Ok(())
         }
