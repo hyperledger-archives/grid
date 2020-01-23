@@ -267,7 +267,7 @@ fn make_namespace_permissions_txn(
         .with_namespace(contract_prefix.into())
         .with_contract_name(name.into())
         .with_read(true)
-        .with_write(false)
+        .with_write(true)
         .build()?;
     let payload = SabrePayloadBuilder::new()
         .with_action(Action::CreateNamespaceRegistryPermission(action))
