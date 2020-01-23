@@ -26,8 +26,6 @@ use users::get_current_username;
 
 use crate::error::CliError;
 
-use super::write_hex_to_file;
-
 /// Generates a public/private key pair that can be used to sign transactions.
 /// If no directory is provided, the keys are created in the default directory
 ///
@@ -99,28 +97,26 @@ pub fn generate_keys(
     } else {
         info!("Writing file: {:?}", public_key_path);
     }
-    let mut public_key_file = OpenOptions::new()
+    let public_key_file = OpenOptions::new()
         .write(true)
         .create(true)
         .mode(0o644)
         .open(public_key_path.as_path())?;
 
-    write_hex_to_file(&public_key.as_hex(), &mut public_key_file)?;
+    writeln!(&public_key_file, "{}", public_key.as_hex())?;
 
     if private_key_path.exists() {
         info!("Overwriting file: {:?}", private_key_path);
     } else {
         info!("Writing file: {:?}", private_key_path);
     }
-    let mut private_key_file = OpenOptions::new()
+    let private_key_file = OpenOptions::new()
         .write(true)
         .create(true)
         .mode(0o640)
         .open(private_key_path.as_path())?;
 
-    private_key_file.write_all(private_key.as_hex().as_bytes())?;
-
-    write_hex_to_file(&private_key.as_hex(), &mut private_key_file)?;
+    writeln!(&private_key_file, "{}", &private_key.as_hex())?;
 
     Ok(())
 }
