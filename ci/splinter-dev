@@ -56,6 +56,7 @@ RUN USER=root cargo new --lib libsplinter
 RUN USER=root cargo new --bin splinterd
 
 # Create empty Cargo projects for gameroom
+RUN USER=root cargo new --bin examples/gameroom/cli
 RUN USER=root cargo new --bin examples/gameroom/daemon
 RUN USER=root cargo new --bin examples/gameroom/database
 
@@ -78,6 +79,8 @@ COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
 COPY libsplinter/protos /build/libsplinter/protos
 COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
 
+COPY examples/gameroom/cli/Cargo.toml \
+     /build/examples/gameroom/cli/Cargo.toml
 COPY examples/gameroom/daemon/Cargo.toml \
      /build/examples/gameroom/daemon/Cargo.toml
 COPY examples/gameroom/database/Cargo.toml \
