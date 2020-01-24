@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[workspace]
+[package]
+name = "scabbard"
+version = "0.3.11"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
+description = """\
+    Splinter is a privacy-focused platform for distributed applications that \
+    provides a blockchain-inspired networking environment for communication \
+    and transactions between organizations.
+"""
 
-members = [
-    "cli",
-    "client",
-    "libsplinter",
-    "splinterd",
-    "examples/private_counter/cli",
-    "examples/private_counter/service",
-    "examples/private_xo",
-    "examples/gameroom/cli",
-    "examples/gameroom/database",
-    "examples/gameroom/daemon",
-    "services/health",
-    "services/scabbard",
-]
+[dependencies]
+
+[features]
+default = []
+
+stable = ["default"]
+
+experimental = []
