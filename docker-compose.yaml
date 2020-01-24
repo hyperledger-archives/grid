@@ -35,11 +35,18 @@ services:
         - SPLINTERD_ARGS=${SPLINTERD_ARGS}
     entrypoint: |
       bash -c "
+        until PGPASSWORD=splinter_test psql -h splinter-db -U splinter_admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        splinter database migrate -C postgres://splinter_admin:splinter_test@splinter-db:5432/splinter && \
         splinter cert generate --skip && \
         splinterd \
             -c ./configs/splinterd-node-0-docker.toml \
             --registry-file ./node_registries/nodes.yaml \
             --insecure \
+            --enable-biome \
+            --database postgres://splinter_admin:splinter_test@splinter-db:5432/splinter \
             $SPLINTERD_ARGS \
             -vv
       "
