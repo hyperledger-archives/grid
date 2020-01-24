@@ -22,6 +22,7 @@ experimental = [
     "health",
     "database",
     "database-migrate-biome-credentials",
+    "database-migrate-biome-key-management",
     "database-migrate-biome-notifications",
     "database-migrate-biome-user",
     "postgres",
@@ -36,6 +37,10 @@ database = ["splinter/database", "diesel", "postgres"]
 database-migrate-biome-user = ["splinter/biome-user", "database"]
 database-migrate-biome-credentials = [
     "splinter/biome-credentials",
+    "database-migrate-biome-user",
+]
+database-migrate-biome-key-management = [
+    "splinter/biome-key-management",
     "database-migrate-biome-user",
 ]
 database-migrate-biome-notifications = [

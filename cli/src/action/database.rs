@@ -19,6 +19,8 @@ use crate::error::CliError;
 use diesel::{connection::Connection as _, pg::PgConnection};
 #[cfg(feature = "database-migrate-biome-credentials")]
 use splinter::biome::credentials::database::run_migrations as run_biome_credentials_migrations;
+#[cfg(feature = "database-migrate-biome-key-management")]
+use splinter::biome::key_management::database::postgres::run_migrations as run_biome_key_management_migrations;
 #[cfg(feature = "database-migrate-biome-notifications")]
 use splinter::biome::notifications::database::run_migrations as run_biome_notifications_migrations;
 #[cfg(feature = "database-migrate-biome-user")]
@@ -51,6 +53,13 @@ impl Action for MigrateAction {
         run_biome_credentials_migrations(&connection).map_err(|err| {
             CliError::DatabaseError(format!(
                 "Unable to run Biome credentials migrations: {}",
+                err
+            ))
+        })?;
+        #[cfg(feature = "database-migrate-biome-key-management")]
+        run_biome_key_management_migrations(&connection).map_err(|err| {
+            CliError::DatabaseError(format!(
+                "Unable to run Biome key management migrations: {}",
                 err
             ))
         })?;
