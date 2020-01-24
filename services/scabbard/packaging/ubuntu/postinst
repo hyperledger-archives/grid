@@ -11,29 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-[package]
-name = "scabbard"
-version = "0.3.11"
-authors = ["Cargill Incorporated"]
-edition = "2018"
-license = "Apache-2.0"
-description = """\
-    Splinter is a privacy-focused platform for distributed applications that \
-    provides a blockchain-inspired networking environment for communication \
-    and transactions between organizations.
-"""
-
-[dependencies]
-
-[features]
-default = []
-
-stable = ["default"]
-
-experimental = []
-
-[package.metadata.deb]
-maintainer = "The Splinter Team"
-depends = "$auto"
-maintainer-scripts = "packaging/ubuntu"
