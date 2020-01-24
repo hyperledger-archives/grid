@@ -70,7 +70,7 @@ RUN USER=root cargo new --bin examples/private_xo
 # Create empty Cargo project for health service
 RUN USER=root cargo new --bin services/health
 
-# Copy over Cargo.toml files
+# Copy over splinter files
 COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY client/Cargo.toml /build/client/Cargo.toml
@@ -78,7 +78,9 @@ COPY libsplinter/build.rs /build/libsplinter/build.rs
 COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
 COPY libsplinter/protos /build/libsplinter/protos
 COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
+COPY services/health/Cargo.toml /build/services/health/Cargo.toml
 
+# Copy over example Cargo.toml files
 COPY examples/gameroom/cli/Cargo.toml \
      /build/examples/gameroom/cli/Cargo.toml
 COPY examples/gameroom/daemon/Cargo.toml \
@@ -90,8 +92,6 @@ COPY examples/private_counter/cli/Cargo.toml \
 COPY examples/private_counter/service/Cargo.toml \
      /build/examples/private_counter/service/Cargo.toml
 COPY examples/private_xo/Cargo.toml /build/examples/private_xo/Cargo.toml
-
-COPY services/health/Cargo.toml /build/services/health/Cargo.toml
 
 # Do release builds for each Cargo.toml
 RUN find . -name 'Cargo.toml' -exec \
