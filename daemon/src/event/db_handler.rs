@@ -69,8 +69,11 @@ impl EventHandler for DatabaseEventHandler {
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
 
         let commit = create_db_commit_from_commit_event(event, &conn)?;
-        let db_ops =
-            create_db_operations_from_state_changes(&event.state_changes, commit.commit_num)?;
+        let db_ops = create_db_operations_from_state_changes(
+            &event.state_changes,
+            commit.commit_num,
+            commit.service_id.as_ref(),
+        )?;
 
         trace!("The following operations will be performed: {:#?}", db_ops);
 
@@ -141,16 +144,18 @@ fn commit_event_height_to_commit_num(
 fn create_db_operations_from_state_changes(
     state_changes: &[StateChange],
     commit_num: i64,
+    service_id: Option<&String>,
 ) -> Result<Vec<DbInsertOperation>, EventError> {
     state_changes
         .iter()
-        .map(|state_change| state_change_to_db_operation(state_change, commit_num))
+        .map(|state_change| state_change_to_db_operation(state_change, commit_num, service_id))
         .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
 fn state_change_to_db_operation(
     state_change: &StateChange,
     commit_num: i64,
+    service_id: Option<&String>,
 ) -> Result<DbInsertOperation, EventError> {
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
@@ -173,7 +178,7 @@ fn state_change_to_db_operation(
                         )),
                         start_commit_num: commit_num,
                         end_commit_num: db::MAX_COMMIT_NUM,
-                        service_id: None,
+                        service_id: service_id.cloned(),
                     })
                     .collect::<Vec<NewAgent>>();
 
@@ -201,7 +206,7 @@ fn state_change_to_db_operation(
                             .collect::<Vec<JsonValue>>(),
                         start_commit_num: commit_num,
                         end_commit_num: db::MAX_COMMIT_NUM,
-                        service_id: None,
+                        service_id: service_id.cloned(),
                     })
                     .collect::<Vec<NewOrganization>>();
 
@@ -219,11 +224,12 @@ fn state_change_to_db_operation(
                             owner: state_schema.owner().to_string(),
                             start_commit_num: commit_num,
                             end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: None,
+                            service_id: service_id.cloned(),
                         };
 
                         let definitions = make_property_definitions(
                             commit_num,
+                            service_id,
                             state_schema.name(),
                             state_schema.properties(),
                         );
@@ -256,7 +262,7 @@ fn state_change_to_db_operation(
                             wrapped: *prop.wrapped(),
                             start_commit_num: commit_num,
                             end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: None,
+                            service_id: service_id.cloned(),
                         };
 
                         let reporters = prop
@@ -270,7 +276,7 @@ fn state_change_to_db_operation(
                                 reporter_index: *reporter.index() as i32,
                                 start_commit_num: commit_num,
                                 end_commit_num: db::MAX_COMMIT_NUM,
-                                service_id: None,
+                                service_id: service_id.cloned(),
                             })
                             .collect::<Vec<NewReporter>>();
 
@@ -333,7 +339,7 @@ fn state_change_to_db_operation(
                         terms: proposal.terms().to_string(),
                         start_commit_num: commit_num,
                         end_commit_num: db::MAX_COMMIT_NUM,
-                        service_id: None,
+                        service_id: service_id.cloned(),
                     })
                     .collect::<Vec<NewProposal>>();
 
@@ -363,7 +369,7 @@ fn state_change_to_db_operation(
                             .collect(),
                         start_commit_num: commit_num,
                         end_commit_num: db::MAX_COMMIT_NUM,
-                        service_id: None,
+                        service_id: service_id.cloned(),
                     })
                     .collect::<Vec<NewRecord>>();
 
@@ -377,7 +383,7 @@ fn state_change_to_db_operation(
                             timestamp: *agent.timestamp() as i64,
                             start_commit_num: commit_num,
                             end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: None,
+                            service_id: service_id.cloned(),
                         })
                     })
                     .collect::<Vec<NewAssociatedAgent>>();
@@ -396,7 +402,7 @@ fn state_change_to_db_operation(
                                     timestamp: *agent.timestamp() as i64,
                                     start_commit_num: commit_num,
                                     end_commit_num: db::MAX_COMMIT_NUM,
-                                    service_id: None,
+                                    service_id: service_id.cloned(),
                                 })
                         })
                         .collect::<Vec<NewAssociatedAgent>>(),
@@ -417,12 +423,13 @@ fn state_change_to_db_operation(
                             owner: product.owner().to_string(),
                             start_commit_num: commit_num,
                             end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: None,
+                            service_id: service_id.cloned(),
                         };
                         acc.0.push(new_product);
 
                         let mut properties = make_product_property_values(
                             commit_num,
+                            service_id,
                             product.product_id(),
                             &key,
                             product.properties(),
@@ -590,6 +597,7 @@ fn make_reported_values(
 
 fn make_property_definitions(
     start_commit_num: i64,
+    service_id: Option<&String>,
     schema_name: &str,
     definitions: &[PropertyDefinition],
 ) -> Vec<NewGridPropertyDefinition> {
@@ -611,12 +619,13 @@ fn make_property_definitions(
                 .collect(),
             start_commit_num,
             end_commit_num: db::MAX_COMMIT_NUM,
-            service_id: None,
+            service_id: service_id.cloned(),
         });
 
         if !def.struct_properties().is_empty() {
             properties.append(&mut make_property_definitions(
                 start_commit_num,
+                service_id,
                 schema_name,
                 def.struct_properties(),
             ));
@@ -628,6 +637,7 @@ fn make_property_definitions(
 
 fn make_product_property_values(
     start_commit_num: i64,
+    service_id: Option<&String>,
     product_id: &str,
     product_address: &str,
     values: &[PropertyValue],
@@ -657,12 +667,13 @@ fn make_product_property_values(
             )),
             start_commit_num,
             end_commit_num: db::MAX_COMMIT_NUM,
-            service_id: None,
+            service_id: service_id.cloned(),
         });
 
         if !val.struct_values().is_empty() {
             properties.append(&mut make_product_property_values(
                 start_commit_num,
+                service_id,
                 product_id,
                 product_address,
                 val.struct_values(),
