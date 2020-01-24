@@ -1,5 +1,25 @@
 # Release Notes
 
+## Changes in Splinter 0.3.10
+
+### libsplinter:
+- Fix the wait for batch status in the ScabbardClient by adding the base URL if
+  one is not provided.
+- Add comments to ScabbardClient tests.
+
+### splinterd:
+- Add the CLI flag --enable-biome to the splinterd CLI.  The addition of this
+  flag relaxes the requirement that the database-url option must be set.
+  Currently, the database-url option is only required for the Biome subsystem.
+
+### Gameroom:
+- Add migrations for the Gameroom database to support upgrading an existing
+  gameroom daemon.
+
+### Gameroom CLI:
+- Add gameroom CLI, which will initially be used to migrate the gameroom
+  database.
+
 ## Changes in Splinter 0.3.9
 
 ### Highlights:
