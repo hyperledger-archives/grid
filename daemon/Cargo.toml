@@ -49,11 +49,13 @@ uuid = { version = "0.6", features = ["v4"] }
 url = "2.1"
 base64 = "0.10"
 byteorder = "1"
+sabre-sdk = { version = "0.4", optional = true }
+rust-crypto = { version = "0.2", optional = true }
 
 [dependencies.splinter]
 version = "0.3"
 optional = true
-features = [ "events" ]
+features = [ "events", "scabbard-client" ]
 
 [features]
 default = ["sawtooth-support"]
@@ -63,7 +65,7 @@ stable = ["sawtooth-support"]
 experimental = ["splinter-support"]
 
 sawtooth-support = []
-splinter-support = ["splinter", "reqwest"]
+splinter-support = ["splinter", "reqwest", "sabre-sdk", "rust-crypto"]
 test-api = []
 
 [package.metadata.deb]

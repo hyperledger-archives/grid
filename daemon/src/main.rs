@@ -56,7 +56,7 @@ use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::Sawto
 #[cfg(feature = "splinter-support")]
 use crate::splinter::{
     app_auth_handler, batch_submitter::SplinterBatchSubmitter,
-    event::ScabbardEventConnectionFactory,
+    event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -73,7 +73,7 @@ fn run() -> Result<(), DaemonError> {
         (@arg database_url: --("database-url") +takes_value
          "specifies the database URL to connect to.")
         (@arg bind: -b --bind +takes_value "connection endpoint for rest API")
-    )
+        (@arg admin_key_dir: --("admin-key-dir") +takes_value "directory containing the Scabbard admin key files"))
     .get_matches();
 
     let log_level = match matches.occurrences_of("verbose") {
@@ -181,6 +181,9 @@ fn run_sawtooth(config: GridConfig, _connection_pool: ConnectionPool) -> Result<
 fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
+    let scabbard_admin_key = load_scabbard_admin_key(&config.admin_key_dir())
+        .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
@@ -189,6 +192,7 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         scabbard_event_connection_factory,
         connection_pool.clone(),
         reactor.igniter(),
+        scabbard_admin_key,
     )?;
 
     let batch_submitter = Box::new(SplinterBatchSubmitter::new(config.endpoint().url()));
