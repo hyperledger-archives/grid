@@ -61,7 +61,7 @@ impl DatabaseEventHandler {
 
 impl EventHandler for DatabaseEventHandler {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
-        debug!("Received commit event: ({}, {:?})", event.id, event.height);
+        debug!("Received commit event: {}", event);
 
         let conn = self
             .connection_pool
@@ -481,25 +481,39 @@ enum DbInsertOperation {
 impl DbInsertOperation {
     fn execute(&self, conn: &PgConnection) -> QueryResult<()> {
         match *self {
-            DbInsertOperation::Agents(ref agents) => db::insert_agents(conn, agents),
-            DbInsertOperation::Organizations(ref orgs) => db::insert_organizations(conn, orgs),
+            DbInsertOperation::Agents(ref agents) => {
+                debug!("Inserting {} agents", agents.len());
+                db::insert_agents(conn, agents)
+            }
+            DbInsertOperation::Organizations(ref orgs) => {
+                debug!("Inserting {} organizations", orgs.len());
+                db::insert_organizations(conn, orgs)
+            }
             DbInsertOperation::GridSchemas(ref schemas, ref defs) => {
+                debug!("Inserting {} schemas", schemas.len());
                 db::insert_grid_schemas(conn, schemas)?;
                 db::insert_grid_property_definitions(conn, defs)
             }
             DbInsertOperation::Properties(ref properties, ref reporters) => {
+                debug!("Inserting {} properties", properties.len());
                 db::insert_properties(conn, properties)?;
                 db::insert_reporters(conn, reporters)
             }
             DbInsertOperation::ReportedValues(ref reported_values) => {
+                debug!("Inserting {} reported values", reported_values.len());
                 db::insert_reported_values(conn, reported_values)
             }
-            DbInsertOperation::Proposals(ref proposals) => db::insert_proposals(conn, proposals),
+            DbInsertOperation::Proposals(ref proposals) => {
+                debug!("Inserting {} proposals", proposals.len());
+                db::insert_proposals(conn, proposals)
+            }
             DbInsertOperation::Records(ref records, ref associated_agents) => {
+                debug!("Inserting {} records", records.len());
                 db::insert_records(conn, records)?;
                 db::insert_associated_agents(conn, associated_agents)
             }
             DbInsertOperation::Products(ref products, ref properties) => {
+                debug!("Inserting {} products", products.len());
                 db::insert_products(conn, products)?;
                 db::insert_product_property_values(conn, properties)
             }

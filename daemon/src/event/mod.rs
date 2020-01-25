@@ -51,6 +51,21 @@ pub struct CommitEvent {
     pub state_changes: Vec<StateChange>,
 }
 
+impl std::fmt::Display for CommitEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("(")?;
+        f.write_str(&self.id)?;
+        f.write_str(", ")?;
+        f.write_str(&self.service_id)?;
+        f.write_str(", ")?;
+        if self.height.is_some() {
+            write!(f, "height: {}, ", self.height.as_ref().unwrap())?;
+        }
+
+        write!(f, "#changes: {})", self.state_changes.len())
+    }
+}
+
 /// A change that has been applied to state, represented in terms of a key/value pair
 #[derive(Eq, PartialEq)]
 pub enum StateChange {
