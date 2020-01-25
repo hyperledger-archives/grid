@@ -319,7 +319,7 @@ circuit is created.
 
    ```
    root@gridd-beta:/# grid --url http://gridd-beta:8080 \
-   --service-id my-grid-circuit::grid-scabbard-a \
+   --service-id my-grid-circuit::grid-scabbard-b \
    product list
    ```
 
