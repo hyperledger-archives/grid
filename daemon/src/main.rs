@@ -188,7 +188,7 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
     app_auth_handler::run(
-        config.endpoint().url().into(),
+        config.endpoint().url(),
         scabbard_event_connection_factory,
         connection_pool.clone(),
         reactor.igniter(),

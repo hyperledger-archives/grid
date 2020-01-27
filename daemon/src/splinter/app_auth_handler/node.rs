@@ -34,7 +34,6 @@ impl fmt::Display for GetNodeError {
 }
 
 pub fn get_node_id(splinterd_url: String) -> Result<String, GetNodeError> {
-    let splinterd_url = splinterd_url.to_owned();
     let uri = format!("{}/status", splinterd_url);
 
     let body: Value = reqwest::blocking::get(&uri)
@@ -44,11 +43,11 @@ pub fn get_node_id(splinterd_url: String) -> Result<String, GetNodeError> {
 
     let node_id_val = body
         .get("node_id")
-        .ok_or_else(|| GetNodeError(format!("Node status response did not contain a node ID.")))?;
+        .ok_or_else(|| GetNodeError("Node status response did not contain a node ID".into()))?;
 
     let node_id = node_id_val
         .as_str()
-        .ok_or_else(|| GetNodeError(format!("Node status returned an invalid ID.")))?;
+        .ok_or_else(|| GetNodeError("Node status returned an invalid ID".into()))?;
 
     Ok(node_id.to_string())
 }
