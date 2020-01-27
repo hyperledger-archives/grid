@@ -222,7 +222,7 @@ circuit is created.
     been created. The circuit information should be the same on both nodes.
 
     ```
-    root@splinterd-beta:/# splinter circuit list --url http://splinterd-alpha:8085
+    root@splinterd-beta:/# splinter circuit list --url http://splinterd-beta:8085
     CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
     -----------------------------------------------------------------------------------
     my-grid-circuit                                            | grid
