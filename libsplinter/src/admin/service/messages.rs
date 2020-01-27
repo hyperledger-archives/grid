@@ -369,6 +369,8 @@ impl CircuitProposalVote {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct VoteRecord {
+    #[serde(serialize_with = "as_hex")]
+    #[serde(deserialize_with = "deserialize_hex")]
     pub public_key: Vec<u8>,
     pub vote: Vote,
     pub voter_node_id: String,
