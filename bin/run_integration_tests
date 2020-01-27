@@ -32,5 +32,21 @@ function clean_up {
     docker-compose  down
 }
 
+clean_up
+
+cd $top_dir/integration
+
+docker-compose up --abort-on-container-exit --exit-code-from gridd
+test_exit=$?
+
+if [[ $test_exit != 0 ]]; then
+    exitcode=1
+fi
+
+function clean_up {
+    docker-compose  down
+}
+
 trap clean_up EXIT
+
 exit $exitcode
