@@ -77,8 +77,8 @@ fn run() -> Result<(), CliError> {
                 (@arg inactive: --inactive conflicts_with[active] required_unless[active]
                     "Set agent as inactive")
                 (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
-                (@arg metadata: --metadata +takes_value +multiple
-                    "Comma-separated key value pairs stored in metadata")
+                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
+                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
             )
             (@subcommand update =>
                 (about: "Update an agent")
@@ -89,8 +89,8 @@ fn run() -> Result<(), CliError> {
                 (@arg inactive: --inactive conflicts_with[active] required_unless[active]
                     "Set agent as inactive")
                 (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
-                (@arg metadata: --metadata +takes_value +multiple
-                    "Comma-separated key value pairs stored in metadata")
+                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
+                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
             )
         )
         (@subcommand organization =>
@@ -101,16 +101,16 @@ fn run() -> Result<(), CliError> {
                 (@arg org_id: +required +takes_value "Unique ID for organization")
                 (@arg name: +required +takes_value "Name of the organization")
                 (@arg address: +takes_value "Physical address for organization")
-                (@arg metadata: --metadata +takes_value +multiple
-                    "Comma-separated key value pairs stored in metadata")
+                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
+                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
             )
             (@subcommand update =>
                 (about: "Update an organization")
                 (@arg org_id: +required +takes_value "Unique ID for organization")
                 (@arg name: +required +takes_value "Name of the organization")
                 (@arg address: +takes_value "Physical address for organization")
-                (@arg metadata: --metadata +takes_value +multiple
-                    "Comma-separated key value pairs stored in metadata")
+                (@arg metadata: --metadata +takes_value +multiple +use_delimiter
+                    "Key-value pairs (format: <key>=<value>) in a comma-separated list")
             )
         )
         (@subcommand schema =>
