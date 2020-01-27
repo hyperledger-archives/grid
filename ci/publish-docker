@@ -45,8 +45,15 @@ then
     ISOLATION_ID=$REPO_VERSION
 else
     ISOLATION_ID=$1
+    if [ $1 == "experimental" ];
+    then
+        export CARGO_ARGS="-- --features experimental"
+    else
+        pass
+    fi
 fi
 echo "Publishing master images for an untagged build"
 echo "ISOLATION_ID is: $ISOLATION_ID"
+
 docker-compose -f docker-compose-installed.yaml build
 docker-compose -f docker-compose-installed.yaml push
