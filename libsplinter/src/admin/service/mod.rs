@@ -27,7 +27,7 @@ use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
 
 use crate::circuit::SplinterState;
-use crate::consensus::{Proposal, ProposalUpdate};
+use crate::consensus::Proposal;
 use crate::hex::to_hex;
 use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
@@ -155,7 +155,7 @@ impl AdminService {
             .auth_inquisitor()
             .register_callback(Box::new(
                 move |peer_id: &str, state: PeerAuthorizationState| {
-                    auth_callback_shared
+                    let result = auth_callback_shared
                         .lock()
                         .map_err(|_| {
                             AuthorizationCallbackError(
@@ -163,6 +163,9 @@ impl AdminService {
                             )
                         })?
                         .on_authorization_change(peer_id, state);
+                    if let Err(err) = result {
+                        error!("{}", err);
+                    }
 
                     Ok(())
                 },
@@ -307,24 +310,15 @@ impl Service for AdminService {
                     .into();
                 proposal.summary = expected_hash;
                 proposal.consensus_data = required_verifiers.to_vec();
-
                 let mut admin_service_shared = self.admin_service_shared.lock().map_err(|_| {
                     ServiceError::PoisonedLock("the admin shared lock was poisoned".into())
                 })?;
 
-                admin_service_shared.add_pending_consensus_proposal(
-                    proposal.id.clone(),
-                    (proposal.clone(), circuit_payload.clone()),
-                );
-
-                self.consensus
-                    .as_ref()
-                    .ok_or_else(|| ServiceError::NotStarted)?
-                    .send_update(ProposalUpdate::ProposalReceived(
-                        proposal,
-                        message_context.sender.as_bytes().into(),
-                    ))
-                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+                admin_service_shared.handle_proposed_circuit(
+                    proposal,
+                    circuit_payload.clone(),
+                    message_context.sender.to_string(),
+                )
             }
             AdminMessage_Type::MEMBER_READY => {
                 let member_ready = admin_message.get_member_ready();
@@ -558,7 +552,7 @@ mod tests {
             .admin_service_shared
             .lock()
             .unwrap()
-            .propose_circuit(payload)
+            .propose_circuit(payload, "test".to_string())
             .expect("The proposal was not handled correctly");
 
         // wait up to 1 second for the proposed circuit message
