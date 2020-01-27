@@ -15,6 +15,7 @@
 #[cfg(feature = "config-builder")]
 mod builder;
 mod error;
+mod partial;
 #[cfg(feature = "config-toml")]
 mod toml;
 
@@ -23,6 +24,7 @@ pub use crate::config::toml::TomlConfig;
 #[cfg(feature = "config-builder")]
 pub use builder::ConfigBuilder;
 pub use error::ConfigError;
+pub use partial::PartialConfig;
 
 #[cfg(not(feature = "config-toml"))]
 use std::fs::File;
