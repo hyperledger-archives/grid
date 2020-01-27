@@ -31,9 +31,9 @@ use log::Record;
 
 #[cfg(feature = "generate-certs")]
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
-use crate::config::{Config, ConfigError};
+use crate::config::{ConfigError, PartialConfig};
 #[cfg(feature = "config-toml")]
-use crate::config::{ConfigBuilder, TomlConfig};
+use crate::config::{PartialConfigBuilder, TomlConfig};
 use crate::daemon::{SplinterDaemonBuilder, StartError};
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
@@ -73,12 +73,12 @@ const HEARTBEAT_DEFAULT: u64 = 30;
 const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
 
 #[cfg(not(feature = "config-toml"))]
-fn load_toml_config(config_file_path: &str) -> Config {
+fn load_toml_config(config_file_path: &str) -> PartialConfig {
     match File::open(config_file_path) {
-        Ok(f) => Config::from_file(f),
+        Ok(f) => config::from_file(f),
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
             debug!("Configuration file not found: {}", config_file_path);
-            Ok(Config::default())
+            Ok(PartialConfig::default())
         }
         Err(err) => Err(ConfigError::from(err)),
     }
@@ -87,32 +87,28 @@ fn load_toml_config(config_file_path: &str) -> Config {
             "Unable to load configuration file {}: {}",
             config_file_path, err
         );
-        Config::default()
+        PartialConfig::default()
     })
 }
 
 #[cfg(feature = "config-toml")]
-fn load_toml_config(config_file_path: &str) -> Config {
-    let mut config_builder = ConfigBuilder::new();
-
+fn load_toml_config(config_file_path: &str) -> PartialConfig {
     match fs::read_to_string(config_file_path) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            debug!("Configuration file not found: {}", config_file_path)
+            debug!("Configuration file not found: {}", config_file_path);
+            PartialConfig::default()
         }
         result => match result.map_err(ConfigError::from).and_then(TomlConfig::new) {
-            Ok(toml_config) => {
-                config_builder = toml_config.apply_to_builder(config_builder);
-            }
+            Ok(toml_config) => toml_config.build(),
             Err(err) => {
                 warn!(
                     "Unable to load configuration file {}: {}",
                     config_file_path, err
                 );
+                PartialConfig::default()
             }
         },
     }
-
-    config_builder.build()
 }
 
 // format for logs
@@ -437,7 +433,7 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 fn get_transport(
     transport_type: &str,
     matches: &clap::ArgMatches,
-    config: &Config,
+    config: &PartialConfig,
 ) -> Result<(Box<dyn Transport + Send>, String), GetTransportError> {
     match transport_type {
         "tls" => {

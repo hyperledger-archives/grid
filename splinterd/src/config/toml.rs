@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
+#[cfg(not(feature = "config-toml"))]
+use std::fs::File;
+#[cfg(not(feature = "config-toml"))]
+use std::io::Read;
 
-use crate::config::ConfigBuilder;
-use crate::config::ConfigError;
+#[cfg(feature = "config-toml")]
+use crate::config::PartialConfigBuilder;
+use crate::config::{ConfigError, PartialConfig};
 
+#[cfg(feature = "config-toml")]
 use serde_derive::Deserialize;
 
 use toml;
 
+#[cfg(feature = "config-toml")]
 #[derive(Deserialize, Default, Debug)]
 pub struct TomlConfig {
     storage: Option<String>,
@@ -44,143 +50,49 @@ pub struct TomlConfig {
     admin_service_coordinator_timeout: Option<u64>,
 }
 
+#[cfg(feature = "config-toml")]
 impl TomlConfig {
     pub fn new(toml: String) -> Result<TomlConfig, ConfigError> {
         toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)
     }
+}
 
-    pub fn take_storage(&mut self) -> Option<String> {
-        self.storage.take()
-    }
+#[cfg(feature = "config-toml")]
+impl PartialConfigBuilder for TomlConfig {
+    fn build(self) -> PartialConfig {
+        let partial_config = PartialConfig::default()
+            .with_storage(self.storage)
+            .with_transport(self.transport)
+            .with_cert_dir(self.cert_dir)
+            .with_ca_certs(self.ca_certs)
+            .with_client_cert(self.client_cert)
+            .with_client_key(self.client_key)
+            .with_server_cert(self.server_cert)
+            .with_server_key(self.server_key)
+            .with_service_endpoint(self.service_endpoint)
+            .with_network_endpoint(self.network_endpoint)
+            .with_peers(self.peers)
+            .with_node_id(self.node_id)
+            .with_bind(self.bind)
+            .with_registry_backend(self.registry_backend)
+            .with_registry_file(self.registry_file)
+            .with_heartbeat_interval(self.heartbeat_interval)
+            .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout);
 
-    pub fn take_transport(&mut self) -> Option<String> {
-        self.transport.take()
-    }
+        #[cfg(not(feature = "database"))]
+        return partial_config;
 
-    pub fn take_cert_dir(&mut self) -> Option<String> {
-        self.cert_dir.take()
-    }
-
-    pub fn take_ca_certs(&mut self) -> Option<String> {
-        self.ca_certs.take()
-    }
-
-    pub fn take_client_cert(&mut self) -> Option<String> {
-        self.client_cert.take()
-    }
-
-    pub fn take_client_key(&mut self) -> Option<String> {
-        self.client_key.take()
-    }
-
-    pub fn take_server_cert(&mut self) -> Option<String> {
-        self.server_cert.take()
-    }
-
-    pub fn take_server_key(&mut self) -> Option<String> {
-        self.server_key.take()
-    }
-
-    pub fn take_service_endpoint(&mut self) -> Option<String> {
-        self.service_endpoint.take()
-    }
-
-    pub fn take_network_endpoint(&mut self) -> Option<String> {
-        self.network_endpoint.take()
-    }
-
-    pub fn take_peers(&mut self) -> Option<Vec<String>> {
-        self.peers.take()
-    }
-
-    pub fn take_node_id(&mut self) -> Option<String> {
-        self.node_id.take()
-    }
-
-    pub fn take_bind(&mut self) -> Option<String> {
-        self.bind.take()
-    }
-
-    #[cfg(feature = "database")]
-    pub fn take_database(&mut self) -> Option<String> {
-        self.database.take()
-    }
-
-    pub fn take_registry_backend(&mut self) -> Option<String> {
-        self.registry_backend.take()
-    }
-
-    pub fn take_registry_file(&mut self) -> Option<String> {
-        self.registry_file.take()
-    }
-
-    pub fn take_heartbeat_interval(&mut self) -> Option<u64> {
-        self.heartbeat_interval.take()
-    }
-
-    pub fn take_admin_service_coordinator_timeout(&mut self) -> Option<u64> {
-        self.admin_service_coordinator_timeout.take()
-    }
-
-    pub fn apply_to_builder(mut self, mut builder: ConfigBuilder) -> ConfigBuilder {
-        if let Some(x) = self.take_storage() {
-            builder = builder.with_storage(x);
-        }
-        if let Some(x) = self.take_transport() {
-            builder = builder.with_transport(x);
-        }
-        if let Some(x) = self.take_cert_dir() {
-            builder = builder.with_cert_dir(x);
-        }
-        if let Some(x) = self.take_ca_certs() {
-            builder = builder.with_ca_certs(x);
-        }
-        if let Some(x) = self.take_client_cert() {
-            builder = builder.with_client_cert(x);
-        }
-        if let Some(x) = self.take_client_key() {
-            builder = builder.with_client_key(x);
-        }
-        if let Some(x) = self.take_server_cert() {
-            builder = builder.with_server_cert(x);
-        }
-        if let Some(x) = self.take_server_key() {
-            builder = builder.with_server_key(x);
-        }
-        if let Some(x) = self.take_service_endpoint() {
-            builder = builder.with_service_endpoint(x);
-        }
-        if let Some(x) = self.take_network_endpoint() {
-            builder = builder.with_network_endpoint(x);
-        }
-        if let Some(x) = self.take_peers() {
-            builder = builder.with_peers(x);
-        }
-        if let Some(x) = self.take_node_id() {
-            builder = builder.with_node_id(x);
-        }
-        if let Some(x) = self.take_bind() {
-            builder = builder.with_bind(x);
-        }
         #[cfg(feature = "database")]
-        {
-            if let Some(x) = self.take_database() {
-                builder = builder.with_database(x);
-            }
-        }
-        if let Some(x) = self.take_registry_backend() {
-            builder = builder.with_registry_backend(x);
-        }
-        if let Some(x) = self.take_registry_file() {
-            builder = builder.with_registry_file(x);
-        }
-        if let Some(x) = self.take_heartbeat_interval() {
-            builder = builder.with_heartbeat_interval(x);
-        }
-        if let Some(x) = self.take_admin_service_coordinator_timeout() {
-            builder = builder.with_admin_service_coordinator_timeout(Duration::from_millis(x));
-        }
-
-        builder
+        return partial_config.with_database(self.database);
     }
+}
+
+/// Creates a new PartialConfig object from a toml file. Available to use when the `configtoml`
+/// feature flag is not in use.
+#[cfg(not(feature = "config-toml"))]
+pub fn from_file(mut f: File) -> Result<PartialConfig, ConfigError> {
+    let mut toml = String::new();
+    f.read_to_string(&mut toml)?;
+
+    toml::from_str::<PartialConfig>(&toml).map_err(ConfigError::from)
 }

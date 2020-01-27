@@ -16,9 +16,10 @@
 mod builder;
 mod error;
 mod partial;
-#[cfg(feature = "config-toml")]
 mod toml;
 
+#[cfg(not(feature = "config-toml"))]
+pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
 #[cfg(feature = "config-builder")]
@@ -26,16 +27,7 @@ pub use builder::{ConfigBuilder, PartialConfigBuilder};
 pub use error::ConfigError;
 pub use partial::PartialConfig;
 
-#[cfg(not(feature = "config-toml"))]
-use std::fs::File;
-#[cfg(not(feature = "config-toml"))]
-use std::io::Read;
 use std::time::Duration;
-
-#[cfg(not(feature = "config-toml"))]
-use serde_derive::Deserialize;
-#[cfg(not(feature = "config-toml"))]
-use toml;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct Config {
@@ -61,14 +53,6 @@ pub struct Config {
 }
 
 impl Config {
-    #[cfg(not(feature = "config-toml"))]
-    pub fn from_file(mut f: File) -> Result<Config, ConfigError> {
-        let mut toml = String::new();
-        f.read_to_string(&mut toml)?;
-
-        toml::from_str::<Config>(&toml).map_err(ConfigError::from)
-    }
-
     pub fn storage(&self) -> Option<String> {
         self.storage.clone()
     }
