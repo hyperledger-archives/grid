@@ -38,6 +38,10 @@ const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
 
 const ALL_GRID_NAMESPACES: &[&str] = &[PIKE_NAMESPACE, GRID_NAMESPACE, TRACK_AND_TRACE_NAMESPACE];
 
+const SABRE_NAMESPACE: &str = "00ec";
+
+const IGNORED_NAMESPACES: &[&str] = &[SABRE_NAMESPACE];
+
 /// A notification that some source has committed a set of changes to state
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from

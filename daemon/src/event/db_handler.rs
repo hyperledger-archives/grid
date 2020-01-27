@@ -45,8 +45,9 @@ use crate::database::{
 };
 
 use super::{
-    CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA, PIKE_AGENT,
-    PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL, TRACK_AND_TRACE_RECORD,
+    CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA,
+    IGNORED_NAMESPACES, PIKE_AGENT, PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
+    TRACK_AND_TRACE_RECORD,
 };
 
 pub struct DatabaseEventHandler {
@@ -148,7 +149,9 @@ fn create_db_operations_from_state_changes(
 ) -> Result<Vec<DbInsertOperation>, EventError> {
     state_changes
         .iter()
-        .map(|state_change| state_change_to_db_operation(state_change, commit_num, service_id))
+        .filter_map(|state_change| {
+            state_change_to_db_operation(state_change, commit_num, service_id).transpose()
+        })
         .collect::<Result<Vec<DbInsertOperation>, EventError>>()
 }
 
@@ -156,7 +159,7 @@ fn state_change_to_db_operation(
     state_change: &StateChange,
     commit_num: i64,
     service_id: Option<&String>,
-) -> Result<DbInsertOperation, EventError> {
+) -> Result<Option<DbInsertOperation>, EventError> {
     match state_change {
         StateChange::Set { key, value } => match &key[0..8] {
             PIKE_AGENT => {
@@ -182,7 +185,7 @@ fn state_change_to_db_operation(
                     })
                     .collect::<Vec<NewAgent>>();
 
-                Ok(DbInsertOperation::Agents(agents))
+                Ok(Some(DbInsertOperation::Agents(agents)))
             }
             PIKE_ORG => {
                 let orgs = OrganizationList::from_bytes(&value)
@@ -210,7 +213,7 @@ fn state_change_to_db_operation(
                     })
                     .collect::<Vec<NewOrganization>>();
 
-                Ok(DbInsertOperation::Organizations(orgs))
+                Ok(Some(DbInsertOperation::Organizations(orgs)))
             }
             GRID_SCHEMA => {
                 let schema_defs = SchemaList::from_bytes(&value)
@@ -246,7 +249,7 @@ fn state_change_to_db_operation(
 
                 let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
 
-                Ok(DbInsertOperation::GridSchemas(schemas, definitions))
+                Ok(Some(DbInsertOperation::GridSchemas(schemas, definitions)))
             }
             TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
                 let properties = PropertyList::from_bytes(&value)
@@ -292,7 +295,7 @@ fn state_change_to_db_operation(
 
                 let properties = properties.into_iter().map(|(s, _)| s).collect();
 
-                Ok(DbInsertOperation::Properties(properties, reporters))
+                Ok(Some(DbInsertOperation::Properties(properties, reporters)))
             }
             TRACK_AND_TRACE_PROPERTY => {
                 let property_pages = PropertyPageList::from_bytes(&value)
@@ -321,7 +324,7 @@ fn state_change_to_db_operation(
                     )?;
                 }
 
-                Ok(DbInsertOperation::ReportedValues(reported_values))
+                Ok(Some(DbInsertOperation::ReportedValues(reported_values)))
             }
             TRACK_AND_TRACE_PROPOSAL => {
                 let proposals = ProposalList::from_bytes(&value)
@@ -343,7 +346,7 @@ fn state_change_to_db_operation(
                     })
                     .collect::<Vec<NewProposal>>();
 
-                Ok(DbInsertOperation::Proposals(proposals))
+                Ok(Some(DbInsertOperation::Proposals(proposals)))
             }
             TRACK_AND_TRACE_RECORD => {
                 let record_list = RecordList::from_bytes(&value)
@@ -408,7 +411,7 @@ fn state_change_to_db_operation(
                         .collect::<Vec<NewAssociatedAgent>>(),
                 );
 
-                Ok(DbInsertOperation::Records(records, associated_agents))
+                Ok(Some(DbInsertOperation::Records(records, associated_agents)))
             }
             GRID_PRODUCT => {
                 let product_tuple = ProductList::from_bytes(&value)
@@ -439,22 +442,27 @@ fn state_change_to_db_operation(
                         acc
                     });
 
-                Ok(DbInsertOperation::Products(
+                Ok(Some(DbInsertOperation::Products(
                     product_tuple.0,
                     product_tuple.1,
-                ))
+                )))
             }
-            _ => Err(EventError(format!(
-                "could not handle state change; unknown key: {}",
-                key
-            ))),
+            _ => {
+                let ignore_state_change = IGNORED_NAMESPACES
+                    .iter()
+                    .any(|namespace| key.starts_with(namespace));
+                if !ignore_state_change {
+                    debug!("received state change for unknown address: {}", key);
+                }
+                Ok(None)
+            }
         },
         StateChange::Delete { key } => {
             if &key[0..8] == GRID_PRODUCT {
-                Ok(DbInsertOperation::RemoveProduct(
+                Ok(Some(DbInsertOperation::RemoveProduct(
                     key.to_string(),
                     commit_num,
-                ))
+                )))
             } else {
                 Err(EventError(format!(
                     "could not handle state change; unexpected delete of key {}",
