@@ -277,7 +277,7 @@ circuit is created.
    --role admin
    ```
 
-5. Use `cat` to create a product definition file, `prodcut.yaml`, using the
+5. Use `cat` to create a product definition file, `product.yaml`, using the
    following contents.
 
    ```
