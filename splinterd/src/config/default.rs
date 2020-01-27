@@ -118,3 +118,79 @@ impl PartialConfigBuilder for DefaultConfig {
         return partial_config.with_database(self.database);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::time::Duration;
+
+    /// Asserts config values based on the default values.
+    fn assert_default_values(config: PartialConfig) {
+        assert_eq!(config.storage(), Some(String::from("yaml")));
+        assert_eq!(config.transport(), Some(String::from("raw")));
+        assert_eq!(config.cert_dir(), Some(String::from(DEFAULT_CERT_DIR)));
+        assert_eq!(
+            config.ca_certs(),
+            Some(format!("{}{}", DEFAULT_CERT_DIR, CA_PEM))
+        );
+        assert_eq!(
+            config.client_cert(),
+            Some(format!("{}{}", DEFAULT_CERT_DIR, CLIENT_CERT))
+        );
+        assert_eq!(
+            config.client_key(),
+            Some(format!("{}{}", DEFAULT_CERT_DIR, CLIENT_KEY))
+        );
+        assert_eq!(
+            config.server_cert(),
+            Some(format!("{}{}", DEFAULT_CERT_DIR, SERVER_CERT))
+        );
+        assert_eq!(
+            config.server_key(),
+            Some(format!("{}{}", DEFAULT_CERT_DIR, SERVER_KEY))
+        );
+        assert_eq!(
+            config.service_endpoint(),
+            Some(String::from("127.0.0.1:8043"))
+        );
+        assert_eq!(
+            config.network_endpoint(),
+            Some(String::from("127.0.0.1:8044"))
+        );
+        assert_eq!(config.peers(), Some(vec![]));
+        assert_eq!(config.node_id(), None);
+        assert_eq!(config.bind(), Some(String::from("127.0.0.1:8080")));
+        #[cfg(feature = "database")]
+        assert_eq!(config.database(), Some(String::from("127.0.0.1:5432")));
+        assert_eq!(config.registry_backend(), None);
+        assert_eq!(config.registry_file(), None);
+        assert_eq!(config.heartbeat_interval(), Some(HEARTBEAT_DEFAULT));
+        assert_eq!(
+            config.admin_service_coordinator_timeout(),
+            Some(Duration::from_millis(
+                DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS
+            ))
+        );
+        assert_eq!(config.state_dir(), Some(String::from(DEFAULT_STATE_DIR)));
+    }
+
+    #[test]
+    /// This test verifies that a PartialConfig object is accurately constructed by using the `build`
+    /// method implemented by the DefaultConfig module. The following steps are performed:
+    ///
+    /// 1. An empty DefaultConfig object is constructed, which implements the PartialConfigBuilder
+    ///    trait.
+    /// 2. A PartialConfig object is created by calling the `build` method of the DefaultConfig object.
+    ///
+    /// This test then verifies the PartialConfig object built from the DefaulConfig object has
+    /// the correct values by asserting each expected value.
+    fn test_default_builder() {
+        // Create a new DefaultConfig object, which implements the PartialConfigBuilder trait.
+        let default_config = DefaultConfig::new();
+        // Create a PartialConfig object using the `build` method.
+        let partial_config = default_config.build();
+        // Compare the generated PartialConfig object against the expected values.
+        assert_default_values(partial_config);
+    }
+}
