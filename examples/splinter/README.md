@@ -222,7 +222,7 @@ circuit is created.
     been created. The circuit information should be the same on both nodes.
 
     ```
-    root@splinterd-beta:/# splinter circuit list --url http://splinterd-alpha:8085
+    root@splinterd-beta:/# splinter circuit list --url http://splinterd-beta:8085
     CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
     -----------------------------------------------------------------------------------
     my-grid-circuit                                            | grid
@@ -254,12 +254,7 @@ circuit is created.
    This command generates two files, `alpha-agent.priv` and `alpha-agent.pub`,
    in the `~/.grid/keys/` directory.
 
-3. Get the alpha-agent public key. You will need this key when creating a new
-   Grid product in step 5.
-
-   `root@gridd-alpha:/# cat ~/.grid/keys/alpha-agent.pub`
-
-4. Create a new organization, `myorg`.
+3. Create a new organization, `myorg`.
 
    `root@gridd-alpha:/# grid -k alpha-agent --url 'http://localhost:8080' --service-id 'my-grid-circuit::grid-scabbard-a' organization create 314156 myorg '123 main street' --metadata gs1_company_prefixes=314156`
 
@@ -269,7 +264,7 @@ circuit is created.
    is derived from the private key used to sign the transaction.) The service ID
    includes the circuit name and the scabbard service name for the alpha node.
 
-5. Update the agent's permissions (Pike roles) to allow creating, updating, and
+4. Update the agent's permissions (Pike roles) to allow creating, updating, and
    deleting Grid products.
 
    ```
@@ -282,7 +277,7 @@ circuit is created.
    --role admin
    ```
 
-6. Use `cat` to create a product definition file, `prodcut.yaml`, using the
+5. Use `cat` to create a product definition file, `product.yaml`, using the
    following contents.
 
    ```
@@ -302,7 +297,7 @@ circuit is created.
          number_value: 1
    ```
 
-7. Add a new product based on the definition in the example YAML file,
+6. Add a new product based on the definition in the example YAML file,
    `product.yaml`.
 
    ```
@@ -311,11 +306,11 @@ circuit is created.
    product create product.yaml
    ```
 
-8. Open a new terminal and connect to the `gridd-beta` container.
+7. Open a new terminal and connect to the `gridd-beta` container.
 
    `$ docker exec -it gridd-beta bash`
 
-9. Display all products.
+8. Display all products.
 
    ```
    root@gridd-beta:/# grid --url http://gridd-beta:8080 \
