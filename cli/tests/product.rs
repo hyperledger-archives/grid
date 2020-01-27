@@ -144,9 +144,9 @@ mod integration {
             .arg("create")
             .arg(&ORG_ID)
             .arg(&pub_key)
-            .arg("true")
             .args(&[
-                "--roles",
+                "--active",
+                "--role",
                 "admin",
                 "can_create_product",
                 "can_update_product",
