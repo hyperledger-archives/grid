@@ -22,11 +22,20 @@ This environment includes the Pike, Product, and Schema smart contracts.
 - Docker Compose
 
 
-## Important Note
+## Important Notes
 
 The example `docker-compose.yaml` file uses experimental Splinter features that
 have not been thoroughly tested or documented.
 
+Due to the rapid and ongoing development of Splinter and its experimental
+features, the images in this example can become stale very quickly. If you have
+used this procedure before, run the following commands to ensure that your
+images are up to date:
+
+```
+$ docker pull hyperledger/grid-dev
+$ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-registry db-alpha splinterd-alpha
+```
 
 ## Set Up and Run Grid
 
