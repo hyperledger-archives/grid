@@ -207,10 +207,19 @@ impl Service for AdminService {
         }
 
         // Setup consensus
-        self.consensus = Some(
+        let consensus =
             AdminConsensusManager::new(self.service_id().into(), self.admin_service_shared.clone())
-                .map_err(|err| ServiceStartError::Internal(Box::new(err)))?,
-        );
+                .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
+        let proposal_sender = consensus.proposal_update_sender();
+
+        self.consensus = Some(consensus);
+
+        self.admin_service_shared
+            .lock()
+            .map_err(|_| {
+                ServiceStartError::PoisonedLock("the admin shared lock was poisoned".into())
+            })?
+            .set_proposal_sender(Some(proposal_sender));
 
         self.admin_service_shared
             .lock()

@@ -20,6 +20,7 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use protobuf::{Message, RepeatedField};
+use std::sync::mpsc::Sender;
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
@@ -28,7 +29,7 @@ use crate::circuit::{
     AuthorizationType, Circuit as StateCircuit, DurabilityType, PersistenceType, RouteType,
     ServiceDefinition as StateServiceDefinition,
 };
-use crate::consensus::{Proposal, ProposalId};
+use crate::consensus::{Proposal, ProposalId, ProposalUpdate};
 use crate::hex::to_hex;
 use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
@@ -170,6 +171,7 @@ pub struct AdminServiceShared {
     signature_verifier: Box<dyn SignatureVerifier + Send>,
     key_registry: Box<dyn KeyRegistry>,
     key_permission_manager: Box<dyn KeyPermissionManager>,
+    proposal_sender: Option<Sender<ProposalUpdate>>,
 }
 
 impl AdminServiceShared {
@@ -225,6 +227,7 @@ impl AdminServiceShared {
             signature_verifier,
             key_registry,
             key_permission_manager,
+            proposal_sender: None,
         })
     }
 
@@ -242,6 +245,10 @@ impl AdminServiceShared {
 
     pub fn set_network_sender(&mut self, network_sender: Option<Box<dyn ServiceNetworkSender>>) {
         self.network_sender = network_sender;
+    }
+
+    pub fn set_proposal_sender(&mut self, proposal_sender: Option<Sender<ProposalUpdate>>) {
+        self.proposal_sender = proposal_sender;
     }
 
     pub fn pop_pending_circuit_payload(&mut self) -> Option<CircuitManagementPayload> {
