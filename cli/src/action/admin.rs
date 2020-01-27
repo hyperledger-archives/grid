@@ -37,9 +37,9 @@ use super::{chown, Action};
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 
-pub struct KeyGenAction;
+pub struct AdminKeyGenAction;
 
-impl Action for KeyGenAction {
+impl Action for AdminKeyGenAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
