@@ -15,6 +15,13 @@
 use std::time::Duration;
 
 use crate::config::Config;
+use crate::config::PartialConfig;
+
+pub trait PartialConfigBuilder {
+    /// Takes all values set in a config object to create a PartialConfig object.
+    ///
+    fn build(self) -> PartialConfig;
+}
 
 pub struct ConfigBuilder {
     storage: Option<String>,

@@ -22,7 +22,7 @@ mod toml;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
 #[cfg(feature = "config-builder")]
-pub use builder::ConfigBuilder;
+pub use builder::{ConfigBuilder, PartialConfigBuilder};
 pub use error::ConfigError;
 pub use partial::PartialConfig;
 
