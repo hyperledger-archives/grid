@@ -24,7 +24,7 @@ services:
     image: tnt-contract-builder
     container_name: tnt-contract-builder
     build:
-      context: .
+      context: ..
       dockerfile: contracts/track_and_trace/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
@@ -49,7 +49,7 @@ services:
     image: schema-contract-builder
     container_name: schema-contract-builder
     build:
-      context: .
+      context: ..
       dockerfile: contracts/schema/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
@@ -73,7 +73,7 @@ services:
     image: pike-contract-builder
     container_name: pike-contract-builder
     build:
-      context: .
+      context: ..
       dockerfile: contracts/pike/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
@@ -96,7 +96,7 @@ services:
     image: product-contract-builder
     container_name: product-contract-builder
     build:
-      context: .
+      context: ..
       dockerfile: contracts/product/Dockerfile
       args:
         - REPO_VERSION=${REPO_VERSION}
@@ -190,6 +190,7 @@ services:
 
   gridd:
     container_name: gridd
+    image: gridd-integration:${ISOLATION_ID}
     build:
       context: ..
       dockerfile: docker/tests
@@ -226,7 +227,7 @@ services:
     image: grid-cli:${ISOLATION_ID}
     container_name: grid-cli
     build:
-      context: .
+      context: ..
       dockerfile: cli/Dockerfile
       args:
         - CARGO_ARGS=${CARGO_ARGS}
