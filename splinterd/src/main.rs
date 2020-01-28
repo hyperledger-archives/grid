@@ -296,6 +296,8 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     let location = {
         if let Ok(s) = env::var(STATE_DIR_ENV) {
             s
+        } else if let Some(s) = config.state_dir() {
+            s
         } else {
             DEFAULT_STATE_DIR.to_string()
         }
