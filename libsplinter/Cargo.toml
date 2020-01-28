@@ -128,18 +128,6 @@ ursa-compat = ["ursa"]
 
 [package.metadata.docs.rs]
 features = [
-    "biome",
-    "biome-credentials",
-    "biome-key-management",
-    "biome-notifications",
-    "connection-manager",
-    "connection-manager-notification-iter-try-next",
-    "database",
-    "database",
-    "events",
-    "node-registry-unified",
-    "rest-api",
-    "sawtooth-signing-compat",
-    "ursa-compat",
-    "zmq-transport",
+    "stable",
+    "experimental"
   ]
