@@ -13,21 +13,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@import './theme';
-
-.app {
-  background-color: $background-white;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  color: $text-primary;
-
-  .view {
-    background-color: $background-light;
-    flex: 0 1 100%;
-    height: 100vh;
-    overflow-y: scroll;
-    overflow-x: none;
-  }
-}
+import './index.scss';
