@@ -101,3 +101,119 @@ impl PartialConfigBuilder for CommandLineConfig {
         return partial_config.with_database(self.database);
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use clap::ArgMatches;
+
+    /// Values present in the existing example config TEST_TOML file.
+    static EXAMPLE_STORAGE: &str = "yaml";
+    static EXAMPLE_TRANSPORT: &str = "tls";
+    static EXAMPLE_CA_CERTS: &str = "certs/ca.pem";
+    static EXAMPLE_CLIENT_CERT: &str = "certs/client.crt";
+    static EXAMPLE_CLIENT_KEY: &str = "certs/client.key";
+    static EXAMPLE_SERVER_CERT: &str = "certs/server.crt";
+    static EXAMPLE_SERVER_KEY: &str = "certs/server.key";
+    static EXAMPLE_SERVICE_ENDPOINT: &str = "127.0.0.1:8043";
+    static EXAMPLE_NETWORK_ENDPOINT: &str = "127.0.0.1:8044";
+    static EXAMPLE_NODE_ID: &str = "012";
+
+    /// Asserts config values based on the example values.
+    fn assert_config_values(config: PartialConfig) {
+        assert_eq!(config.storage(), Some(EXAMPLE_STORAGE.to_string()));
+        assert_eq!(config.transport(), Some(EXAMPLE_TRANSPORT.to_string()));
+        assert_eq!(config.cert_dir(), None);
+        assert_eq!(config.ca_certs(), Some(EXAMPLE_CA_CERTS.to_string()));
+        assert_eq!(config.client_cert(), Some(EXAMPLE_CLIENT_CERT.to_string()));
+        assert_eq!(config.client_key(), Some(EXAMPLE_CLIENT_KEY.to_string()));
+        assert_eq!(config.server_cert(), Some(EXAMPLE_SERVER_CERT.to_string()));
+        assert_eq!(config.server_key(), Some(EXAMPLE_SERVER_KEY.to_string()));
+        assert_eq!(
+            config.service_endpoint(),
+            Some(EXAMPLE_SERVICE_ENDPOINT.to_string())
+        );
+        assert_eq!(
+            config.network_endpoint(),
+            Some(EXAMPLE_NETWORK_ENDPOINT.to_string())
+        );
+        assert_eq!(config.peers(), None);
+        assert_eq!(config.node_id(), Some(EXAMPLE_NODE_ID.to_string()));
+        assert_eq!(config.bind(), None);
+        #[cfg(feature = "database")]
+        assert_eq!(config.database(), None);
+        assert_eq!(config.registry_backend(), None);
+        assert_eq!(config.registry_file(), None);
+        assert_eq!(config.heartbeat_interval(), None);
+        assert_eq!(config.admin_service_coordinator_timeout(), None);
+    }
+
+    /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
+    fn create_arg_matches() -> ArgMatches<'static> {
+        clap_app!(configtest =>
+            (version: crate_version!())
+            (about: "Config-Test")
+            (@arg config: -c --config +takes_value)
+            (@arg node_id: --("node-id") +takes_value)
+            (@arg storage: --("storage") +takes_value)
+            (@arg transport: --("transport") +takes_value)
+            (@arg network_endpoint: -n --("network-endpoint") +takes_value)
+            (@arg service_endpoint: --("service-endpoint") +takes_value)
+            (@arg peers: --peer +takes_value +multiple)
+            (@arg ca_file: --("ca-file") +takes_value)
+            (@arg cert_dir: --("cert-dir") +takes_value)
+            (@arg client_cert: --("client-cert") +takes_value)
+            (@arg server_cert: --("server-cert") +takes_value)
+            (@arg server_key:  --("server-key") +takes_value)
+            (@arg client_key:  --("client-key") +takes_value)
+            (@arg bind: --("bind") +takes_value)
+            (@arg registry_backend: --("registry-backend") +takes_value)
+            (@arg registry_file: --("registry-file") +takes_value))
+        .get_matches_from(vec![
+            "configtest",
+            "--node-id",
+            EXAMPLE_NODE_ID,
+            "--storage",
+            EXAMPLE_STORAGE,
+            "--transport",
+            EXAMPLE_TRANSPORT,
+            "--network-endpoint",
+            EXAMPLE_NETWORK_ENDPOINT,
+            "--service-endpoint",
+            EXAMPLE_SERVICE_ENDPOINT,
+            "--ca-file",
+            EXAMPLE_CA_CERTS,
+            "--client-cert",
+            EXAMPLE_CLIENT_CERT,
+            "--client-key",
+            EXAMPLE_CLIENT_KEY,
+            "--server-cert",
+            EXAMPLE_SERVER_CERT,
+            "--server-key",
+            EXAMPLE_SERVER_KEY,
+        ])
+    }
+
+    #[test]
+    /// This test verifies that a PartialConfig object, constructed from the CommandLineConfig module,
+    /// contains the correct values using the following steps:
+    ///
+    /// 1. An example ArgMatches object is created using `create_arg_matches`.
+    /// 2. A CommandLineConfig object is constructed by passing in the example ArgMatches created
+    ///    in the previous step.
+    /// 3. The CommandLineConfig object is transformed to a PartialConfig object using the `build`.
+    ///
+    /// This test then verifies the PartialConfig object built from the CommandLineConfig object by
+    /// asserting each expected value.
+    fn test_command_line_config() {
+        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        let matches = create_arg_matches();
+        // Create a new CommandLiine object from the arg matches.
+        let command_config = CommandLineConfig::new(matches)
+            .expect("Unable to create new CommandLineConfig object.");
+        // Build a PartialConfig from the TomlConfig object created.
+        let built_config = command_config.build();
+        // Compare the generated PartialConfig object against the expected values.
+        assert_config_values(built_config);
+    }
+}
