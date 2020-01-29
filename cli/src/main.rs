@@ -19,6 +19,8 @@ extern crate diesel;
 
 mod action;
 mod error;
+#[cfg(feature = "circuit")]
+mod store;
 
 use clap::clap_app;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
