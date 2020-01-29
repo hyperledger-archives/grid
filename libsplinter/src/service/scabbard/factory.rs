@@ -15,6 +15,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
+use std::time::Duration;
 
 use serde_json;
 
@@ -66,6 +67,10 @@ impl ServiceFactory for ScabbardFactory {
     ///   formatted as a serialized JSON array of strings
     /// - `peer_services`: list of other scabbard services on the same circuit that this service
     ///   will share state with
+    /// `args` may include the following optional entries:
+    /// - `coordinator_timeout`: the length of time (in milliseconds) that the network has to
+    ///   commit a proposal before the coordinator rejects it (if not provided, default is 30
+    ///   seconds)
     fn create(
         &self,
         service_id: String,
@@ -98,6 +103,17 @@ impl ServiceFactory for ScabbardFactory {
             ))
         })?;
 
+        let coordinator_timeout = args
+            .get("coordinator_timeout")
+            .map(|timeout| match timeout.parse::<u64>() {
+                Ok(timeout) => Ok(Duration::from_millis(timeout)),
+                Err(err) => Err(FactoryCreateError::InvalidArguments(format!(
+                    "invalid coordinator_timeout: {}",
+                    err
+                ))),
+            })
+            .transpose()?;
+
         let service = Scabbard::new(
             service_id,
             circuit_id,
@@ -108,7 +124,7 @@ impl ServiceFactory for ScabbardFactory {
             self.receipt_db_size,
             self.signature_verifier_factory.create_verifier(),
             admin_keys,
-            None,
+            coordinator_timeout,
         )
         .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 
@@ -147,6 +163,25 @@ mod tests {
             .expect("failed to downcast Service to Scabbard");
         assert_eq!(&scabbard.service_id, "0");
         assert_eq!(&scabbard.circuit_id, "1");
+    }
+
+    /// Verify that the `coordinator_timeout` service argument is properly set for a new `Scabbard`
+    /// instance.
+    #[test]
+    fn create_with_coordinator_timeout() {
+        let factory = get_factory();
+        let mut args = get_mock_args();
+        args.insert("coordinator_timeout".into(), "123".into());
+
+        let service = factory
+            .create("".into(), "", "", args)
+            .expect("failed to create service");
+        let scabbard = (&*service)
+            .as_any()
+            .downcast_ref::<Scabbard>()
+            .expect("failed to downcast Service to Scabbard");
+
+        assert_eq!(scabbard.coordinator_timeout, Duration::from_millis(123));
     }
 
     /// Verify that `Scabbard` creation fails when the `peer_services` argument isn't specified.
