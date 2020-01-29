@@ -130,8 +130,61 @@ mod tests {
 
     use crate::signing::hash::HashVerifier;
 
+    /// Verify that the scabbard factory produces a valid `Scabbard` instance.
     #[test]
-    fn scabbard_factory() {
+    fn create_successful() {
+        let factory = get_factory();
+
+        let service = factory
+            .create("0".into(), "", "1", get_mock_args())
+            .expect("failed to create service");
+        assert_eq!(service.service_id(), "0");
+
+        let scabbard = (&*service)
+            .as_any()
+            .downcast_ref::<Scabbard>()
+            .expect("failed to downcast Service to Scabbard");
+        assert_eq!(&scabbard.service_id, "0");
+        assert_eq!(&scabbard.circuit_id, "1");
+    }
+
+    /// Verify that `Scabbard` creation fails when the `peer_services` argument isn't specified.
+    #[test]
+    fn create_without_peer_services() {
+        let factory = get_factory();
+        let mut args = get_mock_args();
+        args.remove("peer_services");
+
+        assert!(
+            factory.create("".into(), "", "", args).is_err(),
+            "Creating factory without peer_services did not fail"
+        );
+    }
+
+    /// Verify that `Scabbard` creation fails when the `admin_keys` argument isn't specified.
+    #[test]
+    fn create_without_admin_keys() {
+        let factory = get_factory();
+        let mut args = get_mock_args();
+        args.remove("admin_keys");
+
+        assert!(
+            factory.create("".into(), "", "", args).is_err(),
+            "Creating factory without admin_keys did not fail"
+        );
+    }
+
+    fn get_factory() -> ScabbardFactory {
+        ScabbardFactory::new(
+            Some("/tmp".into()),
+            Some(1024 * 1024),
+            Some("/tmp".into()),
+            Some(1024 * 1024),
+            Box::new(HashVerifier),
+        )
+    }
+
+    fn get_mock_args() -> HashMap<String, String> {
         let peer_services = vec!["1".to_string(), "2".to_string(), "3".to_string()];
         let admin_keys: Vec<String> = vec![];
         let mut args = HashMap::new();
@@ -143,18 +196,6 @@ mod tests {
             "admin_keys".into(),
             serde_json::to_string(&admin_keys).expect("failed to serialize admin_keys"),
         );
-
-        let factory = ScabbardFactory::new(
-            Some("/tmp".into()),
-            Some(1024 * 1024),
-            Some("/tmp".into()),
-            Some(1024 * 1024),
-            Box::new(HashVerifier),
-        );
-        let service = factory
-            .create("0".into(), "", "", args)
-            .expect("failed to create service");
-
-        assert_eq!(service.service_id(), "0");
+        args
     }
 }
