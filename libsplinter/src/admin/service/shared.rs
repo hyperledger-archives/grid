@@ -20,6 +20,7 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use protobuf::{Message, RepeatedField};
+use std::sync::mpsc::Sender;
 
 use crate::circuit::SplinterState;
 use crate::circuit::{
@@ -28,11 +29,11 @@ use crate::circuit::{
     AuthorizationType, Circuit as StateCircuit, DurabilityType, PersistenceType, RouteType,
     ServiceDefinition as StateServiceDefinition,
 };
-use crate::consensus::{Proposal, ProposalId};
+use crate::consensus::{Proposal, ProposalId, ProposalUpdate};
 use crate::hex::to_hex;
 use crate::keys::{KeyPermissionManager, KeyRegistry};
 use crate::network::{
-    auth::{AuthorizationInquisitor, PeerAuthorizationState},
+    auth::{AuthorizationCallbackError, AuthorizationInquisitor, PeerAuthorizationState},
     peer::PeerConnector,
 };
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator, ShutdownServiceError};
@@ -61,7 +62,16 @@ static PROPOSER_ROLE: &str = "proposer";
 
 const DEFAULT_IN_MEMORY_EVENT_LIMIT: usize = 100;
 
-type UnpeeredPendingPayload = (Vec<String>, CircuitManagementPayload);
+pub enum PayloadType {
+    Circuit(CircuitManagementPayload),
+    Consensus(ProposalId, (Proposal, CircuitManagementPayload)),
+}
+
+pub struct UnpeeredPendingPayload {
+    pub ids: Vec<String>,
+    pub payload_type: PayloadType,
+    pub message_sender: String,
+}
 
 enum CircuitProposalStatus {
     Accepted,
@@ -170,6 +180,7 @@ pub struct AdminServiceShared {
     signature_verifier: Box<dyn SignatureVerifier + Send>,
     key_registry: Box<dyn KeyRegistry>,
     key_permission_manager: Box<dyn KeyPermissionManager>,
+    proposal_sender: Option<Sender<ProposalUpdate>>,
 }
 
 impl AdminServiceShared {
@@ -225,6 +236,7 @@ impl AdminServiceShared {
             signature_verifier,
             key_registry,
             key_permission_manager,
+            proposal_sender: None,
         })
     }
 
@@ -242,6 +254,10 @@ impl AdminServiceShared {
 
     pub fn set_network_sender(&mut self, network_sender: Option<Box<dyn ServiceNetworkSender>>) {
         self.network_sender = network_sender;
+    }
+
+    pub fn set_proposal_sender(&mut self, proposal_sender: Option<Sender<ProposalUpdate>>) {
+        self.proposal_sender = proposal_sender;
     }
 
     pub fn pop_pending_circuit_payload(&mut self) -> Option<CircuitManagementPayload> {
@@ -521,6 +537,7 @@ impl AdminServiceShared {
     pub fn propose_circuit(
         &mut self,
         payload: CircuitManagementPayload,
+        message_sender: String,
     ) -> Result<(), ServiceError> {
         debug!(
             "received circuit proposal for {}",
@@ -558,7 +575,11 @@ impl AdminServiceShared {
                 &unauthorized_peers
             );
 
-            self.unpeered_payloads.push((unauthorized_peers, payload));
+            self.unpeered_payloads.push(UnpeeredPendingPayload {
+                ids: unauthorized_peers,
+                payload_type: PayloadType::Circuit(payload),
+                message_sender,
+            });
         }
         Ok(())
     }
@@ -584,7 +605,7 @@ impl AdminServiceShared {
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
-                self.propose_circuit(payload)
+                self.propose_circuit(payload, "local".to_string())
             }
             CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => self.propose_vote(payload),
             CircuitManagementPayload_Action::ACTION_UNSET => {
@@ -598,6 +619,61 @@ impl AdminServiceShared {
                     unknown_action
                 )),
             ))),
+        }
+    }
+
+    /// Handle a new circuit proposal
+    ///
+    /// This operation will accept a new circuit proposal.  If there is no peer connection, a
+    /// connection to the peer will also be established.
+    pub fn handle_proposed_circuit(
+        &mut self,
+        proposal: Proposal,
+        payload: CircuitManagementPayload,
+        message_sender: String,
+    ) -> Result<(), ServiceError> {
+        let mut unauthorized_peers = vec![];
+        for node in payload
+            .get_circuit_create_request()
+            .get_circuit()
+            .get_members()
+        {
+            if self.node_id() != node.get_node_id() {
+                if self.auth_inquisitor().is_authorized(node.get_node_id()) {
+                    continue;
+                }
+
+                debug!("Connecting to node {:?}", node);
+                self.peer_connector
+                    .connect_peer(node.get_node_id(), node.get_endpoint())
+                    .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+
+                unauthorized_peers.push(node.get_node_id().into());
+            }
+        }
+
+        if unauthorized_peers.is_empty() {
+            self.add_pending_consensus_proposal(proposal.id.clone(), (proposal.clone(), payload));
+            self.proposal_sender
+                .as_ref()
+                .ok_or_else(|| ServiceError::NotStarted)?
+                .send(ProposalUpdate::ProposalReceived(
+                    proposal,
+                    message_sender.as_bytes().into(),
+                ))
+                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))
+        } else {
+            debug!(
+                "Members {:?} added; awaiting network authorization before proceeding",
+                &unauthorized_peers
+            );
+
+            self.unpeered_payloads.push(UnpeeredPendingPayload {
+                ids: unauthorized_peers,
+                payload_type: PayloadType::Consensus(proposal.id.clone(), (proposal, payload)),
+                message_sender,
+            });
+            Ok(())
         }
     }
 
@@ -651,17 +727,31 @@ impl AdminServiceShared {
         self.event_subscribers.clear();
     }
 
-    pub fn on_authorization_change(&mut self, peer_id: &str, state: PeerAuthorizationState) {
+    pub fn on_authorization_change(
+        &mut self,
+        peer_id: &str,
+        state: PeerAuthorizationState,
+    ) -> Result<(), AuthorizationCallbackError> {
         let mut unpeered_payloads = std::mem::replace(&mut self.unpeered_payloads, vec![]);
-        for (ref mut peers, _) in unpeered_payloads.iter_mut() {
+        for unpeered_payload in unpeered_payloads.iter_mut() {
             match state {
                 PeerAuthorizationState::Authorized => {
-                    peers.retain(|unpeered_id| unpeered_id != peer_id);
+                    unpeered_payload
+                        .ids
+                        .retain(|unpeered_id| unpeered_id != peer_id);
                 }
                 PeerAuthorizationState::Unauthorized => {
-                    if peers.iter().any(|unpeered_id| unpeered_id == peer_id) {
-                        warn!("Dropping circuit request including peer {}, due to authorization failure", peer_id);
-                        peers.clear();
+                    if unpeered_payload
+                        .ids
+                        .iter()
+                        .any(|unpeered_id| unpeered_id == peer_id)
+                    {
+                        warn!(
+                            "Dropping circuit request including peer {}, \
+                             due to authorization failure",
+                            peer_id
+                        );
+                        unpeered_payload.ids.clear();
                     }
                 }
             }
@@ -672,13 +762,40 @@ impl AdminServiceShared {
             Vec<UnpeeredPendingPayload>,
         ) = unpeered_payloads
             .into_iter()
-            .partition(|(peers, _)| peers.is_empty());
+            .partition(|unpeered_payload| unpeered_payload.ids.is_empty());
 
         std::mem::replace(&mut self.unpeered_payloads, still_unpeered);
         if state == PeerAuthorizationState::Authorized {
-            self.pending_circuit_payloads
-                .extend(fully_peered.into_iter().map(|(_, payload)| payload));
+            for peered_payload in fully_peered {
+                match peered_payload.payload_type {
+                    PayloadType::Circuit(payload) => {
+                        self.pending_circuit_payloads.push_back(payload)
+                    }
+                    PayloadType::Consensus(id, (proposal, payload)) => {
+                        self.add_pending_consensus_proposal(id, (proposal.clone(), payload));
+
+                        if let Some(proposal_sender) = &self.proposal_sender {
+                            proposal_sender
+                                .send(ProposalUpdate::ProposalReceived(
+                                    proposal,
+                                    peered_payload.message_sender.as_bytes().into(),
+                                ))
+                                .map_err(|err| {
+                                    AuthorizationCallbackError(format!(
+                                        "Unable to send consensus proposal update: {}",
+                                        err
+                                    ))
+                                })?;
+                        } else {
+                            return Err(AuthorizationCallbackError(
+                                "AdminService is not started".into(),
+                            ));
+                        }
+                    }
+                }
+            }
         }
+        Ok(())
     }
 
     pub fn get_proposal(
@@ -1536,16 +1653,20 @@ mod tests {
         payload.set_circuit_create_request(request);
 
         shared
-            .propose_circuit(payload)
+            .propose_circuit(payload, "test".to_string())
             .expect("Proposal not accepted");
 
         // None of the proposed members are peered
         assert_eq!(0, shared.pending_circuit_payloads.len());
-        shared.on_authorization_change("test-node", PeerAuthorizationState::Authorized);
+        shared
+            .on_authorization_change("test-node", PeerAuthorizationState::Authorized)
+            .expect("received unexpected error");
 
         // One node is still unpeered
         assert_eq!(0, shared.pending_circuit_payloads.len());
-        shared.on_authorization_change("other-node", PeerAuthorizationState::Authorized);
+        shared
+            .on_authorization_change("other-node", PeerAuthorizationState::Authorized)
+            .expect("received unexpected error");
 
         // We're fully peered, so the pending payload is now available
         assert_eq!(1, shared.pending_circuit_payloads.len());
@@ -1611,13 +1732,15 @@ mod tests {
         payload.set_circuit_create_request(request);
 
         shared
-            .propose_circuit(payload)
+            .propose_circuit(payload, "local".to_string())
             .expect("Proposal not accepted");
 
         // None of the proposed members are peered
         assert_eq!(1, shared.unpeered_payloads.len());
         assert_eq!(0, shared.pending_circuit_payloads.len());
-        shared.on_authorization_change("test-node", PeerAuthorizationState::Unauthorized);
+        shared
+            .on_authorization_change("test-node", PeerAuthorizationState::Unauthorized)
+            .expect("received unexpected error");
 
         // The message should be dropped
         assert_eq!(0, shared.pending_circuit_payloads.len());

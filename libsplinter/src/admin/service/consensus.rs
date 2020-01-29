@@ -112,6 +112,10 @@ impl AdminConsensusManager {
             .send(update)
             .map_err(|err| AdminConsensusManagerError(Box::new(err)))
     }
+
+    pub fn proposal_update_sender(&self) -> Sender<ProposalUpdate> {
+        self.proposal_update_tx.clone()
+    }
 }
 
 pub struct AdminProposalManager {
