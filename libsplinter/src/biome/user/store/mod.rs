@@ -23,6 +23,7 @@ pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
 pub use error::UserStoreError;
 
 /// Represents a user of a splinter application
+#[derive(Serialize)]
 pub struct SplinterUser {
     id: String,
 }
@@ -72,7 +73,7 @@ pub trait UserStore<T> {
     ///
     ///  * `id` - The unique id of the user to be removed
     ///
-    fn remove_user(&self, id: &str) -> Result<T, UserStoreError>;
+    fn remove_user(&self, id: &str) -> Result<(), UserStoreError>;
 
     /// Fetches a user from the underlying storage
     ///
@@ -84,13 +85,5 @@ pub trait UserStore<T> {
 
     /// List all users from the underlying storage
     ///
-    fn list_users(&self, id: &str) -> Result<Vec<T>, UserStoreError>;
-
-    /// Checks that a user with the given id exists
-    ///
-    /// # Arguments
-    ///
-    ///  * `id` - The unique id of the user.
-    ///
-    fn is_user(&self, id: &str) -> Result<bool, UserStoreError>;
+    fn list_users(&self) -> Result<Vec<T>, UserStoreError>;
 }

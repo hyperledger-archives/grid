@@ -37,6 +37,7 @@ pub enum UserStoreError {
     },
     /// Represents an issue connecting to the database
     ConnectionError(Box<dyn Error>),
+    NotFoundError(String),
 }
 
 impl Error for UserStoreError {
@@ -46,6 +47,7 @@ impl Error for UserStoreError {
             UserStoreError::QueryError { source, .. } => Some(&**source),
             UserStoreError::StorageError { source, .. } => Some(&**source),
             UserStoreError::ConnectionError(err) => Some(&**err),
+            UserStoreError::NotFoundError(_) => None,
         }
     }
 }
@@ -67,6 +69,7 @@ impl fmt::Display for UserStoreError {
             UserStoreError::ConnectionError(err) => {
                 write!(f, "failed to connect to underlying storage: {}", err)
             }
+            UserStoreError::NotFoundError(ref s) => write!(f, "User not found: {}", s),
         }
     }
 }

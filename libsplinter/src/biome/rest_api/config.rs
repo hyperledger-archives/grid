@@ -15,10 +15,7 @@
 use std::time::Duration;
 
 #[cfg(feature = "biome-credentials")]
-use super::super::credentials::PasswordEncryptionCost;
-#[cfg(feature = "biome-credentials")]
-use std::convert::TryFrom;
-
+use super::super::credentials::store::PasswordEncryptionCost;
 use super::error::BiomeRestConfigBuilderError;
 
 const DEFAULT_ISSUER: &str = "self-issued";
@@ -108,10 +105,11 @@ impl BiomeRestConfigBuilder {
         let access_token_duration = self.access_token_duration.unwrap_or_default();
 
         #[cfg(feature = "biome-credentials")]
-        let password_encryption_cost = PasswordEncryptionCost::try_from(
-            self.password_encryption_cost.unwrap_or_default().as_ref(),
-        )
-        .map_err(BiomeRestConfigBuilderError::InvalidValue)?;
+        let password_encryption_cost: PasswordEncryptionCost = self
+            .password_encryption_cost
+            .unwrap_or_default()
+            .parse()
+            .map_err(BiomeRestConfigBuilderError::InvalidValue)?;
 
         Ok(BiomeRestConfig {
             issuer,

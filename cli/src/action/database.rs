@@ -18,7 +18,7 @@ use super::Action;
 use crate::error::CliError;
 use diesel::{connection::Connection as _, pg::PgConnection};
 #[cfg(feature = "database-migrate-biome-credentials")]
-use splinter::biome::credentials::database::run_migrations as run_biome_credentials_migrations;
+use splinter::biome::credentials::store::run_postgres_migrations as run_biome_credentials_migrations;
 #[cfg(feature = "database-migrate-biome-key-management")]
 use splinter::biome::key_management::database::postgres::run_migrations as run_biome_key_management_migrations;
 #[cfg(feature = "database-migrate-biome-notifications")]
