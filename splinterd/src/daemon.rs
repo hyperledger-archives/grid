@@ -285,7 +285,14 @@ impl SplinterDaemon {
                         // This is where the message should be dispatched
                         Ok(message) => {
                             let mut msg: NetworkMessage =
-                                protobuf::parse_from_bytes(message.payload()).unwrap();
+                                match protobuf::parse_from_bytes(message.payload()) {
+                                    Ok(msg) => msg,
+                                    Err(err) => {
+                                        warn!("Received invalid network message: {}", err);
+                                        continue;
+                                    }
+                                };
+
                             let dispatch_msg = DispatchMessage::new(
                                 msg.get_message_type(),
                                 msg.take_payload(),
