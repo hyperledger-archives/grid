@@ -35,7 +35,7 @@ pub use crate::config::env::EnvVarConfig;
 pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
-pub use builder::PartialConfigBuilder;
+pub use builder::{ConfigBuilder, PartialConfigBuilder};
 pub use error::ConfigError;
 pub use partial::{ConfigSource, PartialConfig};
 

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::config::PartialConfig;
+use std::path::Path;
+
+use crate::config::error::ConfigError;
+use crate::config::{Config, ConfigSource, PartialConfig};
 
 pub trait PartialConfigBuilder {
     /// Takes all values set in a config object to create a PartialConfig object.
@@ -20,11 +23,244 @@ pub trait PartialConfigBuilder {
     fn build(self) -> PartialConfig;
 }
 
+fn get_file_path(cert_dir: &str, file: &str) -> String {
+    let cert_dir_path = Path::new(&cert_dir);
+    let cert_file_path = cert_dir_path.join(file);
+    cert_file_path
+        .to_str()
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| String::from(file))
+}
+
+/// ConfigBuilder collects PartialConfig objects from various sources to be used to generate a
+/// Config object.
+pub struct ConfigBuilder {
+    partial_configs: Vec<PartialConfig>,
+}
+
+impl ConfigBuilder {
+    pub fn new() -> Self {
+        ConfigBuilder {
+            partial_configs: Vec::new(),
+        }
+    }
+
+    /// Adds a PartialConfig to the ConfigBuilder object.
+    ///
+    /// # Arguments
+    ///
+    /// * `partial` - A PartialConfig object generated from any of the config modules.
+    ///
+    pub fn with_partial_config(mut self, partial: PartialConfig) -> Self {
+        self.partial_configs.push(partial);
+        self
+    }
+
+    /// Builds a Config object by incorporating the values from each PartialConfig object.
+    ///
+    pub fn build(self) -> Result<Config, ConfigError> {
+        let cert_dir = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.cert_dir() {
+                Some(v) => Some((v, p.source())),
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("certificate directory".to_string()))?;
+        let ca_certs = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.ca_certs() {
+                Some(v) => {
+                    if p.source() != ConfigSource::Default {
+                        Some((v, p.source()))
+                    } else {
+                        Some((get_file_path(&cert_dir.0, &v), p.source()))
+                    }
+                }
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("ca certs".to_string()))?;
+        let client_cert = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.client_cert() {
+                Some(v) => {
+                    if p.source() != ConfigSource::Default {
+                        Some((v, p.source()))
+                    } else {
+                        Some((get_file_path(&cert_dir.0, &v), p.source()))
+                    }
+                }
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("client certificate".to_string()))?;
+        let client_key = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.client_key() {
+                Some(v) => {
+                    if p.source() != ConfigSource::Default {
+                        Some((v, p.source()))
+                    } else {
+                        Some((get_file_path(&cert_dir.0, &v), p.source()))
+                    }
+                }
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("client key".to_string()))?;
+        let server_cert = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.server_cert() {
+                Some(v) => {
+                    if p.source() != ConfigSource::Default {
+                        Some((v, p.source()))
+                    } else {
+                        Some((get_file_path(&cert_dir.0, &v), p.source()))
+                    }
+                }
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("server certificate".to_string()))?;
+        let server_key = self
+            .partial_configs
+            .iter()
+            .find_map(|p| match p.server_key() {
+                Some(v) => {
+                    if p.source() != ConfigSource::Default {
+                        Some((v, p.source()))
+                    } else {
+                        Some((get_file_path(&cert_dir.0, &v), p.source()))
+                    }
+                }
+                None => None,
+            })
+            .ok_or_else(|| ConfigError::MissingValue("server key".to_string()))?;
+        // Iterates over the list of PartialConfig objects to find the first config with a value
+        // for the specific field. If no value is found, an error is returned.
+        Ok(Config {
+            storage: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.storage() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("storage".to_string()))?,
+            transport: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.transport() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("transport".to_string()))?,
+            cert_dir,
+            ca_certs,
+            client_cert,
+            client_key,
+            server_cert,
+            server_key,
+            service_endpoint: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.service_endpoint() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("service endpoint".to_string()))?,
+            network_endpoint: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.network_endpoint() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("network endpoint".to_string()))?,
+            peers: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.peers() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("peers".to_string()))?,
+            node_id: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.node_id() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("node id".to_string()))?,
+            bind: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.bind() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("bind".to_string()))?,
+            #[cfg(feature = "database")]
+            database: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.database() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("database".to_string()))?,
+            registry_backend: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.registry_backend() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("registry backend".to_string()))?,
+            registry_file: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.registry_file() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("registry file".to_string()))?,
+            heartbeat_interval: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.heartbeat_interval() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("heartbeat interval".to_string()))?,
+            admin_service_coordinator_timeout: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.admin_service_coordinator_timeout() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| {
+                    ConfigError::MissingValue("admin service coordinator timeout".to_string())
+                })?,
+
+            state_dir: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.state_dir() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("state directory".to_string()))?,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use crate::config::ConfigSource;
 
     /// Values present in the existing example config TEST_TOML file.
     static EXAMPLE_STORAGE: &str = "yaml";
