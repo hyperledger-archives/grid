@@ -49,7 +49,7 @@ else
     then
         export CARGO_ARGS="-- --features experimental"
     else
-        pass
+        true
     fi
 fi
 echo "Publishing master images for an untagged build"
