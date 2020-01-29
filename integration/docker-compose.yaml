@@ -218,6 +218,7 @@ services:
         gridd -b gridd:8080 -C tcp://validator:4004 \
             --database-url postgres://grid:grid_example@db/grid &
         cd cli
+        while true; do curl -s http://gridd:8080; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
         cargo test integration -- --nocapture --test-threads=1
       "
 
