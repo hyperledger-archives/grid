@@ -31,6 +31,7 @@ use std::collections::{HashSet, VecDeque};
 use std::convert::TryFrom;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use openssl::hash::{hash, MessageDigest};
 use transact::protocol::batch::BatchPair;
@@ -55,6 +56,8 @@ use state::{ScabbardState, StateSubscriber};
 
 const SERVICE_TYPE: &str = "scabbard";
 
+const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000; // 30 seconds
+
 /// A service for running Sawtooth Sabre smart contracts with two-phase commit consensus.
 #[derive(Clone)]
 pub struct Scabbard {
@@ -62,6 +65,8 @@ pub struct Scabbard {
     service_id: String,
     shared: Arc<Mutex<ScabbardShared>>,
     state: Arc<Mutex<ScabbardState>>,
+    /// The coordinator timeout for the two-phase commit consensus engine
+    coordinator_timeout: Duration,
     consensus: Arc<Mutex<Option<ScabbardConsensusManager>>>,
 }
 
@@ -84,6 +89,9 @@ impl Scabbard {
         signature_verifier: Box<dyn SignatureVerifier>,
         // The public keys that are authorized to create and manage sabre contracts
         admin_keys: Vec<String>,
+        // The coordinator timeout for the two-phase commit consensus engine; if `None`, the
+        // default value will be used (30 seconds).
+        coordinator_timeout: Option<Duration>,
     ) -> Result<Self, ScabbardError> {
         let shared = ScabbardShared::new(VecDeque::new(), None, peer_services, signature_verifier);
 
@@ -104,11 +112,15 @@ impl Scabbard {
         )
         .map_err(|err| ScabbardError::InitializationFailed(Box::new(err)))?;
 
+        let coordinator_timeout = coordinator_timeout
+            .unwrap_or_else(|| Duration::from_millis(DEFAULT_COORDINATOR_TIMEOUT_MILLIS));
+
         Ok(Scabbard {
             circuit_id: circuit_id.to_string(),
             service_id,
             shared: Arc::new(Mutex::new(shared)),
             state: Arc::new(Mutex::new(state)),
+            coordinator_timeout,
             consensus: Arc::new(Mutex::new(None)),
         })
     }
@@ -212,6 +224,7 @@ impl Service for Scabbard {
                 self.service_id().into(),
                 self.shared.clone(),
                 self.state.clone(),
+                self.coordinator_timeout,
             )
             .map_err(|err| ServiceStartError::Internal(Box::new(ScabbardError::from(err))))?,
         );
@@ -337,6 +350,7 @@ pub mod tests {
             1024 * 1024,
             Box::new(HashVerifier),
             vec![],
+            None,
         )
         .expect("failed to create service");
         assert_eq!(service.service_id(), "new_scabbard");
@@ -357,6 +371,7 @@ pub mod tests {
             1024 * 1024,
             Box::new(HashVerifier),
             vec![],
+            None,
         )
         .expect("failed to create service");
         let registry = MockServiceNetworkRegistry::new();
@@ -377,6 +392,7 @@ pub mod tests {
             1024 * 1024,
             Box::new(HashVerifier),
             vec![],
+            None,
         )
         .expect("failed to create service");
         test_connect_and_disconnect(&mut service);

@@ -108,6 +108,7 @@ impl ServiceFactory for ScabbardFactory {
             self.receipt_db_size,
             self.signature_verifier_factory.create_verifier(),
             admin_keys,
+            None,
         )
         .map_err(|err| FactoryCreateError::CreationFailed(Box::new(err)))?;
 

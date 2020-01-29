@@ -27,6 +27,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
+use std::time::Duration;
 
 use clap::{App, Arg};
 use iron::prelude::*;
@@ -46,6 +47,7 @@ use crate::service::{start_service_loop, ServiceConfig, ServiceError};
 use crate::transaction::{XoState, XoStateError};
 
 const HEARTBEAT: u64 = 60;
+const TWO_PHASE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000; // 30 seconds
 
 fn index(_: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::Ok, "Private XO Server")))
@@ -110,7 +112,8 @@ fn main() -> Result<(), CliError> {
     let _ = Builder::new()
         .name("TwoPhaseConsensus".into())
         .spawn(move || {
-            let mut two_phase_engine = TwoPhaseEngine::default();
+            let mut two_phase_engine =
+                TwoPhaseEngine::new(Duration::from_millis(TWO_PHASE_COORDINATOR_TIMEOUT_MILLIS));
             two_phase_engine
                 .run(
                     consensus_msg_rx,

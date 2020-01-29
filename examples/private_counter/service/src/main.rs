@@ -66,6 +66,7 @@ use crate::protos::private_counter::{PrivateCounterMessage, PrivateCounterMessag
 // Recv timeout in secs
 const TIMEOUT_SEC: u64 = 2;
 const HEARTBEAT: u64 = 60;
+const TWO_PHASE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000; // 30 seconds
 
 #[derive(Debug)]
 pub struct ServiceState {
@@ -167,7 +168,8 @@ fn main() -> Result<(), ServiceError> {
     let consensus_thread = Builder::new()
         .name("TwoPhaseConsensus".into())
         .spawn(move || {
-            let mut two_phase_engine = TwoPhaseEngine::default();
+            let mut two_phase_engine =
+                TwoPhaseEngine::new(Duration::from_millis(TWO_PHASE_COORDINATOR_TIMEOUT_MILLIS));
             two_phase_engine
                 .run(
                     consensus_msg_rx,

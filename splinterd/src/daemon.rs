@@ -356,6 +356,7 @@ impl SplinterDaemon {
             key_registry.clone(),
             Box::new(AllowAllKeyPermissionManager),
             &self.storage_type,
+            None,
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
