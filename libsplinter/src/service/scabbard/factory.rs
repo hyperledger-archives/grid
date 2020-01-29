@@ -61,7 +61,7 @@ impl ServiceFactory for ScabbardFactory {
         self.service_types.as_slice()
     }
 
-    /// `args` should include the following:
+    /// `args` must include the following:
     /// - `admin_keys`: list of public keys that are allowed to create and modify sabre contracts,
     ///   formatted as a serialized JSON array of strings
     /// - `peer_services`: list of other scabbard services on the same circuit that this service
