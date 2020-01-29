@@ -110,6 +110,7 @@ pub struct SplinterDaemon {
     biome_enabled: bool,
     registry_config: RegistryConfig,
     storage_type: String,
+    admin_service_coordinator_timeout: Duration,
 }
 
 impl SplinterDaemon {
@@ -356,7 +357,7 @@ impl SplinterDaemon {
             key_registry.clone(),
             Box::new(AllowAllKeyPermissionManager),
             &self.storage_type,
-            None,
+            Some(self.admin_service_coordinator_timeout),
         )
         .map_err(|err| {
             StartError::AdminServiceError(format!("unable to create admin service: {}", err))
@@ -661,6 +662,7 @@ pub struct SplinterDaemonBuilder {
     registry_file: Option<String>,
     storage_type: Option<String>,
     heartbeat_interval: Option<u64>,
+    admin_service_coordinator_timeout: Duration,
 }
 
 impl SplinterDaemonBuilder {
@@ -732,6 +734,11 @@ impl SplinterDaemonBuilder {
 
     pub fn with_heartbeat_interval(mut self, value: u64) -> Self {
         self.heartbeat_interval = Some(value);
+        self
+    }
+
+    pub fn with_admin_service_coordinator_timeout(mut self, value: Duration) -> Self {
+        self.admin_service_coordinator_timeout = value;
         self
     }
 
@@ -813,6 +820,7 @@ impl SplinterDaemonBuilder {
             registry_config,
             key_registry_location,
             storage_type,
+            admin_service_coordinator_timeout: self.admin_service_coordinator_timeout,
         })
     }
 }

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::time::Duration;
+
 use crate::config::ConfigBuilder;
 use crate::config::ConfigError;
 
@@ -39,6 +41,7 @@ pub struct TomlConfig {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
+    admin_service_coordinator_timeout: Option<u64>,
 }
 
 impl TomlConfig {
@@ -115,6 +118,10 @@ impl TomlConfig {
         self.heartbeat_interval.take()
     }
 
+    pub fn take_admin_service_coordinator_timeout(&mut self) -> Option<u64> {
+        self.admin_service_coordinator_timeout.take()
+    }
+
     pub fn apply_to_builder(mut self, mut builder: ConfigBuilder) -> ConfigBuilder {
         if let Some(x) = self.take_storage() {
             builder = builder.with_storage(x);
@@ -169,6 +176,9 @@ impl TomlConfig {
         }
         if let Some(x) = self.take_heartbeat_interval() {
             builder = builder.with_heartbeat_interval(x);
+        }
+        if let Some(x) = self.take_admin_service_coordinator_timeout() {
+            builder = builder.with_admin_service_coordinator_timeout(Duration::from_millis(x));
         }
 
         builder

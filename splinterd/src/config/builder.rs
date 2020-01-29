@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::time::Duration;
+
 use crate::config::Config;
 
 pub struct ConfigBuilder {
@@ -33,6 +35,7 @@ pub struct ConfigBuilder {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
+    admin_service_coordinator_timeout: Option<Duration>,
 }
 
 impl ConfigBuilder {
@@ -56,6 +59,7 @@ impl ConfigBuilder {
             registry_backend: None,
             registry_file: None,
             heartbeat_interval: None,
+            admin_service_coordinator_timeout: None,
         }
     }
 
@@ -145,6 +149,11 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_admin_service_coordinator_timeout(mut self, timeout: Duration) -> Self {
+        self.admin_service_coordinator_timeout = Some(timeout);
+        self
+    }
+
     pub fn build(self) -> Config {
         Config {
             storage: self.storage,
@@ -165,6 +174,7 @@ impl ConfigBuilder {
             registry_backend: self.registry_backend,
             registry_file: self.registry_file,
             heartbeat_interval: self.heartbeat_interval,
+            admin_service_coordinator_timeout: self.admin_service_coordinator_timeout,
         }
     }
 }
