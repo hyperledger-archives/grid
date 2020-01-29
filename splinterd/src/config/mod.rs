@@ -35,4 +35,4 @@ pub use crate::config::toml::from_file;
 pub use crate::config::toml::TomlConfig;
 pub use builder::PartialConfigBuilder;
 pub use error::ConfigError;
-pub use partial::PartialConfig;
+pub use partial::{ConfigSource, PartialConfig};

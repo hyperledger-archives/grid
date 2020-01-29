@@ -31,7 +31,7 @@ use log::Record;
 
 #[cfg(feature = "generate-certs")]
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
-use crate::config::{ConfigError, PartialConfig};
+use crate::config::{ConfigError, ConfigSource, PartialConfig};
 #[cfg(feature = "config-toml")]
 use crate::config::{PartialConfigBuilder, TomlConfig};
 use crate::daemon::{SplinterDaemonBuilder, StartError};
@@ -78,7 +78,9 @@ fn load_toml_config(config_file_path: &str) -> PartialConfig {
         Ok(f) => config::from_file(f),
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
             debug!("Configuration file not found: {}", config_file_path);
-            Ok(PartialConfig::default())
+            Ok(PartialConfig::new(ConfigSource::Toml {
+                file: config_file_path.to_string(),
+            }))
         }
         Err(err) => Err(ConfigError::from(err)),
     }
@@ -87,7 +89,9 @@ fn load_toml_config(config_file_path: &str) -> PartialConfig {
             "Unable to load configuration file {}: {}",
             config_file_path, err
         );
-        PartialConfig::default()
+        Ok(PartialConfig::new(ConfigSource::Toml {
+            file: config_file_path.to_string(),
+        }))
     })
 }
 
@@ -96,16 +100,23 @@ fn load_toml_config(config_file_path: &str) -> PartialConfig {
     match fs::read_to_string(config_file_path) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
             debug!("Configuration file not found: {}", config_file_path);
-            PartialConfig::default()
+            PartialConfig::new(ConfigSource::Toml {
+                file: config_file_path.to_string(),
+            })
         }
-        result => match result.map_err(ConfigError::from).and_then(TomlConfig::new) {
+        result => match result
+            .map_err(ConfigError::from)
+            .and_then(|res| TomlConfig::new(res, String::from(config_file_path)))
+        {
             Ok(toml_config) => toml_config.build(),
             Err(err) => {
                 warn!(
                     "Unable to load configuration file {}: {}",
                     config_file_path, err
                 );
-                PartialConfig::default()
+                PartialConfig::new(ConfigSource::Toml {
+                    file: config_file_path.to_string(),
+                })
             }
         },
     }

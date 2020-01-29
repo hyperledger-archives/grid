@@ -24,6 +24,8 @@ pub trait PartialConfigBuilder {
 mod tests {
     use super::*;
 
+    use crate::config::ConfigSource;
+
     /// Values present in the existing example config TEST_TOML file.
     static EXAMPLE_STORAGE: &str = "yaml";
     static EXAMPLE_TRANSPORT: &str = "tls";
@@ -76,7 +78,7 @@ mod tests {
     /// contains the correct values by asserting each expected value.
     fn test_builder_chain() {
         // Create an empty PartialConfig object.
-        let mut partial_config = PartialConfig::default();
+        let mut partial_config = PartialConfig::new(ConfigSource::Default);
         // Populate the PartialConfig fields by chaining the builder methods.
         partial_config = partial_config
             .with_storage(Some(EXAMPLE_STORAGE.to_string()))
@@ -112,7 +114,7 @@ mod tests {
     /// methods contains the correct values by asserting each expected value.
     fn test_builder_separate() {
         // Create a new PartialConfig object.
-        let mut partial_config = PartialConfig::default();
+        let mut partial_config = PartialConfig::new(ConfigSource::Default);
         // Populate the PartialConfig fields by separately applying the builder methods.
         partial_config = partial_config.with_storage(Some(EXAMPLE_STORAGE.to_string()));
         partial_config = partial_config.with_transport(Some(EXAMPLE_TRANSPORT.to_string()));

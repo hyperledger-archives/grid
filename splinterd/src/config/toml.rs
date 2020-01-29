@@ -19,7 +19,7 @@ use std::io::Read;
 
 #[cfg(feature = "config-toml")]
 use crate::config::PartialConfigBuilder;
-use crate::config::{ConfigError, PartialConfig};
+use crate::config::{ConfigError, ConfigSource, PartialConfig};
 
 #[cfg(feature = "config-toml")]
 use serde_derive::Deserialize;
@@ -30,6 +30,7 @@ use toml;
 /// Holds configuration values defined in a toml file.
 #[derive(Deserialize, Default, Debug)]
 pub struct TomlConfig {
+    source: Option<ConfigSource>,
     storage: Option<String>,
     transport: Option<String>,
     cert_dir: Option<String>,
@@ -53,15 +54,23 @@ pub struct TomlConfig {
 
 #[cfg(feature = "config-toml")]
 impl TomlConfig {
-    pub fn new(toml: String) -> Result<TomlConfig, ConfigError> {
-        toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)
+    pub fn new(toml: String, toml_path: String) -> Result<TomlConfig, ConfigError> {
+        let mut toml_config = toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?;
+        toml_config.source = Some(ConfigSource::Toml { file: toml_path });
+        Ok(toml_config)
     }
 }
 
 #[cfg(feature = "config-toml")]
 impl PartialConfigBuilder for TomlConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::default()
+        let source = match self.source {
+            Some(s) => s,
+            None => ConfigSource::Toml {
+                file: String::from(""),
+            },
+        };
+        let partial_config = PartialConfig::new(source)
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -95,7 +104,11 @@ pub fn from_file(mut f: File) -> Result<PartialConfig, ConfigError> {
     let mut toml = String::new();
     f.read_to_string(&mut toml)?;
 
-    toml::from_str::<PartialConfig>(&toml).map_err(ConfigError::from)
+    let result = toml::from_str::<PartialConfig>(&toml)
+        .map_err(ConfigError::from)?
+        .with_source(ConfigSource::TomlFile { file: f });
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -188,7 +201,7 @@ mod tests {
         let toml_string =
             fs::read_to_string(TEST_TOML).expect(&format!("Unable to load {}", TEST_TOML));
         // Create a TomlConfig object from the toml string.
-        let toml_builder = TomlConfig::new(toml_string)
+        let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
             .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
         // Build a PartialConfig from the TomlConfig object created.
         let built_config = toml_builder.build();

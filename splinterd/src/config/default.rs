@@ -14,7 +14,7 @@
 
 use std::path::Path;
 
-use crate::config::{PartialConfig, PartialConfigBuilder};
+use crate::config::{ConfigSource, PartialConfig, PartialConfigBuilder};
 
 const DEFAULT_CERT_DIR: &str = "/etc/splinter/certs/";
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -92,7 +92,7 @@ impl DefaultConfig {
 
 impl PartialConfigBuilder for DefaultConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::default()
+        let partial_config = PartialConfig::new(ConfigSource::Default)
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -174,6 +174,8 @@ mod tests {
             ))
         );
         assert_eq!(config.state_dir(), Some(String::from(DEFAULT_STATE_DIR)));
+        // Assert the source is correctly identified for this PartialConfig object.
+        assert_eq!(config.source(), ConfigSource::Default);
     }
 
     #[test]
