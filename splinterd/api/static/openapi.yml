@@ -899,6 +899,67 @@ paths:
             application/json:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
+    put:
+      tags:
+      - Biome
+      description: Update a user
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: Existing username of user
+                hashed_password:
+                  description: |
+                    Hashed password to be used for user authentication
+                new_password:
+                  description: |
+                    Hash of the new password to be used for user authentication
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: |-
+                  8945622435187243046536949706b5272644c71336c7254563679727565494b376d4b3554696b734662685962652f6v52562e437a70462f6552489c8b
+      responses:
+        200:
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User updated successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 components:
   parameters:
     protocol_version:
