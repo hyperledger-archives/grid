@@ -50,6 +50,8 @@ use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
+#[cfg(feature = "scabbard-get-state")]
+use state::StateIter;
 pub use state::{BatchInfo, BatchStatus, Events, StateChange, StateChangeEvent};
 use state::{ScabbardState, StateSubscriber};
 
@@ -111,6 +113,27 @@ impl Scabbard {
             state: Arc::new(Mutex::new(state)),
             consensus: Arc::new(Mutex::new(None)),
         })
+    }
+
+    #[cfg(feature = "scabbard-get-state")]
+    pub fn get_state_at_address(&self, address: &str) -> Result<Option<Vec<u8>>, ScabbardError> {
+        Ok(self
+            .state
+            .lock()
+            .map_err(|_| ScabbardError::LockPoisoned)?
+            .get_state_at_address(address)?)
+    }
+
+    #[cfg(feature = "scabbard-get-state")]
+    pub fn get_state_with_prefix(
+        &self,
+        prefix: Option<&str>,
+    ) -> Result<Box<StateIter>, ScabbardError> {
+        Ok(self
+            .state
+            .lock()
+            .map_err(|_| ScabbardError::LockPoisoned)?
+            .get_state_with_prefix(prefix)?)
     }
 
     pub fn add_batches(
