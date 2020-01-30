@@ -764,6 +764,64 @@ paths:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
 
+  /biome/login:
+    post:
+      tags:
+        - Biome
+      description: Authenticates a user with username and password credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: username of user
+                hashed_password:
+                  description: |
+                    Hashed password to be used for user authentication
+
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: |-
+                  8945622435187243046536949706b5272644c71336c7254563679727565494b376d4b3554696b734662685962652f6v52562e437a70462f6552489c8b
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successful login"
+                  user_id:
+                    type: string
+                    description: "Internal unique identifier for the user"
+                    example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+                  token:
+                    type: string
+                    description: "JWT access token used for authorizing access to protected resources"
+                    example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lk\
+                      IjoiZjM1YWFjYzEtYTljZC00ZWRhLWI2ZDAtMmVmYWRkZjBjOGE0Iiwia\
+                      XNzIjoic2VsZi1pc3N1ZWQiLCJleHAiOjE1ODAyMzkyMjh9.P8hA0ru_x\
+                      riYX7qryl08ZEp86t5HD_AEVPEUXY70Ehc"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
 components:
   parameters:
     protocol_version:
