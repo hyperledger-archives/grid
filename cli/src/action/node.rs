@@ -94,6 +94,25 @@ impl Action for ListNodeAliasAction {
     }
 }
 
+pub struct DeleteNodeAliasAction;
+
+impl Action for DeleteNodeAliasAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let alias = match args.value_of("alias") {
+            Some(alias) => alias,
+            None => return Err(CliError::ActionError("Alias is required".into())),
+        };
+
+        let node_store = get_node_store();
+
+        node_store.delete_node(alias)?;
+
+        Ok(())
+    }
+}
+
 fn get_node_store() -> FileBackedNodeStore {
     FileBackedNodeStore::default()
 }
