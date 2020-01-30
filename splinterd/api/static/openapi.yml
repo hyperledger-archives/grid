@@ -960,6 +960,47 @@ paths:
             application/json:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
+
+  /biome/users/{user_id}/keys:
+    get:
+      tags:
+      - Biome
+      description: List keys of a user
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      responses:
+        200:
+          description: User's keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BiomeUserKey'
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 components:
   parameters:
     protocol_version:
@@ -1238,6 +1279,27 @@ components:
         prev: /nodes?offset=0&limit=10
         next: /nodes?offset=20&limit=10
         last: /nodes?offset=40&limit=10
+
+    BiomeUserKey:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: "Display name for key"
+          example: "Biome Admin Key"
+        encrypted_private_key:
+          type: string
+          description: "Encrypted private key"
+          example: "XNzIjoic2VsZi1pc3N1ZWQiLCJleHAiOjE1ODAyMzkyMjh9.P8hA0ru_x\
+            riYX7qryl08ZEp86t5HD_AEVPEUXY70Ehc"
+        public_key:
+          type: string
+          description: "Public key"
+          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+        user_id:
+          type: string
+          description: "Internal unique identifier for the user"
+          example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
 
 tags:
   - name: Biome
