@@ -42,7 +42,7 @@ use crate::protos::admin::{
     CircuitManagementPayload_Action, CircuitManagementPayload_Header, CircuitProposal,
     CircuitProposalVote, CircuitProposalVote_Vote, CircuitProposal_ProposalType,
     CircuitProposal_VoteRecord, Circuit_AuthorizationType, Circuit_DurabilityType,
-    Circuit_PersistenceType, Circuit_RouteType, MemberReady,
+    Circuit_PersistenceType, Circuit_RouteType, MemberReady, SplinterNode,
 };
 use crate::service::error::ServiceError;
 use crate::service::ServiceNetworkSender;
@@ -547,12 +547,56 @@ impl AdminServiceShared {
                 .get_circuit_id()
         );
 
-        let mut unauthorized_peers = vec![];
-        for node in payload
+        // get members as vec to payload can be sent to helper function as well
+        let members = payload
             .get_circuit_create_request()
             .get_circuit()
             .get_members()
-        {
+            .to_vec();
+        self.check_connected_peers_payload(&members, payload, message_sender)
+    }
+
+    pub fn propose_vote(
+        &mut self,
+        payload: CircuitManagementPayload,
+        message_sender: String,
+    ) -> Result<(), ServiceError> {
+        debug!(
+            "received circuit vote for {}",
+            payload.get_circuit_proposal_vote().get_circuit_id()
+        );
+        let circuit_id = payload.get_circuit_proposal_vote().get_circuit_id();
+        let proposal = self
+            .get_proposal(circuit_id)
+            .map_err(|err| {
+                ServiceError::UnableToHandleMessage(Box::new(AdminSharedError::ValidationFailed(
+                    format!("error occured when trying to get proposal {}", err),
+                )))
+            })?
+            .ok_or_else(|| {
+                ServiceError::UnableToHandleMessage(Box::new(AdminSharedError::ValidationFailed(
+                    format!(
+                        "Received vote for a proposal that does not exist: circuit id {}",
+                        circuit_id
+                    ),
+                )))
+            })?;
+
+        self.check_connected_peers_payload(
+            proposal.get_circuit_proposal().get_members(),
+            payload,
+            message_sender,
+        )
+    }
+
+    fn check_connected_peers_payload(
+        &mut self,
+        members: &[SplinterNode],
+        payload: CircuitManagementPayload,
+        message_sender: String,
+    ) -> Result<(), ServiceError> {
+        let mut unauthorized_peers = vec![];
+        for node in members {
             if self.node_id() != node.get_node_id() {
                 if self.auth_inquisitor.is_authorized(node.get_node_id()) {
                     continue;
@@ -584,16 +628,6 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    pub fn propose_vote(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
-        debug!(
-            "received circuit vote for {}",
-            payload.get_circuit_proposal_vote().get_circuit_id()
-        );
-
-        self.pending_circuit_payloads.push_back(payload);
-        Ok(())
-    }
-
     pub fn submit(&mut self, payload: CircuitManagementPayload) -> Result<(), ServiceError> {
         debug!("Payload submitted: {:?}", payload);
 
@@ -607,7 +641,9 @@ impl AdminServiceShared {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
                 self.propose_circuit(payload, "local".to_string())
             }
-            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => self.propose_vote(payload),
+            CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
+                self.propose_vote(payload, "local".to_string())
+            }
             CircuitManagementPayload_Action::ACTION_UNSET => {
                 Err(ServiceError::UnableToHandleMessage(Box::new(
                     AdminSharedError::ValidationFailed(String::from("No action specified")),
