@@ -227,6 +227,110 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
     }
 }
 
+#[cfg(feature = "scabbard-get-state")]
+pub fn make_get_state_at_address_endpoint() -> ServiceEndpoint {
+    ServiceEndpoint {
+        service_type: SERVICE_TYPE.into(),
+        route: "/state/{address}".into(),
+        method: Method::Get,
+        handler: Arc::new(move |request, _, service| {
+            let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
+                Some(s) => s,
+                None => {
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": "service is not Scabbard"
+                            }))
+                            .into_future(),
+                    )
+                }
+            };
+
+            let address = request
+                .match_info()
+                .get("address")
+                .expect("address should not be none");
+
+            Box::new(match scabbard.get_state_at_address(address) {
+                Ok(Some(value)) => HttpResponse::Ok().json(value).into_future(),
+                Ok(None) => HttpResponse::NotFound().finish().into_future(),
+                Err(err) => HttpResponse::InternalServerError()
+                    .json(json!({
+                        "message": err.to_string()
+                    }))
+                    .into_future(),
+            })
+        }),
+    }
+}
+
+#[cfg(feature = "scabbard-get-state")]
+pub fn make_get_state_with_prefix_endpoint() -> ServiceEndpoint {
+    ServiceEndpoint {
+        service_type: SERVICE_TYPE.into(),
+        route: "/state".into(),
+        method: Method::Get,
+        handler: Arc::new(move |request, _, service| {
+            let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
+                Some(s) => s,
+                None => {
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": "service is not Scabbard"
+                            }))
+                            .into_future(),
+                    )
+                }
+            };
+
+            let query: web::Query<HashMap<String, String>> =
+                if let Ok(q) = web::Query::from_query(request.query_string()) {
+                    q
+                } else {
+                    return Box::new(
+                        HttpResponse::BadRequest()
+                            .json(json!({
+                                "message": "Invalid query"
+                            }))
+                            .into_future(),
+                    );
+                };
+
+            let prefix = query.get("prefix").map(String::as_str);
+
+            Box::new(match scabbard.get_state_with_prefix(prefix) {
+                Ok(state_iter) => {
+                    let res = state_iter
+                        .map(|res| {
+                            res.map(|(address, value)| {
+                                json!({
+                                    "address": address,
+                                    "value": value,
+                                })
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>();
+                    match res {
+                        Ok(entries) => HttpResponse::Ok().json(entries).into_future(),
+                        Err(err) => HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": err.to_string()
+                            }))
+                            .into_future(),
+                    }
+                }
+                Err(err) => HttpResponse::InternalServerError()
+                    .json(json!({
+                        "message": err.to_string()
+                    }))
+                    .into_future(),
+            })
+        }),
+    }
+}
+
 fn get_statuses(
     scabbard: &Scabbard,
     ids: &[String],
