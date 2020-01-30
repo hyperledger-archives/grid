@@ -303,6 +303,37 @@ fn run() -> Result<(), CliError> {
                         ),
                 ),
         );
+
+        app = app.subcommand(
+            SubCommand::with_name("node")
+                .about("Provides node management functionality")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("alias")
+                        .about("Manage node alias")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
+                        .subcommand(
+                            SubCommand::with_name("add")
+                                .about("Add a new node alias")
+                                .arg(
+                                    Arg::with_name("alias")
+                                        .takes_value(true)
+                                        .help("Alias for the node"),
+                                )
+                                .arg(
+                                    Arg::with_name("endpoint")
+                                        .takes_value(true)
+                                        .help("Endpoint for the node"),
+                                )
+                                .arg(
+                                    Arg::with_name("force")
+                                        .short("f")
+                                        .long("force")
+                                        .help("Overwrite alias data if it already exists"),
+                                ),
+                        ),
+                ),
+        );
     }
 
     let matches = app.get_matches();
@@ -358,7 +389,7 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use action::circuit;
+        use action::{circuit, node};
         subcommands = subcommands.with_command(
             "circuit",
             SubcommandActions::new()
@@ -368,6 +399,13 @@ fn run() -> Result<(), CliError> {
                 .with_command("show", circuit::CircuitShowAction)
                 .with_command("proposals", circuit::CircuitProposalsAction),
         );
+        subcommands = subcommands.with_command(
+            "node",
+            SubcommandActions::new().with_command(
+                "alias",
+                SubcommandActions::new().with_command("add", node::AddNodeAliasAction),
+            ),
+        )
     }
 
     #[cfg(feature = "keygen")]
