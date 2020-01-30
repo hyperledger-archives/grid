@@ -51,6 +51,25 @@ impl Action for AddNodeAliasAction {
     }
 }
 
+pub struct ListNodeAliasAction;
+
+impl Action for ListNodeAliasAction {
+    fn run<'a>(&mut self, _: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let node_store = get_node_store();
+
+        let nodes = node_store.list_nodes()?;
+
+        if nodes.is_empty() {
+            println!("No node alias have been set yet");
+        } else {
+            nodes.iter().for_each(|node| {
+                println!("{} {}", node.alias(), node.endpoint());
+            })
+        }
+        Ok(())
+    }
+}
+
 fn get_node_store() -> FileBackedNodeStore {
     FileBackedNodeStore::default()
 }
