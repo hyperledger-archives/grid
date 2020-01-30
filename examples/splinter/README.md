@@ -327,6 +327,40 @@ circuit is created.
    product list
    ```
 
+## Demonstrate Circuit Scope
+
+If a node is not a part of a circuit, that node cannot access information about
+that circuit or any transactions that occur on that circuit.
+
+Use the following steps to demonstrate that the third node in the network
+(gamma-node-000) cannot see the circuit between alpha and beta, even when it
+participates in a new multi-party circuit with those nodes.
+
+1. Connect to the splinterd-gamma Docker container. You will use this container
+   to run Splinter commands on gamma-node-000.
+
+   ```
+   $ docker-compose -f examples/splinter/docker-compose.yaml exec splinterd-gamma bash
+   root@splinterd-gamma:/#
+   ```
+
+2. Verify that splinterd-gamma does not see any circuits.
+   ```
+   root@splinterd-gamma:/# splinter circuit list --url http://splinterd-gamma:8085
+   CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
+   -----------------------------------------------------------------------------------
+   ```
+
+Final note: Splinter strictly enforces privacy for all information on a
+circuit, including participants, available smart contracts, and transactions
+performed by the participants using those smart contracts.
+
+For example, if gamma creates a circuit with alpha and a separate circuit with
+beta, then uploads the XO smart contract and plays a tic-tac-toe game with
+alpha, the xo list command on gamma will show only the gamma-alpha game. Even
+though alpha and beta are using the same XO smart contract, their game moves
+(smart contract transactions) remain private to their two-party circuit,
+my-grid-circuit.
 
 ## For More Information
 - Hyperledger Grid documentation: https://grid.hyperledger.org/docs/grid/nightly/master/introduction.html
