@@ -24,14 +24,45 @@ description = """\
     and transactions between organizations.
 """
 
+[[bin]]
+name = "scabbard"
+path = "src/cli/main.rs"
+
 [dependencies]
+clap = "2"
+dirs = "2.0"
+flexi_logger = "0.14"
+log = "0.4"
+protobuf = "2"
+rand = "0.7"
+sabre-sdk = "0.4"
+sawtooth-sdk = "0.3"
+splinter = { path = "../../libsplinter", features = ["sawtooth-signing-compat", "scabbard-client"] }
+
+[dev-dependencies]
+serial_test = "0.3"
+tempfile = "3.1"
 
 [features]
 default = []
 
 stable = ["default"]
 
-experimental = []
+experimental = [
+  "contract-registry",
+  "execute",
+  "namespace",
+  "namespace-permission",
+  "smart-permissions",
+  "upload",
+]
+
+contract-registry = []
+execute = []
+namespace = []
+namespace-permission = []
+smart-permissions = []
+upload = []
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"
