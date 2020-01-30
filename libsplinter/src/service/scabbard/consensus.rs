@@ -16,6 +16,7 @@ use std::convert::{TryFrom, TryInto};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{Builder, JoinHandle};
+use std::time::Duration;
 
 use protobuf::Message;
 use transact::protos::IntoBytes;
@@ -46,6 +47,8 @@ impl ScabbardConsensusManager {
         service_id: String,
         shared: Arc<Mutex<ScabbardShared>>,
         state: Arc<Mutex<ScabbardState>>,
+        // The coordinator timeout for the two-phase commit consensus engine
+        coordinator_timeout: Duration,
     ) -> Result<Self, ScabbardConsensusManagerError> {
         let peer_ids = shared
             .lock()
@@ -75,7 +78,7 @@ impl ScabbardConsensusManager {
         let thread_handle = Builder::new()
             .name(format!("consensus-{}", service_id))
             .spawn(move || {
-                let mut two_phase_engine = TwoPhaseEngine::default();
+                let mut two_phase_engine = TwoPhaseEngine::new(coordinator_timeout);
                 if let Err(err) = two_phase_engine.run(
                     consensus_msg_rx,
                     proposal_update_rx,

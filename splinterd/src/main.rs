@@ -54,6 +54,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 use std::thread;
+use std::time::Duration;
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
@@ -68,6 +69,8 @@ const SERVER_KEY: &str = "private/server.key";
 const CA_PEM: &str = "ca.pem";
 
 const HEARTBEAT_DEFAULT: u64 = 30;
+
+const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
 
 #[cfg(not(feature = "config-toml"))]
 fn load_toml_config(config_file_path: &str) -> Config {
@@ -167,6 +170,9 @@ fn main() {
           "Backend type for the node registry. Possible values: FILE.")
         (@arg registry_file: --("registry-file") +takes_value
           "File path to the node registry file if registry-backend is FILE.")
+        (@arg admin_service_coordinator_timeout: --("admin-timeout") +takes_value
+            "The coordinator timeout for admin service proposals (in milliseconds); default is \
+             30000 (30 seconds)")
         (@arg verbose: -v --verbose +multiple
           "Increase output verbosity"));
 
@@ -360,6 +366,20 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         feature_fields = format!("{}, biome_enabled: {}", feature_fields, biome_enabled);
     }
 
+    let admin_service_coordinator_timeout = matches
+        .value_of("admin_service_coordinator_timeout")
+        .map(&str::parse::<u64>)
+        .transpose()
+        .map_err(|err| {
+            UserError::InvalidArgument(format!(
+                "admin service coordinator timeout is not a valid integer: {}",
+                err
+            ))
+        })?
+        .map(Duration::from_millis)
+        .or_else(|| config.admin_service_coordinator_timeout())
+        .unwrap_or_else(|| Duration::from_millis(DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS));
+
     debug!(
         "Configuration: {{ storage_type: {}, storage_location: {}, key_registry_location: {}, {}, \
          service_endpoint: {}, network_endpoint: {}, initial_peers: {:?}, node_id: {}, \
@@ -390,7 +410,8 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         .with_rest_api_endpoint(rest_api_endpoint)
         .with_registry_backend(registry_backend)
         .with_storage_type(storage_type)
-        .with_heartbeat_interval(heartbeat_interval);
+        .with_heartbeat_interval(heartbeat_interval)
+        .with_admin_service_coordinator_timeout(admin_service_coordinator_timeout);
 
     #[cfg(feature = "database")]
     {

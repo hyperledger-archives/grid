@@ -21,7 +21,7 @@ mod shared;
 
 use std::any::Any;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use openssl::hash::{hash, MessageDigest};
 use protobuf::{self, Message};
@@ -51,6 +51,8 @@ use self::shared::AdminServiceShared;
 
 pub use self::error::AdminServiceError;
 pub use self::error::AdminSubscriberError;
+
+const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000; // 30 seconds
 
 pub trait AdminServiceEventSubscriber: Send {
     fn handle_event(
@@ -110,6 +112,8 @@ impl Iterator for Events {
 pub struct AdminService {
     service_id: String,
     admin_service_shared: Arc<Mutex<AdminServiceShared>>,
+    /// The coordinator timeout for the two-phase commit consensus engine
+    coordinator_timeout: Duration,
     consensus: Option<AdminConsensusManager>,
 }
 
@@ -125,7 +129,13 @@ impl AdminService {
         key_registry: Box<dyn KeyRegistry>,
         key_permission_manager: Box<dyn KeyPermissionManager>,
         storage_type: &str,
+        // The coordinator timeout for the two-phase commit consensus engine; if `None`, the
+        // default value will be used (30 seconds).
+        coordinator_timeout: Option<Duration>,
     ) -> Result<Self, ServiceError> {
+        let coordinator_timeout = coordinator_timeout
+            .unwrap_or_else(|| Duration::from_millis(DEFAULT_COORDINATOR_TIMEOUT_MILLIS));
+
         let new_service = Self {
             service_id: admin_service_id(node_id),
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
@@ -139,6 +149,7 @@ impl AdminService {
                 key_permission_manager,
                 storage_type,
             )?)),
+            coordinator_timeout,
             consensus: None,
         };
 
@@ -210,9 +221,12 @@ impl Service for AdminService {
         }
 
         // Setup consensus
-        let consensus =
-            AdminConsensusManager::new(self.service_id().into(), self.admin_service_shared.clone())
-                .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
+        let consensus = AdminConsensusManager::new(
+            self.service_id().into(),
+            self.admin_service_shared.clone(),
+            self.coordinator_timeout,
+        )
+        .map_err(|err| ServiceStartError::Internal(Box::new(err)))?;
         let proposal_sender = consensus.proposal_update_sender();
 
         self.consensus = Some(consensus);
@@ -508,6 +522,7 @@ mod tests {
             Box::new(key_registry),
             Box::new(AllowAllKeyPermissionManager),
             "memory",
+            None,
         )
         .expect("Service should have been created correctly");
 

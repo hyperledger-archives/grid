@@ -28,6 +28,7 @@ pub use error::ConfigError;
 use std::fs::File;
 #[cfg(not(feature = "config-toml"))]
 use std::io::Read;
+use std::time::Duration;
 
 #[cfg(not(feature = "config-toml"))]
 use serde_derive::Deserialize;
@@ -54,6 +55,7 @@ pub struct Config {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
+    admin_service_coordinator_timeout: Option<Duration>,
 }
 
 impl Config {
@@ -132,5 +134,9 @@ impl Config {
 
     pub fn heartbeat_interval(&self) -> Option<u64> {
         self.heartbeat_interval
+    }
+
+    pub fn admin_service_coordinator_timeout(&self) -> Option<Duration> {
+        self.admin_service_coordinator_timeout
     }
 }

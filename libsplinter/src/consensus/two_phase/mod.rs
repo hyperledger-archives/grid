@@ -59,7 +59,6 @@ use crate::protos::two_phase::{
 
 use self::timing::Timeout;
 
-const DEFAULT_COORDINATOR_TIMEOUT_MILLIS: u64 = 5000; // 5 seconds
 const MESSAGE_RECV_TIMEOUT_MILLIS: u64 = 100;
 const PROPOSAL_RECV_TIMEOUT_MILLIS: u64 = 100;
 
@@ -121,12 +120,6 @@ pub struct TwoPhaseEngine {
     coordinator_timeout: Timeout,
     proposal_backlog: VecDeque<TwoPhaseProposal>,
     verification_request_backlog: VecDeque<ProposalId>,
-}
-
-impl Default for TwoPhaseEngine {
-    fn default() -> Self {
-        Self::new(Duration::from_millis(DEFAULT_COORDINATOR_TIMEOUT_MILLIS))
-    }
 }
 
 impl TwoPhaseEngine {
@@ -726,6 +719,8 @@ pub mod tests {
     use crate::consensus::tests::{MockConsensusNetworkSender, MockProposalManager};
     use crate::consensus::Proposal;
 
+    const COORDINATOR_TIMEOUT_MILLIS: u64 = 5000;
+
     /// Verify that the engine properly shuts down when it receives the Shutdown update.
     #[test]
     fn test_shutdown() {
@@ -740,7 +735,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::default();
+        let mut engine = TwoPhaseEngine::new(Duration::from_millis(COORDINATOR_TIMEOUT_MILLIS));
         let thread = std::thread::spawn(move || {
             engine
                 .run(
@@ -776,7 +771,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::default();
+        let mut engine = TwoPhaseEngine::new(Duration::from_millis(COORDINATOR_TIMEOUT_MILLIS));
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -951,7 +946,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::default();
+        let mut engine = TwoPhaseEngine::new(Duration::from_millis(COORDINATOR_TIMEOUT_MILLIS));
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {
@@ -1114,7 +1109,7 @@ pub mod tests {
             last_proposal: None,
         };
 
-        let mut engine = TwoPhaseEngine::default();
+        let mut engine = TwoPhaseEngine::new(Duration::from_millis(COORDINATOR_TIMEOUT_MILLIS));
         let network_clone = network.clone();
         let manager_clone = manager.clone();
         let thread = std::thread::spawn(move || {

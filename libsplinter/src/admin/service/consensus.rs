@@ -17,6 +17,7 @@ use std::convert::TryInto;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{Builder, JoinHandle};
+use std::time::Duration;
 
 use protobuf::{Message, RepeatedField};
 
@@ -49,6 +50,8 @@ impl AdminConsensusManager {
     pub fn new(
         service_id: String,
         shared: Arc<Mutex<AdminServiceShared>>,
+        // The coordinator timeout for the two-phase commit consensus engine
+        coordinator_timeout: Duration,
     ) -> Result<Self, AdminConsensusManagerError> {
         let (consensus_msg_tx, consensus_msg_rx) = channel();
         let (proposal_update_tx, proposal_update_rx) = channel();
@@ -65,7 +68,7 @@ impl AdminConsensusManager {
         let thread_handle = Builder::new()
             .name(format!("consensus-{}", service_id))
             .spawn(move || {
-                let mut two_phase_engine = TwoPhaseEngine::default();
+                let mut two_phase_engine = TwoPhaseEngine::new(coordinator_timeout);
                 if let Err(err) = two_phase_engine.run(
                     consensus_msg_rx,
                     proposal_update_rx,
