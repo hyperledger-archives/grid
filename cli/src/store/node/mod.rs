@@ -13,8 +13,10 @@
 // limitations under the License.
 
 mod error;
+mod yaml_store;
 
 pub use error::NodeStoreError;
+pub use yaml_store::FileBackedNodeStore;
 
 pub struct Node {
     alias: String,
