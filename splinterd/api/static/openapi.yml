@@ -719,6 +719,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /biome/register:
+    post:
+      tags:
+        - Biome
+      description: Create new user with username and password credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: username of a new user
+                hashed_password:
+                  description: |
+                     Hashed password to be used for user authentication
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: F4AABE0B40C9ABB8B6FD2EEACB39C965
+      responses:
+        200:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User created successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 
 components:
   parameters:
@@ -738,6 +782,20 @@ components:
           description: A message describing the error that occurred
           type: string
           example: DatabaseError({description})
+      required:
+        - message
+
+    ErrorBiome:
+      additionalProperties: false
+      properties:
+        code:
+          description: Error code
+          type: string
+          example: 400
+        message:
+          description: A message describing the error that occurred
+          type: string
+          example: "Invalid payload"
       required:
         - message
 
@@ -984,3 +1042,7 @@ components:
         prev: /nodes?offset=0&limit=10
         next: /nodes?offset=20&limit=10
         last: /nodes?offset=40&limit=10
+
+tags:
+  - name: Biome
+    description: Routes supporting user management in Splinter applications. Optionally compiled.
