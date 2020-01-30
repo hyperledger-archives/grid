@@ -332,7 +332,16 @@ fn run() -> Result<(), CliError> {
                                         .help("Overwrite alias data if it already exists"),
                                 ),
                         )
-                        .subcommand(SubCommand::with_name("list").about("List all node alias")),
+                        .subcommand(SubCommand::with_name("list").about("List all node alias"))
+                        .subcommand(
+                            SubCommand::with_name("get")
+                                .about("Get endpoint for a alias")
+                                .arg(
+                                    Arg::with_name("alias")
+                                        .takes_value(true)
+                                        .help("Alias for the node"),
+                                ),
+                        ),
                 ),
         );
     }
@@ -406,6 +415,7 @@ fn run() -> Result<(), CliError> {
                 "alias",
                 SubcommandActions::new()
                     .with_command("add", node::AddNodeAliasAction)
+                    .with_command("get", node::GetNodeAliasAction)
                     .with_command("list", node::ListNodeAliasAction),
             ),
         )

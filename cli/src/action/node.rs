@@ -51,6 +51,30 @@ impl Action for AddNodeAliasAction {
     }
 }
 
+pub struct GetNodeAliasAction;
+
+impl Action for GetNodeAliasAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+        let alias = match args.value_of("alias") {
+            Some(alias) => alias,
+            None => return Err(CliError::ActionError("Alias is required".into())),
+        };
+
+        let node_store = get_node_store();
+
+        let node = node_store.get_node(alias)?;
+
+        if let Some(node) = node {
+            println!("{} {}", node.alias(), node.endpoint())
+        } else {
+            println!("Alias not found {}", alias)
+        }
+
+        Ok(())
+    }
+}
+
 pub struct ListNodeAliasAction;
 
 impl Action for ListNodeAliasAction {
