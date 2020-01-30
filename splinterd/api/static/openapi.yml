@@ -822,6 +822,36 @@ paths:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
 
+  /biome/users:
+    get:
+      tags:
+        - Biome
+      description: Lists all users
+      responses:
+        200:
+          description: List of users registered in Biome
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: "Username used for login"
+                      example: "alice@acme.com"
+                    user_id:
+                      type: string
+                      description: "Internal unique identifier for the user"
+                      example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
 components:
   parameters:
     protocol_version:
