@@ -15,7 +15,6 @@
 FROM splintercommunity/splinter-dev as BUILDER
 
 # Copy over source files
-COPY Cargo.toml /build/Cargo.toml
 COPY examples/gameroom/cli /build/examples/gameroom/cli
 COPY examples/gameroom/database /build/examples/gameroom/database
 COPY examples/gameroom/daemon/ /build/examples/gameroom/daemon
