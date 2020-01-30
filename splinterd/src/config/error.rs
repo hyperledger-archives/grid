@@ -24,6 +24,7 @@ pub enum ConfigError {
     ReadError(io::Error),
     TomlParseError(TomlError),
     InvalidArgument(clap::Error),
+    MissingValue(String),
 }
 
 impl From<io::Error> for ConfigError {
@@ -50,6 +51,7 @@ impl Error for ConfigError {
             ConfigError::ReadError(source) => Some(source),
             ConfigError::TomlParseError(source) => Some(source),
             ConfigError::InvalidArgument(source) => Some(source),
+            ConfigError::MissingValue(_) => None,
         }
     }
 }
@@ -62,6 +64,7 @@ impl fmt::Display for ConfigError {
             ConfigError::InvalidArgument(source) => {
                 write!(f, "Unable to parse command line argument: {}", source)
             }
+            ConfigError::MissingValue(msg) => write!(f, "Configuration value must be set: {}", msg),
         }
     }
 }
