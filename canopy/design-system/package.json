@@ -1,7 +1,7 @@
 {
   "name": "canopy-design-system",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "main": "lib/components.min.js",
   "componentsMain": "lib/components.js",
   "componentsBrowser": "lib/components.umd.js",
