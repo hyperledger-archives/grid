@@ -12,6 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+[package]
+name = "splinter-cli"
+version = "0.3.11"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
+description = """\
+    Splinter is a privacy-focused platform for distributed applications that \
+    provides a blockchain-inspired networking environment for communication \
+    and transactions between organizations.
+"""
+
+[[bin]]
+name = "splinter"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2"
+diesel = { version = "1.0", features = ["postgres"], optional = true }
+dirs = { version = "2.0", optional = true }
+flexi_logger = "0.14"
+libc = "0.2"
+log = "0.4"
+openssl = "0.10"
+protobuf = "2"
+reqwest = { version = "0.10", features = ["blocking", "json"], optional = true }
+sawtooth-sdk = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version ="1.0", optional = true }
+serde_yaml = "0.8"
+splinter = { path = "../libsplinter" }
+whoami = { version = "0.7.0", optional = true }
+
 [features]
 default = []
 
@@ -54,39 +87,6 @@ postgres = [
 
 # Aliases - used to map libsplinter feature names to their CLI counterparts
 biome-credentials = ["database-migrate-biome-credentials"]
-
-[package]
-name = "splinter-cli"
-version = "0.3.11"
-authors = ["Cargill Incorporated"]
-edition = "2018"
-license = "Apache-2.0"
-description = """\
-    Splinter is a privacy-focused platform for distributed applications that \
-    provides a blockchain-inspired networking environment for communication \
-    and transactions between organizations.
-"""
-
-[[bin]]
-name = "splinter"
-path = "src/main.rs"
-
-[dependencies]
-clap = "2"
-diesel = { version = "1.0", features = ["postgres"], optional = true }
-dirs = { version = "2.0", optional = true }
-flexi_logger = "0.14"
-libc = "0.2"
-log = "0.4"
-openssl = "0.10"
-protobuf = "2"
-reqwest = { version = "0.10", features = ["blocking", "json"], optional = true }
-sawtooth-sdk = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version ="1.0", optional = true }
-serde_yaml = "0.8"
-splinter = { path = "../libsplinter" }
-whoami = { version = "0.7.0", optional = true }
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"
