@@ -1001,6 +1001,70 @@ paths:
             application/json:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
+    patch:
+      tags:
+      - Biome
+      description: Update a key's display name
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                public_key:
+                  description: Public key
+                new_display_name:
+                  description: |
+                    Updated display name for the key
+              required:
+                - public_key
+                - new_display_name
+              example:
+                public_key: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+                new_display_name: |-
+                  Admin key pair
+      responses:
+        200:
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Key updated successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 components:
   parameters:
     protocol_version:
