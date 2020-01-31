@@ -115,9 +115,8 @@ circuit is created.
 
    ```
    root@splinterd-alpha:/# splinter circuit proposals --url http://splinterd-alpha:8085
-   CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
-   -----------------------------------------------------------------------------------
-   my-grid-circuit                                            | grid
+   ID              MANAGEMENT MEMBERS
+   my-grid-circuit grid       alpha-node-000;beta-node-000
    ```
 
    ```
@@ -174,9 +173,8 @@ circuit is created.
 
    ```
    root@splinterd-beta:/# splinter circuit proposals --url http://splinterd-beta:8085
-   CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
-   -----------------------------------------------------------------------------------
-   my-grid-circuit                                            | grid
+   ID              MANAGEMENT MEMBERS
+   my-grid-circuit grid       alpha-node-000;beta-node-000
    ```
 
 8. Use the ID to display the details of the proposed circuit.
@@ -232,16 +230,14 @@ circuit is created.
 
     ```
     root@splinterd-beta:/# splinter circuit list --url http://splinterd-beta:8085
-    CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
-    -----------------------------------------------------------------------------------
-    my-grid-circuit                                            | grid
+    ID              MANAGEMENT MEMBERS
+    my-grid-circuit grid       alpha-node-000;beta-node-000
     ```
 
     ```
     root@splinterd-alpha:/# splinter circuit list --url http://splinterd-alpha:8085
-    CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
-    -----------------------------------------------------------------------------------
-    my-grid-circuit                                            | grid
+    ID              MANAGEMENT MEMBERS
+    my-grid-circuit grid       alpha-node-000;beta-node-000
     ```
 
 
@@ -347,8 +343,7 @@ participates in a new multi-party circuit with those nodes.
 2. Verify that splinterd-gamma does not see any circuits.
    ```
    root@splinterd-gamma:/# splinter circuit list --url http://splinterd-gamma:8085
-   CIRCUIT ID                                                 | CIRCUIT MANAGEMENT TYPE
-   -----------------------------------------------------------------------------------
+   ID MANAGEMENT MEMBERS
    ```
 
 Final note: Splinter strictly enforces privacy for all information on a
