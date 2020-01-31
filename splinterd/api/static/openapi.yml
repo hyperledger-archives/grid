@@ -28,6 +28,8 @@ paths:
       tags:
         - diagnostics
       description: Used to check if server is successfully running
+      parameters:
+        - $ref: "#/parameters/protocol_version"
       responses:
         200:
           description: Server is running correctly and accepting connections
@@ -48,6 +50,7 @@ paths:
           - Proposals
       description: Experimental - List of proposals in Admin Service state
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -96,6 +99,7 @@ paths:
         - Proposals
       description: Experimental - Fetch a proposal in Admin Service state by its circuit id
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit_id
           in: path
           description: circuit id of the proposal to fetch
@@ -124,6 +128,8 @@ paths:
       tags:
         - Admin Service
       description: Send circuit management payload in bytes to admin service
+      parameters:
+        - $ref: "#/parameters/protocol_version"
       requestBody:
         required: true
         content:
@@ -154,6 +160,7 @@ paths:
         - Admin Service
       description: Register the handler for a circuit management type
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: type
           description: The circuit management type is the type of circuit the handler will manage
           in: path
@@ -195,6 +202,7 @@ paths:
           - Circuits
       description: Experimental - List of circuits in Splinter state
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -243,6 +251,7 @@ paths:
         - Circuits
       description: Experimental - Fetch a circuit in Splinter State by its circuit id
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit_id
           in: path
           description: cirucit id of circuit to fetch
@@ -272,6 +281,7 @@ paths:
         - Key Registry
       description: List public key information in the Key Registry
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -313,6 +323,7 @@ paths:
         - Key Registry
       description: Fetch public key information in the Key Registry by public key
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: public_key
           in: path
           description: public key to query, in hex
@@ -347,6 +358,8 @@ paths:
       tags:
         - Node Registry
       description: Add node to the Node Registry
+      parameters:
+        - $ref: "#/parameters/protocol_version"
       requestBody:
         required: true
         content:
@@ -380,6 +393,7 @@ paths:
         - Node Registry
       description: List nodes in the Node Registry
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -437,6 +451,7 @@ paths:
         - Node Registry
       description: Fetch a nodes in the Node Registry by their identity
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to fetch
@@ -465,6 +480,7 @@ paths:
         - Node Registry
       description: Add a node to or replace a node in the Node Registry. This action is idempotent.
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to add/replace
@@ -504,6 +520,7 @@ paths:
         - Node Registry
       description: Delete a node from the Node Registry
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to delete
@@ -530,6 +547,7 @@ paths:
     post:
       description: Send a list of Sabre batches to the specified Scabbard service
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -558,6 +576,7 @@ paths:
     post:
       description: Send a list of Sabre batches to the specified Scabbard service
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -603,6 +622,7 @@ paths:
     get:
       description: Experimental - Get a list of entries in state from the specified Scabbard service
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -655,6 +675,7 @@ paths:
     get:
       description: Experimental - Get the value at a given address in state from the specified Scabbard service
       parameters:
+        - $ref: "#/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -698,6 +719,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+parameters:
+  protocol_version:
+    type: integer
+    description: The protocol version which the client can understand
+    in: header
+    name: SplinterProtocolVersion
+    example: 1
 
 components:
   schemas:

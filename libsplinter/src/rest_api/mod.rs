@@ -180,6 +180,7 @@ pub enum Method {
 #[derive(Clone)]
 pub struct Resource {
     route: String,
+    request_guards: Vec<Arc<dyn RequestGuard>>,
     methods: Vec<(Method, Arc<HandlerFunction>)>,
 }
 
@@ -202,6 +203,7 @@ impl Resource {
         Self {
             route: route.to_string(),
             methods: vec![],
+            request_guards: vec![],
         }
     }
 
@@ -219,11 +221,63 @@ impl Resource {
         self
     }
 
+    /// Adds a RequestGuard to the given Resource.
+    ///
+    /// This guard applies to all methods defined for this resource.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use splinter::rest_api::{Resource, Method, Continuation};
+    /// use actix_web::{HttpRequest, HttpResponse};
+    /// use futures::IntoFuture;
+    ///
+    /// Resource::build("/index")
+    ///     .add_request_guard(|r: &HttpRequest| {
+    ///         if !r.headers().contains_key("GuardFlag") {
+    ///             Continuation::terminate(
+    ///                 HttpResponse::BadRequest().finish().into_future(),
+    ///             )
+    ///         } else {
+    ///             Continuation::Continue
+    ///         }
+    ///     })
+    ///     .add_method(Method::Get, |r, p| {
+    ///         Box::new(
+    ///             HttpResponse::Ok()
+    ///                 .body("Hello, World")
+    ///                 .into_future()
+    ///         )
+    ///     });
+    /// ```
+    pub fn add_request_guard<RG>(mut self, guard: RG) -> Self
+    where
+        RG: RequestGuard + Clone + 'static,
+    {
+        self.request_guards.push(Arc::new(guard));
+        self
+    }
+
     fn into_route(self) -> actix_web::Resource {
+        let resource = web::resource(&self.route);
+
+        let request_guards = self.request_guards;
         self.methods
             .into_iter()
-            .fold(web::resource(&self.route), |resource, (method, handler)| {
-                let func = move |r: HttpRequest, p: web::Payload| (handler)(r, p);
+            .fold(resource, |resource, (method, handler)| {
+                let guards = request_guards.clone();
+                let func = move |r: HttpRequest, p: web::Payload| {
+                    // This clone satisfies a requirement that this be FnOnce
+                    if !guards.is_empty() {
+                        for guard in guards.clone() {
+                            match guard.evaluate(&r) {
+                                Continuation::Terminate(result) => return result,
+                                Continuation::Continue => (),
+                            }
+                        }
+                    }
+                    (handler)(r, p)
+                };
                 resource.route(match method {
                     Method::Get => web::get().to_async(func),
                     Method::Post => web::post().to_async(func),
@@ -233,6 +287,134 @@ impl Resource {
                     Method::Head => web::head().to_async(func),
                 })
             })
+    }
+}
+
+/// A continuation indicates whether or not a guard should allow a given request to continue, or to
+/// return a result.
+pub enum Continuation {
+    Continue,
+    Terminate(Box<dyn Future<Item = HttpResponse, Error = ActixError>>),
+}
+
+impl Continuation {
+    /// Wraps the given future in the Continuation::Terminate variant.
+    pub fn terminate<F>(fut: F) -> Continuation
+    where
+        F: Future<Item = HttpResponse, Error = ActixError> + 'static,
+    {
+        Continuation::Terminate(Box::new(fut))
+    }
+}
+
+/// A guard checks the request content in advance, and either continues the request, or
+/// returns a terminating result.
+pub trait RequestGuard: Send + Sync {
+    /// Evaluates the request and determines whether or not the request should be continued or
+    /// short-circuited with a terminating future.
+    fn evaluate(&self, req: &HttpRequest) -> Continuation;
+}
+
+impl<F> RequestGuard for F
+where
+    F: Fn(&HttpRequest) -> Continuation + Sync + Send,
+{
+    fn evaluate(&self, req: &HttpRequest) -> Continuation {
+        (*self)(req)
+    }
+}
+
+impl RequestGuard for Box<dyn RequestGuard> {
+    fn evaluate(&self, req: &HttpRequest) -> Continuation {
+        (**self).evaluate(req)
+    }
+}
+
+/// Guards requests based on a minimum protocol version.
+///
+/// A protocol version is specified via the HTTP header `"SplinterProtocolVersion"`.  This header
+/// is a positive integer value.
+#[derive(Clone)]
+pub struct ProtocolVersionRangeGuard {
+    min: u32,
+    max: u32,
+}
+
+impl ProtocolVersionRangeGuard {
+    /// Constructs a new protocol version guard with the given minimum.
+    pub fn new(min: u32, max: u32) -> Self {
+        Self { min, max }
+    }
+}
+
+impl RequestGuard for ProtocolVersionRangeGuard {
+    fn evaluate(&self, req: &HttpRequest) -> Continuation {
+        if let Some(header_value) = req.headers().get("SplinterProtocolVersion") {
+            let parsed_header = header_value
+                .to_str()
+                .map_err(|err| {
+                    format!(
+                        "Invalid characters in SplinterProtocolVersion header: {}",
+                        err
+                    )
+                })
+                .and_then(|val_str| {
+                    val_str.parse::<u32>().map_err(|_| {
+                        "SplinterProtocolVersion must be a valid positive integer".to_string()
+                    })
+                });
+            match parsed_header {
+                Err(msg) => Continuation::terminate(
+                    HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": msg,
+                        }))
+                        .into_future(),
+                ),
+                Ok(version) if version < self.min => Continuation::terminate(
+                    HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": format!(
+                                "Client must support protocol version {} or greater.",
+                                self.min,
+                            ),
+                            "requested_protocol": version,
+                            "splinter_protocol": self.max,
+                            "libsplinter_version": format!(
+                                "{}.{}.{}",
+                                env!("CARGO_PKG_VERSION_MAJOR"),
+                                env!("CARGO_PKG_VERSION_MINOR"),
+                                env!("CARGO_PKG_VERSION_PATCH")
+                            )
+                        }))
+                        .into_future(),
+                ),
+                Ok(version) if version > self.max => Continuation::terminate(
+                    HttpResponse::BadRequest()
+                        .json(json!({
+                            "message": format!(
+                                "Client requires a newer protocol than can be provided: {} > {}",
+                                version,
+                                self.max,
+                            ),
+                            "requested_protocol": version,
+                            "splinter_protocol": self.max,
+                            "libsplinter_version": format!(
+                                "{}.{}.{}",
+                                env!("CARGO_PKG_VERSION_MAJOR"),
+                                env!("CARGO_PKG_VERSION_MINOR"),
+                                env!("CARGO_PKG_VERSION_PATCH")
+                            )
+                        }))
+                        .into_future(),
+                ),
+                Ok(_) => Continuation::Continue,
+            }
+        } else {
+            // Ignore the missing header, and assume the client will handle version mismatches by
+            // inspecting the output
+            Continuation::Continue
+        }
     }
 }
 
@@ -412,6 +594,18 @@ mod test {
     #[test]
     fn test_resource() {
         Resource::build("/test")
+            .add_method(Method::Get, |_: HttpRequest, _: web::Payload| {
+                Box::new(Response::Ok().finish().into_future())
+            })
+            .into_route();
+    }
+
+    #[test]
+    fn test_resource_with_guard() {
+        Resource::build("/test-guarded")
+            .add_request_guard(|_: &HttpRequest| {
+                Continuation::terminate(Response::BadRequest().finish().into_future())
+            })
             .add_method(Method::Get, |_: HttpRequest, _: web::Payload| {
                 Box::new(Response::Ok().finish().into_future())
             })

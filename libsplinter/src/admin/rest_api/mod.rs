@@ -22,10 +22,11 @@ use std::time;
 
 use crate::actix_web::{web, HttpResponse};
 use crate::futures::{Future, IntoFuture};
+use crate::protocol;
 use crate::protos::admin::CircuitManagementPayload;
 use crate::rest_api::{
-    into_protobuf, new_websocket_event_sender, EventSender, Method, Request, Resource,
-    RestResourceProvider,
+    into_protobuf, new_websocket_event_sender, EventSender, Method, ProtocolVersionRangeGuard,
+    Request, Resource, RestResourceProvider,
 };
 use crate::service::ServiceError;
 
@@ -40,12 +41,10 @@ use super::service::{
 
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
-        // Allowing unused_mut because resources must be mutable if feature proposal-read is enabled
-        #[allow(unused_mut)]
-        let mut resources = vec![
-            make_application_handler_registration_route(self.commands()),
-            make_submit_route(self.commands()),
-        ];
+        let mut resources = vec![];
+
+        resources.push(make_application_handler_registration_route(self.commands()));
+        resources.push(make_submit_route(self.commands()));
 
         #[cfg(feature = "proposal-read")]
         resources.push(make_fetch_proposal_resource(self.commands()));
@@ -57,71 +56,82 @@ impl RestResourceProvider for AdminService {
 }
 
 fn make_submit_route<A: AdminCommands + Clone + 'static>(admin_commands: A) -> Resource {
-    Resource::build("/admin/submit").add_method(Method::Post, move |_, payload| {
-        let admin_commands = admin_commands.clone();
-        Box::new(
-            into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
-                match admin_commands.submit_circuit_change(payload) {
-                    Ok(()) => HttpResponse::Accepted().finish().into_future(),
-                    Err(AdminServiceError::ServiceError(ServiceError::UnableToHandleMessage(
-                        err,
-                    ))) => HttpResponse::BadRequest()
-                        .json(json!({
-                            "message": format!("Unable to handle message: {}", err)
-                        }))
-                        .into_future(),
-                    Err(AdminServiceError::ServiceError(ServiceError::InvalidMessageFormat(
-                        err,
-                    ))) => HttpResponse::BadRequest()
-                        .json(json!({
-                            "message": format!("Failed to parse payload: {}", err)
-                        }))
-                        .into_future(),
-                    Err(err) => {
-                        error!("{}", err);
-                        HttpResponse::InternalServerError().finish().into_future()
+    Resource::build("/admin/submit")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_SUBMIT_PROTOCOL_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Post, move |_, payload| {
+            let admin_commands = admin_commands.clone();
+            Box::new(
+                into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
+                    match admin_commands.submit_circuit_change(payload) {
+                        Ok(()) => HttpResponse::Accepted().finish().into_future(),
+                        Err(AdminServiceError::ServiceError(
+                            ServiceError::UnableToHandleMessage(err),
+                        )) => HttpResponse::BadRequest()
+                            .json(json!({
+                                "message": format!("Unable to handle message: {}", err)
+                            }))
+                            .into_future(),
+                        Err(AdminServiceError::ServiceError(
+                            ServiceError::InvalidMessageFormat(err),
+                        )) => HttpResponse::BadRequest()
+                            .json(json!({
+                                "message": format!("Failed to parse payload: {}", err)
+                            }))
+                            .into_future(),
+                        Err(err) => {
+                            error!("{}", err);
+                            HttpResponse::InternalServerError().finish().into_future()
+                        }
                     }
-                }
-            }),
-        )
-    })
+                }),
+            )
+        })
 }
 
 fn make_application_handler_registration_route<A: AdminCommands + Clone + 'static>(
     admin_commands: A,
 ) -> Resource {
-    Resource::build("/ws/admin/register/{type}").add_method(Method::Get, move |request, payload| {
-        let circuit_management_type = if let Some(t) = request.match_info().get("type") {
-            t.to_string()
-        } else {
-            return Box::new(HttpResponse::BadRequest().finish().into_future());
-        };
-        debug!(
-            "Beginning application authorization handler registration for \"{}\"",
-            circuit_management_type
-        );
+    Resource::build("/ws/admin/register/{type}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_APPLICATION_REGISTRATION_PROTOCOL_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |request, payload| {
+            let circuit_management_type = if let Some(t) = request.match_info().get("type") {
+                t.to_string()
+            } else {
+                return Box::new(HttpResponse::BadRequest().finish().into_future());
+            };
+            debug!(
+                "Beginning application authorization handler registration for \"{}\"",
+                circuit_management_type
+            );
 
-        let mut query = match web::Query::<HashMap<String, u64>>::from_query(request.query_string())
-        {
-            Ok(query) => query,
-            Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
-        };
+            let mut query =
+                match web::Query::<HashMap<String, u64>>::from_query(request.query_string()) {
+                    Ok(query) => query,
+                    Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
+                };
 
-        let (skip, last_seen_timestamp) = query
-            .remove("last")
-            .map(|since_millis| {
-                // Since this is the last seen event, we will skip it in our since
-                // query
-                debug!("Catching up on events since {}", since_millis);
-                (
-                    1usize,
-                    time::SystemTime::UNIX_EPOCH + time::Duration::from_millis(since_millis),
-                )
-            })
-            .unwrap_or((0, time::SystemTime::UNIX_EPOCH));
+            let (skip, last_seen_timestamp) = query
+                .remove("last")
+                .map(|since_millis| {
+                    // Since this is the last seen event, we will skip it in our since
+                    // query
+                    debug!("Catching up on events since {}", since_millis);
+                    (
+                        1usize,
+                        time::SystemTime::UNIX_EPOCH + time::Duration::from_millis(since_millis),
+                    )
+                })
+                .unwrap_or((0, time::SystemTime::UNIX_EPOCH));
 
-        let initial_events =
-            match admin_commands.get_events_since(&last_seen_timestamp, &circuit_management_type) {
+            let initial_events = match admin_commands
+                .get_events_since(&last_seen_timestamp, &circuit_management_type)
+            {
                 Ok(events) => events.map(JsonAdminEvent::from),
                 Err(err) => {
                     error!(
@@ -132,43 +142,55 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
                 }
             };
 
-        let request = Request::from((request, payload));
-        match new_websocket_event_sender(request, Box::new(initial_events.skip(skip))) {
-            Ok((sender, res)) => {
-                if let Err(err) = admin_commands.add_event_subscriber(
-                    &circuit_management_type,
-                    Box::new(WsAdminServiceEventSubscriber { sender }),
-                ) {
-                    error!("Unable to add admin event subscriber: {}", err);
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
+            let request = Request::from((request, payload));
+            match new_websocket_event_sender(request, Box::new(initial_events.skip(skip))) {
+                Ok((sender, res)) => {
+                    if let Err(err) = admin_commands.add_event_subscriber(
+                        &circuit_management_type,
+                        Box::new(WsAdminServiceEventSubscriber { sender }),
+                    ) {
+                        error!("Unable to add admin event subscriber: {}", err);
+                        return Box::new(
+                            HttpResponse::InternalServerError().finish().into_future(),
+                        );
+                    }
+                    debug!("Websocket response: {:?}", res);
+                    Box::new(res.into_future())
                 }
-                debug!("Websocket response: {:?}", res);
-                Box::new(res.into_future())
+                Err(err) => {
+                    debug!("Failed to create websocket: {:?}", err);
+                    Box::new(HttpResponse::InternalServerError().finish().into_future())
+                }
             }
-            Err(err) => {
-                debug!("Failed to create websocket: {:?}", err);
-                Box::new(HttpResponse::InternalServerError().finish().into_future())
-            }
-        }
-    })
+        })
 }
 
 #[cfg(feature = "proposal-read")]
 pub fn make_fetch_proposal_resource<A: AdminCommands + Clone + 'static>(
     admin_commands: A,
 ) -> Resource {
-    Resource::build("admin/proposals/{circuit_id}").add_method(Method::Get, move |r, _| {
-        fetch_proposal(r, web::Data::new(admin_commands.clone()))
-    })
+    Resource::build("admin/proposals/{circuit_id}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |r, _| {
+            fetch_proposal(r, web::Data::new(admin_commands.clone()))
+        })
 }
 
 #[cfg(feature = "proposal-read")]
 pub fn make_list_proposals_resource<A: AdminCommands + Clone + 'static>(
     admin_commands: A,
 ) -> Resource {
-    Resource::build("admin/proposals").add_method(Method::Get, move |r, _| {
-        list_proposals(r, web::Data::new(admin_commands.clone()))
-    })
+    Resource::build("admin/proposals")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_LIST_PROPOSALS_PROTOCOL_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |r, _| {
+            list_proposals(r, web::Data::new(admin_commands.clone()))
+        })
 }
 
 struct WsAdminServiceEventSubscriber {
