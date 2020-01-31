@@ -599,6 +599,106 @@ paths:
         500:
           description: Internal service error
 
+  /scabbard/{circuit}/{service_id}/state:
+    get:
+      description: Experimental - Get a list of entries in state from the specified Scabbard service
+      parameters:
+        - name: circuit
+          in: path
+          description: circuit the targeted service belongs to
+          required: true
+          schema:
+            type: string
+        - name: service_id
+          in: path
+          description: ID of the targeted service
+          required: true
+          schema:
+            type: string
+        - name: prefix
+          in: query
+          description: The address prefix for filtering state entries
+          required: false
+          schema:
+            type: string
+            example: 00ec01
+      responses:
+        200:
+          description: List of entries in state (under given address prefix, if specified)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    address:
+                      type: string
+                    value:
+                      type: array
+                      items:
+                        type: integer
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /scabbard/{circuit}/{service_id}/state/{address}:
+    get:
+      description: Experimental - Get the value at a given address in state from the specified Scabbard service
+      parameters:
+        - name: circuit
+          in: path
+          description: circuit the targeted service belongs to
+          required: true
+          schema:
+            type: string
+        - name: service_id
+          in: path
+          description: ID of the targeted service
+          required: true
+          schema:
+            type: string
+        - name: address
+          in: path
+          description: The address of the value to retrieve from state
+          required: true
+          schema:
+            type: string
+            example: 000000a87cb5eafdcca6a814e4add97c4b517d3c530c2f44b31d18e3b0c44298fc1c14
+      responses:
+        200:
+          description: The value at the requested address
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+        400:
+          description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: There is no value at the given address
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
 components:
   schemas:
     Error:

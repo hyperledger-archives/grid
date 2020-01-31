@@ -58,7 +58,8 @@ experimental = [
     "config-default",
     "config-toml",
     "health",
-    "proposal-read"
+    "proposal-read",
+    "scabbard-get-state",
 ]
 
 biome = ["splinter/biome", "database"]
@@ -71,6 +72,7 @@ config-default = ["config-builder"]
 config-toml = ["config-builder"]
 database = ["splinter/database"]
 generate-certs = ["openssl"]
+scabbard-get-state = ["splinter/scabbard-get-state"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

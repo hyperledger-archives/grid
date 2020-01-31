@@ -133,11 +133,18 @@ impl ServiceFactory for ScabbardFactory {
 
     #[cfg(feature = "rest-api")]
     fn get_rest_endpoints(&self) -> Vec<crate::service::rest_api::ServiceEndpoint> {
-        vec![
-            super::rest_api::make_add_batches_to_queue_endpoint(),
-            super::rest_api::make_subscribe_endpoint(),
-            super::rest_api::make_get_batch_status_endpoint(),
-        ]
+        let mut endpoints = vec![];
+
+        endpoints.push(super::rest_api::make_add_batches_to_queue_endpoint());
+        endpoints.push(super::rest_api::make_subscribe_endpoint());
+        endpoints.push(super::rest_api::make_get_batch_status_endpoint());
+        #[cfg(feature = "scabbard-get-state")]
+        {
+            endpoints.push(super::rest_api::make_get_state_at_address_endpoint());
+            endpoints.push(super::rest_api::make_get_state_with_prefix_endpoint());
+        }
+
+        endpoints
     }
 }
 

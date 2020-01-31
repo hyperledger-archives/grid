@@ -53,6 +53,9 @@ const CURRENT_STATE_ROOT_INDEX: &str = "current_state_root";
 
 const ITER_CACHE_SIZE: usize = 64;
 
+#[cfg(feature = "scabbard-get-state")]
+pub type StateIter = dyn Iterator<Item = Result<(String, Vec<u8>), ScabbardStateError>>;
+
 pub struct ScabbardState {
     db: Box<dyn Database>,
     context_manager: ContextManager,
@@ -170,6 +173,29 @@ impl ScabbardState {
             .map_err(|e| ScabbardStateError(format!("Unable to commit HEAD entry: {}", e)))?;
 
         Ok(())
+    }
+
+    #[cfg(feature = "scabbard-get-state")]
+    pub fn get_state_at_address(
+        &self,
+        address: &str,
+    ) -> Result<Option<Vec<u8>>, ScabbardStateError> {
+        Ok(
+            MerkleRadixTree::new(self.db.clone(), Some(&self.current_state_root))?
+                .get_value(address)?,
+        )
+    }
+
+    #[cfg(feature = "scabbard-get-state")]
+    pub fn get_state_with_prefix(
+        &self,
+        prefix: Option<&str>,
+    ) -> Result<Box<StateIter>, ScabbardStateError> {
+        Ok(Box::new(
+            MerkleRadixTree::new(self.db.clone(), Some(&self.current_state_root))?
+                .leaves(prefix)?
+                .map(|res| res.map_err(ScabbardStateError::from)),
+        ))
     }
 
     pub fn prepare_change(&mut self, batch: BatchPair) -> Result<String, ScabbardStateError> {
