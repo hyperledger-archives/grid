@@ -1,5 +1,57 @@
 # Release Notes
 
+## Changes in Splinter 0.3.11
+
+### Highlights:
+* Splinter supports dynamic multi-party circuit creation in scenarios where the
+peers are not connected when the circuit proposal is submitted.
+* A new scabbard CLI provides experimental subcommands to submit batches of
+transactions to a scabbard service.
+* New experimental endpoints have been added to get state from a scabbard
+service.
+* Information on how to run the Gameroom demo using Kubernetes is available in
+[docker/kubernetes/README.md](https://github.com/Cargill/splinter/blob/master/docker/kubernetes/README.md).
+
+
+### libsplinter:
+- Enable more than two-party circuit connection. The admin service now waits
+for all nodes in the circuit proposal to be peered before handling a consensus
+proposal.
+- Add Biome (user management) routes for fetching, listing and deleting users
+and updating credentials.
+- Establish connection to peers when handling votes. If the connection between
+nodes is dropped after a proposal is submitted, a node will try to re-establish
+the connection before submitting the vote.
+- Add support to configure the timeout value for two-phase commit.
+- Set the default timeout for admin and scabbard services to 30 seconds.
+- Add experimental endpoints (behind the "scabbard-get-state" feature) for
+fetching and listing entries in scabbard state.
+
+### splinterd:
+- Replace the current Config object with a PartialConfig and a
+PartialConfigBuilder. This is the first part of significantly refactoring how
+the Splinter daemon is configured.
+- Fix the panic caused by unwrapping a bad protobuf message
+
+### Gameroom:
+- Add example files and instructions (in docker/kubernetes) on how to run the
+Gameroom demo using Kubernetes.
+
+### scabbard CLI:
+- Add the scabbard CLI with experimental subcommands that closely resemble
+those of the sabre CLI in Sawtooth Sabre.
+
+### splinter CLI:
+- Add a keygen subcommand to generate a user's public/private key pair. This
+subcommand uses the "keygen" experimental feature.
+
+### Packaging:
+- Update the libsplinter Cargo.toml file to include only experimental and
+stable in the list of features in package.metadata.docs.rs.
+- Add the Gameroom CLI to the splinter-dev docker image.
+- Publish Docker images built with experimental features during nightly cron
+builds.
+
 ## Changes in Splinter 0.3.10
 
 ### libsplinter:
