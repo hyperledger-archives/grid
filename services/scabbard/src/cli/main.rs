@@ -34,14 +34,20 @@ use clap::SubCommand;
 use clap::{App, AppSettings, Arg};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
-use sabre_sdk::protocol::payload::{
-    Action, CreateContractActionBuilder, CreateContractRegistryActionBuilder,
-    CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
-    CreateSmartPermissionActionBuilder, DeleteContractRegistryActionBuilder,
-    DeleteNamespaceRegistryActionBuilder, DeleteNamespaceRegistryPermissionActionBuilder,
-    DeleteSmartPermissionActionBuilder, ExecuteContractActionBuilder, SabrePayloadBuilder,
-    UpdateContractRegistryOwnersActionBuilder, UpdateNamespaceRegistryOwnersActionBuilder,
-    UpdateSmartPermissionActionBuilder,
+use sabre_sdk::{
+    protocol::{
+        payload::{
+            Action, CreateContractActionBuilder, CreateContractRegistryActionBuilder,
+            CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
+            CreateSmartPermissionActionBuilder, DeleteContractRegistryActionBuilder,
+            DeleteNamespaceRegistryActionBuilder, DeleteNamespaceRegistryPermissionActionBuilder,
+            DeleteSmartPermissionActionBuilder, ExecuteContractActionBuilder, SabrePayloadBuilder,
+            UpdateContractRegistryOwnersActionBuilder, UpdateNamespaceRegistryOwnersActionBuilder,
+            UpdateSmartPermissionActionBuilder,
+        },
+        state::{ContractList, ContractRegistryList},
+    },
+    protos::FromBytes,
 };
 use sawtooth_sdk::signing::secp256k1::Secp256k1Context;
 use splinter::{
@@ -117,6 +123,60 @@ fn run() -> Result<(), CliError> {
                                 .long("wait")
                                 .takes_value(true)
                                 .default_value("300"),
+                        ]),
+                )
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .about("List all registered Sabre smart contracts")
+                        .args(&[
+                            Arg::with_name("url")
+                                .help("URL to the scabbard REST API")
+                                .short("U")
+                                .long("url")
+                                .takes_value(true)
+                                .default_value("http://localhost:8008"),
+                            Arg::with_name("service-id")
+                                .long_help(
+                                    "Fully-qualified service ID of the scabbard service (must be \
+                                     of the form 'circuit_id::service_id')",
+                                )
+                                .long("service-id")
+                                .takes_value(true)
+                                .required(true),
+                            Arg::with_name("format")
+                                .help("Format to display list of smart contracts in")
+                                .short("f")
+                                .long("format")
+                                .takes_value(true)
+                                .possible_values(&["human", "csv"])
+                                .default_value("human"),
+                        ]),
+                )
+                .subcommand(
+                    SubCommand::with_name("show")
+                        .about("Show details about a registered Sabre smart contract")
+                        .args(&[
+                            Arg::with_name("url")
+                                .help("URL to the scabbard REST API")
+                                .short("U")
+                                .long("url")
+                                .takes_value(true)
+                                .default_value("http://localhost:8008"),
+                            Arg::with_name("service-id")
+                                .long_help(
+                                    "Fully-qualified service ID of the scabbard service (must be \
+                                     of the form 'circuit_id::service_id')",
+                                )
+                                .long("service-id")
+                                .takes_value(true)
+                                .required(true),
+                            Arg::with_name("contract")
+                                .help(
+                                    "Name and version of the smart contract in the form \
+                                     'name:verion'",
+                                )
+                                .takes_value(true)
+                                .required(true),
                         ]),
                 ),
         );
@@ -709,6 +769,103 @@ fn run() -> Result<(), CliError> {
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
                 Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+            }
+            ("list", Some(matches)) => {
+                let url = matches.value_of("url").expect("default not set for --url");
+                let client = ScabbardClient::new(url);
+
+                let full_service_id = matches
+                    .value_of("service-id")
+                    .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
+                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+
+                let format = matches
+                    .value_of("format")
+                    .expect("default not set for --format");
+
+                let registries = client
+                    .get_state_with_prefix(circuit_id, service_id, Some("00ec01"))?
+                    .iter()
+                    .map(|entry| ContractRegistryList::from_bytes(entry.value()))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                let mut data = vec![];
+                data.push(vec![
+                    "NAME".to_string(),
+                    "VERSIONS".to_string(),
+                    "OWNERS".to_string(),
+                ]);
+                for registry_list in registries {
+                    for registry in registry_list.registries() {
+                        let name = registry.name().to_string();
+                        let versions = registry
+                            .versions()
+                            .iter()
+                            .map(|version| version.version().to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        let owners = registry.owners().join(", ");
+
+                        data.push(vec![name, versions, owners]);
+                    }
+                }
+
+                if format == "csv" {
+                    for row in data {
+                        println!("{}", row.join(","))
+                    }
+                } else {
+                    print_table(data);
+                }
+
+                Ok(())
+            }
+            ("show", Some(matches)) => {
+                let url = matches.value_of("url").expect("default not set for --url");
+                let client = ScabbardClient::new(url);
+
+                let full_service_id = matches
+                    .value_of("service-id")
+                    .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
+                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+
+                let contract = matches
+                    .value_of("contract")
+                    .ok_or_else(|| CliError::MissingArgument("contract".into()))?;
+                let name_version = contract.splitn(2, ':').collect::<Vec<_>>();
+                let name = name_version.get(0).ok_or_else(|| {
+                    CliError::InvalidArgument("contract invalid: cannot be empty".into())
+                })?;
+                let version = name_version.get(1).ok_or_else(|| {
+                    CliError::InvalidArgument(
+                        "contract invalid: must be of the form 'name:version'".into(),
+                    )
+                })?;
+
+                let address = transaction::compute_contract_address(name, version)?;
+                let contract_bytes = client
+                    .get_state_at_address(circuit_id, service_id, &address)?
+                    .ok_or_else(|| {
+                        CliError::action_error(&format!("contract '{}' not found", contract))
+                    })?;
+                let contract_list = ContractList::from_bytes(&contract_bytes)?;
+                let contract = contract_list
+                    .contracts()
+                    .get(0)
+                    .ok_or_else(|| CliError::action_error("contract list is empty"))?;
+
+                println!("{} {}", contract.name(), contract.version());
+                println!("  inputs:");
+                for input in contract.inputs() {
+                    println!("  - {}", input);
+                }
+                println!("  outputs:");
+                for output in contract.outputs() {
+                    println!("  - {}", output);
+                }
+                println!("  creator: {}", contract.creator());
+
+                Ok(())
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1342,4 +1499,37 @@ fn load_file_into_bytes(payload_file: &str) -> Result<Vec<u8>, CliError> {
         .read_to_end(&mut contents)
         .map_err(|err| CliError::action_error_with_source("failed to read file", err.into()))?;
     Ok(contents)
+}
+
+// Takes a vec of vecs of strings. The first vec should include the title of the columns.
+// The max length of each column is calculated and is used as the column with when printing the
+// table.
+fn print_table(table: Vec<Vec<String>>) {
+    let mut max_lengths = Vec::new();
+
+    // find the max lengths of the columns
+    for row in table.iter() {
+        for (i, col) in row.iter().enumerate() {
+            if let Some(length) = max_lengths.get_mut(i) {
+                if col.len() > *length {
+                    *length = col.len()
+                }
+            } else {
+                max_lengths.push(col.len())
+            }
+        }
+    }
+
+    // print each row with correct column size
+    for row in table.iter() {
+        let mut col_string = String::from("");
+        for (i, len) in max_lengths.iter().enumerate() {
+            if let Some(value) = row.get(i) {
+                col_string += &format!("{}{} ", value, " ".repeat(*len - value.len()),);
+            } else {
+                col_string += &" ".repeat(*len);
+            }
+        }
+        println!("{}", col_string);
+    }
 }

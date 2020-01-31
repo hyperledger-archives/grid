@@ -342,7 +342,7 @@ fn compute_contract_registry_address(name: &str) -> Result<String, CliError> {
 ///
 /// * `name` - the name of the contract
 /// * `version` - the version of the contract
-fn compute_contract_address(name: &str, version: &str) -> Result<String, CliError> {
+pub fn compute_contract_address(name: &str, version: &str) -> Result<String, CliError> {
     let s = String::from(name) + "," + version;
 
     let hash = HashSigner.sign(s.as_bytes()).map_err(|err| {
