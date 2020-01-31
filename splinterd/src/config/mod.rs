@@ -14,10 +14,14 @@
 
 #[cfg(feature = "config-builder")]
 mod builder;
+#[cfg(feature = "config-default")]
+mod default;
 mod error;
 mod partial;
 mod toml;
 
+#[cfg(feature = "config-default")]
+pub use crate::config::default::DefaultConfig;
 #[cfg(not(feature = "config-toml"))]
 pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]

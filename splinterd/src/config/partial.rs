@@ -38,6 +38,7 @@ pub struct PartialConfig {
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
     admin_service_coordinator_timeout: Option<Duration>,
+    state_dir: Option<String>,
 }
 
 impl PartialConfig {
@@ -112,6 +113,10 @@ impl PartialConfig {
 
     pub fn admin_service_coordinator_timeout(&self) -> Option<Duration> {
         self.admin_service_coordinator_timeout
+    }
+
+    pub fn state_dir(&self) -> Option<String> {
+        self.state_dir.clone()
     }
 
     #[cfg(feature = "config-builder")]
@@ -335,6 +340,18 @@ impl PartialConfig {
             _ => None,
         };
         self.admin_service_coordinator_timeout = duration;
+        self
+    }
+
+    #[cfg(feature = "config-builder")]
+    /// Adds a `state_dir` value to the PartialConfig object.
+    ///
+    /// # Arguments
+    ///
+    /// * `state_dir` - The location of the storage directory when storage is YAML.
+    ///
+    pub fn with_state_dir(mut self, state_dir: Option<String>) -> Self {
+        self.state_dir = state_dir;
         self
     }
 }
