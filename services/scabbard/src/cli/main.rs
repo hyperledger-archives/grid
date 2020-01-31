@@ -23,7 +23,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 
 #[cfg(any(
-    feature = "upload",
+    feature = "contract",
     feature = "exec",
     feature = "namespace",
     feature = "namespace-permission",
@@ -74,47 +74,51 @@ fn run() -> Result<(), CliError> {
                 .multiple(true),
         );
 
-    #[cfg(feature = "upload")]
+    #[cfg(feature = "contract")]
     {
         app = app.subcommand(
-            SubCommand::with_name("upload")
-                .about("Upload a Sabre contract")
-                .args(&[
-                    Arg::with_name("scar")
-                        .long_help(
-                            "The .scar to upload (either a file path or the name of a .scar in \
-                             SCAR_PATH)",
-                        )
-                        .required(true),
-                    Arg::with_name("key")
-                        .long_help(
-                            "Key for signing transactions (either a file path or the name of a \
-                             .priv file in $HOME/.splinter/keys)",
-                        )
-                        .short("k")
-                        .long("key")
-                        .required(true)
-                        .takes_value(true),
-                    Arg::with_name("url")
-                        .help("URL to the scabbard REST API")
-                        .short("U")
-                        .long("url")
-                        .takes_value(true)
-                        .default_value("http://localhost:8008"),
-                    Arg::with_name("service-id")
-                        .long_help(
-                            "Fully-qualified service ID of the scabbard service (must be of the \
-                             form 'circuit_id::service_id')",
-                        )
-                        .long("service-id")
-                        .takes_value(true)
-                        .required(true),
-                    Arg::with_name("wait")
-                        .help("Time (in seconds) to wait for batches to be committed")
-                        .long("wait")
-                        .takes_value(true)
-                        .default_value("300"),
-                ]),
+            SubCommand::with_name("contract")
+                .about("List, show, or upload a Sabre smart contract")
+                .subcommand(
+                    SubCommand::with_name("upload")
+                        .about("Upload a Sabre contract")
+                        .args(&[
+                            Arg::with_name("scar")
+                                .long_help(
+                                    "The .scar to upload (either a file path or the name of a \
+                                     .scar in SCAR_PATH)",
+                                )
+                                .required(true),
+                            Arg::with_name("key")
+                                .long_help(
+                                    "Key for signing transactions (either a file path or the name \
+                                     of a .priv file in $HOME/.splinter/keys)",
+                                )
+                                .short("k")
+                                .long("key")
+                                .required(true)
+                                .takes_value(true),
+                            Arg::with_name("url")
+                                .help("URL to the scabbard REST API")
+                                .short("U")
+                                .long("url")
+                                .takes_value(true)
+                                .default_value("http://localhost:8008"),
+                            Arg::with_name("service-id")
+                                .long_help(
+                                    "Fully-qualified service ID of the scabbard service (must be \
+                                     of the form 'circuit_id::service_id')",
+                                )
+                                .long("service-id")
+                                .takes_value(true)
+                                .required(true),
+                            Arg::with_name("wait")
+                                .help("Time (in seconds) to wait for batches to be committed")
+                                .long("wait")
+                                .takes_value(true)
+                                .default_value("300"),
+                        ]),
+                ),
         );
     }
 
@@ -656,54 +660,58 @@ fn run() -> Result<(), CliError> {
     setup_logging(log_level)?;
 
     match matches.subcommand() {
-        ("upload", Some(matches)) => {
-            let url = matches.value_of("url").expect("default not set for --url");
-            let client = ScabbardClient::new(url);
+        ("contract", Some(matches)) => match matches.subcommand() {
+            ("upload", Some(matches)) => {
+                let url = matches.value_of("url").expect("default not set for --url");
+                let client = ScabbardClient::new(url);
 
-            let full_service_id = matches
-                .value_of("service-id")
-                .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let full_service_id = matches
+                    .value_of("service-id")
+                    .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
+                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
 
-            let wait = matches
-                .value_of("wait")
-                .expect("default not set for --wait")
-                .parse::<u64>()
-                .map_err(|_| {
-                    CliError::InvalidArgument("'wait' argument must be a valid integer".into())
-                })?;
+                let wait = matches
+                    .value_of("wait")
+                    .expect("default not set for --wait")
+                    .parse::<u64>()
+                    .map_err(|_| {
+                        CliError::InvalidArgument("'wait' argument must be a valid integer".into())
+                    })?;
 
-            let key = matches
-                .value_of("key")
-                .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-            let signing_key = key::load_signing_key(key)?;
-            let context = Secp256k1Context::new();
-            let signer = SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                CliError::action_error_with_source("failed to create signer", err.into())
-            })?;
+                let key = matches
+                    .value_of("key")
+                    .ok_or_else(|| CliError::MissingArgument("key".into()))?;
+                let signing_key = key::load_signing_key(key)?;
+                let context = Secp256k1Context::new();
+                let signer =
+                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
+                        CliError::action_error_with_source("failed to create signer", err.into())
+                    })?;
 
-            let scar = matches
-                .value_of("scar")
-                .ok_or_else(|| CliError::MissingArgument("scar".into()))?;
-            let sc_definition = SabreSmartContractDefinition::new_from_scar(scar)?;
+                let scar = matches
+                    .value_of("scar")
+                    .ok_or_else(|| CliError::MissingArgument("scar".into()))?;
+                let sc_definition = SabreSmartContractDefinition::new_from_scar(scar)?;
 
-            let action = CreateContractActionBuilder::new()
-                .with_name(sc_definition.metadata.name)
-                .with_version(sc_definition.metadata.version)
-                .with_inputs(sc_definition.metadata.inputs)
-                .with_outputs(sc_definition.metadata.outputs)
-                .with_contract(sc_definition.contract)
-                .build()?;
-            let payload = SabrePayloadBuilder::new()
-                .with_action(Action::CreateContract(action))
-                .build()?;
+                let action = CreateContractActionBuilder::new()
+                    .with_name(sc_definition.metadata.name)
+                    .with_version(sc_definition.metadata.version)
+                    .with_inputs(sc_definition.metadata.inputs)
+                    .with_outputs(sc_definition.metadata.outputs)
+                    .with_contract(sc_definition.contract)
+                    .build()?;
+                let payload = SabrePayloadBuilder::new()
+                    .with_action(Action::CreateContract(action))
+                    .build()?;
 
-            let txn = transaction::create_transaction(payload, &signer)?;
-            let batch = transaction::create_batch(vec![txn], &signer)?;
-            let batch_list = transaction::create_batch_list_from_one(batch);
+                let txn = transaction::create_transaction(payload, &signer)?;
+                let batch = transaction::create_batch(vec![txn], &signer)?;
+                let batch_list = transaction::create_batch_list_from_one(batch);
 
-            Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
-        }
+                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+            }
+            _ => Err(CliError::InvalidSubcommand),
+        },
         ("exec", Some(matches)) => {
             let url = matches.value_of("url").expect("default not set for --url");
             let client = ScabbardClient::new(url);
