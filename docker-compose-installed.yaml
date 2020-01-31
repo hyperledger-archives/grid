@@ -16,6 +16,16 @@ version: "3.7"
 
 services:
 
+  scabbard-cli:
+    build:
+      context: .
+      dockerfile: services/scabbard/Dockerfile-installed-${DISTRO}
+      args:
+      - CARGO_ARGS=${CARGO_ARGS}
+      - REPO_VERSION=${REPO_VERSION}
+    image: ${REGISTRY}${NAMESPACE}scabbard-cli:${ISOLATION_ID}
+    container_name: scabbard-cli
+
   splinter-cli:
     build:
       context: .

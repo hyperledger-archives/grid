@@ -11,20 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-[workspace]
-
-members = [
-    "cli",
-    "client",
-    "libsplinter",
-    "splinterd",
-    "examples/private_counter/cli",
-    "examples/private_counter/service",
-    "examples/private_xo",
-    "examples/gameroom/cli",
-    "examples/gameroom/database",
-    "examples/gameroom/daemon",
-    "services/health",
-    "services/scabbard",
-]
