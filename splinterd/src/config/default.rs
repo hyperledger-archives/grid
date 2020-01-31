@@ -68,8 +68,8 @@ impl DefaultConfig {
             bind: Some(String::from("127.0.0.1:8080")),
             #[cfg(feature = "database")]
             database: Some(String::from("127.0.0.1:5432")),
-            registry_backend: None,
-            registry_file: None,
+            registry_backend: Some(String::from("FILE")),
+            registry_file: Some(String::from("/etc/splinter/nodes.yaml")),
             heartbeat_interval: Some(HEARTBEAT_DEFAULT),
             admin_service_coordinator_timeout: Some(
                 DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
@@ -138,8 +138,11 @@ mod tests {
         assert_eq!(config.bind(), Some(String::from("127.0.0.1:8080")));
         #[cfg(feature = "database")]
         assert_eq!(config.database(), Some(String::from("127.0.0.1:5432")));
-        assert_eq!(config.registry_backend(), None);
-        assert_eq!(config.registry_file(), None);
+        assert_eq!(config.registry_backend(), Some(String::from("FILE")));
+        assert_eq!(
+            config.registry_file(),
+            Some(String::from("/etc/splinter/nodes.yaml"))
+        );
         assert_eq!(config.heartbeat_interval(), Some(HEARTBEAT_DEFAULT));
         assert_eq!(
             config.admin_service_coordinator_timeout(),
