@@ -16,12 +16,14 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
+use clap;
 use toml::de::Error as TomlError;
 
 #[derive(Debug)]
 pub enum ConfigError {
     ReadError(io::Error),
     TomlParseError(TomlError),
+    InvalidArgument(clap::Error),
 }
 
 impl From<io::Error> for ConfigError {
@@ -36,11 +38,18 @@ impl From<TomlError> for ConfigError {
     }
 }
 
+impl From<clap::Error> for ConfigError {
+    fn from(e: clap::Error) -> Self {
+        ConfigError::InvalidArgument(e)
+    }
+}
+
 impl Error for ConfigError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ConfigError::ReadError(source) => Some(source),
             ConfigError::TomlParseError(source) => Some(source),
+            ConfigError::InvalidArgument(source) => Some(source),
         }
     }
 }
@@ -50,6 +59,9 @@ impl fmt::Display for ConfigError {
         match self {
             ConfigError::ReadError(source) => source.fmt(f),
             ConfigError::TomlParseError(source) => write!(f, "Invalid File Format: {}", source),
+            ConfigError::InvalidArgument(source) => {
+                write!(f, "Unable to parse command line argument: {}", source)
+            }
         }
     }
 }
