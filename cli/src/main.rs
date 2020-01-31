@@ -252,6 +252,15 @@ fn run() -> Result<(), CliError> {
                                 .long("member")
                                 .help("Filter the circuits by a node ID in the member list")
                                 .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("f")
+                                .long("format")
+                                .help("Output format")
+                                .possible_values(&["human", "csv"])
+                                .default_value("human")
+                                .takes_value(true),
                         ),
                 )
                 .subcommand(
@@ -273,7 +282,7 @@ fn run() -> Result<(), CliError> {
                             Arg::with_name("format")
                                 .short("f")
                                 .long("format")
-                                .help("Format of the circuit")
+                                .help("Output format")
                                 .possible_values(&["yaml", "json"])
                                 .default_value("yaml")
                                 .takes_value(true),
@@ -297,6 +306,15 @@ fn run() -> Result<(), CliError> {
                                     "Filter the circuit proposals by the circuit \
                                      management type of the circuits",
                                 )
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("f")
+                                .long("format")
+                                .help("Output format")
+                                .possible_values(&["human", "csv"])
+                                .default_value("human")
                                 .takes_value(true),
                         ),
                 ),

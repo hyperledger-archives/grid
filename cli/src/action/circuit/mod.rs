@@ -158,25 +158,38 @@ impl Action for CircuitListAction {
 
         let filter = args.value_of("member");
 
-        list_circuits(url, filter)
+        let format = args.value_of("format").unwrap_or("human");
+
+        list_circuits(url, filter, format)
     }
 }
 
-fn list_circuits(url: &str, filter: Option<&str>) -> Result<(), CliError> {
+fn list_circuits(url: &str, filter: Option<&str>, format: &str) -> Result<(), CliError> {
     let client = api::SplinterRestClient::new(url);
 
     let circuits = client.list_circuits(filter)?;
-    println!(
-        "{0: <80} | {1: <30}",
-        "CIRCUIT ID", "CIRCUIT MANAGEMENT TYPE",
-    );
-    println!("{}", "-".repeat(110));
+    let mut data = Vec::new();
+    data.push(vec![
+        "ID".to_string(),
+        "MANAGEMENT".to_string(),
+        "MEMBERS".to_string(),
+    ]);
     circuits.data.iter().for_each(|circuit| {
-        println!(
-            "{0: <80} | {1: <30}",
-            circuit.id, circuit.circuit_management_type,
-        );
+        let members = circuit.members.join(";");
+        data.push(vec![
+            circuit.id.to_string(),
+            circuit.circuit_management_type.to_string(),
+            members,
+        ]);
     });
+
+    if format == "csv" {
+        for row in data {
+            println!("{}", row.join(","))
+        }
+    } else {
+        print_table(data);
+    }
     Ok(())
 }
 
@@ -267,24 +280,77 @@ impl Action for CircuitProposalsAction {
 
         let filter = args.value_of("management_type");
 
-        list_proposals(url, filter)
+        let format = args.value_of("format").unwrap_or("human");
+
+        list_proposals(url, filter, format)
     }
 }
 
-fn list_proposals(url: &str, filter: Option<&str>) -> Result<(), CliError> {
+fn list_proposals(url: &str, filter: Option<&str>, format: &str) -> Result<(), CliError> {
     let client = api::SplinterRestClient::new(url);
 
     let proposals = client.list_proposals(filter)?;
-    println!(
-        "{0: <80} | {1: <30}",
-        "CIRCUIT ID", "CIRCUIT MANAGEMENT TYPE",
-    );
-    println!("{}", "-".repeat(110));
+    let mut data = Vec::new();
+    data.push(vec![
+        "ID".to_string(),
+        "MANAGEMENT".to_string(),
+        "MEMBERS".to_string(),
+    ]);
     proposals.data.iter().for_each(|proposal| {
-        println!(
-            "{0: <80} | {1: <30}",
-            proposal.circuit_id, proposal.circuit.circuit_management_type,
-        );
+        let members = proposal
+            .circuit
+            .members
+            .iter()
+            .map(|member| member.node_id.to_string())
+            .collect::<Vec<String>>()
+            .join(";");
+        data.push(vec![
+            proposal.circuit_id.to_string(),
+            proposal.circuit.circuit_management_type.to_string(),
+            members,
+        ]);
     });
+
+    if format == "csv" {
+        for row in data {
+            println!("{}", row.join(","))
+        }
+    } else {
+        print_table(data);
+    }
+
     Ok(())
+}
+
+// Takes a vec of vecs of strings. The first vec should include the title of the columns.
+// The max length of each column is calculated and is used as the column with when printing the
+// table.
+fn print_table(table: Vec<Vec<String>>) {
+    let mut max_lengths = Vec::new();
+
+    // find the max lengths of the columns
+    for row in table.iter() {
+        for (i, col) in row.iter().enumerate() {
+            if let Some(length) = max_lengths.get_mut(i) {
+                if col.len() > *length {
+                    *length = col.len()
+                }
+            } else {
+                max_lengths.push(col.len())
+            }
+        }
+    }
+
+    // print each row with correct column size
+    for row in table.iter() {
+        let mut col_string = String::from("");
+        for (i, len) in max_lengths.iter().enumerate() {
+            if let Some(value) = row.get(i) {
+                col_string += &format!("{}{} ", value, " ".repeat(*len - value.len()),);
+            } else {
+                col_string += &" ".repeat(*len);
+            }
+        }
+        println!("{}", col_string);
+    }
 }
