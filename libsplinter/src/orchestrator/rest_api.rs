@@ -35,50 +35,53 @@ impl RestResourceProvider for ServiceOrchestrator {
                         );
                         let services = self.services.clone();
 
-                        Resource::build(route.as_str()).add_method(
-                            endpoint.method.clone(),
-                            move |request, payload| {
-                                let circuit = request
-                                    .match_info()
-                                    .get("circuit")
-                                    .unwrap_or("")
-                                    .to_string();
-                                let service_id = request
-                                    .match_info()
-                                    .get("service_id")
-                                    .unwrap_or("")
-                                    .to_string();
+                        let mut resource_builder = Resource::build(&route);
 
-                                let services = match services.lock() {
-                                    Ok(s) => s,
-                                    Err(err) => {
-                                        debug!("Orchestrator's service lock is poisoned: {}", err);
-                                        return Box::new(
-                                            HttpResponse::InternalServerError()
-                                                .finish()
-                                                .into_future(),
-                                        )
-                                        .into_future();
+                        for request_guard in endpoint.request_guards.into_iter() {
+                            resource_builder = resource_builder.add_request_guard(request_guard);
+                        }
+
+                        let service_type = endpoint.service_type;
+                        let handler = endpoint.handler;
+                        resource_builder.add_method(endpoint.method, move |request, payload| {
+                            let circuit = request
+                                .match_info()
+                                .get("circuit")
+                                .unwrap_or("")
+                                .to_string();
+                            let service_id = request
+                                .match_info()
+                                .get("service_id")
+                                .unwrap_or("")
+                                .to_string();
+
+                            let services = match services.lock() {
+                                Ok(s) => s,
+                                Err(err) => {
+                                    debug!("Orchestrator's service lock is poisoned: {}", err);
+                                    return Box::new(
+                                        HttpResponse::InternalServerError().finish().into_future(),
+                                    )
+                                    .into_future();
+                                }
+                            };
+
+                            let service =
+                                match services.iter().find_map(|(service_def, managed_service)| {
+                                    if service_def.service_type == service_type
+                                        && service_def.circuit == circuit
+                                        && service_def.service_id == service_id
+                                    {
+                                        Some(&*managed_service.service)
+                                    } else {
+                                        None
                                     }
-                                };
-
-                                let service = match services.iter().find_map(
-                                    |(service_def, managed_service)| {
-                                        if service_def.service_type == endpoint.service_type
-                                            && service_def.circuit == circuit
-                                            && service_def.service_id == service_id
-                                        {
-                                            Some(&*managed_service.service)
-                                        } else {
-                                            None
-                                        }
-                                    },
-                                ) {
+                                }) {
                                     Some(s) => s,
                                     None => {
                                         error!(
                                             "{} service {} on circuit {} not found",
-                                            endpoint.service_type, service_id, circuit
+                                            service_type, service_id, circuit
                                         );
                                         return Box::new(
                                             HttpResponse::NotFound().finish().into_future(),
@@ -87,9 +90,8 @@ impl RestResourceProvider for ServiceOrchestrator {
                                     }
                                 };
 
-                                (endpoint.handler)(request, payload, service)
-                            },
-                        )
+                            handler(request, payload, service)
+                        })
                     })
                     .collect::<Vec<_>>();
 
