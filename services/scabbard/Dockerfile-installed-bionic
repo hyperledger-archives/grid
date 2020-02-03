@@ -42,5 +42,6 @@ COPY --from=builder /build/target/debian/scabbard_*.deb /tmp
 COPY --from=builder /commit-hash /commit-hash
 
 RUN apt-get update \
+ && apt-get install -y curl \
  && dpkg --unpack /tmp/scabbard_*.deb \
  && apt-get -f -y install
