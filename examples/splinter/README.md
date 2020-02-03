@@ -121,44 +121,26 @@ circuit is created.
 
    ```
    root@splinterd-alpha:/# splinter circuit show my-grid-circuit --url http://splinterd-alpha:8085
-   ---
-   proposal_type: Create
-   circuit_id: my-grid-circuit
-   circuit_hash: example-circuit-hash
-   circuit:
-     circuit_id: my-grid-circuit
-     authorization_type: Trust
-     persistence: Any
-     durability: NoDurability
-     routes: Any
-     circuit_management_type: grid
-     members:
-       - node_id: alpha-node-000
-         endpoint: “tls://splinterd-alpha:8044”
-       - node_id: beta-node-000
-         endpoint: “tls://splinterd-beta:8044”
-     roster:
-       - service_id: grid-scabbard-a
-         service_type: scabbard
-         allowed_nodes:
-           - alpha-node-000
-         arguments:
-             - - admin_keys
-           - "[\"<gridd-alpha public key>\"]"
-             - - peer_services
-           - "[\"grid-scabbard-b\"]"
-       - service_id: grid-scabbard-b
-         service_type: scabbard
-         allowed_nodes:
-           - beta-node-000
-         arguments:
-             - - admin_keys
-           - "[\"<gridd-alpha public key>\"]"
-             - - peer_services
-           - "[\"grid-scabbard-a\"]"
-   votes: []
-   requester: alpha-public-key
-   requester_node_id: alpha-node-000
+   Proposal to create: my-grid-circuit
+      Management Type: grid
+
+      alpha-node-000 (tls://splinterd-alpha:8044)
+          Vote: ACCEPT (implied as requester):
+              <alpha-public-key>
+          Service (scabbard): grid-scabbard-a
+              admin_keys:
+                  <gridd-alpha public key>
+              peer_services:
+                  grid-scabbard-b
+
+      beta-node-000 (tls://splinterd-beta:8044)
+          Vote: PENDING
+          Service (scabbard): grid-scabbard-b
+              admin_keys:
+                  <gridd-alpha public key>
+              peer_services:
+                  grid-scabbard-a
+
    ```
 
 6. Connect to the `splinterd-beta` container. You will use this container to run
@@ -181,44 +163,25 @@ circuit is created.
 
    ```
    root@splinterd-beta:/# splinter circuit show my-grid-circuit --url http://splinterd-beta:8085
-   ---
-   proposal_type: Create
-   circuit_id: my-grid-circuit
-   circuit_hash: example-circuit-hash
-   circuit:
-     circuit_id: my-grid-circuit
-     authorization_type: Trust
-     persistence: Any
-     durability: NoDurability
-     routes: Any
-     circuit_management_type: grid
-     members:
-       - node_id: alpha-node-000
-         endpoint: “tls://splinterd-alpha:8044”
-       - node_id: beta-node-000
-         endpoint: “tls://splinterd-beta:8044”
-     roster:
-       - service_id: grid-scabbard-a
-         service_type: scabbard
-         allowed_nodes:
-           - alpha-node-000
-         arguments:
-             - - admin_keys
-           - "[\"<gridd-alpha public key>\"]"
-             - - peer_services
-           - "[\"grid-scabbard-b\"]"
-       - service_id: grid-scabbard-b
-         service_type: scabbard
-         allowed_nodes:
-           - beta-node-000
-         arguments:
-             - - admin_keys
-           - "[\"<gridd-alpha public key>\"]"
-             - - peer_services
-           - "[\"grid-scabbard-a\"]"
-   votes: []
-   requester: alpha-public-key
-   requester_node_id: alpha-node-000
+   Proposal to create: my-grid-circuit
+      Management Type: grid
+
+      alpha-node-000 (tls://splinterd-alpha:8044)
+          Vote: ACCEPT (implied as requester):
+              <alpha-public-key>
+          Service (scabbard): grid-scabbard-a
+              admin_keys:
+                  <gridd-alpha public key>
+              peer_services:
+                  grid-scabbard-b
+
+      beta-node-000 (tls://splinterd-beta:8044)
+          Vote: PENDING
+          Service (scabbard): grid-scabbard-b
+              admin_keys:
+                  <gridd-alpha public key>
+              peer_services:
+                  grid-scabbard-a
    ```
 
 9. Then vote to accept the proposal.
