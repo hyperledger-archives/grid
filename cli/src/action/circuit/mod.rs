@@ -205,7 +205,7 @@ impl Action for CircuitShowAction {
             .ok_or_else(|| CliError::ActionError("Circuit name must be provided".to_string()))?;
 
         // A value should always be passed because a default is defined
-        let format = args.value_of("format").expect("format was not provided");
+        let format = args.value_of("format").unwrap_or("human");
 
         show_circuit(url, circuit_id, format)
     }
@@ -226,14 +226,14 @@ fn show_circuit(url: &str, circuit_id: &str, format: &str) -> Result<(), CliErro
                     err
                 )))?
             ),
-            // default is yaml
-            _ => println!(
+            "yaml" => println!(
                 "{}",
                 serde_yaml::to_string(&circuit).map_err(|err| CliError::ActionError(format!(
                     "Cannot format circuit into yaml: {}",
                     err
                 )))?
             ),
+            _ => println!("{}", circuit),
         }
     }
 
@@ -249,14 +249,14 @@ fn show_circuit(url: &str, circuit_id: &str, format: &str) -> Result<(), CliErro
                     err
                 )))?
             ),
-            // default is yaml
-            _ => println!(
+            "yaml" => println!(
                 "{}",
                 serde_yaml::to_string(&proposal).map_err(|err| CliError::ActionError(format!(
                     "Cannot format proposal into yaml: {}",
                     err
                 )))?
             ),
+            _ => println!("{}", proposal),
         }
     }
 

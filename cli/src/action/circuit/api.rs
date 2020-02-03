@@ -259,7 +259,7 @@ impl fmt::Display for CircuitSlice {
                     );
 
                     for (key, value) in service.arguments() {
-                        display_string += &format!("          {} :\n", key);
+                        display_string += &format!("          {}:\n", key);
                         // break apart value if its a list
                         if value.starts_with('[') && value.ends_with(']') {
                             let values: JsonResult<Vec<String>> = serde_json::from_str(value);
