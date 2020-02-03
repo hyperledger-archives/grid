@@ -77,6 +77,24 @@ impl Action for UnsetDefaultValueAction {
     }
 }
 
+pub struct ListDefaultsAction;
+
+impl Action for ListDefaultsAction {
+    fn run<'a>(&mut self, _: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let store = get_default_value_store();
+
+        let defaults = store.list_default_values()?;
+        if defaults.is_empty() {
+            println!("No defaults have been set yet");
+        } else {
+            defaults.iter().for_each(|default_val| {
+                println!("{} {}", default_val.key(), default_val.value());
+            })
+        }
+        Ok(())
+    }
+}
+
 fn get_key(name: &str) -> Result<&str, CliError> {
     match name {
         "service-type" => Ok(SERVICE_TYPE_KEY),
