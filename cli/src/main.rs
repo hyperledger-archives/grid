@@ -19,6 +19,8 @@ extern crate diesel;
 
 mod action;
 mod error;
+#[cfg(feature = "circuit")]
+mod store;
 
 use clap::clap_app;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
@@ -301,6 +303,56 @@ fn run() -> Result<(), CliError> {
                         ),
                 ),
         );
+
+        app = app.subcommand(
+            SubCommand::with_name("node")
+                .about("Provides node management functionality")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("alias")
+                        .about("Manage node alias")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
+                        .subcommand(
+                            SubCommand::with_name("add")
+                                .about("Add a new node alias")
+                                .arg(
+                                    Arg::with_name("alias")
+                                        .takes_value(true)
+                                        .help("Alias for the node"),
+                                )
+                                .arg(
+                                    Arg::with_name("endpoint")
+                                        .takes_value(true)
+                                        .help("Endpoint for the node"),
+                                )
+                                .arg(
+                                    Arg::with_name("force")
+                                        .short("f")
+                                        .long("force")
+                                        .help("Overwrite alias data if it already exists"),
+                                ),
+                        )
+                        .subcommand(SubCommand::with_name("list").about("List all node alias"))
+                        .subcommand(
+                            SubCommand::with_name("get")
+                                .about("Get endpoint for a alias")
+                                .arg(
+                                    Arg::with_name("alias")
+                                        .takes_value(true)
+                                        .help("Alias for the node"),
+                                ),
+                        )
+                        .subcommand(
+                            SubCommand::with_name("delete")
+                                .about("Delete alias for a node")
+                                .arg(
+                                    Arg::with_name("alias")
+                                        .takes_value(true)
+                                        .help("Alias for the node"),
+                                ),
+                        ),
+                ),
+        );
     }
 
     let matches = app.get_matches();
@@ -356,7 +408,7 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use action::circuit;
+        use action::{circuit, node};
         subcommands = subcommands.with_command(
             "circuit",
             SubcommandActions::new()
@@ -366,6 +418,17 @@ fn run() -> Result<(), CliError> {
                 .with_command("show", circuit::CircuitShowAction)
                 .with_command("proposals", circuit::CircuitProposalsAction),
         );
+        subcommands = subcommands.with_command(
+            "node",
+            SubcommandActions::new().with_command(
+                "alias",
+                SubcommandActions::new()
+                    .with_command("add", node::AddNodeAliasAction)
+                    .with_command("get", node::GetNodeAliasAction)
+                    .with_command("list", node::ListNodeAliasAction)
+                    .with_command("delete", node::DeleteNodeAliasAction),
+            ),
+        )
     }
 
     #[cfg(feature = "keygen")]

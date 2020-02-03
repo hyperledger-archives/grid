@@ -22,6 +22,8 @@ pub mod database;
 pub mod health;
 #[cfg(feature = "keygen")]
 pub mod keygen;
+#[cfg(feature = "circuit")]
+pub mod node;
 
 use std::collections::HashMap;
 use std::ffi::CString;
