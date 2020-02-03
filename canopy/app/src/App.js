@@ -14,97 +14,27 @@
  * limitations under the License.
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
+import { CanopyProvider } from 'canopyjs';
 
-import { useUserState, UserProvider } from 'UserStore';
-import SideNav from 'components/navigation/SideNav';
-import { loadAllSaplings } from './loadSaplings';
-import { loadSharedConfig } from './loadSharedConfig';
+import SideNav from './components/navigation/SideNav';
 
-import 'App.scss';
+import './App.scss';
 
 window.$CANOPY = {};
 
 library.add(faUserCircle);
 
-function App() {
-  const saplingDomNode = useRef(null);
-  const [userSaplingManifests, setUserSaplingManifests] = useState([]);
-  const [user, setUser] = useUserState();
-  const [sharedConfig, setSharedConfig] = useState({});
-
-  const appSapling = useRef(null);
-  const configSaplings = useRef({});
-
-  // Define implementaion of CanopyJS methods
-  window.$CANOPY.registerApp = bootstrapFunction => {
-    appSapling.current = bootstrapFunction;
-  };
-
-  window.$CANOPY.registerConfigSapling = (namespace, bootStrapFunction) => {
-    configSaplings.current[namespace] = bootStrapFunction;
-  };
-
-  window.$CANOPY.setUser = setUser;
-  window.$CANOPY.getUser = () => user;
-  window.$CANOPY.getSharedConfig = () => sharedConfig;
-
-  // This useEffect with zero dependencies will run only when the component first loads.
-  useEffect(() => {
-    (async () => {
-      // handle all (simulated) HTTP requests concurrently
-      const [
-        { userSaplingsResponse },
-        sharedConfigResponse
-      ] = await Promise.all([loadAllSaplings(), loadSharedConfig()]);
-
-      setSharedConfig(sharedConfigResponse);
-      setUserSaplingManifests(userSaplingsResponse);
-
-      // Load the config saplings
-      const configs = Object.values(configSaplings.current);
-      if (configs.length === 0) {
-        throw new Error('No Config Saplings registered');
-      }
-      configs.forEach(bootstrapConfigSapling => {
-        bootstrapConfigSapling();
-      });
-
-      // Invoke the current sapling if one has been registered
-      if (
-        appSapling.current &&
-        typeof appSapling.current === typeof Function.prototype
-      ) {
-        appSapling.current(saplingDomNode.current);
-      }
-    })();
-  }, []);
-
-  const userSaplingRoutes = userSaplingManifests.map(
-    ({ displayName, namespace, icon }) => {
-      return {
-        path: `/${namespace}`,
-        displayName,
-        logo: icon
-      };
-    }
-  );
-
-  return (
-    <div className="app">
-      <SideNav userSaplingRoutes={userSaplingRoutes} />
-      <div className="view" ref={saplingDomNode} />
-    </div>
-  );
-}
-
 function AppWithProvider() {
   return (
-    <UserProvider>
-      <App />
-    </UserProvider>
+    <CanopyProvider
+      saplingURL={process.env.REACT_APP_SAPLING_URL}
+      splinterURL={process.env.REACT_APP_SPLINTER_URL}
+    >
+      <SideNav />
+    </CanopyProvider>
   );
 }
 export default AppWithProvider;

@@ -15,16 +15,25 @@
  */
 
 import React from 'react';
-import PropTypes from 'prop-types';
 import classnames from 'classnames';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useUserSaplings } from 'canopyjs';
 
-import NavItem from 'components/navigation/NavItem';
+import NavItem from './NavItem';
 
-import 'components/navigation/SideNav.scss';
+import './SideNav.scss';
 
-function SideNav(props) {
-  const { userSaplingRoutes } = props;
+function SideNav() {
+  const userSaplings = useUserSaplings();
+  const userSaplingRoutes = userSaplings.map(
+    ({ displayName, namespace, icon }) => {
+      return {
+        path: `/${namespace}`,
+        displayName,
+        logo: icon
+      };
+    }
+  );
   const userSaplingTabs = userSaplingRoutes.map(
     ({ path, displayName, logo }) => {
       return <NavItem key={path} path={path} label={displayName} logo={logo} />;
@@ -32,7 +41,7 @@ function SideNav(props) {
   );
 
   return (
-    <div className="side-nav">
+    <>
       <a href="/" className="brand">
         <h5>Canopy</h5>
       </a>
@@ -40,7 +49,7 @@ function SideNav(props) {
       <div className="nav-items">{userSaplingTabs}</div>
       <hr className="bottom" />
       <ProfileTab />
-    </div>
+    </>
   );
 }
 
@@ -59,18 +68,5 @@ function ProfileTab() {
     </a>
   );
 }
-
-SideNav.propTypes = {
-  userSaplingRoutes: PropTypes.arrayOf(
-    PropTypes.shape({
-      path: PropTypes.string.isRequired,
-      displayName: PropTypes.string.isRequired
-    })
-  )
-};
-
-SideNav.defaultProps = {
-  userSaplingRoutes: []
-};
 
 export default SideNav;
