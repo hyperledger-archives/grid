@@ -23,7 +23,10 @@ use transact::protos::FromBytes;
 
 use crate::actix_web::{web, Error as ActixError, HttpResponse};
 use crate::futures::{stream::Stream, Future, IntoFuture};
-use crate::rest_api::{new_websocket_event_sender, EventSender, Method, Request};
+use crate::protocol;
+use crate::rest_api::{
+    new_websocket_event_sender, EventSender, Method, ProtocolVersionRangeGuard, Request,
+};
 use crate::service::rest_api::ServiceEndpoint;
 
 use super::error::StateSubscriberError;
@@ -111,6 +114,10 @@ pub fn make_subscribe_endpoint() -> ServiceEndpoint {
                 }
             }
         }),
+        request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
+            protocol::SCABBARD_SUBSCRIBE_PROTOCOL_MIN,
+            protocol::SCABBARD_PROTOCOL_VERSION,
+        ))],
     }
 }
 
@@ -150,6 +157,10 @@ pub fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                     }),
             )
         }),
+        request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
+            protocol::SCABBARD_ADD_BATCHES_PROTOCOL_MIN,
+            protocol::SCABBARD_PROTOCOL_VERSION,
+        ))],
     }
 }
 
@@ -224,6 +235,10 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 Err(err) => Box::new(HttpResponse::InternalServerError().json(err).into_future()),
             }
         }),
+        request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
+            protocol::SCABBARD_BATCH_STATUSES_PROTOCOL_MIN,
+            protocol::SCABBARD_PROTOCOL_VERSION,
+        ))],
     }
 }
 
@@ -262,6 +277,10 @@ pub fn make_get_state_at_address_endpoint() -> ServiceEndpoint {
                     .into_future(),
             })
         }),
+        request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
+            protocol::SCABBARD_GET_STATE_PROTOCOL_MIN,
+            protocol::SCABBARD_PROTOCOL_VERSION,
+        ))],
     }
 }
 
@@ -328,6 +347,10 @@ pub fn make_get_state_with_prefix_endpoint() -> ServiceEndpoint {
                     .into_future(),
             })
         }),
+        request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
+            protocol::SCABBARD_LIST_STATE_PROTOCOL_MIN,
+            protocol::SCABBARD_PROTOCOL_VERSION,
+        ))],
     }
 }
 
