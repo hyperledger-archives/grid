@@ -11,9 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::fmt;
 
 use reqwest::{blocking::Client, header, StatusCode};
 use serde::{Deserialize, Serialize};
+use serde_json::error::Result as JsonResult;
 use splinter::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
 
 use crate::error::CliError;
@@ -237,6 +239,48 @@ pub struct CircuitSlice {
     pub circuit_management_type: String,
     pub members: Vec<String>,
     pub roster: Roster,
+}
+
+impl fmt::Display for CircuitSlice {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut display_string = format!(
+            "Circuit: {}\n    Management Type: {}\n",
+            self.id, self.circuit_management_type
+        );
+
+        for member in self.members.iter() {
+            display_string += &format!("\n    {}\n", member);
+            for service in self.roster.iter() {
+                if service.allowed_nodes().contains(member) {
+                    display_string += &format!(
+                        "        Service ({}): {}\n ",
+                        service.service_type(),
+                        service.service_id()
+                    );
+
+                    for (key, value) in service.arguments() {
+                        display_string += &format!("          {} :\n", key);
+                        // break apart value if its a list
+                        if value.starts_with('[') && value.ends_with(']') {
+                            let values: JsonResult<Vec<String>> = serde_json::from_str(value);
+                            match values {
+                                Ok(values) => {
+                                    for i in values {
+                                        display_string += &format!("              {}\n", i);
+                                    }
+                                }
+                                Err(_) => display_string += &format!("              {}\n", value),
+                            };
+                        } else {
+                            display_string += &format!("              {}\n", value);
+                        }
+                    }
+                }
+            }
+        }
+
+        write!(f, "{}", display_string)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
