@@ -29,7 +29,7 @@ paths:
         - diagnostics
       description: Used to check if server is successfully running
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
       responses:
         200:
           description: Server is running correctly and accepting connections
@@ -50,7 +50,7 @@ paths:
           - Proposals
       description: Experimental - List of proposals in Admin Service state
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -99,7 +99,7 @@ paths:
         - Proposals
       description: Experimental - Fetch a proposal in Admin Service state by its circuit id
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit_id
           in: path
           description: circuit id of the proposal to fetch
@@ -129,7 +129,7 @@ paths:
         - Admin Service
       description: Send circuit management payload in bytes to admin service
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
       requestBody:
         required: true
         content:
@@ -160,7 +160,7 @@ paths:
         - Admin Service
       description: Register the handler for a circuit management type
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: type
           description: The circuit management type is the type of circuit the handler will manage
           in: path
@@ -202,7 +202,7 @@ paths:
           - Circuits
       description: Experimental - List of circuits in Splinter state
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -251,7 +251,7 @@ paths:
         - Circuits
       description: Experimental - Fetch a circuit in Splinter State by its circuit id
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit_id
           in: path
           description: cirucit id of circuit to fetch
@@ -281,7 +281,7 @@ paths:
         - Key Registry
       description: List public key information in the Key Registry
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -323,7 +323,7 @@ paths:
         - Key Registry
       description: Fetch public key information in the Key Registry by public key
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: public_key
           in: path
           description: public key to query, in hex
@@ -359,7 +359,7 @@ paths:
         - Node Registry
       description: Add node to the Node Registry
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
       requestBody:
         required: true
         content:
@@ -393,7 +393,7 @@ paths:
         - Node Registry
       description: List nodes in the Node Registry
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: offset
           in: query
           description: paging offset
@@ -451,7 +451,7 @@ paths:
         - Node Registry
       description: Fetch a nodes in the Node Registry by their identity
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to fetch
@@ -480,7 +480,7 @@ paths:
         - Node Registry
       description: Add a node to or replace a node in the Node Registry. This action is idempotent.
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to add/replace
@@ -520,7 +520,7 @@ paths:
         - Node Registry
       description: Delete a node from the Node Registry
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: identity
           in: path
           description: identity of node to delete
@@ -547,7 +547,7 @@ paths:
     post:
       description: Send a list of Sabre batches to the specified Scabbard service
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -576,7 +576,7 @@ paths:
     post:
       description: Send a list of Sabre batches to the specified Scabbard service
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -622,7 +622,7 @@ paths:
     get:
       description: Experimental - Get a list of entries in state from the specified Scabbard service
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -675,7 +675,7 @@ paths:
     get:
       description: Experimental - Get the value at a given address in state from the specified Scabbard service
       parameters:
-        - $ref: "#/parameters/protocol_version"
+        - $ref: "#/components/parameters/protocol_version"
         - name: circuit
           in: path
           description: circuit the targeted service belongs to
@@ -719,15 +719,409 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-parameters:
-  protocol_version:
-    type: integer
-    description: The protocol version which the client can understand
-    in: header
-    name: SplinterProtocolVersion
-    example: 1
+  /biome/register:
+    post:
+      tags:
+        - Biome
+      description: Create new user with username and password credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: username of a new user
+                hashed_password:
+                  description: |
+                     Hashed password to be used for user authentication
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: F4AABE0B40C9ABB8B6FD2EEACB39C965
+      responses:
+        200:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User created successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
+  /biome/login:
+    post:
+      tags:
+        - Biome
+      description: Authenticates a user with username and password credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: username of user
+                hashed_password:
+                  description: |
+                    Hashed password to be used for user authentication
+
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: |-
+                  8945622435187243046536949706b5272644c71336c7254563679727565494b376d4b3554696b734662685962652f6v52562e437a70462f6552489c8b
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successful login"
+                  user_id:
+                    type: string
+                    description: "Internal unique identifier for the user"
+                    example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+                  token:
+                    type: string
+                    description: "JWT access token used for authorizing access to protected resources"
+                    example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lk\
+                      IjoiZjM1YWFjYzEtYTljZC00ZWRhLWI2ZDAtMmVmYWRkZjBjOGE0Iiwia\
+                      XNzIjoic2VsZi1pc3N1ZWQiLCJleHAiOjE1ODAyMzkyMjh9.P8hA0ru_x\
+                      riYX7qryl08ZEp86t5HD_AEVPEUXY70Ehc"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
+  /biome/users:
+    get:
+      tags:
+        - Biome
+      description: Lists all users
+      responses:
+        200:
+          description: List of users registered in Biome
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: "Username used for login"
+                      example: "alice@acme.com"
+                    user_id:
+                      type: string
+                      description: "Internal unique identifier for the user"
+                      example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
+  /biome/users/{user_id}:
+    get:
+      tags:
+      - Biome
+      description: Fetch a user by ID
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      responses:
+        200:
+          description: User information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    description: "Username used for login"
+                    example: "alice@acme.com"
+                  user_id:
+                    type: string
+                    description: "Internal unique identifier for the user"
+                    example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+    put:
+      tags:
+      - Biome
+      description: Update a user
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: Existing username of user
+                hashed_password:
+                  description: |
+                    Hashed password to be used for user authentication
+                new_password:
+                  description: |
+                    Hash of the new password to be used for user authentication
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: |-
+                  8945622435187243046536949706b5272644c71336c7254563679727565494b376d4b3554696b734662685962652f6v52562e437a70462f6552489c8b
+      responses:
+        200:
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User updated successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
+  /biome/users/{user_id}/keys:
+    get:
+      tags:
+      - Biome
+      description: List keys of a user
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      responses:
+        200:
+          description: User's keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BiomeUserKey'
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+    patch:
+      tags:
+      - Biome
+      description: Update a key's display name
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                public_key:
+                  description: Public key
+                new_display_name:
+                  description: |
+                    Updated display name for the key
+              required:
+                - public_key
+                - new_display_name
+              example:
+                public_key: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+                new_display_name: |-
+                  Admin key pair
+      responses:
+        200:
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Key updated successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+    post:
+      tags:
+      - Biome
+      description: Add a new key for user
+      parameters:
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiomeUserKey'
+      responses:
+        200:
+          description: User added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 
 components:
+  parameters:
+    protocol_version:
+      schema:
+        type: integer
+        example: 1
+      description: The protocol version which the client can understand
+      in: header
+      name: SplinterProtocolVersion
+
   schemas:
     Error:
       additionalProperties: false
@@ -736,6 +1130,20 @@ components:
           description: A message describing the error that occurred
           type: string
           example: DatabaseError({description})
+      required:
+        - message
+
+    ErrorBiome:
+      additionalProperties: false
+      properties:
+        code:
+          description: Error code
+          type: string
+          example: 400
+        message:
+          description: A message describing the error that occurred
+          type: string
+          example: "Invalid payload"
       required:
         - message
 
@@ -982,3 +1390,28 @@ components:
         prev: /nodes?offset=0&limit=10
         next: /nodes?offset=20&limit=10
         last: /nodes?offset=40&limit=10
+
+    BiomeUserKey:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: "Display name for key"
+          example: "Biome Admin Key"
+        encrypted_private_key:
+          type: string
+          description: "Encrypted private key"
+          example: "XNzIjoic2VsZi1pc3N1ZWQiLCJleHAiOjE1ODAyMzkyMjh9.P8hA0ru_x\
+            riYX7qryl08ZEp86t5HD_AEVPEUXY70Ehc"
+        public_key:
+          type: string
+          description: "Public key"
+          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+        user_id:
+          type: string
+          description: "Internal unique identifier for the user"
+          example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+
+tags:
+  - name: Biome
+    description: Routes supporting user management in Splinter applications. Optionally compiled.
