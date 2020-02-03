@@ -43,12 +43,16 @@ impl ScabbardClient {
     /// Optionally wait the given number of seconds for batches to commit.
     pub fn submit(
         &self,
-        circuit_id: &str,
-        service_id: &str,
+        service_id: &ServiceId,
         batches: BatchList,
         wait: Option<u64>,
     ) -> Result<(), Error> {
-        let batch_link = submit_batches(&self.url, circuit_id, service_id, batches)?;
+        let batch_link = submit_batches(
+            &self.url,
+            service_id.circuit(),
+            service_id.service_id(),
+            batches,
+        )?;
         if let Some(wait_secs) = wait {
             wait_for_batches(&self.url, &batch_link, wait_secs)
         } else {
@@ -58,15 +62,18 @@ impl ScabbardClient {
 
     pub fn get_state_at_address(
         &self,
-        circuit_id: &str,
-        service_id: &str,
+        service_id: &ServiceId,
         address: &str,
     ) -> Result<Option<Vec<u8>>, Error> {
         parse_hex(address).map_err(|err| Error::new_with_source("invalid address", err.into()))?;
 
         let url = Url::parse(&format!(
             "{}/{}/{}/{}/state/{}",
-            &self.url, SERVICE_TYPE, circuit_id, service_id, address
+            &self.url,
+            SERVICE_TYPE,
+            service_id.circuit(),
+            service_id.service_id(),
+            address
         ))
         .map_err(|err| Error::new_with_source("invalid URL", err.into()))?;
 
@@ -95,17 +102,20 @@ impl ScabbardClient {
 
     pub fn get_state_with_prefix(
         &self,
-        circuit_id: &str,
-        service_id: &str,
+        service_id: &ServiceId,
         prefix: Option<&str>,
     ) -> Result<Vec<StateEntry>, Error> {
         let mut url = Url::parse(&format!(
             "{}/{}/{}/{}/state",
-            &self.url, SERVICE_TYPE, circuit_id, service_id
+            &self.url,
+            SERVICE_TYPE,
+            service_id.circuit(),
+            service_id.service_id()
         ))
         .map_err(|err| Error::new_with_source("invalid URL", err.into()))?;
         if let Some(prefix) = prefix {
-            parse_hex(prefix).map_err(|err| Error::new_with_source("invalid prefix", err.into()))?;
+            parse_hex(prefix)
+                .map_err(|err| Error::new_with_source("invalid prefix", err.into()))?;
             if prefix.len() > 70 {
                 return Err(Error::new("prefix must be less than 70 characters"));
             }
@@ -131,6 +141,40 @@ impl ScabbardClient {
                 status, msg
             )))
         }
+    }
+}
+
+/// A fully-qualified service ID (circuit and service ID)
+pub struct ServiceId {
+    circuit: String,
+    service_id: String,
+}
+
+impl ServiceId {
+    /// Parse a fully-qualified service ID string ("circuit::service_id").
+    pub fn new(full_id: &str) -> Result<Self, Error> {
+        let ids = full_id.splitn(2, "::").collect::<Vec<_>>();
+        let circuit = (*ids
+            .get(0)
+            .ok_or_else(|| Error::new("service ID invalid: cannot be empty"))?)
+        .to_string();
+        let service_id = (*ids.get(1).ok_or_else(|| {
+            Error::new("service ID invalid: must be of the form 'circuit_id::service_id'")
+        })?)
+        .to_string();
+
+        Ok(Self {
+            circuit,
+            service_id,
+        })
+    }
+
+    pub fn circuit(&self) -> &str {
+        &self.circuit
+    }
+
+    pub fn service_id(&self) -> &str {
+        &self.service_id
     }
 }
 

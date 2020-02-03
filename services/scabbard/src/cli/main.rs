@@ -51,7 +51,7 @@ use sabre_sdk::{
 };
 use sawtooth_sdk::signing::secp256k1::Secp256k1Context;
 use splinter::{
-    service::scabbard::client::{SabreSmartContractDefinition, ScabbardClient},
+    service::scabbard::client::{SabreSmartContractDefinition, ScabbardClient, ServiceId},
     signing::sawtooth::SawtoothSecp256k1RefSigner,
 };
 
@@ -728,7 +728,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -768,7 +768,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("list", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -777,14 +777,14 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let format = matches
                     .value_of("format")
                     .expect("default not set for --format");
 
                 let registries = client
-                    .get_state_with_prefix(circuit_id, service_id, Some("00ec01"))?
+                    .get_state_with_prefix(&service_id, Some("00ec01"))?
                     .iter()
                     .map(|entry| ContractRegistryList::from_bytes(entry.value()))
                     .collect::<Result<Vec<_>, _>>()?;
@@ -827,7 +827,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let contract = matches
                     .value_of("contract")
@@ -844,7 +844,7 @@ fn run() -> Result<(), CliError> {
 
                 let address = transaction::compute_contract_address(name, version)?;
                 let contract_bytes = client
-                    .get_state_at_address(circuit_id, service_id, &address)?
+                    .get_state_at_address(&service_id, &address)?
                     .ok_or_else(|| {
                         CliError::action_error(&format!("contract '{}' not found", contract))
                     })?;
@@ -876,7 +876,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+            let service_id = ServiceId::new(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -937,7 +937,7 @@ fn run() -> Result<(), CliError> {
             let batch = transaction::create_batch(vec![txn], &signer)?;
             let batch_list = transaction::create_batch_list_from_one(batch);
 
-            Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+            Ok(client.submit(&service_id, batch_list, Some(wait))?)
         }
         ("ns", Some(matches)) => match matches.subcommand() {
             ("create", Some(matches)) => {
@@ -947,7 +947,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -988,7 +988,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -997,7 +997,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1038,7 +1038,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1047,7 +1047,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1082,7 +1082,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1093,7 +1093,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+            let service_id = ServiceId::new(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -1145,7 +1145,7 @@ fn run() -> Result<(), CliError> {
             let batch = transaction::create_batch(vec![txn], &signer)?;
             let batch_list = transaction::create_batch_list_from_one(batch);
 
-            Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+            Ok(client.submit(&service_id, batch_list, Some(wait))?)
         }
         ("cr", Some(matches)) => match matches.subcommand() {
             ("create", Some(matches)) => {
@@ -1155,7 +1155,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1196,7 +1196,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1205,7 +1205,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1246,7 +1246,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1255,7 +1255,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1290,7 +1290,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1302,7 +1302,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1346,7 +1346,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1355,7 +1355,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1399,7 +1399,7 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1408,7 +1408,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let (circuit_id, service_id) = split_full_service_id(full_service_id)?;
+                let service_id = ServiceId::new(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1447,26 +1447,12 @@ fn run() -> Result<(), CliError> {
                 let batch = transaction::create_batch(vec![txn], &signer)?;
                 let batch_list = transaction::create_batch_list_from_one(batch);
 
-                Ok(client.submit(circuit_id, service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, batch_list, Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
         _ => Err(CliError::InvalidSubcommand),
     }
-}
-
-/// Convert a fully-qualified service ID into its separate (circuit_id, service_id) components.
-fn split_full_service_id(arg: &str) -> Result<(&str, &str), CliError> {
-    let ids = arg.splitn(2, "::").collect::<Vec<_>>();
-    let circuit_id = ids
-        .get(0)
-        .ok_or_else(|| CliError::InvalidArgument("service-id invalid: cannot be empty".into()))?;
-    let service_id = ids.get(1).ok_or_else(|| {
-        CliError::InvalidArgument(
-            "service-id invalid: must be of the form 'circuit_id::service_id'".into(),
-        )
-    })?;
-    Ok((circuit_id, service_id))
 }
 
 fn setup_logging(log_level: log::LevelFilter) -> Result<(), CliError> {
