@@ -25,7 +25,7 @@ interface SetUser {
 
 interface SharedConfig {
   canopyConfig: {
-    splinterEndpoint: string;
+    splinterURL: string;
   };
 }
 

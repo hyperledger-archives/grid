@@ -14,7 +14,7 @@
 
 FROM node:lts-alpine
 
-WORKDIR /canopyjs
+WORKDIR /saplingjs
 
 COPY package*.json ./
 

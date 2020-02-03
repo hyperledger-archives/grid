@@ -66,10 +66,10 @@ services:
     image: canopy-app:${ISOLATION_ID}
     command: yarn lint
 
-  lint-canopyjs:
+  lint-saplingjs:
     build:
-      context: ../../canopy/canopyjs
-    image: canopyjs:${ISOLATION_ID}
+      context: ../../canopy/saplingjs
+    image: saplingjs:${ISOLATION_ID}
     command: yarn lint
 
   lint-design-system:

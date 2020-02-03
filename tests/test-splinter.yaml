@@ -49,12 +49,12 @@ services:
     image: canopy-app:${ISOLATION_ID}
     command: yarn test
 
-  unit-test-canopyjs:
+  unit-test-saplingjs:
     build:
-      context: ../canopy/canopyjs
+      context: ../canopy/saplingjs
     environment:
       - CI=true
-    image: canopyjs:${ISOLATION_ID}
+    image: saplingjs:${ISOLATION_ID}
     command: yarn test
 
   unit-test-design-system:

@@ -48,8 +48,8 @@ jobs:
       script:
         - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-canopy-app
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-canopy-app
-        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-canopyjs
-        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-canopyjs
+        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-saplingjs
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-saplingjs
         - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-design-system
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-design-system
 
