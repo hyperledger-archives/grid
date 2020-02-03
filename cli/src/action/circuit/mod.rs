@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod api;
+pub mod defaults;
 mod payload;
 
 use std::fs::File;
