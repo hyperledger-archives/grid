@@ -77,7 +77,7 @@ RUN find . -name 'Cargo.toml' -exec \
     sh -c 'x="{}"; cargo build --release --manifest-path "$x" ' \;
 
 # Do wasm builds for the contracts
-RUN find . -name 'Cargo.toml' -exec \
+RUN find contracts -name 'Cargo.toml' -exec \
     sh -c 'x="{}"; cargo build --target wasm32-unknown-unknown --release --manifest-path "$x" ' \;
 
 # Clean up built files
