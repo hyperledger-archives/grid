@@ -13,8 +13,11 @@
 // limitations under the License.
 
 mod error;
+mod yaml_store;
 
 pub use error::DefaultStoreError;
+
+pub use yaml_store::FileBackedDefaultStore;
 
 pub struct DefaultValue {
     key: String,
