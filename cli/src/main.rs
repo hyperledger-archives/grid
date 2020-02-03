@@ -285,8 +285,8 @@ fn run() -> Result<(), CliError> {
                                 .short("f")
                                 .long("format")
                                 .help("Output format")
-                                .possible_values(&["yaml", "json"])
-                                .default_value("yaml")
+                                .possible_values(&["human", "yaml", "json"])
+                                .default_value("human")
                                 .takes_value(true),
                         ),
                 )
