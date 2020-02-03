@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
+use std::sync::{Arc, RwLock};
 
 use crate::circuit::directory::CircuitDirectory;
 use crate::circuit::service::{Service, ServiceId, SplinterNode};
@@ -380,21 +381,22 @@ impl<'r> IntoIterator for &'r Roster {
     }
 }
 
+#[derive(Clone)]
 pub struct SplinterState {
     // location of the persisted state
     storage_location: String,
     // The state that is persisted
-    circuit_directory: CircuitDirectory,
+    circuit_directory: Arc<RwLock<CircuitDirectory>>,
     // Service id to Service that contains the node the service is connected to. Not persisted.
-    service_directory: HashMap<ServiceId, Service>,
+    service_directory: Arc<RwLock<HashMap<ServiceId, Service>>>,
 }
 
 impl SplinterState {
     pub fn new(storage_location: String, circuit_directory: CircuitDirectory) -> Self {
         SplinterState {
             storage_location,
-            circuit_directory,
-            service_directory: HashMap::new(),
+            circuit_directory: Arc::new(RwLock::new(circuit_directory)),
+            service_directory: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -402,72 +404,158 @@ impl SplinterState {
         &self.storage_location
     }
 
-    fn write_circuit_directory(&self) -> Result<(), WriteError> {
+    fn commit_circuit_directory(&self) -> Result<(), SplinterStateError> {
         // Replace stored state with the current splinter state
-        let mut storage = get_storage(self.storage_location(), || self.circuit_directory.clone())
-            .map_err(WriteError::GetStorageError)?;
+
+        let circuit_directory = self.circuit_directory()?;
+
+        let mut storage = get_storage(self.storage_location(), move || circuit_directory.clone())
+            .map_err(|err| SplinterStateError {
+            context: format!("Failed to get splinter storage: {}", err),
+            source: None,
+        })?;
 
         // when this is dropped the new state will be written to storage
-        **storage.write() = self.circuit_directory.clone();
+        **storage.write() = self.circuit_directory()?;
         Ok(())
     }
 
     // ---------- methods to access service directory ----------
-    pub fn service_directory(&self) -> &HashMap<ServiceId, Service> {
-        &self.service_directory
+
+    pub fn service_directory(&self) -> Result<HashMap<ServiceId, Service>, SplinterStateError> {
+        let service_directory = self
+            .service_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read service directory".into()))?;
+
+        Ok(service_directory.clone())
     }
 
-    pub fn add_service(&mut self, service_id: ServiceId, service: Service) {
-        self.service_directory.insert(service_id, service);
+    pub fn add_service(
+        &self,
+        service_id: ServiceId,
+        service: Service,
+    ) -> Result<(), SplinterStateError> {
+        let mut service_directory = self.service_directory.write().map_err(|_| {
+            SplinterStateError::new("Failed to get write guard for service directory".into())
+        })?;
+
+        service_directory.insert(service_id, service);
+
+        Ok(())
     }
 
-    pub fn remove_service(&mut self, service_id: &ServiceId) {
-        self.service_directory.remove(service_id);
+    pub fn remove_service(&self, service_id: &ServiceId) -> Result<(), SplinterStateError> {
+        let mut service_directory = self.service_directory.write().map_err(|_| {
+            SplinterStateError::new("Failed to get write guard for service directory".into())
+        })?;
+
+        service_directory.remove(service_id);
+
+        Ok(())
     }
 
     // ---------- methods to access circuit directory ----------
-    pub fn add_node(&mut self, id: String, node: SplinterNode) -> Result<(), WriteError> {
-        self.circuit_directory.add_node(id, node);
-        self.write_circuit_directory()?;
+
+    pub fn circuit_directory(&self) -> Result<CircuitDirectory, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError {
+                context: "Failed to read circuit directory".into(),
+                source: None,
+            })?;
+
+        Ok(circuit_directory.clone())
+    }
+
+    pub fn add_node(&mut self, id: String, node: SplinterNode) -> Result<(), SplinterStateError> {
+        {
+            let mut circuit_directory = self.circuit_directory.write().map_err(|_| {
+                SplinterStateError::new("Failed to get write guard for circuit directory".into())
+            })?;
+
+            circuit_directory.add_node(id, node);
+        }
+        self.commit_circuit_directory()?;
         Ok(())
     }
 
-    pub fn add_circuit(&mut self, name: String, circuit: Circuit) -> Result<(), WriteError> {
-        self.circuit_directory.add_circuit(name, circuit);
-        self.write_circuit_directory()?;
+    pub fn add_circuit(
+        &mut self,
+        name: String,
+        circuit: Circuit,
+    ) -> Result<(), SplinterStateError> {
+        {
+            let mut circuit_directory = self.circuit_directory.write().map_err(|_| {
+                SplinterStateError::new("Failed to get write guard for circuit directory".into())
+            })?;
+            circuit_directory.add_circuit(name, circuit);
+        }
+        self.commit_circuit_directory()?;
         Ok(())
     }
 
-    pub fn remove_node(&mut self, id: &str) -> Result<(), WriteError> {
-        self.circuit_directory.remove_node(id);
-        self.write_circuit_directory()?;
+    pub fn remove_node(&mut self, id: &str) -> Result<(), SplinterStateError> {
+        {
+            let mut circuit_directory = self.circuit_directory.write().map_err(|_| {
+                SplinterStateError::new("Failed to get write guard for circuit directory".into())
+            })?;
+            circuit_directory.remove_node(id);
+        }
+        self.commit_circuit_directory()?;
         Ok(())
     }
 
-    pub fn remove_circuit(&mut self, name: &str) -> Result<(), WriteError> {
-        self.circuit_directory.remove_circuit(name);
-        self.write_circuit_directory()?;
+    pub fn remove_circuit(&mut self, name: &str) -> Result<(), SplinterStateError> {
+        {
+            let mut circuit_directory = self.circuit_directory.write().map_err(|_| {
+                SplinterStateError::new("Failed to get write guard for circuit directory".into())
+            })?;
+            circuit_directory.remove_circuit(name);
+        }
+        self.commit_circuit_directory()?;
         Ok(())
     }
 
-    pub fn nodes(&self) -> &BTreeMap<String, SplinterNode> {
-        &self.circuit_directory.nodes()
+    pub fn nodes(&self) -> Result<BTreeMap<String, SplinterNode>, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
+        Ok(circuit_directory.nodes().clone())
     }
 
-    pub fn node(&self, node_id: &str) -> Option<&SplinterNode> {
-        self.circuit_directory.node(node_id)
+    pub fn node(&self, node_id: &str) -> Result<Option<SplinterNode>, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
+        Ok(circuit_directory.node(node_id).map(SplinterNode::clone))
     }
 
-    pub fn circuits(&self) -> &BTreeMap<String, Circuit> {
-        &self.circuit_directory.circuits()
+    pub fn circuits(&self) -> Result<BTreeMap<String, Circuit>, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
+        Ok(circuit_directory.circuits().clone())
     }
 
-    pub fn circuit(&self, circuit_name: &str) -> Option<&Circuit> {
-        self.circuit_directory.circuit(circuit_name)
+    pub fn circuit(&self, circuit_name: &str) -> Result<Option<Circuit>, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
+        Ok(circuit_directory.circuit(circuit_name).map(Circuit::clone))
     }
 
-    pub fn has_circuit(&self, circuit_name: &str) -> bool {
-        self.circuit_directory.has_circuit(circuit_name)
+    pub fn has_circuit(&self, circuit_name: &str) -> Result<bool, SplinterStateError> {
+        let circuit_directory = self
+            .circuit_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
+        Ok(circuit_directory.has_circuit(circuit_name))
     }
 }
 
@@ -565,7 +653,7 @@ mod tests {
         let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
         // Check that SplinterState does not have any circuits
-        assert!(state.circuits().len() == 0);
+        assert!(state.circuits().unwrap().len() == 0);
 
         let circuit = Circuit::builder()
             .with_id("alpha".into())
@@ -631,7 +719,7 @@ mod tests {
         let mut state = SplinterState::new(path.to_string(), circuit_directory);
 
         // Check that SplinterState does not have any nodes
-        assert!(state.nodes().len() == 0);
+        assert!(state.nodes().unwrap().len() == 0);
 
         let node = SplinterNode::new("123".into(), vec!["tcp://127.0.0.1:8000".into()]);
         state.add_node("123".into(), node).unwrap();
