@@ -56,6 +56,8 @@ experimental = [
     "circuit-read",
     "config-builder",
     "config-default",
+    "config-command-line",
+    "config-env-var",
     "config-toml",
     "health",
     "proposal-read",
@@ -69,6 +71,8 @@ circuit-read = ["splinter/circuit-read"]
 proposal-read = ["splinter/proposal-read"]
 config-builder = []
 config-default = ["config-builder"]
+config-command-line = ["config-builder"]
+config-env-var = ["config-builder"]
 config-toml = ["config-builder"]
 database = ["splinter/database"]
 generate-certs = ["openssl"]

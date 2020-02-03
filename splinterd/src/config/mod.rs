@@ -14,14 +14,22 @@
 
 #[cfg(feature = "config-builder")]
 mod builder;
+#[cfg(feature = "config-command-line")]
+mod command_line;
 #[cfg(feature = "config-default")]
 mod default;
+#[cfg(feature = "config-env-var")]
+mod env;
 mod error;
 mod partial;
 mod toml;
 
+#[cfg(feature = "config-command-line")]
+pub use crate::config::command_line::CommandLineConfig;
 #[cfg(feature = "config-default")]
 pub use crate::config::default::DefaultConfig;
+#[cfg(feature = "config-env-var")]
+pub use crate::config::env::EnvVarConfig;
 #[cfg(not(feature = "config-toml"))]
 pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
