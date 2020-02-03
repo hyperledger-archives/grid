@@ -16,12 +16,12 @@
 
 pub const ADMIN_PROTOCOL_VERSION: u32 = 1;
 
-pub const ADMIN_APPLICATION_REGISTRATION_PROTOCOL_MIN: u32 = 1;
+pub(crate) const ADMIN_APPLICATION_REGISTRATION_PROTOCOL_MIN: u32 = 1;
 
-pub const ADMIN_SUBMIT_PROTOCOL_MIN: u32 = 1;
-
-#[cfg(feature = "proposal-read")]
-pub const ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN: u32 = 1;
+pub(crate) const ADMIN_SUBMIT_PROTOCOL_MIN: u32 = 1;
 
 #[cfg(feature = "proposal-read")]
-pub const ADMIN_LIST_PROPOSALS_PROTOCOL_MIN: u32 = 1;
+pub(crate) const ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN: u32 = 1;
+
+#[cfg(feature = "proposal-read")]
+pub(crate) const ADMIN_LIST_PROPOSALS_PROTOCOL_MIN: u32 = 1;
