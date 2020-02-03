@@ -476,6 +476,48 @@ pub enum WriteError {
     GetStorageError(String),
 }
 
+#[derive(Debug)]
+pub struct SplinterStateError {
+    context: String,
+    source: Option<Box<dyn Error + Send + 'static>>,
+}
+
+impl SplinterStateError {
+    pub fn new(context: String) -> Self {
+        Self {
+            context,
+            source: None,
+        }
+    }
+
+    pub fn from_source<T: Error + Send + 'static>(context: String, source: T) -> Self {
+        Self {
+            context,
+            source: Some(Box::new(source)),
+        }
+    }
+
+    pub fn context(&self) -> String {
+        self.context.clone()
+    }
+}
+
+impl Error for SplinterStateError {}
+
+impl fmt::Display for SplinterStateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(ref source) = self.source {
+            write!(
+                f,
+                "SplinterStateError: Source: {} Context: {}",
+                source, self.context
+            )
+        } else {
+            write!(f, "SplinterStateError: Context {}", self.context)
+        }
+    }
+}
+
 impl Error for WriteError {}
 
 impl std::fmt::Display for WriteError {
