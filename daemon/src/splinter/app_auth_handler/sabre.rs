@@ -61,6 +61,10 @@ const PIKE_CONTRACT_FILENAME: &str = "grid-pike_0.1.0-dev.scar";
 const PRODUCT_PREFIX: &str = "621dee02";
 const PRODUCT_CONTRACT_FILENAME: &str = "grid-product_0.1.0-dev.scar";
 
+// Schema constants
+const SCHEMA_PREFIX: &str = "621dee01";
+const SCHEMA_CONTRACT_FILENAME: &str = "grid-schema_0.1.0-dev.scar";
+
 pub fn setup_grid(
     scabbard_admin_key: &str,
     proposed_admin_pubkeys: Vec<String>,
@@ -120,6 +124,28 @@ pub fn setup_grid(
         make_namespace_permissions_txn(&signer, &product_contract.metadata.name, PRODUCT_PREFIX)?;
     let product_pike_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &product_contract.metadata.name, PIKE_PREFIX)?;
+    let product_schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &product_contract.metadata.name, SCHEMA_PREFIX)?;
+
+    // Make schema transactions
+    let schema_contract = SabreSmartContractDefinition::new_from_scar(&format!(
+        "/usr/share/scar/{}",
+        SCHEMA_CONTRACT_FILENAME
+    ))?;
+    let schema_contract_registry_txn =
+        make_contract_registry_txn(&signer, &schema_contract.metadata.name)?;
+    let schema_contract_txn = make_upload_contract_txn(
+        &signer,
+        &schema_contract.metadata.name,
+        &schema_contract.metadata.version,
+        schema_contract.contract,
+        SCHEMA_PREFIX,
+    )?;
+    let schema_namespace_registry_txn = make_namespace_registry_txn(&signer, SCHEMA_PREFIX)?;
+    let schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &schema_contract.metadata.name, SCHEMA_PREFIX)?;
+    let schema_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &schema_contract.metadata.name, PIKE_PREFIX)?;
 
     let txns = vec![
         pike_contract_registry_txn,
@@ -131,6 +157,12 @@ pub fn setup_grid(
         product_namespace_registry_txn,
         product_pike_namespace_permissions_txn,
         product_namespace_permissions_txn,
+        schema_contract_registry_txn,
+        schema_contract_txn,
+        schema_namespace_registry_txn,
+        product_schema_namespace_permissions_txn,
+        schema_pike_namespace_permissions_txn,
+        schema_namespace_permissions_txn,
     ];
 
     let batch = create_batch(txns, &signer)?;
