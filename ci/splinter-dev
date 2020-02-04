@@ -67,8 +67,9 @@ RUN USER=root cargo new --bin examples/private_counter/service
 # Create empty Cargo projects for private xo
 RUN USER=root cargo new --bin examples/private_xo
 
-# Create empty Cargo project for health service
+# Create empty Cargo projects for splinter services
 RUN USER=root cargo new --bin services/health
+RUN USER=root cargo new --bin services/scabbard/
 
 # Copy over splinter files
 COPY Cargo.toml /build/Cargo.toml
@@ -79,6 +80,7 @@ COPY libsplinter/Cargo.toml /build/libsplinter/Cargo.toml
 COPY libsplinter/protos /build/libsplinter/protos
 COPY splinterd/Cargo.toml /build/splinterd/Cargo.toml
 COPY services/health/Cargo.toml /build/services/health/Cargo.toml
+COPY services/scabbard/src /build/services/scabbard/src
 
 # Copy over example Cargo.toml files
 COPY examples/gameroom/cli/Cargo.toml \
@@ -106,6 +108,7 @@ RUN rm \
     target/release/pcounter* \
     target/release/private-counter* \
     target/release/private-xo* \
+    target/release/scabbard* \
     target/release/splinter-cli* \
     target/release/splinterd* \
     target/release/deps/gameroom_database* \
