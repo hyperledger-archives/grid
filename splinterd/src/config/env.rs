@@ -26,7 +26,6 @@ pub struct EnvVarConfig {
 }
 
 impl EnvVarConfig {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         EnvVarConfig {
             state_dir: env::var(STATE_DIR_ENV).ok(),

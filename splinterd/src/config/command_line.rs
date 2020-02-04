@@ -48,7 +48,6 @@ fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
 }
 
 impl CommandLineConfig {
-    #[allow(dead_code)]
     pub fn new(matches: ArgMatches) -> Result<Self, ConfigError> {
         Ok(CommandLineConfig {
             storage: matches.value_of("storage").map(String::from),

@@ -221,7 +221,7 @@ impl Config {
     }
 
     /// Displays the configuration value along with where the value was sourced from.
-    pub fn log_as_debug(&self) {
+    pub fn log_as_debug(&self, insecure: bool) {
         debug!(
             "Config: storage: {} (source: {:?})",
             self.storage(),
@@ -232,36 +232,42 @@ impl Config {
             self.transport(),
             self.transport_source()
         );
-        debug!(
-            "Config: cert_dir: {} (source: {:?})",
-            self.cert_dir(),
-            self.cert_dir_source()
-        );
-        debug!(
-            "Config: ca_certs: {} (source: {:?})",
-            self.ca_certs(),
-            self.ca_certs_source()
-        );
-        debug!(
-            "Config: client_cert: {} (source: {:?})",
-            self.client_cert(),
-            self.client_cert_source()
-        );
-        debug!(
-            "Config: client_key: {} (source: {:?})",
-            self.client_key(),
-            self.client_key_source()
-        );
-        debug!(
-            "Config: server_cert: {} (source: {:?})",
-            self.server_cert(),
-            self.server_cert_source()
-        );
-        debug!(
-            "Config: server_key: {} (source: {:?})",
-            self.server_key(),
-            self.server_key_source()
-        );
+        if self.transport() == "tls" {
+            if insecure {
+                warn!("Starting TlsTransport in insecure mode");
+            } else {
+                debug!(
+                    "Config: ca_certs: {} (source: {:?})",
+                    self.ca_certs(),
+                    self.ca_certs_source()
+                );
+            }
+            debug!(
+                "Config: cert_dir: {} (source: {:?})",
+                self.cert_dir(),
+                self.cert_dir_source()
+            );
+            debug!(
+                "Config: client_cert: {} (source: {:?})",
+                self.client_cert(),
+                self.client_cert_source()
+            );
+            debug!(
+                "Config: client_key: {} (source: {:?})",
+                self.client_key(),
+                self.client_key_source()
+            );
+            debug!(
+                "Config: server_cert: {} (source: {:?})",
+                self.server_cert(),
+                self.server_cert_source()
+            );
+            debug!(
+                "Config: server_key: {} (source: {:?})",
+                self.server_key(),
+                self.server_key_source()
+            );
+        }
         debug!(
             "Config: service_endpoint: {} (source: {:?})",
             self.service_endpoint(),

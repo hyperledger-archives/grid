@@ -50,7 +50,6 @@ pub struct DefaultConfig {
 }
 
 impl DefaultConfig {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         DefaultConfig {
             storage: Some(String::from("yaml")),
