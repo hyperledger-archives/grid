@@ -724,6 +724,8 @@ paths:
       tags:
         - Biome
       description: Create new user with username and password credentials
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
       requestBody:
         content:
           application/json:
@@ -769,6 +771,8 @@ paths:
       tags:
         - Biome
       description: Authenticates a user with username and password credentials
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
       requestBody:
         content:
           application/json:
@@ -827,6 +831,8 @@ paths:
       tags:
         - Biome
       description: Lists all users
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
       responses:
         200:
           description: List of users registered in Biome
@@ -858,6 +864,7 @@ paths:
       - Biome
       description: Fetch a user by ID
       parameters:
+        - $ref: "#/components/parameters/protocol_version"
         - name: user_id
           in: path
           description: ID of the user
@@ -904,6 +911,7 @@ paths:
       - Biome
       description: Update a user
       parameters:
+        - $ref: "#/components/parameters/protocol_version"
         - name: user_id
           in: path
           description: ID of the user
@@ -967,6 +975,7 @@ paths:
       - Biome
       description: List keys of a user
       parameters:
+        - $ref: "#/components/parameters/protocol_version"
         - name: user_id
           in: path
           description: ID of the user
@@ -1006,6 +1015,7 @@ paths:
       - Biome
       description: Update a key's display name
       parameters:
+        - $ref: "#/components/parameters/protocol_version"
         - name: user_id
           in: path
           description: ID of the user
@@ -1070,6 +1080,7 @@ paths:
       - Biome
       description: Add a new key for user
       parameters:
+        - $ref: "#/components/parameters/protocol_version"
         - name: user_id
           in: path
           description: ID of the user
