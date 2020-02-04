@@ -345,6 +345,17 @@ fn run() -> Result<(), CliError> {
                                         .long("force")
                                         .help("Overwrite default if it is already set"),
                                 ),
+                        )
+                        .subcommand(
+                            SubCommand::with_name("unset")
+                                .about("Unset a default value")
+                                .arg(
+                                    Arg::with_name("name")
+                                        .takes_value(true)
+                                        .value_name("name")
+                                        .possible_values(&["service-type", "management-type"])
+                                        .help("The name of the default setting"),
+                                ),
                         ),
                 ),
         );
@@ -465,7 +476,8 @@ fn run() -> Result<(), CliError> {
                 .with_command(
                     "default",
                     SubcommandActions::new()
-                        .with_command("set", circuit::defaults::SetDefaultValueAction),
+                        .with_command("set", circuit::defaults::SetDefaultValueAction)
+                        .with_command("unset", circuit::defaults::UnsetDefaultValueAction),
                 ),
         );
         subcommands = subcommands.with_command(
