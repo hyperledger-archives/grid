@@ -20,6 +20,10 @@ COPY app/package*.json /project/app
 
 COPY design-system /project/design-system
 
+COPY canopyjs /project/canopyjs
+
+RUN cd ../canopyjs && yarn install && yarn build && cd ../app
+
 RUN yarn install
 
 COPY app /project/app
