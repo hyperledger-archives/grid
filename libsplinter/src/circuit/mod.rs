@@ -422,13 +422,13 @@ impl SplinterState {
 
     // ---------- methods to access service directory ----------
 
-    pub fn service_directory(&self) -> Result<HashMap<ServiceId, Service>, SplinterStateError> {
+    pub fn get_service(&self, id: &ServiceId) -> Result<Option<Service>, SplinterStateError> {
         let service_directory = self
             .service_directory
             .read()
             .map_err(|_| SplinterStateError::new("Failed to read service directory".into()))?;
 
-        Ok(service_directory.clone())
+        Ok(service_directory.get(id).map(Service::clone))
     }
 
     pub fn add_service(
