@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 use std::error::Error;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -32,7 +33,7 @@ use splinter::circuit::handlers::{
 };
 #[cfg(feature = "circuit-read")]
 use splinter::circuit::rest_api::CircuitResourceProvider;
-use splinter::circuit::SplinterState;
+use splinter::circuit::{SplinterState, SplinterStateError};
 #[cfg(feature = "biome")]
 use splinter::database::{self, ConnectionPool};
 use splinter::keys::{
@@ -61,7 +62,6 @@ use splinter::protos::network::{NetworkMessage, NetworkMessageType};
 use splinter::rest_api::{
     Method, Resource, RestApiBuilder, RestApiServerError, RestResourceProvider,
 };
-use splinter::rwlock_read_unwrap;
 use splinter::service::scabbard::ScabbardFactory;
 use splinter::service::{self, ServiceProcessor, ShutdownHandle};
 use splinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
@@ -140,10 +140,7 @@ impl SplinterDaemon {
             .map_err(StartError::StorageError)?;
 
         let circuit_directory = storage.read().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            self.storage_location.to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new(self.storage_location.to_string(), circuit_directory);
 
         // set up the listeners on the transport
         let mut network_listener = transport.listen(&self.network_endpoint)?;
@@ -261,7 +258,7 @@ impl SplinterDaemon {
         }
 
         // For each node in the circuit_directory, try to connect and add them to the network
-        for (node_id, node) in rwlock_read_unwrap!(state).nodes().iter() {
+        for (node_id, node) in state.nodes()?.iter() {
             if node_id != &self.node_id {
                 if let Some(endpoint) = node.endpoints().get(0) {
                     if let Err(err) = peer_connector.connect_peer(node_id, endpoint) {
@@ -879,7 +876,7 @@ fn set_up_circuit_dispatcher(
     send: crossbeam_channel::Sender<SendRequest>,
     node_id: &str,
     endpoint: &str,
-    state: Arc<RwLock<SplinterState>>,
+    state: SplinterState,
 ) -> Dispatcher<CircuitMessageType> {
     let mut dispatcher = Dispatcher::<CircuitMessageType>::new(Box::new(send));
 
@@ -974,6 +971,7 @@ pub enum StartError {
     HealthServiceError(String),
     OrchestratorError(String),
     ThreadError(String),
+    StateError(String),
 }
 
 impl Error for StartError {}
@@ -997,6 +995,7 @@ impl fmt::Display for StartError {
                 write!(f, "the orchestrator encountered an error: {}", msg)
             }
             StartError::ThreadError(msg) => write!(f, "a thread encountered an error: {}", msg),
+            StartError::StateError(msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -1052,5 +1051,11 @@ impl From<protobuf::ProtobufError> for StartError {
 impl From<NewOrchestratorError> for StartError {
     fn from(err: NewOrchestratorError) -> Self {
         StartError::OrchestratorError(format!("failed to create new orchestrator: {}", err))
+    }
+}
+
+impl From<SplinterStateError> for StartError {
+    fn from(err: SplinterStateError) -> Self {
+        StartError::StateError(err.context())
     }
 }
