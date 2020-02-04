@@ -402,8 +402,8 @@ fn run() -> Result<(), CliError> {
                         )
                         .subcommand(SubCommand::with_name("list").about("List all node alias"))
                         .subcommand(
-                            SubCommand::with_name("get")
-                                .about("Get endpoint for a alias")
+                            SubCommand::with_name("show")
+                                .about("Show endpoint for a node")
                                 .arg(
                                     Arg::with_name("alias")
                                         .takes_value(true)
@@ -500,7 +500,7 @@ fn run() -> Result<(), CliError> {
                 "alias",
                 SubcommandActions::new()
                     .with_command("add", node::AddNodeAliasAction)
-                    .with_command("get", node::GetNodeAliasAction)
+                    .with_command("show", node::ShowNodeAliasAction)
                     .with_command("list", node::ListNodeAliasAction)
                     .with_command("delete", node::DeleteNodeAliasAction),
             ),
