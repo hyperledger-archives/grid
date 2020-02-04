@@ -186,11 +186,7 @@ impl Scabbard {
 
     pub fn get_batch_info(&self, ids: &[String]) -> Result<Vec<BatchInfo>, ScabbardError> {
         let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
-
-        Ok(ids
-            .iter()
-            .map(|signature| state.batch_history().get_batch_info(signature))
-            .collect::<Vec<_>>())
+        Ok(state.batch_history().get_batch_info(ids))
     }
 
     pub fn get_events_since(&self, event_id: Option<String>) -> Result<Events, ScabbardError> {

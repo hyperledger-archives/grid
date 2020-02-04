@@ -628,16 +628,21 @@ impl BatchHistory {
         }
     }
 
-    pub fn get_batch_info(&self, signature: &str) -> BatchInfo {
-        if let Some(info) = self.history.get(signature) {
-            info.clone()
-        } else {
-            BatchInfo {
-                id: signature.to_string(),
-                status: BatchStatus::Unknown,
-                timestamp: SystemTime::now(),
-            }
-        }
+    pub fn get_batch_info(&self, signatures: &[String]) -> Vec<BatchInfo> {
+        signatures
+            .iter()
+            .map(|signature| {
+                if let Some(info) = self.history.get(signature) {
+                    info.clone()
+                } else {
+                    BatchInfo {
+                        id: signature.to_string(),
+                        status: BatchStatus::Unknown,
+                        timestamp: SystemTime::now(),
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
     }
 }
 
