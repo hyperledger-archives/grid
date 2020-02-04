@@ -58,7 +58,7 @@ const PIKE_PREFIX: &str = "cad11d";
 const PIKE_CONTRACT_FILENAME: &str = "grid-pike_0.1.0-dev.scar";
 
 // Product constants
-const PRODUCT_PREFIX: &str = "621dee";
+const PRODUCT_PREFIX: &str = "621dee02";
 const PRODUCT_CONTRACT_FILENAME: &str = "grid-product_0.1.0-dev.scar";
 
 pub fn setup_grid(
