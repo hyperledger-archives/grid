@@ -683,7 +683,7 @@ pub enum UserError {
     TransportError(GetTransportError),
     MissingArgument(String),
     InvalidArgument(String),
-
+    ConfigError(ConfigError),
     DaemonError {
         context: String,
         source: Option<Box<dyn Error>>,
@@ -712,6 +712,7 @@ impl Error for UserError {
             UserError::TransportError(err) => Some(err),
             UserError::MissingArgument(_) => None,
             UserError::InvalidArgument(_) => None,
+            UserError::ConfigError(err) => Some(err),
             UserError::DaemonError { source, .. } => {
                 if let Some(ref err) = source {
                     Some(&**err)
@@ -729,6 +730,9 @@ impl fmt::Display for UserError {
             UserError::TransportError(err) => write!(f, "unable to get transport: {}", err),
             UserError::MissingArgument(msg) => write!(f, "missing required argument: {}", msg),
             UserError::InvalidArgument(msg) => write!(f, "required argument is invalid: {}", msg),
+            UserError::ConfigError(msg) => {
+                write!(f, "error occurred building config object: {}", msg)
+            }
             UserError::DaemonError { context, source } => {
                 if let Some(ref err) = source {
                     write!(f, "{}: {}", context, err)
@@ -749,6 +753,12 @@ impl From<StartError> for UserError {
 impl From<GetTransportError> for UserError {
     fn from(error: GetTransportError) -> Self {
         UserError::TransportError(error)
+    }
+}
+
+impl From<ConfigError> for UserError {
+    fn from(error: ConfigError) -> Self {
+        UserError::ConfigError(error)
     }
 }
 
