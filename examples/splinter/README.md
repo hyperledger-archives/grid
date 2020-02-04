@@ -254,15 +254,18 @@ circuit is created.
      product_id: "723382885088"
      owner: "314156"
      properties:
+       - name: "species"
+         data_type: "STRING"
+         string_value: "tuna"
        - name: "length"
          data_type: "NUMBER"
-         number_value: 8
-       - name: "width"
+         number_value: 22
+       - name: "maximum_temperature"
          data_type: "NUMBER"
-         number_value: 11
-       - name: "depth"
+         number_value: 5
+       - name: "minimum_temperature"
          data_type: "NUMBER"
-         number_value: 1
+         number_value: 0
    ```
 
 6. Add a new product based on the definition in the example YAML file,
