@@ -15,6 +15,7 @@
 use crate::config::{ConfigError, PartialConfig, PartialConfigBuilder};
 use clap::{ArgMatches, ErrorKind};
 
+/// Holds configuration values from command line arguments, represented by clap ArgMatches.
 pub struct CommandLineConfig {
     storage: Option<String>,
     transport: Option<String>,

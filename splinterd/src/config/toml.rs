@@ -27,6 +27,7 @@ use serde_derive::Deserialize;
 use toml;
 
 #[cfg(feature = "config-toml")]
+/// Holds configuration values defined in a toml file.
 #[derive(Deserialize, Default, Debug)]
 pub struct TomlConfig {
     storage: Option<String>,

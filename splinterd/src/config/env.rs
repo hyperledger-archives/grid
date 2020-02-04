@@ -19,6 +19,7 @@ use crate::config::{PartialConfig, PartialConfigBuilder};
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 const CERT_DIR_ENV: &str = "SPLINTER_CERT_DIR";
 
+/// Holds configuration values defined as environment variables.
 pub struct EnvVarConfig {
     state_dir: Option<String>,
     cert_dir: Option<String>,

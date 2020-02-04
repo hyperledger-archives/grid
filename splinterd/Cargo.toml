@@ -45,7 +45,12 @@ tempdir = "0.3"
 toml = "0.4.8"
 
 [features]
-default = []
+default = [
+    "config-command-line",
+    "config-default",
+    "config-env-var",
+    "config-toml",
+]
 
 stable = ["default"]
 
@@ -54,10 +59,6 @@ experimental = [
     "biome-credentials",
     "biome-key-management",
     "circuit-read",
-    "config-default",
-    "config-command-line",
-    "config-env-var",
-    "config-toml",
     "health",
     "proposal-read",
     "scabbard-get-state",
