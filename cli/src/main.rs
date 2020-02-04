@@ -357,7 +357,18 @@ fn run() -> Result<(), CliError> {
                                         .help("The name of the default setting"),
                                 ),
                         )
-                        .subcommand(SubCommand::with_name("list").about("List set default values")),
+                        .subcommand(SubCommand::with_name("list").about("List set default values"))
+                        .subcommand(
+                            SubCommand::with_name("show")
+                                .about("Show a default value")
+                                .arg(
+                                    Arg::with_name("name")
+                                        .takes_value(true)
+                                        .value_name("name")
+                                        .possible_values(&["service-type", "management-type"])
+                                        .help("The name of the default setting"),
+                                ),
+                        ),
                 ),
         );
 
@@ -479,7 +490,8 @@ fn run() -> Result<(), CliError> {
                     SubcommandActions::new()
                         .with_command("set", circuit::defaults::SetDefaultValueAction)
                         .with_command("unset", circuit::defaults::UnsetDefaultValueAction)
-                        .with_command("list", circuit::defaults::ListDefaultsAction),
+                        .with_command("list", circuit::defaults::ListDefaultsAction)
+                        .with_command("show", circuit::defaults::ShowDefaultValueAction),
                 ),
         );
         subcommands = subcommands.with_command(

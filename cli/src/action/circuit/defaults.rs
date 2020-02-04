@@ -95,6 +95,35 @@ impl Action for ListDefaultsAction {
     }
 }
 
+pub struct ShowDefaultValueAction;
+
+impl Action for ShowDefaultValueAction {
+    fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
+        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+
+        let name = match args.value_of("name") {
+            Some(key) => key,
+            None => return Err(CliError::ActionError("name is required".into())),
+        };
+
+        let key = get_key(name)?;
+
+        let store = get_default_value_store();
+
+        match store.get_default_value(key)? {
+            Some(default_value) => println!("{} {}", default_value.key(), default_value.value()),
+            None => {
+                return Err(CliError::ActionError(format!(
+                    "Default value for {} is not set",
+                    key
+                )))
+            }
+        }
+
+        Ok(())
+    }
+}
+
 fn get_key(name: &str) -> Result<&str, CliError> {
     match name {
         "service-type" => Ok(SERVICE_TYPE_KEY),
