@@ -431,6 +431,15 @@ impl SplinterState {
         Ok(service_directory.get(id).map(Service::clone))
     }
 
+    pub fn has_service(&self, id: &ServiceId) -> Result<bool, SplinterStateError> {
+        let service_directory = self
+            .service_directory
+            .read()
+            .map_err(|_| SplinterStateError::new("Failed to read service directory".into()))?;
+
+        Ok(service_directory.contains_key(id))
+    }
+
     pub fn add_service(
         &self,
         service_id: ServiceId,
