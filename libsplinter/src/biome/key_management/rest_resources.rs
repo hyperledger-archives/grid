@@ -16,8 +16,10 @@ use std::sync::Arc;
 
 use crate::actix_web::{HttpRequest, HttpResponse};
 use crate::futures::{Future, IntoFuture};
+use crate::protocol;
 use crate::rest_api::{
-    get_authorization_token, into_bytes, ErrorResponse, HandlerFunction, Method, Resource,
+    get_authorization_token, into_bytes, ErrorResponse, HandlerFunction, Method,
+    ProtocolVersionRangeGuard, Resource,
 };
 
 use super::super::rest_api::BiomeRestConfig;
@@ -49,6 +51,10 @@ pub fn make_key_management_route(
     secret_manager: Arc<dyn SecretManager>,
 ) -> Resource {
     Resource::build("/biome/users/{user_id}/keys")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::BIOME_KEYS_PROTOCOL_MIN,
+            protocol::BIOME_PROTOCOL_VERSION,
+        ))
         .add_method(
             Method::Post,
             handle_post(
