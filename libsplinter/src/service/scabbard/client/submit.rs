@@ -27,6 +27,7 @@ use reqwest::{
 
 use sawtooth_sdk::messages::batch::BatchList;
 
+use crate::protocol::SCABBARD_PROTOCOL_VERSION;
 use crate::service::scabbard::{BatchInfo, BatchStatus, SERVICE_TYPE};
 
 use super::Error;
@@ -141,6 +142,7 @@ fn parse_http_url(url: &str) -> Result<Url, Error> {
 
 fn perform_request(request: RequestBuilder) -> Result<Response, Error> {
     request
+        .header("SplinterProtocolVersion", SCABBARD_PROTOCOL_VERSION)
         .send()
         .map_err(|err| Error::new_with_source("request failed", err.into()))?
         .error_for_status()

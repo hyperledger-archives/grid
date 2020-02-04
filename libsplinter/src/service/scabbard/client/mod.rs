@@ -20,6 +20,7 @@ use reqwest::{blocking::Client, Url};
 use sawtooth_sdk::messages::batch::BatchList;
 
 use crate::hex::parse_hex;
+use crate::protocol::SCABBARD_PROTOCOL_VERSION;
 
 use super::SERVICE_TYPE;
 
@@ -79,6 +80,7 @@ impl ScabbardClient {
 
         let request = Client::new().get(url);
         let response = request
+            .header("SplinterProtocolVersion", SCABBARD_PROTOCOL_VERSION)
             .send()
             .map_err(|err| Error::new_with_source("request failed", err.into()))?;
 
@@ -124,6 +126,7 @@ impl ScabbardClient {
 
         let request = Client::new().get(url);
         let response = request
+            .header("SplinterProtocolVersion", SCABBARD_PROTOCOL_VERSION)
             .send()
             .map_err(|err| Error::new_with_source("request failed", err.into()))?;
 
