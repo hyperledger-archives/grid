@@ -19,8 +19,8 @@ use crate::store::default_value::{
     DefaultStoreError, DefaultValue, DefaultValueStore, FileBackedDefaultStore,
 };
 
-const MANAGEMENT_TYPE_KEY: &str = "management_type";
-const SERVICE_TYPE_KEY: &str = "service_type";
+pub const MANAGEMENT_TYPE_KEY: &str = "management_type";
+pub const SERVICE_TYPE_KEY: &str = "service_type";
 
 use super::Action;
 
@@ -135,7 +135,7 @@ fn get_key(name: &str) -> Result<&str, CliError> {
     }
 }
 
-fn get_default_value_store() -> FileBackedDefaultStore {
+pub fn get_default_value_store() -> FileBackedDefaultStore {
     FileBackedDefaultStore::default()
 }
 
