@@ -30,6 +30,10 @@ pub(crate) const ADMIN_LIST_PROPOSALS_PROTOCOL_MIN: u32 = 1;
 pub(crate) const ADMIN_LIST_CIRCUITS_MIN: u32 = 1;
 #[cfg(all(feature = "circuit-read", feature = "rest-api"))]
 pub(crate) const ADMIN_FETCH_CIRCUIT_MIN: u32 = 1;
+#[cfg(feature = "rest-api")]
+pub(crate) const ADMIN_LIST_KEYS_MIN: u32 = 1;
+#[cfg(feature = "rest-api")]
+pub(crate) const ADMIN_FETCH_KEY_MIN: u32 = 1;
 
 pub const SCABBARD_PROTOCOL_VERSION: u32 = 1;
 
