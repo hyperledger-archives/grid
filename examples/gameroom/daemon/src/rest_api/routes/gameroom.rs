@@ -27,6 +27,7 @@ use splinter::admin::messages::{
     SplinterService,
 };
 use splinter::node_registry::Node;
+use splinter::protocol;
 use splinter::protos::admin::{
     CircuitManagementPayload, CircuitManagementPayload_Action as Action,
     CircuitManagementPayload_Header as Header,
@@ -247,6 +248,10 @@ fn fetch_node_information(
     Box::new(
         client
             .get(&format!("{}/nodes?limit={}", splinterd_url, std::i64::MAX))
+            .header(
+                "SplinterProtocolVersion",
+                protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+            )
             .send()
             .map_err(|err| {
                 RestApiResponseError::InternalError(format!("Failed to send request {}", err))

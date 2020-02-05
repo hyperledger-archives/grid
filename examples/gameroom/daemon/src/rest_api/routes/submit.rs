@@ -23,6 +23,7 @@ use futures::{
     Future,
 };
 use splinter::node_registry::Node;
+use splinter::protocol;
 use splinter::service::scabbard::{BatchInfo, BatchStatus};
 
 use super::{ErrorResponse, SuccessResponse};
@@ -39,6 +40,10 @@ pub fn submit_signed_payload(
     Box::new(
         client
             .post(format!("{}/admin/submit", *splinterd_url))
+            .header(
+                "SplinterProtocolVersion",
+                protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+            )
             .send_body(Body::Bytes(signed_payload))
             .map_err(Error::from)
             .and_then(|mut resp| {
@@ -94,6 +99,7 @@ pub fn submit_scabbard_payload(
                 "{}/scabbard/{}/{}/batches",
                 *splinterd_url, &circuit_id, &service_id
             ))
+            .header("SplinterProtocolVersion", protocol::SCABBARD_PROTOCOL_VERSION.to_string())
             .send_body(Body::Bytes(signed_payload))
             .map_err(|err| {
                 RestApiResponseError::InternalError(format!("Failed to send request {}", err))
@@ -250,6 +256,10 @@ fn check_batch_status(
     Box::new(
         client
             .get(format!("{}{}", splinterd_url, link))
+            .header(
+                "SplinterProtocolVersion",
+                protocol::SCABBARD_PROTOCOL_VERSION.to_string(),
+            )
             .send()
             .map_err(|err| {
                 RestApiResponseError::InternalError(format!("Failed to send request {}", err))

@@ -37,6 +37,7 @@ use splinter::{
         AdminServiceEvent, CircuitProposal, CreateCircuit, SplinterNode, SplinterService,
     },
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
+    protocol,
     service::scabbard::StateChangeEvent,
 };
 use state_delta::XoStateDeltaProcessor;
@@ -106,6 +107,11 @@ pub fn run(
         }
         WsResponse::Empty
     });
+
+    ws.header(
+        "SplinterProtocolVersion",
+        protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+    );
 
     ws.set_reconnect(RECONNECT);
     ws.set_reconnect_limit(RECONNECT_LIMIT);
@@ -410,6 +416,11 @@ fn process_admin_event(
                 },
             );
 
+            xo_ws.header(
+                "SplinterProtocolVersion",
+                protocol::SCABBARD_PROTOCOL_VERSION.to_string(),
+            );
+
             let url_to_string = url.to_string();
             let private_key_to_string = private_key.to_string();
             xo_ws.on_open(move |ctx| {
@@ -497,6 +508,11 @@ fn resubscribe(
             }
             WsResponse::Empty
         },
+    );
+
+    ws.header(
+        "SplinterProtocolVersion",
+        protocol::SCABBARD_PROTOCOL_VERSION.to_string(),
     );
 
     ws.on_error(move |err, ctx| {

@@ -14,6 +14,7 @@
 
 use actix_web::{client::Client, dev::Body, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
+use splinter::protocol;
 
 use super::ErrorResponse;
 
@@ -25,6 +26,10 @@ pub fn fetch_key_info(
     let public_key = public_key.into_inner();
     client
         .get(format!("{}/keys/{}", splinterd_url.get_ref(), public_key))
+        .header(
+            "SplinterProtocolVersion",
+            protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+        )
         .send()
         .map_err(Error::from)
         .and_then(move |mut resp| {
