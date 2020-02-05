@@ -41,8 +41,6 @@ pub fn log_format(
 }
 
 fn run() -> Result<(), CliError> {
-    // ignore unused_mut while there are experimental features
-    #[allow(unused_mut)]
     let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
