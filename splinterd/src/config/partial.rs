@@ -119,7 +119,6 @@ impl PartialConfig {
         self.state_dir.clone()
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `storage` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -131,7 +130,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `transport` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -143,7 +141,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `cert_dir` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -155,7 +152,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `ca_certs` value to the  PartialConfig object.
     ///
     /// # Arguments
@@ -167,7 +163,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `client_cert` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -180,7 +175,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `client_key` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -192,7 +186,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `server_cert` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -205,7 +198,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `server_key` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -217,7 +209,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `service_endpoint` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -229,7 +220,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `network_endpoint` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -241,7 +231,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `peers` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -253,7 +242,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `node_id` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -265,7 +253,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `bind` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -277,7 +264,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     #[cfg(feature = "database")]
     /// Adds a `database` value to the PartialConfig object, when the `database`
     /// feature flag is used.
@@ -291,7 +277,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `registry_backend` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -303,7 +288,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `registry_file` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -315,7 +299,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `heartbeat_interval` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -327,7 +310,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `timeout` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -343,7 +325,6 @@ impl PartialConfig {
         self
     }
 
-    #[cfg(feature = "config-builder")]
     /// Adds a `state_dir` value to the PartialConfig object.
     ///
     /// # Arguments

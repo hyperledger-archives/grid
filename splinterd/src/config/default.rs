@@ -27,6 +27,7 @@ const CA_PEM: &str = "ca.pem";
 const HEARTBEAT_DEFAULT: u64 = 30;
 const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
 
+/// Holds the default configuration values.
 pub struct DefaultConfig {
     storage: Option<String>,
     transport: Option<String>,

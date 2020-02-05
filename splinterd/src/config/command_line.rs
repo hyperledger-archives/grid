@@ -15,6 +15,7 @@
 use crate::config::{ConfigError, PartialConfig, PartialConfigBuilder};
 use clap::{ArgMatches, ErrorKind};
 
+/// Holds configuration values from command line arguments, represented by clap ArgMatches.
 pub struct CommandLineConfig {
     storage: Option<String>,
     transport: Option<String>,
@@ -107,7 +108,7 @@ mod tests {
 
     use clap::ArgMatches;
 
-    /// Values present in the existing example config TEST_TOML file.
+    /// Example configuration values.
     static EXAMPLE_STORAGE: &str = "yaml";
     static EXAMPLE_TRANSPORT: &str = "tls";
     static EXAMPLE_CA_CERTS: &str = "certs/ca.pem";
@@ -149,7 +150,7 @@ mod tests {
     }
 
     /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
-    fn create_arg_matches() -> ArgMatches<'static> {
+    fn create_arg_matches(args: Vec<&str>) -> ArgMatches<'static> {
         clap_app!(configtest =>
             (version: crate_version!())
             (about: "Config-Test")
@@ -169,7 +170,22 @@ mod tests {
             (@arg bind: --("bind") +takes_value)
             (@arg registry_backend: --("registry-backend") +takes_value)
             (@arg registry_file: --("registry-file") +takes_value))
-        .get_matches_from(vec![
+        .get_matches_from(args)
+    }
+
+    #[test]
+    /// This test verifies that a PartialConfig object, constructed from the CommandLineConfig module,
+    /// contains the correct values using the following steps:
+    ///
+    /// 1. An example ArgMatches object is created using `create_arg_matches`.
+    /// 2. A CommandLineConfig object is constructed by passing in the example ArgMatches created
+    ///    in the previous step.
+    /// 3. The CommandLineConfig object is transformed to a PartialConfig object using the `build`.
+    ///
+    /// This test then verifies the PartialConfig object built from the CommandLineConfig object by
+    /// asserting each expected value.
+    fn test_command_line_config() {
+        let args = vec![
             "configtest",
             "--node-id",
             EXAMPLE_NODE_ID,
@@ -191,23 +207,9 @@ mod tests {
             EXAMPLE_SERVER_CERT,
             "--server-key",
             EXAMPLE_SERVER_KEY,
-        ])
-    }
-
-    #[test]
-    /// This test verifies that a PartialConfig object, constructed from the CommandLineConfig module,
-    /// contains the correct values using the following steps:
-    ///
-    /// 1. An example ArgMatches object is created using `create_arg_matches`.
-    /// 2. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
-    /// 3. The CommandLineConfig object is transformed to a PartialConfig object using the `build`.
-    ///
-    /// This test then verifies the PartialConfig object built from the CommandLineConfig object by
-    /// asserting each expected value.
-    fn test_command_line_config() {
+        ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
-        let matches = create_arg_matches();
+        let matches = create_arg_matches(args);
         // Create a new CommandLiine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.");

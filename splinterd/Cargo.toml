@@ -45,7 +45,12 @@ tempdir = "0.3"
 toml = "0.4.8"
 
 [features]
-default = []
+default = [
+    "config-command-line",
+    "config-default",
+    "config-env-var",
+    "config-toml",
+]
 
 stable = ["default"]
 
@@ -54,11 +59,6 @@ experimental = [
     "biome-credentials",
     "biome-key-management",
     "circuit-read",
-    "config-builder",
-    "config-default",
-    "config-command-line",
-    "config-env-var",
-    "config-toml",
     "health",
     "proposal-read",
     "scabbard-get-state",
@@ -69,11 +69,10 @@ biome-credentials = ["splinter/biome-credentials", "biome"]
 biome-key-management = ["splinter/biome-key-management", "biome"]
 circuit-read = ["splinter/circuit-read"]
 proposal-read = ["splinter/proposal-read"]
-config-builder = []
-config-default = ["config-builder"]
-config-command-line = ["config-builder"]
-config-env-var = ["config-builder"]
-config-toml = ["config-builder"]
+config-default = []
+config-command-line = []
+config-env-var = []
+config-toml = []
 database = ["splinter/database"]
 generate-certs = ["openssl"]
 scabbard-get-state = ["splinter/scabbard-get-state"]
