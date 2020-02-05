@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod api;
+mod builder;
 pub mod defaults;
 mod payload;
 
