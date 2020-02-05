@@ -17,3 +17,7 @@ pub use super::service::messages::{
     DurabilityType, PersistenceType, ProposalType, RouteType, SplinterNode, SplinterService, Vote,
     VoteRecord,
 };
+
+pub use super::service::messages::builders::{
+    BuilderError, CreateCircuitBuilder, SplinterNodeBuilder, SplinterServiceBuilder,
+};
