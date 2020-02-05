@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "config-builder")]
 mod builder;
 #[cfg(feature = "config-command-line")]
 mod command_line;
@@ -34,7 +33,6 @@ pub use crate::config::env::EnvVarConfig;
 pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
-#[cfg(feature = "config-builder")]
 pub use builder::PartialConfigBuilder;
 pub use error::ConfigError;
 pub use partial::PartialConfig;
