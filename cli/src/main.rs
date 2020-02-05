@@ -21,7 +21,7 @@ mod action;
 mod error;
 mod store;
 
-use clap::clap_app;
+use clap::{clap_app, AppSettings, Arg, SubCommand};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 
@@ -92,8 +92,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "keygen")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("keygen")
                 .about(
@@ -123,8 +121,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "health")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("health")
                 .about("Displays information about network health")
@@ -146,8 +142,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "database")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("database")
                 .about("Database commands")
@@ -166,8 +160,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use clap::{AppSettings, Arg, SubCommand};
-
         let create_circuit = SubCommand::with_name("create")
             .about("Propose that a new circuit is created")
             .arg(
@@ -453,8 +445,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "node-alias")]
     {
-        use clap::{AppSettings, Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("node")
                 .about("Provides node management functionality")
