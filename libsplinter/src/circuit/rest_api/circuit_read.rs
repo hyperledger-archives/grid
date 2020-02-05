@@ -20,9 +20,10 @@ use crate::circuit::{
     AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType, SplinterState,
 };
 use crate::futures::{future::IntoFuture, Future};
+use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
-    Method, Resource,
+    Method, ProtocolVersionRangeGuard, Resource,
 };
 
 use super::CircuitRouteError;
@@ -46,15 +47,25 @@ pub struct ListCircuitsResponse {
 }
 
 pub fn make_fetch_circuit_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
-    Resource::build("/circuits/{circuit_id}").add_method(Method::Get, move |r, _| {
-        fetch_circuit(r, web::Data::new(state.clone()))
-    })
+    Resource::build("/circuits/{circuit_id}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_FETCH_CIRCUIT_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |r, _| {
+            fetch_circuit(r, web::Data::new(state.clone()))
+        })
 }
 
 pub fn make_list_circuits_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
-    Resource::build("/circuits").add_method(Method::Get, move |r, _| {
-        list_circuits(r, web::Data::new(state.clone()))
-    })
+    Resource::build("/circuits")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_LIST_CIRCUITS_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |r, _| {
+            list_circuits(r, web::Data::new(state.clone()))
+        })
 }
 
 fn fetch_circuit(
