@@ -20,8 +20,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate clap;
 
-#[cfg(feature = "generate-certs")]
-mod certs;
 mod config;
 mod daemon;
 mod registry_config;
@@ -30,8 +28,6 @@ mod routes;
 use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 
-#[cfg(feature = "generate-certs")]
-use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
 #[cfg(feature = "config-command-line")]
 use crate::config::CommandLineConfig;
 #[cfg(feature = "config-default")]
@@ -46,13 +42,9 @@ use crate::config::{Config, ConfigBuilder, ConfigError};
 use crate::daemon::{SplinterDaemonBuilder, StartError};
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
-#[cfg(feature = "generate-certs")]
-use openssl::error::ErrorStack;
 use splinter::transport::raw::RawTransport;
 use splinter::transport::tls::{TlsInitError, TlsTransport};
 use splinter::transport::Transport;
-#[cfg(feature = "generate-certs")]
-use tempdir::TempDir;
 
 use std::env;
 use std::error::Error;
@@ -191,26 +183,6 @@ fn main() {
             .long("enable-biome")
             .long_help("Enable the biome subsystem"),
     );
-
-    #[cfg(feature = "generate-certs")]
-    let app = app
-        .arg(
-            Arg::with_name("generate_certs")
-                .long("generate-certs")
-                .long_help(
-                    "Deprecated: If set, certificates will be generated and insecure will be false; \
-                     use only for development",
-                ),
-        )
-        .arg(
-            Arg::with_name("common_name")
-                .long("common-name")
-                .long_help(
-                    "Deprecated: The common name that should be used in the generated certificate; \
-                     defaults to localhost",
-                )
-                .takes_value(true),
-        );
 
     let matches = app.get_matches();
 
@@ -361,67 +333,6 @@ fn get_transport(
 ) -> Result<(Box<dyn Transport + Send>, bool), GetTransportError> {
     match transport_type {
         "tls" => {
-            #[cfg(feature = "generate-certs")]
-            {
-                if matches.is_present("generate_certs") {
-                    warn!("Deprecated: Generating Certs for TLS Transport");
-
-                    let common_name = matches
-                        .value_of("common_name")
-                        .map(String::from)
-                        .unwrap_or_else(|| String::from("localhost"));
-
-                    // Generate Certificate Authority keys and certificate
-                    let (ca_key, ca_cert) = make_ca_cert()?;
-
-                    // Create temp directory to store ca.cert
-                    let temp_dir = TempDir::new("tls-transport")?;
-                    let temp_dir_path = temp_dir.path();
-
-                    // Generate client and server keys and certificates
-                    let (client_key, client_cert) =
-                        make_ca_signed_cert(&ca_cert, &ca_key, &common_name)?;
-                    let (server_key, server_cert) =
-                        make_ca_signed_cert(&ca_cert, &ca_key, &common_name)?;
-
-                    let client_cert = write_file(
-                        temp_dir_path.to_path_buf(),
-                        "client.cert",
-                        &client_cert.to_pem()?,
-                    )?;
-
-                    let client_key_file = write_file(
-                        temp_dir_path.to_path_buf(),
-                        "client.key",
-                        &client_key.private_key_to_pem_pkcs8()?,
-                    )?;
-
-                    let server_cert = write_file(
-                        temp_dir_path.to_path_buf(),
-                        "server.cert",
-                        &server_cert.to_pem()?,
-                    )?;
-
-                    let server_key_file = write_file(
-                        temp_dir_path.to_path_buf(),
-                        "server.key",
-                        &server_key.private_key_to_pem_pkcs8()?,
-                    )?;
-
-                    // Start transport in insecure mode, do not verify the certs if auto generated,
-                    // as the ca will not match
-                    let transport = TlsTransport::new(
-                        None,
-                        client_key_file,
-                        client_cert,
-                        server_key_file,
-                        server_cert,
-                    )?;
-
-                    return Ok((Box::new(transport), true));
-                }
-            }
-
             let client_cert = config.client_cert();
             if !Path::new(&client_cert).is_file() {
                 return Err(GetTransportError::CertError(format!(
@@ -583,8 +494,6 @@ pub enum GetTransportError {
     CertError(String),
     NotSupportedError(String),
     TlsTransportError(TlsInitError),
-    #[cfg(feature = "generate-certs")]
-    OpensslError(ErrorStack),
     IoError(io::Error),
 }
 
@@ -594,8 +503,6 @@ impl Error for GetTransportError {
             GetTransportError::CertError(_) => None,
             GetTransportError::NotSupportedError(_) => None,
             GetTransportError::TlsTransportError(err) => Some(err),
-            #[cfg(feature = "generate-certs")]
-            GetTransportError::OpensslError(err) => Some(err),
             GetTransportError::IoError(err) => Some(err),
         }
     }
@@ -613,10 +520,6 @@ impl fmt::Display for GetTransportError {
             GetTransportError::TlsTransportError(err) => {
                 write!(f, "unable to create TLS transport: {}", err)
             }
-            #[cfg(feature = "generate-certs")]
-            GetTransportError::OpensslError(err) => {
-                write!(f, "unable to generate certificates: {}", err)
-            }
             GetTransportError::IoError(err) => {
                 write!(f, "unable to get transport due to IoError: {}", err)
             }
@@ -624,23 +527,9 @@ impl fmt::Display for GetTransportError {
     }
 }
 
-#[cfg(feature = "generate-certs")]
-impl From<CertError> for GetTransportError {
-    fn from(cert_error: CertError) -> Self {
-        GetTransportError::CertError(format!("CertError: {:?}", cert_error))
-    }
-}
-
 impl From<TlsInitError> for GetTransportError {
     fn from(tls_error: TlsInitError) -> Self {
         GetTransportError::TlsTransportError(tls_error)
-    }
-}
-
-#[cfg(feature = "generate-certs")]
-impl From<ErrorStack> for GetTransportError {
-    fn from(error_stack: ErrorStack) -> Self {
-        GetTransportError::OpensslError(error_stack)
     }
 }
 
