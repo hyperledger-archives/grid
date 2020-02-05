@@ -113,7 +113,7 @@ impl Action for DeleteNodeAliasAction {
     }
 }
 
-fn get_node_store() -> FileBackedNodeStore {
+pub fn get_node_store() -> FileBackedNodeStore {
     FileBackedNodeStore::default()
 }
 
