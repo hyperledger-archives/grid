@@ -40,3 +40,18 @@ pub(crate) const SCABBARD_BATCH_STATUSES_PROTOCOL_MIN: u32 = 1;
 pub(crate) const SCABBARD_GET_STATE_PROTOCOL_MIN: u32 = 1;
 #[cfg(all(feature = "scabbard-get-state", feature = "rest-api"))]
 pub(crate) const SCABBARD_LIST_STATE_PROTOCOL_MIN: u32 = 1;
+
+#[cfg(feature = "biome")]
+pub const BIOME_PROTOCOL_VERSION: u32 = 1;
+
+#[cfg(feature = "biome-credentials")]
+pub(crate) const BIOME_REGISTER_PROTOCOL_MIN: u32 = 1;
+#[cfg(feature = "biome-credentials")]
+pub(crate) const BIOME_LOGIN_PROTOCOL_MIN: u32 = 1;
+#[cfg(feature = "biome-credentials")]
+pub(crate) const BIOME_USER_PROTOCOL_MIN: u32 = 1;
+#[cfg(feature = "biome-credentials")]
+pub(crate) const BIOME_LIST_USERS_PROTOCOL_MIN: u32 = 1;
+
+#[cfg(feature = "biome-key-management")]
+pub(crate) const BIOME_KEYS_PROTOCOL_MIN: u32 = 1;
