@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod builders;
+
 use protobuf::{self, RepeatedField};
 
 use crate::hex::{as_hex, deserialize_hex};
