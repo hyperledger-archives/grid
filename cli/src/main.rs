@@ -319,6 +319,56 @@ fn run() -> Result<(), CliError> {
                                 .default_value("human")
                                 .takes_value(true),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("default")
+                        .about("Manage default values for circuit creation")
+                        .subcommand(
+                            SubCommand::with_name("set")
+                                .about("Set a default value")
+                                .arg(
+                                    Arg::with_name("name")
+                                        .takes_value(true)
+                                        .value_name("name")
+                                        .possible_values(&["service-type", "management-type"])
+                                        .help("The name of the default setting"),
+                                )
+                                .arg(
+                                    Arg::with_name("value")
+                                        .takes_value(true)
+                                        .value_name("value")
+                                        .help("The value for the default setting"),
+                                )
+                                .arg(
+                                    Arg::with_name("force")
+                                        .short("f")
+                                        .long("force")
+                                        .help("Overwrite default if it is already set"),
+                                ),
+                        )
+                        .subcommand(
+                            SubCommand::with_name("unset")
+                                .about("Unset a default value")
+                                .arg(
+                                    Arg::with_name("name")
+                                        .takes_value(true)
+                                        .value_name("name")
+                                        .possible_values(&["service-type", "management-type"])
+                                        .help("The name of the default setting"),
+                                ),
+                        )
+                        .subcommand(SubCommand::with_name("list").about("List set default values"))
+                        .subcommand(
+                            SubCommand::with_name("show")
+                                .about("Show a default value")
+                                .arg(
+                                    Arg::with_name("name")
+                                        .takes_value(true)
+                                        .value_name("name")
+                                        .possible_values(&["service-type", "management-type"])
+                                        .help("The name of the default setting"),
+                                ),
+                        ),
                 ),
         );
 
@@ -352,8 +402,8 @@ fn run() -> Result<(), CliError> {
                         )
                         .subcommand(SubCommand::with_name("list").about("List all node alias"))
                         .subcommand(
-                            SubCommand::with_name("get")
-                                .about("Get endpoint for a alias")
+                            SubCommand::with_name("show")
+                                .about("Show endpoint for a node")
                                 .arg(
                                     Arg::with_name("alias")
                                         .takes_value(true)
@@ -434,7 +484,15 @@ fn run() -> Result<(), CliError> {
                 .with_command("vote", circuit::CircuitVoteAction)
                 .with_command("list", circuit::CircuitListAction)
                 .with_command("show", circuit::CircuitShowAction)
-                .with_command("proposals", circuit::CircuitProposalsAction),
+                .with_command("proposals", circuit::CircuitProposalsAction)
+                .with_command(
+                    "default",
+                    SubcommandActions::new()
+                        .with_command("set", circuit::defaults::SetDefaultValueAction)
+                        .with_command("unset", circuit::defaults::UnsetDefaultValueAction)
+                        .with_command("list", circuit::defaults::ListDefaultsAction)
+                        .with_command("show", circuit::defaults::ShowDefaultValueAction),
+                ),
         );
         subcommands = subcommands.with_command(
             "node",
@@ -442,7 +500,7 @@ fn run() -> Result<(), CliError> {
                 "alias",
                 SubcommandActions::new()
                     .with_command("add", node::AddNodeAliasAction)
-                    .with_command("get", node::GetNodeAliasAction)
+                    .with_command("show", node::ShowNodeAliasAction)
                     .with_command("list", node::ListNodeAliasAction)
                     .with_command("delete", node::DeleteNodeAliasAction),
             ),

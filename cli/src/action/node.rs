@@ -51,9 +51,9 @@ impl Action for AddNodeAliasAction {
     }
 }
 
-pub struct GetNodeAliasAction;
+pub struct ShowNodeAliasAction;
 
-impl Action for GetNodeAliasAction {
+impl Action for ShowNodeAliasAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
         let alias = match args.value_of("alias") {
