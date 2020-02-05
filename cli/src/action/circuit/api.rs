@@ -17,6 +17,7 @@ use reqwest::{blocking::Client, header, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Result as JsonResult;
 use splinter::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
+use splinter::protocol::ADMIN_PROTOCOL_VERSION;
 
 use crate::error::CliError;
 
@@ -46,6 +47,7 @@ impl<'a> SplinterRestClient<'a> {
         Client::new()
             .post(&format!("{}/admin/submit", self.url))
             .header(header::CONTENT_TYPE, "octet-stream")
+            .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .body(payload)
             .send()
             .map_err(|err| {
@@ -84,6 +86,7 @@ impl<'a> SplinterRestClient<'a> {
 
         Client::new()
             .get(&request)
+            .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
             .and_then(|res| match res.status() {
@@ -116,6 +119,7 @@ impl<'a> SplinterRestClient<'a> {
     pub fn fetch_circuit(&self, circuit_id: &str) -> Result<Option<CircuitSlice>, CliError> {
         Client::new()
             .get(&format!("{}/circuits/{}", self.url, circuit_id))
+            .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
             .and_then(|res| match res.status() {
@@ -155,6 +159,7 @@ impl<'a> SplinterRestClient<'a> {
 
         Client::new()
             .get(&request)
+            .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
             .and_then(|res| match res.status() {
@@ -187,6 +192,7 @@ impl<'a> SplinterRestClient<'a> {
     pub fn fetch_proposal(&self, circuit_id: &str) -> Result<Option<ProposalSlice>, CliError> {
         Client::new()
             .get(&format!("{}/admin/proposals/{}", self.url, circuit_id))
+            .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
             .and_then(|res| match res.status() {
