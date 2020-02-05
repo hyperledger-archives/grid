@@ -20,19 +20,25 @@ pub use yaml_store::FileBackedNodeStore;
 
 pub struct Node {
     alias: String,
+    node_id: String,
     endpoint: String,
 }
 
 impl Node {
-    pub fn new(alias: &str, endpoint: &str) -> Node {
+    pub fn new(alias: &str, node_id: &str, endpoint: &str) -> Node {
         Node {
             alias: alias.to_owned(),
+            node_id: node_id.to_owned(),
             endpoint: endpoint.to_owned(),
         }
     }
 
     pub fn alias(&self) -> String {
         self.alias.to_owned()
+    }
+
+    pub fn node_id(&self) -> String {
+        self.node_id.to_owned()
     }
 
     pub fn endpoint(&self) -> String {

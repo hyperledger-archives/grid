@@ -25,6 +25,7 @@ const DEFAULTS_PATH: &str = ".splinter";
 #[derive(Serialize, Deserialize)]
 pub struct SerdeNode {
     alias: String,
+    node_id: String,
     endpoint: String,
 }
 
@@ -32,6 +33,7 @@ impl Into<Node> for SerdeNode {
     fn into(self) -> Node {
         Node {
             alias: self.alias,
+            node_id: self.node_id,
             endpoint: self.endpoint,
         }
     }
@@ -41,6 +43,7 @@ impl From<&Node> for SerdeNode {
     fn from(node: &Node) -> SerdeNode {
         SerdeNode {
             alias: node.alias.clone(),
+            node_id: node.node_id.clone(),
             endpoint: node.endpoint.clone(),
         }
     }

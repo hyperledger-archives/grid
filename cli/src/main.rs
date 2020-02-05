@@ -448,6 +448,12 @@ fn run() -> Result<(), CliError> {
                                         .help("Alias for the node"),
                                 )
                                 .arg(
+                                    Arg::with_name("node_id")
+                                        .takes_value(true)
+                                        .value_name("node-id")
+                                        .help("ID of the node"),
+                                )
+                                .arg(
                                     Arg::with_name("endpoint")
                                         .takes_value(true)
                                         .help("Endpoint for the node"),

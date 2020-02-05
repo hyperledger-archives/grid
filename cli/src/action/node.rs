@@ -28,6 +28,11 @@ impl Action for AddNodeAliasAction {
             Some(alias) => alias,
             None => return Err(CliError::ActionError("Alias is required".into())),
         };
+        let node_id = match args.value_of("node_id") {
+            Some(node_id) => node_id,
+            None => return Err(CliError::ActionError("Node ID is required".into())),
+        };
+
         let endpoint = match args.value_of("endpoint") {
             Some(endpoint) => endpoint,
             None => return Err(CliError::ActionError("Endpoint is required".into())),
@@ -43,7 +48,7 @@ impl Action for AddNodeAliasAction {
                 alias
             )));
         }
-        let node = Node::new(alias, endpoint);
+        let node = Node::new(alias, node_id, endpoint);
 
         node_store.add_node(&node)?;
 
@@ -66,7 +71,12 @@ impl Action for ShowNodeAliasAction {
         let node = node_store.get_node(alias)?;
 
         if let Some(node) = node {
-            println!("{} {}", node.alias(), node.endpoint())
+            println!(
+                "Node alias: {}, ID: {}, endpoint: {}",
+                node.alias(),
+                node.node_id(),
+                node.endpoint()
+            )
         } else {
             println!("Alias not found {}", alias)
         }
@@ -87,7 +97,12 @@ impl Action for ListNodeAliasAction {
             println!("No node alias have been set yet");
         } else {
             nodes.iter().for_each(|node| {
-                println!("{} {}", node.alias(), node.endpoint());
+                println!(
+                    "Node alias: {}, ID: {}, endpoint: {}",
+                    node.alias(),
+                    node.node_id(),
+                    node.endpoint()
+                )
             })
         }
         Ok(())
