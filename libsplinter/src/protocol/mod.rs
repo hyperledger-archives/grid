@@ -16,23 +16,27 @@
 
 pub const ADMIN_PROTOCOL_VERSION: u32 = 1;
 
+#[cfg(feature = "rest-api")]
 pub(crate) const ADMIN_APPLICATION_REGISTRATION_PROTOCOL_MIN: u32 = 1;
-
+#[cfg(feature = "rest-api")]
 pub(crate) const ADMIN_SUBMIT_PROTOCOL_MIN: u32 = 1;
 
-#[cfg(feature = "proposal-read")]
+#[cfg(all(feature = "rest-api", feature = "proposal-read"))]
 pub(crate) const ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN: u32 = 1;
 
-#[cfg(feature = "proposal-read")]
+#[cfg(all(feature = "rest-api", feature = "proposal-read"))]
 pub(crate) const ADMIN_LIST_PROPOSALS_PROTOCOL_MIN: u32 = 1;
 
 pub const SCABBARD_PROTOCOL_VERSION: u32 = 1;
 
+#[cfg(feature = "rest-api")]
 pub(crate) const SCABBARD_SUBSCRIBE_PROTOCOL_MIN: u32 = 1;
+#[cfg(feature = "rest-api")]
 pub(crate) const SCABBARD_ADD_BATCHES_PROTOCOL_MIN: u32 = 1;
+#[cfg(feature = "rest-api")]
 pub(crate) const SCABBARD_BATCH_STATUSES_PROTOCOL_MIN: u32 = 1;
 
-#[cfg(feature = "scabbard-get-state")]
+#[cfg(all(feature = "scabbard-get-state", feature = "rest-api"))]
 pub(crate) const SCABBARD_GET_STATE_PROTOCOL_MIN: u32 = 1;
-#[cfg(feature = "scabbard-get-state")]
+#[cfg(all(feature = "scabbard-get-state", feature = "rest-api"))]
 pub(crate) const SCABBARD_LIST_STATE_PROTOCOL_MIN: u32 = 1;

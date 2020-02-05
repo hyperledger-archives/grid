@@ -16,6 +16,7 @@ use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
 use futures::Future;
 use percent_encoding::utf8_percent_encode;
 use splinter::node_registry::Node;
+use splinter::protocol;
 use std::collections::HashMap;
 
 use super::{ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
@@ -27,6 +28,10 @@ pub fn fetch_node(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     client
         .get(&format!("{}/nodes/{}", splinterd_url.get_ref(), identity))
+        .header(
+            "SplinterProtocolVersion",
+            protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+        )
         .send()
         .map_err(Error::from)
         .and_then(|mut resp| {
@@ -81,6 +86,10 @@ pub fn list_nodes(
 
     client
         .get(&request_url)
+        .header(
+            "SplinterProtocolVersion",
+            protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+        )
         .send()
         .map_err(Error::from)
         .and_then(|mut resp| {

@@ -52,6 +52,7 @@
 //! reactor.shutdown().unwrap();
 //! ```
 
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -132,6 +133,7 @@ pub struct WebSocketClient<T: ParseBytes<T> + 'static = Vec<u8>> {
     reconnect: bool,
     reconnect_limit: u64,
     timeout: u64,
+    additional_headers: HashMap<String, String>,
 }
 
 impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
@@ -144,6 +146,7 @@ impl<T: ParseBytes<T> + 'static> Clone for WebSocketClient<T> {
             reconnect: self.reconnect,
             reconnect_limit: self.reconnect_limit,
             timeout: self.timeout,
+            additional_headers: self.additional_headers.clone(),
         }
     }
 }
@@ -161,6 +164,7 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
             reconnect: DEFAULT_RECONNECT,
             reconnect_limit: DEFAULT_RECONNECT_LIMIT,
             timeout: DEFAULT_TIMEOUT,
+            additional_headers: HashMap::new(),
         }
     }
 
@@ -178,6 +182,10 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
     pub fn set_timeout(&mut self, timeout: u64) {
         self.timeout = timeout
+    }
+
+    pub fn header(&mut self, header: &str, value: String) {
+        self.additional_headers.insert(header.into(), value);
     }
 
     pub fn reconnect(&self) -> bool {
@@ -236,8 +244,14 @@ impl<T: ParseBytes<T> + 'static> WebSocketClient<T> {
 
         debug!("starting: {}", url);
 
-        let request = Request::builder()
-            .uri(url)
+        let mut builder = Request::builder();
+        let mut request_builder = builder.uri(url);
+
+        for (header, value) in self.additional_headers.iter() {
+            request_builder = request_builder.header(header, value);
+        }
+
+        let request = request_builder
             .header(header::UPGRADE, "websocket")
             .header(header::CONNECTION, "Upgrade")
             .header(header::SEC_WEBSOCKET_VERSION, "13")

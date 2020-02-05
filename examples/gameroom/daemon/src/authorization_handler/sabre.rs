@@ -39,6 +39,7 @@ use sawtooth_sdk::messages::batch::{Batch, BatchHeader, BatchList};
 use sawtooth_sdk::messages::transaction::{Transaction, TransactionHeader};
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
 use sawtooth_sdk::signing::{create_context, CryptoFactory, Signer};
+use splinter::protocol;
 
 use super::AppAuthHandlerError;
 
@@ -112,6 +113,10 @@ pub fn setup_xo(
             splinterd_url, circuit_id, service_id
         ))
         .method("POST")
+        .header(
+            "SplinterProtocolVersion",
+            protocol::SCABBARD_PROTOCOL_VERSION.to_string(),
+        )
         .body(Body::wrap_stream(body_stream))
         .map_err(|err| AppAuthHandlerError::BatchSubmitError(format!("{}", err)))?;
 
