@@ -61,14 +61,29 @@ pub fn make_subscribe_endpoint() -> ServiceEndpoint {
             let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
                 Some(s) => s,
                 None => {
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                    error!("Failed to downcast to scabbard service");
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": "An internal error occurred"
+                            }))
+                            .into_future(),
+                    );
                 }
             };
 
             let mut query =
                 match web::Query::<HashMap<String, String>>::from_query(request.query_string()) {
                     Ok(query) => query,
-                    Err(_) => return Box::new(HttpResponse::BadRequest().finish().into_future()),
+                    Err(_) => {
+                        return Box::new(
+                            HttpResponse::BadRequest()
+                                .json(json!({
+                                    "message": "Invalid query"
+                                }))
+                                .into_future(),
+                        )
+                    }
                 };
 
             let last_seen_event_id = query.remove("last_seen_event");
@@ -91,7 +106,11 @@ pub fn make_subscribe_endpoint() -> ServiceEndpoint {
                 Ok(events) => events,
                 Err(err) => {
                     error!("Unable to load unseen scabbard events: {}", err);
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future());
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({ "message": "An internal error occurred" }))
+                            .into_future(),
+                    );
                 }
             };
 
@@ -103,14 +122,20 @@ pub fn make_subscribe_endpoint() -> ServiceEndpoint {
                     {
                         error!("Unable to add scabbard event sender: {}", err);
                         return Box::new(
-                            HttpResponse::InternalServerError().finish().into_future(),
+                            HttpResponse::InternalServerError()
+                                .json(json!({ "message": "An internal error occurred" }))
+                                .into_future(),
                         );
                     }
                     Box::new(res.into_future())
                 }
                 Err(err) => {
-                    debug!("Failed to create websocket: {:?}", err);
-                    Box::new(HttpResponse::InternalServerError().finish().into_future())
+                    error!("Failed to create websocket: {:?}", err);
+                    Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({ "message": "An internal error occurred" }))
+                            .into_future(),
+                    )
                 }
             }
         }),
@@ -130,7 +155,14 @@ pub fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
             let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
                 Some(s) => s,
                 None => {
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                    error!("Failed to downcast to scabbard service");
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": "An internal error occurred"
+                            }))
+                            .into_future(),
+                    );
                 }
             }
             .clone();
@@ -146,13 +178,30 @@ pub fn make_add_batches_to_queue_endpoint() -> ServiceEndpoint {
                     .and_then(move |body| {
                         let batches: Vec<BatchPair> = match Vec::from_bytes(&body) {
                             Ok(b) => b,
-                            Err(_) => return HttpResponse::BadRequest().finish().into_future(),
+                            Err(_) => {
+                                return HttpResponse::BadRequest()
+                                    .json(json!({
+                                        "message": "invalid body: not a valid list of batches"
+                                    }))
+                                    .into_future()
+                            }
                         };
 
                         match scabbard.add_batches(batches) {
                             Ok(Some(link)) => HttpResponse::Accepted().json(link).into_future(),
-                            Ok(None) => HttpResponse::BadRequest().finish().into_future(),
-                            Err(_) => HttpResponse::InternalServerError().finish().into_future(),
+                            Ok(None) => HttpResponse::BadRequest()
+                                .json(json!({
+                                    "message": "no valid batches provided"
+                                }))
+                                .into_future(),
+                            Err(err) => {
+                                error!("Failed to add batches: {}", err);
+                                HttpResponse::InternalServerError()
+                                    .json(json!({
+                                        "message": "An internal error occurred"
+                                    }))
+                                    .into_future()
+                            }
                         }
                     }),
             )
@@ -173,7 +222,14 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
             let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
                 Some(s) => s,
                 None => {
-                    return Box::new(HttpResponse::InternalServerError().finish().into_future())
+                    error!("Failed to downcast to scabbard service");
+                    return Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({
+                                "message": "An internal error occurred"
+                            }))
+                            .into_future(),
+                    );
                 }
             }
             .clone();
@@ -220,11 +276,14 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 Some(wait_time) => match Instant::now().checked_add(wait_time) {
                     Some(t) => Some(t),
                     None => {
+                        error!("Failed to determine wait time");
                         return Box::new(
                             HttpResponse::InternalServerError()
-                                .json("failed to determine wait time")
+                                .json(json!({
+                                    "message": "An internal error occurred"
+                                }))
                                 .into_future(),
-                        )
+                        );
                     }
                 },
                 None => None,
@@ -232,7 +291,14 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
 
             match get_statuses(&scabbard, &ids, timeout) {
                 Ok(statuses) => Box::new(HttpResponse::Ok().json(statuses).into_future()),
-                Err(err) => Box::new(HttpResponse::InternalServerError().json(err).into_future()),
+                Err(err) => {
+                    error!("Failed to get batch statuses: {}", err);
+                    Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(json!({ "message": "An internal error occurred" }))
+                            .into_future(),
+                    )
+                }
             }
         }),
         request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
@@ -252,13 +318,14 @@ pub fn make_get_state_at_address_endpoint() -> ServiceEndpoint {
             let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
                 Some(s) => s,
                 None => {
+                    error!("Failed to downcast to scabbard service");
                     return Box::new(
                         HttpResponse::InternalServerError()
                             .json(json!({
-                                "message": "service is not Scabbard"
+                                "message": "An internal error occurred"
                             }))
                             .into_future(),
-                    )
+                    );
                 }
             };
 
@@ -269,12 +336,19 @@ pub fn make_get_state_at_address_endpoint() -> ServiceEndpoint {
 
             Box::new(match scabbard.get_state_at_address(address) {
                 Ok(Some(value)) => HttpResponse::Ok().json(value).into_future(),
-                Ok(None) => HttpResponse::NotFound().finish().into_future(),
-                Err(err) => HttpResponse::InternalServerError()
+                Ok(None) => HttpResponse::NotFound()
                     .json(json!({
-                        "message": err.to_string()
+                        "message": "address not set"
                     }))
                     .into_future(),
+                Err(err) => {
+                    error!("Failed to get state at adddress: {}", err);
+                    HttpResponse::InternalServerError()
+                        .json(json!({
+                            "message": "An internal error occurred"
+                        }))
+                        .into_future()
+                }
             })
         }),
         request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
@@ -294,13 +368,14 @@ pub fn make_get_state_with_prefix_endpoint() -> ServiceEndpoint {
             let scabbard = match service.as_any().downcast_ref::<Scabbard>() {
                 Some(s) => s,
                 None => {
+                    error!("Failed to downcast to scabbard service");
                     return Box::new(
                         HttpResponse::InternalServerError()
                             .json(json!({
-                                "message": "service is not Scabbard"
+                                "message": "An internal error occurred"
                             }))
                             .into_future(),
-                    )
+                    );
                 }
             };
 
@@ -333,18 +408,24 @@ pub fn make_get_state_with_prefix_endpoint() -> ServiceEndpoint {
                         .collect::<Result<Vec<_>, _>>();
                     match res {
                         Ok(entries) => HttpResponse::Ok().json(entries).into_future(),
-                        Err(err) => HttpResponse::InternalServerError()
-                            .json(json!({
-                                "message": err.to_string()
-                            }))
-                            .into_future(),
+                        Err(err) => {
+                            error!("Failed to convert state iterator: {}", err);
+                            HttpResponse::InternalServerError()
+                                .json(json!({
+                                    "message": "An internal error occurred"
+                                }))
+                                .into_future()
+                        }
                     }
                 }
-                Err(err) => HttpResponse::InternalServerError()
-                    .json(json!({
-                        "message": err.to_string()
-                    }))
-                    .into_future(),
+                Err(err) => {
+                    error!("Failed to get state with prefix: {}", err);
+                    HttpResponse::InternalServerError()
+                        .json(json!({
+                            "message": "An internal error occurred"
+                        }))
+                        .into_future()
+                }
             })
         }),
         request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(

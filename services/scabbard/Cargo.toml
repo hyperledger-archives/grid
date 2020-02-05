@@ -49,20 +49,20 @@ default = []
 stable = ["default"]
 
 experimental = [
+  "contract",
   "contract-registry",
   "execute",
   "namespace",
   "namespace-permission",
   "smart-permissions",
-  "upload",
 ]
 
+contract = []
 contract-registry = []
 execute = []
 namespace = []
 namespace-permission = []
 smart-permissions = []
-upload = []
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

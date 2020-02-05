@@ -568,9 +568,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/Link"
         404:
-          description: circuit id or service id not found
+          description: The scabbard service was not found, or the circuit id or service id was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         500:
           description: Internal service error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /scabbard/{circuit}/{service_id}/batch_statuses:
     post:
@@ -612,11 +620,23 @@ paths:
                 items:
                   $ref: '#/components/schemas/BatchStatus'
         404:
-          description: circuit id or service id not found
+          description: The scabbard service was not found, or the circuit id or service id was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         400:
           description: Malformed ids list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         500:
           description: Internal service error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /scabbard/{circuit}/{service_id}/state:
     get:
@@ -660,6 +680,12 @@ paths:
                         type: integer
         400:
           description: Request was malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: The scabbard service was not found
           content:
             application/json:
               schema:
@@ -711,7 +737,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         404:
-          description: There is no value at the given address
+          description: The scabbard service was not found, or there is no value at the given address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         500:
           description: Internal server error
           content:

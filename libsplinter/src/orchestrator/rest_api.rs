@@ -58,9 +58,13 @@ impl RestResourceProvider for ServiceOrchestrator {
                             let services = match services.lock() {
                                 Ok(s) => s,
                                 Err(err) => {
-                                    debug!("Orchestrator's service lock is poisoned: {}", err);
+                                    error!("Orchestrator's service lock is poisoned: {}", err);
                                     return Box::new(
-                                        HttpResponse::InternalServerError().finish().into_future(),
+                                        HttpResponse::InternalServerError()
+                                            .json(json!({
+                                                "message": "An internal error occurred"
+                                            }))
+                                            .into_future(),
                                     )
                                     .into_future();
                                 }
@@ -79,12 +83,16 @@ impl RestResourceProvider for ServiceOrchestrator {
                                 }) {
                                     Some(s) => s,
                                     None => {
-                                        error!(
-                                            "{} service {} on circuit {} not found",
-                                            service_type, service_id, circuit
-                                        );
                                         return Box::new(
-                                            HttpResponse::NotFound().finish().into_future(),
+                                            HttpResponse::NotFound()
+                                                .json(json!({
+                                                    "message":
+                                                        format!(
+                                                            "{} service {} on circuit {} not found",
+                                                            service_type, service_id, circuit
+                                                        )
+                                                }))
+                                                .into_future(),
                                         )
                                         .into_future();
                                     }
