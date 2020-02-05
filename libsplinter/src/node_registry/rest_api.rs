@@ -16,9 +16,10 @@ use std::collections::HashMap;
 
 use crate::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use crate::futures::{future::IntoFuture, stream::Stream, Future};
+use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
-    percent_encode_filter_query, Method, Resource,
+    percent_encode_filter_query, Method, ProtocolVersionRangeGuard, Resource,
 };
 
 use super::{
@@ -41,6 +42,10 @@ where
     let registry1 = registry.clone();
     let registry2 = registry.clone();
     Resource::build("/nodes/{identity}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_FETCH_NODE_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
         .add_method(Method::Get, move |r, _| {
             fetch_node(r, web::Data::new(registry.clone()))
         })
@@ -58,6 +63,10 @@ where
 {
     let registry1 = registry.clone();
     Resource::build("/nodes")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_LIST_NODES_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
         .add_method(Method::Get, move |r, _| {
             list_nodes(r, web::Data::new(registry.clone()))
         })
