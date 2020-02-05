@@ -204,6 +204,87 @@ impl CreateCircuitBuilder {
     }
 }
 
+#[derive(Default, Clone)]
+pub struct SplinterServiceBuilder {
+    service_id: Option<String>,
+    service_type: Option<String>,
+    allowed_nodes: Option<Vec<String>>,
+    arguments: Option<Vec<(String, String)>>,
+}
+
+impl SplinterServiceBuilder {
+    pub fn new() -> Self {
+        SplinterServiceBuilder::default()
+    }
+
+    pub fn service_id(&self) -> Option<String> {
+        self.service_id.clone()
+    }
+
+    pub fn service_type(&self) -> Option<String> {
+        self.service_type.clone()
+    }
+
+    pub fn allowed_nodes(&self) -> Option<Vec<String>> {
+        self.allowed_nodes.clone()
+    }
+
+    pub fn arguments(&self) -> Option<Vec<(String, String)>> {
+        self.arguments.clone()
+    }
+
+    pub fn with_service_id(mut self, service_id: &str) -> SplinterServiceBuilder {
+        self.service_id = Some(service_id.into());
+        self
+    }
+
+    pub fn with_service_type(mut self, service_type: &str) -> SplinterServiceBuilder {
+        self.service_type = Some(service_type.into());
+        self
+    }
+
+    pub fn with_allowed_nodes(mut self, allowed_nodes: &[String]) -> SplinterServiceBuilder {
+        self.allowed_nodes = Some(allowed_nodes.into());
+        self
+    }
+
+    pub fn with_arguments(mut self, arguments: &[(String, String)]) -> SplinterServiceBuilder {
+        self.arguments = Some(arguments.into());
+        self
+    }
+
+    pub fn build(self) -> Result<SplinterService, BuilderError> {
+        let service_id = self.service_id.ok_or_else(|| {
+            BuilderError::MissingField(
+                "Unable to build SplinterService. Missing required field service_id".to_string(),
+            )
+        })?;
+
+        let service_type = self.service_type.ok_or_else(|| {
+            BuilderError::MissingField(
+                "Unable to build SplinterService. Missing required field service_type".to_string(),
+            )
+        })?;
+
+        let allowed_nodes = self.allowed_nodes.ok_or_else(|| {
+            BuilderError::MissingField(
+                "Unable to build SplinterService. Missing required field allowed_nodes".to_string(),
+            )
+        })?;
+
+        let arguments = self.arguments.unwrap_or_default();
+
+        let service = SplinterService {
+            service_id,
+            service_type,
+            allowed_nodes,
+            arguments,
+        };
+
+        Ok(service)
+    }
+}
+
 #[derive(Debug)]
 pub enum BuilderError {
     MissingField(String),
