@@ -99,7 +99,7 @@ fn run() -> Result<(), CliError> {
             SubCommand::with_name("keygen")
                 .about(
                     "Generates secp256k1 keys. By default, keys are stored in\n\
-                     the user's home directory, $HOME/splinter/keys. The --admin\n\
+                     the user's home directory, $HOME/splinter/keys. The --system\n\
                      option generates keys for the Splinter daemon (splinterd) that\n\
                      are stored in /etc/splinter/keys.",
                 )
@@ -115,9 +115,9 @@ fn run() -> Result<(), CliError> {
                         .help("Overwrite files if they exist"),
                 )
                 .arg(
-                    Arg::with_name("admin")
-                        .long("admin")
-                        .help("Generate admin keys in /etc/splinter/keys"),
+                    Arg::with_name("system")
+                        .long("system")
+                        .help("Generate system keys in /etc/splinter/keys"),
                 ),
         )
     }

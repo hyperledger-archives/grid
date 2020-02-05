@@ -30,7 +30,7 @@ use crate::error::CliError;
 
 use super::{chown, Action};
 
-const ADMIN_KEY_PATH: &str = "/etc/splinter/keys";
+const SYSTEM_KEY_PATH: &str = "/etc/splinter/keys";
 
 pub struct KeyGenAction;
 
@@ -42,8 +42,8 @@ impl Action for KeyGenAction {
             .value_of("key-name")
             .map(String::from)
             .unwrap_or_else(whoami::username);
-        let key_dir = if args.is_present("admin") {
-            PathBuf::from(ADMIN_KEY_PATH)
+        let key_dir = if args.is_present("system") {
+            PathBuf::from(SYSTEM_KEY_PATH)
         } else {
             dirs::home_dir()
                 .map(|mut p| {
