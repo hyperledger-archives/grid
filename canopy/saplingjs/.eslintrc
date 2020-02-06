@@ -19,7 +19,17 @@
   "rules": {
     "import/no-default-export": 2,
     "import/prefer-default-export": 0,
-    "import/no-var-requires": 0
+    "import/no-var-requires": 0,
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "js": "never",
+        "jsx": "never",
+        "ts": "never",
+        "tsx": "never"
+      }
+    ]
   },
   "extends": [
     "plugin:@typescript-eslint/recommended",
