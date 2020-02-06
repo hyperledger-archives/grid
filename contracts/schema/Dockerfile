@@ -37,7 +37,7 @@ RUN cp /build/target/wasm32-unknown-unknown/release/grid-schema-tp.wasm \
 WORKDIR /build/contracts/schema/packaging/scar
 
 # Create .scar file
-RUN tar -jcvf /tmp/grid-schema${REPO_VERSION}.scar .
+RUN tar -jcvf /tmp/grid-schema_${REPO_VERSION}.scar .
 
 # -------------=== schema submitter build ===-------------
 
