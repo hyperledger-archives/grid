@@ -77,7 +77,7 @@ fn run() -> Result<(), CliError> {
         (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
         (@arg key: -k +takes_value "base name for private key file")
         (@arg verbose: -v +multiple +global "Log verbosely")
-        (@arg quiet: -q --quiet +global "Do not display output")
+        (@arg quiet: -q --quiet +global conflicts_with[verbose] "Do not display output")
         (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
             sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
