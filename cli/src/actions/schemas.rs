@@ -74,7 +74,7 @@ pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionS
     });
 }
 
-pub fn do_list_schemas(url: &str, service_id: Option<&str>) -> Result<(), CliError> {
+pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliError> {
     let client = Client::new();
     let mut final_url = format!("{}/schema", url);
     if let Some(service_id) = service_id {
@@ -88,7 +88,7 @@ pub fn do_list_schemas(url: &str, service_id: Option<&str>) -> Result<(), CliErr
     Ok(())
 }
 
-pub fn do_show_schema(url: &str, name: &str, service_id: Option<&str>) -> Result<(), CliError> {
+pub fn do_show_schema(url: &str, name: &str, service_id: Option<String>) -> Result<(), CliError> {
     let client = Client::new();
     let mut final_url = format!("{}/schema/{}", url, name);
     if let Some(service_id) = service_id {
@@ -104,7 +104,7 @@ pub fn do_create_schemas(
     key: Option<String>,
     wait: u64,
     path: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaCreate(SchemaCreateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(key);
@@ -121,7 +121,7 @@ pub fn do_create_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id)
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
 pub fn do_update_schemas(
@@ -129,7 +129,7 @@ pub fn do_update_schemas(
     key: Option<String>,
     wait: u64,
     path: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_yaml(path, Action::SchemaUpdate(SchemaUpdateAction::default()))?;
     let mut batch_list_builder = schema_batch_builder(key);
@@ -146,7 +146,7 @@ pub fn do_update_schemas(
 
     let batch_list = batch_list_builder.create_batch_list();
 
-    submit_batches(url, wait, &batch_list, service_id)
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
 fn parse_yaml(path: &str, action: Action) -> Result<Vec<SchemaPayload>, CliError> {
