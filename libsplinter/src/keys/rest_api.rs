@@ -21,9 +21,10 @@ use serde::Serializer;
 
 use crate::actix_web::{error::BlockingError, web, HttpResponse};
 use crate::futures::{future::IntoFuture, Future};
+use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
-    Method, Resource, RestResourceProvider,
+    Method, ProtocolVersionRangeGuard, Resource, RestResourceProvider,
 };
 
 use super::{KeyInfo, KeyRegistry, KeyRegistryError};
@@ -77,119 +78,130 @@ impl RestResourceProvider for KeyRegistryManager {
 }
 
 fn make_fetch_key_resource(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::build("/keys/{public_key}").add_method(Method::Get, move |req, _| {
-        let public_key = match parse_hex(req.match_info().get("public_key").unwrap_or("")) {
-            Ok(public_key) => public_key,
-            Err(err_msg) => {
-                return Box::new(
-                    HttpResponse::BadRequest()
-                        .json(json!({ "message": err_msg }))
-                        .into_future(),
-                )
-            }
-        };
+    Resource::build("/keys/{public_key}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_FETCH_KEY_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |req, _| {
+            let public_key = match parse_hex(req.match_info().get("public_key").unwrap_or("")) {
+                Ok(public_key) => public_key,
+                Err(err_msg) => {
+                    return Box::new(
+                        HttpResponse::BadRequest()
+                            .json(json!({ "message": err_msg }))
+                            .into_future(),
+                    )
+                }
+            };
 
-        let registry = web::Data::new(key_registry.clone());
-        Box::new(
-            web::block(move || registry.get_key(&public_key)).then(|res| match res {
-                Ok(Some(key_info)) => {
-                    Ok(HttpResponse::Ok().json(json!({ "data": KeyInfoResponse::new(&key_info) })))
-                }
-                Ok(None) => Ok(HttpResponse::NotFound().into()),
-                Err(err) => {
-                    error!("Unable to read key info: {}", err);
-                    Ok(HttpResponse::InternalServerError().into())
-                }
-            }),
-        )
-    })
+            let registry = web::Data::new(key_registry.clone());
+            Box::new(
+                web::block(move || registry.get_key(&public_key)).then(|res| match res {
+                    Ok(Some(key_info)) => {
+                        Ok(HttpResponse::Ok()
+                            .json(json!({ "data": KeyInfoResponse::new(&key_info) })))
+                    }
+                    Ok(None) => Ok(HttpResponse::NotFound().into()),
+                    Err(err) => {
+                        error!("Unable to read key info: {}", err);
+                        Ok(HttpResponse::InternalServerError().into())
+                    }
+                }),
+            )
+        })
 }
 
 fn make_list_key_resources(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::build("/keys").add_method(Method::Get, move |req, _| {
-        let query: web::Query<HashMap<String, String>> =
-            if let Ok(q) = web::Query::from_query(req.query_string()) {
-                q
-            } else {
-                return Box::new(
-                    HttpResponse::BadRequest()
-                        .json(json!({
-                            "message": "Invalid query"
-                        }))
-                        .into_future(),
-                );
-            };
-
-        let offset = match query.get("offset") {
-            Some(value) => match value.parse::<usize>() {
-                Ok(val) => val,
-                Err(err) => {
+    Resource::build("/keys")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::ADMIN_LIST_KEYS_MIN,
+            protocol::ADMIN_PROTOCOL_VERSION,
+        ))
+        .add_method(Method::Get, move |req, _| {
+            let query: web::Query<HashMap<String, String>> =
+                if let Ok(q) = web::Query::from_query(req.query_string()) {
+                    q
+                } else {
                     return Box::new(
                         HttpResponse::BadRequest()
-                            .json(format!(
-                                "Invalid offset value passed: {}. Error: {}",
-                                value, err
-                            ))
+                            .json(json!({
+                                "message": "Invalid query"
+                            }))
                             .into_future(),
-                    )
-                }
-            },
-            None => DEFAULT_OFFSET,
-        };
+                    );
+                };
 
-        let limit = match query.get("limit") {
-            Some(value) => match value.parse::<usize>() {
-                Ok(val) => val,
-                Err(err) => {
-                    return Box::new(
-                        HttpResponse::BadRequest()
-                            .json(format!(
-                                "Invalid limit value passed: {}. Error: {}",
-                                value, err
-                            ))
-                            .into_future(),
-                    )
-                }
-            },
-            None => DEFAULT_LIMIT,
-        };
-
-        let link = format!("{}?", req.uri().path());
-        let registry = web::Data::new(key_registry.clone());
-
-        Box::new(
-            web::block(move || {
-                Ok((
-                    registry
-                        .keys()?
-                        .skip(offset)
-                        .take(limit)
-                        .map(|key_info| KeyInfoResponse::new(&key_info))
-                        .collect::<Vec<_>>(),
-                    registry.count()?,
-                ))
-            })
-            .then(
-                move |res: Result<(Vec<_>, usize), BlockingError<KeyRegistryError>>| match res {
-                    Ok((data, total_count)) => {
-                        Ok(HttpResponse::Ok().json(json!(ListKeyInfoResponse {
-                            data: data,
-                            paging: get_response_paging_info(
-                                Some(limit),
-                                Some(offset),
-                                &link,
-                                total_count
-                            )
-                        })))
-                    }
+            let offset = match query.get("offset") {
+                Some(value) => match value.parse::<usize>() {
+                    Ok(val) => val,
                     Err(err) => {
-                        error!("unable to list key info: {}", err);
-                        Ok(HttpResponse::InternalServerError().into())
+                        return Box::new(
+                            HttpResponse::BadRequest()
+                                .json(format!(
+                                    "Invalid offset value passed: {}. Error: {}",
+                                    value, err
+                                ))
+                                .into_future(),
+                        )
                     }
                 },
-            ),
-        )
-    })
+                None => DEFAULT_OFFSET,
+            };
+
+            let limit = match query.get("limit") {
+                Some(value) => match value.parse::<usize>() {
+                    Ok(val) => val,
+                    Err(err) => {
+                        return Box::new(
+                            HttpResponse::BadRequest()
+                                .json(format!(
+                                    "Invalid limit value passed: {}. Error: {}",
+                                    value, err
+                                ))
+                                .into_future(),
+                        )
+                    }
+                },
+                None => DEFAULT_LIMIT,
+            };
+
+            let link = format!("{}?", req.uri().path());
+            let registry = web::Data::new(key_registry.clone());
+
+            Box::new(
+                web::block(move || {
+                    Ok((
+                        registry
+                            .keys()?
+                            .skip(offset)
+                            .take(limit)
+                            .map(|key_info| KeyInfoResponse::new(&key_info))
+                            .collect::<Vec<_>>(),
+                        registry.count()?,
+                    ))
+                })
+                .then(
+                    move |res: Result<(Vec<_>, usize), BlockingError<KeyRegistryError>>| match res {
+                        Ok((data, total_count)) => {
+                            Ok(HttpResponse::Ok().json(json!(ListKeyInfoResponse {
+                                data: data,
+                                paging: get_response_paging_info(
+                                    Some(limit),
+                                    Some(offset),
+                                    &link,
+                                    total_count
+                                )
+                            })))
+                        }
+                        Err(err) => {
+                            error!("unable to list key info: {}", err);
+                            Ok(HttpResponse::InternalServerError().into())
+                        }
+                    },
+                ),
+            )
+        })
 }
 
 fn as_hex<S>(data: &[u8], serializer: S) -> Result<S::Ok, S::Error>
