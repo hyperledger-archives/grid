@@ -221,9 +221,8 @@ fn run() -> Result<(), CliError> {
         log::LevelFilter::Error
     } else {
         match matches.occurrences_of("verbose") {
-            0 => log::LevelFilter::Warn,
-            1 => log::LevelFilter::Info,
-            2 => log::LevelFilter::Debug,
+            0 => log::LevelFilter::Info,
+            1 => log::LevelFilter::Debug,
             _ => log::LevelFilter::Trace,
         }
     };
