@@ -17,6 +17,7 @@ pub mod handlers;
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
 pub mod service;
+pub mod store;
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -28,6 +29,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::circuit::directory::CircuitDirectory;
 use crate::circuit::service::{Service, ServiceId, SplinterNode};
+use crate::circuit::store::{CircuitStore, CircuitStoreError};
 use crate::storage::get_storage;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -565,6 +567,18 @@ impl SplinterState {
             .read()
             .map_err(|_| SplinterStateError::new("Failed to read circuit directory".into()))?;
         Ok(circuit_directory.has_circuit(circuit_name))
+    }
+}
+
+impl CircuitStore for SplinterState {
+    fn circuits(&self) -> Result<BTreeMap<String, Circuit>, CircuitStoreError> {
+        self.circuits()
+            .map_err(|err| CircuitStoreError::new(err.context()))
+    }
+
+    fn circuit(&self, circuit_name: &str) -> Result<Option<Circuit>, CircuitStoreError> {
+        self.circuit(circuit_name)
+            .map_err(|err| CircuitStoreError::new(err.context()))
     }
 }
 
