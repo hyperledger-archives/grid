@@ -210,10 +210,10 @@ mod tests {
         ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);
-        // Create a new CommandLiine object from the arg matches.
+        // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.");
-        // Build a PartialConfig from the TomlConfig object created.
+        // Build a PartialConfig from the CommandLineConfig object created.
         let built_config = command_config.build();
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(built_config.source(), ConfigSource::CommandLine);

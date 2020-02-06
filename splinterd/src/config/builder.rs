@@ -262,7 +262,7 @@ impl ConfigBuilder {
 mod tests {
     use super::*;
 
-    /// Values present in the existing example config TEST_TOML file.
+    /// Example configuration values.
     static EXAMPLE_STORAGE: &str = "yaml";
     static EXAMPLE_TRANSPORT: &str = "tls";
     static EXAMPLE_CA_CERTS: &str = "certs/ca.pem";
@@ -274,7 +274,7 @@ mod tests {
     static EXAMPLE_NETWORK_ENDPOINT: &str = "127.0.0.1:8044";
     static EXAMPLE_NODE_ID: &str = "012";
 
-    /// Asserts config values based on the TEST_TOML file values.
+    /// Asserts the example configuration values.
     fn assert_config_values(config: PartialConfig) {
         assert_eq!(config.storage(), Some(EXAMPLE_STORAGE.to_string()));
         assert_eq!(config.transport(), Some(EXAMPLE_TRANSPORT.to_string()));
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     /// This test verifies that a PartialConfig object is accurately constructed by chaining the
-    /// PartialConfigBuilder methods from a new TomlConfig object. The following steps are performed:
+    /// PartialConfigBuilder methods. The following steps are performed:
     ///
     /// 1. An empty PartialConfig object is constructed.
     /// 2. The fields of the PartialConfig object are populated by chaining the builder methods.
