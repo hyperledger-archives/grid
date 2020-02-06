@@ -34,7 +34,7 @@ mod yaml_parser;
 use std::env;
 
 use clap::ArgMatches;
-use flexi_logger::{LogSpecBuilder, Logger};
+use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use grid_sdk::protocol::pike::{
     payload::{
         CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
@@ -42,6 +42,7 @@ use grid_sdk::protocol::pike::{
     },
     state::{KeyValueEntry, KeyValueEntryBuilder},
 };
+use log::Record;
 
 use crate::error::CliError;
 
@@ -55,6 +56,15 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const GRID_DAEMON_KEY: &str = "GRID_DAEMON_KEY";
 const GRID_DAEMON_ENDPOINT: &str = "GRID_DAEMON_ENDPOINT";
+
+// log format for cli that will only show the log message
+pub fn log_format(
+    w: &mut dyn std::io::Write,
+    _now: &mut DeferredNow,
+    record: &Record,
+) -> Result<(), std::io::Error> {
+    write!(w, "{}", record.args(),)
+}
 
 fn run() -> Result<(), CliError> {
     #[allow(unused_mut)]
@@ -229,7 +239,9 @@ fn run() -> Result<(), CliError> {
     let mut log_spec_builder = LogSpecBuilder::new();
     log_spec_builder.default(log_level);
 
-    Logger::with(log_spec_builder.build()).start()?;
+    Logger::with(log_spec_builder.build())
+        .format(log_format)
+        .start()?;
 
     let url = matches
         .value_of("url")
