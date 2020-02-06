@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+export { submitBatchList } from './submitter';
+
 interface User {
   userId: string;
   displayName?: string;
