@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::{Arc, RwLock};
-
 use crate::channel::Sender;
 use crate::circuit::handlers::create_message;
 use crate::circuit::SplinterState;
@@ -22,7 +20,6 @@ use crate::network::sender::SendRequest;
 use crate::protos::circuit::{
     AdminDirectMessage, CircuitError, CircuitError_Error, CircuitMessageType,
 };
-use crate::rwlock_read_unwrap;
 use protobuf::Message;
 
 const ADMIN_SERVICE_ID_PREFIX: &str = "admin::";
@@ -30,7 +27,7 @@ const ADMIN_SERVICE_ID_PREFIX: &str = "admin::";
 // Implements a handler that handles AdminDirectMessage
 pub struct AdminDirectMessageHandler {
     node_id: String,
-    state: Arc<RwLock<SplinterState>>,
+    state: SplinterState,
 }
 
 impl Handler<CircuitMessageType, AdminDirectMessage> for AdminDirectMessageHandler {
@@ -66,7 +63,7 @@ impl Handler<CircuitMessageType, AdminDirectMessage> for AdminDirectMessageHandl
 }
 
 impl AdminDirectMessageHandler {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
+    pub fn new(node_id: String, state: SplinterState) -> Self {
         Self { node_id, state }
     }
 
@@ -109,13 +106,15 @@ impl AdminDirectMessageHandler {
             ));
         }
 
-        // Get read lock on state
-        let state = rwlock_read_unwrap!(self.state);
-
         // msg bytes will either be message bytes of a direct message or an error message
         // the msg_recipient is either the service/node id to send the message to or is the
         // peer_id to send back the error message
-        let response = if state.circuit(circuit_name).is_some() {
+        let circuit = self
+            .state
+            .circuit(circuit_name)
+            .map_err(|err| DispatchError::HandleError(err.context()))?;
+
+        let response = if circuit.is_some() {
             let node_id = &recipient[ADMIN_SERVICE_ID_PREFIX.len()..];
             // If the service is on this node send message to the service, otherwise
             // send the message to the node the service is connected to
@@ -202,10 +201,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = AdminDirectMessageHandler::new("1234".into(), state);
         dispatcher.set_handler(CircuitMessageType::ADMIN_DIRECT_MESSAGE, Box::new(handler));
@@ -268,10 +264,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = AdminDirectMessageHandler::new("1234".into(), state);
         dispatcher.set_handler(CircuitMessageType::ADMIN_DIRECT_MESSAGE, Box::new(handler));
@@ -334,10 +327,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = AdminDirectMessageHandler::new("1234".into(), state);
         dispatcher.set_handler(CircuitMessageType::ADMIN_DIRECT_MESSAGE, Box::new(handler));
@@ -385,10 +375,7 @@ mod tests {
 
         let circuit_directory = CircuitDirectory::new();
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = AdminDirectMessageHandler::new("1234".into(), state);
         dispatcher.set_handler(CircuitMessageType::ADMIN_DIRECT_MESSAGE, Box::new(handler));
@@ -436,10 +423,7 @@ mod tests {
 
         let circuit_directory = CircuitDirectory::new();
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = AdminDirectMessageHandler::new("1234".into(), state);
         dispatcher.set_handler(CircuitMessageType::ADMIN_DIRECT_MESSAGE, Box::new(handler));

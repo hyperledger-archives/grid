@@ -20,7 +20,7 @@ mod open_proposals;
 mod shared;
 
 use std::any::Any;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use openssl::hash::{hash, MessageDigest};
@@ -124,7 +124,7 @@ impl AdminService {
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
-        splinter_state: Arc<RwLock<SplinterState>>,
+        splinter_state: SplinterState,
         signature_verifier: Box<dyn SignatureVerifier + Send>,
         key_registry: Box<dyn KeyRegistry>,
         key_permission_manager: Box<dyn KeyPermissionManager>,
@@ -500,10 +500,7 @@ mod tests {
         key_registry.save_key(key_info).unwrap();
 
         let circuit_directory = storage.write().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let orchestrator_connection = transport
             .connect("inproc://admin-service")

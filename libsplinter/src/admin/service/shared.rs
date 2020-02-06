@@ -16,7 +16,6 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::env;
 use std::iter::FromIterator;
-use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use protobuf::{Message, RepeatedField};
@@ -175,7 +174,7 @@ pub struct AdminServiceShared {
     // Mailbox of AdminServiceEvent values
     event_mailbox: Mailbox,
     // copy of splinter state
-    splinter_state: Arc<RwLock<SplinterState>>,
+    splinter_state: SplinterState,
     // signature verifier
     signature_verifier: Box<dyn SignatureVerifier + Send>,
     key_registry: Box<dyn KeyRegistry>,
@@ -190,7 +189,7 @@ impl AdminServiceShared {
         orchestrator: ServiceOrchestrator,
         peer_connector: PeerConnector,
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
-        splinter_state: Arc<RwLock<SplinterState>>,
+        splinter_state: SplinterState,
         signature_verifier: Box<dyn SignatureVerifier + Send>,
         key_registry: Box<dyn KeyRegistry>,
         key_permission_manager: Box<dyn KeyPermissionManager>,
@@ -1013,12 +1012,7 @@ impl AdminServiceShared {
             )));
         }
 
-        if self
-            .splinter_state
-            .read()
-            .map_err(|_| AdminSharedError::PoisonedLock("Splinter State Read Lock".into()))?
-            .has_circuit(circuit.get_circuit_id())
-        {
+        if self.splinter_state.has_circuit(circuit.get_circuit_id())? {
             return Err(AdminSharedError::ValidationFailed(format!(
                 "Circuit with circuit id {} already exists",
                 circuit.get_circuit_id()
@@ -1367,12 +1361,8 @@ impl AdminServiceShared {
     /// services if they are not supported locally. It is expected that some services will be
     /// started externally.
     pub fn restart_services(&mut self) -> Result<(), AdminSharedError> {
-        let circuits = self
-            .splinter_state
-            .read()
-            .map_err(|_| AdminSharedError::PoisonedLock("Splinter State Read Lock".into()))?
-            .circuits()
-            .clone();
+        let circuits = self.splinter_state.circuits()?;
+
         // start all services of the supported types
         for (circuit_name, circuit) in circuits.iter() {
             // Get all services this node is allowed to run and the orchestrator has a factory for
@@ -1411,7 +1401,7 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    fn update_splinter_state(&self, circuit: &Circuit) -> Result<(), AdminSharedError> {
+    fn update_splinter_state(&mut self, circuit: &Circuit) -> Result<(), AdminSharedError> {
         let members: Vec<StateNode> = circuit
             .get_members()
             .iter()
@@ -1503,28 +1493,13 @@ impl AdminServiceShared {
                 AdminSharedError::CommitError(format!("Unable build new circuit: {}", err))
             })?;
 
-        let mut splinter_state = self.splinter_state.write().map_err(|err| {
-            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
-        })?;
-
         for member in members {
-            splinter_state
-                .add_node(member.id().to_string(), member)
-                .map_err(|err| {
-                    AdminSharedError::CommitError(format!(
-                        "Unable to add node to splinter state: {}",
-                        err
-                    ))
-                })?;
+            self.splinter_state
+                .add_node(member.id().to_string(), member)?;
         }
-        splinter_state
-            .add_circuit(new_circuit.id().to_string(), new_circuit)
-            .map_err(|err| {
-                AdminSharedError::CommitError(format!(
-                    "Unable to add circuit to splinter state: {}",
-                    err
-                ))
-            })?;
+
+        self.splinter_state
+            .add_circuit(new_circuit.id().to_string(), new_circuit)?;
 
         for service in roster {
             if service.allowed_nodes().contains(&self.node_id) {
@@ -1537,9 +1512,9 @@ impl AdminServiceShared {
             );
 
             let allowed_node = &service.allowed_nodes()[0];
-            if let Some(member) = splinter_state.node(&allowed_node) {
+            if let Some(member) = self.splinter_state.node(&allowed_node)? {
                 let service = Service::new(service.service_id().to_string(), None, member.clone());
-                splinter_state.add_service(unique_id, service)
+                self.splinter_state.add_service(unique_id, service)?;
             } else {
                 return Err(AdminSharedError::CommitError(format!(
                     "Unable to find allowed node {} when adding service {} to directory",
@@ -1552,12 +1527,9 @@ impl AdminServiceShared {
         Ok(())
     }
 
-    pub fn add_services_to_directory(&self) -> Result<(), AdminSharedError> {
-        let mut splinter_state = self.splinter_state.write().map_err(|err| {
-            AdminSharedError::CommitError(format!("Unable to unlock splinter state: {}", err))
-        })?;
-
-        for (id, circuit) in splinter_state.circuits().clone() {
+    pub fn add_services_to_directory(&mut self) -> Result<(), AdminSharedError> {
+        let circuits = self.splinter_state.circuits()?;
+        for (id, circuit) in circuits {
             for service in circuit.roster() {
                 if service.allowed_nodes().contains(&self.node_id) {
                     continue;
@@ -1565,12 +1537,12 @@ impl AdminServiceShared {
                 let unique_id = ServiceId::new(id.to_string(), service.service_id().to_string());
 
                 let allowed_node = &service.allowed_nodes()[0];
-                if let Some(member) = splinter_state.node(&allowed_node) {
+                if let Some(member) = self.splinter_state.node(&allowed_node)? {
                     // rebuild Node with id
                     let node =
                         StateNode::new(allowed_node.to_string(), member.endpoints().to_vec());
                     let service = Service::new(service.service_id().to_string(), None, node);
-                    splinter_state.add_service(unique_id, service)
+                    self.splinter_state.add_service(unique_id, service)?
                 } else {
                     return Err(AdminSharedError::CommitError(format!(
                         "Unable to find allowed node {} when adding service {} to directory",
@@ -2879,14 +2851,11 @@ mod tests {
         circuit_proposal
     }
 
-    fn setup_splinter_state() -> Arc<RwLock<SplinterState>> {
+    fn setup_splinter_state() -> SplinterState {
         let mut storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        state
+
+        SplinterState::new("memory".to_string(), circuit_directory)
     }
 
     fn setup_peer_connector() -> PeerConnector {
