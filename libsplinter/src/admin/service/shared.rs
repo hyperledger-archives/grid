@@ -1187,8 +1187,9 @@ impl AdminServiceShared {
 
         if signer_node != node_id {
             return Err(AdminSharedError::ValidationFailed(format!(
-                "Payload requester node id does not match the node the key is registered to: {}",
-                to_hex(circuit_proposal.get_requester())
+                "Payload requester {} is not registered to node {}",
+                to_hex(circuit_proposal.get_requester()),
+                node_id
             )));
         }
 
