@@ -184,7 +184,7 @@ fn run() -> Result<(), CliError> {
                                 .help("URL of Splinter Daemon"),
                         )
                         .arg(
-                            Arg::with_name("private_key_file")
+                            Arg::with_name("key")
                                 .value_name("private-key-file")
                                 .short("k")
                                 .long("key")
@@ -192,10 +192,69 @@ fn run() -> Result<(), CliError> {
                                 .help("Path to private key file"),
                         )
                         .arg(
-                            Arg::with_name("path")
+                            Arg::with_name("node")
+                                .long("node")
                                 .takes_value(true)
                                 .required(true)
-                                .help("Path to a yaml file that defines the circuit proposal"),
+                                .multiple(true)
+                                .long_help(
+                                    "Node that are part of the circuit. \
+                                     Format: <node_id>::<endpoint>. \
+                                     Endpoint is optional if node alias has been set.",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("service")
+                                .long("service")
+                                .takes_value(true)
+                                .multiple(true)
+                                .min_values(2)
+                                .required(true)
+                                .long_help(
+                                    "Service ID and allowed node. \
+                                     Format <service-id>::<allowed_nodes>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("service_argument")
+                                .long("service-arg")
+                                .takes_value(true)
+                                .multiple(true)
+                                .long_help(
+                                    "Special arguments to be passed to the service. \
+                                     Format <service_id>::<key>=<value>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("management_type")
+                                .long("management")
+                                .takes_value(true)
+                                .help("Management type for the circuit"),
+                        )
+                        .arg(
+                            Arg::with_name("authorization_type")
+                                .long("auth-type")
+                                .possible_values(&["trust"])
+                                .default_value("trust")
+                                .takes_value(true)
+                                .help("Authorization type for the circuit"),
+                        )
+                        .arg(
+                            Arg::with_name("service_type")
+                                .long("service-type")
+                                .takes_value(true)
+                                .multiple(true)
+                                .long_help(
+                                    "Service type for a service. \
+                                     Format <service-id>::<service_type>",
+                                ),
+                        )
+                        .arg(
+                            Arg::with_name("metadata")
+                                .long("metadata")
+                                .value_name("application_metadata")
+                                .takes_value(true)
+                                .help("Application metadata for the circuit proposal"),
                         ),
                 )
                 .subcommand(
