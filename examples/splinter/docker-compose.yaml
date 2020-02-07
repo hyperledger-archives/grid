@@ -136,6 +136,7 @@ services:
     environment:
       GRID_DAEMON_KEY: "alpha-agent"
       GRID_DAEMON_ENDPOINT: "http://gridd-alpha:8080"
+      GRID_SERVICE_ID: "my-grid-circuit::grid-scabbard-a"
     entrypoint: |
         bash -c "
           # we need to wait for the db to have started.
@@ -224,6 +225,7 @@ services:
     environment:
       GRID_DAEMON_KEY: "beta-agent"
       GRID_DAEMON_ENDPOINT: "http://gridd-beta:8080"
+      GRID_SERVICE_ID: "my-grid-circuit::grid-scabbard-b"
     entrypoint: |
         bash -c "
           # we need to wait for the db to have started.

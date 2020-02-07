@@ -224,7 +224,7 @@ circuit is created.
 
 3. Create a new organization, `myorg`.
 
-   `root@gridd-alpha:/# grid --service-id 'my-grid-circuit::grid-scabbard-a' organization create 314156 myorg '123 main street' --metadata gs1_company_prefixes=314156`
+   `root@gridd-alpha:/# grid organization create 314156 myorg '123 main street' --metadata gs1_company_prefixes=314156`
 
    This command creates and submits a transaction to create a new Pike
    organization that is signed by the admin key. It also creates a new Pike
@@ -236,7 +236,7 @@ circuit is created.
    deleting Grid products.
 
    ```
-   root@gridd-alpha:/# grid --service-id my-grid-circuit::grid-scabbard-a \
+   root@gridd-alpha:/# grid \
    agent update 314156 $(cat ~/.grid/keys/alpha-agent.pub) --active \
    --role can_create_product \
    --role can_update_product \
@@ -271,8 +271,7 @@ circuit is created.
    `product.yaml`.
 
    ```
-   root@gridd-alpha:/# grid --service-id my-grid-circuit::grid-scabbard-a \
-   product create product.yaml
+   root@gridd-alpha:/# grid product create product.yaml
    ```
 
 7. Open a new terminal and connect to the `gridd-beta` container.
@@ -282,8 +281,7 @@ circuit is created.
 8. Display all products.
 
    ```
-   root@gridd-beta:/# grid --service-id my-grid-circuit::grid-scabbard-b \
-   product list
+   root@gridd-beta:/# grid product list
    ```
 
 ## Demonstrate Circuit Scope

@@ -105,7 +105,7 @@ pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
  *
  * url - Url for the REST API
  */
-pub fn do_list_products(url: &str, service_id: Option<&str>) -> Result<(), CliError> {
+pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), CliError> {
     let client = Client::new();
     let mut final_url = format!("{}/product", url);
     if let Some(service_id) = service_id {
@@ -125,7 +125,7 @@ pub fn do_list_products(url: &str, service_id: Option<&str>) -> Result<(), CliEr
 pub fn do_show_products(
     url: &str,
     product_id: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let client = Client::new();
     let mut final_url = format!("{}/product/{}", url, product_id);
@@ -150,11 +150,11 @@ pub fn do_create_products(
     key: Option<String>,
     wait: u64,
     path: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductCreate(ProductCreateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id)
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
 /**
@@ -170,11 +170,11 @@ pub fn do_update_products(
     key: Option<String>,
     wait: u64,
     path: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let payloads = parse_product_yaml(path, Action::ProductUpdate(ProductUpdateAction::default()))?;
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id)
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
 /**
@@ -191,7 +191,7 @@ pub fn do_delete_products(
     wait: u64,
     product_id: &str,
     product_type: &str,
-    service_id: Option<&str>,
+    service_id: Option<String>,
 ) -> Result<(), CliError> {
     let parsed_product_type = parse_value_as_product_type(product_type)?;
     let payloads = vec![generate_delete_product_payload(
@@ -199,7 +199,7 @@ pub fn do_delete_products(
         product_id,
     )?];
     let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id)
+    submit_batches(url, wait, &batch_list, service_id.as_deref())
 }
 
 /**

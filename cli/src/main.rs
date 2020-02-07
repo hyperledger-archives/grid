@@ -56,6 +56,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const GRID_DAEMON_KEY: &str = "GRID_DAEMON_KEY";
 const GRID_DAEMON_ENDPOINT: &str = "GRID_DAEMON_ENDPOINT";
+const GRID_SERVICE_ID: &str = "GRID_SERVICE_ID";
 
 // log format for cli that will only show the log message
 pub fn log_format(
@@ -256,7 +257,10 @@ fn run() -> Result<(), CliError> {
 
     let wait = value_t!(matches, "wait", u64).unwrap_or(0);
 
-    let service_id = matches.value_of("service_id");
+    let service_id = matches
+        .value_of("service_id")
+        .map(String::from)
+        .or_else(|| env::var(GRID_SERVICE_ID).ok());
 
     match matches.subcommand() {
         #[cfg(feature = "admin-keygen")]
