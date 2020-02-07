@@ -55,7 +55,7 @@ impl Reactor {
                 };
 
                 let mut connections = Vec::new();
-                loop {
+                let shutdown_errors = loop {
                     match receiver.recv_timeout(Duration::from_millis(500)) {
                         Ok(ReactorMessage::StartWs(listen)) => {
                             let (future, handle) = listen.into_shutdown_handle();
@@ -65,7 +65,16 @@ impl Reactor {
                         Ok(ReactorMessage::HttpRequest(req)) => {
                             runtime.spawn(req);
                         }
-                        Ok(ReactorMessage::Stop) => break,
+                        Ok(ReactorMessage::Stop) => {
+                            debug!("Shutting down event reactor");
+                            reactor_running.store(false, Ordering::SeqCst);
+
+                            break connections
+                                .into_iter()
+                                .map(|connection| connection.shutdown())
+                                .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
+                                .collect::<Vec<WebSocketError>>();
+                        }
                         Err(RecvTimeoutError::Timeout) => {
                             continue;
                         }
@@ -73,7 +82,7 @@ impl Reactor {
                             debug!(
                                 "Event reactor sender disconnected; terminating web socket loop..."
                             );
-                            break;
+                            break vec![];
                         }
                     }
 
@@ -90,15 +99,7 @@ impl Reactor {
                         }
                     }
                     connections = live_connections;
-                }
-
-                reactor_running.store(false, Ordering::SeqCst);
-
-                let shutdown_errors = connections
-                    .into_iter()
-                    .map(|connection| connection.shutdown())
-                    .filter_map(|res| if let Err(err) = res { Some(err) } else { None })
-                    .collect::<Vec<WebSocketError>>();
+                };
 
                 if let Err(err) = runtime
                     .shutdown_on_idle()
@@ -135,21 +136,48 @@ impl Reactor {
         }
     }
 
-    pub fn shutdown(self) -> Result<(), ReactorError> {
-        debug!("Received shutdown");
-        self.sender.send(ReactorMessage::Stop).map_err(|_| {
-            ReactorError::ReactorShutdownError("Failed to send shutdown message".to_string())
-        })?;
+    /// Return a ReactorShutdownSignaler, used to send a shutdown signal to the reactor's
+    /// background thread.
+    pub fn shutdown_signaler(&self) -> ReactorShutdownSignaler {
+        ReactorShutdownSignaler {
+            sender: self.sender.clone(),
+        }
+    }
 
-        self.thread_handle
-            .join()
-            .map_err(|_| ReactorError::ReactorShutdownError("Failed to join thread".to_string()))
+    /// Signals for shutdown and blocks the current thread until the Reactor's background thread
+    /// has finished.
+    #[deprecated(
+        since = "0.3.12",
+        note = "Please use the combination of `shutdown_signaler` and `wait_for_shutdown`"
+    )]
+    pub fn shutdown(self) -> Result<(), ReactorError> {
+        self.shutdown_signaler().signal_shutdown()?;
+        self.wait_for_shutdown()
+    }
+
+    /// Block until for the Reactor thread has shutdown.
+    pub fn wait_for_shutdown(self) -> Result<(), ReactorError> {
+        self.thread_handle.join().map_err(|_| {
+            ReactorError::ReactorShutdownError("Failed to join Reactor thread".to_string())
+        })
     }
 }
 
 impl std::default::Default for Reactor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct ReactorShutdownSignaler {
+    sender: Sender<ReactorMessage>,
+}
+
+impl ReactorShutdownSignaler {
+    pub fn signal_shutdown(&self) -> Result<(), ReactorError> {
+        self.sender.send(ReactorMessage::Stop).map_err(|_| {
+            ReactorError::ReactorShutdownError("Failed to send shutdown message".to_string())
+        })
     }
 }
 
