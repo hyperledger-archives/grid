@@ -226,6 +226,13 @@ fn run() -> Result<(), CliError> {
                                 ),
                         )
                         .arg(
+                            Arg::with_name("service_peer_group")
+                                .long("service-peer-group")
+                                .takes_value(true)
+                                .multiple(true)
+                                .help("List of peer services"),
+                        )
+                        .arg(
                             Arg::with_name("management_type")
                                 .long("management")
                                 .takes_value(true)

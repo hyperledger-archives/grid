@@ -68,6 +68,13 @@ impl Action for CircuitCreateAction {
             }
         }
 
+        if let Some(service_peer_group) = args.values_of("service_peer_group") {
+            for peer_group in service_peer_group {
+                let group = parse_service_peer_group(peer_group);
+                builder.apply_peer_services(&group)?;
+            }
+        }
+
         if let Some(auth_type) = args.value_of("authorization_type") {
             builder.set_authorization_type(auth_type)?;
         }
@@ -136,6 +143,10 @@ fn parse_service(service: &str) -> Result<(String, Vec<String>), CliError> {
         .collect::<Vec<String>>();
 
     Ok((service_id, allowed_nodes))
+}
+
+fn parse_service_peer_group(peer_group: &str) -> Vec<&str> {
+    peer_group.split(',').collect()
 }
 
 fn parse_service_argument(service_argument: &str) -> Result<(String, (String, String)), CliError> {

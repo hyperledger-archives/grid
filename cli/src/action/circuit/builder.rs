@@ -92,6 +92,56 @@ impl CreateCircuitMessageBuilder {
         Ok(())
     }
 
+    pub fn apply_peer_services(&mut self, service_id_globs: &[&str]) -> Result<(), CliError> {
+        let peers = self
+            .services
+            .iter()
+            .filter_map(|service_builder| {
+                let service_id = service_builder.service_id().unwrap_or_default();
+                if service_id_globs
+                    .iter()
+                    .any(|glob| is_match(glob, &service_id))
+                {
+                    Some(service_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<String>>();
+
+        self.services = self.services.clone().into_iter().try_fold(
+            Vec::new(),
+            |mut acc, service_builder| {
+                let service_id = service_builder.service_id().unwrap_or_default();
+                let index = peers.iter().enumerate().find_map(|(index, peer_id)| {
+                    if peer_id == &service_id {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(index) = index {
+                    let mut service_peers = peers.clone();
+                    service_peers.remove(index);
+                    let mut service_args = service_builder.arguments().unwrap_or_default();
+                    if service_args.iter().any(|arg| arg.0 == PEER_SERVICES_ARG) {
+                        return Err(CliError::ActionError(format!(
+                            "Peer services argument for service {} is already set.",
+                            service_id
+                        )));
+                    }
+                    service_args.push((PEER_SERVICES_ARG.into(), format!("{:?}", service_peers)));
+                    acc.push(service_builder.with_arguments(&service_args));
+                } else {
+                    acc.push(service_builder);
+                }
+                Ok(acc)
+            },
+        )?;
+        Ok(())
+    }
+
     pub fn add_node_by_alias(&mut self, alias: &str) -> Result<(), CliError> {
         let node_store = get_node_store();
         let (node_id, endpoint) = match node_store.get_node(alias)? {
