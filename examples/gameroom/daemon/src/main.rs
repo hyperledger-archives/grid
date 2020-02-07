@@ -122,8 +122,14 @@ fn run() -> Result<(), GameroomDaemonError> {
         public_key.as_hex(),
     )?;
 
+    let reactor_shutdown_signaler = reactor.shutdown_signaler();
+
     ctrlc::set_handler(move || {
         info!("Received Shutdown");
+
+        if let Err(err) = reactor_shutdown_signaler.signal_shutdown() {
+            error!("Unable to cleanly shutdown event reactor: {}", err);
+        }
 
         if let Err(err) = rest_api_shutdown_handle.shutdown() {
             error!("Unable to cleanly shutdown REST API server: {}", err);
@@ -133,7 +139,7 @@ fn run() -> Result<(), GameroomDaemonError> {
 
     let _ = rest_api_join_handle.join();
 
-    if let Err(err) = reactor.shutdown() {
+    if let Err(err) = reactor.wait_for_shutdown() {
         error!(
             "Unable to cleanly shutdown application authorization handler reactor: {}",
             err
