@@ -15,6 +15,7 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::circuit;
 use crate::consensus::error::ProposalManagerError;
 use crate::orchestrator::{InitializeServiceError, ShutdownServiceError};
 use crate::service::error::{ServiceError, ServiceSendError};
@@ -111,7 +112,7 @@ impl From<ServiceError> for ProposalManagerError {
 
 #[derive(Debug)]
 pub enum AdminSharedError {
-    PoisonedLock(String),
+    SplinterStateError(circuit::SplinterStateError),
     HashError(Sha256Error),
     InvalidMessageFormat(MarshallingError),
     NoPendingChanges,
@@ -135,7 +136,7 @@ pub enum AdminSharedError {
 impl Error for AdminSharedError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            AdminSharedError::PoisonedLock(_) => None,
+            AdminSharedError::SplinterStateError(err) => Some(err),
             AdminSharedError::HashError(err) => Some(err),
             AdminSharedError::InvalidMessageFormat(err) => Some(err),
             AdminSharedError::NoPendingChanges => None,
@@ -155,7 +156,7 @@ impl Error for AdminSharedError {
 impl fmt::Display for AdminSharedError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AdminSharedError::PoisonedLock(details) => write!(f, "lock was poisoned: {}", details),
+            AdminSharedError::SplinterStateError(err) => write!(f, "{}", err),
             AdminSharedError::HashError(err) => write!(f, "received error while hashing: {}", err),
             AdminSharedError::InvalidMessageFormat(err) => {
                 write!(f, "invalid message format: {}", err)
@@ -219,6 +220,12 @@ impl From<MarshallingError> for AdminSharedError {
 impl From<OpenProposalError> for AdminSharedError {
     fn from(err: OpenProposalError) -> Self {
         AdminSharedError::UpdateProposalsError(err)
+    }
+}
+
+impl From<circuit::SplinterStateError> for AdminSharedError {
+    fn from(err: circuit::SplinterStateError) -> Self {
+        AdminSharedError::SplinterStateError(err)
     }
 }
 

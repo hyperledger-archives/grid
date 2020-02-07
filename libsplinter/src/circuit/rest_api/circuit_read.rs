@@ -13,11 +13,10 @@
 // limitations under the License.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 
 use crate::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use crate::circuit::{
-    AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType, SplinterState,
+    store::CircuitStore, AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType,
 };
 use crate::futures::{future::IntoFuture, Future};
 use crate::protocol;
@@ -46,31 +45,31 @@ pub struct ListCircuitsResponse {
     paging: Paging,
 }
 
-pub fn make_fetch_circuit_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
+pub fn make_fetch_circuit_resource<T: CircuitStore + 'static>(store: T) -> Resource {
     Resource::build("/circuits/{circuit_id}")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_FETCH_CIRCUIT_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
         ))
         .add_method(Method::Get, move |r, _| {
-            fetch_circuit(r, web::Data::new(state.clone()))
+            fetch_circuit(r, web::Data::new(store.clone()))
         })
 }
 
-pub fn make_list_circuits_resource(state: Arc<RwLock<SplinterState>>) -> Resource {
+pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resource {
     Resource::build("/circuits")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_LIST_CIRCUITS_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
         ))
         .add_method(Method::Get, move |r, _| {
-            list_circuits(r, web::Data::new(state.clone()))
+            list_circuits(r, web::Data::new(store.clone()))
         })
 }
 
-fn fetch_circuit(
+fn fetch_circuit<T: CircuitStore + 'static>(
     request: HttpRequest,
-    state: web::Data<Arc<RwLock<SplinterState>>>,
+    store: web::Data<T>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let circuit_id = request
         .match_info()
@@ -79,10 +78,7 @@ fn fetch_circuit(
         .to_string();
     Box::new(
         web::block(move || {
-            let circuit = {
-                let state = state.read().map_err(|_| CircuitRouteError::PoisonedLock)?;
-                state.circuit(&circuit_id).cloned()
-            };
+            let circuit = store.circuit(&circuit_id)?;
             if let Some(circuit) = circuit {
                 let circuit_response = CircuitResponse {
                     id: circuit_id,
@@ -110,6 +106,10 @@ fn fetch_circuit(
                         error!("{}", err);
                         Ok(HttpResponse::InternalServerError().into())
                     }
+                    CircuitRouteError::CircuitStoreError(err) => {
+                        error!("{}", err);
+                        Ok(HttpResponse::InternalServerError().into())
+                    }
                     CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
                 },
                 _ => Ok(HttpResponse::InternalServerError().into()),
@@ -118,9 +118,9 @@ fn fetch_circuit(
     )
 }
 
-fn list_circuits(
+fn list_circuits<T: CircuitStore + 'static>(
     req: HttpRequest,
-    state: web::Data<Arc<RwLock<SplinterState>>>,
+    store: web::Data<T>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let query: web::Query<HashMap<String, String>> =
         if let Ok(q) = web::Query::from_query(req.query_string()) {
@@ -180,7 +180,7 @@ fn list_circuits(
     };
 
     Box::new(query_list_circuits(
-        state,
+        store,
         link,
         filters,
         Some(offset),
@@ -188,19 +188,15 @@ fn list_circuits(
     ))
 }
 
-fn query_list_circuits(
-    state: web::Data<Arc<RwLock<SplinterState>>>,
+fn query_list_circuits<T: CircuitStore + 'static>(
+    store: web::Data<T>,
     link: String,
     filters: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
-        let circuits = state
-            .read()
-            .map_err(|_| CircuitRouteError::PoisonedLock)?
-            .circuits()
-            .clone();
+        let circuits = store.circuits()?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| circuits.len());
         if !circuits.is_empty() {
@@ -264,6 +260,10 @@ fn query_list_circuits(
                     error!("{}", err);
                     Ok(HttpResponse::InternalServerError().into())
                 }
+                CircuitRouteError::CircuitStoreError(err) => {
+                    error!("{}", err);
+                    Ok(HttpResponse::InternalServerError().into())
+                }
                 CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
             },
             _ => Ok(HttpResponse::InternalServerError().into()),
@@ -281,7 +281,7 @@ mod tests {
     };
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
-        Roster, RouteType, ServiceDefinition,
+        Roster, RouteType, ServiceDefinition, SplinterState,
     };
     use crate::storage::get_storage;
 
@@ -290,9 +290,12 @@ mod tests {
     fn test_fetch_circuit_ok() {
         let splinter_state = filled_splinter_state();
 
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits/{circuit_id}").route(web::get().to_async(fetch_circuit)),
-        ));
+        let mut app = test::init_service(
+            App::new().data(splinter_state.clone()).service(
+                web::resource("/circuits/{circuit_id}")
+                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
+            ),
+        );
 
         let req = test::TestRequest::get()
             .uri(&format!("/circuits/{}", get_circuit_1().id))
@@ -310,9 +313,12 @@ mod tests {
     /// passed
     fn test_fetch_circuit_not_found() {
         let splinter_state = filled_splinter_state();
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits/{circuit_id}").route(web::get().to_async(fetch_circuit)),
-        ));
+        let mut app = test::init_service(
+            App::new().data(splinter_state.clone()).service(
+                web::resource("/circuits/{circuit_id}")
+                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
+            ),
+        );
 
         let req = test::TestRequest::get()
             .uri("/circuit/Circuit-not-valid")
@@ -328,11 +334,9 @@ mod tests {
     fn test_list_circuits_ok() {
         let splinter_state = filled_splinter_state();
 
-        let mut app = test::init_service(
-            App::new()
-                .data(splinter_state.clone())
-                .service(web::resource("/circuits").route(web::get().to_async(list_circuits))),
-        );
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
 
         let req = test::TestRequest::get().uri("/circuits").to_request();
 
@@ -353,11 +357,9 @@ mod tests {
     fn test_list_circuit_with_filters_ok() {
         let splinter_state = filled_splinter_state();
 
-        let mut app = test::init_service(
-            App::new()
-                .data(splinter_state.clone())
-                .service(web::resource("/circuits").route(web::get().to_async(list_circuits))),
-        );
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
 
         let req = test::TestRequest::get()
             .uri(&format!("/circuits?filter={}", "node_1"))
@@ -439,17 +441,13 @@ mod tests {
         }
     }
 
-    fn setup_splinter_state() -> Arc<RwLock<SplinterState>> {
+    fn setup_splinter_state() -> SplinterState {
         let mut storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.write().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
-        state
+        SplinterState::new("memory".to_string(), circuit_directory)
     }
 
-    fn filled_splinter_state() -> Arc<RwLock<SplinterState>> {
+    fn filled_splinter_state() -> SplinterState {
         let service_definition_1 =
             ServiceDefinition::builder("service_1".to_string(), "type_a".to_string())
                 .with_allowed_nodes(vec!["node_1".to_string()])
@@ -484,15 +482,11 @@ mod tests {
             .build()
             .expect("Should have built a correct circuit");
 
-        let splinter_state = setup_splinter_state();
+        let mut splinter_state = setup_splinter_state();
         splinter_state
-            .write()
-            .expect("SplinterState lock was poisoned")
             .add_circuit("circuit_1".into(), circuit_1)
             .expect("Unable to add circuit_1");
         splinter_state
-            .write()
-            .expect("SplinterState lock was poisoned")
             .add_circuit("circuit_2".into(), circuit_2)
             .expect("Unable to add circuit_2");
 

@@ -16,15 +16,15 @@
 mod circuit_read;
 
 use std::error::Error as StdError;
-use std::sync::{Arc, RwLock};
 
 use crate::rest_api::{Resource, RestResourceProvider};
 
-use super::SplinterState;
+use super::store;
 
 #[derive(Debug)]
 pub enum CircuitRouteError {
     NotFound(String),
+    CircuitStoreError(store::CircuitStoreError),
     PoisonedLock,
 }
 
@@ -32,6 +32,7 @@ impl StdError for CircuitRouteError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             CircuitRouteError::NotFound(_) => None,
+            CircuitRouteError::CircuitStoreError(err) => Some(err),
             CircuitRouteError::PoisonedLock => None,
         }
     }
@@ -41,24 +42,31 @@ impl std::fmt::Display for CircuitRouteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             CircuitRouteError::NotFound(msg) => write!(f, "Circuit not found: {}", msg),
+            CircuitRouteError::CircuitStoreError(err) => write!(f, "{}", err),
             CircuitRouteError::PoisonedLock => write!(f, "Splinter State lock was poisoned"),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct CircuitResourceProvider {
-    node_id: String,
-    state: Arc<RwLock<SplinterState>>,
-}
-
-impl CircuitResourceProvider {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
-        Self { node_id, state }
+impl From<store::CircuitStoreError> for CircuitRouteError {
+    fn from(err: store::CircuitStoreError) -> Self {
+        CircuitRouteError::CircuitStoreError(err)
     }
 }
 
-impl RestResourceProvider for CircuitResourceProvider {
+#[derive(Clone)]
+pub struct CircuitResourceProvider<T: store::CircuitStore> {
+    node_id: String,
+    store: T,
+}
+
+impl<T: store::CircuitStore + 'static> CircuitResourceProvider<T> {
+    pub fn new(node_id: String, store: T) -> Self {
+        Self { node_id, store }
+    }
+}
+
+impl<T: store::CircuitStore + 'static> RestResourceProvider for CircuitResourceProvider<T> {
     fn resources(&self) -> Vec<Resource> {
         // Allowing unused_mut because resources must be mutable if feature circuit-read is enabled
         #[allow(unused_mut)]
@@ -66,8 +74,8 @@ impl RestResourceProvider for CircuitResourceProvider {
         #[cfg(feature = "circuit-read")]
         {
             resources.append(&mut vec![
-                circuit_read::make_fetch_circuit_resource(self.state.clone()),
-                circuit_read::make_list_circuits_resource(self.state.clone()),
+                circuit_read::make_fetch_circuit_resource(self.store.clone()),
+                circuit_read::make_list_circuits_resource(self.store.clone()),
             ])
         }
         resources

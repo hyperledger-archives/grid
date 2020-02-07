@@ -18,14 +18,11 @@ use crate::circuit::{ServiceId, SplinterState};
 use crate::network::dispatch::{DispatchError, Handler, MessageContext};
 use crate::network::sender::SendRequest;
 use crate::protos::circuit::{CircuitError, CircuitMessageType};
-use crate::rwlock_read_unwrap;
-
-use std::sync::{Arc, RwLock};
 
 // Implements a handler that handles CircuitError messages
 pub struct CircuitErrorHandler {
     node_id: String,
-    state: Arc<RwLock<SplinterState>>,
+    state: SplinterState,
 }
 
 // In most cases the error message will be returned directly back to service, but in the case
@@ -43,17 +40,18 @@ impl Handler<CircuitMessageType, CircuitError> for CircuitErrorHandler {
         let service_id = msg.get_service_id();
         let unique_id = ServiceId::new(circuit_name.to_string(), service_id.to_string());
 
-        // Get read lock on state
-        let state = rwlock_read_unwrap!(self.state);
-
         // check if the msg_sender is in the service directory
-        let recipient = match state.service_directory().get(&unique_id) {
+        let recipient = match self
+            .state
+            .get_service(&unique_id)
+            .map_err(|err| DispatchError::HandleError(err.context()))?
+        {
             Some(service) => {
                 let node_id = service.node().id();
                 if node_id == self.node_id {
                     // If the service is connected to this node, send the error to the service
                     match service.peer_id() {
-                        Some(peer_id) => peer_id,
+                        Some(peer_id) => peer_id.to_string(),
                         None => {
                             // This should never happen, as a peer id will always
                             // be set on a service that is connected to the local node.
@@ -63,7 +61,7 @@ impl Handler<CircuitMessageType, CircuitError> for CircuitErrorHandler {
                     }
                 } else {
                     // If the service is connected to another node, send the error to that node
-                    service.node().id()
+                    service.node().id().to_string()
                 }
             }
             None => {
@@ -83,14 +81,14 @@ impl Handler<CircuitMessageType, CircuitError> for CircuitErrorHandler {
         )?;
 
         // forward error message
-        let send_request = SendRequest::new(recipient.to_string(), network_msg_bytes);
+        let send_request = SendRequest::new(recipient, network_msg_bytes);
         sender.send(send_request)?;
         Ok(())
     }
 }
 
 impl CircuitErrorHandler {
-    pub fn new(node_id: String, state: Arc<RwLock<SplinterState>>) -> Self {
+    pub fn new(node_id: String, state: SplinterState) -> Self {
         CircuitErrorHandler { node_id, state }
     }
 }
@@ -135,10 +133,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:1".to_string()]);
@@ -150,8 +145,8 @@ mod tests {
 
         let abc_id = ServiceId::new("alpha".into(), "abc".into());
         let def_id = ServiceId::new("alpha".into(), "def".into());
-        state.write().unwrap().add_service(abc_id, service_abc);
-        state.write().unwrap().add_service(def_id, service_def);
+        state.add_service(abc_id, service_abc).unwrap();
+        state.add_service(def_id, service_def).unwrap();
 
         // Add circuit error handler to the the dispatcher
         let handler = CircuitErrorHandler::new("123".to_string(), state);
@@ -225,10 +220,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let node_123 = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let node_345 = SplinterNode::new("345".to_string(), vec!["123.0.0.1:1".to_string()]);
@@ -240,8 +232,8 @@ mod tests {
 
         let abc_id = ServiceId::new("alpha".into(), "abc".into());
         let def_id = ServiceId::new("alpha".into(), "def".into());
-        state.write().unwrap().add_service(abc_id, service_abc);
-        state.write().unwrap().add_service(def_id, service_def);
+        state.add_service(abc_id, service_abc).unwrap();
+        state.add_service(def_id, service_def).unwrap();
 
         // Add circuit error handler to the the dispatcher
         let handler = CircuitErrorHandler::new("123".to_string(), state);
@@ -302,10 +294,7 @@ mod tests {
         // create empty state
         let circuit_directory = CircuitDirectory::new();
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         // Add circuit error handler to the the dispatcher
         let handler = CircuitErrorHandler::new("123".to_string(), state);

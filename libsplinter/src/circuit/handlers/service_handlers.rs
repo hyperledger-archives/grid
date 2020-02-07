@@ -22,9 +22,6 @@ use crate::protos::circuit::{
     ServiceConnectResponse_Status, ServiceDisconnectRequest, ServiceDisconnectResponse,
     ServiceDisconnectResponse_Status,
 };
-use crate::rwlock_write_unwrap;
-
-use std::sync::{Arc, RwLock};
 
 use protobuf::Message;
 
@@ -32,7 +29,7 @@ use protobuf::Message;
 pub struct ServiceConnectRequestHandler {
     node_id: String,
     endpoint: String,
-    state: Arc<RwLock<SplinterState>>,
+    state: SplinterState,
 }
 
 impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectRequestHandler {
@@ -53,14 +50,20 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
         response.set_service_id(service_id.into());
 
         // hold on to the write lock for the entirety of the function
-        let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name);
+        let circuit_result = self
+            .state
+            .circuit(circuit_name)
+            .map_err(|err| DispatchError::HandleError(err.context()))?;
+
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is not yet connected
             // forward the connection to the rest of the nodes on the circuit and add the service
             // to splinter state
             if circuit.roster().contains(&service_id.to_string())
-                && !state.service_directory.contains_key(&unique_id)
+                && !self
+                    .state
+                    .has_service(&unique_id)
+                    .map_err(|err| DispatchError::HandleError(err.context()))?
             {
                 // This should never return None since we just checked if it exists.
                 // If admin service create a service defination for the admin service
@@ -92,13 +95,19 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
                         Some(context.source_peer_id().to_string()),
                         node,
                     );
-                    state.add_service(unique_id, service);
+                    self.state
+                        .add_service(unique_id, service)
+                        .map_err(|err| DispatchError::HandleError(err.context()))?;
+
                     response.set_status(ServiceConnectResponse_Status::OK);
                 }
             // If the circuit exists and has the service in the roster but the service is already
             // connected, return an error response
             } else if circuit.roster().contains(&service_id.to_string())
-                && state.service_directory.contains_key(&unique_id)
+                && self
+                    .state
+                    .has_service(&unique_id)
+                    .map_err(|err| DispatchError::HandleError(err.context()))?
             {
                 response
                     .set_status(ServiceConnectResponse_Status::ERROR_SERVICE_ALREADY_REGISTERED);
@@ -133,7 +142,7 @@ impl Handler<CircuitMessageType, ServiceConnectRequest> for ServiceConnectReques
 }
 
 impl ServiceConnectRequestHandler {
-    pub fn new(node_id: String, endpoint: String, state: Arc<RwLock<SplinterState>>) -> Self {
+    pub fn new(node_id: String, endpoint: String, state: SplinterState) -> Self {
         ServiceConnectRequestHandler {
             node_id,
             endpoint,
@@ -144,7 +153,7 @@ impl ServiceConnectRequestHandler {
 
 // Implements a handler that handles ServiceDisconnectRequest
 pub struct ServiceDisconnectRequestHandler {
-    state: Arc<RwLock<SplinterState>>,
+    state: SplinterState,
 }
 
 impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnectRequestHandler {
@@ -164,22 +173,32 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
         response.set_circuit(circuit_name.into());
         response.set_service_id(service_id.into());
 
-        // hold on to the write lock for the entirety of the function
-        let mut state = rwlock_write_unwrap!(self.state);
-        let circuit_result = state.circuit(circuit_name);
+        let circuit_result = self
+            .state
+            .circuit(circuit_name)
+            .map_err(|err| DispatchError::HandleError(err.context()))?;
+
         if let Some(circuit) = circuit_result {
             // If the circuit has the service in its roster and the service is connected
             // forward the disconnection to the rest of the nodes on the circuit and remove the
             // service from splinter state
             if circuit.roster().contains(&service_id.to_string())
-                && state.service_directory.contains_key(&unique_id)
+                && self
+                    .state
+                    .has_service(&unique_id)
+                    .map_err(|err| DispatchError::HandleError(err.context()))?
             {
-                state.remove_service(&unique_id);
+                self.state
+                    .remove_service(&unique_id)
+                    .map_err(|err| DispatchError::HandleError(err.context()))?;
                 response.set_status(ServiceDisconnectResponse_Status::OK);
             // If the circuit exists and has the service in the roster but the service not
             // connected, return an error response
             } else if circuit.roster().contains(&service_id.to_string())
-                && !state.service_directory.contains_key(&unique_id)
+                && !self
+                    .state
+                    .has_service(&unique_id)
+                    .map_err(|err| DispatchError::HandleError(err.context()))?
             {
                 response.set_status(ServiceDisconnectResponse_Status::ERROR_SERVICE_NOT_REGISTERED);
                 response.set_error_message(format!("Service is not registered: {}", service_id))
@@ -215,7 +234,7 @@ impl Handler<CircuitMessageType, ServiceDisconnectRequest> for ServiceDisconnect
 }
 
 impl ServiceDisconnectRequestHandler {
-    pub fn new(state: Arc<RwLock<SplinterState>>) -> Self {
+    pub fn new(state: SplinterState) -> Self {
         ServiceDisconnectRequestHandler { state }
     }
 }
@@ -249,10 +268,7 @@ mod tests {
 
         let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
         let handler =
             ServiceConnectRequestHandler::new("123".to_string(), "127.0.0.1:0".to_string(), state);
 
@@ -307,10 +323,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
         let handler =
             ServiceConnectRequestHandler::new("123".to_string(), "127.0.0.1:0".to_string(), state);
 
@@ -365,10 +378,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
         let handler = ServiceConnectRequestHandler::new(
             "123".to_string(),
             "127.0.0.1:0".to_string(),
@@ -416,7 +426,7 @@ mod tests {
         );
 
         let id = ServiceId::new("alpha".into(), "abc".into());
-        assert!(state.read().unwrap().service_directory().get(&id).is_some());
+        assert!(state.get_service(&id).unwrap().is_some());
     }
 
     #[test]
@@ -431,15 +441,12 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
         let id = ServiceId::new("alpha".into(), "abc".into());
-        state.write().unwrap().add_service(id.clone(), service);
+        state.add_service(id.clone(), service).unwrap();
         let handler =
             ServiceConnectRequestHandler::new("123".to_string(), "127.0.0.1:0".to_string(), state);
 
@@ -491,10 +498,7 @@ mod tests {
 
         let storage = get_storage("memory", CircuitDirectory::new).unwrap();
         let circuit_directory = storage.read().clone();
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
         let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
@@ -548,10 +552,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
         let handler = ServiceDisconnectRequestHandler::new(state);
 
         dispatcher.set_handler(
@@ -605,15 +606,12 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let node = SplinterNode::new("123".to_string(), vec!["123.0.0.1:0".to_string()]);
         let service = Service::new("abc".to_string(), Some("abc_network".to_string()), node);
         let id = ServiceId::new("alpha".into(), "abc".into());
-        state.write().unwrap().add_service(id.clone(), service);
+        state.add_service(id.clone(), service).unwrap();
 
         let handler = ServiceDisconnectRequestHandler::new(state.clone());
 
@@ -657,7 +655,7 @@ mod tests {
             ServiceDisconnectResponse_Status::OK
         );
 
-        assert!(state.read().unwrap().service_directory().get(&id).is_none());
+        assert!(state.get_service(&id).unwrap().is_none());
     }
 
     #[test]
@@ -672,10 +670,7 @@ mod tests {
         let mut circuit_directory = CircuitDirectory::new();
         circuit_directory.add_circuit("alpha".to_string(), circuit);
 
-        let state = Arc::new(RwLock::new(SplinterState::new(
-            "memory".to_string(),
-            circuit_directory,
-        )));
+        let state = SplinterState::new("memory".to_string(), circuit_directory);
 
         let handler = ServiceDisconnectRequestHandler::new(state);
 
