@@ -61,10 +61,12 @@ experimental = [
     "database-migrate-biome-user",
     "postgres",
     "keygen",
+    "circuit-auth-type",
     "node-alias",
 ]
 
 circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat", "dirs", "uuid"]
+circuit-auth-type = []
 node-alias = ["dirs", "reqwest"]
 
 

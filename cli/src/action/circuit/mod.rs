@@ -82,8 +82,11 @@ impl Action for CircuitCreateAction {
             }
         }
 
-        if let Some(auth_type) = args.value_of("authorization_type") {
-            builder.set_authorization_type(auth_type)?;
+        #[cfg(feature = "circuit-auth-type")]
+        #[allow(clippy::single_match)]
+        match args.value_of("authorization_type") {
+            Some(auth_type) => builder.set_authorization_type(auth_type)?,
+            None => (),
         }
 
         if let Some(management_type) = args.value_of("management_type") {

@@ -168,101 +168,103 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{AppSettings, Arg, SubCommand};
 
+        let create_circuit = SubCommand::with_name("create")
+            .about("Propose that a new circuit is created")
+            .arg(
+                Arg::with_name("url")
+                    .short("U")
+                    .long("url")
+                    .takes_value(true)
+                    .help("URL of Splinter Daemon"),
+            )
+            .arg(
+                Arg::with_name("key")
+                    .value_name("private-key-file")
+                    .short("k")
+                    .long("key")
+                    .takes_value(true)
+                    .help("Path to private key file"),
+            )
+            .arg(
+                Arg::with_name("node")
+                    .long("node")
+                    .takes_value(true)
+                    .required(true)
+                    .multiple(true)
+                    .long_help(
+                        "Node that are part of the circuit. \
+                         Format: <node_id>::<endpoint>. \
+                         Endpoint is optional if node alias has been set.",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service")
+                    .long("service")
+                    .takes_value(true)
+                    .multiple(true)
+                    .min_values(2)
+                    .required(true)
+                    .long_help(
+                        "Service ID and allowed node. \
+                         Format <service-id>::<allowed_nodes>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service_argument")
+                    .long("service-arg")
+                    .takes_value(true)
+                    .multiple(true)
+                    .long_help(
+                        "Special arguments to be passed to the service. \
+                         Format <service_id>::<key>=<value>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service_peer_group")
+                    .long("service-peer-group")
+                    .takes_value(true)
+                    .multiple(true)
+                    .help("List of peer services"),
+            )
+            .arg(
+                Arg::with_name("management_type")
+                    .long("management")
+                    .takes_value(true)
+                    .help("Management type for the circuit"),
+            )
+            .arg(
+                Arg::with_name("service_type")
+                    .long("service-type")
+                    .takes_value(true)
+                    .multiple(true)
+                    .long_help(
+                        "Service type for a service. \
+                         Format <service-id>::<service_type>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("metadata")
+                    .long("metadata")
+                    .value_name("application_metadata")
+                    .takes_value(true)
+                    .help("Application metadata for the circuit proposal"),
+            );
+
+        #[cfg(feature = "circuit-auth-type")]
+        let create_circuit = create_circuit.arg(
+            Arg::with_name("authorization_type")
+                .long("auth-type")
+                .possible_values(&["trust"])
+                .default_value("trust")
+                .takes_value(true)
+                .help("Authorization type for the circuit"),
+        );
+
         app = app.subcommand(
             SubCommand::with_name("circuit")
                 .about("Provides circuit management functionality")
                 .setting(AppSettings::SubcommandRequiredElseHelp)
-                .subcommand(
-                    SubCommand::with_name("create")
-                        .about("Propose that a new circuit is created")
-                        .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL of Splinter Daemon"),
-                        )
-                        .arg(
-                            Arg::with_name("key")
-                                .value_name("private-key-file")
-                                .short("k")
-                                .long("key")
-                                .takes_value(true)
-                                .help("Path to private key file"),
-                        )
-                        .arg(
-                            Arg::with_name("node")
-                                .long("node")
-                                .takes_value(true)
-                                .required(true)
-                                .multiple(true)
-                                .long_help(
-                                    "Node that are part of the circuit. \
-                                     Format: <node_id>::<endpoint>. \
-                                     Endpoint is optional if node alias has been set.",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("service")
-                                .long("service")
-                                .takes_value(true)
-                                .multiple(true)
-                                .min_values(2)
-                                .required(true)
-                                .long_help(
-                                    "Service ID and allowed node. \
-                                     Format <service-id>::<allowed_nodes>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("service_argument")
-                                .long("service-arg")
-                                .takes_value(true)
-                                .multiple(true)
-                                .long_help(
-                                    "Special arguments to be passed to the service. \
-                                     Format <service_id>::<key>=<value>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("service_peer_group")
-                                .long("service-peer-group")
-                                .takes_value(true)
-                                .multiple(true)
-                                .help("List of peer services"),
-                        )
-                        .arg(
-                            Arg::with_name("management_type")
-                                .long("management")
-                                .takes_value(true)
-                                .help("Management type for the circuit"),
-                        )
-                        .arg(
-                            Arg::with_name("authorization_type")
-                                .long("auth-type")
-                                .possible_values(&["trust"])
-                                .default_value("trust")
-                                .takes_value(true)
-                                .help("Authorization type for the circuit"),
-                        )
-                        .arg(
-                            Arg::with_name("service_type")
-                                .long("service-type")
-                                .takes_value(true)
-                                .multiple(true)
-                                .long_help(
-                                    "Service type for a service. \
-                                     Format <service-id>::<service_type>",
-                                ),
-                        )
-                        .arg(
-                            Arg::with_name("metadata")
-                                .long("metadata")
-                                .value_name("application_metadata")
-                                .takes_value(true)
-                                .help("Application metadata for the circuit proposal"),
-                        ),
-                )
+                .subcommand(create_circuit)
                 .subcommand(
                     SubCommand::with_name("vote")
                         .about("Vote on a new circuit proposal")

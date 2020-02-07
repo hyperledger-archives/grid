@@ -34,6 +34,7 @@ pub struct CreateCircuitMessageBuilder {
     services: Vec<SplinterServiceBuilder>,
     nodes: Vec<SplinterNode>,
     management_type: Option<String>,
+    #[cfg(feature = "circuit-auth-type")]
     authorization_type: Option<AuthorizationType>,
     application_metadata: Vec<u8>,
 }
@@ -44,6 +45,7 @@ impl CreateCircuitMessageBuilder {
             services: vec![],
             nodes: vec![],
             management_type: None,
+            #[cfg(feature = "circuit-auth-type")]
             authorization_type: None,
             application_metadata: vec![],
         }
@@ -173,6 +175,7 @@ impl CreateCircuitMessageBuilder {
         self.management_type = Some(management_type.into());
     }
 
+    #[cfg(feature = "circuit-auth-type")]
     pub fn set_authorization_type(&mut self, authorization_type: &str) -> Result<(), CliError> {
         let auth_type = match authorization_type {
             "trust" => AuthorizationType::Trust,
@@ -233,17 +236,24 @@ impl CreateCircuitMessageBuilder {
                     Ok(services)
                 })?;
 
-        let mut create_circuit_builder = CreateCircuitBuilder::new()
+        let create_circuit_builder = CreateCircuitBuilder::new()
             .with_circuit_id(&circuit_id)
             .with_members(&self.nodes)
             .with_roster(&services)
             .with_application_metadata(&self.application_metadata)
             .with_circuit_management_type(&management_type);
 
-        if let Some(authorization_type) = self.authorization_type {
-            create_circuit_builder =
-                create_circuit_builder.with_authorization_type(&authorization_type);
-        }
+        #[cfg(not(feature = "circuit-auth-type"))]
+        let create_circuit_builder =
+            create_circuit_builder.with_authorization_type(&AuthorizationType::Trust);
+
+        #[cfg(feature = "circuit-auth-type")]
+        let create_circuit_builder = match self.authorization_type {
+            Some(authorization_type) => {
+                create_circuit_builder.with_authorization_type(&authorization_type)
+            }
+            None => create_circuit_builder,
+        };
 
         let create_circuit = create_circuit_builder.build().map_err(|err| {
             CliError::ActionError(format!("Failed to build CreateCircuit message: {}", err))
