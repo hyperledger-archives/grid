@@ -390,6 +390,7 @@ fn run() -> Result<(), CliError> {
                 .subcommand(
                     SubCommand::with_name("default")
                         .about("Manage default values for circuit creation")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
                         .subcommand(
                             SubCommand::with_name("set")
                                 .about("Set a default value")
