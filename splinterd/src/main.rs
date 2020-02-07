@@ -64,7 +64,10 @@ fn create_config(toml_path: Option<&str>, matches: ArgMatches) -> Result<Config,
     builder = builder.with_partial_config(command_line_config);
 
     if let Some(file) = toml_path {
-        let toml_string = fs::read_to_string(file).map_err(ConfigError::ReadError)?;
+        let toml_string = fs::read_to_string(file).map_err(|err| ConfigError::ReadError {
+            file: String::from(file),
+            err,
+        })?;
         let toml_config = TomlConfig::new(toml_string, String::from(file))
             .map_err(UserError::ConfigError)?
             .build();
