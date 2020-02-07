@@ -99,9 +99,9 @@ pub fn do_keygen(
     let public_key = context.get_public_key(&*private_key)?;
 
     if public_key_path.exists() {
-        debug!("Overwriting file: {:?}", public_key_path);
+        info!("Overwriting file: {:?}", public_key_path);
     } else {
-        debug!("Writing file: {:?}", public_key_path);
+        info!("Writing file: {:?}", public_key_path);
     }
     let public_key_file = OpenOptions::new()
         .write(true)
@@ -112,9 +112,9 @@ pub fn do_keygen(
     writeln!(&public_key_file, "{}", &public_key.as_hex())?;
 
     if private_key_path.exists() {
-        debug!("Overwriting file: {:?}", private_key_path);
+        info!("Overwriting file: {:?}", private_key_path);
     } else {
-        debug!("Writing file: {:?}", private_key_path);
+        info!("Writing file: {:?}", private_key_path);
     }
     let private_key_file = OpenOptions::new()
         .write(true)
