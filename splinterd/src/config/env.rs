@@ -49,55 +49,46 @@ mod tests {
 
     #[test]
     /// This test verifies that a PartialConfig object, constructed from the EnvVarConfig module,
-    /// contains the correct values when the environment variables are not set using the following
-    /// steps:
+    /// contains the correct values using the following steps:
     ///
     /// 1. Remove any existing environment variables which may be set.
     /// 2. A new EnvVarConfig object is created.
     /// 3. The EnvVarConfig object is transformed to a PartialConfig object using the `build`.
+    /// 4. Set the environment variables for both the state and cert directories.
+    /// 5. A new EnvVarConfig object is created.
+    /// 6. The EnvVarConfig object is transformed to a PartialConfig object using the `build`.
     ///
-    /// This test then verifies the PartialConfig object built from the EnvVarConfig object by
-    /// asserting each expected value. As the environment variables were unset, the configuration
-    /// values should be set to None.
-    fn test_environment_var_unset_config() {
+    /// This test verifies each PartialConfig object built from the EnvVarConfig module by
+    /// asserting each expected value. As the environment variables were initially unset, the first
+    /// PartialConfig should not contain any values. After the environment variables were set, the
+    /// new PartialConfig configuration values should reflect those values.
+    fn test_environment_var_set_config() {
         // Remove any existing environment variables.
         env::remove_var(STATE_DIR_ENV);
         env::remove_var(CERT_DIR_ENV);
-        // Create a new EnvVarConfig object from the arg matches.
+
+        // Create a new EnvVarConfig object.
         let env_var_config = EnvVarConfig::new();
         // Build a PartialConfig from the EnvVarConfig object created.
-        let built_config = env_var_config.build();
+        let unset_config = env_var_config.build();
         // Compare the generated PartialConfig object against the expected values.
-        assert_eq!(built_config.state_dir(), None);
-        assert_eq!(built_config.cert_dir(), None);
-    }
+        assert_eq!(unset_config.state_dir(), None);
+        assert_eq!(unset_config.cert_dir(), None);
 
-    #[test]
-    /// This test verifies that a PartialConfig object, constructed from the EnvVarConfig module,
-    /// contains the correct values using the following steps:
-    ///
-    /// 1. Set the environment variables for both the state and cert directories.
-    /// 2. A new EnvVarConfig object is created.
-    /// 3. The EnvVarConfig object is transformed to a PartialConfig object using the `build`.
-    ///
-    /// This test then verifies the PartialConfig object built from the EnvVarConfig object by
-    /// asserting each expected value. As the environment variables were set, the configuration
-    /// values should reflect those values.
-    fn test_environment_var_set_config() {
         // Set the environment variables.
         env::set_var(STATE_DIR_ENV, "state/test/config");
         env::set_var(CERT_DIR_ENV, "cert/test/config");
-        // Create a new EnvVarConfig object from the arg matches.
+        // Create a new EnvVarConfig object.
         let env_var_config = EnvVarConfig::new();
         // Build a PartialConfig from the EnvVarConfig object created.
-        let built_config = env_var_config.build();
+        let set_config = env_var_config.build();
         // Compare the generated PartialConfig object against the expected values.
         assert_eq!(
-            built_config.state_dir(),
+            set_config.state_dir(),
             Some(String::from("state/test/config"))
         );
         assert_eq!(
-            built_config.cert_dir(),
+            set_config.cert_dir(),
             Some(String::from("cert/test/config"))
         );
     }
