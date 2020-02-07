@@ -977,6 +977,8 @@ impl AdminServiceShared {
             ));
         }
 
+        self.validate_key(signer_public_key)?;
+
         let key_info = self
             .key_registry
             .get_key(signer_public_key)
@@ -1020,6 +1022,17 @@ impl AdminServiceShared {
         }
 
         self.validate_circuit(circuit)?;
+        Ok(())
+    }
+
+    fn validate_key(&self, public_key: &[u8]) -> Result<(), AdminSharedError> {
+        if public_key.len() != 33 {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "{} is not a valid public key: invalid length",
+                to_hex(public_key)
+            )));
+        }
+
         Ok(())
     }
 
@@ -1166,6 +1179,8 @@ impl AdminServiceShared {
     ) -> Result<(), AdminSharedError> {
         let circuit_hash = proposal_vote.get_circuit_hash();
 
+        self.validate_key(signer_public_key)?;
+
         let key_info = self
             .key_registry
             .get_key(signer_public_key)
@@ -1253,6 +1268,8 @@ impl AdminServiceShared {
                 "CircuitManagementPayload must have a requester".to_string(),
             ));
         };
+
+        self.validate_key(header.get_requester())?;
 
         // Validate the header, requester_node_id is set
         if header.get_requester_node_id().is_empty() {
@@ -1763,8 +1780,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1781,8 +1799,7 @@ mod tests {
         .unwrap();
         let circuit = setup_test_circuit();
 
-        if let Err(err) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a")
-        {
+        if let Err(err) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been valid: {}", err);
         }
     }
@@ -1810,8 +1827,43 @@ mod tests {
         .unwrap();
         let circuit = setup_test_circuit();
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        let pub_key = (0u8..33).collect::<Vec<_>>();
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to signer not being registered to a node");
+        }
+    }
+
+    #[test]
+    // test that if a circuit is proposed by a signer key is not a valid public key the proposal is
+    // invalid
+    fn test_validate_circuit_signer_key_invalid() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        let key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let circuit = setup_test_circuit();
+
+        let pub_key = (0u8..50).collect::<Vec<_>>();
+        // too short
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key[0..10], "node_a") {
+            panic!("Should have been invalid due to key being too short");
+        }
+        // too long
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
+            panic!("Should have been invalid due to key being too long");
         }
     }
 
@@ -1823,8 +1875,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1848,7 +1901,7 @@ mod tests {
 
         circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to service having an allowed node not in members");
         }
     }
@@ -1860,8 +1913,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1888,7 +1942,7 @@ mod tests {
 
         circuit.set_roster(RepeatedField::from_vec(vec![service_bad]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to service having too many allowed nodes");
         }
     }
@@ -1900,8 +1954,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1925,7 +1980,7 @@ mod tests {
 
         circuit.set_roster(RepeatedField::from_vec(vec![service_]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to service's id being empty");
         }
     }
@@ -1937,8 +1992,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1967,7 +2023,7 @@ mod tests {
 
         circuit.set_roster(RepeatedField::from_vec(vec![service_a, service_a2]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to service's id being a duplicate");
         }
     }
@@ -1979,8 +2035,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -1998,7 +2055,7 @@ mod tests {
         let mut circuit = setup_test_circuit();
         circuit.set_roster(RepeatedField::from_vec(vec![]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid due to empty roster");
         }
     }
@@ -2010,8 +2067,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2030,7 +2088,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid empty members");
         }
     }
@@ -2043,8 +2101,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2067,7 +2126,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![node_b]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because node_a is not in members");
         }
     }
@@ -2080,8 +2139,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2112,7 +2172,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b, node_]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because node_ is has an empty node id");
         }
     }
@@ -2124,8 +2184,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2156,7 +2217,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b, node_b2]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because there are duplicate members");
         }
     }
@@ -2168,8 +2229,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2196,7 +2258,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because a member has an empty endpoint");
         }
     }
@@ -2208,8 +2270,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2236,7 +2299,7 @@ mod tests {
 
         circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because a member has a duplicate endpoint");
         }
     }
@@ -2248,8 +2311,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2268,7 +2332,7 @@ mod tests {
 
         circuit.set_authorization_type(Circuit_AuthorizationType::UNSET_AUTHORIZATION_TYPE);
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because authorizaiton type is unset");
         }
     }
@@ -2280,8 +2344,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2300,7 +2365,7 @@ mod tests {
 
         circuit.set_persistence(Circuit_PersistenceType::UNSET_PERSISTENCE_TYPE);
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because persistence type is unset");
         }
     }
@@ -2312,8 +2377,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2332,7 +2398,7 @@ mod tests {
 
         circuit.set_durability(Circuit_DurabilityType::UNSET_DURABILITY_TYPE);
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because durabilty type is unset");
         }
     }
@@ -2344,8 +2410,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2364,7 +2431,7 @@ mod tests {
 
         circuit.set_routes(Circuit_RouteType::UNSET_ROUTE_TYPE);
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because route type is unset");
         }
     }
@@ -2376,8 +2443,9 @@ mod tests {
         let peer_connector = setup_peer_connector();
         let orchestrator = setup_orchestrator();
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2396,7 +2464,7 @@ mod tests {
 
         circuit.set_circuit_management_type("".to_string());
 
-        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, b"test_signer_a", "node_a") {
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because route type is unset");
         }
     }
@@ -2409,8 +2477,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2429,9 +2498,7 @@ mod tests {
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
 
-        if let Err(err) =
-            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
-        {
+        if let Err(err) = admin_shared.validate_circuit_vote(&vote, &pub_key, &proposal, "node_a") {
             panic!("Should have been valid: {}", err);
         }
     }
@@ -2462,9 +2529,8 @@ mod tests {
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
 
-        if let Ok(_) =
-            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
-        {
+        let pub_key = (0u8..33).collect::<Vec<_>>();
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, &pub_key, &proposal, "node_a") {
             panic!("Should have been invalid because signer is not registered for a node");
         }
     }
@@ -2477,8 +2543,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_b".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_b".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2496,9 +2563,7 @@ mod tests {
         let circuit = setup_test_circuit();
         let vote = setup_test_vote(&circuit);
         let proposal = setup_test_proposal(&circuit);
-        if let Ok(_) =
-            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
-        {
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, &pub_key, &proposal, "node_a") {
             panic!("Should have been invalid because signer registered for the requester node");
         }
     }
@@ -2511,8 +2576,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2538,9 +2604,7 @@ mod tests {
 
         proposal.set_votes(RepeatedField::from_vec(vec![vote_record]));
 
-        if let Ok(_) =
-            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
-        {
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, &pub_key, &proposal, "node_a") {
             panic!("Should have been invalid because node as already submited a vote");
         }
     }
@@ -2554,8 +2618,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let admin_shared = AdminServiceShared::new(
@@ -2576,9 +2641,7 @@ mod tests {
 
         proposal.set_circuit_hash("bad_hash".to_string());
 
-        if let Ok(_) =
-            admin_shared.validate_circuit_vote(&vote, b"test_signer_a", &proposal, "node_a")
-        {
+        if let Ok(_) = admin_shared.validate_circuit_vote(&vote, &pub_key, &proposal, "node_a") {
             panic!("Should have been invalid because the circuit hash does not match");
         }
     }
@@ -2592,8 +2655,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let shared = AdminServiceShared::new(
@@ -2616,7 +2680,7 @@ mod tests {
 
         let mut header = admin::CircuitManagementPayload_Header::new();
         header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester(pub_key);
         header.set_requester_node_id("node_b".to_string());
         let mut payload = admin::CircuitManagementPayload::new();
         payload.set_signature(Vec::new());
@@ -2643,8 +2707,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let shared = AdminServiceShared::new(
@@ -2667,7 +2732,7 @@ mod tests {
 
         let mut header = admin::CircuitManagementPayload_Header::new();
         header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester(pub_key);
         header.set_requester_node_id("node_b".to_string());
         let mut payload = admin::CircuitManagementPayload::new();
         payload.set_signature(HashSigner.sign(&payload.header).unwrap());
@@ -2696,8 +2761,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let shared = AdminServiceShared::new(
@@ -2734,7 +2800,7 @@ mod tests {
             _ => panic!("Should have been invalid because empty requester field"),
         }
 
-        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester(pub_key);
         payload.set_header(protobuf::Message::write_to_bytes(&header).unwrap());
         // Asserting the payload passed through validation, and failed at a further step.
         if let Err(_) = shared.validate_circuit_management_payload(&payload, &header) {
@@ -2751,8 +2817,9 @@ mod tests {
         let orchestrator = setup_orchestrator();
 
         // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
         let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
-        let key_info = KeyInfo::builder(b"test_signer_a".to_vec(), "node_a".to_string()).build();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
         key_registry.save_key(key_info).unwrap();
 
         let shared = AdminServiceShared::new(
@@ -2775,7 +2842,7 @@ mod tests {
 
         let mut header = admin::CircuitManagementPayload_Header::new();
         header.set_action(admin::CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST);
-        header.set_requester(b"test_signer_b".to_vec());
+        header.set_requester(pub_key);
         let mut payload = admin::CircuitManagementPayload::new();
         payload.set_signature(HashSigner.sign(&payload.header).unwrap());
         payload.set_circuit_create_request(request);
