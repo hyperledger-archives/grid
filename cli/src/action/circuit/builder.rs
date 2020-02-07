@@ -14,12 +14,15 @@
 
 use uuid::Uuid;
 
+#[cfg(feature = "node-alias")]
 use super::super::node::get_node_store;
-use super::defaults::{get_default_value_store, MANAGEMENT_TYPE_KEY, SERVICE_TYPE_KEY};
+#[cfg(feature = "node-alias")]
+use crate::store::node::NodeStore;
 
+use super::defaults::{get_default_value_store, MANAGEMENT_TYPE_KEY, SERVICE_TYPE_KEY};
 use crate::error::CliError;
 use crate::store::default_value::DefaultValueStore;
-use crate::store::node::NodeStore;
+
 use splinter::admin::messages::{
     AuthorizationType, CreateCircuit, CreateCircuitBuilder, SplinterNode, SplinterNodeBuilder,
     SplinterServiceBuilder,
@@ -142,6 +145,7 @@ impl CreateCircuitMessageBuilder {
         Ok(())
     }
 
+    #[cfg(feature = "node-alias")]
     pub fn add_node_by_alias(&mut self, alias: &str) -> Result<(), CliError> {
         let node_store = get_node_store();
         let (node_id, endpoint) = match node_store.get_node(alias)? {

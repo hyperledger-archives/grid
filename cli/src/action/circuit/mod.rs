@@ -47,7 +47,14 @@ impl Action for CircuitCreateAction {
             if let Some(endpoint) = endpoint {
                 builder.add_node(&node, &endpoint)?;
             } else {
+                #[cfg(feature = "node-alias")]
                 builder.add_node_by_alias(&node)?;
+
+                #[cfg(not(feature = "node-alias"))]
+                return Err(CliError::ActionError(format!(
+                    "Invalid node argument: {}",
+                    node_argument
+                )));
             }
         }
 

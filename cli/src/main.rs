@@ -19,7 +19,6 @@ extern crate diesel;
 
 mod action;
 mod error;
-#[cfg(feature = "circuit")]
 mod store;
 
 use clap::clap_app;
@@ -437,6 +436,11 @@ fn run() -> Result<(), CliError> {
                         ),
                 ),
         );
+    }
+
+    #[cfg(feature = "node-alias")]
+    {
+        use clap::{AppSettings, Arg, SubCommand};
 
         app = app.subcommand(
             SubCommand::with_name("node")
@@ -552,7 +556,7 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use action::{circuit, node};
+        use action::circuit;
         subcommands = subcommands.with_command(
             "circuit",
             SubcommandActions::new()
@@ -570,6 +574,11 @@ fn run() -> Result<(), CliError> {
                         .with_command("show", circuit::defaults::ShowDefaultValueAction),
                 ),
         );
+    }
+
+    #[cfg(feature = "node-alias")]
+    {
+        use action::node;
         subcommands = subcommands.with_command(
             "node",
             SubcommandActions::new().with_command(

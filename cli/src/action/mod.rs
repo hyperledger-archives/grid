@@ -22,7 +22,7 @@ pub mod database;
 pub mod health;
 #[cfg(feature = "keygen")]
 pub mod keygen;
-#[cfg(feature = "circuit")]
+#[cfg(feature = "node-alias")]
 pub mod node;
 
 use std::collections::HashMap;
