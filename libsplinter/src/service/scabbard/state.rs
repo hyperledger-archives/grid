@@ -609,22 +609,43 @@ impl BatchHistory {
 
     fn update_batch_status(&mut self, signature: &str, status: BatchStatus) {
         match self.history.get_mut(signature) {
-            Some(ref mut batch) if batch.status == BatchStatus::Pending => {
-                batch.set_status(status);
+            Some(info) if info.status == BatchStatus::Pending => {
+                info.set_status(status);
             }
-            _ => (),
-        };
+            Some(_) => {
+                debug!(
+                    "Received status update for batch that was not pending: {:?}",
+                    signature
+                );
+            }
+            None => {
+                debug!(
+                    "Received status update for batch that is not in the history: {:?}",
+                    signature
+                );
+            }
+        }
     }
 
     fn commit(&mut self, signature: &str) {
-        let info = if let Some(info) = self.history.get_mut(signature) {
-            info
-        } else {
-            return;
-        };
-
-        if let BatchStatus::Valid(t) = info.status.clone() {
-            info.set_status(BatchStatus::Committed(t));
+        match self.history.get_mut(signature) {
+            Some(info) => match info.status.clone() {
+                BatchStatus::Valid(txns) => {
+                    info.set_status(BatchStatus::Committed(txns));
+                }
+                _ => {
+                    error!(
+                        "Received commit for batch that was not valid: {:?}",
+                        signature
+                    );
+                }
+            },
+            None => {
+                debug!(
+                    "Received commit for batch that is not in the history: {:?}",
+                    signature
+                );
+            }
         }
     }
 
