@@ -67,6 +67,7 @@ impl ServiceFactory for ScabbardFactory {
     ///   formatted as a serialized JSON array of strings
     /// - `peer_services`: list of other scabbard services on the same circuit that this service
     ///   will share state with
+    ///
     /// `args` may include the following optional entries:
     /// - `coordinator_timeout`: the length of time (in milliseconds) that the network has to
     ///   commit a proposal before the coordinator rejects it (if not provided, default is 30
