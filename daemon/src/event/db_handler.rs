@@ -116,7 +116,7 @@ fn create_db_commit_from_commit_event(
 ) -> Result<NewCommit, EventError> {
     let commit_id = event.id.clone();
     let commit_num = commit_event_height_to_commit_num(event.height, conn)?;
-    let service_id = Some(event.service_id.clone());
+    let service_id = event.service_id.clone();
     Ok(NewCommit {
         commit_id,
         commit_num,
