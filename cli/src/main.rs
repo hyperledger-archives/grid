@@ -247,7 +247,17 @@ fn run() -> Result<(), CliError> {
                     .long("metadata")
                     .value_name("application_metadata")
                     .takes_value(true)
+                    .multiple(true)
                     .help("Application metadata for the circuit proposal"),
+            )
+            .arg(
+                Arg::with_name("metadata_encoding")
+                    .long("metadata-encoding")
+                    .takes_value(true)
+                    .possible_values(&["json", "string"])
+                    .default_value("string")
+                    .requires("metadata")
+                    .help("Set the encoding for the application metadata"),
             );
 
         #[cfg(feature = "circuit-auth-type")]

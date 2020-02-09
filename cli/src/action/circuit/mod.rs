@@ -93,8 +93,37 @@ impl Action for CircuitCreateAction {
             builder.set_management_type(management_type);
         }
 
-        if let Some(application_metadata) = args.value_of("metadata") {
-            builder.set_application_metadata(application_metadata.as_bytes());
+        if let Some(mut application_metadata) = args.values_of("metadata") {
+            let encoding = args.value_of("metadata_encoding").unwrap_or("string");
+            match encoding {
+                "string" => {
+                    if application_metadata.len() > 1 {
+                        return Err(CliError::ActionError(
+                            "Multiple metadata values with encoding set to string is not allowed"
+                                .into(),
+                        ));
+                    }
+                    let metadata = application_metadata.next().unwrap_or_default().as_bytes();
+                    builder.set_application_metadata(metadata);
+                }
+                "json" => {
+                    let mut json_string = "{".to_string();
+                    for metadata in application_metadata {
+                        let values = parse_application_metadata_json(metadata)?;
+                        json_string = format!("{}{},", json_string, values);
+                    }
+                    json_string.pop();
+                    json_string.push('}');
+
+                    builder.set_application_metadata(&json_string.as_bytes());
+                }
+                _ => {
+                    return Err(CliError::ActionError(format!(
+                        "Metadata encoding {} is not supported",
+                        encoding
+                    )))
+                }
+            }
         }
 
         if let Some(service_types) = args.values_of("service_type") {
@@ -157,6 +186,35 @@ fn parse_service(service: &str) -> Result<(String, Vec<String>), CliError> {
 
 fn parse_service_peer_group(peer_group: &str) -> Vec<&str> {
     peer_group.split(',').collect()
+}
+
+fn parse_application_metadata_json(metadata: &str) -> Result<String, CliError> {
+    let mut iter = metadata.split('=');
+    let key = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!(
+                "Application metadata cannot be parsed to json {}",
+                metadata
+            ))
+        })?
+        .to_string();
+
+    let mut value = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!(
+                "Application metadata cannot be parsed to json {}",
+                metadata
+            ))
+        })?
+        .to_string();
+
+    if !value.contains('[') && !value.contains('{') {
+        value = format!("\"{}\"", value);
+    }
+
+    Ok(format!("\"{}\":{}", key, value))
 }
 
 fn parse_service_argument(service_argument: &str) -> Result<(String, (String, String)), CliError> {
