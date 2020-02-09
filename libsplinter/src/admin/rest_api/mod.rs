@@ -18,6 +18,7 @@ mod actix;
 mod error;
 #[cfg(feature = "proposal-read")]
 mod proposals_read;
+mod resources;
 
 use std::collections::HashMap;
 use std::time;
