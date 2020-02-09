@@ -16,8 +16,6 @@
 mod actix;
 #[cfg(feature = "proposal-read")]
 mod error;
-#[cfg(feature = "proposal-read")]
-mod proposals_read;
 mod resources;
 
 use std::collections::HashMap;
@@ -35,8 +33,10 @@ use crate::service::ServiceError;
 
 use super::messages::AdminServiceEvent;
 
-#[cfg(feature = "proposal-read")]
-use super::rest_api::proposals_read::{fetch_proposal, list_proposals};
+#[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
+use self::actix::proposals_read::make_list_proposals_resource;
+#[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
+use self::actix::proposals_read_circuit_id::make_fetch_proposal_resource;
 use super::service::{
     AdminCommands, AdminService, AdminServiceError, AdminServiceEventSubscriber,
     AdminSubscriberError,
@@ -49,9 +49,9 @@ impl RestResourceProvider for AdminService {
         resources.push(make_application_handler_registration_route(self.commands()));
         resources.push(make_submit_route(self.commands()));
 
-        #[cfg(feature = "proposal-read")]
+        #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
         resources.push(make_fetch_proposal_resource(self.commands()));
-        #[cfg(feature = "proposal-read")]
+        #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
         resources.push(make_list_proposals_resource(self.commands()));
 
         resources
@@ -165,34 +165,6 @@ fn make_application_handler_registration_route<A: AdminCommands + Clone + 'stati
                     Box::new(HttpResponse::InternalServerError().finish().into_future())
                 }
             }
-        })
-}
-
-#[cfg(feature = "proposal-read")]
-pub fn make_fetch_proposal_resource<A: AdminCommands + Clone + 'static>(
-    admin_commands: A,
-) -> Resource {
-    Resource::build("admin/proposals/{circuit_id}")
-        .add_request_guard(ProtocolVersionRangeGuard::new(
-            protocol::ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN,
-            protocol::ADMIN_PROTOCOL_VERSION,
-        ))
-        .add_method(Method::Get, move |r, _| {
-            fetch_proposal(r, web::Data::new(admin_commands.clone()))
-        })
-}
-
-#[cfg(feature = "proposal-read")]
-pub fn make_list_proposals_resource<A: AdminCommands + Clone + 'static>(
-    admin_commands: A,
-) -> Resource {
-    Resource::build("admin/proposals")
-        .add_request_guard(ProtocolVersionRangeGuard::new(
-            protocol::ADMIN_LIST_PROPOSALS_PROTOCOL_MIN,
-            protocol::ADMIN_PROTOCOL_VERSION,
-        ))
-        .add_method(Method::Get, move |r, _| {
-            list_proposals(r, web::Data::new(admin_commands.clone()))
         })
 }
 

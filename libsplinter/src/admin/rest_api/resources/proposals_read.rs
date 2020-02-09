@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "proposal-read")]
-pub(super) mod proposals_read;
-#[cfg(feature = "proposal-read")]
-pub(super) mod proposals_read_circuit_id;
+use crate::admin::messages::CircuitProposal;
+use crate::rest_api::paging::Paging;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct ListProposalsResponse {
+    pub data: Vec<CircuitProposal>,
+    pub paging: Paging,
+}
