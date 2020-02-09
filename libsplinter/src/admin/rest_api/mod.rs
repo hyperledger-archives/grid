@@ -22,14 +22,12 @@ use std::collections::HashMap;
 use std::time;
 
 use crate::actix_web::{web, HttpResponse};
-use crate::futures::{Future, IntoFuture};
+use crate::futures::IntoFuture;
 use crate::protocol;
-use crate::protos::admin::CircuitManagementPayload;
 use crate::rest_api::{
-    into_protobuf, new_websocket_event_sender, EventSender, Method, ProtocolVersionRangeGuard,
-    Request, Resource, RestResourceProvider,
+    new_websocket_event_sender, EventSender, Method, ProtocolVersionRangeGuard, Request, Resource,
+    RestResourceProvider,
 };
-use crate::service::ServiceError;
 
 use super::messages::AdminServiceEvent;
 
@@ -37,9 +35,10 @@ use super::messages::AdminServiceEvent;
 use self::actix::proposals_read::make_list_proposals_resource;
 #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
 use self::actix::proposals_read_circuit_id::make_fetch_proposal_resource;
+#[cfg(feature = "rest-api-actix")]
+use self::actix::submit::make_submit_route;
 use super::service::{
-    AdminCommands, AdminService, AdminServiceError, AdminServiceEventSubscriber,
-    AdminSubscriberError,
+    AdminCommands, AdminService, AdminServiceEventSubscriber, AdminSubscriberError,
 };
 
 impl RestResourceProvider for AdminService {
@@ -47,6 +46,7 @@ impl RestResourceProvider for AdminService {
         let mut resources = vec![];
 
         resources.push(make_application_handler_registration_route(self.commands()));
+        #[cfg(feature = "rest-api-actix")]
         resources.push(make_submit_route(self.commands()));
 
         #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
@@ -56,42 +56,6 @@ impl RestResourceProvider for AdminService {
 
         resources
     }
-}
-
-fn make_submit_route<A: AdminCommands + Clone + 'static>(admin_commands: A) -> Resource {
-    Resource::build("/admin/submit")
-        .add_request_guard(ProtocolVersionRangeGuard::new(
-            protocol::ADMIN_SUBMIT_PROTOCOL_MIN,
-            protocol::ADMIN_PROTOCOL_VERSION,
-        ))
-        .add_method(Method::Post, move |_, payload| {
-            let admin_commands = admin_commands.clone();
-            Box::new(
-                into_protobuf::<CircuitManagementPayload>(payload).and_then(move |payload| {
-                    match admin_commands.submit_circuit_change(payload) {
-                        Ok(()) => HttpResponse::Accepted().finish().into_future(),
-                        Err(AdminServiceError::ServiceError(
-                            ServiceError::UnableToHandleMessage(err),
-                        )) => HttpResponse::BadRequest()
-                            .json(json!({
-                                "message": format!("Unable to handle message: {}", err)
-                            }))
-                            .into_future(),
-                        Err(AdminServiceError::ServiceError(
-                            ServiceError::InvalidMessageFormat(err),
-                        )) => HttpResponse::BadRequest()
-                            .json(json!({
-                                "message": format!("Failed to parse payload: {}", err)
-                            }))
-                            .into_future(),
-                        Err(err) => {
-                            error!("{}", err);
-                            HttpResponse::InternalServerError().finish().into_future()
-                        }
-                    }
-                }),
-            )
-        })
 }
 
 fn make_application_handler_registration_route<A: AdminCommands + Clone + 'static>(
