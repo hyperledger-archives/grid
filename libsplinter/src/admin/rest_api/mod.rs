@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "rest-api-actix")]
+mod actix;
 #[cfg(feature = "proposal-read")]
 mod error;
 #[cfg(feature = "proposal-read")]
