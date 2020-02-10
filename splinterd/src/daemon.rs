@@ -23,6 +23,8 @@ use crossbeam_channel;
 
 #[cfg(feature = "health")]
 use health::HealthService;
+#[cfg(feature = "circuit-read")]
+use splinter::admin::rest_api::CircuitResourceProvider;
 use splinter::admin::service::{admin_service_id, AdminService};
 #[cfg(feature = "biome")]
 use splinter::biome::rest_api::{BiomeRestResourceManager, BiomeRestResourceManagerBuilder};
@@ -31,8 +33,6 @@ use splinter::circuit::handlers::{
     AdminDirectMessageHandler, CircuitDirectMessageHandler, CircuitErrorHandler,
     CircuitMessageHandler, ServiceConnectRequestHandler, ServiceDisconnectRequestHandler,
 };
-#[cfg(feature = "circuit-read")]
-use splinter::circuit::rest_api::CircuitResourceProvider;
 use splinter::circuit::{SplinterState, SplinterStateError};
 #[cfg(feature = "biome")]
 use splinter::database::{self, ConnectionPool};

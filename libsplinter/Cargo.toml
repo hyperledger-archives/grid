@@ -80,6 +80,7 @@ stable = [
     "default",
     "events",
     "rest-api",
+    "rest-api-actix",
     "sawtooth-signing-compat",
 ]
 
@@ -117,6 +118,7 @@ matrix = []
 node-registry-unified = []
 postgres = ["diesel/postgres"]
 rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
+rest-api-actix = ["actix", "actix-http", "actix-web", "actix-web-actors"]
 sawtooth-signing-compat = ["sawtooth-sdk"]
 scabbard-client = ["bzip2", "futures", "reqwest", "sawtooth-sdk", "tar"]
 scabbard-get-state = []
