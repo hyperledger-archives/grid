@@ -14,15 +14,31 @@
  * limitations under the License.
  */
 
-// Brand
-$color-primary: rgb(69, 190, 147) !default;
-$color-primary-light: lighten($color-primary, 15%) !default;
-$color-primary-dark: darken($color-primary, 15%) !default;
-$color-secondary: rgb(115, 29, 216) !default;
-$color-secondary-light: lighten($color-secondary, 15%);
-$color-secondary-dark: darken($color-secondary, 15%);
+ // Brand
+ $color-primary: rgb(69, 190, 147) !default;
+ $color-primary-light: lighten($color-primary, 15%) !default;
+ $color-primary-dark: darken($color-primary, 15%) !default;
+ $color-secondary: rgb(115, 29, 216) !default;
+ $color-secondary-light: lighten($color-secondary, 15%);
+ $color-secondary-dark: darken($color-secondary, 15%);
+
+ // Backgrounds
+ $background-white: rgb(255, 255, 255) !default;
+ $background-light: rgb(239, 239, 239) !default;
+ $background-colors: (
+   'white': $background-white,
+   'light': $background-light
+ );
+
+ @each $name, $color in $background-colors {
+   .background-#{$name} {
+     background: $color;
+   }
+ }
 
 :root {
+  --background-color-white: #{$background-white};
+  --background-color-light: #{$background-light};
   --color-primary: #{$color-primary};
   --color-primary-light: #{$color-primary-light};
   --color-primary-dark: #{$color-primary-dark};
@@ -53,19 +69,6 @@ $brand-colors: (
 // Components
 $link-color: #4d9de0;
 
-// Backgrounds
-$background-white: rgb(255, 255, 255) !default;
-$background-light: rgb(239, 239, 239) !default;
-$background-colors: (
-  'white': $background-white,
-  'light': $background-light
-);
-
-@each $name, $color in $background-colors {
-  .background-#{$name} {
-    background: $color;
-  }
-}
 
 // Text
 $text-primary: var(--color-dark-grey);

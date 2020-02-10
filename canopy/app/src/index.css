@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+:root {
+  --brand-img-url: url('./images/default.svg');
+}
+
 html {
   box-sizing: border-box;
 }
@@ -26,9 +30,7 @@ html {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--fontFamily-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

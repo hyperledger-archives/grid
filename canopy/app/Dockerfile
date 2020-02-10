@@ -20,7 +20,7 @@ COPY app/package*.json /project/app
 
 COPY canopyjs /project/canopyjs
 
-RUN cd ../canopyjs && yarn install && yarn build && cd ../app
+RUN cd ../canopyjs && yarn install && yarn build && rm -rf node_modules/ && cd ../app
 
 RUN yarn install
 
