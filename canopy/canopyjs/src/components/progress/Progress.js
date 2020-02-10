@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 /**
  * Copyright 2018-2020 Cargill Incorporated
  *
@@ -15,5 +14,14 @@
  * limitations under the License.
  */
 
-export * from './components';
-export * from './CanopyContext';
+import React from 'react';
+import PropTypes from 'prop-types';
+
+export function Progress({ max, value }) {
+  return <progress className="progress" max={max} value={value} />;
+}
+
+Progress.propTypes = {
+  max: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired
+};

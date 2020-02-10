@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 /**
  * Copyright 2018-2020 Cargill Incorporated
  *
@@ -15,5 +14,27 @@
  * limitations under the License.
  */
 
-export * from './components';
-export * from './CanopyContext';
+import React from 'react';
+import PropTypes from 'prop-types';
+import classnames from 'classnames';
+
+export const NavItem = (props) => {
+  const { path, logo, label } = props;
+
+  const classes = classnames('nav-tab', {
+    'page-active': path === `/${window.location.pathname.split('/')[1]}`
+  });
+
+  return (
+    <a href={path} className={classes}>
+      <img className="icon" src={logo} alt="logo" />
+      <div className="label">{label}</div>
+    </a>
+  );
+}
+
+NavItem.propTypes = {
+  label: PropTypes.string.isRequired,
+  logo: PropTypes.string.isRequired,
+  path: PropTypes.string.isRequired
+};

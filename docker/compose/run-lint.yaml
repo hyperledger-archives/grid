@@ -71,9 +71,3 @@ services:
       context: ../../canopy/saplingjs
     image: saplingjs:${ISOLATION_ID}
     command: yarn lint
-
-  lint-design-system:
-    build:
-      context: ../../canopy/design-system
-    image: design-system:${ISOLATION_ID}
-    command: yarn lint

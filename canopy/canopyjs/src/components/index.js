@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 /**
  * Copyright 2018-2020 Cargill Incorporated
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-export * from './components';
-export * from './CanopyContext';
+export { NavItem } from './navigation/NavItem';
+export { SideNav } from './navigation/SideNav';
+export { Progress } from './progress/Progress';
+export { TabBox } from './tabBox/TabBox';

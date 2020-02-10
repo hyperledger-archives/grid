@@ -1,0 +1,93 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Brand
+$color-primary: rgb(69, 190, 147) !default;
+$color-primary-light: lighten($color-primary, 15%) !default;
+$color-primary-dark: darken($color-primary, 15%) !default;
+$color-secondary: rgb(115, 29, 216) !default;
+$color-secondary-light: lighten($color-secondary, 15%);
+$color-secondary-dark: darken($color-secondary, 15%);
+
+:root {
+  --color-primary: #{$color-primary};
+  --color-primary-light: #{$color-primary-light};
+  --color-primary-dark: #{$color-primary-dark};
+  --color-secondary: #{$color-secondary};
+  --color-secondary-light: #{$color-secondary-light};
+  --color-secondary-dark: #{$color-secondary-dark};
+  --color-dark-grey: #333333;
+  --color-grey: #555555;
+  --color-text--on-dark: rbga(255, 255, 255, 0.9);
+  --color-text-light--on-dark: rgba(255, 255, 255, 0.7);
+  --color-text-lighter--on-dark: rgba(255, 255, 255, 0.4);
+}
+
+$brand-colors: (
+  'primary-light': $color-primary-light,
+  'primary': $color-primary,
+  'primary-dark': $color-primary-dark,
+  'secondary-light': $color-secondary-light,
+  'secondary': $color-secondary,
+  'secondary-dark': $color-secondary-dark
+);
+@each $name, $color in $brand-colors {
+  .background-#{$name} {
+    background: $color;
+  }
+}
+
+// Components
+$link-color: #4d9de0;
+
+// Backgrounds
+$background-white: rgb(255, 255, 255) !default;
+$background-light: rgb(239, 239, 239) !default;
+$background-colors: (
+  'white': $background-white,
+  'light': $background-light
+);
+
+@each $name, $color in $background-colors {
+  .background-#{$name} {
+    background: $color;
+  }
+}
+
+// Text
+$text-primary: var(--color-dark-grey);
+$text-light: var(--color-grey);
+$text-white: rgb(255, 255, 255);
+
+// Status
+$color-success: rgb(0, 211, 74) !default;
+$color-danger: rgb(219, 3, 0) !default;
+$color-warning: rgb(255, 225, 0) !default;
+$status-colors: (
+  'success': $color-success,
+  'danger': $color-danger,
+  'warning': $color-warning
+);
+
+@each $name, $color in $status-colors {
+  .background-#{$name} {
+    background: $color;
+  }
+
+  .color-#{$name} {
+    color: $color;
+  }
+}
