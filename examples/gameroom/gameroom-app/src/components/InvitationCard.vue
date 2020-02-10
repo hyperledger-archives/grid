@@ -65,7 +65,7 @@ limitations under the License.
 <script lang="ts">
 import { Vue, Prop, Component } from 'vue-property-decorator';
 import * as moment from 'moment';
-import { GameroomProposal } from '../store/models';
+import { GameroomProposal, Gameroom } from '../store/models';
 import gamerooms from '@/store/modules/gamerooms';
 
 @Component
@@ -76,8 +76,8 @@ export default class InvitationCard extends Vue {
   rejectSubmitting = false;
 
   get alias(): string {
-    const gameroom = gamerooms.gameroomList.find(
-      (gr) => gr.circuit_id === this.proposal.circuit_id);
+    const gameroom = this.$store.getters['gamerooms/gameroomList'].find(
+      (gr: Gameroom) => gr.circuit_id === this.proposal.circuit_id);
     if (gameroom) {
       return gameroom.alias;
     }

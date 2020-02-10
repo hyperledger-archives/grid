@@ -12,42 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-decorators';
-import store from '@/store';
 import { NewGameroomProposal, Gameroom } from '@/store/models';
 import { gameroomPropose, submitPayload, listGamerooms } from '@/store/api';
 import { signPayload } from '@/utils/crypto';
 
-@Module({
-  namespaced: true,
-  name: 'gamerooms',
-  store,
-  dynamic: true,
-})
-class GameroomsModule extends VuexModule {
-  gamerooms: Gameroom[] = [];
+export interface GameroomState {
+  gamerooms: Gameroom[];
+}
 
-  @Mutation
-  setGamerooms(gamerooms: Gameroom[]) { this.gamerooms = gamerooms; }
+const gameroomState = {
+  gamerooms: ([] as Gameroom[]),
+};
 
-  get gameroomList(): Gameroom[] {
-    return this.gamerooms;
-  }
+const getters = {
+  gameroomList(state: GameroomState): Gameroom[] {
+    return state.gamerooms;
+  },
 
-  get activeGameroomList(): Gameroom[] {
-    return this.gamerooms.filter(
-      (gameroom: Gameroom) => gameroom.status === 'Active');
-  }
+  activeGameroomList(state: GameroomState): Gameroom[] {
+    return state.gamerooms.filter((gameroom: Gameroom) => gameroom.status === 'Active');
+  },
+};
 
-  @Action({ commit: 'setGamerooms' })
-  async listGamerooms() {
+const actions = {
+  async listGamerooms({ commit }: any) {
     const gamerooms = await listGamerooms();
-    return gamerooms;
-  }
+    commit('setGamerooms', gamerooms);
+  },
 
-  @Action({ rawError: true })
-  async proposeGameroom(proposal: NewGameroomProposal) {
-    const user = this.context.rootGetters['user/getUser'];
+  async proposeGameroom({ rootGetters }: any, proposal: NewGameroomProposal) {
+    const user = rootGetters['user/getUser'];
     try {
       const payload = await gameroomPropose(proposal);
       const signedPayload = signPayload(payload, user.privateKey);
@@ -56,6 +50,20 @@ class GameroomsModule extends VuexModule {
     } catch (err) {
       throw err;
     }
-  }
-}
-export default getModule(GameroomsModule);
+  },
+};
+
+const mutations = {
+  setGamerooms(state: GameroomState, gamerooms: Gameroom[]) {
+    state.gamerooms = gamerooms;
+  },
+};
+
+export default {
+  namespaced: true,
+  name: 'gamerooms',
+  state: gameroomState,
+  getters,
+  actions,
+  mutations,
+};

@@ -31,15 +31,22 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Prop, Component } from 'vue-property-decorator';
+import { mapGetters } from 'vuex';
 import SidebarSection from '@/components/sidebar/SidebarSection.vue';
-import { Section } from '@/store/models';
+import { Section, Gameroom } from '@/store/models';
 import gamerooms from '@/store/modules/gamerooms';
 
 @Component({
   components: { SidebarSection },
+  computed: {
+    ...mapGetters('gamerooms', {
+      activeGamerooms: 'activeGameroomList',
+    }),
+  },
 })
 export default class GameroomSidebar extends Vue {
   @Prop() sections!: Section[];
+  activeGamerooms!: Gameroom[];
 
   homeSection = {
     name: 'Home',
@@ -72,7 +79,7 @@ export default class GameroomSidebar extends Vue {
   };
 
   mounted() {
-    gamerooms.listGamerooms();
+    this.$store.dispatch('gamerooms/listGamerooms');
   }
 
   get home() {
@@ -91,7 +98,7 @@ export default class GameroomSidebar extends Vue {
   }
 
   get gameroomList() {
-    return gamerooms.activeGameroomList.map((gameroom) => {
+    return this.activeGamerooms.map((gameroom: Gameroom) => {
       return {
         id: gameroom.circuit_id,
         name: gameroom.alias,

@@ -21,6 +21,7 @@ import votesModule from '@/store/modules/votes';
 import gamesModule from '@/store/modules/games';
 import proposalsModule from '@/store/modules/proposals';
 import pageLoadingModule from '@/store/modules/pageLoading';
+import gameroomsModule from '@/store/modules/gamerooms';
 
 import VuexPersistence from 'vuex-persist';
 
@@ -40,6 +41,7 @@ export default new Vuex.Store({
     selectedGameroom: selectedGameroomModule,
     proposals: proposalsModule,
     pageLoading: pageLoadingModule,
+    gamerooms: gameroomsModule,
   },
   plugins: [vuexLocal.plugin],
   state: {
