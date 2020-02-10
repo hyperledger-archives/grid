@@ -24,7 +24,7 @@ use std::io::{BufReader, Read};
 
 #[cfg(any(
     feature = "contract",
-    feature = "exec",
+    feature = "execute",
     feature = "namespace",
     feature = "namespace-permission",
     feature = "contract-registry",
@@ -182,7 +182,7 @@ fn run() -> Result<(), CliError> {
         );
     }
 
-    #[cfg(feature = "exec")]
+    #[cfg(feature = "execute")]
     {
         app = app.subcommand(
             SubCommand::with_name("exec")
