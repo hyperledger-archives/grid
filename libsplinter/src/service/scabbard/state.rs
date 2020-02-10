@@ -52,12 +52,10 @@ use crate::protos::scabbard::{Setting, Setting_Entry};
 use super::error::{ScabbardStateError, StateSubscriberError};
 
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
-
 const CURRENT_STATE_ROOT_INDEX: &str = "current_state_root";
-
 const ITER_CACHE_SIZE: usize = 64;
-
 const COMPLETED_BATCH_INFO_ITER_RETRY_MILLIS: u64 = 100;
+const DEFAULT_BATCH_HISTORY_SIZE: usize = 100;
 
 #[cfg(feature = "scabbard-get-state")]
 pub type StateIter = dyn Iterator<Item = Result<(String, Vec<u8>), ScabbardStateError>>;
@@ -752,7 +750,7 @@ impl Default for BatchHistory {
     fn default() -> Self {
         Self {
             history: HashMap::new(),
-            limit: 100,
+            limit: DEFAULT_BATCH_HISTORY_SIZE,
             batch_subscribers: vec![],
         }
     }
