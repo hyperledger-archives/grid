@@ -17,3 +17,4 @@ pub(super) mod proposals_read;
 #[cfg(feature = "proposal-read")]
 pub(super) mod proposals_read_circuit_id;
 pub(super) mod submit;
+pub(super) mod ws_register_type;
