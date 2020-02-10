@@ -12,32 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { VuexModule, Module, getModule, Action, Mutation } from 'vuex-module-decorators';
-import store from '@/store';
 import { Node } from '@/store/models';
 import { listNodes } from '@/store/api';
 
+export interface NodeState {
+  nodes: Node[];
+}
 
-@Module({
+const nodeState = {
+  nodes: ([] as Node[]),
+};
+
+const getters = {
+  nodeList(state: NodeState): Node[] {
+    return state.nodes;
+  },
+};
+
+const actions = {
+  async listNodes({ commit }: any) {
+    const nodes = await listNodes();
+    commit('setNodes', nodes);
+  },
+};
+
+const mutations = {
+  setNodes(state: NodeState, nodes: Node[]) {
+    state.nodes = nodes;
+  },
+};
+
+export default {
   namespaced: true,
   name: 'nodes',
-  store,
-  dynamic: true,
-})
-class NodesModule extends VuexModule {
-  nodes: Node[] = [];
-
-  @Mutation
-  setNodes(nodes: Node[]) { this.nodes = nodes; }
-
-  @Action({ commit: 'setNodes' })
-  async listNodes() {
-    const nodes = await listNodes();
-    return nodes;
-  }
-
-  get nodeList() {
-    return this.nodes;
-  }
-}
-export default getModule(NodesModule);
+  state: nodeState,
+  getters,
+  actions,
+  mutations,
+};

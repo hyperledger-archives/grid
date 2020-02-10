@@ -70,6 +70,7 @@ limitations under the License.
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
+import { mapGetters } from 'vuex';
 import GameroomSidebar from '@/components/sidebar/GameroomSidebar.vue';
 import Toast from '../components/Toast.vue';
 import Multiselect from 'vue-multiselect';
@@ -85,8 +86,14 @@ interface NewGameroom {
 
 @Component({
   components: { Modal, Multiselect, GameroomSidebar, Toast },
+  computed: {
+    ...mapGetters('nodes', {
+      nodeList: 'nodeList',
+    }),
+  },
 })
 export default class Dashboard extends Vue {
+  nodes!: Node[];
   displayModal = false;
   submitting = false;
   error = '';
@@ -98,11 +105,7 @@ export default class Dashboard extends Vue {
   };
 
   mounted() {
-    nodes.listNodes();
-  }
-
-  get nodeList() {
-    return nodes.nodeList;
+    this.$store.dispatch('nodes/listNodes');
   }
 
   get canSubmitNewGameroom() {
