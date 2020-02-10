@@ -34,7 +34,7 @@ images are up to date:
 
 ```
 $ docker pull hyperledger/grid-dev
-$ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-registry db-alpha splinterd-alpha
+$ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-registry db-alpha scabbard-cli-alpha splinterd-alpha
 ```
 
 ## Set Up and Run Grid
@@ -282,6 +282,103 @@ circuit is created.
 
    ```
    root@gridd-beta:/# grid product list
+   ```
+
+## Demonstrate Smart Contract Deployment
+
+The scabbard CLI enables deployment of custom smart contracts to existing
+circuits.
+
+1. Start a bash session in the `scabbard-cli-alpha` Docker container. You will
+   use this container to send scabbard commands to `splinterd-alpha`.
+
+   ```
+   $ docker-compose -f examples/splinter/docker-compose.yaml run scabbard-cli-alpha bash
+   root@scabbard-cli-alpha:/#
+   ```
+
+2. Download the smart contract.
+
+   `root@scabbard-cli-alpha:/# curl -OLsS https://files.splinter.dev/scar/xo_0.4.1.scar`
+
+3. Create the contract registry for the new smart contract.
+
+   ```
+   root@scabbard-cli-alpha:/# scabbard cr create sawtooth_xo \
+   --owner $(cat /root/.splinter/keys/gridd.pub) \
+   -k gridd \
+   -U 'http://splinterd-alpha:8085' \
+   --service-id my-grid-circuit::grid-scabbard-a
+   ```
+
+4. Upload the smart contract.
+
+   ```
+   root@scabbard-cli-alpha:/# scabbard contract upload ./xo_0.4.1.scar \
+   -k gridd \
+   -U 'http://splinterd-alpha:8085' \
+   --service-id my-grid-circuit::grid-scabbard-a
+   ```
+
+5. Create the namespace registry for the smart contract.
+
+   ```
+   root@scabbard-cli-alpha:/# scabbard ns create 5b7349 \
+   --owner $(cat /root/.splinter/keys/gridd.pub) \
+   -k gridd \
+   -U 'http://splinterd-alpha:8085' \
+   --service-id my-grid-circuit::grid-scabbard-a
+   ```
+
+6. Grant the appropriate contract namespace permissions.
+
+   ```
+   root@scabbard-cli-alpha:/# scabbard perm 5b7349 sawtooth_xo --read --write \
+   -k gridd \
+   -U 'http://splinterd-alpha:8085' \
+   --service-id my-grid-circuit::grid-scabbard-a
+   ```
+
+7. Grant the appropriate Pike namespace permissions.
+
+   ```
+   root@scabbard-cli-alpha:/# scabbard perm cad11d sawtooth_xo --read \
+   -k gridd \
+   -U 'http://splinterd-alpha:8085' \
+   --service-id my-grid-circuit::grid-scabbard-a
+   ```
+
+8. Open a new terminal and connect to the `scabbard-cli-beta` container.
+
+   ```
+   $ docker-compose -f examples/splinter/docker-compose.yaml run scabbard-cli-beta bash
+   root@scabbard-cli-beta:/#
+   ```
+
+9. List all uploaded smart contracts.
+
+   ```
+   root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id my-grid-circuit::grid-scabbard-b
+   NAME        VERSIONS OWNERS
+   grid_product 1.0      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
+   pike         0.1      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
+   sawtooth_xo  1.0      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
+   ```
+
+10. Display the xo smart contract.
+
+   ```
+   root@scabbard-cli-beta:/# scabbard contract show sawtooth_xo:1.0 -U 'http://splinterd-beta:8085' --service-id my-grid-circuit::grid-scabbard-b
+   sawtooth_xo 1.0
+     inputs:
+     - 00ec03
+     - cad11d
+     - 5b7349
+     outputs:
+     - 00ec03
+     - cad11d
+     - 5b7349
+     creator: <gridd-alpha public key>
    ```
 
 ## Demonstrate Circuit Scope

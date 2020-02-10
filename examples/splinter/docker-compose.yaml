@@ -151,6 +151,13 @@ services:
               --database-url postgres://grid:grid_example@db-alpha/grid
         "
 
+  scabbard-cli-alpha:
+    image: splintercommunity/scabbard-cli:experimental
+    container_name: scabbard-cli-alpha
+    hostname: scabbard-cli-alpha
+    volumes:
+      - gridd-alpha:/root/.splinter/keys
+
   splinterd-alpha:
     image: splintercommunity/splinterd:experimental
     container_name: splinterd-alpha
@@ -239,6 +246,13 @@ services:
           gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
               --database-url postgres://grid:grid_example@db-beta/grid
         "
+
+  scabbard-cli-beta:
+    image: splintercommunity/scabbard-cli:experimental
+    container_name: scabbard-cli-beta
+    hostname: scabbard-cli-beta
+    volumes:
+      - gridd-beta:/root/.splinter/keys
 
   splinterd-beta:
     image: splintercommunity/splinterd:experimental
