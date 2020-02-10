@@ -14,6 +14,8 @@
 
 use std::error::Error;
 
+use crate::circuit::store;
+
 #[derive(Debug)]
 pub enum ProposalRouteError {
     NotFound(String),
@@ -35,5 +37,35 @@ impl std::fmt::Display for ProposalRouteError {
             ProposalRouteError::NotFound(msg) => write!(f, "Proposal not found: {}", msg),
             ProposalRouteError::InternalError(msg) => write!(f, "Ran into internal error: {}", msg),
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum CircuitRouteError {
+    NotFound(String),
+    CircuitStoreError(store::CircuitStoreError),
+}
+
+impl Error for CircuitRouteError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            CircuitRouteError::NotFound(_) => None,
+            CircuitRouteError::CircuitStoreError(err) => Some(err),
+        }
+    }
+}
+
+impl std::fmt::Display for CircuitRouteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            CircuitRouteError::NotFound(msg) => write!(f, "Circuit not found: {}", msg),
+            CircuitRouteError::CircuitStoreError(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl From<store::CircuitStoreError> for CircuitRouteError {
+    fn from(err: store::CircuitStoreError) -> Self {
+        CircuitRouteError::CircuitStoreError(err)
     }
 }

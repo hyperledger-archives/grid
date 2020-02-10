@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "circuit-read")]
-pub(in super::super) mod circuits;
-#[cfg(feature = "circuit-read")]
-pub(in super::super) mod circuits_circuit_id;
-#[cfg(feature = "proposal-read")]
-pub(in super::super) mod proposals_read;
+use crate::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CircuitResponse {
+    pub id: String,
+    pub auth: AuthorizationType,
+    pub members: Vec<String>,
+    pub roster: Roster,
+    pub persistence: PersistenceType,
+    pub durability: DurabilityType,
+    pub routes: RouteType,
+    pub circuit_management_type: String,
+}

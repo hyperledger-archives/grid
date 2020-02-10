@@ -12,49 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
+use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
 
-use crate::actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
-use crate::circuit::{
-    store::CircuitStore, AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType,
-};
-use crate::futures::{future::IntoFuture, Future};
+use crate::circuit::store::CircuitStore;
 use crate::protocol;
 use crate::rest_api::{
-    paging::{get_response_paging_info, Paging, DEFAULT_LIMIT, DEFAULT_OFFSET},
+    paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET},
     Method, ProtocolVersionRangeGuard, Resource,
 };
 
-use super::CircuitRouteError;
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct CircuitResponse {
-    id: String,
-    auth: AuthorizationType,
-    members: Vec<String>,
-    roster: Roster,
-    persistence: PersistenceType,
-    durability: DurabilityType,
-    routes: RouteType,
-    circuit_management_type: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct ListCircuitsResponse {
-    data: Vec<CircuitResponse>,
-    paging: Paging,
-}
-
-pub fn make_fetch_circuit_resource<T: CircuitStore + 'static>(store: T) -> Resource {
-    Resource::build("/circuits/{circuit_id}")
-        .add_request_guard(ProtocolVersionRangeGuard::new(
-            protocol::ADMIN_FETCH_CIRCUIT_MIN,
-            protocol::ADMIN_PROTOCOL_VERSION,
-        ))
-        .add_method(Method::Get, move |r, _| {
-            fetch_circuit(r, web::Data::new(store.clone()))
-        })
-}
+use super::super::error::CircuitRouteError;
+use super::super::resources::circuits::{CircuitResponse, ListCircuitsResponse};
 
 pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resource {
     Resource::build("/circuits")
@@ -65,57 +35,6 @@ pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resou
         .add_method(Method::Get, move |r, _| {
             list_circuits(r, web::Data::new(store.clone()))
         })
-}
-
-fn fetch_circuit<T: CircuitStore + 'static>(
-    request: HttpRequest,
-    store: web::Data<T>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    let circuit_id = request
-        .match_info()
-        .get("circuit_id")
-        .unwrap_or("")
-        .to_string();
-    Box::new(
-        web::block(move || {
-            let circuit = store.circuit(&circuit_id)?;
-            if let Some(circuit) = circuit {
-                let circuit_response = CircuitResponse {
-                    id: circuit_id,
-                    auth: circuit.auth().clone(),
-                    members: circuit.members().to_vec(),
-                    roster: circuit.roster().clone(),
-                    persistence: circuit.persistence().clone(),
-                    durability: circuit.durability().clone(),
-                    routes: circuit.routes().clone(),
-                    circuit_management_type: circuit.circuit_management_type().to_string(),
-                };
-                Ok(circuit_response)
-            } else {
-                Err(CircuitRouteError::NotFound(format!(
-                    "Unable to find circuit: {}",
-                    circuit_id
-                )))
-            }
-        })
-        .then(|res| match res {
-            Ok(circuit) => Ok(HttpResponse::Ok().json(circuit)),
-            Err(err) => match err {
-                BlockingError::Error(err) => match err {
-                    CircuitRouteError::PoisonedLock => {
-                        error!("{}", err);
-                        Ok(HttpResponse::InternalServerError().into())
-                    }
-                    CircuitRouteError::CircuitStoreError(err) => {
-                        error!("{}", err);
-                        Ok(HttpResponse::InternalServerError().into())
-                    }
-                    CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
-                },
-                _ => Ok(HttpResponse::InternalServerError().into()),
-            },
-        }),
-    )
 }
 
 fn list_circuits<T: CircuitStore + 'static>(
@@ -256,10 +175,6 @@ fn query_list_circuits<T: CircuitStore + 'static>(
         }
         Err(err) => match err {
             BlockingError::Error(err) => match err {
-                CircuitRouteError::PoisonedLock => {
-                    error!("{}", err);
-                    Ok(HttpResponse::InternalServerError().into())
-                }
                 CircuitRouteError::CircuitStoreError(err) => {
                     error!("{}", err);
                     Ok(HttpResponse::InternalServerError().into())
@@ -283,51 +198,8 @@ mod tests {
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
         Roster, RouteType, ServiceDefinition, SplinterState,
     };
+    use crate::rest_api::paging::Paging;
     use crate::storage::get_storage;
-
-    #[test]
-    /// Tests a GET /circuit/{identity} request returns the expected circuit.
-    fn test_fetch_circuit_ok() {
-        let splinter_state = filled_splinter_state();
-
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/circuits/{circuit_id}")
-                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
-            ),
-        );
-
-        let req = test::TestRequest::get()
-            .uri(&format!("/circuits/{}", get_circuit_1().id))
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        let circuit: CircuitResponse = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
-        assert_eq!(circuit, get_circuit_1())
-    }
-
-    #[test]
-    /// Tests a GET /circuits/{identity} request returns NotFound when an invalid identity is
-    /// passed
-    fn test_fetch_circuit_not_found() {
-        let splinter_state = filled_splinter_state();
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/circuits/{circuit_id}")
-                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
-            ),
-        );
-
-        let req = test::TestRequest::get()
-            .uri("/circuit/Circuit-not-valid")
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
-
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-    }
 
     #[test]
     /// Tests a GET /circuits request with no filters returns the expected circuits.
