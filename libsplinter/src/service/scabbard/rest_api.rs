@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cmp::min;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use transact::protocol::batch::BatchPair;
 use transact::protos::FromBytes;
@@ -30,11 +28,10 @@ use crate::rest_api::{
 use crate::service::rest_api::ServiceEndpoint;
 
 use super::error::StateSubscriberError;
-use super::state::{BatchInfo, BatchStatus, StateChangeEvent, StateSubscriber};
+use super::state::{StateChangeEvent, StateSubscriber};
 use super::{Scabbard, SERVICE_TYPE};
 
 const DEFAULT_BATCH_STATUS_WAIT_SECS: u64 = 300;
-const BATCH_STATUS_RETRY_INTERVAL_MILLIS: u64 = 1000;
 
 struct WsStateSubscriber {
     sender: EventSender<StateChangeEvent>,
@@ -247,7 +244,7 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 };
 
             let ids = if let Some(ids) = query.get("ids") {
-                ids.split(',').map(String::from).collect::<Vec<_>>()
+                ids.split(',').map(String::from).collect()
             } else {
                 return Box::new(
                     HttpResponse::BadRequest()
@@ -272,33 +269,28 @@ pub fn make_get_batch_status_endpoint() -> ServiceEndpoint {
                 })
                 .map(Duration::from_secs);
 
-            let timeout = match wait {
-                Some(wait_time) => match Instant::now().checked_add(wait_time) {
-                    Some(t) => Some(t),
-                    None => {
-                        error!("Failed to determine wait time");
-                        return Box::new(
-                            HttpResponse::InternalServerError()
-                                .json(json!({
-                                    "message": "An internal error occurred"
-                                }))
-                                .into_future(),
-                        );
-                    }
-                },
-                None => None,
-            };
-
-            match get_statuses(&scabbard, &ids, timeout) {
-                Ok(statuses) => Box::new(HttpResponse::Ok().json(statuses).into_future()),
+            let batch_info_iter = match scabbard.get_batch_info(ids, wait) {
+                Ok(iter) => iter,
                 Err(err) => {
-                    error!("Failed to get batch statuses: {}", err);
-                    Box::new(
+                    error!("Failed to get batch statuses iterator: {}", err);
+                    return Box::new(
                         HttpResponse::InternalServerError()
                             .json(json!({ "message": "An internal error occurred" }))
                             .into_future(),
-                    )
+                    );
                 }
+            };
+
+            match batch_info_iter.collect::<Result<Vec<_>, _>>() {
+                Ok(batch_infos) => Box::new(HttpResponse::Ok().json(batch_infos).into_future()),
+                Err(err) => Box::new(
+                    HttpResponse::RequestTimeout()
+                        .json(json!({
+                            "message":
+                                format!("Failed to get batch statuses before timeout: {}", err)
+                        }))
+                        .into_future(),
+                ),
             }
         }),
         request_guards: vec![Box::new(ProtocolVersionRangeGuard::new(
@@ -433,33 +425,4 @@ pub fn make_get_state_with_prefix_endpoint() -> ServiceEndpoint {
             protocol::SCABBARD_PROTOCOL_VERSION,
         ))],
     }
-}
-
-fn get_statuses(
-    scabbard: &Scabbard,
-    ids: &[String],
-    timeout: Option<Instant>,
-) -> Result<Vec<BatchInfo>, String> {
-    let batch_infos = scabbard
-        .get_batch_info(ids)
-        .map_err(|err| err.to_string())?;
-
-    if batch_infos
-        .iter()
-        .any(|info| info.status == BatchStatus::Pending)
-    {
-        if let Some(timeout) = timeout {
-            let now = Instant::now();
-            if now < timeout {
-                let normal_wait = Duration::from_millis(BATCH_STATUS_RETRY_INTERVAL_MILLIS);
-                let time_remaining = timeout - now;
-                sleep(min(normal_wait, time_remaining));
-                return get_statuses(scabbard, ids, Some(timeout));
-            } else {
-                return Err("batch(es) still pending after wait time expired".into());
-            }
-        }
-    }
-
-    Ok(batch_infos)
 }
