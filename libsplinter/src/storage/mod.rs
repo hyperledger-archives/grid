@@ -64,9 +64,14 @@ pub fn get_storage<'a, T: Sized + Serialize + DeserializeOwned + 'a, F: Fn() -> 
     default: F,
 ) -> Result<Box<dyn Storage<S = T> + 'a>, String> {
     if location.ends_with(".yaml") {
-        Ok(Box::new(YamlStorage::new(location, default).unwrap()) as Box<dyn Storage<S = T>>)
+        Ok(Box::new(
+            YamlStorage::new(location, default).map_err(|err| format!("{}: {}", err, location))?,
+        ) as Box<dyn Storage<S = T>>)
     } else if location == "memory" {
-        Ok(Box::new(MemStorage::new(default).unwrap()) as Box<dyn Storage<S = T>>)
+        Ok(
+            Box::new(MemStorage::new(default).map_err(|err| format!("{}: {}", err, location))?)
+                as Box<dyn Storage<S = T>>,
+        )
     } else {
         Err(format!("Unknown state location type: {}", location))
     }
