@@ -21,15 +21,10 @@ use toml::de::Error as TomlError;
 
 #[derive(Debug)]
 pub enum ConfigError {
-    ReadError(io::Error),
+    ReadError { file: String, err: io::Error },
     TomlParseError(TomlError),
     InvalidArgument(clap::Error),
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(e: io::Error) -> Self {
-        ConfigError::ReadError(e)
-    }
+    MissingValue(String),
 }
 
 impl From<TomlError> for ConfigError {
@@ -47,9 +42,10 @@ impl From<clap::Error> for ConfigError {
 impl Error for ConfigError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ConfigError::ReadError(source) => Some(source),
+            ConfigError::ReadError { err, .. } => Some(err),
             ConfigError::TomlParseError(source) => Some(source),
             ConfigError::InvalidArgument(source) => Some(source),
+            ConfigError::MissingValue(_) => None,
         }
     }
 }
@@ -57,11 +53,12 @@ impl Error for ConfigError {
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConfigError::ReadError(source) => source.fmt(f),
+            ConfigError::ReadError { file, err } => write!(f, "{}: {}", err, file),
             ConfigError::TomlParseError(source) => write!(f, "Invalid File Format: {}", source),
             ConfigError::InvalidArgument(source) => {
                 write!(f, "Unable to parse command line argument: {}", source)
             }
+            ConfigError::MissingValue(msg) => write!(f, "Configuration value must be set: {}", msg),
         }
     }
 }

@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::path::Path;
-
-use crate::config::{PartialConfig, PartialConfigBuilder};
+use crate::config::{ConfigSource, PartialConfig, PartialConfigBuilder};
 
 const DEFAULT_CERT_DIR: &str = "/etc/splinter/certs/";
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -51,27 +49,17 @@ pub struct DefaultConfig {
     state_dir: Option<String>,
 }
 
-fn get_cert_file_path(cert_dir: &str, file: &str) -> Option<String> {
-    let cert_dir_path = Path::new(cert_dir);
-    let cert_file_path = cert_dir_path.join(file);
-    if !cert_file_path.is_file() {
-        debug!("Configuration file not found: {}{}", cert_dir, file);
-    }
-    cert_file_path.to_str().map(ToOwned::to_owned)
-}
-
 impl DefaultConfig {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         DefaultConfig {
             storage: Some(String::from("yaml")),
             transport: Some(String::from("raw")),
             cert_dir: Some(String::from(DEFAULT_CERT_DIR)),
-            ca_certs: get_cert_file_path(DEFAULT_CERT_DIR, CA_PEM),
-            client_cert: get_cert_file_path(DEFAULT_CERT_DIR, CLIENT_CERT),
-            client_key: get_cert_file_path(DEFAULT_CERT_DIR, CLIENT_KEY),
-            server_cert: get_cert_file_path(DEFAULT_CERT_DIR, SERVER_CERT),
-            server_key: get_cert_file_path(DEFAULT_CERT_DIR, SERVER_KEY),
+            ca_certs: Some(String::from(CA_PEM)),
+            client_cert: Some(String::from(CLIENT_CERT)),
+            client_key: Some(String::from(CLIENT_KEY)),
+            server_cert: Some(String::from(SERVER_CERT)),
+            server_key: Some(String::from(SERVER_KEY)),
             service_endpoint: Some(String::from("127.0.0.1:8043")),
             network_endpoint: Some(String::from("127.0.0.1:8044")),
             peers: Some(vec![]),
@@ -79,8 +67,8 @@ impl DefaultConfig {
             bind: Some(String::from("127.0.0.1:8080")),
             #[cfg(feature = "database")]
             database: Some(String::from("127.0.0.1:5432")),
-            registry_backend: None,
-            registry_file: None,
+            registry_backend: Some(String::from("FILE")),
+            registry_file: Some(String::from("/etc/splinter/nodes.yaml")),
             heartbeat_interval: Some(HEARTBEAT_DEFAULT),
             admin_service_coordinator_timeout: Some(
                 DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
@@ -92,7 +80,7 @@ impl DefaultConfig {
 
 impl PartialConfigBuilder for DefaultConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::default()
+        let partial_config = PartialConfig::new(ConfigSource::Default)
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -131,26 +119,11 @@ mod tests {
         assert_eq!(config.storage(), Some(String::from("yaml")));
         assert_eq!(config.transport(), Some(String::from("raw")));
         assert_eq!(config.cert_dir(), Some(String::from(DEFAULT_CERT_DIR)));
-        assert_eq!(
-            config.ca_certs(),
-            Some(format!("{}{}", DEFAULT_CERT_DIR, CA_PEM))
-        );
-        assert_eq!(
-            config.client_cert(),
-            Some(format!("{}{}", DEFAULT_CERT_DIR, CLIENT_CERT))
-        );
-        assert_eq!(
-            config.client_key(),
-            Some(format!("{}{}", DEFAULT_CERT_DIR, CLIENT_KEY))
-        );
-        assert_eq!(
-            config.server_cert(),
-            Some(format!("{}{}", DEFAULT_CERT_DIR, SERVER_CERT))
-        );
-        assert_eq!(
-            config.server_key(),
-            Some(format!("{}{}", DEFAULT_CERT_DIR, SERVER_KEY))
-        );
+        assert_eq!(config.ca_certs(), Some(String::from(CA_PEM)));
+        assert_eq!(config.client_cert(), Some(String::from(CLIENT_CERT)));
+        assert_eq!(config.client_key(), Some(String::from(CLIENT_KEY)));
+        assert_eq!(config.server_cert(), Some(String::from(SERVER_CERT)));
+        assert_eq!(config.server_key(), Some(String::from(SERVER_KEY)));
         assert_eq!(
             config.service_endpoint(),
             Some(String::from("127.0.0.1:8043"))
@@ -164,8 +137,11 @@ mod tests {
         assert_eq!(config.bind(), Some(String::from("127.0.0.1:8080")));
         #[cfg(feature = "database")]
         assert_eq!(config.database(), Some(String::from("127.0.0.1:5432")));
-        assert_eq!(config.registry_backend(), None);
-        assert_eq!(config.registry_file(), None);
+        assert_eq!(config.registry_backend(), Some(String::from("FILE")));
+        assert_eq!(
+            config.registry_file(),
+            Some(String::from("/etc/splinter/nodes.yaml"))
+        );
         assert_eq!(config.heartbeat_interval(), Some(HEARTBEAT_DEFAULT));
         assert_eq!(
             config.admin_service_coordinator_timeout(),
@@ -174,6 +150,8 @@ mod tests {
             ))
         );
         assert_eq!(config.state_dir(), Some(String::from(DEFAULT_STATE_DIR)));
+        // Assert the source is correctly identified for this PartialConfig object.
+        assert_eq!(config.source(), ConfigSource::Default);
     }
 
     #[test]

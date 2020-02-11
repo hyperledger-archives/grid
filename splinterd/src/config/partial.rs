@@ -14,11 +14,22 @@
 
 use std::time::Duration;
 
+/// ConfigSource displays the source of configuration values, used to identify which of the various
+/// config modules were used to create a particular PartialConfig object.
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub enum ConfigSource {
+    Toml { file: String },
+    Default,
+    Environment,
+    CommandLine,
+}
+
 /// PartialConfig is an intermediate representation of configuration values, used when combining
 /// several sources. As such, all values of the PartialConfig are options as it is not necessary
 /// to provide all values from a single source.
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PartialConfig {
+    source: ConfigSource,
     storage: Option<String>,
     transport: Option<String>,
     cert_dir: Option<String>,
@@ -42,6 +53,36 @@ pub struct PartialConfig {
 }
 
 impl PartialConfig {
+    pub fn new(source: ConfigSource) -> Self {
+        PartialConfig {
+            source,
+            storage: None,
+            transport: None,
+            cert_dir: None,
+            ca_certs: None,
+            client_cert: None,
+            client_key: None,
+            server_cert: None,
+            server_key: None,
+            service_endpoint: None,
+            network_endpoint: None,
+            peers: None,
+            node_id: None,
+            bind: None,
+            #[cfg(feature = "database")]
+            database: None,
+            registry_backend: None,
+            registry_file: None,
+            heartbeat_interval: None,
+            admin_service_coordinator_timeout: None,
+            state_dir: None,
+        }
+    }
+
+    pub fn source(&self) -> ConfigSource {
+        self.source.clone()
+    }
+
     pub fn storage(&self) -> Option<String> {
         self.storage.clone()
     }
@@ -117,6 +158,18 @@ impl PartialConfig {
 
     pub fn state_dir(&self) -> Option<String> {
         self.state_dir.clone()
+    }
+
+    #[cfg(not(feature = "config-toml"))]
+    /// Adds the `source` value to the PartialConfig object.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` -  The method used to collect or the location of the configuration values.
+    ///
+    pub fn with_source(mut self, source: ConfigSource) -> Self {
+        self.source = source;
+        self
     }
 
     /// Adds a `storage` value to the PartialConfig object.

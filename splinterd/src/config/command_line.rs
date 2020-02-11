@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::config::{ConfigError, PartialConfig, PartialConfigBuilder};
+use crate::config::{ConfigError, ConfigSource, PartialConfig, PartialConfigBuilder};
 use clap::{ArgMatches, ErrorKind};
 
 /// Holds configuration values from command line arguments, represented by clap ArgMatches.
@@ -48,7 +48,6 @@ fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
 }
 
 impl CommandLineConfig {
-    #[allow(dead_code)]
     pub fn new(matches: ArgMatches) -> Result<Self, ConfigError> {
         Ok(CommandLineConfig {
             storage: matches.value_of("storage").map(String::from),
@@ -77,7 +76,7 @@ impl CommandLineConfig {
 
 impl PartialConfigBuilder for CommandLineConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::default()
+        let partial_config = PartialConfig::new(ConfigSource::CommandLine)
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -210,11 +209,13 @@ mod tests {
         ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);
-        // Create a new CommandLiine object from the arg matches.
+        // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.");
-        // Build a PartialConfig from the TomlConfig object created.
+        // Build a PartialConfig from the CommandLineConfig object created.
         let built_config = command_config.build();
+        // Assert the source is correctly identified for this PartialConfig object.
+        assert_eq!(built_config.source(), ConfigSource::CommandLine);
         // Compare the generated PartialConfig object against the expected values.
         assert_config_values(built_config);
     }

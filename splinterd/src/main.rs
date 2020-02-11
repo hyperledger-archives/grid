@@ -31,9 +31,11 @@ use log::Record;
 
 #[cfg(feature = "generate-certs")]
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
-use crate::config::{ConfigError, PartialConfig};
-#[cfg(feature = "config-toml")]
-use crate::config::{PartialConfigBuilder, TomlConfig};
+use crate::config::ConfigError;
+use crate::config::{
+    CommandLineConfig, Config, ConfigBuilder, DefaultConfig, EnvVarConfig, PartialConfigBuilder,
+    TomlConfig,
+};
 use crate::daemon::{SplinterDaemonBuilder, StartError};
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
@@ -49,66 +51,36 @@ use std::env;
 use std::error::Error;
 use std::fmt;
 use std::fs;
-#[cfg(not(feature = "config-toml"))]
-use std::fs::File;
 use std::io;
 use std::path::Path;
 use std::thread;
-use std::time::Duration;
 
-const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
-const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
+fn create_config(toml_path: Option<&str>, matches: ArgMatches) -> Result<Config, UserError> {
+    let mut builder = ConfigBuilder::new();
 
-const DEFAULT_CERT_DIR: &str = "/etc/splinter/certs/";
-const CERT_DIR_ENV: &str = "SPLINTER_CERT_DIR";
+    let command_line_config = CommandLineConfig::new(matches)
+        .map_err(UserError::ConfigError)?
+        .build();
+    builder = builder.with_partial_config(command_line_config);
 
-const CLIENT_CERT: &str = "client.crt";
-const CLIENT_KEY: &str = "private/client.key";
-const SERVER_CERT: &str = "server.crt";
-const SERVER_KEY: &str = "private/server.key";
-const CA_PEM: &str = "ca.pem";
-
-const HEARTBEAT_DEFAULT: u64 = 30;
-
-const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
-
-#[cfg(not(feature = "config-toml"))]
-fn load_toml_config(config_file_path: &str) -> PartialConfig {
-    match File::open(config_file_path) {
-        Ok(f) => config::from_file(f),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            debug!("Configuration file not found: {}", config_file_path);
-            Ok(PartialConfig::default())
-        }
-        Err(err) => Err(ConfigError::from(err)),
+    if let Some(file) = toml_path {
+        let toml_string = fs::read_to_string(file).map_err(|err| ConfigError::ReadError {
+            file: String::from(file),
+            err,
+        })?;
+        let toml_config = TomlConfig::new(toml_string, String::from(file))
+            .map_err(UserError::ConfigError)?
+            .build();
+        builder = builder.with_partial_config(toml_config);
     }
-    .unwrap_or_else(|err| {
-        warn!(
-            "Unable to load configuration file {}: {}",
-            config_file_path, err
-        );
-        PartialConfig::default()
-    })
-}
 
-#[cfg(feature = "config-toml")]
-fn load_toml_config(config_file_path: &str) -> PartialConfig {
-    match fs::read_to_string(config_file_path) {
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            debug!("Configuration file not found: {}", config_file_path);
-            PartialConfig::default()
-        }
-        result => match result.map_err(ConfigError::from).and_then(TomlConfig::new) {
-            Ok(toml_config) => toml_config.build(),
-            Err(err) => {
-                warn!(
-                    "Unable to load configuration file {}: {}",
-                    config_file_path, err
-                );
-                PartialConfig::default()
-            }
-        },
-    }
+    let env_config = EnvVarConfig::new().build();
+    let default_config = DefaultConfig::new().build();
+    builder
+        .with_partial_config(env_config)
+        .with_partial_config(default_config)
+        .build()
+        .map_err(|e| UserError::MissingArgument(e.to_string()))
 }
 
 // format for logs
@@ -246,62 +218,35 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     debug!("Loading configuration file");
 
     // get provided config file or search default location
-    let config_file_path = matches
+    let config_file = matches
         .value_of("config")
         .unwrap_or("/etc/splinter/splinterd.toml");
 
-    let config = load_toml_config(config_file_path);
-
-    let node_id = matches
-        .value_of("node_id")
-        .map(String::from)
-        .or_else(|| config.node_id())
-        .ok_or_else(|| UserError::MissingArgument("node_id".into()))?;
-
-    let storage_type = matches
-        .value_of("storage")
-        .map(String::from)
-        .or_else(|| config.storage())
-        .unwrap_or_else(|| String::from("yaml"));
-
-    let transport_type = matches
-        .value_of("transport")
-        .map(String::from)
-        .or_else(|| config.transport())
-        .unwrap_or_else(|| String::from("raw"));
-
-    let service_endpoint = matches
-        .value_of("service_endpoint")
-        .map(String::from)
-        .or_else(|| config.service_endpoint())
-        .unwrap_or_else(|| "127.0.0.1:8043".to_string());
-
-    let network_endpoint = matches
-        .value_of("network_endpoint")
-        .map(String::from)
-        .or_else(|| config.network_endpoint())
-        .unwrap_or_else(|| "127.0.0.1:8044".to_string());
-
-    let initial_peers = matches
-        .values_of("peers")
-        .map(|values| values.map(String::from).collect::<Vec<String>>())
-        .or_else(|| config.peers())
-        .unwrap_or_default();
-
-    let heartbeat_interval = value_t!(matches.value_of("heartbeat_interval"), u64)
-        .unwrap_or_else(|_| config.heartbeat_interval().unwrap_or(HEARTBEAT_DEFAULT));
-
-    let (transport, transport_log) = get_transport(&transport_type, &matches, &config)?;
-
-    let location = {
-        if let Ok(s) = env::var(STATE_DIR_ENV) {
-            s
-        } else if let Some(s) = config.state_dir() {
-            s
-        } else {
-            DEFAULT_STATE_DIR.to_string()
-        }
+    let config_file_path = if Path::new(&config_file).is_file() {
+        Some(config_file)
+    } else {
+        None
     };
+
+    let final_config = create_config(config_file_path, matches.clone())?;
+
+    let node_id = final_config.node_id();
+
+    let storage_type = final_config.storage();
+
+    let transport_type = final_config.transport();
+
+    let service_endpoint = final_config.service_endpoint();
+
+    let network_endpoint = final_config.network_endpoint();
+
+    let initial_peers = final_config.peers();
+
+    let heartbeat_interval = final_config.heartbeat_interval();
+
+    let (transport, insecure) = get_transport(&transport_type, &matches, &final_config)?;
+
+    let location = final_config.state_dir();
 
     let storage_location = match &storage_type as &str {
         "yaml" => format!("{}{}", location, "circuits.yaml"),
@@ -325,95 +270,45 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         }
     };
 
-    let rest_api_endpoint = matches
-        .value_of("bind")
-        .map(String::from)
-        .or_else(|| config.bind())
-        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
+    let rest_api_endpoint = final_config.bind();
 
     #[cfg(feature = "database")]
-    let db_url = matches
-        .value_of("database")
-        .map(String::from)
-        .or_else(|| config.database());
+    let db_url = final_config.database();
 
     #[cfg(feature = "biome")]
     let biome_enabled: bool = matches.is_present("biome_enabled");
 
-    let registry_backend = matches
-        .value_of("registry_backend")
-        .map(String::from)
-        .or_else(|| config.registry_backend());
+    let registry_backend = final_config.registry_backend();
 
-    let registry_file = matches
-        .value_of("registry_file")
-        .map(String::from)
-        .or_else(|| config.registry_file());
-
+    #[cfg(feature = "experimental")]
     // Allow unused mut for experimental features
     #[allow(unused_mut)]
     let mut feature_fields = "".to_string();
 
-    #[cfg(feature = "database")]
-    {
-        feature_fields = format!("{}, db_url: {:?}", feature_fields, db_url);
-    }
+    let admin_service_coordinator_timeout = final_config.admin_service_coordinator_timeout();
 
     #[cfg(feature = "biome")]
     {
-        feature_fields = format!("{}, biome_enabled: {}", feature_fields, biome_enabled);
+        debug!("{}, biome_enabled: {}", feature_fields, biome_enabled);
     }
 
-    let admin_service_coordinator_timeout = matches
-        .value_of("admin_service_coordinator_timeout")
-        .map(&str::parse::<u64>)
-        .transpose()
-        .map_err(|err| {
-            UserError::InvalidArgument(format!(
-                "admin service coordinator timeout is not a valid integer: {}",
-                err
-            ))
-        })?
-        .map(Duration::from_millis)
-        .or_else(|| config.admin_service_coordinator_timeout())
-        .unwrap_or_else(|| Duration::from_millis(DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS));
-
-    debug!(
-        "Configuration: {{ storage_type: {}, storage_location: {}, key_registry_location: {}, {}, \
-         service_endpoint: {}, network_endpoint: {}, initial_peers: {:?}, node_id: {}, \
-         rest_api_endpoint: {}, registry_backend: {:?}, registry_file: {:?}, \
-         heartbeat_interval: {}{} }}",
-        storage_type,
-        storage_location,
-        key_registry_location,
-        transport_log,
-        service_endpoint,
-        network_endpoint,
-        initial_peers,
-        node_id,
-        rest_api_endpoint,
-        registry_backend,
-        registry_file,
-        heartbeat_interval,
-        feature_fields,
-    );
+    final_config.log_as_debug(insecure);
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
         .with_key_registry_location(key_registry_location)
-        .with_network_endpoint(network_endpoint)
-        .with_service_endpoint(service_endpoint)
-        .with_initial_peers(initial_peers)
-        .with_node_id(node_id)
-        .with_rest_api_endpoint(rest_api_endpoint)
-        .with_registry_backend(registry_backend)
-        .with_storage_type(storage_type)
+        .with_network_endpoint(String::from(network_endpoint))
+        .with_service_endpoint(String::from(service_endpoint))
+        .with_initial_peers(initial_peers.to_vec())
+        .with_node_id(String::from(node_id))
+        .with_rest_api_endpoint(String::from(rest_api_endpoint))
+        .with_storage_type(String::from(storage_type))
         .with_heartbeat_interval(heartbeat_interval)
         .with_admin_service_coordinator_timeout(admin_service_coordinator_timeout);
 
     #[cfg(feature = "database")]
     {
-        daemon_builder = daemon_builder.with_db_url(db_url);
+        daemon_builder = daemon_builder.with_db_url(Some(String::from(db_url)));
     }
 
     #[cfg(feature = "biome")]
@@ -421,8 +316,12 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         daemon_builder = daemon_builder.enable_biome(biome_enabled);
     }
 
-    if let Some(registry_file) = registry_file {
-        daemon_builder = daemon_builder.with_registry_file(registry_file);
+    if Path::new(&final_config.registry_file()).is_file() && registry_backend == "FILE" {
+        daemon_builder = daemon_builder
+            .with_registry_backend(Some(String::from(registry_backend)))
+            .with_registry_file(String::from(final_config.registry_file()));
+    } else {
+        daemon_builder = daemon_builder.with_registry_backend(None);
     }
 
     let mut node = daemon_builder.build().map_err(|err| {
@@ -435,8 +334,8 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 fn get_transport(
     transport_type: &str,
     matches: &clap::ArgMatches,
-    config: &PartialConfig,
-) -> Result<(Box<dyn Transport + Send>, String), GetTransportError> {
+    config: &Config,
+) -> Result<(Box<dyn Transport + Send>, bool), GetTransportError> {
     match transport_type {
         "tls" => {
             #[cfg(feature = "generate-certs")]
@@ -486,12 +385,6 @@ fn get_transport(
                         &server_key.private_key_to_pem_pkcs8()?,
                     )?;
 
-                    warn!("Starting TlsTransport in insecure mode");
-
-                    let log_value = "ca_certs: generated, client_cert: generated, client_key: \
-                                     generated, server_cert: generated, server_key: generated"
-                        .to_string();
-
                     // Start transport in insecure mode, do not verify the certs if auto generated,
                     // as the ca will not match
                     let transport = TlsTransport::new(
@@ -502,164 +395,75 @@ fn get_transport(
                         server_cert,
                     )?;
 
-                    return Ok((Box::new(transport), log_value));
+                    return Ok((Box::new(transport), true));
                 }
             }
 
-            let cert_location = {
-                if let Ok(s) = env::var(CERT_DIR_ENV) {
-                    s
-                } else {
-                    DEFAULT_CERT_DIR.to_string()
-                }
-            };
-
-            let cert_dir = matches
-                .value_of("cert_dir")
-                .map(String::from)
-                .or_else(|| config.cert_dir())
-                .unwrap_or(cert_location);
-
-            let client_cert = matches
-                .value_of("client_cert")
-                .map(String::from)
-                .or_else(|| config.client_cert())
-                .or_else(|| {
-                    let cert_dir_path = Path::new(&cert_dir);
-                    let client_cert = cert_dir_path.join(CLIENT_CERT);
-                    if !client_cert.is_file() {
-                        error!("Client cert file not found: {:?}", client_cert);
-                        return None;
-                    }
-                    let client_cert: Option<String> = client_cert.to_str().map(ToOwned::to_owned);
+            let client_cert = config.client_cert();
+            if !Path::new(&client_cert).is_file() {
+                return Err(GetTransportError::CertError(format!(
+                    "Must provide a valid client certificate: {}",
                     client_cert
-                })
-                .ok_or_else(|| {
-                    GetTransportError::CertError("must provide a valid client certificate".into())
-                })?;
+                )));
+            }
 
-            let server_cert = matches
-                .value_of("server_cert")
-                .map(String::from)
-                .or_else(|| config.server_cert())
-                .or_else(|| {
-                    let cert_dir_path = Path::new(&cert_dir);
-                    let server_cert = cert_dir_path.join(SERVER_CERT);
-                    if !server_cert.is_file() {
-                        error!("Server cert file not found: {:?}", server_cert);
-                        return None;
-                    }
-                    let server_cert: Option<String> = server_cert.to_str().map(ToOwned::to_owned);
+            let server_cert = config.server_cert();
+            if !Path::new(&server_cert).is_file() {
+                return Err(GetTransportError::CertError(format!(
+                    "Must provide a valid server certificate: {}",
                     server_cert
-                })
-                .ok_or_else(|| {
-                    GetTransportError::CertError("must provide a valid server certificate".into())
-                })?;
+                )));
+            }
 
-            let server_key_file = matches
-                .value_of("server_key")
-                .map(String::from)
-                .or_else(|| config.server_key())
-                .or_else(|| {
-                    let cert_dir_path = Path::new(&cert_dir);
-                    let server_key = cert_dir_path.join(SERVER_KEY);
-                    if !server_key.is_file() {
-                        error!("Server key file not found: {:?}", server_key);
-                        return None;
-                    }
-                    let server_key: Option<String> = server_key.to_str().map(ToOwned::to_owned);
-                    server_key
-                })
-                .ok_or_else(|| {
-                    GetTransportError::CertError("must provide a valid server key path".into())
-                })?;
+            let server_key_file = config.server_key();
+            if !Path::new(&server_key_file).is_file() {
+                return Err(GetTransportError::CertError(format!(
+                    "Must provide a valid server key path: {}",
+                    server_key_file
+                )));
+            }
 
-            let client_key_file = matches
-                .value_of("client_key")
-                .map(String::from)
-                .or_else(|| config.client_key())
-                .or_else(|| {
-                    let cert_dir_path = Path::new(&cert_dir);
-                    let client_key = cert_dir_path.join(CLIENT_KEY);
-                    if !client_key.is_file() {
-                        error!("Client key file not found: {:?}", client_key);
-                        return None;
-                    }
-                    let client_key: Option<String> = client_key.to_str().map(ToOwned::to_owned);
-                    client_key
-                })
-                .ok_or_else(|| {
-                    GetTransportError::CertError("must provide a valid client key path".into())
-                })?;
+            let client_key_file = config.client_key();
+            if !Path::new(&client_key_file).is_file() {
+                return Err(GetTransportError::CertError(format!(
+                    "Must provide a valid client key path: {}",
+                    client_key_file
+                )));
+            }
 
             let ca_file = {
                 if matches.is_present("insecure") {
-                    warn!("Starting TlsTransport in insecure mode");
                     None
                 } else {
-                    let ca_file = matches
-                        .value_of("ca_file")
-                        .map(String::from)
-                        .or_else(|| config.ca_certs())
-                        .or_else(|| {
-                            let cert_dir_path = Path::new(&cert_dir);
-                            let ca_path = cert_dir_path.join(CA_PEM);
-                            if !ca_path.is_file() {
-                                error!("CA file not found: {:?}", ca_path);
-                                return None;
-                            }
-                            let ca_file: Option<String> =
-                                cert_dir_path.join(CA_PEM).to_str().map(ToOwned::to_owned);
+                    let ca_file = config.ca_certs();
+                    if !Path::new(&ca_file).is_file() {
+                        return Err(GetTransportError::CertError(format!(
+                            "Must provide a valid file containing ca certs: {}",
                             ca_file
-                        })
-                        .ok_or_else(|| {
-                            GetTransportError::CertError(
-                                "must provide a valid file containing ca certs".into(),
-                            )
-                        })?;
-                    Some(ca_file)
-                }
-            };
-
-            let ca_file_log = {
-                if let Some(ca_file) = &ca_file {
+                        )));
+                    }
                     match fs::canonicalize(&ca_file)?.to_str() {
-                        Some(ca_path) => ca_path.to_string(),
+                        Some(ca_path) => Some(ca_path.to_string()),
                         None => {
                             return Err(GetTransportError::CertError(
                                 "CA path is not a valid path".to_string(),
                             ))
                         }
                     }
-                } else {
-                    "insecure".to_string()
                 }
             };
 
-            let log_value = format!(
-                "transport_type: tls, ca_certs: {:?}, client_cert: {:?}, \
-                 client_key: {:?}, server_cert: {:?}, server_key: {:?}",
-                ca_file_log,
-                fs::canonicalize(client_cert.clone())?,
-                fs::canonicalize(client_key_file.clone())?,
-                fs::canonicalize(server_cert.clone())?,
-                fs::canonicalize(server_key_file.clone())?,
-            );
-
             let transport = TlsTransport::new(
-                ca_file,
-                client_key_file,
-                client_cert,
-                server_key_file,
-                server_cert,
+                ca_file.map(String::from),
+                String::from(client_key_file),
+                String::from(client_cert),
+                String::from(server_key_file),
+                String::from(server_cert),
             )?;
 
-            Ok((Box::new(transport), log_value))
+            Ok((Box::new(transport), false))
         }
-        "raw" => Ok((
-            Box::new(RawTransport::default()),
-            "transport_type: raw".to_string(),
-        )),
+        "raw" => Ok((Box::new(RawTransport::default()), true)),
         _ => Err(GetTransportError::NotSupportedError(format!(
             "Transport type {} is not supported",
             transport_type
@@ -672,7 +476,7 @@ pub enum UserError {
     TransportError(GetTransportError),
     MissingArgument(String),
     InvalidArgument(String),
-
+    ConfigError(ConfigError),
     DaemonError {
         context: String,
         source: Option<Box<dyn Error>>,
@@ -701,6 +505,7 @@ impl Error for UserError {
             UserError::TransportError(err) => Some(err),
             UserError::MissingArgument(_) => None,
             UserError::InvalidArgument(_) => None,
+            UserError::ConfigError(err) => Some(err),
             UserError::DaemonError { source, .. } => {
                 if let Some(ref err) = source {
                     Some(&**err)
@@ -718,6 +523,9 @@ impl fmt::Display for UserError {
             UserError::TransportError(err) => write!(f, "unable to get transport: {}", err),
             UserError::MissingArgument(msg) => write!(f, "missing required argument: {}", msg),
             UserError::InvalidArgument(msg) => write!(f, "required argument is invalid: {}", msg),
+            UserError::ConfigError(msg) => {
+                write!(f, "error occurred building config object: {}", msg)
+            }
             UserError::DaemonError { context, source } => {
                 if let Some(ref err) = source {
                     write!(f, "{}: {}", context, err)
@@ -738,6 +546,12 @@ impl From<StartError> for UserError {
 impl From<GetTransportError> for UserError {
     fn from(error: GetTransportError) -> Self {
         UserError::TransportError(error)
+    }
+}
+
+impl From<ConfigError> for UserError {
+    fn from(error: ConfigError) -> Self {
+        UserError::ConfigError(error)
     }
 }
 
