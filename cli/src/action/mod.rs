@@ -34,6 +34,9 @@ use libc;
 
 use super::error::CliError;
 
+#[cfg(any(feature = "health", feature = "circuit"))]
+const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:8085";
+
 /// A CLI Command Action.
 ///
 /// An Action is a single subcommand for CLI operations.

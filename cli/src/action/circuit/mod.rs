@@ -25,6 +25,7 @@ use clap::ArgMatches;
 use crate::error::CliError;
 
 use super::Action;
+use crate::action::DEFAULT_ENDPOINT;
 use builder::CreateCircuitMessageBuilder;
 
 pub struct CircuitCreateAction;
@@ -32,7 +33,7 @@ pub struct CircuitCreateAction;
 impl Action for CircuitCreateAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-        let url = args.value_of("url").unwrap_or("http://localhost:8085");
+        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
         let key = args.value_of("key").unwrap_or("./splinter.priv");
 
         let mut builder = CreateCircuitMessageBuilder::new();
@@ -295,7 +296,7 @@ pub struct CircuitVoteAction;
 impl Action for CircuitVoteAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-        let url = args.value_of("url").unwrap_or("http://localhost:8085");
+        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
         let key = args.value_of("private_key_file").unwrap_or("splinter");
         let circuit_id = match args.value_of("circuit_id") {
             Some(circuit_id) => circuit_id,
@@ -352,7 +353,7 @@ impl Action for CircuitListAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
-        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
 
         let filter = args.value_of("member");
 
@@ -397,7 +398,7 @@ impl Action for CircuitShowAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
-        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
         let circuit_id = args
             .value_of("circuit")
             .ok_or_else(|| CliError::ActionError("Circuit name must be provided".to_string()))?;
@@ -474,7 +475,7 @@ impl Action for CircuitProposalsAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
-        let url = args.value_of("url").unwrap_or("http://127.0.0.1:8080");
+        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
 
         let filter = args.value_of("management_type");
 
