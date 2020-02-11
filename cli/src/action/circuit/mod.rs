@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod api;
+mod builder;
 pub mod defaults;
 mod payload;
 
@@ -20,11 +21,11 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::ArgMatches;
-use splinter::admin::messages::CreateCircuit;
 
 use crate::error::CliError;
 
 use super::Action;
+use builder::CreateCircuitMessageBuilder;
 
 pub struct CircuitCreateAction;
 
@@ -32,39 +33,235 @@ impl Action for CircuitCreateAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
         let url = args.value_of("url").unwrap_or("http://localhost:8085");
-        let key = args
-            .value_of("private_key_file")
-            .unwrap_or("./splinter.priv");
-        let path = match args.value_of("path") {
-            Some(path) => path,
-            None => return Err(CliError::ActionError("Path is required".into())),
+        let key = args.value_of("key").unwrap_or("./splinter.priv");
+
+        let mut builder = CreateCircuitMessageBuilder::new();
+
+        let nodes = match args.values_of("node") {
+            Some(nodes) => nodes,
+            None => return Err(CliError::ActionError("Node is required".into())),
         };
 
-        create_circuit_proposal(url, key, path)
+        for node_argument in nodes {
+            let (node, endpoint) = parse_node_argument(node_argument)?;
+            if let Some(endpoint) = endpoint {
+                builder.add_node(&node, &endpoint)?;
+            } else {
+                #[cfg(feature = "node-alias")]
+                builder.add_node_by_alias(&node)?;
+
+                #[cfg(not(feature = "node-alias"))]
+                return Err(CliError::ActionError(format!(
+                    "Invalid node argument: {}",
+                    node_argument
+                )));
+            }
+        }
+
+        let services = match args.values_of("service") {
+            Some(services) => services,
+            None => return Err(CliError::ActionError("Service is required".into())),
+        };
+
+        for service in services {
+            let (service_id, allowed_nodes) = parse_service(service)?;
+            builder.add_service(&service_id, &allowed_nodes);
+        }
+
+        if let Some(service_arguments) = args.values_of("service_argument") {
+            for service_argument in service_arguments {
+                let (service_id_match, argument) = parse_service_argument(service_argument)?;
+                builder.apply_service_arguments(&service_id_match, &argument)?;
+            }
+        }
+
+        if let Some(service_peer_group) = args.values_of("service_peer_group") {
+            for peer_group in service_peer_group {
+                let group = parse_service_peer_group(peer_group);
+                builder.apply_peer_services(&group)?;
+            }
+        }
+
+        #[cfg(feature = "circuit-auth-type")]
+        #[allow(clippy::single_match)]
+        match args.value_of("authorization_type") {
+            Some(auth_type) => builder.set_authorization_type(auth_type)?,
+            None => (),
+        }
+
+        if let Some(management_type) = args.value_of("management_type") {
+            builder.set_management_type(management_type);
+        }
+
+        if let Some(mut application_metadata) = args.values_of("metadata") {
+            let encoding = args.value_of("metadata_encoding").unwrap_or("string");
+            match encoding {
+                "string" => {
+                    if application_metadata.len() > 1 {
+                        return Err(CliError::ActionError(
+                            "Multiple metadata values with encoding set to string is not allowed"
+                                .into(),
+                        ));
+                    }
+                    let metadata = application_metadata.next().unwrap_or_default().as_bytes();
+                    builder.set_application_metadata(metadata);
+                }
+                "json" => {
+                    let mut json_string = "{".to_string();
+                    for metadata in application_metadata {
+                        let values = parse_application_metadata_json(metadata)?;
+                        json_string = format!("{}{},", json_string, values);
+                    }
+                    json_string.pop();
+                    json_string.push('}');
+
+                    builder.set_application_metadata(&json_string.as_bytes());
+                }
+                _ => {
+                    return Err(CliError::ActionError(format!(
+                        "Metadata encoding {} is not supported",
+                        encoding
+                    )))
+                }
+            }
+        }
+
+        if let Some(service_types) = args.values_of("service_type") {
+            for service_type_arg in service_types {
+                let (service_id_match, service_type) =
+                    parse_service_type_argument(service_type_arg)?;
+                builder.apply_service_type(&service_id_match, &service_type);
+            }
+        }
+
+        let create_circuit = builder.build()?;
+
+        let client = api::SplinterRestClient::new(url);
+        let requester_node = client.fetch_node_id()?;
+        let private_key_hex = read_private_key(key)?;
+
+        let signed_payload =
+            payload::make_signed_payload(&requester_node, &private_key_hex, create_circuit)?;
+
+        client.submit_admin_payload(signed_payload)?;
+
+        Ok(())
     }
 }
 
-fn create_circuit_proposal(
-    url: &str,
-    private_key_file: &str,
-    proposal_path: &str,
-) -> Result<(), CliError> {
-    let client = api::SplinterRestClient::new(url);
-    let requester_node = client.fetch_node_id()?;
-    let private_key_hex = read_private_key(private_key_file)?;
+fn parse_node_argument(node_argument: &str) -> Result<(String, Option<String>), CliError> {
+    let mut iter = node_argument.split("::");
 
-    let proposal_file = File::open(proposal_path).map_err(|err| {
-        CliError::EnvironmentError(format!("Unable to open {}: {}", proposal_path, err))
+    let node_id = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!("Node argument is not valid {}", node_argument))
+        })?
+        .to_string();
+
+    if let Some(endpoint) = iter.next() {
+        Ok((node_id, Some(endpoint.to_string())))
+    } else {
+        Ok((node_argument.to_string(), None))
+    }
+}
+
+fn parse_service(service: &str) -> Result<(String, Vec<String>), CliError> {
+    let mut iter = service.split("::");
+
+    let service_id = iter
+        .next()
+        .ok_or_else(|| CliError::ActionError(format!("service_type not valid {}", service)))?
+        .to_string();
+
+    let allowed_nodes = iter
+        .next()
+        .ok_or_else(|| CliError::ActionError(format!("allowed nodes not valid {}", service)))?
+        .split(',')
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    Ok((service_id, allowed_nodes))
+}
+
+fn parse_service_peer_group(peer_group: &str) -> Vec<&str> {
+    peer_group.split(',').collect()
+}
+
+fn parse_application_metadata_json(metadata: &str) -> Result<String, CliError> {
+    let mut iter = metadata.split('=');
+    let key = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!(
+                "Application metadata cannot be parsed to json {}",
+                metadata
+            ))
+        })?
+        .to_string();
+
+    let mut value = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!(
+                "Application metadata cannot be parsed to json {}",
+                metadata
+            ))
+        })?
+        .to_string();
+
+    if !value.contains('[') && !value.contains('{') {
+        value = format!("\"{}\"", value);
+    }
+
+    Ok(format!("\"{}\":{}", key, value))
+}
+
+fn parse_service_argument(service_argument: &str) -> Result<(String, (String, String)), CliError> {
+    let mut iter = service_argument.split("::");
+
+    let service_id = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!("service_argument not valid {}", service_argument))
+        })?
+        .to_string();
+
+    let arguments = iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!("service_argument not valid {}", service_argument))
+        })?
+        .to_string();
+
+    let mut argument_iter = arguments.split('=');
+    let key = argument_iter
+        .next()
+        .ok_or_else(|| {
+            CliError::ActionError(format!("service_argument not valid {}", service_argument))
+        })?
+        .to_string();
+
+    let value = argument_iter.next().ok_or_else(|| {
+        CliError::ActionError(format!("service_argument not valid {}", service_argument))
     })?;
 
-    let create_request: CreateCircuit = serde_yaml::from_reader(proposal_file).map_err(|err| {
-        CliError::EnvironmentError(format!("Unable to parse {}: {}", proposal_path, err))
-    })?;
+    Ok((service_id, (key, format!("{:?}", vec![value]))))
+}
 
-    let signed_payload =
-        payload::make_signed_payload(&requester_node, &private_key_hex, create_request)?;
+fn parse_service_type_argument(service_type: &str) -> Result<(String, String), CliError> {
+    let mut iter = service_type.split("::");
 
-    client.submit_admin_payload(signed_payload)
+    let service_id = iter
+        .next()
+        .ok_or_else(|| CliError::ActionError(format!("service_type not valid {}", service_type)))?
+        .to_string();
+
+    let service_type = iter
+        .next()
+        .ok_or_else(|| CliError::ActionError(format!("service_type not valid {}", service_type)))?
+        .to_string();
+    Ok((service_id, service_type))
 }
 
 /// Reads a private key from the given file name.

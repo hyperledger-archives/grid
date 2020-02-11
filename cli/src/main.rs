@@ -19,7 +19,6 @@ extern crate diesel;
 
 mod action;
 mod error;
-#[cfg(feature = "circuit")]
 mod store;
 
 use clap::clap_app;
@@ -169,35 +168,113 @@ fn run() -> Result<(), CliError> {
     {
         use clap::{AppSettings, Arg, SubCommand};
 
+        let create_circuit = SubCommand::with_name("create")
+            .about("Propose that a new circuit is created")
+            .arg(
+                Arg::with_name("url")
+                    .short("U")
+                    .long("url")
+                    .takes_value(true)
+                    .help("URL of Splinter Daemon"),
+            )
+            .arg(
+                Arg::with_name("key")
+                    .value_name("private-key-file")
+                    .short("k")
+                    .long("key")
+                    .takes_value(true)
+                    .help("Path to private key file"),
+            )
+            .arg(
+                Arg::with_name("node")
+                    .long("node")
+                    .takes_value(true)
+                    .required(true)
+                    .multiple(true)
+                    .long_help(
+                        "Node that are part of the circuit. \
+                         Format: <node_id>::<endpoint>. \
+                         Endpoint is optional if node alias has been set.",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service")
+                    .long("service")
+                    .takes_value(true)
+                    .multiple(true)
+                    .min_values(2)
+                    .required(true)
+                    .long_help(
+                        "Service ID and allowed node. \
+                         Format <service-id>::<allowed_nodes>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service_argument")
+                    .long("service-arg")
+                    .takes_value(true)
+                    .multiple(true)
+                    .long_help(
+                        "Special arguments to be passed to the service. \
+                         Format <service_id>::<key>=<value>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("service_peer_group")
+                    .long("service-peer-group")
+                    .takes_value(true)
+                    .multiple(true)
+                    .help("List of peer services"),
+            )
+            .arg(
+                Arg::with_name("management_type")
+                    .long("management")
+                    .takes_value(true)
+                    .help("Management type for the circuit"),
+            )
+            .arg(
+                Arg::with_name("service_type")
+                    .long("service-type")
+                    .takes_value(true)
+                    .multiple(true)
+                    .long_help(
+                        "Service type for a service. \
+                         Format <service-id>::<service_type>",
+                    ),
+            )
+            .arg(
+                Arg::with_name("metadata")
+                    .long("metadata")
+                    .value_name("application_metadata")
+                    .takes_value(true)
+                    .multiple(true)
+                    .help("Application metadata for the circuit proposal"),
+            )
+            .arg(
+                Arg::with_name("metadata_encoding")
+                    .long("metadata-encoding")
+                    .takes_value(true)
+                    .possible_values(&["json", "string"])
+                    .default_value("string")
+                    .requires("metadata")
+                    .help("Set the encoding for the application metadata"),
+            );
+
+        #[cfg(feature = "circuit-auth-type")]
+        let create_circuit = create_circuit.arg(
+            Arg::with_name("authorization_type")
+                .long("auth-type")
+                .possible_values(&["trust"])
+                .default_value("trust")
+                .takes_value(true)
+                .help("Authorization type for the circuit"),
+        );
+
         app = app.subcommand(
             SubCommand::with_name("circuit")
                 .about("Provides circuit management functionality")
                 .setting(AppSettings::SubcommandRequiredElseHelp)
-                .subcommand(
-                    SubCommand::with_name("create")
-                        .about("Propose that a new circuit is created")
-                        .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL of Splinter Daemon"),
-                        )
-                        .arg(
-                            Arg::with_name("private_key_file")
-                                .value_name("private-key-file")
-                                .short("k")
-                                .long("key")
-                                .takes_value(true)
-                                .help("Path to private key file"),
-                        )
-                        .arg(
-                            Arg::with_name("path")
-                                .takes_value(true)
-                                .required(true)
-                                .help("Path to a yaml file that defines the circuit proposal"),
-                        ),
-                )
+                .subcommand(create_circuit)
                 .subcommand(
                     SubCommand::with_name("vote")
                         .about("Vote on a new circuit proposal")
@@ -323,6 +400,7 @@ fn run() -> Result<(), CliError> {
                 .subcommand(
                     SubCommand::with_name("default")
                         .about("Manage default values for circuit creation")
+                        .setting(AppSettings::SubcommandRequiredElseHelp)
                         .subcommand(
                             SubCommand::with_name("set")
                                 .about("Set a default value")
@@ -371,6 +449,11 @@ fn run() -> Result<(), CliError> {
                         ),
                 ),
         );
+    }
+
+    #[cfg(feature = "node-alias")]
+    {
+        use clap::{AppSettings, Arg, SubCommand};
 
         app = app.subcommand(
             SubCommand::with_name("node")
@@ -387,6 +470,12 @@ fn run() -> Result<(), CliError> {
                                     Arg::with_name("alias")
                                         .takes_value(true)
                                         .help("Alias for the node"),
+                                )
+                                .arg(
+                                    Arg::with_name("node_id")
+                                        .takes_value(true)
+                                        .value_name("node-id")
+                                        .help("ID of the node"),
                                 )
                                 .arg(
                                     Arg::with_name("endpoint")
@@ -480,7 +569,7 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use action::{circuit, node};
+        use action::circuit;
         subcommands = subcommands.with_command(
             "circuit",
             SubcommandActions::new()
@@ -498,6 +587,11 @@ fn run() -> Result<(), CliError> {
                         .with_command("show", circuit::defaults::ShowDefaultValueAction),
                 ),
         );
+    }
+
+    #[cfg(feature = "node-alias")]
+    {
+        use action::node;
         subcommands = subcommands.with_command(
             "node",
             SubcommandActions::new().with_command(
