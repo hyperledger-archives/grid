@@ -17,6 +17,7 @@ use reqwest;
 use serde_json::Value;
 
 use super::Action;
+use crate::action::DEFAULT_ENDPOINT;
 use crate::error::CliError;
 
 pub struct StatusAction;
@@ -24,9 +25,9 @@ pub struct StatusAction;
 impl Action for StatusAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let url = if let Some(args) = arg_matches {
-            args.value_of("url").unwrap_or("http://localhost:8085")
+            args.value_of("url").unwrap_or(DEFAULT_ENDPOINT)
         } else {
-            "http://localhost:8085"
+            DEFAULT_ENDPOINT
         };
 
         let status: Value = reqwest::blocking::get(&format!("{}/health/status", url))
