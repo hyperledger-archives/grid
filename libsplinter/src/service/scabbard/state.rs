@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, RwLock};
-use std::{fmt, path::Path, time::SystemTime};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{
+    mpsc::{channel, Receiver, RecvTimeoutError, Sender},
+    Arc, RwLock,
+};
+use std::time::{Duration, Instant, SystemTime};
+use std::{fmt, path::Path};
 
 use protobuf::Message;
 use sawtooth::store::lmdb::LmdbOrderedStore;
@@ -48,10 +52,10 @@ use crate::protos::scabbard::{Setting, Setting_Entry};
 use super::error::{ScabbardStateError, StateSubscriberError};
 
 const EXECUTION_TIMEOUT: u64 = 300; // five minutes
-
 const CURRENT_STATE_ROOT_INDEX: &str = "current_state_root";
-
 const ITER_CACHE_SIZE: usize = 64;
+const COMPLETED_BATCH_INFO_ITER_RETRY_MILLIS: u64 = 100;
+const DEFAULT_BATCH_HISTORY_SIZE: usize = 100;
 
 #[cfg(feature = "scabbard-get-state")]
 pub type StateIter = dyn Iterator<Item = Result<(String, Vec<u8>), ScabbardStateError>>;
@@ -219,7 +223,7 @@ impl ScabbardState {
 
         // Get the results and shutdown the scheduler
         let batch_result = result_rx
-            .recv_timeout(std::time::Duration::from_secs(EXECUTION_TIMEOUT))
+            .recv_timeout(Duration::from_secs(EXECUTION_TIMEOUT))
             .map_err(|_| ScabbardStateError("failed to receive result in reasonable time".into()))?
             .ok_or_else(|| ScabbardStateError("no result returned from executor".into()))?;
 
@@ -581,6 +585,7 @@ impl BatchInfo {
 pub struct BatchHistory {
     history: HashMap<String, BatchInfo>,
     limit: usize,
+    batch_subscribers: Vec<(HashSet<String>, Sender<BatchInfo>)>,
 }
 
 impl BatchHistory {
@@ -608,36 +613,136 @@ impl BatchHistory {
     }
 
     fn update_batch_status(&mut self, signature: &str, status: BatchStatus) {
-        match self.history.get_mut(signature) {
-            Some(ref mut batch) if batch.status == BatchStatus::Pending => {
-                batch.set_status(status);
+        let updated_batch_info = match self.history.get_mut(signature) {
+            Some(info) if info.status == BatchStatus::Pending => {
+                info.set_status(status);
+                Some(info.clone())
             }
-            _ => (),
+            Some(_) => {
+                debug!(
+                    "Received status update for batch that was not pending: {:?}",
+                    signature
+                );
+                None
+            }
+            None => {
+                debug!(
+                    "Received status update for batch that is not in the history: {:?}",
+                    signature
+                );
+                None
+            }
         };
+
+        if let Some(info) = updated_batch_info {
+            match info.status {
+                BatchStatus::Invalid(_) | BatchStatus::Valid(_) => {
+                    self.send_completed_batch_info_to_subscribers(info)
+                }
+                _ => {}
+            }
+        }
     }
 
     fn commit(&mut self, signature: &str) {
-        let info = if let Some(info) = self.history.get_mut(signature) {
-            info
-        } else {
-            return;
-        };
-
-        if let BatchStatus::Valid(t) = info.status.clone() {
-            info.set_status(BatchStatus::Committed(t));
+        match self.history.get_mut(signature) {
+            Some(info) => match info.status.clone() {
+                BatchStatus::Valid(txns) => {
+                    info.set_status(BatchStatus::Committed(txns));
+                }
+                _ => {
+                    error!(
+                        "Received commit for batch that was not valid: {:?}",
+                        signature
+                    );
+                }
+            },
+            None => {
+                debug!(
+                    "Received commit for batch that is not in the history: {:?}",
+                    signature
+                );
+            }
         }
     }
 
-    pub fn get_batch_info(&self, signature: &str) -> BatchInfo {
-        if let Some(info) = self.history.get(signature) {
-            info.clone()
-        } else {
-            BatchInfo {
-                id: signature.to_string(),
-                status: BatchStatus::Unknown,
-                timestamp: SystemTime::now(),
-            }
+    pub fn get_batch_info(
+        &mut self,
+        ids: HashSet<String>,
+        wait: Option<Duration>,
+    ) -> Result<BatchInfoIter, ScabbardStateError> {
+        match wait {
+            Some(timeout) => self.completed_batch_info_iter(ids, timeout),
+            None => Ok(self.no_wait_batch_info_iter(&ids)),
         }
+    }
+
+    fn no_wait_batch_info_iter(&self, ids: &HashSet<String>) -> BatchInfoIter {
+        Box::new(
+            ids.iter()
+                .map(|id| {
+                    Ok(if let Some(info) = self.history.get(id) {
+                        info.clone()
+                    } else {
+                        BatchInfo {
+                            id: id.to_string(),
+                            status: BatchStatus::Unknown,
+                            timestamp: SystemTime::now(),
+                        }
+                    })
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
+    }
+
+    fn completed_batch_info_iter(
+        &mut self,
+        mut ids: HashSet<String>,
+        timeout: Duration,
+    ) -> Result<BatchInfoIter, ScabbardStateError> {
+        // Get batches that are already completed
+        let iter = self
+            .no_wait_batch_info_iter(&ids)
+            .filter_map(|res| {
+                let info = res.ok()?;
+                match info.status {
+                    BatchStatus::Invalid(_) | BatchStatus::Committed(_) => {
+                        ids.remove(&info.id);
+                        Some(Ok(info))
+                    }
+                    _ => None,
+                }
+            })
+            .collect::<Vec<_>>()
+            .into_iter();
+
+        let (sender, receiver) = channel();
+
+        self.batch_subscribers.push((ids.clone(), sender));
+
+        Ok(Box::new(
+            iter.chain(ChannelBatchInfoIter::new(receiver, timeout, ids)?),
+        ))
+    }
+
+    fn send_completed_batch_info_to_subscribers(&mut self, info: BatchInfo) {
+        self.batch_subscribers = self
+            .batch_subscribers
+            .drain(..)
+            .filter_map(|(mut pending_signatures, sender)| {
+                if pending_signatures.remove(&info.id) && sender.send(info.clone()).is_err() {
+                    // Receiver has been dropped
+                    return None;
+                }
+
+                if pending_signatures.is_empty() {
+                    None
+                } else {
+                    Some((pending_signatures, sender))
+                }
+            })
+            .collect();
     }
 }
 
@@ -645,7 +750,65 @@ impl Default for BatchHistory {
     fn default() -> Self {
         Self {
             history: HashMap::new(),
-            limit: 100,
+            limit: DEFAULT_BATCH_HISTORY_SIZE,
+            batch_subscribers: vec![],
+        }
+    }
+}
+
+pub type BatchInfoIter = Box<dyn Iterator<Item = Result<BatchInfo, String>>>;
+
+pub struct ChannelBatchInfoIter {
+    receiver: Receiver<BatchInfo>,
+    retry_interval: Duration,
+    timeout: Instant,
+    pending_ids: HashSet<String>,
+}
+
+impl ChannelBatchInfoIter {
+    fn new(
+        receiver: Receiver<BatchInfo>,
+        timeout: Duration,
+        pending_ids: HashSet<String>,
+    ) -> Result<Self, ScabbardStateError> {
+        let timeout = Instant::now()
+            .checked_add(timeout)
+            .ok_or_else(|| ScabbardStateError("failed to schedule timeout".into()))?;
+
+        Ok(Self {
+            receiver,
+            retry_interval: Duration::from_millis(COMPLETED_BATCH_INFO_ITER_RETRY_MILLIS),
+            timeout,
+            pending_ids,
+        })
+    }
+}
+
+impl Iterator for ChannelBatchInfoIter {
+    type Item = Result<BatchInfo, String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            // Check if all pending IDs have been returned
+            if self.pending_ids.is_empty() {
+                return None;
+            }
+            // Check if the timeout has expired
+            if Instant::now() >= self.timeout {
+                return Some(Err(format!(
+                    "timeout expired while waiting for incompleted batches: {:?}",
+                    self.pending_ids
+                )));
+            }
+            // Check for the next BatchInfo
+            match self.receiver.recv_timeout(self.retry_interval) {
+                Ok(batch_info) => {
+                    self.pending_ids.remove(&batch_info.id);
+                    return Some(Ok(batch_info));
+                }
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => return None,
+            }
         }
     }
 }

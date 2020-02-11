@@ -53,7 +53,7 @@ pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
 #[cfg(feature = "scabbard-get-state")]
 use state::StateIter;
-pub use state::{BatchInfo, BatchStatus, Events, StateChange, StateChangeEvent};
+pub use state::{BatchInfo, BatchInfoIter, BatchStatus, Events, StateChange, StateChangeEvent};
 use state::{ScabbardState, StateSubscriber};
 
 const SERVICE_TYPE: &str = "scabbard";
@@ -184,13 +184,23 @@ impl Scabbard {
         }
     }
 
-    pub fn get_batch_info(&self, ids: &[String]) -> Result<Vec<BatchInfo>, ScabbardError> {
+    /// Get the `BatchInfo` for each specified batch.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids`: List of batch IDs to get info on
+    /// * `wait`: If `Some`, wait up to the given time for all requested batches to complete
+    ///   (statuses will be either `Committed` or `Invalid`); if the timeout expires, an `Err`
+    ///   result will be given by the returned iterator. If `None`, return the `BatchInfo`s to
+    ///   complete.
+    ///
+    pub fn get_batch_info(
+        &self,
+        ids: HashSet<String>,
+        wait: Option<Duration>,
+    ) -> Result<BatchInfoIter, ScabbardError> {
         let mut state = self.state.lock().map_err(|_| ScabbardError::LockPoisoned)?;
-
-        Ok(ids
-            .iter()
-            .map(|signature| state.batch_history().get_batch_info(signature))
-            .collect::<Vec<_>>())
+        Ok(state.batch_history().get_batch_info(ids, wait)?)
     }
 
     pub fn get_events_since(&self, event_id: Option<String>) -> Result<Events, ScabbardError> {

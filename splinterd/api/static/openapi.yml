@@ -631,6 +631,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        408:
+          description: Batches did not complete before specified wait
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         500:
           description: Internal service error
           content:
