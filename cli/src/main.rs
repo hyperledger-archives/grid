@@ -255,9 +255,8 @@ fn run() -> Result<(), CliError> {
                     .long("metadata-encoding")
                     .takes_value(true)
                     .possible_values(&["json", "string"])
-                    .default_value("string")
                     .requires("metadata")
-                    .help("Set the encoding for the application metadata"),
+                    .help("Set the encoding for the application metadata. Default value: string"),
             );
 
         #[cfg(feature = "circuit-auth-type")]
