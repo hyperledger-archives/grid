@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "config-toml")]
 use crate::config::PartialConfigBuilder;
 use crate::config::{ConfigError, ConfigSource, PartialConfig};
 
-#[cfg(feature = "config-toml")]
 use serde_derive::Deserialize;
 
 use toml;
 
-#[cfg(feature = "config-toml")]
 /// Holds configuration values defined in a toml file.
 #[derive(Deserialize, Default, Debug)]
 pub struct TomlConfig {
@@ -47,7 +44,6 @@ pub struct TomlConfig {
     admin_service_coordinator_timeout: Option<u64>,
 }
 
-#[cfg(feature = "config-toml")]
 impl TomlConfig {
     pub fn new(toml: String, toml_path: String) -> Result<TomlConfig, ConfigError> {
         let mut toml_config = toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?;
@@ -56,7 +52,6 @@ impl TomlConfig {
     }
 }
 
-#[cfg(feature = "config-toml")]
 impl PartialConfigBuilder for TomlConfig {
     fn build(self) -> PartialConfig {
         let source = match self.source {
@@ -170,7 +165,6 @@ mod tests {
         assert_eq!(config.admin_service_coordinator_timeout(), None);
     }
 
-    #[cfg(feature = "config-toml")]
     #[test]
     /// This test verifies that a PartialConfig object, constructed from the TomlConfig module,
     /// contains the correct values using the following steps:

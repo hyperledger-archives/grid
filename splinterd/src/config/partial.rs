@@ -53,6 +53,7 @@ pub struct PartialConfig {
 }
 
 impl PartialConfig {
+    #[allow(dead_code)]
     pub fn new(source: ConfigSource) -> Self {
         PartialConfig {
             source,
@@ -160,6 +161,7 @@ impl PartialConfig {
         self.state_dir.clone()
     }
 
+    #[allow(dead_code)]
     /// Adds a `storage` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -171,6 +173,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `transport` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -182,6 +185,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `cert_dir` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -193,6 +197,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `ca_certs` value to the  PartialConfig object.
     ///
     /// # Arguments
@@ -204,6 +209,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `client_cert` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -216,6 +222,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `client_key` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -227,6 +234,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `server_cert` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -239,6 +247,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `server_key` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -250,6 +259,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `service_endpoint` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -261,6 +271,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `network_endpoint` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -272,6 +283,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `peers` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -283,6 +295,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `node_id` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -294,6 +307,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `bind` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -318,6 +332,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `registry_backend` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -329,6 +344,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `registry_file` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -340,6 +356,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `heartbeat_interval` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -351,6 +368,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `timeout` value to the PartialConfig object.
     ///
     /// # Arguments
@@ -366,6 +384,7 @@ impl PartialConfig {
         self
     }
 
+    #[allow(dead_code)]
     /// Adds a `state_dir` value to the PartialConfig object.
     ///
     /// # Arguments

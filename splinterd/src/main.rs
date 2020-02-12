@@ -16,6 +16,7 @@
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature = "config-command-line")]
 #[macro_use]
 extern crate clap;
 
@@ -31,11 +32,17 @@ use log::Record;
 
 #[cfg(feature = "generate-certs")]
 use crate::certs::{make_ca_cert, make_ca_signed_cert, write_file, CertError};
-use crate::config::ConfigError;
-use crate::config::{
-    CommandLineConfig, Config, ConfigBuilder, DefaultConfig, EnvVarConfig, PartialConfigBuilder,
-    TomlConfig,
-};
+#[cfg(feature = "config-command-line")]
+use crate::config::CommandLineConfig;
+#[cfg(feature = "config-default")]
+use crate::config::DefaultConfig;
+#[cfg(feature = "config-env-var")]
+use crate::config::EnvVarConfig;
+#[cfg(feature = "default")]
+use crate::config::PartialConfigBuilder;
+#[cfg(feature = "config-toml")]
+use crate::config::TomlConfig;
+use crate::config::{Config, ConfigBuilder, ConfigError};
 use crate::daemon::{SplinterDaemonBuilder, StartError};
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
@@ -55,30 +62,46 @@ use std::io;
 use std::path::Path;
 use std::thread;
 
-fn create_config(toml_path: Option<&str>, matches: ArgMatches) -> Result<Config, UserError> {
+fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Config, UserError> {
+    #[cfg(feature = "default")]
     let mut builder = ConfigBuilder::new();
+    #[cfg(not(feature = "default"))]
+    let builder = ConfigBuilder::new();
 
-    let command_line_config = CommandLineConfig::new(matches)
-        .map_err(UserError::ConfigError)?
-        .build();
-    builder = builder.with_partial_config(command_line_config);
-
-    if let Some(file) = toml_path {
-        let toml_string = fs::read_to_string(file).map_err(|err| ConfigError::ReadError {
-            file: String::from(file),
-            err,
-        })?;
-        let toml_config = TomlConfig::new(toml_string, String::from(file))
+    #[cfg(feature = "config-command-line")]
+    {
+        let command_line_config = CommandLineConfig::new(_matches)
             .map_err(UserError::ConfigError)?
             .build();
-        builder = builder.with_partial_config(toml_config);
+        builder = builder.with_partial_config(command_line_config);
     }
 
-    let env_config = EnvVarConfig::new().build();
-    let default_config = DefaultConfig::new().build();
+    #[cfg(feature = "config-toml")]
+    {
+        if let Some(file) = _toml_path {
+            let toml_string = fs::read_to_string(file).map_err(|err| ConfigError::ReadError {
+                file: String::from(file),
+                err,
+            })?;
+            let toml_config = TomlConfig::new(toml_string, String::from(file))
+                .map_err(UserError::ConfigError)?
+                .build();
+            builder = builder.with_partial_config(toml_config);
+        }
+    }
+
+    #[cfg(feature = "config-env-var")]
+    {
+        let env_config = EnvVarConfig::new().build();
+        builder = builder.with_partial_config(env_config);
+    }
+
+    #[cfg(feature = "config-default")]
+    {
+        let default_config = DefaultConfig::new().build();
+        builder = builder.with_partial_config(default_config);
+    }
     builder
-        .with_partial_config(env_config)
-        .with_partial_config(default_config)
         .build()
         .map_err(|e| UserError::MissingArgument(e.to_string()))
 }
