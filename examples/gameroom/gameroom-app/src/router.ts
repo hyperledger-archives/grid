@@ -60,6 +60,7 @@ const router = new Router({
           component: () => import('@/views/DashboardHome.vue'),
           meta: {
             requiresAuth: true,
+            loadingMessage: 'Loading dashboard',
           },
         },
         {
@@ -68,6 +69,7 @@ const router = new Router({
           component: () => import('@/views/Invitations.vue'),
           meta: {
             requiresAuth: true,
+            loadingMessage: 'Loading invitations',
           },
         },
         {
@@ -76,6 +78,7 @@ const router = new Router({
           component: () => import('@/views/GameroomDetail.vue'),
           meta: {
             requiresAuth: true,
+            loadingMessage: 'Loading gameroom',
           },
         },
         {
@@ -97,6 +100,7 @@ const router = new Router({
 });
 
 router.beforeEach((to, from, next) => {
+  store.commit('pageLoading/setPageLoading', to.meta.loadingMessage);
   if (to.meta.requiresAuth) {
     if (!store.getters['user/isLoggedIn']) {
       return next({ name: 'login' });
@@ -105,6 +109,10 @@ router.beforeEach((to, from, next) => {
     }
   }
   next();
+});
+
+router.afterEach((to, from) => {
+  store.commit('pageLoading/setPageLoadingComplete');
 });
 
 export default router;

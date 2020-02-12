@@ -88,15 +88,8 @@ export default class GameDetail extends Vue {
   }
 }
 
-function setPageLoading(loading: boolean) {
-  store.commit('pageLoading/setPageLoading', loading);
-}
-
 function setSelectedGameroom(to: any, next: any) {
-  setPageLoading(true);
-
   store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
-      setPageLoading(false);
       next({ name: 'not-found' });
   });
 }
@@ -105,9 +98,6 @@ function listGames(to: any, next: any) {
   store.dispatch('games/listGames', to.params.id).then(() => {
       const selectedGame = store.getters['games/getGames'].find(
         (game: Game) => game.game_name_hash === to.params.gameNameHash);
-
-      setPageLoading(false);
-
       if (selectedGame) {
         next();
       } else {

@@ -63,8 +63,10 @@ limitations under the License.
     <gameroom-sidebar
       v-on:show-new-gameroom-modal="showNewGameroomModal()"
       class="sidebar" />
-    <router-view v-on:error="setError" v-on:success="setSuccess" class="dashboard-view" />
-    <div class='spinner loading-spinner'  :class="[{'loading': loading}]"  ></div>
+    <div v-if="isPageLoading" class='dashboard-view'>
+      <loading :message="pageLoadingMessage" />
+    </div>
+    <router-view v-else v-on:error="setError" v-on:success="setSuccess" class="dashboard-view" />
   </div>
 </template>
 
@@ -78,6 +80,7 @@ import gamerooms from '@/store/modules/gamerooms';
 import nodes from '@/store/modules/nodes';
 import { Node } from '@/store/models';
 import Modal from '@/components/Modal.vue';
+import Loading from '@/components/Loading.vue';
 
 interface NewGameroom {
   alias: string;
@@ -85,10 +88,14 @@ interface NewGameroom {
 }
 
 @Component({
-  components: { Modal, Multiselect, GameroomSidebar, Toast },
+  components: { Modal, Multiselect, GameroomSidebar, Toast, Loading },
   computed: {
     ...mapGetters('nodes', {
       nodeList: 'nodeList',
+    }),
+    ...mapGetters('pageLoading', {
+      isPageLoading: 'isPageLoading',
+      pageLoadingMessage: 'pageLoadingMessage',
     }),
   },
 })
@@ -115,10 +122,6 @@ export default class Dashboard extends Vue {
       return true;
     }
     return false;
-  }
-
-  get loading() {
-    return this.$store.getters['pageLoading/isPageLoading'];
   }
 
   setError(message: string) {

@@ -14,22 +14,31 @@
 
 export interface PageLoading {
   pageLoading: boolean;
+  pageLoadingMessage: string;
 }
 
 const pageLoading = {
   pageLoading: false,
-
+  pageLoadingMessage: '',
 };
 
 const getters = {
   isPageLoading(state: PageLoading): boolean {
     return state.pageLoading;
   },
+  pageLoadingMessage(state: PageLoading): string {
+    return state.pageLoadingMessage;
+  },
 };
 
 const mutations = {
-  setPageLoading(state: PageLoading, loading: boolean) {
-    state.pageLoading = loading;
+  setPageLoading(state: PageLoading, message: string = 'Loading') {
+    state.pageLoading = true;
+    state.pageLoadingMessage = message;
+  },
+  setPageLoadingComplete(state: PageLoading) {
+    state.pageLoading = false;
+    state.pageLoadingMessage = '';
   },
 };
 

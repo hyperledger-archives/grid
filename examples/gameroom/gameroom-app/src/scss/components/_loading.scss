@@ -12,18 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-.dashboard-container {
+.loading {
   display: flex;
-  height: 100vh;
-  width: 100%;
-
-  .sidebar {
-    flex: 0 0 auto;
-  }
-
-  .dashboard-view {
-    display: flex;
-    flex: 1 1 auto;
-    overflow: hidden;
-  }
+  flex-direction: column;
+  margin: auto;
+  align-items: center;
 }
