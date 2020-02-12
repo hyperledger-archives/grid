@@ -160,18 +160,6 @@ impl PartialConfig {
         self.state_dir.clone()
     }
 
-    #[cfg(not(feature = "config-toml"))]
-    /// Adds the `source` value to the PartialConfig object.
-    ///
-    /// # Arguments
-    ///
-    /// * `source` -  The method used to collect or the location of the configuration values.
-    ///
-    pub fn with_source(mut self, source: ConfigSource) -> Self {
-        self.source = source;
-        self
-    }
-
     /// Adds a `storage` value to the PartialConfig object.
     ///
     /// # Arguments

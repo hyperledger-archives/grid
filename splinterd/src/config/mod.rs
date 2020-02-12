@@ -31,8 +31,6 @@ pub use crate::config::command_line::CommandLineConfig;
 pub use crate::config::default::DefaultConfig;
 #[cfg(feature = "config-env-var")]
 pub use crate::config::env::EnvVarConfig;
-#[cfg(not(feature = "config-toml"))]
-pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
 pub use builder::{ConfigBuilder, PartialConfigBuilder};

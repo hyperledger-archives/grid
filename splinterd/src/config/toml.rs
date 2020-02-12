@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(not(feature = "config-toml"))]
-use std::fs::File;
-#[cfg(not(feature = "config-toml"))]
-use std::io::Read;
-
 #[cfg(feature = "config-toml")]
 use crate::config::PartialConfigBuilder;
 use crate::config::{ConfigError, ConfigSource, PartialConfig};
@@ -97,26 +92,9 @@ impl PartialConfigBuilder for TomlConfig {
     }
 }
 
-/// Creates a new PartialConfig object from a toml file. Available to use when the `configtoml`
-/// feature flag is not in use.
-#[cfg(not(feature = "config-toml"))]
-pub fn from_file(mut f: File) -> Result<PartialConfig, ConfigError> {
-    let mut toml = String::new();
-    f.read_to_string(&mut toml)?;
-
-    let result = toml::from_str::<PartialConfig>(&toml)
-        .map_err(ConfigError::from)?
-        .with_source(ConfigSource::TomlFile { file: f });
-
-    Ok(result)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[cfg(not(feature = "config-toml"))]
-    use std::fs;
 
     use toml::{map::Map, Value};
 
@@ -163,13 +141,6 @@ mod tests {
         Value::Table(config_values)
     }
 
-    #[cfg(not(feature = "config-toml"))]
-    /// Creates the example toml file used to populate a PartialConfig object.
-    fn create_toml_file() {
-        let toml_string = toml::to_string(&get_toml_value()).expect("Could not encode TOML value");
-        fs::write("config_test.toml", toml_string).expect("Could not write test toml file");
-    }
-
     /// Asserts config values based on the example configuration values.
     fn assert_config_values(config: PartialConfig) {
         assert_eq!(config.storage(), Some(EXAMPLE_STORAGE.to_string()));
@@ -199,33 +170,7 @@ mod tests {
         assert_eq!(config.admin_service_coordinator_timeout(), None);
     }
 
-    #[cfg(not(feature = "config-toml"))]
-    #[test]
-    /// This test verifies that a PartialConfig object, constructed from the TEST_TOML file using
-    /// PartialConfig module's `from_file` method, contains the correct values using the following
-    /// steps:
-    ///
-    /// 1. An example config toml file, TEST_TOML, is created, and then opened.
-    /// 2. A PartialConfig object is created by passing the opened file into the `from_file`
-    ///    function defined in the PartialConfig module.
-    ///
-    /// This test then verifies the PartialConfig object built in step 2 contains the correct
-    /// values by asserting each expected value. The TEST_TOML file is then removed.
-    fn test_partial_config_from_file() {
-        // Create example toml file.
-        create_toml_file();
-        // Opening the toml file using the TEST_TOML path
-        let config_file =
-            fs::File::open(TEST_TOML).expect(&format!("Unable to load {}", TEST_TOML));
-        // Use the TomlConfig module's `from_file` method to construct a PartialConfig object
-        // from the config file previously opened.
-        let generated_config = from_file(config_file).unwrap();
-        // Compare the generated PartialConfig object against the expected values.
-        assert_config_values(generated_config);
-        // Remove example file.
-        fs::remove_file(TEST_TOML).expect("Unable to remove test toml file");
-    }
-
+    #[cfg(feature = "config-toml")]
     #[test]
     /// This test verifies that a PartialConfig object, constructed from the TomlConfig module,
     /// contains the correct values using the following steps:
