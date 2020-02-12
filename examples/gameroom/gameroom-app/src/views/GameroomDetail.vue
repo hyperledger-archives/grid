@@ -42,7 +42,7 @@ limitations under the License.
       <h2 class="gameroom-name">{{ gameroom.alias }}</h2>
       <span> {{ gemeroomMembers }} </span>
     </div>
-        <div class="data-container">
+        <div v-if="gameroom.status === 'Active'" class="data-container">
           <div class="header">
           <div class="tab-buttons">
           <button class="tab-button"
@@ -95,26 +95,27 @@ limitations under the License.
             :game="game" />
          </div>
          <div class="placeholder-wrapper" v-else>
-           <h3 class="tbl-placeholder"> {{ placeholderText }} </h3>
-           <div v-if="gameroom.status !== 'Active' || loadingGames" class="spinner-gameroom spinner" />
+           <h3 class="tbl-placeholder">No games to show</h3>
          </div>
-       </div>
+      </div>
+    <div class="data-container" v-else>
+      <loading message="Please wait while the gameroom is being set up" />
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator';
 import gamerooms from '@/store/modules/gamerooms';
-import selectedGameroom from '@/store/modules/selectedGameroom';
-import games from '@/store/modules/games';
 import { gameIsOver, userIsInGame, userCanJoinGame} from '@/utils/xo-games';
 import { Gameroom, Member, Game } from '@/store/models';
 import Modal from '@/components/Modal.vue';
 import GameCard from '@/components/GameCard.vue';
 import store from '@/store';
+import Loading from '@/components/Loading.vue';
 
 @Component({
-  components: { Modal, GameCard },
+  components: { Modal, GameCard, Loading },
 })
   export default class GameroomDetails extends Vue {
       gameNameFilter = '';
@@ -122,38 +123,29 @@ import store from '@/store';
       newGameName = '';
       displayModal = false;
       submitting = false;
-      loadingGames = false;
 
-      beforeRouteEnter(to: any, from: any , next: any) {
-        setPageLoading(true);
-
-        store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
-            setPageLoading(false);
-            next({ name: 'not-found' });
-        }).then(() => {
-            setPageLoading(false);
-            next((vm: any) => vm.listGames(to.params.id));
-        });
+      async beforeRouteEnter(to: any, from: any , next: any) {
+        store.commit('pageLoading/setPageLoading', 'Loading gameroom');
+        try {
+          await store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id);
+          store.commit('pageLoading/setPageLoading', 'Loading games');
+          await store.dispatch('games/listGames', to.params.id);
+          next();
+        } catch (e) {
+          next({ name: 'not-found' });
+        }
       }
 
-      beforeRouteUpdate(to: any, from: any , next: any) {
-        setPageLoading(true);
-        store.commit('pageLoading/setPageLoading', true);
-        store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id).catch((e) => {
-            setPageLoading(false);
-            next({ name: 'not-found' });
-        }).then(() => {
-            setPageLoading(false);
-            this.listGames(to.params.id);
-            next();
-        });
-      }
-
-      async listGames(circuitID: string) {
-        this.loadingGames = true;
-        await this.$store.dispatch('games/listGames', circuitID).then(() => {
-          this.loadingGames = false;
-        });
+      async beforeRouteUpdate(to: any, from: any , next: any) {
+        store.commit('pageLoading/setPageLoading', 'Loading gameroom');
+        try {
+          await store.dispatch('selectedGameroom/updateSelectedGameroom', to.params.id);
+          store.commit('pageLoading/setPageLoading', 'Loading games');
+          await store.dispatch('games/listGames', to.params.id);
+          next();
+        } catch (e) {
+          next({ name: 'not-found' });
+        }
       }
 
       get gameroom(): Gameroom {
@@ -170,18 +162,6 @@ import store from '@/store';
           return organizations.join(', ');
         }
       }
-
-      get placeholderText(): string {
-        if (this.gameroom.status === 'Active') {
-         if (this.loadingGames) {
-           return 'Loading games...';
-         } else {
-           return 'No games to show.';
-         }
-        } else {
-         return 'Please wait while your gameroom finishes setting up.';
-        }
-     }
 
      get canSubmitNewGame() {
        if (!this.submitting &&
@@ -264,13 +244,8 @@ import store from '@/store';
     }
 
   }
-
-function setPageLoading(loading: boolean) {
-  store.commit('pageLoading/setPageLoading', loading);
-}
-
 </script>
 
 <style lang="scss" scoped>
-@import '@/scss/components/_gameroom-details.scss';
+  @import '@/scss/components/_gameroom-details.scss';
 </style>
