@@ -170,7 +170,7 @@ impl EventConnection for ScabbardEventConnection {
         match *connection_state {
             ConnectionState::Connected(ref receiver) => match receiver.recv() {
                 Ok(ConnectionCommand::Message(scabbard_evt)) => Ok(CommitEvent {
-                    service_id: self.name.clone(),
+                    service_id: Some(self.name.clone()),
                     id: scabbard_evt.id,
                     height: None,
                     state_changes: scabbard_evt

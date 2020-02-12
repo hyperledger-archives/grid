@@ -45,7 +45,7 @@ const IGNORED_NAMESPACES: &[&str] = &[SABRE_NAMESPACE];
 /// A notification that some source has committed a set of changes to state
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from
-    pub service_id: String,
+    pub service_id: Option<String>,
     /// An identifier that is unique among events from the source
     pub id: String,
     /// May be used to provide ordering of commits from the source. If `None`, ordering is not
@@ -60,8 +60,9 @@ impl std::fmt::Display for CommitEvent {
         f.write_str("(")?;
         f.write_str(&self.id)?;
         f.write_str(", ")?;
-        f.write_str(&self.service_id)?;
-        f.write_str(", ")?;
+        if self.service_id.is_some() {
+            write!(f, "{}, ", self.service_id.as_ref().unwrap())?;
+        }
         if self.height.is_some() {
             write!(f, "height: {}, ", self.height.as_ref().unwrap())?;
         }
