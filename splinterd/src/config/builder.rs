@@ -45,6 +45,7 @@ impl ConfigBuilder {
         }
     }
 
+    #[cfg(feature = "default")]
     /// Adds a PartialConfig to the ConfigBuilder object.
     ///
     /// # Arguments

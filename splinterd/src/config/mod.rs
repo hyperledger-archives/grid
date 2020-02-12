@@ -21,6 +21,7 @@ mod default;
 mod env;
 mod error;
 mod partial;
+#[cfg(feature = "config-toml")]
 mod toml;
 
 use std::time::Duration;
@@ -31,8 +32,6 @@ pub use crate::config::command_line::CommandLineConfig;
 pub use crate::config::default::DefaultConfig;
 #[cfg(feature = "config-env-var")]
 pub use crate::config::env::EnvVarConfig;
-#[cfg(not(feature = "config-toml"))]
-pub use crate::config::toml::from_file;
 #[cfg(feature = "config-toml")]
 pub use crate::config::toml::TomlConfig;
 pub use builder::{ConfigBuilder, PartialConfigBuilder};
@@ -327,6 +326,7 @@ impl Config {
     }
 }
 
+#[cfg(feature = "default")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,7 +337,7 @@ mod tests {
     use ::toml::{map::Map, to_string, Value};
     use clap::ArgMatches;
 
-    use crate::config::{DefaultConfig, EnvVarConfig, TomlConfig};
+    use crate::config::{CommandLineConfig, DefaultConfig, EnvVarConfig, TomlConfig};
 
     /// Path to example config toml file.
     static TEST_TOML: &str = "config_test.toml";
