@@ -113,53 +113,39 @@ fn query_list_circuits<T: CircuitStore + 'static>(
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
-        let circuits = store.circuits()?;
+        let mut circuits = store.circuits()?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| circuits.len());
         if !circuits.is_empty() {
             if let Some(filter) = filters {
-                let filtered_circuits: Vec<CircuitResponse> = circuits
+                circuits = circuits
                     .into_iter()
                     .filter(|(_, circuit)| circuit.members().contains(&filter))
-                    .map(|(circuit_id, circuit)| CircuitResponse {
-                        id: circuit_id,
-                        auth: circuit.auth().clone(),
-                        members: circuit.members().to_vec(),
-                        roster: circuit.roster().clone(),
-                        persistence: circuit.persistence().clone(),
-                        durability: circuit.durability().clone(),
-                        routes: circuit.routes().clone(),
-                        circuit_management_type: circuit.circuit_management_type().to_string(),
-                    })
                     .collect();
+            };
 
-                let total_count = filtered_circuits.len();
-                let circuits_data: Vec<CircuitResponse> = filtered_circuits
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect();
+            let circuits_data: Vec<CircuitResponse> = circuits
+                .into_iter()
+                .map(|(circuit_id, circuit)| CircuitResponse {
+                    id: circuit_id,
+                    auth: circuit.auth().clone(),
+                    members: circuit.members().to_vec(),
+                    roster: circuit.roster().clone(),
+                    persistence: circuit.persistence().clone(),
+                    durability: circuit.durability().clone(),
+                    routes: circuit.routes().clone(),
+                    circuit_management_type: circuit.circuit_management_type().to_string(),
+                })
+                .collect();
 
-                Ok((circuits_data, link, limit, offset, total_count))
-            } else {
-                let total_count = circuits.len();
-                let circuits_data: Vec<CircuitResponse> = circuits
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .map(|(circuit_id, circuit)| CircuitResponse {
-                        id: circuit_id,
-                        auth: circuit.auth().clone(),
-                        members: circuit.members().to_vec(),
-                        roster: circuit.roster().clone(),
-                        persistence: circuit.persistence().clone(),
-                        durability: circuit.durability().clone(),
-                        routes: circuit.routes().clone(),
-                        circuit_management_type: circuit.circuit_management_type().to_string(),
-                    })
-                    .collect();
-                Ok((circuits_data, link, limit, offset, total_count))
-            }
+            let total_count = circuits_data.len();
+            let circuits_data: Vec<CircuitResponse> = circuits_data
+                .into_iter()
+                .skip(offset_value)
+                .take(limit_value)
+                .collect();
+
+            Ok((circuits_data, link, limit, offset, total_count))
         } else {
             Ok((vec![], link, limit, offset, circuits.len()))
         }
