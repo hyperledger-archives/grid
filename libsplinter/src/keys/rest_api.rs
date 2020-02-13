@@ -78,7 +78,7 @@ impl RestResourceProvider for KeyRegistryManager {
 }
 
 fn make_fetch_key_resource(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::build("/keys/{public_key}")
+    Resource::build("/admin/keys/{public_key}")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_FETCH_KEY_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
@@ -113,7 +113,7 @@ fn make_fetch_key_resource(key_registry: Box<dyn KeyRegistry>) -> Resource {
 }
 
 fn make_list_key_resources(key_registry: Box<dyn KeyRegistry>) -> Resource {
-    Resource::build("/keys")
+    Resource::build("/admin/keys")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_LIST_KEYS_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,

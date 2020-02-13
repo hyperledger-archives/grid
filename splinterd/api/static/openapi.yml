@@ -275,7 +275,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /keys:
+  /admin/keys:
     get:
       tags:
         - Key Registry
@@ -317,7 +317,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /keys/{public_key}:
+  /admin/keys/{public_key}:
     get:
       tags:
         - Key Registry
