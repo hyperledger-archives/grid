@@ -20,7 +20,7 @@ use crate::circuit::store::CircuitStore;
 use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET},
-    Method, ProtocolVersionRangeGuard, Resource,
+    ErrorResponse, Method, ProtocolVersionRangeGuard, Resource,
 };
 
 use super::super::error::CircuitRouteError;
@@ -47,9 +47,7 @@ fn list_circuits<T: CircuitStore + 'static>(
         } else {
             return Box::new(
                 HttpResponse::BadRequest()
-                    .json(json!({
-                        "message": "Invalid query"
-                    }))
+                    .json(ErrorResponse::bad_request("Invalid query"))
                     .into_future(),
             );
         };
@@ -60,10 +58,10 @@ fn list_circuits<T: CircuitStore + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid offset value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -77,10 +75,10 @@ fn list_circuits<T: CircuitStore + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid limit value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -177,11 +175,16 @@ fn query_list_circuits<T: CircuitStore + 'static>(
             BlockingError::Error(err) => match err {
                 CircuitRouteError::CircuitStoreError(err) => {
                     error!("{}", err);
-                    Ok(HttpResponse::InternalServerError().into())
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
-                CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
+                CircuitRouteError::NotFound(err) => {
+                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                }
             },
-            _ => Ok(HttpResponse::InternalServerError().into()),
+            _ => {
+                error!("{}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
         },
     })
 }
