@@ -86,11 +86,11 @@ fn list_circuits<T: CircuitStore + 'static>(
         None => DEFAULT_LIMIT,
     };
 
-    let mut link = format!("{}?", req.uri().path());
+    let mut link = req.uri().path().to_string();
 
     let filters = match query.get("filter") {
         Some(value) => {
-            link.push_str(&format!("filter={}&", value));
+            link.push_str(&format!("?filter={}&", value));
             Some(value.to_string())
         }
         None => None,

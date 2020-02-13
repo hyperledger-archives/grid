@@ -37,7 +37,14 @@ pub fn get_response_paging_info(
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
     let offset = offset.unwrap_or(DEFAULT_OFFSET);
 
-    let base_link = format!("{}limit={}&", link, limit);
+    let base_link = {
+        // if the link does not already contain ? add it to the end
+        if !link.contains('?') {
+            format!("{}?limit={}&", link, limit)
+        } else {
+            format!("{}limit={}&", link, limit)
+        }
+    };
 
     let current_link = format!("{}offset={}", base_link, offset);
 
