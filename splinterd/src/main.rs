@@ -454,8 +454,9 @@ fn get_transport(
                 )));
             }
 
+            let insecure = matches.is_present("insecure");
             let ca_file = {
-                if matches.is_present("insecure") {
+                if insecure {
                     None
                 } else {
                     let ca_file = config.ca_certs();
@@ -484,7 +485,7 @@ fn get_transport(
                 String::from(server_cert),
             )?;
 
-            Ok((Box::new(transport), false))
+            Ok((Box::new(transport), insecure))
         }
         "raw" => Ok((Box::new(RawTransport::default()), true)),
         _ => Err(GetTransportError::NotSupportedError(format!(
