@@ -186,6 +186,26 @@ circuit is created.
 
 ## Demonstrate Grid Smart Contract Functionality
 
+**Note:** To simplify this procedure, the example `docker-compose.yaml` file
+defines environment variables for the ``gridd-alpha`` and ``gridd-beta``
+containers. These variables define the Grid daemon's key file and endpoint,
+so you don't have to use the `-k` and `--url` options with the `grid` command in
+this section.
+
+The following environment variables apply only to this example. If you want to
+override these values, you can edit `docker-compose.yaml` to redefine the
+variables, or you can use the associated option with the `grid` commands in
+steps 3 through 10.
+
+- `GRID_DAEMON_KEY` defines the key file name for the Grid daemon, as generated
+   by the `docker-compose.yaml` file. Use `-k <keyfile>` to override this
+   variable on the command line.
+
+- `GRID_DAEMON_ENDPOINT` defines the endpoint for the ``gridd-alpha`` or
+   ``gridd-beta`` container. Use `--url <endpoint>` to override this variable
+   on the command line.
+
+
 1. Start a bash session in the `gridd-alpha` Docker container.  You will use
    this container to run Grid commands on `alpha-node-000`.
 
