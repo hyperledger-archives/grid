@@ -196,7 +196,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /circuits:
+  /admin/circuits:
     get:
       tags:
           - Circuits
@@ -245,7 +245,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /circuits/{circuit_id}:
+  /admin/circuits/{circuit_id}:
     get:
       tags:
         - Circuits

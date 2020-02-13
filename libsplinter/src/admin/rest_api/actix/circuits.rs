@@ -27,7 +27,7 @@ use super::super::error::CircuitRouteError;
 use super::super::resources::circuits::{CircuitResponse, ListCircuitsResponse};
 
 pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resource {
-    Resource::build("/circuits")
+    Resource::build("/admin/circuits")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_LIST_CIRCUITS_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
@@ -191,15 +191,18 @@ mod tests {
     use crate::storage::get_storage;
 
     #[test]
-    /// Tests a GET /circuits request with no filters returns the expected circuits.
+    /// Tests a GET /admin/circuits request with no filters returns the expected circuits.
     fn test_list_circuits_ok() {
         let splinter_state = filled_splinter_state();
 
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
-        ));
+        let mut app = test::init_service(
+            App::new().data(splinter_state.clone()).service(
+                web::resource("/admin/circuits")
+                    .route(web::get().to_async(list_circuits::<SplinterState>)),
+            ),
+        );
 
-        let req = test::TestRequest::get().uri("/circuits").to_request();
+        let req = test::TestRequest::get().uri("/admin/circuits").to_request();
 
         let resp = test::call_service(&mut app, req);
 
@@ -209,21 +212,24 @@ mod tests {
         assert_eq!(circuits.data, vec![get_circuit_1(), get_circuit_2()]);
         assert_eq!(
             circuits.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, "/circuits?")
+            create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/circuits?")
         )
     }
 
     #[test]
-    /// Tests a GET /circuits request with filter returns the expected circuit.
+    /// Tests a GET /admin/circuits request with filter returns the expected circuit.
     fn test_list_circuit_with_filters_ok() {
         let splinter_state = filled_splinter_state();
 
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
-        ));
+        let mut app = test::init_service(
+            App::new().data(splinter_state.clone()).service(
+                web::resource("/admin/circuits")
+                    .route(web::get().to_async(list_circuits::<SplinterState>)),
+            ),
+        );
 
         let req = test::TestRequest::get()
-            .uri(&format!("/circuits?filter={}", "node_1"))
+            .uri(&format!("/admin/circuits?filter={}", "node_1"))
             .header(header::CONTENT_TYPE, "application/json")
             .to_request();
 
@@ -233,7 +239,7 @@ mod tests {
         let circuits: ListCircuitsResponse =
             serde_yaml::from_slice(&test::read_body(resp)).unwrap();
         assert_eq!(circuits.data, vec![get_circuit_1()]);
-        let link = format!("/circuits?filter={}&", "node_1");
+        let link = format!("/admin/circuits?filter={}&", "node_1");
         assert_eq!(
             circuits.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 1, &link)

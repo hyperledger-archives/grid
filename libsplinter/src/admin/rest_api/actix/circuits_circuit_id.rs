@@ -23,7 +23,7 @@ use super::super::error::CircuitRouteError;
 use super::super::resources::circuits_circuit_id::CircuitResponse;
 
 pub fn make_fetch_circuit_resource<T: CircuitStore + 'static>(store: T) -> Resource {
-    Resource::build("/circuits/{circuit_id}")
+    Resource::build("/admin/circuits/{circuit_id}")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_FETCH_CIRCUIT_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
@@ -99,19 +99,19 @@ mod tests {
     use crate::storage::get_storage;
 
     #[test]
-    /// Tests a GET /circuit/{identity} request returns the expected circuit.
+    /// Tests a GET /admin/circuit/{identity} request returns the expected circuit.
     fn test_fetch_circuit_ok() {
         let splinter_state = filled_splinter_state();
 
         let mut app = test::init_service(
             App::new().data(splinter_state.clone()).service(
-                web::resource("/circuits/{circuit_id}")
+                web::resource("/admin/circuits/{circuit_id}")
                     .route(web::get().to_async(fetch_circuit::<SplinterState>)),
             ),
         );
 
         let req = test::TestRequest::get()
-            .uri(&format!("/circuits/{}", get_circuit_1().id))
+            .uri(&format!("/admin/circuits/{}", get_circuit_1().id))
             .to_request();
 
         let resp = test::call_service(&mut app, req);
@@ -122,19 +122,19 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /circuits/{identity} request returns NotFound when an invalid identity is
+    /// Tests a GET /admin/circuits/{identity} request returns NotFound when an invalid identity is
     /// passed
     fn test_fetch_circuit_not_found() {
         let splinter_state = filled_splinter_state();
         let mut app = test::init_service(
             App::new().data(splinter_state.clone()).service(
-                web::resource("/circuits/{circuit_id}")
+                web::resource("/admin/circuits/{circuit_id}")
                     .route(web::get().to_async(fetch_circuit::<SplinterState>)),
             ),
         );
 
         let req = test::TestRequest::get()
-            .uri("/circuit/Circuit-not-valid")
+            .uri("/admin/circuit/Circuit-not-valid")
             .to_request();
 
         let resp = test::call_service(&mut app, req);
