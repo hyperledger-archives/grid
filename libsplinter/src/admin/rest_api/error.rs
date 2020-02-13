@@ -14,14 +14,17 @@
 
 use std::error::Error;
 
+#[cfg(feature = "circuit-read")]
 use crate::circuit::store;
 
+#[cfg(feature = "proposal-read")]
 #[derive(Debug)]
 pub enum ProposalRouteError {
     NotFound(String),
     InternalError(String),
 }
 
+#[cfg(feature = "proposal-read")]
 impl Error for ProposalRouteError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
@@ -31,6 +34,7 @@ impl Error for ProposalRouteError {
     }
 }
 
+#[cfg(feature = "proposal-read")]
 impl std::fmt::Display for ProposalRouteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -40,12 +44,14 @@ impl std::fmt::Display for ProposalRouteError {
     }
 }
 
+#[cfg(feature = "circuit-read")]
 #[derive(Debug)]
 pub enum CircuitRouteError {
     NotFound(String),
     CircuitStoreError(store::CircuitStoreError),
 }
 
+#[cfg(feature = "circuit-read")]
 impl Error for CircuitRouteError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
@@ -55,6 +61,7 @@ impl Error for CircuitRouteError {
     }
 }
 
+#[cfg(feature = "circuit-read")]
 impl std::fmt::Display for CircuitRouteError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -64,6 +71,7 @@ impl std::fmt::Display for CircuitRouteError {
     }
 }
 
+#[cfg(feature = "circuit-read")]
 impl From<store::CircuitStoreError> for CircuitRouteError {
     fn from(err: store::CircuitStoreError) -> Self {
         CircuitRouteError::CircuitStoreError(err)
