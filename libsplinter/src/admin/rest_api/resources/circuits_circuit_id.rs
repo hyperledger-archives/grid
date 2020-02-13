@@ -15,7 +15,7 @@
 use crate::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct CircuitResponse {
+pub(crate) struct CircuitResponse {
     pub id: String,
     pub auth: AuthorizationType,
     pub members: Vec<String>,
