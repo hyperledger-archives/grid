@@ -26,7 +26,11 @@ pub async fn fetch_node(
     splinterd_url: web::Data<String>,
 ) -> Result<HttpResponse, Error> {
     let mut response = client
-        .get(&format!("{}/nodes/{}", splinterd_url.get_ref(), identity))
+        .get(&format!(
+            "{}/admin/nodes/{}",
+            splinterd_url.get_ref(),
+            identity
+        ))
         .header(
             "SplinterProtocolVersion",
             protocol::ADMIN_PROTOCOL_VERSION.to_string(),
@@ -62,7 +66,7 @@ pub async fn list_nodes(
     splinterd_url: web::Data<String>,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, Error> {
-    let mut request_url = format!("{}/nodes", splinterd_url.get_ref());
+    let mut request_url = format!("{}/admin/nodes", splinterd_url.get_ref());
 
     let offset = query
         .get("offset")
@@ -127,18 +131,18 @@ mod test {
     static SPLINTERD_URL: &str = "http://splinterd-node:8085";
 
     #[actix_rt::test]
-    /// Tests a GET /nodes/{identity} request returns the expected node.
+    /// Tests a GET /admin/nodes/{identity} request returns the expected node.
     async fn test_fetch_node_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes/{identity}").route(web::get().to(fetch_node))),
+                .service(web::resource("/admin/nodes/{identity}").route(web::get().to(fetch_node))),
         )
         .await;
 
         let req = test::TestRequest::get()
-            .uri(&format!("/nodes/{}", get_node_1().identity))
+            .uri(&format!("/admin/nodes/{}", get_node_1().identity))
             .to_request();
 
         let resp = test::call_service(&mut app, req).await;
@@ -150,18 +154,18 @@ mod test {
     }
 
     #[actix_rt::test]
-    /// Tests a GET /nodes/{identity} request returns NotFound when an invalid identity is passed
+    /// Tests a GET /admin/nodes/{identity} request returns NotFound when an invalid identity is passed
     async fn test_fetch_node_not_found() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes/{identity}").route(web::get().to(fetch_node))),
+                .service(web::resource("/admin/nodes/{identity}").route(web::get().to(fetch_node))),
         )
         .await;
 
         let req = test::TestRequest::get()
-            .uri("/nodes/Node-not-valid")
+            .uri("/admin/nodes/Node-not-valid")
             .to_request();
 
         let resp = test::call_service(&mut app, req).await;
@@ -170,17 +174,17 @@ mod test {
     }
 
     #[actix_rt::test]
-    /// Tests a GET /nodes request with no filters returns the expected nodes.
+    /// Tests a GET /admin/nodes request with no filters returns the expected nodes.
     async fn test_list_node_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+                .service(web::resource("/admin/nodes").route(web::get().to(list_nodes))),
         )
         .await;
 
-        let req = test::TestRequest::get().uri("/nodes").to_request();
+        let req = test::TestRequest::get().uri("/admin/nodes").to_request();
 
         let resp = test::call_service(&mut app, req).await;
 
@@ -190,18 +194,26 @@ mod test {
         assert_eq!(nodes.data, vec![get_node_1(), get_node_2()]);
         assert_eq!(
             nodes.paging,
-            Some(create_test_paging_response(0, 100, 0, 0, 0, 2, "/nodes?"))
+            Some(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                2,
+                "/admin/nodes?"
+            ))
         )
     }
 
     #[actix_rt::test]
-    /// Tests a GET /nodes request with filters returns the expected node.
+    /// Tests a GET /admin/nodes request with filters returns the expected node.
     async fn test_list_node_with_filters_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+                .service(web::resource("/admin/nodes").route(web::get().to(list_nodes))),
         )
         .await;
 
@@ -209,7 +221,7 @@ mod test {
             .to_string();
 
         let req = test::TestRequest::get()
-            .uri(&format!("/nodes?filter={}", filter))
+            .uri(&format!("/admin/nodes?filter={}", filter))
             .header(header::CONTENT_TYPE, "application/json")
             .to_request();
 
@@ -219,7 +231,7 @@ mod test {
         let nodes: SuccessResponse<Vec<Node>> =
             serde_json::from_slice(&test::read_body(resp).await).unwrap();
         assert_eq!(nodes.data, vec![get_node_1()]);
-        let link = format!("/nodes?filter={}&", filter);
+        let link = format!("/admin/nodes?filter={}&", filter);
         assert_eq!(
             nodes.paging,
             Some(create_test_paging_response(0, 100, 0, 0, 0, 1, &link))
@@ -227,13 +239,13 @@ mod test {
     }
 
     #[actix_rt::test]
-    /// Tests a GET /nodes request with invalid filter returns BadRequest response.
+    /// Tests a GET /admin/nodes request with invalid filter returns BadRequest response.
     async fn test_list_node_with_filters_bad_request() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+                .service(web::resource("/admin/nodes").route(web::get().to(list_nodes))),
         )
         .await;
 
@@ -241,7 +253,7 @@ mod test {
             .to_string();
 
         let req = test::TestRequest::get()
-            .uri(&format!("/nodes?filter={}", filter))
+            .uri(&format!("/admin/nodes?filter={}", filter))
             .header(header::CONTENT_TYPE, "application/json")
             .to_request();
 

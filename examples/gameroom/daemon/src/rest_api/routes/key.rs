@@ -25,7 +25,11 @@ pub async fn fetch_key_info(
     let public_key = public_key.into_inner();
 
     let mut response = client
-        .get(format!("{}/keys/{}", splinterd_url.get_ref(), public_key))
+        .get(format!(
+            "{}/admin/keys/{}",
+            splinterd_url.get_ref(),
+            public_key
+        ))
         .header(
             "SplinterProtocolVersion",
             protocol::ADMIN_PROTOCOL_VERSION.to_string(),
