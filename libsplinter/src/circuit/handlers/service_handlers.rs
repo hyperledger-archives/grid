@@ -247,7 +247,6 @@ impl From<protobuf::error::ProtobufError> for DispatchError {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
 
     use super::*;
     use crate::channel::mock::MockSender;

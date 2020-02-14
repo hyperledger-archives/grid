@@ -97,8 +97,6 @@ impl CircuitErrorHandler {
 mod tests {
     use protobuf::Message;
 
-    use std::sync::Arc;
-
     use super::*;
     use crate::channel::mock::MockSender;
     use crate::channel::Sender;
