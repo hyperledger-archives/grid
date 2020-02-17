@@ -16,7 +16,7 @@ use crate::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster,
 use crate::rest_api::paging::Paging;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct CircuitResponse {
+pub(crate) struct CircuitResponse {
     pub id: String,
     pub auth: AuthorizationType,
     pub members: Vec<String>,
@@ -28,7 +28,7 @@ pub struct CircuitResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct ListCircuitsResponse {
+pub(crate) struct ListCircuitsResponse {
     pub data: Vec<CircuitResponse>,
     pub paging: Paging,
 }

@@ -14,7 +14,7 @@
 
 #[cfg(feature = "rest-api-actix")]
 mod actix;
-#[cfg(feature = "proposal-read")]
+#[cfg(any(feature = "circuit-read", feature = "proposal-read"))]
 mod error;
 mod resources;
 

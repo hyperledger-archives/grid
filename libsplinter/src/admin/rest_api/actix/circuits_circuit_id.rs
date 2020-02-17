@@ -17,7 +17,7 @@ use futures::Future;
 
 use crate::circuit::store::CircuitStore;
 use crate::protocol;
-use crate::rest_api::{Method, ProtocolVersionRangeGuard, Resource};
+use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 use super::super::error::CircuitRouteError;
 use super::super::resources::circuits_circuit_id::CircuitResponse;
@@ -70,11 +70,18 @@ fn fetch_circuit<T: CircuitStore + 'static>(
                 BlockingError::Error(err) => match err {
                     CircuitRouteError::CircuitStoreError(err) => {
                         error!("{}", err);
-                        Ok(HttpResponse::InternalServerError().into())
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
                     }
-                    CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
+                    CircuitRouteError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                    }
                 },
-                _ => Ok(HttpResponse::InternalServerError().into()),
+
+                _ => {
+                    error!("{}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )

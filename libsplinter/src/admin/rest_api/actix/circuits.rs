@@ -20,7 +20,7 @@ use crate::circuit::store::CircuitStore;
 use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET},
-    Method, ProtocolVersionRangeGuard, Resource,
+    ErrorResponse, Method, ProtocolVersionRangeGuard, Resource,
 };
 
 use super::super::error::CircuitRouteError;
@@ -47,9 +47,7 @@ fn list_circuits<T: CircuitStore + 'static>(
         } else {
             return Box::new(
                 HttpResponse::BadRequest()
-                    .json(json!({
-                        "message": "Invalid query"
-                    }))
+                    .json(ErrorResponse::bad_request("Invalid query"))
                     .into_future(),
             );
         };
@@ -60,10 +58,10 @@ fn list_circuits<T: CircuitStore + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid offset value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -77,10 +75,10 @@ fn list_circuits<T: CircuitStore + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid limit value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -88,11 +86,11 @@ fn list_circuits<T: CircuitStore + 'static>(
         None => DEFAULT_LIMIT,
     };
 
-    let mut link = format!("{}?", req.uri().path());
+    let mut link = req.uri().path().to_string();
 
     let filters = match query.get("filter") {
         Some(value) => {
-            link.push_str(&format!("filter={}&", value));
+            link.push_str(&format!("?filter={}&", value));
             Some(value.to_string())
         }
         None => None,
@@ -115,53 +113,39 @@ fn query_list_circuits<T: CircuitStore + 'static>(
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
-        let circuits = store.circuits()?;
+        let mut circuits = store.circuits()?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| circuits.len());
         if !circuits.is_empty() {
             if let Some(filter) = filters {
-                let filtered_circuits: Vec<CircuitResponse> = circuits
+                circuits = circuits
                     .into_iter()
                     .filter(|(_, circuit)| circuit.members().contains(&filter))
-                    .map(|(circuit_id, circuit)| CircuitResponse {
-                        id: circuit_id,
-                        auth: circuit.auth().clone(),
-                        members: circuit.members().to_vec(),
-                        roster: circuit.roster().clone(),
-                        persistence: circuit.persistence().clone(),
-                        durability: circuit.durability().clone(),
-                        routes: circuit.routes().clone(),
-                        circuit_management_type: circuit.circuit_management_type().to_string(),
-                    })
                     .collect();
+            };
 
-                let total_count = filtered_circuits.len();
-                let circuits_data: Vec<CircuitResponse> = filtered_circuits
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect();
+            let circuits_data: Vec<CircuitResponse> = circuits
+                .into_iter()
+                .map(|(circuit_id, circuit)| CircuitResponse {
+                    id: circuit_id,
+                    auth: circuit.auth().clone(),
+                    members: circuit.members().to_vec(),
+                    roster: circuit.roster().clone(),
+                    persistence: circuit.persistence().clone(),
+                    durability: circuit.durability().clone(),
+                    routes: circuit.routes().clone(),
+                    circuit_management_type: circuit.circuit_management_type().to_string(),
+                })
+                .collect();
 
-                Ok((circuits_data, link, limit, offset, total_count))
-            } else {
-                let total_count = circuits.len();
-                let circuits_data: Vec<CircuitResponse> = circuits
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .map(|(circuit_id, circuit)| CircuitResponse {
-                        id: circuit_id,
-                        auth: circuit.auth().clone(),
-                        members: circuit.members().to_vec(),
-                        roster: circuit.roster().clone(),
-                        persistence: circuit.persistence().clone(),
-                        durability: circuit.durability().clone(),
-                        routes: circuit.routes().clone(),
-                        circuit_management_type: circuit.circuit_management_type().to_string(),
-                    })
-                    .collect();
-                Ok((circuits_data, link, limit, offset, total_count))
-            }
+            let total_count = circuits_data.len();
+            let circuits_data: Vec<CircuitResponse> = circuits_data
+                .into_iter()
+                .skip(offset_value)
+                .take(limit_value)
+                .collect();
+
+            Ok((circuits_data, link, limit, offset, total_count))
         } else {
             Ok((vec![], link, limit, offset, circuits.len()))
         }
@@ -177,11 +161,16 @@ fn query_list_circuits<T: CircuitStore + 'static>(
             BlockingError::Error(err) => match err {
                 CircuitRouteError::CircuitStoreError(err) => {
                     error!("{}", err);
-                    Ok(HttpResponse::InternalServerError().into())
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
-                CircuitRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
+                CircuitRouteError::NotFound(err) => {
+                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                }
             },
-            _ => Ok(HttpResponse::InternalServerError().into()),
+            _ => {
+                error!("{}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
         },
     })
 }
@@ -248,6 +237,58 @@ mod tests {
         assert_eq!(
             circuits.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+        )
+    }
+
+    #[test]
+    /// Tests a GET /circuits?limit=1 request returns the expected circuit.
+    fn test_list_circuit_with_limit() {
+        let splinter_state = filled_splinter_state();
+
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/circuits?limit={}", 1))
+            .header(header::CONTENT_TYPE, "application/json")
+            .to_request();
+
+        let resp = test::call_service(&mut app, req);
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let circuits: ListCircuitsResponse =
+            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        assert_eq!(circuits.data, vec![get_circuit_1()]);
+        assert_eq!(
+            circuits.paging,
+            create_test_paging_response(0, 1, 1, 0, 1, 2, "/circuits?")
+        )
+    }
+
+    #[test]
+    /// Tests a GET /circuits?offset=1 request returns the expected circuit.
+    fn test_list_circuit_with_offset() {
+        let splinter_state = filled_splinter_state();
+
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/circuits?offset={}", 1))
+            .header(header::CONTENT_TYPE, "application/json")
+            .to_request();
+
+        let resp = test::call_service(&mut app, req);
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let circuits: ListCircuitsResponse =
+            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        assert_eq!(circuits.data, vec![get_circuit_2()]);
+        assert_eq!(
+            circuits.paging,
+            create_test_paging_response(1, 100, 0, 0, 0, 2, "/circuits?")
         )
     }
 
