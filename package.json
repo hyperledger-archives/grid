@@ -1,5 +1,5 @@
 {
-  "name": "canopyjs",
+  "name": "splinter-canopyjs",
   "version": "0.0.0-alpha",
   "description": "React context provider for building Canopy applications.",
   "main": "./build/index.js",
