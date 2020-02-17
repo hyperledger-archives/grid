@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- identity: "012"
-  metadata: {}
-- identity: "345"
-  metadata: {}
-- identity: "678"
-  metadata: {}
+FROM node:lts-alpine
+
+WORKDIR /canopyjs
+
+COPY package*.json ./
+
+RUN yarn install
+
+COPY . .

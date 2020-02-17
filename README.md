@@ -1,130 +1,125 @@
-# Splinter
+<!-- Copyright 2018-2020 Cargill Incorporated
 
-Splinter is a privacy-focused platform for distributed applications that provides
-a blockchain-inspired networking environment for communication and transactions
-between organizations. Splinter lets you combine blockchain-related technologies
--- such as smart contracts and consensus engines -- to build a wide variety
-of architectural patterns.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
- &hercon; [Features](#features-and-concepts) &hercon; [Building Splinter](#building-splinter) &hercon; [Demos](#demos) &hercon; [License](#license) &hercon;
+    http://www.apache.org/licenses/LICENSE-2.0
 
-## Features and Concepts
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. -->
 
-Splinter allows the same network to do two-party private communication,
-multi-party private communication, and network-wide multi-party shared state,
-all managed with consensus. A Splinter network enables multi-party or two-party
-private conversations between nodes using circuits and services.
+# CanopyJS
 
-  - A _**node**_ is the foundational runtime that allows an organization to 
-  participate in the network.
+CanopyJS is a library for building Canopy applications. A Canopy application is
+a React app that is capable of dynamically loading in saplings, which are UI
+components designed to work with Splinter.
 
-  - A _**circuit**_ is a virtual network within the broader Splinter network that 
-  safely and securely enforces privacy scope boundaries.
+The central component provided by CanopyJS is a React context provider called
+`CanopyProvider`. This context provider should wrap the top level component of
+a Canopy application.
 
-  - A _**service**_ is an endpoint within a circuit that sends and receives
-  private messages.
+## Features
 
-A Splinter application provides a set of distributed services that can
-communicate with each other across a Splinter circuit.
+- Provides functionality for loading saplings into the Canopy application
+- Implements some of the functions that are defined in SaplingJS
+- Exposes shared configuration to saplings and Canopy application components
 
-![Splinter private circuits with shared state](assets/diagram-splinter-circuits+3companies.svg)
+## Configuration
 
-**Splinter is designed for privacy**
+CanopyJS makes use of two endpoints, `splinterURL` and `saplingURL`.
 
-The key concepts of Splinter are fundamentally anchored to privacy.
+### splinterURL
 
-   - _**Circuits**_ define scope and visibility domains.
-   - _**Shared state**_, a database updated by smart contracts, is visible only
-     to the services within a circuit.
+`splinterURL` is the URL where the Splinter daemon is running. This URL will be
+used by Canopy and saplings to interact with Splinter via the Splinter daemon's
+REST API. Examples of these interactions would include:
+- Submitting transactions to a Scabbard service
+- Managing users using the Biome module of Splinter
 
-**Splinter is distributed and flexible**
+### saplingURL
 
-Splinter works across a network 
+`saplingURL` is the URL where saplings are being served from. On startup,
+canopyJS will attempt to fetch sapling configuration from the following
+endpoints:
 
-   - _**State agreement**_ is achieved via the Merkle-radix tree in
-     [Hyperledger Transact](https://github.com/hyperledger/transact/),
-     allowing multiple services to prove they have the same data down to the 
-	 last bit, cryptographically.
-   - _**Consensus**_ is provided for creating real distributed applications.
-     Splinter currently includes **two-phase commit** for 2- or 3-party
-     conversations.
-   - _**Connections**_ are dynamically constructed between nodes as circuits are
-     created.
+- `${saplingURL}/configSaplings`: Config saplings
+- `${saplingURL}/userSaplings`: User saplings
 
+See the example in `splinter/canopy/app/saplings` for an example of these
+configuration responses.
 
-![Splinter smart contract deployment at runtime](assets/diagram-splinter-smartcontractdeployment.svg)
+## Example
 
-**Splinter is agile with smart contracts**
+### App.js
 
-   - Smart contracts _**capture business logic**_ for processing transactions.
-   - _**Runtime deployment**_ of smart contracts means no need to upgrade the
-     Splinter software stack to add business logic.
-   - _**Sandboxed WebAssembly smart contracts**_ keep the network safe and
-     ensure determinism.
-   - _**Scabbard**_, an out-of-the-box Splinter service that runs
-     [Sawtooth Sabre](https://github.com/hyperledger/sawtooth-sabre)
-     smart contracts across nodes, coordinated with consensus.
+```javascript
+import React from 'react';
+import { CanopyProvider } from 'canopyjs';
 
-**Splinter is designed for applications**
+import SideNav from './components/SideNav';
 
-   - _**State delta export**_ allows an application to materialize the
-     Merkle-radix tree database to another database such as PostgreSQL.
-     Applications can read from the materialized database (just like any other
-     web application).
-   - _**Admin services**_ provide applications with a REST API to dynamically
-     create new circuits, based on business need.
-   - _**Authorization**_ for circuit management can be delegated to application
-     code and defined by business policies.
+function CanopyApp() {
+  return (
+    <CanopyProvider
+      saplingURL={process.env.REACT_APP_SAPLING_URL}
+      splinterURL={process.env.REACT_APP_SPLINTER_URL}
+    >
+      <SideNav />
+    </CanopyProvider>
+  );
+}
+export default CanopyApp;
+```
 
-![Two-party Splinter circuit](assets/diagram-splinter-twopartycircuit.svg)
+In this example, `saplingURL` and `splinterURL` are set as React app environment
+variables prior to starting up the application. The `SideNav` component gets
+wrapped by the `CanopyProvider`, which gives it access to the React context
+provided by CanopyJS.
 
-## Building Splinter
+### SideNav.js
 
-To build Splinter, run `cargo build` from the root directory. This command
-builds all of the Splinter components, including `libsplinter` (the main
-library), `splinterd` (the splinter daemon), the CLI, the client, and all
-examples in the `examples` directory.
+```javascript
+import React from 'react';
+import { useUserSaplings } from 'canopyjs';
 
-To build individual components, run `cargo build` in the component directories.
-For example, to build only the Private XO demo, navigate to
-`examples/private_xo`, then run `cargo build`.
+import NavItem from './NavItem';
 
-To build Splinter using Docker, run
-`docker-compose -f docker-compose-installed.yaml build` from the root
-directory. This command builds Docker images for all of the Splinter
-components, including `libsplinter` (the main library), `splinterd`
-(the splinter daemon), the CLI, the client, and all examples in the `examples`
-directory.
+function SideNav() {
+  const userSaplings = useUserSaplings();
+  const userSaplingRoutes = userSaplings.map(
+    ({ displayName, namespace, icon }) => {
+      return {
+        path: `/${namespace}`,
+        displayName,
+        logo: icon
+      };
+    }
+  );
+  const userSaplingTabs = userSaplingRoutes.map(
+    ({ path, displayName, logo }) => {
+      return <NavItem key={path} path={path} label={displayName} logo={logo} />;
+    }
+  );
 
-To build individual components using Docker, run
-`docker-compose -f docker-compose-installed.yaml build <component>`
-from the root directory. For example, to build only the Private XO demo,
-run `docker-compose -f docker-compose-installed.yaml build private_xo`.
+  return (
+    <>
+      <a href="/">
+        <h2>Canopy</h2>
+      </a>
+      <div>{userSaplingTabs}</div>
+    </>
+  );
+}
 
-To use Docker to build Splinter with experimental features enabled, set an
-enviroment variable in your shell before running the build commands. For
-example: `export 'CARGO_ARGS=-- --features experimental'`. To go back to
-building with default features, unset the evironment variable:
-`unset CARGO_ARGS`
+export default SideNav;
+```
 
-## Demos
-
-Splinter includes several example applications that you can run as demos. The
-README in each directory explains how to run the demo.
-
-- [Private Counter](examples/private_counter/): Three services communicate over
-  a circuit to increment a shared counter.
-
-- [Private XO](examples/private_xo/): Two services talk over a circuit to play
-  a private game of tic tac toe (XO).
-
-- [Gameroom](examples/gameroom/): Web application that allows you to set up a
-  dynamic multi-party circuit (called a "gameroom") and play tic tac toe (XO).
-
-## License
-
-Splinter software is licensed under the [Apache License Version 2.0](LICENSE) software license.
-
-## Code of Conduct
-
-Splinter operates under the [Cargill Code of Conduct](https://github.com/Cargill/code-of-conduct/blob/master/code-of-conduct.md).
+The `SideNav` component imports `useUserSaplings` from CanopyJS. The
+`useUserSaplings` function exposes the part of the Canopy context that contains
+user sapling configuration. This allows the `SideNav` component to render
+`NavItems` for each of the user saplings. CanopyJS handles mounting the styles
+and DOM elements for the currently active sapling.
