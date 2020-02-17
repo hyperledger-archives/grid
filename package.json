@@ -15,6 +15,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "yarn rollup:build",
+    "prepare": "npm run build",
     "lint": "eslint src/",
     "rollup:build": "NODE_ENV=production rollup -c && yarn rollup:clean",
     "rollup:clean": "cd build/themes; each '*/index.js' -- rm index.js"
