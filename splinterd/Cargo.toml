@@ -74,7 +74,6 @@ config-command-line = []
 config-env-var = []
 config-toml = []
 database = ["splinter/database"]
-generate-certs = ["openssl"]
 scabbard-get-state = ["splinter/scabbard-get-state"]
 
 [package.metadata.deb]
