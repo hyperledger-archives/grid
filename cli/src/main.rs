@@ -21,7 +21,7 @@ mod action;
 mod error;
 mod store;
 
-use clap::clap_app;
+use clap::{clap_app, AppSettings, Arg, SubCommand};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 
@@ -41,8 +41,6 @@ pub fn log_format(
 }
 
 fn run() -> Result<(), CliError> {
-    // ignore unused_mut while there are experimental features
-    #[allow(unused_mut)]
     let mut app = clap_app!(myapp =>
         (name: APP_NAME)
         (version: VERSION)
@@ -76,24 +74,81 @@ fn run() -> Result<(), CliError> {
                 (@arg force: --force "Overwrite files if they exist")
             )
         )
-        (@subcommand cert =>
-            (about: "Generate certificates that can be used for development")
-            (@subcommand generate =>
-                (about: "Generate certificates and keys for the ca, server and client")
-                (@arg common_name: --("common-name") +takes_value
-                  "The common name that should be used in the generated cert, default localhost")
-                (@arg cert_dir: -d --("cert-dir") +takes_value
-                  "Name of the directory in which to create the certificates")
-                (@arg force: --force  conflicts_with[skip] "Overwrite files if they exist")
-                (@arg skip: --skip conflicts_with[force] "Check if files exists, generate if missing")
-            )
-        )
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("cert")
+            .about("Generates certificates that can be used for development")
+            .setting(AppSettings::SubcommandRequiredElseHelp)
+            .subcommand(
+                SubCommand::with_name("generate")
+                    .long_about(
+                        "Generates test certificates and keys for running splinterd with \
+                         TLS (in insecure mode)",
+                    )
+                    .arg(
+                        Arg::with_name("common_name")
+                            .long("common-name")
+                            .takes_value(true)
+                            .long_help(
+                                "String that specifies a common name for the generated \
+                                 certificate (defaults to localhost). Use this option if the \
+                                 splinterd URL uses a DNS address instead of a numerical IP \
+                                 address.",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("cert_dir")
+                            .long("cert-dir")
+                            .short("d")
+                            .takes_value(true)
+                            .long_help(
+                                "Path to the directory certificates are created in. \
+                                 Defaults to /etc/splinter/certs/. This location can also be \
+                                 changed with the SPLINTER_CERT_DIR environment variable. \
+                                 This directory must exist.
+                            ",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("force")
+                            .long("force")
+                            .conflicts_with("skip")
+                            .long_help(
+                                "Overwrites files if they exist. If this flag is not \
+                                provided and the file exists, an error is returned.
+                            ",
+                            ),
+                    )
+                    .arg(
+                        Arg::with_name("skip")
+                            .long("skip")
+                            .conflicts_with("force")
+                            .long_help(
+                                "Checks if the files exists and generates the files that \
+                                 are missing. If this flag is not \
+                                 provided and the file exists, an error is returned.",
+                            ),
+                    )
+                    .after_help(
+                        "DETAILS: \n\n\
+                        The files are generated in the location specified by --cert-dir, the \
+                        SPLINTER_CERT_DIR environment variable, or in the default location \
+                         /etc/splinter/certs/. \n\n\
+                        The following files are created: \n    \
+                            - client.crt \n    \
+                            - client.key \n    \
+                            - server.crt \n    \
+                            - server.key \n    \
+                            - generated_ca.pem \n    \
+                            - generated_ca.key
+                                        ",
+                    ),
+            ),
     );
 
     #[cfg(feature = "keygen")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("keygen")
                 .about(
@@ -123,8 +178,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "health")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("health")
                 .about("Displays information about network health")
@@ -146,8 +199,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "database")]
     {
-        use clap::{Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("database")
                 .about("Database commands")
@@ -166,8 +217,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "circuit")]
     {
-        use clap::{AppSettings, Arg, SubCommand};
-
         let create_circuit = SubCommand::with_name("create")
             .about("Propose that a new circuit is created")
             .arg(
@@ -452,8 +501,6 @@ fn run() -> Result<(), CliError> {
 
     #[cfg(feature = "node-alias")]
     {
-        use clap::{AppSettings, Arg, SubCommand};
-
         app = app.subcommand(
             SubCommand::with_name("node")
                 .about("Provides node management functionality")
