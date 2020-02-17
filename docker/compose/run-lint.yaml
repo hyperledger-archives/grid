@@ -1,0 +1,73 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "3.7"
+
+services:
+
+  lint-splinter:
+    build:
+      context: ../
+      dockerfile: ./lint
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: lint-splinter:${ISOLATION_ID}
+    volumes:
+      - ../../:/project/splinter
+    command: run_lint_rust
+
+  clippy-splinter:
+    build:
+      context: ../
+      dockerfile: ./lint
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: clippy-splinter:${ISOLATION_ID}
+    volumes:
+      - ../../:/project/splinter
+    entrypoint: |
+      bash -c "
+         echo \"Running clippy on default features...\" && \
+         cargo clippy -- -D warnings && \
+         echo \"Running clippy on experimental features...\" && \
+         (cd libsplinter && cargo clippy --features experimental -- -D warnings) && \
+         (cd splinterd && cargo clippy --features experimental -- -D warnings) && \
+         (cd cli && cargo clippy --features experimental -- -D warnings)
+      "
+
+  lint-gameroom-client:
+    build:
+      context: ../../examples/gameroom/gameroom-app
+      dockerfile: ../../../docker/lint-client
+    image: lint-gameroom-client:${ISOLATION_ID}
+    volumes:
+      - ../../:/project/splinter/examples/gameroom/gameroom-app
+    command: npm run lint
+
+  lint-canopy-app:
+    build:
+      context: ../../canopy
+      dockerfile: ./app/Dockerfile
+    image: canopy-app:${ISOLATION_ID}
+    command: yarn lint
+
+  lint-saplingjs:
+    build:
+      context: ../../canopy/saplingjs
+    image: saplingjs:${ISOLATION_ID}
+    command: yarn lint

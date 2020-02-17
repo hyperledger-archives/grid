@@ -1,0 +1,65 @@
+{
+  "name": "app",
+  "license": "Apache-2.0",
+  "author": "Cargill Incorporated",
+  "proxy": "http://0.0.0.0:8080",
+  "scripts": {
+    "start:saplings": "http-server ./saplings -p 8675 --cors",
+    "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:8675 REACT_APP_SPLINTER_URL=http://localhost:3000  react-scripts start",
+    "start": "run-p start:saplings start:react",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "format": "prettier --write \"**/*.+(js|jsx|json|css|scss|md)\"",
+    "lint": "eslint ."
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "@babel/parser": "^7.7.2",
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-solid-svg-icons": "^5.11.2",
+    "@fortawesome/react-fontawesome": "^0.1.7",
+    "babel-plugin-macros": "^2.6.1",
+    "canopyjs": "file:../canopyjs",
+    "classnames": "^2.2.6",
+    "es6-promisify": "^6.0.2",
+    "http-proxy-cli": "^2.1.0",
+    "js-yaml": "^3.13.1",
+    "node-sass": "^4.12.0",
+    "prop-types": "^15.7.2",
+    "react": "^16.10.2",
+    "react-dom": "^16.10.2",
+    "react-scripts": "3.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.6.0",
+    "eslint-config-airbnb": "18.0.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-prettier": "^3.1.1",
+    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-react-hooks": "^1.7.0",
+    "http-server": "^0.11.1",
+    "husky": "^3.0.9",
+    "lint-staged": "^9.4.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^1.18.2"
+  }
+}

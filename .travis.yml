@@ -1,0 +1,92 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+services:
+  - docker
+
+env:
+  global:
+    - ISOLATION_ID=$TRAVIS_BUILD_ID
+    - NAMESPACE="splintercommunity/"
+    - VERSION=AUTO_STRICT
+
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+jobs:
+  include:
+    - stage: Lint Gameroom Client
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-gameroom-client
+
+    - stage: Run Lint/Clippy on Splinter
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
+    - stage: Run Lint/Clippy on Splinter
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit clippy-splinter
+
+    - stage: Lint/Unit Test Canopy
+      script:
+        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-canopy-app
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-canopy-app
+        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-saplingjs
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-saplingjs
+
+    - stage: Run Splinter/Gameroom Unit Tests
+      before_script:
+        - set -e
+      script:
+        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-splinter
+    - stage: Run Splinter/Gameroom Unit Tests
+      before_script:
+        - set -e
+      script:
+        - docker-compose -f examples/gameroom/tests/docker-compose.yaml up --abort-on-container-exit
+    - stage: Run Splinter/Gameroom Unit Tests
+      before_script:
+        - set -e
+      script:
+        - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit
+
+    - stage: Cron only
+      if: type = cron
+      script: docker-compose -f tests/test-splinter-cron.yaml up --abort-on-container-exit unit-test-splinter
+
+    - stage: Publish docker images
+      language: generic
+      before_deploy:
+        - docker login -u splintercommunity -p $DOCKER_TOKEN
+      deploy:
+        - provider: script
+          script: bash ci/publish-docker master
+          on:
+            branch: master
+        - provider: script
+          script: bash ci/publish-docker experimental
+          on:
+            branch: master
+            condition: $TRAVIS_EVENT_TYPE == cron
+        - provider: script
+          script: bash ci/publish-docker
+          on:
+            tags: true
+            all_branches: true

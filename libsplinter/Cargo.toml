@@ -1,0 +1,137 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[package]
+name = "splinter"
+version = "0.3.12"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
+readme = "../README.md"
+description = """\
+    Splinter is a privacy-focused platform for distributed applications that \
+    provides a blockchain-inspired networking environment for communication \
+    and transactions between organizations.
+"""
+repository = "https://github.com/cargill/splinter"
+
+[dependencies]
+actix = { version = "0.8", optional = true, default-features = false }
+actix-http = { version = "0.2", optional = true, features = ["flate2-zlib"] }
+actix-web = { version = "1.0", optional = true, default-features = false, features = ["flate2-zlib"] }
+actix-web-actors = { version = "1.0", optional = true }
+atomicwrites = "0.2"
+awc = { version = "0.2", optional = true }
+bcrypt = {version = "0.6", optional = true}
+byteorder = "1"
+bzip2 = { version = "0.3", optional = true }
+crossbeam-channel = "0.3"
+diesel = { version = "1.0", features = ["r2d2", "serde_json"], optional = true }
+diesel_migrations = { version = "1.4", optional = true }
+futures = { version = "0.1", optional = true }
+hyper = { version = "0.12", optional = true }
+jsonwebtoken = { version = "6.0", optional = true }
+log = "0.3.0"
+mio = "0.6"
+mio-extras = "2"
+openssl = "0.10"
+percent-encoding = { version = "2.0", optional = true }
+protobuf = "2"
+rand = { version = "0.7", optional = true }
+reqwest = { version = "0.10", optional = true, features = ["blocking", "json"] }
+sawtooth = { version = "0.2", default-features = false, features = ["lmdb-store", "receipt-store"] }
+sawtooth-sabre = "0.4"
+sawtooth-sdk = { version = "0.3", optional = true }
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+serde_yaml = "0.8"
+tar = { version = "0.4", optional = true }
+tokio = { version = "0.1.22", optional = true }
+transact = { version = "0.1", features = ["sawtooth-compat"] }
+url = "1.7.1"
+ursa = { version = "0.1", optional = true }
+uuid = { version = "0.7", features = ["v4"]}
+zmq = { version = "0.9", optional = true }
+
+[dev-dependencies]
+serial_test = "0.3"
+tempdir = "0.3"
+
+[build-dependencies]
+protoc-rust = "2"
+glob = "0.2"
+
+[features]
+default = []
+
+stable = [
+    "default",
+    "events",
+    "rest-api",
+    "rest-api-actix",
+    "sawtooth-signing-compat",
+]
+
+experimental = [
+    "biome",
+    "biome-credentials",
+    "biome-key-management",
+    "biome-notifications",
+    "biome-user",
+    "circuit-read",
+    "connection-manager",
+    "connection-manager-notification-iter-try-next",
+    "database",
+    "matrix",
+    "node-registry-unified",
+    "postgres",
+    "proposal-read",
+    "scabbard-client",
+    "scabbard-get-state",
+    "zmq-transport",
+]
+
+biome = ["database", "jsonwebtoken", "rand"]
+biome-credentials = ["biome", "biome-user", "database", "bcrypt"]
+biome-key-management = ["biome", "database"]
+biome-notifications = ["biome", "database"]
+biome-user = ["biome", "database"]
+circuit-read = []
+proposal-read = []
+connection-manager = ["matrix"]
+connection-manager-notification-iter-try-next = ["connection-manager"]
+database = ["diesel/postgres", "diesel_migrations"]
+events = ["actix-http", "futures", "hyper", "tokio", "awc"]
+matrix = []
+node-registry-unified = []
+postgres = ["diesel/postgres"]
+rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
+rest-api-actix = ["actix", "actix-http", "actix-web", "actix-web-actors"]
+sawtooth-signing-compat = ["sawtooth-sdk"]
+scabbard-client = ["bzip2", "futures", "reqwest", "sawtooth-sdk", "tar"]
+scabbard-get-state = []
+zmq-transport = ["zmq"]
+
+# The following features are broken and should not be used.
+
+# The `ursa` dependency is currently broken, and will need to be fixed before
+# the `ursa-compat` feature can be added back to `experimental`.
+ursa-compat = ["ursa"]
+
+[package.metadata.docs.rs]
+features = [
+    "stable",
+    "experimental"
+  ]
