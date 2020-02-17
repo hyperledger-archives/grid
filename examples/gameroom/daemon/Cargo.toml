@@ -30,9 +30,10 @@ name = "gameroomd"
 path = "src/main.rs"
 
 [dependencies]
-actix = { version = "0.8", default-features = false }
-actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
-actix-web-actors = "1.0"
+actix = { version = "0.9", default-features = false }
+actix-web = "2.0"
+actix-web-actors = "2.0"
+actix-rt = "1.0"
 bcrypt = "0.5"
 clap = "2"
 ctrlc = "3.0"

@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use actix_web::{error, web, Error, HttpResponse};
-use futures::Future;
 use gameroom_database::{helpers, models::GameroomNotification, ConnectionPool};
 
 use crate::rest_api::RestApiResponseError;
@@ -57,31 +56,28 @@ impl ApiNotification {
     }
 }
 
-pub fn fetch_notificaiton(
+pub async fn fetch_notificaiton(
     pool: web::Data<ConnectionPool>,
     notification_id: web::Path<i64>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || get_notification_from_db(pool, *notification_id)).then(
-            |res| match res {
-                Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
-                Err(err) => match err {
-                    error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => {
-                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
-                        }
-                        _ => Ok(HttpResponse::BadRequest()
-                            .json(ErrorResponse::bad_request(&err.to_string()))),
-                    },
-                    error::BlockingError::Canceled => {
-                        debug!("Internal Server Error: {}", err);
-                        Ok(HttpResponse::InternalServerError()
-                            .json(ErrorResponse::internal_error()))
+) -> Result<HttpResponse, Error> {
+    match web::block(move || get_notification_from_db(pool, *notification_id)).await {
+        Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
+        Err(err) => {
+            match err {
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                     }
+                    _ => Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string()))),
                 },
-            },
-        ),
-    )
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
+            }
+        }
+    }
 }
 
 fn get_notification_from_db(
@@ -97,10 +93,10 @@ fn get_notification_from_db(
     )))
 }
 
-pub fn list_unread_notifications(
+pub async fn list_unread_notifications(
     pool: web::Data<ConnectionPool>,
     query: web::Query<HashMap<String, usize>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+) -> Result<HttpResponse, Error> {
     let offset: usize = query
         .get("offset")
         .map(ToOwned::to_owned)
@@ -111,25 +107,17 @@ pub fn list_unread_notifications(
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| DEFAULT_LIMIT);
 
-    Box::new(
-        web::block(move || list_unread_notifications_from_db(pool, limit, offset)).then(
-            move |res| match res {
-                Ok((notifications, query_count)) => {
-                    let paging_info = get_response_paging_info(
-                        limit,
-                        offset,
-                        "api/notifications?",
-                        query_count as usize,
-                    );
-                    Ok(HttpResponse::Ok().json(SuccessResponse::list(notifications, paging_info)))
-                }
-                Err(err) => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        ),
-    )
+    match web::block(move || list_unread_notifications_from_db(pool, limit, offset)).await {
+        Ok((notifications, query_count)) => {
+            let paging_info =
+                get_response_paging_info(limit, offset, "api/notifications?", query_count as usize);
+            Ok(HttpResponse::Ok().json(SuccessResponse::list(notifications, paging_info)))
+        }
+        Err(err) => {
+            debug!("Internal Server Error: {}", err);
+            Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+        }
+    }
 }
 
 fn list_unread_notifications_from_db(
@@ -150,31 +138,28 @@ fn list_unread_notifications_from_db(
     Ok((notifications, notification_count))
 }
 
-pub fn read_notification(
+pub async fn read_notification(
     pool: web::Data<ConnectionPool>,
     notification_id: web::Path<i64>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || update_gameroom_notification(pool, *notification_id)).then(|res| {
-            match res {
-                Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
-                Err(err) => match err {
-                    error::BlockingError::Error(err) => match err {
-                        RestApiResponseError::NotFound(err) => {
-                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
-                        }
-                        _ => Ok(HttpResponse::BadRequest()
-                            .json(ErrorResponse::bad_request(&err.to_string()))),
-                    },
-                    error::BlockingError::Canceled => {
-                        debug!("Internal Server Error: {}", err);
-                        Ok(HttpResponse::InternalServerError()
-                            .json(ErrorResponse::internal_error()))
+) -> Result<HttpResponse, Error> {
+    match web::block(move || update_gameroom_notification(pool, *notification_id)).await {
+        Ok(notification) => Ok(HttpResponse::Ok().json(SuccessResponse::new(notification))),
+        Err(err) => {
+            match err {
+                error::BlockingError::Error(err) => match err {
+                    RestApiResponseError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                     }
+                    _ => Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string()))),
                 },
+                error::BlockingError::Canceled => {
+                    debug!("Internal Server Error: {}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             }
-        }),
-    )
+        }
+    }
 }
 
 fn update_gameroom_notification(

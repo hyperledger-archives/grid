@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use actix_web::{client::Client, http::StatusCode, web, Error, HttpResponse};
-use futures::Future;
 use percent_encoding::utf8_percent_encode;
 use splinter::node_registry::Node;
 use splinter::protocol;
@@ -21,48 +20,48 @@ use std::collections::HashMap;
 
 use super::{ErrorResponse, SuccessResponse, DEFAULT_LIMIT, DEFAULT_OFFSET, QUERY_ENCODE_SET};
 
-pub fn fetch_node(
+pub async fn fetch_node(
     identity: web::Path<String>,
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    client
+) -> Result<HttpResponse, Error> {
+    let mut response = client
         .get(&format!("{}/nodes/{}", splinterd_url.get_ref(), identity))
         .header(
             "SplinterProtocolVersion",
             protocol::ADMIN_PROTOCOL_VERSION.to_string(),
         )
         .send()
-        .map_err(Error::from)
-        .and_then(|mut resp| {
-            let body = resp.body().wait()?;
-            match resp.status() {
-                StatusCode::OK => {
-                    let node: Node = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::Ok().json(SuccessResponse::new(node)))
-                }
-                StatusCode::NOT_FOUND => {
-                    let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&message)))
-                }
-                _ => {
-                    let message: String = serde_json::from_slice(&body)?;
-                    debug!(
-                        "Internal Server Error. Splinterd responded with error {} message {}",
-                        resp.status(),
-                        message
-                    );
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            }
-        })
+        .await?;
+
+    let body = response.body().await?;
+
+    match response.status() {
+        StatusCode::OK => {
+            let node: Node = serde_json::from_slice(&body)?;
+            Ok(HttpResponse::Ok().json(SuccessResponse::new(node)))
+        }
+        StatusCode::NOT_FOUND => {
+            let message: String = serde_json::from_slice(&body)?;
+            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&message)))
+        }
+        _ => {
+            let message: String = serde_json::from_slice(&body)?;
+            debug!(
+                "Internal Server Error. Splinterd responded with error {} message {}",
+                response.status(),
+                message
+            );
+            Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+        }
+    }
 }
 
-pub fn list_nodes(
+pub async fn list_nodes(
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
     query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+) -> Result<HttpResponse, Error> {
     let mut request_url = format!("{}/nodes", splinterd_url.get_ref());
 
     let offset = query
@@ -84,36 +83,36 @@ pub fn list_nodes(
         );
     }
 
-    client
+    let mut response = client
         .get(&request_url)
         .header(
             "SplinterProtocolVersion",
             protocol::ADMIN_PROTOCOL_VERSION.to_string(),
         )
         .send()
-        .map_err(Error::from)
-        .and_then(|mut resp| {
-            let body = resp.body().wait()?;
-            match resp.status() {
-                StatusCode::OK => {
-                    let list_reponse: SuccessResponse<Vec<Node>> = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::Ok().json(list_reponse))
-                }
-                StatusCode::BAD_REQUEST => {
-                    let message: String = serde_json::from_slice(&body)?;
-                    Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message)))
-                }
-                _ => {
-                    let message: String = serde_json::from_slice(&body)?;
-                    debug!(
-                        "Internal Server Error. Splinterd responded with error {} message {}",
-                        resp.status(),
-                        message
-                    );
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            }
-        })
+        .await?;
+
+    let body = response.body().await?;
+
+    match response.status() {
+        StatusCode::OK => {
+            let list_reponse: SuccessResponse<Vec<Node>> = serde_json::from_slice(&body)?;
+            Ok(HttpResponse::Ok().json(list_reponse))
+        }
+        StatusCode::BAD_REQUEST => {
+            let message: String = serde_json::from_slice(&body)?;
+            Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message)))
+        }
+        _ => {
+            let message: String = serde_json::from_slice(&body)?;
+            debug!(
+                "Internal Server Error. Splinterd responded with error {} message {}",
+                response.status(),
+                message
+            );
+            Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+        }
+    }
 }
 
 #[cfg(all(feature = "test-node-endpoint", test))]
@@ -127,64 +126,67 @@ mod test {
 
     static SPLINTERD_URL: &str = "http://splinterd-node:8085";
 
-    #[test]
+    #[actix_rt::test]
     /// Tests a GET /nodes/{identity} request returns the expected node.
-    fn test_fetch_node_ok() {
+    async fn test_fetch_node_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node))),
-        );
+                .service(web::resource("/nodes/{identity}").route(web::get().to(fetch_node))),
+        )
+        .await;
 
         let req = test::TestRequest::get()
             .uri(&format!("/nodes/{}", get_node_1().identity))
             .to_request();
 
-        let resp = test::call_service(&mut app, req);
+        let resp = test::call_service(&mut app, req).await;
 
         assert_eq!(resp.status(), StatusCode::OK);
         let response: SuccessResponse<Node> =
-            serde_json::from_slice(&test::read_body(resp)).unwrap();
+            serde_json::from_slice(&test::read_body(resp).await).unwrap();
         assert_eq!(response.data, get_node_1())
     }
 
-    #[test]
+    #[actix_rt::test]
     /// Tests a GET /nodes/{identity} request returns NotFound when an invalid identity is passed
-    fn test_fetch_node_not_found() {
+    async fn test_fetch_node_not_found() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes/{identity}").route(web::get().to_async(fetch_node))),
-        );
+                .service(web::resource("/nodes/{identity}").route(web::get().to(fetch_node))),
+        )
+        .await;
 
         let req = test::TestRequest::get()
             .uri("/nodes/Node-not-valid")
             .to_request();
 
-        let resp = test::call_service(&mut app, req);
+        let resp = test::call_service(&mut app, req).await;
 
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
-    #[test]
+    #[actix_rt::test]
     /// Tests a GET /nodes request with no filters returns the expected nodes.
-    fn test_list_node_ok() {
+    async fn test_list_node_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-        );
+                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+        )
+        .await;
 
         let req = test::TestRequest::get().uri("/nodes").to_request();
 
-        let resp = test::call_service(&mut app, req);
+        let resp = test::call_service(&mut app, req).await;
 
         assert_eq!(resp.status(), StatusCode::OK);
         let nodes: SuccessResponse<Vec<Node>> =
-            serde_json::from_slice(&test::read_body(resp)).unwrap();
+            serde_json::from_slice(&test::read_body(resp).await).unwrap();
         assert_eq!(nodes.data, vec![get_node_1(), get_node_2()]);
         assert_eq!(
             nodes.paging,
@@ -192,15 +194,16 @@ mod test {
         )
     }
 
-    #[test]
+    #[actix_rt::test]
     /// Tests a GET /nodes request with filters returns the expected node.
-    fn test_list_node_with_filters_ok() {
+    async fn test_list_node_with_filters_ok() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-        );
+                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+        )
+        .await;
 
         let filter = utf8_percent_encode("{\"company\":[\"=\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
             .to_string();
@@ -210,11 +213,11 @@ mod test {
             .header(header::CONTENT_TYPE, "application/json")
             .to_request();
 
-        let resp = test::call_service(&mut app, req);
+        let resp = test::call_service(&mut app, req).await;
 
         assert_eq!(resp.status(), StatusCode::OK);
         let nodes: SuccessResponse<Vec<Node>> =
-            serde_json::from_slice(&test::read_body(resp)).unwrap();
+            serde_json::from_slice(&test::read_body(resp).await).unwrap();
         assert_eq!(nodes.data, vec![get_node_1()]);
         let link = format!("/nodes?filter={}&", filter);
         assert_eq!(
@@ -223,15 +226,16 @@ mod test {
         )
     }
 
-    #[test]
+    #[actix_rt::test]
     /// Tests a GET /nodes request with invalid filter returns BadRequest response.
-    fn test_list_node_with_filters_bad_request() {
+    async fn test_list_node_with_filters_bad_request() {
         let mut app = test::init_service(
             App::new()
                 .data(Client::new())
                 .data(SPLINTERD_URL.to_string())
-                .service(web::resource("/nodes").route(web::get().to_async(list_nodes))),
-        );
+                .service(web::resource("/nodes").route(web::get().to(list_nodes))),
+        )
+        .await;
 
         let filter = utf8_percent_encode("{\"company\":[\"*\",\"Bitwise IO\"]}", QUERY_ENCODE_SET)
             .to_string();
@@ -241,7 +245,7 @@ mod test {
             .header(header::CONTENT_TYPE, "application/json")
             .to_request();
 
-        let resp = test::call_service(&mut app, req);
+        let resp = test::call_service(&mut app, req).await;
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }

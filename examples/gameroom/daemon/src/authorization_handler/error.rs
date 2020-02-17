@@ -18,7 +18,6 @@
 use std::error::Error;
 use std::fmt;
 
-use futures::future;
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuildError, CreateContractRegistryActionBuildError,
     CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
@@ -165,11 +164,5 @@ impl_from_sabre_errors!(
 impl From<SigningError> for AppAuthHandlerError {
     fn from(err: SigningError) -> Self {
         AppAuthHandlerError::SigningError(err.to_string())
-    }
-}
-
-impl<T> Into<future::FutureResult<T, AppAuthHandlerError>> for AppAuthHandlerError {
-    fn into(self) -> future::FutureResult<T, AppAuthHandlerError> {
-        future::err(self)
     }
 }

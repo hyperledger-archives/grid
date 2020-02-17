@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use actix_web::{error, web, Error, HttpResponse};
-use futures::Future;
 use gameroom_database::{
     helpers,
     models::{GameroomMember, GameroomProposal},
@@ -90,14 +89,14 @@ impl ApiGameroomMember {
     }
 }
 
-pub fn fetch_proposal(
+pub async fn fetch_proposal(
     pool: web::Data<ConnectionPool>,
     proposal_id: web::Path<i64>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || get_proposal_from_db(pool, *proposal_id)).then(|res| match res {
-            Ok(proposal) => Ok(HttpResponse::Ok().json(SuccessResponse::new(proposal))),
-            Err(err) => match err {
+) -> Result<HttpResponse, Error> {
+    match web::block(move || get_proposal_from_db(pool, *proposal_id)).await {
+        Ok(proposal) => Ok(HttpResponse::Ok().json(SuccessResponse::new(proposal))),
+        Err(err) => {
+            match err {
                 error::BlockingError::Error(err) => match err {
                     RestApiResponseError::NotFound(err) => {
                         Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
@@ -109,9 +108,9 @@ pub fn fetch_proposal(
                     debug!("Internal Server Error: {}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
-            },
-        }),
-    )
+            }
+        }
+    }
 }
 
 fn get_proposal_from_db(
@@ -132,10 +131,10 @@ fn get_proposal_from_db(
     )))
 }
 
-pub fn list_proposals(
+pub async fn list_proposals(
     pool: web::Data<ConnectionPool>,
     query: web::Query<HashMap<String, usize>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+) -> Result<HttpResponse, Error> {
     let offset: usize = query
         .get("offset")
         .map(ToOwned::to_owned)
@@ -146,25 +145,17 @@ pub fn list_proposals(
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| DEFAULT_LIMIT);
 
-    Box::new(
-        web::block(move || list_proposals_from_db(pool, limit, offset)).then(
-            move |res| match res {
-                Ok((proposals, query_count)) => {
-                    let paging_info = get_response_paging_info(
-                        limit,
-                        offset,
-                        "api/proposals?",
-                        query_count as usize,
-                    );
-                    Ok(HttpResponse::Ok().json(SuccessResponse::list(proposals, paging_info)))
-                }
-                Err(err) => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        ),
-    )
+    match web::block(move || list_proposals_from_db(pool, limit, offset)).await {
+        Ok((proposals, query_count)) => {
+            let paging_info =
+                get_response_paging_info(limit, offset, "api/proposals?", query_count as usize);
+            Ok(HttpResponse::Ok().json(SuccessResponse::list(proposals, paging_info)))
+        }
+        Err(err) => {
+            debug!("Internal Server Error: {}", err);
+            Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+        }
+    }
 }
 
 fn list_proposals_from_db(
@@ -200,43 +191,39 @@ fn list_proposals_from_db(
     Ok((proposals, helpers::get_proposal_count(&*pool.get()?)?))
 }
 
-pub fn proposal_vote(
+pub async fn proposal_vote(
     vote: web::Json<CircuitProposalVote>,
     proposal_id: web::Path<i64>,
     pool: web::Data<ConnectionPool>,
     node_info: web::Data<Node>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+) -> Result<HttpResponse, Error> {
     let node_identity = node_info.identity.to_string();
-    Box::new(
-        web::block(move || check_proposal_exists(*proposal_id, pool)).then(|res| match res {
-            Ok(()) => match make_payload(vote.into_inner(), node_identity) {
-                Ok(bytes) => Ok(HttpResponse::Ok()
-                    .json(SuccessResponse::new(json!({ "payload_bytes": bytes })))),
-                Err(err) => {
-                    debug!("Failed to prepare circuit management payload {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+    match web::block(move || check_proposal_exists(*proposal_id, pool)).await {
+        Ok(()) => match make_payload(vote.into_inner(), node_identity) {
+            Ok(bytes) => Ok(
+                HttpResponse::Ok().json(SuccessResponse::new(json!({ "payload_bytes": bytes })))
+            ),
+            Err(err) => {
+                debug!("Failed to prepare circuit management payload {}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
+        },
+        Err(err) => match err {
+            error::BlockingError::Error(err) => match err {
+                RestApiResponseError::NotFound(err) => {
+                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                 }
+                RestApiResponseError::BadRequest(err) => {
+                    Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&err)))
+                }
+                _ => Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error())),
             },
-            Err(err) => match err {
-                error::BlockingError::Error(err) => {
-                    match err {
-                        RestApiResponseError::NotFound(err) => {
-                            Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
-                        }
-                        RestApiResponseError::BadRequest(err) => {
-                            Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&err)))
-                        }
-                        _ => Ok(HttpResponse::InternalServerError()
-                            .json(ErrorResponse::internal_error())),
-                    }
-                }
-                error::BlockingError::Canceled => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        }),
-    )
+            error::BlockingError::Canceled => {
+                debug!("Internal Server Error: {}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
+        },
+    }
 }
 
 fn check_proposal_exists(

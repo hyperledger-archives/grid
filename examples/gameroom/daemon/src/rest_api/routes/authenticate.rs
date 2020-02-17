@@ -14,7 +14,6 @@
 
 use actix_web::{error, web, Error, HttpResponse};
 use bcrypt::{hash, verify};
-use futures::Future;
 use gameroom_database::{helpers, models::GameroomUser, ConnectionPool};
 use serde::{Deserialize, Serialize};
 
@@ -40,23 +39,21 @@ pub struct AuthData {
     pub hashed_password: String,
 }
 
-pub fn login(
+pub async fn login(
     auth_data: web::Json<AuthData>,
     pool: web::Data<ConnectionPool>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || authenticate_user(pool, auth_data.into_inner())).then(|res| match res {
-            Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
-            Err(err) => match err {
-                error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized()
-                    .json(ErrorResponse::unauthorized("Invalid email or password"))),
-                error::BlockingError::Canceled => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        }),
-    )
+) -> Result<HttpResponse, Error> {
+    match web::block(move || authenticate_user(pool, auth_data.into_inner())).await {
+        Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
+        Err(err) => match err {
+            error::BlockingError::Error(_) => Ok(HttpResponse::Unauthorized()
+                .json(ErrorResponse::unauthorized("Invalid email or password"))),
+            error::BlockingError::Canceled => {
+                debug!("Internal Server Error: {}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
+        },
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,25 +65,22 @@ pub struct UserCreate {
     pub public_key: String,
 }
 
-pub fn register(
+pub async fn register(
     new_user: web::Json<UserCreate>,
     pool: web::Data<ConnectionPool>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || create_user(pool, new_user.into_inner())).then(|res| match res {
-            Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
-            Err(err) => match err {
-                error::BlockingError::Error(err) => {
-                    Ok(HttpResponse::BadRequest()
-                        .json(ErrorResponse::bad_request(&err.to_string())))
-                }
-                error::BlockingError::Canceled => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        }),
-    )
+) -> Result<HttpResponse, Error> {
+    match web::block(move || create_user(pool, new_user.into_inner())).await {
+        Ok(user) => Ok(HttpResponse::Ok().json(SuccessResponse::new(user))),
+        Err(err) => match err {
+            error::BlockingError::Error(err) => {
+                Ok(HttpResponse::BadRequest().json(ErrorResponse::bad_request(&err.to_string())))
+            }
+            error::BlockingError::Canceled => {
+                debug!("Internal Server Error: {}", err);
+                Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+            }
+        },
+    }
 }
 
 fn create_user(

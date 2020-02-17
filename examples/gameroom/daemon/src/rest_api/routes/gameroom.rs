@@ -14,7 +14,6 @@
 use std::collections::HashMap;
 
 use actix_web::{client::Client, error, http::StatusCode, web, Error, HttpResponse};
-use futures::{Future, IntoFuture};
 use gameroom_database::{
     helpers,
     models::{Gameroom, GameroomMember as DbGameroomMember},
@@ -93,225 +92,205 @@ impl ApiGameroomMember {
     }
 }
 
-pub fn propose_gameroom(
+pub async fn propose_gameroom(
     pool: web::Data<ConnectionPool>,
     create_gameroom: web::Json<CreateGameroomForm>,
     node_info: web::Data<Node>,
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
     gameroomd_data: web::Data<GameroomdData>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    fetch_node_information(&create_gameroom.members, &splinterd_url, client).then(move |resp| {
-        let nodes = match resp {
-            Ok(nodes) => nodes,
-            Err(err) => match err {
-                RestApiResponseError::BadRequest(message) => {
-                    return HttpResponse::BadRequest()
-                        .json(ErrorResponse::bad_request(&message))
-                        .into_future();
-                }
-                _ => {
-                    debug!("Failed to fetch node information: {}", err);
-                    return HttpResponse::InternalServerError()
-                        .json(ErrorResponse::internal_error())
-                        .into_future();
-                }
-            },
-        };
+) -> HttpResponse {
+    let response = fetch_node_information(&create_gameroom.members, &splinterd_url, client).await;
 
-        let mut members = nodes
-            .iter()
-            .map(|node| SplinterNode {
-                node_id: node.identity.to_string(),
-                endpoint: node.endpoint.to_string(),
-            })
-            .collect::<Vec<SplinterNode>>();
+    let nodes = match response {
+        Ok(nodes) => nodes,
+        Err(err) => match err {
+            RestApiResponseError::BadRequest(message) => {
+                return HttpResponse::BadRequest().json(ErrorResponse::bad_request(&message));
+            }
+            _ => {
+                debug!("Failed to fetch node information: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+            }
+        },
+    };
 
-        members.push(SplinterNode {
-            node_id: node_info.identity.to_string(),
-            endpoint: node_info.endpoint.to_string(),
-        });
-        let partial_circuit_id = members.iter().fold(String::new(), |mut acc, member| {
-            acc.push_str(&format!("::{}", member.node_id));
-            acc
-        });
+    let mut members = nodes
+        .iter()
+        .map(|node| SplinterNode {
+            node_id: node.identity.to_string(),
+            endpoint: node.endpoint.to_string(),
+        })
+        .collect::<Vec<SplinterNode>>();
 
-        let scabbard_admin_keys = vec![gameroomd_data.get_ref().public_key.clone()];
+    members.push(SplinterNode {
+        node_id: node_info.identity.to_string(),
+        endpoint: node_info.endpoint.to_string(),
+    });
+    let partial_circuit_id = members.iter().fold(String::new(), |mut acc, member| {
+        acc.push_str(&format!("::{}", member.node_id));
+        acc
+    });
 
-        let mut scabbard_args = vec![];
-        scabbard_args.push((
-            "admin_keys".into(),
-            match serde_json::to_string(&scabbard_admin_keys) {
-                Ok(s) => s,
-                Err(err) => {
-                    debug!("Failed to serialize scabbard admin keys: {}", err);
-                    return HttpResponse::InternalServerError()
-                        .json(ErrorResponse::internal_error())
-                        .into_future();
-                }
-            },
-        ));
+    let scabbard_admin_keys = vec![gameroomd_data.get_ref().public_key.clone()];
 
-        let mut roster = vec![];
-        for node in members.iter() {
-            let peer_services = match serde_json::to_string(
-                &members
-                    .iter()
-                    .filter_map(|other_node| {
-                        if other_node.node_id != node.node_id {
-                            Some(format!("gameroom_{}", other_node.node_id))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            ) {
-                Ok(s) => s,
-                Err(err) => {
-                    debug!("Failed to serialize peer services: {}", err);
-                    return HttpResponse::InternalServerError()
-                        .json(ErrorResponse::internal_error())
-                        .into_future();
-                }
-            };
-
-            let mut service_args = scabbard_args.clone();
-            service_args.push(("peer_services".into(), peer_services));
-
-            roster.push(SplinterService {
-                service_id: format!("gameroom_{}", node.node_id),
-                service_type: "scabbard".to_string(),
-                allowed_nodes: vec![node.node_id.to_string()],
-                arguments: service_args,
-            });
-        }
-
-        let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
-            Ok(()) => match ApplicationMetadata::new(&create_gameroom.alias, &scabbard_admin_keys)
-                .to_bytes()
-            {
-                Ok(bytes) => bytes,
-                Err(err) => {
-                    debug!("Failed to serialize application metadata: {}", err);
-                    return HttpResponse::InternalServerError()
-                        .json(ErrorResponse::internal_error())
-                        .into_future();
-                }
-            },
+    let mut scabbard_args = vec![];
+    scabbard_args.push((
+        "admin_keys".into(),
+        match serde_json::to_string(&scabbard_admin_keys) {
+            Ok(s) => s,
             Err(err) => {
-                return HttpResponse::BadRequest()
-                    .json(ErrorResponse::bad_request(&err.to_string()))
-                    .into_future();
+                debug!("Failed to serialize scabbard admin keys: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+            }
+        },
+    ));
+
+    let mut roster = vec![];
+    for node in members.iter() {
+        let peer_services = match serde_json::to_string(
+            &members
+                .iter()
+                .filter_map(|other_node| {
+                    if other_node.node_id != node.node_id {
+                        Some(format!("gameroom_{}", other_node.node_id))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ) {
+            Ok(s) => s,
+            Err(err) => {
+                debug!("Failed to serialize peer services: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
             }
         };
 
-        let create_request = CreateCircuit {
-            circuit_id: format!(
-                "gameroom{}::{}",
-                partial_circuit_id,
-                Uuid::new_v4().to_string()
-            ),
-            roster,
-            members,
-            authorization_type: AuthorizationType::Trust,
-            persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurability,
-            routes: RouteType::Any,
-            circuit_management_type: "gameroom".to_string(),
-            application_metadata,
-        };
+        let mut service_args = scabbard_args.clone();
+        service_args.push(("peer_services".into(), peer_services));
 
-        let payload_bytes = match make_payload(create_request, node_info.identity.to_string()) {
+        roster.push(SplinterService {
+            service_id: format!("gameroom_{}", node.node_id),
+            service_type: "scabbard".to_string(),
+            allowed_nodes: vec![node.node_id.to_string()],
+            arguments: service_args,
+        });
+    }
+
+    let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
+        Ok(()) => match ApplicationMetadata::new(&create_gameroom.alias, &scabbard_admin_keys)
+            .to_bytes()
+        {
             Ok(bytes) => bytes,
             Err(err) => {
-                debug!("Failed to make circuit management payload: {}", err);
-                return HttpResponse::InternalServerError()
-                    .json(ErrorResponse::internal_error())
-                    .into_future();
+                debug!("Failed to serialize application metadata: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
             }
-        };
+        },
+        Err(err) => {
+            return HttpResponse::BadRequest().json(ErrorResponse::bad_request(&err.to_string()));
+        }
+    };
 
-        HttpResponse::Ok()
-            .json(SuccessResponse::new(json!({
-                "payload_bytes": payload_bytes
-            })))
-            .into_future()
-    })
+    let create_request = CreateCircuit {
+        circuit_id: format!(
+            "gameroom{}::{}",
+            partial_circuit_id,
+            Uuid::new_v4().to_string()
+        ),
+        roster,
+        members,
+        authorization_type: AuthorizationType::Trust,
+        persistence: PersistenceType::Any,
+        durability: DurabilityType::NoDurability,
+        routes: RouteType::Any,
+        circuit_management_type: "gameroom".to_string(),
+        application_metadata,
+    };
+
+    let payload_bytes = match make_payload(create_request, node_info.identity.to_string()) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            debug!("Failed to make circuit management payload: {}", err);
+            return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+        }
+    };
+
+    HttpResponse::Ok().json(SuccessResponse::new(json!({
+        "payload_bytes": payload_bytes
+    })))
 }
 
-fn fetch_node_information(
+async fn fetch_node_information(
     node_ids: &[String],
     splinterd_url: &str,
     client: web::Data<Client>,
-) -> Box<dyn Future<Item = Vec<Node>, Error = RestApiResponseError>> {
+) -> Result<Vec<Node>, RestApiResponseError> {
     let node_ids = node_ids.to_owned();
-    Box::new(
-        client
-            .get(&format!("{}/nodes?limit={}", splinterd_url, std::i64::MAX))
-            .header(
-                "SplinterProtocolVersion",
-                protocol::ADMIN_PROTOCOL_VERSION.to_string(),
-            )
-            .send()
-            .map_err(|err| {
-                RestApiResponseError::InternalError(format!("Failed to send request {}", err))
-            })
-            .and_then(move |mut resp| {
-                let body = resp.body().wait().map_err(|err| {
+    let mut response = client
+        .get(&format!("{}/nodes?limit={}", splinterd_url, std::i64::MAX))
+        .header(
+            "SplinterProtocolVersion",
+            protocol::ADMIN_PROTOCOL_VERSION.to_string(),
+        )
+        .send()
+        .await
+        .map_err(|err| {
+            RestApiResponseError::InternalError(format!("Failed to send request {}", err))
+        })?;
+
+    let body = response.body().await.map_err(|err| {
+        RestApiResponseError::InternalError(format!("Failed to receive response body {}", err))
+    })?;
+
+    match response.status() {
+        StatusCode::OK => {
+            let list_reponse: SuccessResponse<Vec<Node>> =
+                serde_json::from_slice(&body).map_err(|err| {
                     RestApiResponseError::InternalError(format!(
-                        "Failed to receive response body {}",
+                        "Failed to parse response body {}",
                         err
                     ))
                 })?;
-                match resp.status() {
-                    StatusCode::OK => {
-                        let list_reponse: SuccessResponse<Vec<Node>> =
-                            serde_json::from_slice(&body).map_err(|err| {
-                                RestApiResponseError::InternalError(format!(
-                                    "Failed to parse response body {}",
-                                    err
-                                ))
-                            })?;
-                        let nodes = node_ids.into_iter().try_fold(vec![], |mut acc, node_id| {
-                            if let Some(node) = list_reponse
-                                .data
-                                .iter()
-                                .find(|node| node.identity == node_id)
-                            {
-                                acc.push(node.clone());
-                                Ok(acc)
-                            } else {
-                                Err(RestApiResponseError::BadRequest(format!(
-                                    "Could not find node with id {}",
-                                    node_id
-                                )))
-                            }
-                        })?;
-
-                        Ok(nodes)
-                    }
-                    StatusCode::BAD_REQUEST => {
-                        let message: String = serde_json::from_slice(&body).map_err(|err| {
-                            RestApiResponseError::InternalError(format!(
-                                "Failed to parse response body {}",
-                                err
-                            ))
-                        })?;
-                        Err(RestApiResponseError::BadRequest(message))
-                    }
-                    _ => {
-                        let message: String = serde_json::from_slice(&body).map_err(|err| {
-                            RestApiResponseError::InternalError(format!(
-                                "Failed to parse response body {}",
-                                err
-                            ))
-                        })?;
-
-                        Err(RestApiResponseError::InternalError(message))
-                    }
+            let nodes = node_ids.into_iter().try_fold(vec![], |mut acc, node_id| {
+                if let Some(node) = list_reponse
+                    .data
+                    .iter()
+                    .find(|node| node.identity == node_id)
+                {
+                    acc.push(node.clone());
+                    Ok(acc)
+                } else {
+                    Err(RestApiResponseError::BadRequest(format!(
+                        "Could not find node with id {}",
+                        node_id
+                    )))
                 }
-            }),
-    )
+            })?;
+
+            Ok(nodes)
+        }
+        StatusCode::BAD_REQUEST => {
+            let message: String = serde_json::from_slice(&body).map_err(|err| {
+                RestApiResponseError::InternalError(format!(
+                    "Failed to parse response body {}",
+                    err
+                ))
+            })?;
+            Err(RestApiResponseError::BadRequest(message))
+        }
+        _ => {
+            let message: String = serde_json::from_slice(&body).map_err(|err| {
+                RestApiResponseError::InternalError(format!(
+                    "Failed to parse response body {}",
+                    err
+                ))
+            })?;
+
+            Err(RestApiResponseError::InternalError(message))
+        }
+    }
 }
 
 fn check_alias_uniqueness(
@@ -348,10 +327,10 @@ fn make_payload(
     Ok(payload_bytes)
 }
 
-pub fn list_gamerooms(
+pub async fn list_gamerooms(
     pool: web::Data<ConnectionPool>,
     query: web::Query<HashMap<String, String>>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+) -> Result<HttpResponse, Error> {
     let mut base_link = "api/gamerooms?".to_string();
     let offset: usize = query
         .get("offset")
@@ -373,25 +352,17 @@ pub fn list_gamerooms(
         base_link.push_str(format!("status={}?", status).as_str());
     }
 
-    Box::new(
-        web::block(move || list_gamerooms_from_db(pool, status_optional, limit, offset)).then(
-            move |res| match res {
-                Ok((gamerooms, query_count)) => {
-                    let paging_info = get_response_paging_info(
-                        limit,
-                        offset,
-                        "api/gamerooms?",
-                        query_count as usize,
-                    );
-                    Ok(HttpResponse::Ok().json(SuccessResponse::list(gamerooms, paging_info)))
-                }
-                Err(err) => {
-                    debug!("Internal Server Error: {}", err);
-                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-            },
-        ),
-    )
+    match web::block(move || list_gamerooms_from_db(pool, status_optional, limit, offset)).await {
+        Ok((gamerooms, query_count)) => {
+            let paging_info =
+                get_response_paging_info(limit, offset, "api/gamerooms?", query_count as usize);
+            Ok(HttpResponse::Ok().json(SuccessResponse::list(gamerooms, paging_info)))
+        }
+        Err(err) => {
+            debug!("Internal Server Error: {}", err);
+            Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+        }
+    }
 }
 
 fn list_gamerooms_from_db(
@@ -439,14 +410,14 @@ fn list_gamerooms_from_db(
     }
 }
 
-pub fn fetch_gameroom(
+pub async fn fetch_gameroom(
     pool: web::Data<ConnectionPool>,
     circuit_id: web::Path<String>,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        web::block(move || fetch_gameroom_from_db(pool, &circuit_id)).then(|res| match res {
-            Ok(gameroom) => Ok(HttpResponse::Ok().json(gameroom)),
-            Err(err) => match err {
+) -> Result<HttpResponse, Error> {
+    match web::block(move || fetch_gameroom_from_db(pool, &circuit_id)).await {
+        Ok(gameroom) => Ok(HttpResponse::Ok().json(gameroom)),
+        Err(err) => {
+            match err {
                 error::BlockingError::Error(err) => match err {
                     RestApiResponseError::NotFound(err) => {
                         Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
@@ -458,9 +429,9 @@ pub fn fetch_gameroom(
                     debug!("Internal Server Error: {}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
                 }
-            },
-        }),
-    )
+            }
+        }
+    }
 }
 
 fn fetch_gameroom_from_db(
