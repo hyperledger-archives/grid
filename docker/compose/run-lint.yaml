@@ -65,9 +65,3 @@ services:
       dockerfile: ./app/Dockerfile
     image: canopy-app:${ISOLATION_ID}
     command: yarn lint
-
-  lint-saplingjs:
-    build:
-      context: ../../canopy/saplingjs
-    image: saplingjs:${ISOLATION_ID}
-    command: yarn lint

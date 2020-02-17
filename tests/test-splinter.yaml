@@ -65,11 +65,3 @@ services:
       - CI=true
     image: canopy-app:${ISOLATION_ID}
     command: yarn test
-
-  unit-test-saplingjs:
-    build:
-      context: ../canopy/saplingjs
-    environment:
-      - CI=true
-    image: saplingjs:${ISOLATION_ID}
-    command: yarn test
