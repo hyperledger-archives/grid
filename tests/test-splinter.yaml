@@ -59,8 +59,7 @@ services:
 
   unit-test-canopy-app:
     build:
-      context: ../canopy
-      dockerfile: ./app/Dockerfile
+      context: ../canopy/app
     environment:
       - CI=true
     image: canopy-app:${ISOLATION_ID}

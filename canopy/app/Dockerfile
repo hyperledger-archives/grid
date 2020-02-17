@@ -14,14 +14,13 @@
 
 FROM node:lts-alpine
 
-WORKDIR /project/app
+WORKDIR /app
 
-COPY app/package*.json /project/app
+COPY package*.json ./
 
-COPY canopyjs /project/canopyjs
+RUN apk add git
 
-RUN cd ../canopyjs && yarn install && yarn build && rm -rf node_modules/ && cd ../app
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
 
-RUN yarn install
-
-COPY app /project/app
+COPY . .
