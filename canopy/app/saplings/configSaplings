@@ -1,0 +1,18 @@
+[
+  {
+    "namespace": "login",
+    "runtimeFiles": [
+      "0.0.0.0:8675/loginRegisterSapling.js"
+    ],
+    "styleFiles": [],
+    "workerFiles": []
+  },
+  {
+    "namespace": "profile",
+    "runtimeFiles": [
+      "0.0.0.0:8675/profile.js"
+    ],
+    "styleFiles": [],
+    "workerFiles": []
+  }
+]

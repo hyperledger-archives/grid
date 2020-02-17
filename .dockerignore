@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,6 @@
 /splinterd/target
 /splinterd/Cargo.lock
 
-/messaging/src/protos
-/messaging/target
-/messaging/Cargo.lock
-
 /client/target
 /client/Cargo.lock
 
@@ -30,13 +26,15 @@
 
 /examples/private_xo/target
 /examples/private_xo/Cargo.lock
-/examples/private_xo/demo_state/keys.yaml
-/examples/private_xo/demo_state/circuit_proposals.yaml
 
 /examples/private_counter/service/target
 /examples/private_counter/service/Cargo.lock
-/examples/private_counter/demo_state/keys.yaml
-/examples/private_counter/demo_state/circuit_proposals.yaml
+
+/examples/private_counter/cli/target
+/examples/private_counter/cli/Cargo.lock
+
+/examples/private_xo/target
+/examples/private_xo/Cargo.lock
 
 /examples/gameroom/database/target
 /examples/gameroom/database/Cargo.lock
@@ -44,39 +42,18 @@
 /examples/gameroom/daemon/target
 /examples/gameroom/daemon/Cargo.lock
 
-/examples/gameroom/gameroom-app/src/compiled_protos.json
+/examples/gameroom/gameroom-app/node_modules
+/examples/gameroom/gameroom-app/dist
+/examples/gameroom/gameroom-app/package-lock.json
 
-/tests/Cargo.lock
-/tests/target
-
-/target
-/Cargo.lock
-
-## Canopy
-# deps
+# Canopy
 **/node_modules
 **/.pnp
 **/.pnp.js
 **/yarn.lock
-
-#testing
 /canopy/**/coverage
-
-# production
 /canopy/**/build
 /canopy**/dist
-/canopy**/lib
 
-# misc
-.DS_Store
-/canopy/**/.env.local
-/canopy/**/.env.development.local
-/canopy/**/.env.test.local
-/canopy/**/.env.production.local
-
-/canopy/**/npm-debug.log*
-/canopy/**/yarn-debug.log*
-/canopy/**/yarn-error.log*
-
-# editor
-**/.vscode
+/target
+/Cargo.lock

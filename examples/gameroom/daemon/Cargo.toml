@@ -1,0 +1,87 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[package]
+name = "gameroom-daemon"
+version = "0.3.12"
+authors = ["Cargill Incorporated"]
+edition = "2018"
+license = "Apache-2.0"
+description = """\
+    Gameroom is an example Splinter application that allows you to set up \
+    private, multi-party circuits (called "gamerooms") and play tic tac toe \
+    with shared state, as managed by two-phase-commit consensus between the \
+    participants.
+"""
+
+[[bin]]
+name = "gameroomd"
+path = "src/main.rs"
+
+[dependencies]
+actix = { version = "0.8", default-features = false }
+actix-web = { version = "1.0", default-features = false, features = ["flate2-zlib"] }
+actix-web-actors = "1.0"
+bcrypt = "0.5"
+clap = "2"
+ctrlc = "3.0"
+diesel = { version = "1.0.0", features = ["serde_json"] }
+flate2 = "1.0.10"
+flexi_logger = "0.14"
+futures = "0.1"
+gameroom-database = { path = "../database" }
+hyper = "0.12"
+log = "0.4"
+openssl = "0.10"
+percent-encoding = "2.0"
+protobuf = "2"
+rust-crypto = "0.2"
+sabre-sdk = "0.4"
+sawtooth-sdk = "0.3"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+splinter = { path = "../../../libsplinter", features = ["events"]}
+tokio = "0.1"
+uuid = { version = "0.7", features = ["v4"]}
+
+[features]
+default = []
+
+stable = ["default"]
+
+experimental = []
+
+# These are test-only features, so they will not be in `default`, `stable`,
+# or `experimental`
+test-authorization-handler = []
+test-node-endpoint = []
+
+[package.metadata.deb]
+maintainer = "The Splinter Team"
+depends = "$auto"
+assets = [
+    ["packaging/systemd/gameroomd.service", "/lib/systemd/system/gameroomd.service", "644"],
+    ["packaging/systemd/gameroomd", "/etc/default/gameroomd", "644"],
+    ["target/release/gameroomd", "/usr/bin/gameroomd", "755"]
+]
+conf-files = [
+    "/etc/default/gameroomd",
+    "/lib/systemd/system/gameroomd.service"
+]
+maintainer-scripts = "packaging/ubuntu"
+extended-description = """\
+Gameroom is a demo Splinter application that allows you to set up dynamic \
+multi-party circuits (called "gamerooms") and play tic tac toe with \
+shared state"""
