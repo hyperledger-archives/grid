@@ -18,14 +18,16 @@
 use std::error::Error;
 use std::fmt;
 
-use sabre_sdk::protocol::payload::{
-    CreateContractActionBuildError, CreateContractRegistryActionBuildError,
-    CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
-    SabrePayloadBuildError,
+use sabre_sdk::protocol::{
+    payload::{ActionBuildError, SabrePayloadBuildError},
+    AddressingError,
 };
-use sabre_sdk::protos::ProtoConversionError as SabreProtoConversionError;
 use sawtooth_sdk::signing::Error as SigningError;
 use splinter::events;
+use transact::{
+    protocol::{batch::BatchBuildError, transaction::TransactionBuildError},
+    protos::ProtoConversionError,
+};
 
 use crate::application_metadata::ApplicationMetadataError;
 
@@ -37,8 +39,8 @@ pub enum AppAuthHandlerError {
     ReactorError(events::ReactorError),
     WebSocketError(events::WebSocketError),
     SabreError(String),
-    SawtoothError(String),
     SigningError(String),
+    TransactError(String),
     BatchSubmitError(String),
 }
 
@@ -50,8 +52,8 @@ impl Error for AppAuthHandlerError {
             AppAuthHandlerError::DatabaseError(_) => None,
             AppAuthHandlerError::ReactorError(err) => Some(err),
             AppAuthHandlerError::SabreError(_) => None,
-            AppAuthHandlerError::SawtoothError(_) => None,
             AppAuthHandlerError::SigningError(_) => None,
+            AppAuthHandlerError::TransactError(_) => None,
             AppAuthHandlerError::BatchSubmitError(_) => None,
             AppAuthHandlerError::WebSocketError(err) => Some(err),
         }
@@ -74,14 +76,14 @@ impl fmt::Display for AppAuthHandlerError {
                 "An error occurred while building a Sabre payload: {}",
                 msg
             ),
-            AppAuthHandlerError::SawtoothError(msg) => write!(
+            AppAuthHandlerError::SigningError(msg) => {
+                write!(f, "A signing error occurred: {}", msg)
+            }
+            AppAuthHandlerError::TransactError(msg) => write!(
                 f,
                 "An error occurred while building a transaction or batch: {}",
                 msg
             ),
-            AppAuthHandlerError::SigningError(msg) => {
-                write!(f, "A signing error occurred: {}", msg)
-            }
             AppAuthHandlerError::BatchSubmitError(msg) => write!(
                 f,
                 "An error occurred while submitting a batch to the scabbard service: {}",
@@ -152,17 +154,28 @@ macro_rules! impl_from_sabre_errors {
     };
 }
 
-impl_from_sabre_errors!(
-    CreateContractActionBuildError,
-    CreateContractRegistryActionBuildError,
-    CreateNamespaceRegistryActionBuildError,
-    CreateNamespaceRegistryPermissionActionBuildError,
-    SabreProtoConversionError,
-    SabrePayloadBuildError
-);
+impl_from_sabre_errors!(AddressingError, ActionBuildError, SabrePayloadBuildError);
 
 impl From<SigningError> for AppAuthHandlerError {
     fn from(err: SigningError) -> Self {
         AppAuthHandlerError::SigningError(err.to_string())
+    }
+}
+
+impl From<BatchBuildError> for AppAuthHandlerError {
+    fn from(err: BatchBuildError) -> Self {
+        AppAuthHandlerError::TransactError(err.to_string())
+    }
+}
+
+impl From<TransactionBuildError> for AppAuthHandlerError {
+    fn from(err: TransactionBuildError) -> Self {
+        AppAuthHandlerError::TransactError(err.to_string())
+    }
+}
+
+impl From<ProtoConversionError> for AppAuthHandlerError {
+    fn from(err: ProtoConversionError) -> Self {
+        AppAuthHandlerError::TransactError(err.to_string())
     }
 }
