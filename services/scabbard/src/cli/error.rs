@@ -25,7 +25,10 @@ use sabre_sdk::{
 };
 use sawtooth_sdk::signing::Error as SigningError;
 use splinter::service::scabbard::client::Error as ClientError;
-use transact::protocol::{batch::BatchBuildError, transaction::TransactionBuildError};
+use transact::{
+    contract::archive::Error as ContractArchiveError,
+    protocol::{batch::BatchBuildError, transaction::TransactionBuildError},
+};
 
 #[derive(Debug)]
 pub enum CliError {
@@ -114,6 +117,12 @@ impl From<SigningError> for CliError {
 impl From<ClientError> for CliError {
     fn from(err: ClientError) -> Self {
         Self::action_error_with_source("scabbard client encountered an error", err.into())
+    }
+}
+
+impl From<ContractArchiveError> for CliError {
+    fn from(err: ContractArchiveError) -> Self {
+        Self::action_error_with_source("failed to load .scar file", err.into())
     }
 }
 

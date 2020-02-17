@@ -20,6 +20,7 @@ mod key;
 
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::path::PathBuf;
 
 #[cfg(any(
     feature = "contract",
@@ -50,9 +51,8 @@ use sabre_sdk::{
     },
     protos::FromBytes,
 };
-use splinter::service::scabbard::client::{
-    SabreSmartContractDefinition, ScabbardClient, ServiceId,
-};
+use splinter::service::scabbard::client::{ScabbardClient, ServiceId};
+use transact::contract::archive::{default_scar_path, SmartContractArchive};
 
 use error::CliError;
 
@@ -90,10 +90,21 @@ fn run() -> Result<(), CliError> {
                         .args(&[
                             Arg::with_name("scar")
                                 .long_help(
-                                    "The .scar to upload (either a file path or the name of a \
-                                     .scar in SCAR_PATH)",
+                                    "The name and version requirement of the .scar to upload, in \
+                                     the format 'name:version_req'. The version requirement can \
+                                     be any valid semver requirement string.",
                                 )
                                 .required(true),
+                            Arg::with_name("path")
+                                .long_help(
+                                    "Directory path(s) that may contain the desired .scar file; \
+                                     if not provided, the system's default .scar path(s) will be \
+                                     used.",
+                                )
+                                .long("path")
+                                .short("p")
+                                .takes_value(true)
+                                .multiple(true),
                             Arg::with_name("key")
                                 .long_help(
                                     "Key for signing transactions (either a file path or the name \
@@ -745,14 +756,31 @@ fn run() -> Result<(), CliError> {
                 let scar = matches
                     .value_of("scar")
                     .ok_or_else(|| CliError::MissingArgument("scar".into()))?;
-                let sc_definition = SabreSmartContractDefinition::new_from_scar(scar)?;
+                let mut split = scar.splitn(2, ':');
+                let name = split.next().ok_or_else(|| {
+                    CliError::InvalidArgument(
+                        "'scar' argument must be in the format 'name:version'".into(),
+                    )
+                })?;
+                let version = split.next().ok_or_else(|| {
+                    CliError::InvalidArgument(
+                        "'scar' argument must be in the format 'name:version'".into(),
+                    )
+                })?;
+
+                let paths = match matches.values_of("path") {
+                    Some(paths) => paths.map(PathBuf::from).collect(),
+                    None => default_scar_path(),
+                };
+
+                let smart_contract = SmartContractArchive::from_scar_file(name, version, &paths)?;
 
                 let batch = CreateContractActionBuilder::new()
-                    .with_name(sc_definition.metadata.name)
-                    .with_version(sc_definition.metadata.version)
-                    .with_inputs(sc_definition.metadata.inputs)
-                    .with_outputs(sc_definition.metadata.outputs)
-                    .with_contract(sc_definition.contract)
+                    .with_name(smart_contract.metadata.name)
+                    .with_version(smart_contract.metadata.version)
+                    .with_inputs(smart_contract.metadata.inputs)
+                    .with_outputs(smart_contract.metadata.outputs)
+                    .with_contract(smart_contract.contract)
                     .into_payload_builder()?
                     .into_transaction_builder(&signer)?
                     .into_batch_builder(&signer)?

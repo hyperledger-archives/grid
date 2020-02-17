@@ -13,7 +13,6 @@
 // limitations under the License.
 
 mod error;
-mod scar;
 mod submit;
 
 use reqwest::{blocking::Client, Url};
@@ -25,7 +24,6 @@ use crate::protocol::SCABBARD_PROTOCOL_VERSION;
 use super::SERVICE_TYPE;
 
 pub use error::Error;
-pub use scar::{SabreSmartContractDefinition, SabreSmartContractMetadata};
 use submit::{submit_batches, wait_for_batches};
 
 /// A client that can be used to submit transactions to scabbard services on a Splinter node.
