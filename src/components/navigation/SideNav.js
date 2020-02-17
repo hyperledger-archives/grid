@@ -22,39 +22,40 @@ import { useUserSaplings } from '../../CanopyContext';
 import { NavItem } from './NavItem';
 
 export const SideNav = () => {
-  const makeUserSaplingTabs = ( userSaplings ) => userSaplings.map(
-    ({ displayName, namespace, icon }) => {
-      return {
-        path: `/${namespace}`,
-        displayName,
-        logo: icon
-      };
-    })
-    .map(
-      ({ path, displayName, logo }) => {
-        return <NavItem key={path} path={path} label={displayName} logo={logo} />;
-      }
-    );
+  const makeUserSaplingTabs = userSaplings =>
+    userSaplings
+      .map(({ displayName, namespace, icon }) => {
+        return {
+          path: `/${namespace}`,
+          displayName,
+          logo: icon
+        };
+      })
+      .map(({ path, displayName, logo }) => {
+        return (
+          <NavItem key={path} path={path} label={displayName} logo={logo} />
+        );
+      });
 
-    return (
-      <>
-        <a href="/" className="brand">
-          <div />
-        </a>
-        <div className="nav-items">
-          {makeUserSaplingTabs(useUserSaplings())}
-          <hr />
-          <div className="nav-tab">
-            <FontAwesomeIcon className="icon" icon="leaf" />
-            <div className="label">Saplings</div>
-          </div>
+  return (
+    <>
+      <a href="/" className="brand">
+        <div />
+      </a>
+      <div className="nav-items">
+        {makeUserSaplingTabs(useUserSaplings())}
+        <hr />
+        <div className="nav-tab">
+          <FontAwesomeIcon className="icon" icon="leaf" />
+          <div className="label">Saplings</div>
         </div>
-        <div className="canopy-items">
-          <ProfileTab />
-        </div>
-      </>
-    );
-}
+      </div>
+      <div className="canopy-items">
+        <ProfileTab />
+      </div>
+    </>
+  );
+};
 
 function ProfileTab() {
   const profileClasses = classnames('profile-tab', 'tab', {

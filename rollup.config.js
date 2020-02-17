@@ -19,7 +19,6 @@ import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import external from 'rollup-plugin-peer-deps-external';
 import analyzer from 'rollup-plugin-analyzer';
-import { terser } from 'rollup-plugin-terser';
 import { uglify } from 'rollup-plugin-uglify';
 import autoprefixer from 'autoprefixer';
 import postcss from 'postcss';

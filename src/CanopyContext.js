@@ -15,8 +15,9 @@
  */
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { get } from './request';
+import PropTypes from 'prop-types';
 
+import { get } from './request';
 import {
   mountCurrentSapling,
   mountSaplingStyles,
@@ -96,6 +97,12 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
     </CanopyContext.Provider>
   );
 }
+
+CanopyProvider.propTypes = {
+  saplingURL: PropTypes.string.isRequired,
+  splinterURL: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired
+};
 
 export function useUserSaplings() {
   const context = useContext(CanopyContext);

@@ -18,7 +18,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 
-export const NavItem = (props) => {
+export const NavItem = props => {
   const { path, logo, label } = props;
 
   const classes = classnames('nav-tab', {
@@ -31,7 +31,7 @@ export const NavItem = (props) => {
       <div className="label">{label}</div>
     </a>
   );
-}
+};
 
 NavItem.propTypes = {
   label: PropTypes.string.isRequired,
