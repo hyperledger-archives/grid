@@ -12,21 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
+use sawtooth_sdk::signing::{
+    create_context, secp256k1::Secp256k1PrivateKey, transact::TransactSigner, Signer,
+};
 
 use super::error::CliError;
 
-/// Load a private key from the local filesystem.
+/// Load a private key from the local filesystem and wrap it in a `TransactSigner`.
 ///
 /// If the argument is a file path (contains a '/'), this will attempt to load the key file from
 /// the specified location. If the argument is not a file path, this will attempt to load the
-/// file from the $HOME/.splinter/keys directory; when loading from this directory, the '.prive'
+/// file from the $HOME/.splinter/keys directory; when loading from this directory, the '.priv'
 /// file extension is optional.
-pub fn load_signing_key(key: &str) -> Result<Secp256k1PrivateKey, CliError> {
+pub fn load_signer(key: &str) -> Result<TransactSigner, CliError> {
+    let context = create_context("secp256k1")?;
+    let private_key = load_signing_key(key)?;
+    Ok(Signer::new_boxed(context, Box::new(private_key)).try_into()?)
+}
+
+fn load_signing_key(key: &str) -> Result<Secp256k1PrivateKey, CliError> {
     let file_path = determine_key_file_path(key)?;
 
     let key_file = File::open(file_path).map_err(|err| {
@@ -81,6 +90,7 @@ fn determine_key_file_path(key: &str) -> Result<PathBuf, CliError> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::to_hex;
     use super::*;
 
     use std::fs::create_dir_all;
@@ -90,9 +100,14 @@ mod tests {
     use sawtooth_sdk::signing::PrivateKey;
     use serial_test::serial;
     use tempfile::{tempdir, NamedTempFile};
+    use transact::signing::Signer as _;
 
     const MOCK_PRIV_KEY_HEX: &str =
         "d31e395bed0d9b2277b25d57523063d7d6b9db802d80549bc1362875cdcb83c6";
+    const MOCK_PUB_KEY_HEX: &str =
+        "027fd4f2e42ce81e1849a147383d31db889ea2fb01b2ee3dfb53186dcbd711a694";
+    const MOCK_BYTES_TO_SIGN: &[u8] = b"abcdef";
+    const MOCK_SIGNATURE: &str = "f73be23628a991ad75c99baf58b9a8a96ce5c6ada325b070e51c621349866007392a587136ab4c3b38ec2d8316c2fa9890f1a252775d32e2898c6e1061099d90";
 
     /// Verify that an error is returned when the key file is not found.
     #[test]
@@ -153,6 +168,23 @@ mod tests {
             let signing_key = load_signing_key(&file_name).expect("failed to get key");
             assert_eq!(&signing_key.as_hex(), MOCK_PRIV_KEY_HEX);
         })
+    }
+
+    /// Verify that a signer is successfully loaded from a valid key file that is specified with a
+    /// full path.
+    #[test]
+    fn successful_signer() {
+        let (_file, path) = temp_key_file(MOCK_PRIV_KEY_HEX);
+
+        let signer = load_signer(&path).expect("failed to get signer with key from file");
+        assert_eq!(&to_hex(signer.public_key()), MOCK_PUB_KEY_HEX);
+
+        let signature = to_hex(
+            &signer
+                .sign(MOCK_BYTES_TO_SIGN)
+                .expect("failed to sign bytes"),
+        );
+        assert_eq!(signature, MOCK_SIGNATURE);
     }
 
     /// Create a temporary key file with the given key; return the temp file's handle and the file
