@@ -17,7 +17,7 @@ mod scar;
 mod submit;
 
 use reqwest::{blocking::Client, Url};
-use sawtooth_sdk::messages::batch::BatchList;
+use transact::protocol::batch::Batch;
 
 use crate::hex::parse_hex;
 use crate::protocol::SCABBARD_PROTOCOL_VERSION;
@@ -45,7 +45,7 @@ impl ScabbardClient {
     pub fn submit(
         &self,
         service_id: &ServiceId,
-        batches: BatchList,
+        batches: Vec<Batch>,
         wait: Option<u64>,
     ) -> Result<(), Error> {
         let batch_link = submit_batches(
