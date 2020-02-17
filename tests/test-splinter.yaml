@@ -16,42 +16,9 @@
 version: "3.7"
 
 services:
-
-  unit-test-splinter:
-    build:
-      context: ../
-      dockerfile: tests/Dockerfile
-    image: test-splinter:${ISOLATION_ID}
-    volumes:
-      - ../:/project/splinter
-    command: |
-        bash -c "
-            echo \"Running default feature tests...\" && \
-            cargo test && \
-            echo \"Running stable feature tests...\" && \
-            (cd libsplinter && cargo test --features stable) &&
-            (cd splinterd && cargo test --features stable) &&
-            (cd services/scabbard && cargo test --features stable) &&
-            echo \"Running experimental feature tests...\" && \
-            (cd libsplinter && cargo test --features experimental) &&
-            (cd splinterd && cargo test --features experimental) &&
-            (cd cli && cargo test --features experimental) &&
-            (cd services/scabbard && cargo test --features experimental)
-        "
-    stop_signal: SIGKILL
-
-  unit-test-canopy-app:
-    build:
-      context: ../canopy
-      dockerfile: ./app/Dockerfile
-    environment:
-      - CI=true
-    image: canopy-app:${ISOLATION_ID}
-    command: yarn test
-
   unit-test-saplingjs:
     build:
-      context: ../canopy/saplingjs
+      context: ..
     environment:
       - CI=true
     image: saplingjs:${ISOLATION_ID}
