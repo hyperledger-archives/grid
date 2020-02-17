@@ -57,9 +57,6 @@ const CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 /// The contract prefix for global state (00ec02)
 const CONTRACT_PREFIX: &str = "00ec02";
 
-/// The smart permission prefix for global state (00ec03)
-const SMART_PERMISSION_PREFIX: &str = "00ec03";
-
 const XO_NAME: &str = "xo";
 const XO_VERSION: &str = "0.3.3";
 pub const XO_PREFIX: &str = "5b7349";
@@ -185,7 +182,7 @@ fn upload_contract_txn(signer: &Signer) -> Result<Transaction, AppAuthHandlerErr
         AppAuthHandlerError::SabreError(format!("IoError while reading contract: {}", err))
     })?;
 
-    let action_addresses = vec![SMART_PERMISSION_PREFIX.into(), XO_PREFIX.into()];
+    let action_addresses = vec![XO_PREFIX.into()];
     let action = CreateContractActionBuilder::new()
         .with_name(XO_NAME.into())
         .with_version(XO_VERSION.into())
