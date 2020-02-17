@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::convert::TryFrom;
 use std::sync::{
     mpsc::{channel, Receiver, RecvTimeoutError, Sender},
     Arc, RwLock,
@@ -31,17 +32,17 @@ use transact::database::{
     Database,
 };
 use transact::sawtooth::SawtoothToTransactHandlerAdapter;
-use transact::scheduler::{
-    serial::SerialScheduler, BatchExecutionResult, InvalidTransactionResult, Scheduler,
-    TransactionExecutionResult,
-};
+use transact::scheduler::{serial::SerialScheduler, BatchExecutionResult, Scheduler};
 use transact::state::{
     merkle::{MerkleRadixTree, MerkleState, INDEXES},
     StateChange as TransactStateChange, Write,
 };
 use transact::{
     execution::{adapter::static_adapter::StaticExecutionAdapter, executor::Executor},
-    protocol::{batch::BatchPair, receipt::TransactionReceipt},
+    protocol::{
+        batch::BatchPair,
+        receipt::{TransactionReceipt, TransactionResult},
+    },
 };
 
 #[cfg(feature = "events")]
@@ -232,13 +233,13 @@ impl ScabbardState {
         self.batch_history
             .update_batch_status(&signature, batch_status);
 
-        let txn_results = batch_result
-            .results
+        let txn_receipts = batch_result
+            .receipts
             .into_iter()
-            .map(|txn_result| match txn_result {
-                TransactionExecutionResult::Valid(receipt) => Ok(receipt),
-                TransactionExecutionResult::Invalid(invalid_result) => Err(ScabbardStateError(
-                    format!("transaction failed: {:?}", invalid_result),
+            .map(|receipt| match receipt.transaction_result {
+                TransactionResult::Valid { .. } => Ok(receipt),
+                TransactionResult::Invalid { error_message, .. } => Err(ScabbardStateError(
+                    format!("transaction failed: {:?}", error_message),
                 )),
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -248,16 +249,16 @@ impl ScabbardState {
         // Save the results and compute the resulting state root
         let state_root = MerkleState::new(self.db.clone()).compute_state_id(
             &self.current_state_root,
-            &receipts_into_transact_state_changes(&txn_results),
+            &receipts_into_transact_state_changes(&txn_receipts)?,
         )?;
-        self.pending_changes = Some((signature.to_string(), txn_results));
+        self.pending_changes = Some((signature.to_string(), txn_receipts));
         Ok(state_root)
     }
 
     pub fn commit(&mut self) -> Result<(), ScabbardStateError> {
         match self.pending_changes.take() {
             Some((signature, txn_receipts)) => {
-                let state_changes = receipts_into_transact_state_changes(&txn_receipts);
+                let state_changes = receipts_into_transact_state_changes(&txn_receipts)?;
                 self.current_state_root = MerkleState::new(self.db.clone())
                     .commit(&self.current_state_root, &state_changes)?;
 
@@ -271,8 +272,9 @@ impl ScabbardState {
 
                 let events = txn_receipts
                     .iter()
-                    .map(receipt_into_scabbard_state_change_event)
-                    .collect::<Vec<_>>();
+                    .cloned()
+                    .map(StateChangeEvent::try_from)
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 self.transaction_receipt_store
                     .write()
@@ -315,7 +317,7 @@ impl ScabbardState {
         match self.pending_changes.take() {
             Some((_, txn_receipts)) => info!(
                 "discarded {} change(s)",
-                receipts_into_transact_state_changes(&txn_receipts).len()
+                receipts_into_transact_state_changes(&txn_receipts)?.len()
             ),
             None => debug!("no changes to rollback"),
         }
@@ -342,43 +344,16 @@ impl ScabbardState {
 
 fn receipts_into_transact_state_changes(
     receipts: &[TransactionReceipt],
-) -> Vec<TransactStateChange> {
-    receipts
-        .iter()
-        .flat_map(|receipt| {
-            receipt
-                .state_changes
-                .iter()
-                .cloned()
-                .map(|change| match change {
-                    transact::protocol::receipt::StateChange::Set { key, value } => {
-                        TransactStateChange::Set { key, value }
-                    }
-                    transact::protocol::receipt::StateChange::Delete { key } => {
-                        TransactStateChange::Delete { key }
-                    }
-                })
-        })
-        .collect::<Vec<_>>()
-}
-
-fn receipt_into_scabbard_state_change_event(receipt: &TransactionReceipt) -> StateChangeEvent {
-    let state_changes = receipt
-        .state_changes
+) -> Result<Vec<TransactStateChange>, ScabbardStateError> {
+    Ok(receipts
         .iter()
         .cloned()
-        .map(|change| match change {
-            transact::protocol::receipt::StateChange::Set { key, value } => {
-                StateChange::Set { key, value }
-            }
-            transact::protocol::receipt::StateChange::Delete { key } => StateChange::Delete { key },
-        })
-        .collect();
-
-    StateChangeEvent {
-        id: receipt.transaction_id.clone(),
-        state_changes,
-    }
+        .map(Vec::<TransactStateChange>::try_from)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| ScabbardStateError(err.to_string()))?
+        .into_iter()
+        .flatten()
+        .collect())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -393,6 +368,29 @@ impl ParseBytes<StateChangeEvent> for StateChangeEvent {
         serde_json::from_slice(bytes)
             .map_err(Box::new)
             .map_err(|err| ParseError::MalformedMessage(err))
+    }
+}
+
+impl TryFrom<TransactionReceipt> for StateChangeEvent {
+    type Error = ScabbardStateError;
+
+    fn try_from(receipt: TransactionReceipt) -> Result<Self, Self::Error> {
+        let TransactionReceipt {
+            transaction_id,
+            transaction_result,
+        } = receipt;
+
+        match transaction_result {
+            TransactionResult::Valid { state_changes, .. } => {
+                Ok(StateChangeEvent {
+                    id: transaction_id,
+                    state_changes: state_changes.into_iter().map(StateChange::from).collect(),
+                })
+            }
+            TransactionResult::Invalid { .. } => Err(ScabbardStateError(
+                format!("cannot convert transaction receipt ({}) to state cahnge event because transction result is `Invalid`", transaction_id)
+            )),
+        }
     }
 }
 
@@ -416,6 +414,17 @@ impl fmt::Display for StateChange {
 impl fmt::Debug for StateChange {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl From<transact::protocol::receipt::StateChange> for StateChange {
+    fn from(change: transact::protocol::receipt::StateChange) -> Self {
+        match change {
+            transact::protocol::receipt::StateChange::Set { key, value } => {
+                StateChange::Set { key, value }
+            }
+            transact::protocol::receipt::StateChange::Delete { key } => StateChange::Delete { key },
+        }
     }
 }
 
@@ -474,8 +483,8 @@ impl Events {
                     ))
                 })?
                 .take(ITER_CACHE_SIZE)
-                .map(|ref receipt| receipt_into_scabbard_state_change_event(receipt))
-                .collect::<VecDeque<_>>();
+                .map(StateChangeEvent::try_from)
+                .collect::<Result<VecDeque<_>, _>>()?;
 
                 self.query = self
                     .cache
@@ -518,13 +527,20 @@ impl From<BatchExecutionResult> for BatchStatus {
         let mut valid = Vec::new();
         let mut invalid = Vec::new();
 
-        for result in batch_result.results.into_iter() {
-            match result {
-                TransactionExecutionResult::Valid(r) => {
-                    valid.push(ValidTransaction::from(r));
+        for receipt in batch_result.receipts.into_iter() {
+            match receipt.transaction_result {
+                TransactionResult::Valid { .. } => {
+                    valid.push(ValidTransaction::new(receipt.transaction_id));
                 }
-                TransactionExecutionResult::Invalid(r) => {
-                    invalid.push(InvalidTransaction::from(r));
+                TransactionResult::Invalid {
+                    error_message,
+                    error_data,
+                } => {
+                    invalid.push(InvalidTransaction::new(
+                        receipt.transaction_id,
+                        error_message,
+                        error_data,
+                    ));
                 }
             }
         }
@@ -542,6 +558,12 @@ pub struct ValidTransaction {
     transaction_id: String,
 }
 
+impl ValidTransaction {
+    fn new(transaction_id: String) -> Self {
+        Self { transaction_id }
+    }
+}
+
 impl From<TransactionReceipt> for ValidTransaction {
     fn from(receipt: TransactionReceipt) -> Self {
         Self {
@@ -557,12 +579,12 @@ pub struct InvalidTransaction {
     error_data: Vec<u8>,
 }
 
-impl From<InvalidTransactionResult> for InvalidTransaction {
-    fn from(result: InvalidTransactionResult) -> Self {
+impl InvalidTransaction {
+    fn new(transaction_id: String, error_message: String, error_data: Vec<u8>) -> Self {
         Self {
-            transaction_id: result.transaction_id,
-            error_message: result.error_message,
-            error_data: result.error_data,
+            transaction_id,
+            error_message,
+            error_data,
         }
     }
 }
@@ -853,24 +875,9 @@ mod tests {
 
         let test_result = std::panic::catch_unwind(|| {
             let receipts = vec![
-                TransactionReceipt {
-                    state_changes: vec![],
-                    events: vec![],
-                    data: vec![],
-                    transaction_id: "ab".into(),
-                },
-                TransactionReceipt {
-                    state_changes: vec![],
-                    events: vec![],
-                    data: vec![],
-                    transaction_id: "cd".into(),
-                },
-                TransactionReceipt {
-                    state_changes: vec![],
-                    events: vec![],
-                    data: vec![],
-                    transaction_id: "ef".into(),
-                },
+                mock_transaction_receipt("ab"),
+                mock_transaction_receipt("cd"),
+                mock_transaction_receipt("ef"),
             ];
             let receipt_ids = receipts
                 .iter()
@@ -917,5 +924,16 @@ mod tests {
         let thread_id = std::thread::current().id();
         temp_db_path.push(format!("store-{:?}.lmdb", thread_id));
         temp_db_path
+    }
+
+    fn mock_transaction_receipt(id: &str) -> TransactionReceipt {
+        TransactionReceipt {
+            transaction_id: id.into(),
+            transaction_result: TransactionResult::Valid {
+                state_changes: vec![],
+                events: vec![],
+                data: vec![],
+            },
+        }
     }
 }
