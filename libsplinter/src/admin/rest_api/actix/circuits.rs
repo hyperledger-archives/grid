@@ -240,6 +240,58 @@ mod tests {
         )
     }
 
+    #[test]
+    /// Tests a GET /circuits?limit=1 request returns the expected circuit.
+    fn test_list_circuit_with_limit() {
+        let splinter_state = filled_splinter_state();
+
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/circuits?limit={}", 1))
+            .header(header::CONTENT_TYPE, "application/json")
+            .to_request();
+
+        let resp = test::call_service(&mut app, req);
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let circuits: ListCircuitsResponse =
+            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        assert_eq!(circuits.data, vec![get_circuit_1()]);
+        assert_eq!(
+            circuits.paging,
+            create_test_paging_response(0, 1, 1, 0, 1, 2, "/circuits?")
+        )
+    }
+
+    #[test]
+    /// Tests a GET /circuits?offset=1 request returns the expected circuit.
+    fn test_list_circuit_with_offset() {
+        let splinter_state = filled_splinter_state();
+
+        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
+            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
+        ));
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/circuits?offset={}", 1))
+            .header(header::CONTENT_TYPE, "application/json")
+            .to_request();
+
+        let resp = test::call_service(&mut app, req);
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let circuits: ListCircuitsResponse =
+            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        assert_eq!(circuits.data, vec![get_circuit_2()]);
+        assert_eq!(
+            circuits.paging,
+            create_test_paging_response(1, 100, 0, 0, 0, 2, "/circuits?")
+        )
+    }
+
     fn create_test_paging_response(
         offset: usize,
         limit: usize,
