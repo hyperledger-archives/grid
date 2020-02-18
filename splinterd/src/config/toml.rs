@@ -60,7 +60,10 @@ impl PartialConfigBuilder for TomlConfig {
                 file: String::from(""),
             },
         };
-        let partial_config = PartialConfig::new(source)
+
+        let mut partial_config = PartialConfig::new(source);
+
+        partial_config = partial_config
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -79,11 +82,12 @@ impl PartialConfigBuilder for TomlConfig {
             .with_heartbeat_interval(self.heartbeat_interval)
             .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout);
 
-        #[cfg(not(feature = "database"))]
-        return Ok(partial_config);
-
         #[cfg(feature = "database")]
-        return Ok(partial_config.with_database(self.database));
+        {
+            partial_config = partial_config.with_database(self.database);
+        }
+
+        Ok(partial_config)
     }
 }
 

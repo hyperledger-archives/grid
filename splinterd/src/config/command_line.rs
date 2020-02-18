@@ -77,13 +77,13 @@ impl<'a> PartialConfigBuilder for CommandLineConfig<'_> {
                 });
         }
 
-        #[cfg(not(feature = "database"))]
-        return Ok(partial_config);
-
         #[cfg(feature = "database")]
-        return Ok(
-            partial_config.with_database(self.matches.value_of("database").map(String::from))
-        );
+        {
+            partial_config =
+                partial_config.with_database(self.matches.value_of("database").map(String::from))
+        }
+
+        Ok(partial_config)
     }
 }
 #[cfg(test)]

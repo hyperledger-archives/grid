@@ -65,11 +65,12 @@ impl PartialConfigBuilder for DefaultConfig {
             partial_config = partial_config.with_biome_enabled(Some(false));
         }
 
-        #[cfg(not(feature = "database"))]
-        return Ok(partial_config);
-
         #[cfg(feature = "database")]
-        return Ok(partial_config.with_database(Some(String::from("127.0.0.1:5432"))));
+        {
+            partial_config = partial_config.with_database(Some(String::from("127.0.0.1:5432")));
+        }
+
+        Ok(partial_config)
     }
 }
 
