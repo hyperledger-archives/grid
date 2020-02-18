@@ -44,11 +44,11 @@ grid-sdk = { path = "../sdk" }
 log = "0.4"
 protobuf = "2"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
-rust-crypto = { version = "0.2", optional = true }
 sabre-sdk = { version = "0.5", optional = true }
-sawtooth-sdk = "0.3"
+sawtooth-sdk = { version = "0.4", features = ["transact-compat"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+transact = { version = "0.2", optional = true }
 url = "2.1"
 uuid = { version = "0.6", features = ["v4"] }
 
@@ -65,7 +65,7 @@ stable = ["sawtooth-support"]
 experimental = ["splinter-support"]
 
 sawtooth-support = []
-splinter-support = ["splinter", "reqwest", "sabre-sdk", "rust-crypto"]
+splinter-support = ["splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
 test-api = []
 
 [package.metadata.deb]
