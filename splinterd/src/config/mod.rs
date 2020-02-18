@@ -455,7 +455,11 @@ mod tests {
         // Create a new ConfigBuilder object.
         let mut builder = ConfigBuilder::new();
         // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(DefaultConfig::new().build());
+        builder = builder.with_partial_config(
+            DefaultConfig::new()
+                .build()
+                .expect("Unable to build DefaultConfig"),
+        );
         // Build the final Config object.
         let final_config = builder.build();
         // Asserts the final Config was not successfully built.
@@ -483,7 +487,8 @@ mod tests {
         let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
             .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
         // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(toml_builder.build());
+        builder =
+            builder.with_partial_config(toml_builder.build().expect("Unable to build TomlConfig"));
         // Build the final Config object.
         let final_config = builder.build();
         // Asserts the final Config was not successfully built.
@@ -540,7 +545,11 @@ mod tests {
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.");
         // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(command_config.build());
+        builder = builder.with_partial_config(
+            command_config
+                .build()
+                .expect("Unable to build CommandLineConfig"),
+        );
         let final_config = builder.build();
         // Assert the Config object was not successfully built.
         assert!(final_config.is_err());
@@ -582,20 +591,26 @@ mod tests {
         // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.")
-            .build();
+            .build()
+            .expect("Unable to build CommandLineConfig");
 
         // Create an example toml string.
         let toml_string = to_string(&get_toml_value()).expect("Could not encode TOML value");
         // Create a TomlConfig object from the toml string.
         let toml_config = TomlConfig::new(toml_string, TEST_TOML.to_string())
             .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML))
-            .build();
+            .build()
+            .expect("Unable to build TomlConfig");
 
         // Create a PartialConfig from the EnvVarConfig module.
-        let env_config = EnvVarConfig::new().build();
+        let env_config = EnvVarConfig::new()
+            .build()
+            .expect("Unable to build EnvVarConfig");
 
         // Create a PartialConfig from the DefaultConfig module.
-        let default_config = DefaultConfig::new().build();
+        let default_config = DefaultConfig::new()
+            .build()
+            .expect("Unable to build DefaultConfig");
 
         // Add the PartialConfigs to the final ConfigBuilder in the order of precedence.
         let final_config = builder
@@ -823,10 +838,13 @@ mod tests {
         // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.")
-            .build();
+            .build()
+            .expect("Unable to build CommandLineConfig");
 
         // Create a PartialConfig from the DefaultConfig module.
-        let default_config = DefaultConfig::new().build();
+        let default_config = DefaultConfig::new()
+            .build()
+            .expect("Unable to build DefaultConfig");
 
         // Add the PartialConfigs to the final ConfigBuilder in the order of precedence.
         let final_config = builder

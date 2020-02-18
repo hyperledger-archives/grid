@@ -53,7 +53,7 @@ impl TomlConfig {
 }
 
 impl PartialConfigBuilder for TomlConfig {
-    fn build(self) -> PartialConfig {
+    fn build(self) -> Result<PartialConfig, ConfigError> {
         let source = match self.source {
             Some(s) => s,
             None => ConfigSource::Toml {
@@ -80,10 +80,10 @@ impl PartialConfigBuilder for TomlConfig {
             .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout);
 
         #[cfg(not(feature = "database"))]
-        return partial_config;
+        return Ok(partial_config);
 
         #[cfg(feature = "database")]
-        return partial_config.with_database(self.database);
+        return Ok(partial_config.with_database(self.database));
     }
 }
 
@@ -183,7 +183,7 @@ mod tests {
         let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
             .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
         // Build a PartialConfig from the TomlConfig object created.
-        let built_config = toml_builder.build();
+        let built_config = toml_builder.build().expect("Unable to build TomlConfig");
         // Compare the generated PartialConfig object against the expected values.
         assert_config_values(built_config);
     }

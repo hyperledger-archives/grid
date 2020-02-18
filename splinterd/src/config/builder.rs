@@ -20,7 +20,7 @@ use crate::config::{Config, ConfigSource, PartialConfig};
 pub trait PartialConfigBuilder {
     /// Takes all values set in a config object to create a PartialConfig object.
     ///
-    fn build(self) -> PartialConfig;
+    fn build(self) -> Result<PartialConfig, ConfigError>;
 }
 
 fn get_file_path(cert_dir: &str, file: &str) -> String {

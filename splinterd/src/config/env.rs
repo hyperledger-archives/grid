@@ -14,7 +14,7 @@
 
 use std::env;
 
-use crate::config::{ConfigSource, PartialConfig, PartialConfigBuilder};
+use crate::config::{ConfigError, ConfigSource, PartialConfig, PartialConfigBuilder};
 
 const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 const CERT_DIR_ENV: &str = "SPLINTER_CERT_DIR";
@@ -29,10 +29,10 @@ impl EnvVarConfig {
 }
 
 impl PartialConfigBuilder for EnvVarConfig {
-    fn build(self) -> PartialConfig {
-        PartialConfig::new(ConfigSource::Environment)
+    fn build(self) -> Result<PartialConfig, ConfigError> {
+        Ok(PartialConfig::new(ConfigSource::Environment)
             .with_cert_dir(env::var(CERT_DIR_ENV).ok())
-            .with_state_dir(env::var(STATE_DIR_ENV).ok())
+            .with_state_dir(env::var(STATE_DIR_ENV).ok()))
     }
 }
 
@@ -63,7 +63,9 @@ mod tests {
         // Create a new EnvVarConfig object.
         let env_var_config = EnvVarConfig::new();
         // Build a PartialConfig from the EnvVarConfig object created.
-        let unset_config = env_var_config.build();
+        let unset_config = env_var_config
+            .build()
+            .expect("Unable to build EnvVarConfig");
         assert_eq!(unset_config.source(), ConfigSource::Environment);
         // Compare the generated PartialConfig object against the expected values.
         assert_eq!(unset_config.state_dir(), None);
@@ -75,7 +77,9 @@ mod tests {
         // Create a new EnvVarConfig object.
         let env_var_config = EnvVarConfig::new();
         // Build a PartialConfig from the EnvVarConfig object created.
-        let set_config = env_var_config.build();
+        let set_config = env_var_config
+            .build()
+            .expect("Unable to build EnvVarConfig");
         assert_eq!(set_config.source(), ConfigSource::Environment);
         // Compare the generated PartialConfig object against the expected values.
         assert_eq!(

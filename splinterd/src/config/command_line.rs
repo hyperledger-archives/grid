@@ -89,7 +89,7 @@ impl CommandLineConfig {
 }
 
 impl PartialConfigBuilder for CommandLineConfig {
-    fn build(self) -> PartialConfig {
+    fn build(self) -> Result<PartialConfig, ConfigError> {
         let mut partial_config = PartialConfig::new(ConfigSource::CommandLine);
 
         partial_config = partial_config
@@ -117,10 +117,10 @@ impl PartialConfigBuilder for CommandLineConfig {
         }
 
         #[cfg(not(feature = "database"))]
-        return partial_config;
+        return Ok(partial_config);
 
         #[cfg(feature = "database")]
-        return partial_config.with_database(self.database);
+        return Ok(partial_config.with_database(self.database));
     }
 }
 #[cfg(test)]
@@ -238,7 +238,9 @@ mod tests {
         let command_config = CommandLineConfig::new(matches)
             .expect("Unable to create new CommandLineConfig object.");
         // Build a PartialConfig from the CommandLineConfig object created.
-        let built_config = command_config.build();
+        let built_config = command_config
+            .build()
+            .expect("Unable to build CommandLineConfig");
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(built_config.source(), ConfigSource::CommandLine);
         // Compare the generated PartialConfig object against the expected values.

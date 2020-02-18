@@ -63,7 +63,7 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
     {
         let command_line_config = CommandLineConfig::new(_matches)
             .map_err(UserError::ConfigError)?
-            .build();
+            .build()?;
         builder = builder.with_partial_config(command_line_config);
     }
 
@@ -76,20 +76,20 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
             })?;
             let toml_config = TomlConfig::new(toml_string, String::from(file))
                 .map_err(UserError::ConfigError)?
-                .build();
+                .build()?;
             builder = builder.with_partial_config(toml_config);
         }
     }
 
     #[cfg(feature = "config-env-var")]
     {
-        let env_config = EnvVarConfig::new().build();
+        let env_config = EnvVarConfig::new().build()?;
         builder = builder.with_partial_config(env_config);
     }
 
     #[cfg(feature = "config-default")]
     {
-        let default_config = DefaultConfig::new().build();
+        let default_config = DefaultConfig::new().build()?;
         builder = builder.with_partial_config(default_config);
     }
     builder

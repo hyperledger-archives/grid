@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::config::{ConfigSource, PartialConfig, PartialConfigBuilder};
+use crate::config::{ConfigError, ConfigSource, PartialConfig, PartialConfigBuilder};
 
 const DEFAULT_CERT_DIR: &str = "/etc/splinter/certs/";
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -35,7 +35,7 @@ impl DefaultConfig {
 }
 
 impl PartialConfigBuilder for DefaultConfig {
-    fn build(self) -> PartialConfig {
+    fn build(self) -> Result<PartialConfig, ConfigError> {
         let mut partial_config = PartialConfig::new(ConfigSource::Default);
 
         partial_config = partial_config
@@ -66,10 +66,10 @@ impl PartialConfigBuilder for DefaultConfig {
         }
 
         #[cfg(not(feature = "database"))]
-        return partial_config;
+        return Ok(partial_config);
 
         #[cfg(feature = "database")]
-        return partial_config.with_database(Some(String::from("127.0.0.1:5432")));
+        return Ok(partial_config.with_database(Some(String::from("127.0.0.1:5432"))));
     }
 }
 
@@ -136,7 +136,9 @@ mod tests {
         // Create a new DefaultConfig object, which implements the PartialConfigBuilder trait.
         let default_config = DefaultConfig::new();
         // Create a PartialConfig object using the `build` method.
-        let partial_config = default_config.build();
+        let partial_config = default_config
+            .build()
+            .expect("Unable to build DefaultConfig");
         // Compare the generated PartialConfig object against the expected values.
         assert_default_values(partial_config);
     }
