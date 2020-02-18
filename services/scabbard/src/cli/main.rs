@@ -738,7 +738,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -795,7 +795,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let format = matches
                     .value_of("format")
@@ -845,7 +845,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let contract = matches
                     .value_of("contract")
@@ -894,7 +894,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let service_id = ServiceId::new(full_service_id)?;
+            let service_id = ServiceId::from_string(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -957,7 +957,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -998,7 +998,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1039,7 +1039,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1076,7 +1076,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let service_id = ServiceId::new(full_service_id)?;
+            let service_id = ServiceId::from_string(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -1129,7 +1129,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1170,7 +1170,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1211,7 +1211,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1249,7 +1249,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1293,7 +1293,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1337,7 +1337,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")

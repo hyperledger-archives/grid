@@ -152,17 +152,32 @@ pub struct ServiceId {
 }
 
 impl ServiceId {
+    pub fn new(circuit: &str, service_id: &str) -> Self {
+        Self {
+            circuit: circuit.into(),
+            service_id: service_id.into(),
+        }
+    }
+
     /// Parse a fully-qualified service ID string ("circuit::service_id").
-    pub fn new(full_id: &str) -> Result<Self, Error> {
+    pub fn from_string(full_id: &str) -> Result<Self, Error> {
         let ids = full_id.splitn(2, "::").collect::<Vec<_>>();
+
         let circuit = (*ids
             .get(0)
             .ok_or_else(|| Error::new("service ID invalid: cannot be empty"))?)
         .to_string();
+        if circuit.is_empty() {
+            return Err(Error::new("service ID invalid: circuit ID cannot be empty"));
+        }
+
         let service_id = (*ids.get(1).ok_or_else(|| {
             Error::new("service ID invalid: must be of the form 'circuit_id::service_id'")
         })?)
         .to_string();
+        if service_id.is_empty() {
+            return Err(Error::new("service ID invalid: service ID cannot be empty"));
+        }
 
         Ok(Self {
             circuit,
@@ -203,5 +218,24 @@ struct ErrorResponse {
 impl std::fmt::Display for ErrorResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify that a `ServiceId` can be correctly parsed from a fully-qualified service ID string.
+    #[test]
+    fn service_id_from_string() {
+        assert!(ServiceId::from_string("").is_err());
+        assert!(ServiceId::from_string("circuit").is_err());
+        assert!(ServiceId::from_string("::").is_err());
+        assert!(ServiceId::from_string("circuit::").is_err());
+        assert!(ServiceId::from_string("::service_id").is_err());
+
+        let service_id = ServiceId::from_string("circuit::service_id").expect("failed to parse");
+        assert_eq!(service_id.circuit(), "circuit");
+        assert_eq!(service_id.service_id(), "service_id");
     }
 }
