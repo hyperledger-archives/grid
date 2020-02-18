@@ -22,8 +22,10 @@ extern crate clap;
 
 mod config;
 mod daemon;
+mod error;
 mod registry_config;
 mod routes;
+mod transport;
 
 use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
@@ -39,20 +41,17 @@ use crate::config::PartialConfigBuilder;
 #[cfg(feature = "config-toml")]
 use crate::config::TomlConfig;
 use crate::config::{Config, ConfigBuilder, ConfigError};
-use crate::daemon::{SplinterDaemonBuilder, StartError};
+use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
-use splinter::transport::raw::RawTransport;
-use splinter::transport::tls::{TlsInitError, TlsTransport};
-use splinter::transport::Transport;
 
 use std::env;
-use std::error::Error;
-use std::fmt;
 use std::fs;
-use std::io;
 use std::path::Path;
 use std::thread;
+
+use error::UserError;
+use transport::get_transport;
 
 fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Config, UserError> {
     #[cfg(feature = "default")]
@@ -223,82 +222,53 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         None
     };
 
-    let final_config = create_config(config_file_path, matches.clone())?;
+    let config = create_config(config_file_path, matches.clone())?;
 
-    let node_id = final_config.node_id();
+    let transport = get_transport(&config)?;
 
-    let storage_type = final_config.storage();
-
-    let transport_type = final_config.transport();
-
-    let service_endpoint = final_config.service_endpoint();
-
-    let network_endpoint = final_config.network_endpoint();
-
-    let initial_peers = final_config.peers();
-
-    let heartbeat_interval = final_config.heartbeat_interval();
-
-    let (transport, insecure) = get_transport(&transport_type, &matches, &final_config)?;
-
-    let location = final_config.state_dir();
-
-    let storage_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "circuits.yaml"),
+    let storage_location = match &config.storage() as &str {
+        "yaml" => format!("{}{}", config.state_dir(), "circuits.yaml"),
         "memory" => "memory".to_string(),
         _ => {
             return Err(UserError::InvalidArgument(format!(
                 "storage type is not supported: {}",
-                storage_type
+                config.storage()
             )))
         }
     };
 
-    let key_registry_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "keys.yaml"),
+    let key_registry_location = match &config.storage() as &str {
+        "yaml" => format!("{}{}", config.state_dir(), "keys.yaml"),
         "memory" => "memory".to_string(),
         _ => {
             return Err(UserError::InvalidArgument(format!(
                 "storage type is not supported: {}",
-                storage_type
+                config.storage()
             )))
         }
     };
 
-    let rest_api_endpoint = final_config.bind();
+    let rest_api_endpoint = config.bind();
 
     #[cfg(feature = "database")]
-    let db_url = final_config.database();
+    let db_url = config.database();
 
-    #[cfg(feature = "biome")]
-    let biome_enabled: bool = matches.is_present("biome_enabled");
+    let registry_backend = config.registry_backend();
 
-    let registry_backend = final_config.registry_backend();
+    let admin_service_coordinator_timeout = config.admin_service_coordinator_timeout();
 
-    #[cfg(feature = "experimental")]
-    // Allow unused mut for experimental features
-    #[allow(unused_mut)]
-    let mut feature_fields = "".to_string();
-
-    let admin_service_coordinator_timeout = final_config.admin_service_coordinator_timeout();
-
-    #[cfg(feature = "biome")]
-    {
-        debug!("{}, biome_enabled: {}", feature_fields, biome_enabled);
-    }
-
-    final_config.log_as_debug(insecure);
+    config.log_as_debug();
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
         .with_key_registry_location(key_registry_location)
-        .with_network_endpoint(String::from(network_endpoint))
-        .with_service_endpoint(String::from(service_endpoint))
-        .with_initial_peers(initial_peers.to_vec())
-        .with_node_id(String::from(node_id))
+        .with_network_endpoint(String::from(config.network_endpoint()))
+        .with_service_endpoint(String::from(config.service_endpoint()))
+        .with_initial_peers(config.peers().to_vec())
+        .with_node_id(String::from(config.node_id()))
         .with_rest_api_endpoint(String::from(rest_api_endpoint))
-        .with_storage_type(String::from(storage_type))
-        .with_heartbeat_interval(heartbeat_interval)
+        .with_storage_type(String::from(config.storage()))
+        .with_heartbeat_interval(config.heartbeat_interval())
         .with_admin_service_coordinator_timeout(admin_service_coordinator_timeout);
 
     #[cfg(feature = "database")]
@@ -308,13 +278,13 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     #[cfg(feature = "biome")]
     {
-        daemon_builder = daemon_builder.enable_biome(biome_enabled);
+        daemon_builder = daemon_builder.enable_biome(config.biome_enabled());
     }
 
-    if Path::new(&final_config.registry_file()).is_file() && registry_backend == "FILE" {
+    if Path::new(&config.registry_file()).is_file() && registry_backend == "FILE" {
         daemon_builder = daemon_builder
             .with_registry_backend(Some(String::from(registry_backend)))
-            .with_registry_file(String::from(final_config.registry_file()));
+            .with_registry_file(String::from(config.registry_file()));
     } else {
         daemon_builder = daemon_builder.with_registry_backend(None);
     }
@@ -324,218 +294,4 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     })?;
     node.start(transport)?;
     Ok(())
-}
-
-fn get_transport(
-    transport_type: &str,
-    matches: &clap::ArgMatches,
-    config: &Config,
-) -> Result<(Box<dyn Transport + Send>, bool), GetTransportError> {
-    match transport_type {
-        "tls" => {
-            let client_cert = config.client_cert();
-            if !Path::new(&client_cert).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid client certificate: {}",
-                    client_cert
-                )));
-            }
-
-            let server_cert = config.server_cert();
-            if !Path::new(&server_cert).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid server certificate: {}",
-                    server_cert
-                )));
-            }
-
-            let server_key_file = config.server_key();
-            if !Path::new(&server_key_file).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid server key path: {}",
-                    server_key_file
-                )));
-            }
-
-            let client_key_file = config.client_key();
-            if !Path::new(&client_key_file).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid client key path: {}",
-                    client_key_file
-                )));
-            }
-
-            let insecure = matches.is_present("insecure");
-            let ca_file = {
-                if insecure {
-                    None
-                } else {
-                    let ca_file = config.ca_certs();
-                    if !Path::new(&ca_file).is_file() {
-                        return Err(GetTransportError::CertError(format!(
-                            "Must provide a valid file containing ca certs: {}",
-                            ca_file
-                        )));
-                    }
-                    match fs::canonicalize(&ca_file)?.to_str() {
-                        Some(ca_path) => Some(ca_path.to_string()),
-                        None => {
-                            return Err(GetTransportError::CertError(
-                                "CA path is not a valid path".to_string(),
-                            ))
-                        }
-                    }
-                }
-            };
-
-            let transport = TlsTransport::new(
-                ca_file.map(String::from),
-                String::from(client_key_file),
-                String::from(client_cert),
-                String::from(server_key_file),
-                String::from(server_cert),
-            )?;
-
-            Ok((Box::new(transport), insecure))
-        }
-        "raw" => Ok((Box::new(RawTransport::default()), true)),
-        _ => Err(GetTransportError::NotSupportedError(format!(
-            "Transport type {} is not supported",
-            transport_type
-        ))),
-    }
-}
-
-#[derive(Debug)]
-pub enum UserError {
-    TransportError(GetTransportError),
-    MissingArgument(String),
-    InvalidArgument(String),
-    ConfigError(ConfigError),
-    DaemonError {
-        context: String,
-        source: Option<Box<dyn Error>>,
-    },
-}
-
-impl UserError {
-    pub fn daemon_error(context: &str) -> Self {
-        UserError::DaemonError {
-            context: context.into(),
-            source: None,
-        }
-    }
-
-    pub fn daemon_err_with_source(context: &str, err: Box<dyn Error>) -> Self {
-        UserError::DaemonError {
-            context: context.into(),
-            source: Some(err),
-        }
-    }
-}
-
-impl Error for UserError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            UserError::TransportError(err) => Some(err),
-            UserError::MissingArgument(_) => None,
-            UserError::InvalidArgument(_) => None,
-            UserError::ConfigError(err) => Some(err),
-            UserError::DaemonError { source, .. } => {
-                if let Some(ref err) = source {
-                    Some(&**err)
-                } else {
-                    None
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Display for UserError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            UserError::TransportError(err) => write!(f, "unable to get transport: {}", err),
-            UserError::MissingArgument(msg) => write!(f, "missing required argument: {}", msg),
-            UserError::InvalidArgument(msg) => write!(f, "required argument is invalid: {}", msg),
-            UserError::ConfigError(msg) => {
-                write!(f, "error occurred building config object: {}", msg)
-            }
-            UserError::DaemonError { context, source } => {
-                if let Some(ref err) = source {
-                    write!(f, "{}: {}", context, err)
-                } else {
-                    f.write_str(&context)
-                }
-            }
-        }
-    }
-}
-
-impl From<StartError> for UserError {
-    fn from(error: StartError) -> Self {
-        UserError::daemon_err_with_source("unable to start the Splinter daemon", Box::new(error))
-    }
-}
-
-impl From<GetTransportError> for UserError {
-    fn from(error: GetTransportError) -> Self {
-        UserError::TransportError(error)
-    }
-}
-
-impl From<ConfigError> for UserError {
-    fn from(error: ConfigError) -> Self {
-        UserError::ConfigError(error)
-    }
-}
-
-#[derive(Debug)]
-pub enum GetTransportError {
-    CertError(String),
-    NotSupportedError(String),
-    TlsTransportError(TlsInitError),
-    IoError(io::Error),
-}
-
-impl Error for GetTransportError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            GetTransportError::CertError(_) => None,
-            GetTransportError::NotSupportedError(_) => None,
-            GetTransportError::TlsTransportError(err) => Some(err),
-            GetTransportError::IoError(err) => Some(err),
-        }
-    }
-}
-
-impl fmt::Display for GetTransportError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            GetTransportError::CertError(msg) => {
-                write!(f, "unable to retrieve certificate: {}", msg)
-            }
-            GetTransportError::NotSupportedError(msg) => {
-                write!(f, "received transport type that is not supported: {}", msg)
-            }
-            GetTransportError::TlsTransportError(err) => {
-                write!(f, "unable to create TLS transport: {}", err)
-            }
-            GetTransportError::IoError(err) => {
-                write!(f, "unable to get transport due to IoError: {}", err)
-            }
-        }
-    }
-}
-
-impl From<TlsInitError> for GetTransportError {
-    fn from(tls_error: TlsInitError) -> Self {
-        GetTransportError::TlsTransportError(tls_error)
-    }
-}
-
-impl From<io::Error> for GetTransportError {
-    fn from(io_error: io::Error) -> Self {
-        GetTransportError::IoError(io_error)
-    }
 }

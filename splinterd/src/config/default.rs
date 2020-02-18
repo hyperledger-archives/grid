@@ -47,6 +47,9 @@ pub struct DefaultConfig {
     heartbeat_interval: Option<u64>,
     admin_service_coordinator_timeout: Option<u64>,
     state_dir: Option<String>,
+    insecure: Option<bool>,
+    #[cfg(feature = "biome")]
+    biome_enabled: Option<bool>,
 }
 
 impl DefaultConfig {
@@ -74,13 +77,18 @@ impl DefaultConfig {
                 DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
             ),
             state_dir: Some(String::from(DEFAULT_STATE_DIR)),
+            insecure: Some(false),
+            #[cfg(feature = "biome")]
+            biome_enabled: Some(false),
         }
     }
 }
 
 impl PartialConfigBuilder for DefaultConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::new(ConfigSource::Default)
+        let mut partial_config = PartialConfig::new(ConfigSource::Default);
+
+        partial_config = partial_config
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -98,7 +106,13 @@ impl PartialConfigBuilder for DefaultConfig {
             .with_registry_file(self.registry_file)
             .with_heartbeat_interval(self.heartbeat_interval)
             .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout)
-            .with_state_dir(self.state_dir);
+            .with_state_dir(self.state_dir)
+            .with_insecure(self.insecure);
+
+        #[cfg(feature = "biome")]
+        {
+            partial_config = partial_config.with_biome_enabled(self.biome_enabled);
+        }
 
         #[cfg(not(feature = "database"))]
         return partial_config;
@@ -150,6 +164,9 @@ mod tests {
             ))
         );
         assert_eq!(config.state_dir(), Some(String::from(DEFAULT_STATE_DIR)));
+        assert_eq!(config.insecure(), Some(false));
+        #[cfg(feature = "biome")]
+        assert_eq!(config.biome_enabled(), Some(false));
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(config.source(), ConfigSource::Default);
     }
