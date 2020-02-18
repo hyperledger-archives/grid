@@ -19,10 +19,11 @@ use serde_derive::Deserialize;
 
 use toml;
 
-/// Holds configuration values defined in a toml file.
+/// Holds configuration values defined in a toml file. This struct must be
+/// treated as part of the external API of splinter because changes here
+/// will impact the valid format of the config file.
 #[derive(Deserialize, Default, Debug)]
-pub struct TomlPartialConfigBuilder {
-    source: Option<ConfigSource>,
+struct TomlConfig {
     storage: Option<String>,
     transport: Option<String>,
     cert_dir: Option<String>,
@@ -44,12 +45,17 @@ pub struct TomlPartialConfigBuilder {
     admin_service_coordinator_timeout: Option<u64>,
 }
 
+pub struct TomlPartialConfigBuilder {
+    source: Option<ConfigSource>,
+    toml_config: TomlConfig,
+}
+
 impl TomlPartialConfigBuilder {
     pub fn new(toml: String, toml_path: String) -> Result<TomlPartialConfigBuilder, ConfigError> {
-        let mut toml_config =
-            toml::from_str::<TomlPartialConfigBuilder>(&toml).map_err(ConfigError::from)?;
-        toml_config.source = Some(ConfigSource::Toml { file: toml_path });
-        Ok(toml_config)
+        Ok(TomlPartialConfigBuilder {
+            source: Some(ConfigSource::Toml { file: toml_path }),
+            toml_config: toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?,
+        })
     }
 }
 
@@ -65,27 +71,29 @@ impl PartialConfigBuilder for TomlPartialConfigBuilder {
         let mut partial_config = PartialConfig::new(source);
 
         partial_config = partial_config
-            .with_storage(self.storage)
-            .with_transport(self.transport)
-            .with_cert_dir(self.cert_dir)
-            .with_ca_certs(self.ca_certs)
-            .with_client_cert(self.client_cert)
-            .with_client_key(self.client_key)
-            .with_server_cert(self.server_cert)
-            .with_server_key(self.server_key)
-            .with_service_endpoint(self.service_endpoint)
-            .with_network_endpoint(self.network_endpoint)
-            .with_peers(self.peers)
-            .with_node_id(self.node_id)
-            .with_bind(self.bind)
-            .with_registry_backend(self.registry_backend)
-            .with_registry_file(self.registry_file)
-            .with_heartbeat_interval(self.heartbeat_interval)
-            .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout);
+            .with_storage(self.toml_config.storage)
+            .with_transport(self.toml_config.transport)
+            .with_cert_dir(self.toml_config.cert_dir)
+            .with_ca_certs(self.toml_config.ca_certs)
+            .with_client_cert(self.toml_config.client_cert)
+            .with_client_key(self.toml_config.client_key)
+            .with_server_cert(self.toml_config.server_cert)
+            .with_server_key(self.toml_config.server_key)
+            .with_service_endpoint(self.toml_config.service_endpoint)
+            .with_network_endpoint(self.toml_config.network_endpoint)
+            .with_peers(self.toml_config.peers)
+            .with_node_id(self.toml_config.node_id)
+            .with_bind(self.toml_config.bind)
+            .with_registry_backend(self.toml_config.registry_backend)
+            .with_registry_file(self.toml_config.registry_file)
+            .with_heartbeat_interval(self.toml_config.heartbeat_interval)
+            .with_admin_service_coordinator_timeout(
+                self.toml_config.admin_service_coordinator_timeout,
+            );
 
         #[cfg(feature = "database")]
         {
-            partial_config = partial_config.with_database(self.database);
+            partial_config = partial_config.with_database(self.toml_config.database);
         }
 
         Ok(partial_config)
