@@ -57,8 +57,8 @@ pub mod paging;
 mod response_models;
 
 use actix_web::{
-    error::ErrorBadRequest, middleware, web, App, Error as ActixError, HttpRequest, HttpResponse,
-    HttpServer,
+    error::ErrorBadRequest, http::header, middleware, web, App, Error as ActixError, HttpRequest,
+    HttpResponse, HttpServer,
 };
 use futures::{future::FutureResult, stream::Stream, Future, IntoFuture};
 use percent_encoding::{AsciiSet, CONTROLS};
@@ -272,7 +272,24 @@ impl Resource {
     }
 
     fn into_route(self) -> actix_web::Resource {
-        let resource = web::resource(&self.route);
+        let mut resource = web::resource(&self.route);
+
+        let mut allowed_methods = self
+            .methods
+            .iter()
+            .map(|(method, _)| method.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        allowed_methods += ", OPTIONS";
+
+        resource = resource.route(web::route().guard(actix_web::guard::Options()).to(
+            move |_: HttpRequest| {
+                HttpResponse::Ok()
+                    .header(header::ALLOW, allowed_methods.clone())
+                    .finish()
+            },
+        ));
 
         let request_guards = self.request_guards;
         self.methods
