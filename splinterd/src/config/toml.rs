@@ -21,7 +21,7 @@ use toml;
 
 /// Holds configuration values defined in a toml file.
 #[derive(Deserialize, Default, Debug)]
-pub struct TomlConfig {
+pub struct TomlPartialConfigBuilder {
     source: Option<ConfigSource>,
     storage: Option<String>,
     transport: Option<String>,
@@ -44,15 +44,16 @@ pub struct TomlConfig {
     admin_service_coordinator_timeout: Option<u64>,
 }
 
-impl TomlConfig {
-    pub fn new(toml: String, toml_path: String) -> Result<TomlConfig, ConfigError> {
-        let mut toml_config = toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?;
+impl TomlPartialConfigBuilder {
+    pub fn new(toml: String, toml_path: String) -> Result<TomlPartialConfigBuilder, ConfigError> {
+        let mut toml_config =
+            toml::from_str::<TomlPartialConfigBuilder>(&toml).map_err(ConfigError::from)?;
         toml_config.source = Some(ConfigSource::Toml { file: toml_path });
         Ok(toml_config)
     }
 }
 
-impl PartialConfigBuilder for TomlConfig {
+impl PartialConfigBuilder for TomlPartialConfigBuilder {
     fn build(self) -> Result<PartialConfig, ConfigError> {
         let source = match self.source {
             Some(s) => s,
@@ -170,24 +171,30 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a PartialConfig object, constructed from the TomlConfig module,
-    /// contains the correct values using the following steps:
+    /// This test verifies that a PartialConfig object, constructed from the
+    /// TomlPartialConfigBuilder module, contains the correct values using the following steps:
     ///
     /// 1. An example config toml is string is created.
-    /// 2. A TomlConfig object is constructed by passing in the toml string created in the previous
-    ///    step.
-    /// 3. The TomlConfig object is transformed to a PartialConfig object using the `build` method.
+    /// 2. A TomlPartialConfigBuilder object is constructed by passing in the toml string created
+    ///    in the previous step.
+    /// 3. The TomlPartialConfigBuilder object is transformed to a PartialConfig object using the
+    ///    `build` method.
     ///
-    /// This test then verifies the PartialConfig object built from the TomlConfig object by
-    /// asserting each expected value.
+    /// This test then verifies the PartialConfig object built from the TomlPartialConfigBuilder
+    /// object by asserting each expected value.
     fn test_toml_build() {
         // Create an example toml string.
         let toml_string = toml::to_string(&get_toml_value()).expect("Could not encode TOML value");
-        // Create a TomlConfig object from the toml string.
-        let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
-            .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
-        // Build a PartialConfig from the TomlConfig object created.
-        let built_config = toml_builder.build().expect("Unable to build TomlConfig");
+        // Create a TomlPartialConfigBuilder object from the toml string.
+        let toml_builder = TomlPartialConfigBuilder::new(toml_string, TEST_TOML.to_string())
+            .expect(&format!(
+                "Unable to create TomlPartialConfigBuilder from: {}",
+                TEST_TOML
+            ));
+        // Build a PartialConfig from the TomlPartialConfigBuilder object created.
+        let built_config = toml_builder
+            .build()
+            .expect("Unable to build TomlPartialConfigBuilder");
         // Compare the generated PartialConfig object against the expected values.
         assert_config_values(built_config);
     }

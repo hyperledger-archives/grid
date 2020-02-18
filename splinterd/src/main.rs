@@ -31,15 +31,15 @@ use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 
 #[cfg(feature = "config-command-line")]
-use crate::config::CommandLineConfig;
+use crate::config::ClapPartialConfigBuilder;
 #[cfg(feature = "config-default")]
-use crate::config::DefaultConfig;
+use crate::config::DefaultPartialConfigBuilder;
 #[cfg(feature = "config-env-var")]
-use crate::config::EnvVarConfig;
+use crate::config::EnvPartialConfigBuilder;
 #[cfg(feature = "default")]
 use crate::config::PartialConfigBuilder;
 #[cfg(feature = "config-toml")]
-use crate::config::TomlConfig;
+use crate::config::TomlPartialConfigBuilder;
 use crate::config::{Config, ConfigBuilder, ConfigError};
 use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
@@ -61,8 +61,8 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
 
     #[cfg(feature = "config-command-line")]
     {
-        let command_line_config = CommandLineConfig::new(_matches).build()?;
-        builder = builder.with_partial_config(command_line_config);
+        let clap_config = ClapPartialConfigBuilder::new(_matches).build()?;
+        builder = builder.with_partial_config(clap_config);
     }
 
     #[cfg(feature = "config-toml")]
@@ -72,7 +72,7 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
                 file: String::from(file),
                 err,
             })?;
-            let toml_config = TomlConfig::new(toml_string, String::from(file))
+            let toml_config = TomlPartialConfigBuilder::new(toml_string, String::from(file))
                 .map_err(UserError::ConfigError)?
                 .build()?;
             builder = builder.with_partial_config(toml_config);
@@ -81,13 +81,13 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
 
     #[cfg(feature = "config-env-var")]
     {
-        let env_config = EnvVarConfig::new().build()?;
+        let env_config = EnvPartialConfigBuilder::new().build()?;
         builder = builder.with_partial_config(env_config);
     }
 
     #[cfg(feature = "config-default")]
     {
-        let default_config = DefaultConfig::new().build()?;
+        let default_config = DefaultPartialConfigBuilder::new().build()?;
         builder = builder.with_partial_config(default_config);
     }
     builder

@@ -26,15 +26,15 @@ const HEARTBEAT_DEFAULT: u64 = 30;
 const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
 
 /// Holds the default configuration values.
-pub struct DefaultConfig;
+pub struct DefaultPartialConfigBuilder;
 
-impl DefaultConfig {
+impl DefaultPartialConfigBuilder {
     pub fn new() -> Self {
-        DefaultConfig {}
+        DefaultPartialConfigBuilder {}
     }
 }
 
-impl PartialConfigBuilder for DefaultConfig {
+impl PartialConfigBuilder for DefaultPartialConfigBuilder {
     fn build(self) -> Result<PartialConfig, ConfigError> {
         let mut partial_config = PartialConfig::new(ConfigSource::Default);
 
@@ -124,22 +124,25 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a PartialConfig object is accurately constructed by using the `build`
-    /// method implemented by the DefaultConfig module. The following steps are performed:
+    /// This test verifies that a PartialConfig object is accurately constructed by using the
+    /// `build` method implemented by the DefaultPartialConfigBuilder module. The following steps
+    /// are performed:
     ///
-    /// 1. An empty DefaultConfig object is constructed, which implements the PartialConfigBuilder
-    ///    trait.
-    /// 2. A PartialConfig object is created by calling the `build` method of the DefaultConfig object.
+    /// 1. An empty DefaultPartialConfigBuilder object is constructed, which implements the
+    ///    PartialConfigBuilder trait.
+    /// 2. A PartialConfig object is created by calling the `build` method of the
+    ///    DefaultPartialConfigBuilder object.
     ///
     /// This test then verifies the PartialConfig object built from the DefaulConfig object has
     /// the correct values by asserting each expected value.
     fn test_default_builder() {
-        // Create a new DefaultConfig object, which implements the PartialConfigBuilder trait.
-        let default_config = DefaultConfig::new();
+        // Create a new DefaultPartialConfigBuilder object, which implements the
+        // PartialConfigBuilder trait.
+        let default_config = DefaultPartialConfigBuilder::new();
         // Create a PartialConfig object using the `build` method.
         let partial_config = default_config
             .build()
-            .expect("Unable to build DefaultConfig");
+            .expect("Unable to build DefaultPartialConfigBuilder");
         // Compare the generated PartialConfig object against the expected values.
         assert_default_values(partial_config);
     }

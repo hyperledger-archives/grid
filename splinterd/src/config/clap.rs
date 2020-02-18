@@ -16,7 +16,7 @@ use crate::config::{ConfigError, ConfigSource, PartialConfig, PartialConfigBuild
 use clap::{ArgMatches, ErrorKind};
 
 /// Holds configuration values from command line arguments, represented by clap ArgMatches.
-pub struct CommandLineConfig<'a> {
+pub struct ClapPartialConfigBuilder<'a> {
     matches: ArgMatches<'a>,
 }
 
@@ -30,13 +30,13 @@ fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
     }
 }
 
-impl<'a> CommandLineConfig<'a> {
+impl<'a> ClapPartialConfigBuilder<'a> {
     pub fn new(matches: ArgMatches<'a>) -> Self {
-        CommandLineConfig { matches }
+        ClapPartialConfigBuilder { matches }
     }
 }
 
-impl<'a> PartialConfigBuilder for CommandLineConfig<'_> {
+impl<'a> PartialConfigBuilder for ClapPartialConfigBuilder<'_> {
     fn build(self) -> Result<PartialConfig, ConfigError> {
         let mut partial_config = PartialConfig::new(ConfigSource::CommandLine);
 
@@ -134,7 +134,7 @@ mod tests {
         assert_eq!(config.insecure(), Some(true));
     }
 
-    /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
+    /// Creates an ArgMatches object to be used to construct a ClapPartialConfigBuilder object.
     fn create_arg_matches(args: Vec<&str>) -> ArgMatches<'static> {
         clap_app!(configtest =>
             (version: crate_version!())
@@ -160,16 +160,17 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a PartialConfig object, constructed from the CommandLineConfig module,
-    /// contains the correct values using the following steps:
+    /// This test verifies that a PartialConfig object, constructed from the
+    /// ClapPartialConfigBuilder module, contains the correct values using the following steps:
     ///
     /// 1. An example ArgMatches object is created using `create_arg_matches`.
-    /// 2. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
-    /// 3. The CommandLineConfig object is transformed to a PartialConfig object using the `build`.
+    /// 2. A ClapPartialConfigBuilder object is constructed by passing in the example ArgMatches
+    ///    created in the previous step.
+    /// 3. The ClapPartialConfigBuilder object is transformed to a PartialConfig object using the
+    ///    `build`.
     ///
-    /// This test then verifies the PartialConfig object built from the CommandLineConfig object by
-    /// asserting each expected value.
+    /// This test then verifies the PartialConfig object built from the ClapPartialConfigBuilder
+    /// object by asserting each expected value.
     fn test_command_line_config() {
         let args = vec![
             "configtest",
@@ -195,14 +196,14 @@ mod tests {
             EXAMPLE_SERVER_KEY,
             "--insecure",
         ];
-        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        // Create an example ArgMatches object to initialize the ClapPartialConfigBuilder.
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches);
-        // Build a PartialConfig from the CommandLineConfig object created.
+        let command_config = ClapPartialConfigBuilder::new(matches);
+        // Build a PartialConfig from the ClapPartialConfigBuilder object created.
         let built_config = command_config
             .build()
-            .expect("Unable to build CommandLineConfig");
+            .expect("Unable to build ClapPartialConfigBuilder");
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(built_config.source(), ConfigSource::CommandLine);
         // Compare the generated PartialConfig object against the expected values.
