@@ -30,13 +30,13 @@ services:
             cargo test && \
             echo \"Running stable feature tests...\" && \
             (cd libsplinter && cargo test --features stable) &&
-            (cd splinterd && cargo test --features stable) &&
             (cd services/scabbard && cargo test --features stable) &&
+            (cd splinterd && cargo test --features stable) &&
             echo \"Running experimental feature tests...\" && \
-            (cd libsplinter && cargo test --features experimental) &&
-            (cd splinterd && cargo test --features experimental) &&
             (cd cli && cargo test --features experimental) &&
+            (cd libsplinter && cargo test --features experimental) &&
             (cd services/scabbard && cargo test --features experimental)
+            (cd splinterd && cargo test --features experimental) &&
         "
     stop_signal: SIGKILL
 
