@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This module provides the `GET /admin/circuits/{circuit_id} endpoint for fetching the
+//! definition of a circuit in Splinter's state by its circuit ID.
+
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::Future;
 
