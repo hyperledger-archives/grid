@@ -17,7 +17,6 @@ use std::time::{Duration, SystemTime};
 use actix::prelude::*;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use futures::{Future, IntoFuture};
 use gameroom_database::{helpers, ConnectionPool};
 
 use crate::rest_api::RestApiResponseError;
@@ -60,25 +59,30 @@ impl Actor for GameroomWebSocket {
     }
 }
 
-impl StreamHandler<ws::Message, ws::ProtocolError> for GameroomWebSocket {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for GameroomWebSocket {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            ws::Message::Ping(msg) => ctx.ping(&msg),
-            ws::Message::Pong(msg) => ctx.pong(&msg),
-            ws::Message::Text(text) => ctx.text(text),
-            ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(_) => ctx.stop(),
-            ws::Message::Nop => (),
+            Ok(ws::Message::Ping(msg)) => ctx.ping(&msg),
+            Ok(ws::Message::Pong(msg)) => ctx.pong(&msg),
+            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            Ok(ws::Message::Close(_)) => ctx.stop(),
+            Ok(ws::Message::Continuation(_)) => (),
+            Ok(ws::Message::Nop) => (),
+            Err(err) => {
+                error!("{}", err);
+                ctx.stop()
+            }
         };
     }
 }
 
-pub fn connect_socket(
+pub async fn connect_socket(
     req: HttpRequest,
     pool: web::Data<ConnectionPool>,
     stream: web::Payload,
-) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-    Box::new(ws::start(GameroomWebSocket::new(pool), &req, stream).into_future())
+) -> Result<HttpResponse, Error> {
+    ws::start(GameroomWebSocket::new(pool), &req, stream)
 }
 
 fn check_notifications(pool: web::Data<ConnectionPool>) -> Result<bool, RestApiResponseError> {

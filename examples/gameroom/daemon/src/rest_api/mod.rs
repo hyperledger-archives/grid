@@ -19,9 +19,9 @@ use std::sync::mpsc;
 use std::thread;
 
 use actix_web::{
-    client::Client, error as ActixError, web, App, FromRequest, HttpResponse, HttpServer, Result,
+    client::Client, dev, error as ActixError, web, App, FromRequest, HttpResponse, HttpServer,
+    Result,
 };
-use futures::future::Future;
 use gameroom_database::ConnectionPool;
 use splinter::node_registry::Node;
 
@@ -34,12 +34,12 @@ pub struct GameroomdData {
 }
 
 pub struct RestApiShutdownHandle {
-    do_shutdown: Box<dyn Fn() -> Result<(), RestApiServerError> + Send>,
+    server: dev::Server,
 }
 
 impl RestApiShutdownHandle {
-    pub fn shutdown(&self) -> Result<(), RestApiServerError> {
-        (*self.do_shutdown)()
+    pub async fn shutdown(&self) {
+        self.server.stop(true).await;
     }
 }
 
@@ -65,7 +65,7 @@ pub fn run(
         .spawn(move || {
             let sys = actix::System::new("Gameroomd-Rest-API");
 
-            let addr = HttpServer::new(move || {
+            let server = HttpServer::new(move || {
                 App::new()
                     .data(database_connection.clone())
                     .data(Client::new())
@@ -87,37 +87,32 @@ pub fn run(
                         }),
                     )
                     .service(
-                        web::resource("/nodes/{identity}")
-                            .route(web::get().to_async(routes::fetch_node)),
+                        web::resource("/nodes/{identity}").route(web::get().to(routes::fetch_node)),
                     )
-                    .service(web::resource("/nodes").route(web::get().to_async(routes::list_nodes)))
+                    .service(web::resource("/nodes").route(web::get().to(routes::list_nodes)))
                     .service(
                         web::resource("/gamerooms/propose")
-                            .route(web::post().to_async(routes::propose_gameroom)),
+                            .route(web::post().to(routes::propose_gameroom)),
                     )
                     .service(
                         web::scope("/users")
+                            .service(web::resource("").route(web::post().to(routes::register)))
                             .service(
-                                web::resource("").route(web::post().to_async(routes::register)),
-                            )
-                            .service(
-                                web::resource("/authenticate")
-                                    .route(web::post().to_async(routes::login)),
+                                web::resource("/authenticate").route(web::post().to(routes::login)),
                             ),
                     )
                     .service(
                         web::scope("/proposals")
                             .service(
                                 web::resource("/{proposal_id}/vote")
-                                    .route(web::post().to_async(routes::proposal_vote)),
+                                    .route(web::post().to(routes::proposal_vote)),
                             )
                             .service(
                                 web::resource("/{proposal_id}")
-                                    .route(web::get().to_async(routes::fetch_proposal)),
+                                    .route(web::get().to(routes::fetch_proposal)),
                             )
                             .service(
-                                web::resource("")
-                                    .route(web::get().to_async(routes::list_proposals)),
+                                web::resource("").route(web::get().to(routes::list_proposals)),
                             ),
                     )
                     .service(
@@ -126,38 +121,35 @@ pub fn run(
                                 web::scope("/{notification_id}")
                                     .service(
                                         web::resource("")
-                                            .route(web::get().to_async(routes::fetch_notificaiton)),
+                                            .route(web::get().to(routes::fetch_notificaiton)),
                                     )
                                     .service(
-                                        web::resource("/read").route(
-                                            web::patch().to_async(routes::read_notification),
-                                        ),
+                                        web::resource("/read")
+                                            .route(web::patch().to(routes::read_notification)),
                                     ),
                             )
                             .service(
                                 web::resource("")
-                                    .route(web::get().to_async(routes::list_unread_notifications)),
+                                    .route(web::get().to(routes::list_unread_notifications)),
                             ),
                     )
                     .service(
                         web::resource("/submit")
-                            .route(web::post().to_async(routes::submit_signed_payload)),
+                            .route(web::post().to(routes::submit_signed_payload)),
                     )
                     .service(
                         web::scope("/gamerooms")
-                            .service(
-                                web::resource("")
-                                    .route(web::get().to_async(routes::list_gamerooms)),
-                            )
+                            .service(web::resource("").route(web::get().to(routes::list_gamerooms)))
                             .service(
                                 web::scope("/{circuit_id}")
                                     .service(
                                         web::resource("")
-                                            .route(web::get().to_async(routes::fetch_gameroom)),
+                                            .route(web::get().to(routes::fetch_gameroom)),
                                     )
-                                    .service(web::resource("/batches").route(
-                                        web::post().to_async(routes::submit_scabbard_payload),
-                                    )),
+                                    .service(
+                                        web::resource("/batches")
+                                            .route(web::post().to(routes::submit_scabbard_payload)),
+                                    ),
                             ),
                     )
                     .service(
@@ -168,26 +160,21 @@ pub fn run(
                             web::scope("/games")
                                 .service(
                                     web::resource("/{game_id}")
-                                        .route(web::get().to_async(routes::fetch_xo)),
+                                        .route(web::get().to(routes::fetch_xo)),
                                 )
-                                .service(
-                                    web::resource("").route(web::get().to_async(routes::list_xo)),
-                                ),
+                                .service(web::resource("").route(web::get().to(routes::list_xo))),
                         ),
                     )
-                    .service(
-                        web::scope("/keys").service(
-                            web::resource("/{public_key}")
-                                .route(web::get().to_async(routes::fetch_key_info)),
-                        ),
-                    )
+                    .service(web::scope("/keys").service(
+                        web::resource("/{public_key}").route(web::get().to(routes::fetch_key_info)),
+                    ))
             })
             .bind(bind_url)?
             .disable_signals()
             .system_exit()
-            .start();
+            .run();
 
-            tx.send(addr).map_err(|err| {
+            tx.send(server).map_err(|err| {
                 RestApiServerError::StartUpError(format!("Unable to send Server Addr: {}", err))
             })?;
             sys.run()?;
@@ -197,21 +184,11 @@ pub fn run(
             Ok(())
         })?;
 
-    let addr = rx.recv().map_err(|err| {
+    let server = rx.recv().map_err(|err| {
         RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
     })?;
 
-    let do_shutdown = Box::new(move || {
-        debug!("Shutting down Rest API");
-        if let Err(err) = addr.stop(true).wait() {
-            error!("Failed to shutdown rest api cleanly: {:?}", err);
-        }
-        debug!("Graceful signal sent to Rest API");
-
-        Ok(())
-    });
-
-    Ok((RestApiShutdownHandle { do_shutdown }, join_handle))
+    Ok((RestApiShutdownHandle { server }, join_handle))
 }
 
 fn handle_error(err: Box<dyn ActixError::ResponseError>) -> ActixError::Error {

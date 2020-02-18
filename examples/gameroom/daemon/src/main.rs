@@ -131,9 +131,12 @@ fn run() -> Result<(), GameroomDaemonError> {
             error!("Unable to cleanly shutdown event reactor: {}", err);
         }
 
-        if let Err(err) = rest_api_shutdown_handle.shutdown() {
-            error!("Unable to cleanly shutdown REST API server: {}", err);
-        }
+        // This can't be awaited because set_handler
+        // doesn't not accept async functions.
+        #[allow(unused_must_use)]
+        {
+            rest_api_shutdown_handle.shutdown();
+        };
     })
     .expect("Error setting Ctrl-C handler");
 
