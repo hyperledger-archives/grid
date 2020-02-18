@@ -34,13 +34,6 @@ pub enum UserError {
 }
 
 impl UserError {
-    pub fn daemon_error(context: &str) -> Self {
-        UserError::DaemonError {
-            context: context.into(),
-            source: None,
-        }
-    }
-
     pub fn daemon_err_with_source(context: &str, err: Box<dyn Error>) -> Self {
         UserError::DaemonError {
             context: context.into(),
