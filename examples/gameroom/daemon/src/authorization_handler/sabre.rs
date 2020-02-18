@@ -57,11 +57,6 @@ const CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 /// The contract prefix for global state (00ec02)
 const CONTRACT_PREFIX: &str = "00ec02";
 
-/// The smart permission prefix for global state (00ec03)
-const SMART_PERMISSION_PREFIX: &str = "00ec03";
-
-const PIKE_PREFIX: &str = "cad11d";
-
 const XO_NAME: &str = "xo";
 const XO_VERSION: &str = "0.3.3";
 pub const XO_PREFIX: &str = "5b7349";
@@ -95,10 +90,8 @@ pub fn setup_xo(
     let txns = vec![
         create_contract_registry_txn(scabbard_admin_keys.clone(), &signer)?,
         upload_contract_txn(&signer)?,
-        create_xo_namespace_registry_txn(scabbard_admin_keys.clone(), &signer)?,
+        create_xo_namespace_registry_txn(scabbard_admin_keys, &signer)?,
         xo_namespace_permissions_txn(&signer)?,
-        create_pike_namespace_registry_txn(scabbard_admin_keys, &signer)?,
-        pike_namespace_permissions_txn(&signer)?,
     ];
     let batch = create_batch(txns, &signer)?;
     let batch_list = create_batch_list_from_one(batch);
@@ -189,11 +182,7 @@ fn upload_contract_txn(signer: &Signer) -> Result<Transaction, AppAuthHandlerErr
         AppAuthHandlerError::SabreError(format!("IoError while reading contract: {}", err))
     })?;
 
-    let action_addresses = vec![
-        SMART_PERMISSION_PREFIX.into(),
-        PIKE_PREFIX.into(),
-        XO_PREFIX.into(),
-    ];
+    let action_addresses = vec![XO_PREFIX.into()];
     let action = CreateContractActionBuilder::new()
         .with_name(XO_NAME.into())
         .with_version(XO_VERSION.into())
@@ -246,45 +235,6 @@ fn xo_namespace_permissions_txn(signer: &Signer) -> Result<Transaction, AppAuthH
         .into_bytes()?;
     let addresses = vec![
         compute_namespace_registry_address(XO_PREFIX)?,
-        ADMINISTRATORS_SETTING_ADDRESS.into(),
-    ];
-
-    create_txn(addresses, payload, signer)
-}
-
-fn create_pike_namespace_registry_txn(
-    owners: Vec<String>,
-    signer: &Signer,
-) -> Result<Transaction, AppAuthHandlerError> {
-    let action = CreateNamespaceRegistryActionBuilder::new()
-        .with_namespace(PIKE_PREFIX.into())
-        .with_owners(owners)
-        .build()?;
-    let payload = SabrePayloadBuilder::new()
-        .with_action(Action::CreateNamespaceRegistry(action))
-        .build()?
-        .into_bytes()?;
-    let addresses = vec![
-        compute_namespace_registry_address(PIKE_PREFIX)?,
-        ADMINISTRATORS_SETTING_ADDRESS.into(),
-    ];
-
-    create_txn(addresses, payload, signer)
-}
-
-fn pike_namespace_permissions_txn(signer: &Signer) -> Result<Transaction, AppAuthHandlerError> {
-    let action = CreateNamespaceRegistryPermissionActionBuilder::new()
-        .with_namespace(PIKE_PREFIX.into())
-        .with_contract_name(XO_NAME.into())
-        .with_read(true)
-        .with_write(false)
-        .build()?;
-    let payload = SabrePayloadBuilder::new()
-        .with_action(Action::CreateNamespaceRegistryPermission(action))
-        .build()?
-        .into_bytes()?;
-    let addresses = vec![
-        compute_namespace_registry_address(PIKE_PREFIX)?,
         ADMINISTRATORS_SETTING_ADDRESS.into(),
     ];
 
