@@ -25,6 +25,7 @@ mod daemon;
 mod error;
 mod registry_config;
 mod routes;
+mod transport;
 
 use flexi_logger::{style, DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
@@ -43,16 +44,14 @@ use crate::config::{Config, ConfigBuilder, ConfigError};
 use crate::daemon::SplinterDaemonBuilder;
 use clap::{clap_app, crate_version};
 use clap::{Arg, ArgMatches};
-use splinter::transport::raw::RawTransport;
-use splinter::transport::tls::TlsTransport;
-use splinter::transport::Transport;
 
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::thread;
 
-use error::{GetTransportError, UserError};
+use error::UserError;
+use transport::get_transport;
 
 fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Config, UserError> {
     #[cfg(feature = "default")]
@@ -324,84 +323,4 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     })?;
     node.start(transport)?;
     Ok(())
-}
-
-fn get_transport(
-    transport_type: &str,
-    matches: &clap::ArgMatches,
-    config: &Config,
-) -> Result<(Box<dyn Transport + Send>, bool), GetTransportError> {
-    match transport_type {
-        "tls" => {
-            let client_cert = config.client_cert();
-            if !Path::new(&client_cert).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid client certificate: {}",
-                    client_cert
-                )));
-            }
-
-            let server_cert = config.server_cert();
-            if !Path::new(&server_cert).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid server certificate: {}",
-                    server_cert
-                )));
-            }
-
-            let server_key_file = config.server_key();
-            if !Path::new(&server_key_file).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid server key path: {}",
-                    server_key_file
-                )));
-            }
-
-            let client_key_file = config.client_key();
-            if !Path::new(&client_key_file).is_file() {
-                return Err(GetTransportError::CertError(format!(
-                    "Must provide a valid client key path: {}",
-                    client_key_file
-                )));
-            }
-
-            let insecure = matches.is_present("insecure");
-            let ca_file = {
-                if insecure {
-                    None
-                } else {
-                    let ca_file = config.ca_certs();
-                    if !Path::new(&ca_file).is_file() {
-                        return Err(GetTransportError::CertError(format!(
-                            "Must provide a valid file containing ca certs: {}",
-                            ca_file
-                        )));
-                    }
-                    match fs::canonicalize(&ca_file)?.to_str() {
-                        Some(ca_path) => Some(ca_path.to_string()),
-                        None => {
-                            return Err(GetTransportError::CertError(
-                                "CA path is not a valid path".to_string(),
-                            ))
-                        }
-                    }
-                }
-            };
-
-            let transport = TlsTransport::new(
-                ca_file.map(String::from),
-                String::from(client_key_file),
-                String::from(client_cert),
-                String::from(server_key_file),
-                String::from(server_cert),
-            )?;
-
-            Ok((Box::new(transport), insecure))
-        }
-        "raw" => Ok((Box::new(RawTransport::default()), true)),
-        _ => Err(GetTransportError::NotSupportedError(format!(
-            "Transport type {} is not supported",
-            transport_type
-        ))),
-    }
 }
