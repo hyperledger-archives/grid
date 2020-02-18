@@ -36,6 +36,8 @@ pub struct CommandLineConfig {
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
     insecure: Option<bool>,
+    #[cfg(feature = "biome")]
+    biome_enabled: Option<bool>,
 }
 
 fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
@@ -76,13 +78,21 @@ impl CommandLineConfig {
             } else {
                 None
             },
+            #[cfg(feature = "biome")]
+            biome_enabled: if matches.is_present("biome_enabled") {
+                Some(true)
+            } else {
+                None
+            },
         })
     }
 }
 
 impl PartialConfigBuilder for CommandLineConfig {
     fn build(self) -> PartialConfig {
-        let partial_config = PartialConfig::new(ConfigSource::CommandLine)
+        let mut partial_config = PartialConfig::new(ConfigSource::CommandLine);
+
+        partial_config = partial_config
             .with_storage(self.storage)
             .with_transport(self.transport)
             .with_cert_dir(self.cert_dir)
@@ -100,6 +110,11 @@ impl PartialConfigBuilder for CommandLineConfig {
             .with_registry_file(self.registry_file)
             .with_heartbeat_interval(self.heartbeat_interval)
             .with_insecure(self.insecure);
+
+        #[cfg(feature = "biome")]
+        {
+            partial_config = partial_config.with_biome_enabled(self.biome_enabled);
+        }
 
         #[cfg(not(feature = "database"))]
         return partial_config;

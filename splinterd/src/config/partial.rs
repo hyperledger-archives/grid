@@ -51,6 +51,8 @@ pub struct PartialConfig {
     admin_service_coordinator_timeout: Option<Duration>,
     state_dir: Option<String>,
     insecure: Option<bool>,
+    #[cfg(feature = "biome")]
+    biome_enabled: Option<bool>,
 }
 
 impl PartialConfig {
@@ -79,6 +81,8 @@ impl PartialConfig {
             admin_service_coordinator_timeout: None,
             state_dir: None,
             insecure: None,
+            #[cfg(feature = "biome")]
+            biome_enabled: None,
         }
     }
 
@@ -165,6 +169,11 @@ impl PartialConfig {
 
     pub fn insecure(&self) -> Option<bool> {
         self.insecure
+    }
+
+    #[cfg(feature = "biome")]
+    pub fn biome_enabled(&self) -> Option<bool> {
+        self.biome_enabled
     }
 
     #[allow(dead_code)]
@@ -411,6 +420,18 @@ impl PartialConfig {
     ///
     pub fn with_insecure(mut self, insecure: Option<bool>) -> Self {
         self.insecure = insecure;
+        self
+    }
+
+    #[cfg(feature = "biome")]
+    /// Adds a `biome_enabled` value to the PartialConfig object.
+    ///
+    /// # Arguments
+    ///
+    /// * `biome_enabled` - Enable biome REST API routes
+    ///
+    pub fn with_biome_enabled(mut self, biome_enabled: Option<bool>) -> Self {
+        self.biome_enabled = biome_enabled;
         self
     }
 }

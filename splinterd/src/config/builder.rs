@@ -263,6 +263,15 @@ impl ConfigBuilder {
                     None => None,
                 })
                 .ok_or_else(|| ConfigError::MissingValue("insecure".to_string()))?,
+            #[cfg(feature = "biome")]
+            biome_enabled: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.biome_enabled() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("biome_enabled".to_string()))?,
         })
     }
 }

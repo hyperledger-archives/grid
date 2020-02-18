@@ -253,22 +253,9 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     #[cfg(feature = "database")]
     let db_url = config.database();
 
-    #[cfg(feature = "biome")]
-    let biome_enabled: bool = matches.is_present("biome_enabled");
-
     let registry_backend = config.registry_backend();
 
-    #[cfg(feature = "experimental")]
-    // Allow unused mut for experimental features
-    #[allow(unused_mut)]
-    let mut feature_fields = "".to_string();
-
     let admin_service_coordinator_timeout = config.admin_service_coordinator_timeout();
-
-    #[cfg(feature = "biome")]
-    {
-        debug!("{}, biome_enabled: {}", feature_fields, biome_enabled);
-    }
 
     config.log_as_debug();
 
@@ -291,7 +278,7 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     #[cfg(feature = "biome")]
     {
-        daemon_builder = daemon_builder.enable_biome(biome_enabled);
+        daemon_builder = daemon_builder.enable_biome(config.biome_enabled());
     }
 
     if Path::new(&config.registry_file()).is_file() && registry_backend == "FILE" {

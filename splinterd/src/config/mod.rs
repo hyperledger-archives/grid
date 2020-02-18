@@ -63,6 +63,8 @@ pub struct Config {
     admin_service_coordinator_timeout: (Duration, ConfigSource),
     state_dir: (String, ConfigSource),
     insecure: (bool, ConfigSource),
+    #[cfg(feature = "biome")]
+    biome_enabled: (bool, ConfigSource),
 }
 
 impl Config {
@@ -147,6 +149,11 @@ impl Config {
         self.insecure.0
     }
 
+    #[cfg(feature = "biome")]
+    pub fn biome_enabled(&self) -> bool {
+        self.biome_enabled.0
+    }
+
     fn storage_source(&self) -> &ConfigSource {
         &self.storage.1
     }
@@ -226,6 +233,11 @@ impl Config {
 
     fn insecure_source(&self) -> &ConfigSource {
         &self.insecure.1
+    }
+
+    #[cfg(feature = "biome")]
+    fn biome_enabled_source(&self) -> &ConfigSource {
+        &self.biome_enabled.1
     }
 
     /// Displays the configuration value along with where the value was sourced from.
@@ -333,6 +345,12 @@ impl Config {
             self.insecure(),
             self.insecure_source()
         );
+        #[cfg(feature = "biome")]
+        debug!(
+            "Config: biome_enabled: {:?} (source: {:?})",
+            self.biome_enabled(),
+            self.biome_enabled_source()
+        );
     }
 }
 
@@ -419,7 +437,8 @@ mod tests {
         (@arg bind: --("bind") +takes_value)
         (@arg registry_backend: --("registry-backend") +takes_value)
         (@arg registry_file: --("registry-file") +takes_value)
-        (@arg insecure: --("insecure")))
+        (@arg insecure: --("insecure"))
+        (@arg biome_enabled: --("enable-biome")))
         .get_matches_from(args)
     }
 
@@ -513,6 +532,7 @@ mod tests {
             "--registry-file",
             "/etc/splinter/test.yaml",
             "--insecure",
+            "--enable-biome",
         ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);
