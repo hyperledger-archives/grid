@@ -61,9 +61,7 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
 
     #[cfg(feature = "config-command-line")]
     {
-        let command_line_config = CommandLineConfig::new(_matches)
-            .map_err(UserError::ConfigError)?
-            .build()?;
+        let command_line_config = CommandLineConfig::new(_matches).build()?;
         builder = builder.with_partial_config(command_line_config);
     }
 

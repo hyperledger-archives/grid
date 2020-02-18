@@ -542,8 +542,7 @@ mod tests {
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);
         // Create a new CommandLiine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.");
+        let command_config = CommandLineConfig::new(matches);
         // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
         builder = builder.with_partial_config(
             command_config
@@ -590,7 +589,6 @@ mod tests {
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.")
             .build()
             .expect("Unable to build CommandLineConfig");
 
@@ -837,7 +835,6 @@ mod tests {
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
         let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.")
             .build()
             .expect("Unable to build CommandLineConfig");
 
