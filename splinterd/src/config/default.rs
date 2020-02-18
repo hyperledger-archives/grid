@@ -47,6 +47,7 @@ pub struct DefaultConfig {
     heartbeat_interval: Option<u64>,
     admin_service_coordinator_timeout: Option<u64>,
     state_dir: Option<String>,
+    insecure: Option<bool>,
 }
 
 impl DefaultConfig {
@@ -74,6 +75,7 @@ impl DefaultConfig {
                 DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
             ),
             state_dir: Some(String::from(DEFAULT_STATE_DIR)),
+            insecure: Some(false),
         }
     }
 }
@@ -98,7 +100,8 @@ impl PartialConfigBuilder for DefaultConfig {
             .with_registry_file(self.registry_file)
             .with_heartbeat_interval(self.heartbeat_interval)
             .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout)
-            .with_state_dir(self.state_dir);
+            .with_state_dir(self.state_dir)
+            .with_insecure(self.insecure);
 
         #[cfg(not(feature = "database"))]
         return partial_config;
@@ -150,6 +153,7 @@ mod tests {
             ))
         );
         assert_eq!(config.state_dir(), Some(String::from(DEFAULT_STATE_DIR)));
+        assert_eq!(config.insecure(), Some(false));
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(config.source(), ConfigSource::Default);
     }

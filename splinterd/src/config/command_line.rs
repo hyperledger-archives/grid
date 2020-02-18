@@ -35,6 +35,7 @@ pub struct CommandLineConfig {
     registry_backend: Option<String>,
     registry_file: Option<String>,
     heartbeat_interval: Option<u64>,
+    insecure: Option<bool>,
 }
 
 fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
@@ -70,6 +71,11 @@ impl CommandLineConfig {
             registry_backend: matches.value_of("registry_backend").map(String::from),
             registry_file: matches.value_of("registry_file").map(String::from),
             heartbeat_interval: parse_value(&matches)?,
+            insecure: if matches.is_present("insecure") {
+                Some(true)
+            } else {
+                None
+            },
         })
     }
 }
@@ -92,7 +98,8 @@ impl PartialConfigBuilder for CommandLineConfig {
             .with_bind(self.bind)
             .with_registry_backend(self.registry_backend)
             .with_registry_file(self.registry_file)
-            .with_heartbeat_interval(self.heartbeat_interval);
+            .with_heartbeat_interval(self.heartbeat_interval)
+            .with_insecure(self.insecure);
 
         #[cfg(not(feature = "database"))]
         return partial_config;
@@ -146,6 +153,7 @@ mod tests {
         assert_eq!(config.registry_file(), None);
         assert_eq!(config.heartbeat_interval(), None);
         assert_eq!(config.admin_service_coordinator_timeout(), None);
+        assert_eq!(config.insecure(), Some(true));
     }
 
     /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
@@ -168,7 +176,8 @@ mod tests {
             (@arg client_key:  --("client-key") +takes_value)
             (@arg bind: --("bind") +takes_value)
             (@arg registry_backend: --("registry-backend") +takes_value)
-            (@arg registry_file: --("registry-file") +takes_value))
+            (@arg registry_file: --("registry-file") +takes_value)
+            (@arg insecure: --("insecure")))
         .get_matches_from(args)
     }
 
@@ -206,6 +215,7 @@ mod tests {
             EXAMPLE_SERVER_CERT,
             "--server-key",
             EXAMPLE_SERVER_KEY,
+            "--insecure",
         ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);

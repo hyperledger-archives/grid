@@ -50,6 +50,7 @@ pub struct PartialConfig {
     heartbeat_interval: Option<u64>,
     admin_service_coordinator_timeout: Option<Duration>,
     state_dir: Option<String>,
+    insecure: Option<bool>,
 }
 
 impl PartialConfig {
@@ -77,6 +78,7 @@ impl PartialConfig {
             heartbeat_interval: None,
             admin_service_coordinator_timeout: None,
             state_dir: None,
+            insecure: None,
         }
     }
 
@@ -159,6 +161,10 @@ impl PartialConfig {
 
     pub fn state_dir(&self) -> Option<String> {
         self.state_dir.clone()
+    }
+
+    pub fn insecure(&self) -> Option<bool> {
+        self.insecure
     }
 
     #[allow(dead_code)]
@@ -393,6 +399,18 @@ impl PartialConfig {
     ///
     pub fn with_state_dir(mut self, state_dir: Option<String>) -> Self {
         self.state_dir = state_dir;
+        self
+    }
+
+    #[allow(dead_code)]
+    /// Adds a `insecure` value to the PartialConfig object.
+    ///
+    /// # Arguments
+    ///
+    /// * `insecure` - Accept all peer certificates, ignoring TLS verification.
+    ///
+    pub fn with_insecure(mut self, insecure: Option<bool>) -> Self {
+        self.insecure = insecure;
         self
     }
 }

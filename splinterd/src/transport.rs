@@ -24,9 +24,8 @@ use crate::error::GetTransportError;
 
 pub fn get_transport(
     transport_type: &str,
-    matches: &clap::ArgMatches,
     config: &Config,
-) -> Result<(Box<dyn Transport + Send>, bool), GetTransportError> {
+) -> Result<Box<dyn Transport + Send>, GetTransportError> {
     match transport_type {
         "tls" => {
             let client_cert = config.client_cert();
@@ -61,7 +60,10 @@ pub fn get_transport(
                 )));
             }
 
-            let insecure = matches.is_present("insecure");
+            let insecure = config.insecure();
+            if insecure {
+                warn!("Starting TlsTransport in insecure mode");
+            }
             let ca_file = {
                 if insecure {
                     None
@@ -92,9 +94,9 @@ pub fn get_transport(
                 String::from(server_cert),
             )?;
 
-            Ok((Box::new(transport), insecure))
+            Ok(Box::new(transport))
         }
-        "raw" => Ok((Box::new(RawTransport::default()), true)),
+        "raw" => Ok(Box::new(RawTransport::default())),
         _ => Err(GetTransportError::NotSupportedError(format!(
             "Transport type {} is not supported",
             transport_type

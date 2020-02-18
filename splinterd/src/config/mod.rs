@@ -62,6 +62,7 @@ pub struct Config {
     heartbeat_interval: (u64, ConfigSource),
     admin_service_coordinator_timeout: (Duration, ConfigSource),
     state_dir: (String, ConfigSource),
+    insecure: (bool, ConfigSource),
 }
 
 impl Config {
@@ -142,6 +143,10 @@ impl Config {
         &self.state_dir.0
     }
 
+    pub fn insecure(&self) -> bool {
+        self.insecure.0
+    }
+
     fn storage_source(&self) -> &ConfigSource {
         &self.storage.1
     }
@@ -219,8 +224,12 @@ impl Config {
         &self.state_dir.1
     }
 
+    fn insecure_source(&self) -> &ConfigSource {
+        &self.insecure.1
+    }
+
     /// Displays the configuration value along with where the value was sourced from.
-    pub fn log_as_debug(&self, insecure: bool) {
+    pub fn log_as_debug(&self) {
         debug!(
             "Config: storage: {} (source: {:?})",
             self.storage(),
@@ -232,15 +241,11 @@ impl Config {
             self.transport_source()
         );
         if self.transport() == "tls" {
-            if insecure {
-                warn!("Starting TlsTransport in insecure mode");
-            } else {
-                debug!(
-                    "Config: ca_certs: {} (source: {:?})",
-                    self.ca_certs(),
-                    self.ca_certs_source()
-                );
-            }
+            debug!(
+                "Config: ca_certs: {} (source: {:?})",
+                self.ca_certs(),
+                self.ca_certs_source()
+            );
             debug!(
                 "Config: cert_dir: {} (source: {:?})",
                 self.cert_dir(),
@@ -322,6 +327,11 @@ impl Config {
             "database: {} (source: {:?})",
             self.database(),
             self.database_source(),
+        );
+        debug!(
+            "Config: insecure: {:?} (source: {:?})",
+            self.insecure(),
+            self.insecure_source()
         );
     }
 }
@@ -408,7 +418,8 @@ mod tests {
         (@arg client_key:  --("client-key") +takes_value)
         (@arg bind: --("bind") +takes_value)
         (@arg registry_backend: --("registry-backend") +takes_value)
-        (@arg registry_file: --("registry-file") +takes_value))
+        (@arg registry_file: --("registry-file") +takes_value)
+        (@arg insecure: --("insecure")))
         .get_matches_from(args)
     }
 
@@ -501,6 +512,7 @@ mod tests {
             "FILE",
             "--registry-file",
             "/etc/splinter/test.yaml",
+            "--insecure",
         ];
         // Create an example ArgMatches object to initialize the CommandLineConfig.
         let matches = create_arg_matches(args);

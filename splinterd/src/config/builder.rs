@@ -255,6 +255,14 @@ impl ConfigBuilder {
                     None => None,
                 })
                 .ok_or_else(|| ConfigError::MissingValue("state directory".to_string()))?,
+            insecure: self
+                .partial_configs
+                .iter()
+                .find_map(|p| match p.insecure() {
+                    Some(v) => Some((v, p.source())),
+                    None => None,
+                })
+                .ok_or_else(|| ConfigError::MissingValue("insecure".to_string()))?,
         })
     }
 }

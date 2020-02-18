@@ -238,7 +238,7 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     let heartbeat_interval = final_config.heartbeat_interval();
 
-    let (transport, insecure) = get_transport(&transport_type, &matches, &final_config)?;
+    let transport = get_transport(&transport_type, &final_config)?;
 
     let location = final_config.state_dir();
 
@@ -286,7 +286,7 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         debug!("{}, biome_enabled: {}", feature_fields, biome_enabled);
     }
 
-    final_config.log_as_debug(insecure);
+    final_config.log_as_debug();
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
