@@ -222,25 +222,25 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         None
     };
 
-    let final_config = create_config(config_file_path, matches.clone())?;
+    let config = create_config(config_file_path, matches.clone())?;
 
-    let node_id = final_config.node_id();
+    let node_id = config.node_id();
 
-    let storage_type = final_config.storage();
+    let storage_type = config.storage();
 
-    let transport_type = final_config.transport();
+    let transport_type = config.transport();
 
-    let service_endpoint = final_config.service_endpoint();
+    let service_endpoint = config.service_endpoint();
 
-    let network_endpoint = final_config.network_endpoint();
+    let network_endpoint = config.network_endpoint();
 
-    let initial_peers = final_config.peers();
+    let initial_peers = config.peers();
 
-    let heartbeat_interval = final_config.heartbeat_interval();
+    let heartbeat_interval = config.heartbeat_interval();
 
-    let transport = get_transport(&transport_type, &final_config)?;
+    let transport = get_transport(&transport_type, &config)?;
 
-    let location = final_config.state_dir();
+    let location = config.state_dir();
 
     let storage_location = match &storage_type as &str {
         "yaml" => format!("{}{}", location, "circuits.yaml"),
@@ -264,29 +264,29 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         }
     };
 
-    let rest_api_endpoint = final_config.bind();
+    let rest_api_endpoint = config.bind();
 
     #[cfg(feature = "database")]
-    let db_url = final_config.database();
+    let db_url = config.database();
 
     #[cfg(feature = "biome")]
     let biome_enabled: bool = matches.is_present("biome_enabled");
 
-    let registry_backend = final_config.registry_backend();
+    let registry_backend = config.registry_backend();
 
     #[cfg(feature = "experimental")]
     // Allow unused mut for experimental features
     #[allow(unused_mut)]
     let mut feature_fields = "".to_string();
 
-    let admin_service_coordinator_timeout = final_config.admin_service_coordinator_timeout();
+    let admin_service_coordinator_timeout = config.admin_service_coordinator_timeout();
 
     #[cfg(feature = "biome")]
     {
         debug!("{}, biome_enabled: {}", feature_fields, biome_enabled);
     }
 
-    final_config.log_as_debug();
+    config.log_as_debug();
 
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
@@ -310,10 +310,10 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
         daemon_builder = daemon_builder.enable_biome(biome_enabled);
     }
 
-    if Path::new(&final_config.registry_file()).is_file() && registry_backend == "FILE" {
+    if Path::new(&config.registry_file()).is_file() && registry_backend == "FILE" {
         daemon_builder = daemon_builder
             .with_registry_backend(Some(String::from(registry_backend)))
-            .with_registry_file(String::from(final_config.registry_file()));
+            .with_registry_file(String::from(config.registry_file()));
     } else {
         daemon_builder = daemon_builder.with_registry_backend(None);
     }
