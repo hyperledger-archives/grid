@@ -20,25 +20,19 @@ const STATE_DIR_ENV: &str = "SPLINTER_STATE_DIR";
 const CERT_DIR_ENV: &str = "SPLINTER_CERT_DIR";
 
 /// Holds configuration values defined as environment variables.
-pub struct EnvVarConfig {
-    state_dir: Option<String>,
-    cert_dir: Option<String>,
-}
+pub struct EnvVarConfig;
 
 impl EnvVarConfig {
     pub fn new() -> Self {
-        EnvVarConfig {
-            state_dir: env::var(STATE_DIR_ENV).ok(),
-            cert_dir: env::var(CERT_DIR_ENV).ok(),
-        }
+        EnvVarConfig {}
     }
 }
 
 impl PartialConfigBuilder for EnvVarConfig {
     fn build(self) -> PartialConfig {
         PartialConfig::new(ConfigSource::Environment)
-            .with_cert_dir(self.cert_dir)
-            .with_state_dir(self.state_dir)
+            .with_cert_dir(env::var(CERT_DIR_ENV).ok())
+            .with_state_dir(env::var(STATE_DIR_ENV).ok())
     }
 }
 
