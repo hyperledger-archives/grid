@@ -224,40 +224,26 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     let config = create_config(config_file_path, matches.clone())?;
 
-    let node_id = config.node_id();
-
-    let storage_type = config.storage();
-
-    let service_endpoint = config.service_endpoint();
-
-    let network_endpoint = config.network_endpoint();
-
-    let initial_peers = config.peers();
-
-    let heartbeat_interval = config.heartbeat_interval();
-
     let transport = get_transport(&config)?;
 
-    let location = config.state_dir();
-
-    let storage_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "circuits.yaml"),
+    let storage_location = match &config.storage() as &str {
+        "yaml" => format!("{}{}", config.state_dir(), "circuits.yaml"),
         "memory" => "memory".to_string(),
         _ => {
             return Err(UserError::InvalidArgument(format!(
                 "storage type is not supported: {}",
-                storage_type
+                config.storage()
             )))
         }
     };
 
-    let key_registry_location = match &storage_type as &str {
-        "yaml" => format!("{}{}", location, "keys.yaml"),
+    let key_registry_location = match &config.storage() as &str {
+        "yaml" => format!("{}{}", config.state_dir(), "keys.yaml"),
         "memory" => "memory".to_string(),
         _ => {
             return Err(UserError::InvalidArgument(format!(
                 "storage type is not supported: {}",
-                storage_type
+                config.storage()
             )))
         }
     };
@@ -289,13 +275,13 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     let mut daemon_builder = SplinterDaemonBuilder::new()
         .with_storage_location(storage_location)
         .with_key_registry_location(key_registry_location)
-        .with_network_endpoint(String::from(network_endpoint))
-        .with_service_endpoint(String::from(service_endpoint))
-        .with_initial_peers(initial_peers.to_vec())
-        .with_node_id(String::from(node_id))
+        .with_network_endpoint(String::from(config.network_endpoint()))
+        .with_service_endpoint(String::from(config.service_endpoint()))
+        .with_initial_peers(config.peers().to_vec())
+        .with_node_id(String::from(config.node_id()))
         .with_rest_api_endpoint(String::from(rest_api_endpoint))
-        .with_storage_type(String::from(storage_type))
-        .with_heartbeat_interval(heartbeat_interval)
+        .with_storage_type(String::from(config.storage()))
+        .with_heartbeat_interval(config.heartbeat_interval())
         .with_admin_service_coordinator_timeout(admin_service_coordinator_timeout);
 
     #[cfg(feature = "database")]
