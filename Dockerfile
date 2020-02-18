@@ -12,30 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
+FROM node:lts-alpine
 
-#testing
-**/coverage
+WORKDIR /canopyjs
 
-# production
-**/build
-**/dist
-**/lib
+COPY package*.json ./
 
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
+RUN yarn install
 
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# editor
-**/.vscode
+COPY . .

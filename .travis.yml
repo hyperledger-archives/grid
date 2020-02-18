@@ -12,30 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
+services:
+  - docker
 
-#testing
-**/coverage
+env:
+  global:
+    - ISOLATION_ID=$TRAVIS_BUILD_ID
+    - VERSION=AUTO_STRICT
 
-# production
-**/build
-**/dist
-**/lib
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+addons:
+  apt:
+    packages:
+      - docker-ce
 
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# editor
-**/.vscode
+jobs:
+  include:
+    - stage: Lint/Unit Test
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-canopyjs
