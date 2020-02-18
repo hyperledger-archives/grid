@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2018-2020 Cargill Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,31 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# ------------------------------------------------------------------------------
 
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
+version: "3.7"
 
-#testing
-**/coverage
-
-# production
-**/build
-**/dist
-**/lib
-
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# editor
-**/.vscode
+services:
+  unit-test-saplingjs:
+    build:
+      context: ..
+    environment:
+      - CI=true
+    image: saplingjs:${ISOLATION_ID}
+    command: yarn test

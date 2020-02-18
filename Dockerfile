@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,30 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
+FROM node:lts-alpine
 
-#testing
-**/coverage
+WORKDIR /saplingjs
 
-# production
-**/build
-**/dist
-**/lib
+COPY package*.json ./
 
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
+RUN yarn install
 
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# editor
-**/.vscode
+COPY . .
