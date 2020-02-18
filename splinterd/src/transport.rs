@@ -22,11 +22,8 @@ use splinter::transport::Transport;
 use crate::config::Config;
 use crate::error::GetTransportError;
 
-pub fn get_transport(
-    transport_type: &str,
-    config: &Config,
-) -> Result<Box<dyn Transport + Send>, GetTransportError> {
-    match transport_type {
+pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTransportError> {
+    match config.transport() {
         "tls" => {
             let client_cert = config.client_cert();
             if !Path::new(&client_cert).is_file() {
@@ -99,7 +96,7 @@ pub fn get_transport(
         "raw" => Ok(Box::new(RawTransport::default())),
         _ => Err(GetTransportError::NotSupportedError(format!(
             "Transport type {} is not supported",
-            transport_type
+            config.transport()
         ))),
     }
 }

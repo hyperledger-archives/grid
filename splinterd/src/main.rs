@@ -228,8 +228,6 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     let storage_type = config.storage();
 
-    let transport_type = config.transport();
-
     let service_endpoint = config.service_endpoint();
 
     let network_endpoint = config.network_endpoint();
@@ -238,7 +236,7 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
 
     let heartbeat_interval = config.heartbeat_interval();
 
-    let transport = get_transport(&transport_type, &config)?;
+    let transport = get_transport(&config)?;
 
     let location = config.state_dir();
 
