@@ -26,61 +26,11 @@ const HEARTBEAT_DEFAULT: u64 = 30;
 const DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS: u64 = 30000;
 
 /// Holds the default configuration values.
-pub struct DefaultConfig {
-    storage: Option<String>,
-    transport: Option<String>,
-    cert_dir: Option<String>,
-    ca_certs: Option<String>,
-    client_cert: Option<String>,
-    client_key: Option<String>,
-    server_cert: Option<String>,
-    server_key: Option<String>,
-    service_endpoint: Option<String>,
-    network_endpoint: Option<String>,
-    peers: Option<Vec<String>>,
-    node_id: Option<String>,
-    bind: Option<String>,
-    #[cfg(feature = "database")]
-    database: Option<String>,
-    registry_backend: Option<String>,
-    registry_file: Option<String>,
-    heartbeat_interval: Option<u64>,
-    admin_service_coordinator_timeout: Option<u64>,
-    state_dir: Option<String>,
-    insecure: Option<bool>,
-    #[cfg(feature = "biome")]
-    biome_enabled: Option<bool>,
-}
+pub struct DefaultConfig;
 
 impl DefaultConfig {
     pub fn new() -> Self {
-        DefaultConfig {
-            storage: Some(String::from("yaml")),
-            transport: Some(String::from("raw")),
-            cert_dir: Some(String::from(DEFAULT_CERT_DIR)),
-            ca_certs: Some(String::from(CA_PEM)),
-            client_cert: Some(String::from(CLIENT_CERT)),
-            client_key: Some(String::from(CLIENT_KEY)),
-            server_cert: Some(String::from(SERVER_CERT)),
-            server_key: Some(String::from(SERVER_KEY)),
-            service_endpoint: Some(String::from("127.0.0.1:8043")),
-            network_endpoint: Some(String::from("127.0.0.1:8044")),
-            peers: Some(vec![]),
-            node_id: None,
-            bind: Some(String::from("127.0.0.1:8080")),
-            #[cfg(feature = "database")]
-            database: Some(String::from("127.0.0.1:5432")),
-            registry_backend: Some(String::from("FILE")),
-            registry_file: Some(String::from("/etc/splinter/nodes.yaml")),
-            heartbeat_interval: Some(HEARTBEAT_DEFAULT),
-            admin_service_coordinator_timeout: Some(
-                DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
-            ),
-            state_dir: Some(String::from(DEFAULT_STATE_DIR)),
-            insecure: Some(false),
-            #[cfg(feature = "biome")]
-            biome_enabled: Some(false),
-        }
+        DefaultConfig {}
     }
 }
 
@@ -89,36 +39,37 @@ impl PartialConfigBuilder for DefaultConfig {
         let mut partial_config = PartialConfig::new(ConfigSource::Default);
 
         partial_config = partial_config
-            .with_storage(self.storage)
-            .with_transport(self.transport)
-            .with_cert_dir(self.cert_dir)
-            .with_ca_certs(self.ca_certs)
-            .with_client_cert(self.client_cert)
-            .with_client_key(self.client_key)
-            .with_server_cert(self.server_cert)
-            .with_server_key(self.server_key)
-            .with_service_endpoint(self.service_endpoint)
-            .with_network_endpoint(self.network_endpoint)
-            .with_peers(self.peers)
-            .with_node_id(self.node_id)
-            .with_bind(self.bind)
-            .with_registry_backend(self.registry_backend)
-            .with_registry_file(self.registry_file)
-            .with_heartbeat_interval(self.heartbeat_interval)
-            .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout)
-            .with_state_dir(self.state_dir)
-            .with_insecure(self.insecure);
+            .with_storage(Some(String::from("yaml")))
+            .with_transport(Some(String::from("raw")))
+            .with_cert_dir(Some(String::from(DEFAULT_CERT_DIR)))
+            .with_ca_certs(Some(String::from(CA_PEM)))
+            .with_client_cert(Some(String::from(CLIENT_CERT)))
+            .with_client_key(Some(String::from(CLIENT_KEY)))
+            .with_server_cert(Some(String::from(SERVER_CERT)))
+            .with_server_key(Some(String::from(SERVER_KEY)))
+            .with_service_endpoint(Some(String::from("127.0.0.1:8043")))
+            .with_network_endpoint(Some(String::from("127.0.0.1:8044")))
+            .with_peers(Some(vec![]))
+            .with_bind(Some(String::from("127.0.0.1:8080")))
+            .with_registry_backend(Some(String::from("FILE")))
+            .with_registry_file(Some(String::from("/etc/splinter/nodes.yaml")))
+            .with_heartbeat_interval(Some(HEARTBEAT_DEFAULT))
+            .with_admin_service_coordinator_timeout(Some(
+                DEFAULT_ADMIN_SERVICE_COORDINATOR_TIMEOUT_MILLIS,
+            ))
+            .with_state_dir(Some(String::from(DEFAULT_STATE_DIR)))
+            .with_insecure(Some(false));
 
         #[cfg(feature = "biome")]
         {
-            partial_config = partial_config.with_biome_enabled(self.biome_enabled);
+            partial_config = partial_config.with_biome_enabled(Some(false));
         }
 
         #[cfg(not(feature = "database"))]
         return partial_config;
 
         #[cfg(feature = "database")]
-        return partial_config.with_database(self.database);
+        return partial_config.with_database(Some(String::from("127.0.0.1:5432")));
     }
 }
 
