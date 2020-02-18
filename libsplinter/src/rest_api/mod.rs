@@ -51,6 +51,8 @@
 //!     .run();
 //! ```
 
+#[cfg(feature = "rest-api-cors")]
+pub mod cors;
 mod errors;
 mod events;
 pub mod paging;
@@ -467,6 +469,14 @@ impl RestApi {
             .spawn(move || {
                 let sys = actix::System::new("SplinterD-Rest-API");
                 let mut server = HttpServer::new(move || {
+                    // Actix's type definitions require this to be chained, otherwise, the generic
+                    // type of App is changed as the values are returned.
+                    #[cfg(feature = "rest-api-cors")]
+                    let mut app = App::new()
+                        .wrap(middleware::Logger::default())
+                        .wrap(cors::Cors::new_allow_any());
+
+                    #[cfg(not(feature = "rest-api-cors"))]
                     let mut app = App::new().wrap(middleware::Logger::default());
 
                     for resource in self.resources.clone() {
