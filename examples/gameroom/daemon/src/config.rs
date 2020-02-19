@@ -155,7 +155,7 @@ pub fn get_node(splinterd_url: &str) -> Result<Node, GetNodeError> {
                 Ok(node_id)
             })
             .and_then(move |node_id| {
-                let uri = match format!("{}/nodes/{}", splinterd_url, node_id).parse::<Uri>() {
+                let uri = match format!("{}/admin/nodes/{}", splinterd_url, node_id).parse::<Uri>() {
                         Ok(uri) => uri,
                         Err(err) => return
                             Either::A(

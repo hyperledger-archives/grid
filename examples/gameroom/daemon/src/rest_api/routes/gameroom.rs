@@ -229,7 +229,11 @@ async fn fetch_node_information(
 ) -> Result<Vec<Node>, RestApiResponseError> {
     let node_ids = node_ids.to_owned();
     let mut response = client
-        .get(&format!("{}/nodes?limit={}", splinterd_url, std::i64::MAX))
+        .get(&format!(
+            "{}/admin/nodes?limit={}",
+            splinterd_url,
+            std::i64::MAX
+        ))
         .header(
             "SplinterProtocolVersion",
             protocol::ADMIN_PROTOCOL_VERSION.to_string(),

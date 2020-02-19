@@ -196,7 +196,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /circuits:
+  /admin/circuits:
     get:
       tags:
           - Circuits
@@ -245,7 +245,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /circuits/{circuit_id}:
+  /admin/circuits/{circuit_id}:
     get:
       tags:
         - Circuits
@@ -275,7 +275,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /keys:
+  /admin/keys:
     get:
       tags:
         - Key Registry
@@ -317,7 +317,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /keys/{public_key}:
+  /admin/keys/{public_key}:
     get:
       tags:
         - Key Registry
@@ -353,7 +353,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /nodes:
+  /admin/nodes:
     post:
       tags:
         - Node Registry
@@ -445,7 +445,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /nodes/{identity}:
+  /admin/nodes/{identity}:
     get:
       tags:
         - Node Registry
@@ -1429,14 +1429,14 @@ components:
         last:
           type: string
       example:
-        current: /nodes?offset=10&limit=10
+        current: /admin/nodes?offset=10&limit=10
         offset: 10
         limit: 10
         total: 50
-        first: /nodes?offset=0&limit=10
-        prev: /nodes?offset=0&limit=10
-        next: /nodes?offset=20&limit=10
-        last: /nodes?offset=40&limit=10
+        first: /admin/nodes?offset=0&limit=10
+        prev: /admin/nodes?offset=0&limit=10
+        next: /admin/nodes?offset=20&limit=10
+        last: /admin/nodes?offset=40&limit=10
 
     BiomeUserKey:
       type: object

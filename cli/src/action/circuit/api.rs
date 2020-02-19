@@ -79,7 +79,7 @@ impl<'a> SplinterRestClient<'a> {
     }
 
     pub fn list_circuits(&self, filter: Option<&str>) -> Result<CircuitListSlice, CliError> {
-        let mut request = format!("{}/circuits", self.url);
+        let mut request = format!("{}/admin/circuits", self.url);
         if let Some(filter) = filter {
             request = format!("{}?filter={}", &request, &filter);
         }
@@ -118,7 +118,7 @@ impl<'a> SplinterRestClient<'a> {
 
     pub fn fetch_circuit(&self, circuit_id: &str) -> Result<Option<CircuitSlice>, CliError> {
         Client::new()
-            .get(&format!("{}/circuits/{}", self.url, circuit_id))
+            .get(&format!("{}/admin/circuits/{}", self.url, circuit_id))
             .header("SplinterProtocolVersion", ADMIN_PROTOCOL_VERSION)
             .send()
             .map_err(|err| CliError::ActionError(err.to_string()))
