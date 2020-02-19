@@ -1,5 +1,5 @@
 {
-  "name": "saplingjs",
+  "name": "splinter-saplingjs",
   "private": true,
   "version": "0.0.0-alpha",
   "author": "Cargill Incorporated",
@@ -13,6 +13,7 @@
   "scripts": {
     "test": "jest",
     "build": "tsc -p ./tsconfig.json --strict --outDir dist",
+    "prepare": "npm run build",
     "format": "prettier --write \"**/*.+(ts|*rc|json|js)\"",
     "lint": "eslint src/*"
   },
