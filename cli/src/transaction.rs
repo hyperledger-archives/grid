@@ -23,7 +23,7 @@ use crypto::sha2::Sha512;
 use protobuf;
 use protobuf::Message;
 
-use sabre_sdk::protocol::payload::{Action, ExecuteContractActionBuilder, SabrePayloadBuilder};
+use sabre_sdk::protocol::payload::ExecuteContractActionBuilder;
 use sabre_sdk::protos::IntoBytes;
 use sawtooth_sdk::messages::batch::Batch;
 use sawtooth_sdk::messages::batch::BatchHeader;
@@ -49,7 +49,7 @@ const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
 const GRID_PRODUCT_FAMILY_VERSION: &str = "1.0";
 
 const SABRE_FAMILY_NAME: &str = "sabre";
-const SABRE_FAMILY_VERSION: &str = "0.4";
+const SABRE_FAMILY_VERSION: &str = "0.5";
 const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
 const SABRE_CONTRACT_REGISTRY_PREFIX: &str = "00ec01";
 const SABRE_CONTRACT_PREFIX: &str = "00ec02";
@@ -91,17 +91,14 @@ impl BatchBuilder {
         outputs: &[String],
     ) -> Result<Self, CliError> {
         // create execute contract action for sabre payload
-        let execute_contract = ExecuteContractActionBuilder::new()
+        let sabre_payload = ExecuteContractActionBuilder::new()
             .with_name(self.family_name.to_string())
             .with_version(self.family_version.to_string())
             .with_inputs(inputs.to_vec())
             .with_outputs(outputs.to_vec())
             .with_payload(payload.write_to_bytes()?)
-            .build()
-            .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-        let sabre_payload = SabrePayloadBuilder::new()
-            .with_action(Action::ExecuteContract(execute_contract))
+            .into_payload_builder()
+            .map_err(|err| CliError::UserError(format!("{}", err)))?
             .build()
             .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
