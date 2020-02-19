@@ -68,47 +68,27 @@ circuit is created.
    root@splinterd-alpha:/#
    ```
 
-3. Use cat to create a circuit definition file, `circuit.yaml`, using the
-   following contents.
-
-   **Note**: In the lines below, replace `<gridd-alpha public key>` with the key
-   from step 1.
+3. Copy the key and save it in a local file.
 
    ```
-   root@splinterd-alpha:/# cat > circuit.yaml
-   circuit_id: my-grid-circuit
-   roster:
-     - service_id: grid-scabbard-a
-       service_type: scabbard
-       allowed_nodes:
-         - alpha-node-000
-       arguments:
-         - ["admin_keys", "[\"<gridd-alpha public key>\"]"]
-         - ["peer_services", "[\"grid-scabbard-b\"]"]    
-     - service_id: grid-scabbard-b
-       service_type: scabbard
-       allowed_nodes:
-        - beta-node-000
-       arguments:
-         - ["admin_keys", "[\"<gridd-alpha public key>\"]"]
-         - ["peer_services", "[\"grid-scabbard-a\"]"]
-   members:
-     - node_id: alpha-node-000
-       endpoint: tls://splinterd-alpha:8044
-     - node_id: beta-node-000
-       endpoint: tls://splinterd-beta:8044
-   authorization_type: Trust
-   durability: NoDurability
-   circuit_management_type: grid
+   root@splinterd-alpha:/# echo "<public key>" > gridd.pub
    ```
 
-   This YAML file defines a circuit between two nodes, `alpha-node-000` and
-   `beta-node-000`. Each node runs scabbard, the Splinter service that will
-   execute Sabre smart contracts.
+4. Propose a new circuit with the definition `circuit create` CLI command.
 
-4. Propose a new circuit with the definition in `circuit.yaml`.
-
-   `root@splinterd-alpha:/# splinter circuit create --key /key_registry_shared/alpha.priv --url http://splinterd-alpha:8085 circuit.yaml`
+   ```
+   root@splinterd-alpha:/# splinter circuit create \
+      --key /key_registry_shared/alpha.priv \
+      --url http://splinterd-alpha:8085  \
+      --node alpha-node-000::tls://splinterd-alpha:8044 \
+      --node beta-node-000::tls://splinterd-beta:8044 \
+      --service grid-scabbard-a::alpha-node-000 \
+      --service grid-scabbard-b::beta-node-000 \
+      --service-type *::scabbard \
+      --management grid \
+      --service-arg *::admin_keys=$(cat gridd.pub) \
+      --service-peer-group grid-scabbard-a,grid-scabbard-b
+   ```
 
 5. Check the results by displaying the list of proposals. Then use the circuit
    ID to view the details of the new proposal.
@@ -116,12 +96,12 @@ circuit is created.
    ```
    root@splinterd-alpha:/# splinter circuit proposals --url http://splinterd-alpha:8085
    ID              MANAGEMENT MEMBERS
-   my-grid-circuit grid       alpha-node-000;beta-node-000
+   <circuit-id>    grid       alpha-node-000;beta-node-000
    ```
 
    ```
-   root@splinterd-alpha:/# splinter circuit show my-grid-circuit --url http://splinterd-alpha:8085
-   Proposal to create: my-grid-circuit
+   root@splinterd-alpha:/# splinter circuit show <circuit-id> --url http://splinterd-alpha:8085
+   Proposal to create: <circuit-id>
       Management Type: grid
 
       alpha-node-000 (tls://splinterd-alpha:8044)
@@ -156,14 +136,14 @@ circuit is created.
    ```
    root@splinterd-beta:/# splinter circuit proposals --url http://splinterd-beta:8085
    ID              MANAGEMENT MEMBERS
-   my-grid-circuit grid       alpha-node-000;beta-node-000
+   <circuit-id>    grid       alpha-node-000;beta-node-000
    ```
 
 8. Use the ID to display the details of the proposed circuit.
 
    ```
-   root@splinterd-beta:/# splinter circuit show my-grid-circuit --url http://splinterd-beta:8085
-   Proposal to create: my-grid-circuit
+   root@splinterd-beta:/# splinter circuit show <circuit-id> --url http://splinterd-beta:8085
+   Proposal to create: <circuit-id>
       Management Type: grid
 
       alpha-node-000 (tls://splinterd-alpha:8044)
@@ -186,7 +166,7 @@ circuit is created.
 
 9. Then vote to accept the proposal.
 
-   `root@splinterd-beta:/# splinter circuit vote --key /key_registry_shared/beta.priv --url http://splinterd-beta:8085 my-grid-circuit --accept`
+   `root@splinterd-beta:/# splinter circuit vote --key /key_registry_shared/beta.priv --url http://splinterd-beta:8085 <circuit-id> --accept`
 
 10. Run the following command on each node to verify that the new circuit has
     been created. The circuit information should be the same on both nodes.
@@ -194,13 +174,13 @@ circuit is created.
     ```
     root@splinterd-beta:/# splinter circuit list --url http://splinterd-beta:8085
     ID              MANAGEMENT MEMBERS
-    my-grid-circuit grid       alpha-node-000;beta-node-000
+    <circuit-id>    grid       alpha-node-000;beta-node-000
     ```
 
     ```
     root@splinterd-alpha:/# splinter circuit list --url http://splinterd-alpha:8085
     ID              MANAGEMENT MEMBERS
-    my-grid-circuit grid       alpha-node-000;beta-node-000
+    <circuit-id>    grid       alpha-node-000;beta-node-000
     ```
 
 
@@ -222,9 +202,22 @@ circuit is created.
    This command generates two files, `alpha-agent.priv` and `alpha-agent.pub`,
    in the `~/.grid/keys/` directory.
 
-3. Create a new organization, `myorg`.
+3. Set an environment variable with the service_id. The commands below will
+check this variable to determine which circuit and service the command should
+be run against. An alternative to using the environment variable is to pass the
+service_id via the `--service-id` argument in each of these commands.
 
-   `root@gridd-alpha:/# grid organization create 314156 myorg '123 main street' --metadata gs1_company_prefixes=314156`
+   ```
+   root@gridd-alpha:/# export `GRID_SERVICE_ID=<circuit_id>::grid-scabbard-a'
+   ```
+
+4. Create a new organization, `myorg`.
+
+   ```
+   root@gridd-alpha:/# grid \
+   organization create 314156 myorg '123 main street' \
+    --metadata gs1_company_prefixes=314156
+   ```
 
    This command creates and submits a transaction to create a new Pike
    organization that is signed by the admin key. It also creates a new Pike
@@ -232,7 +225,7 @@ circuit is created.
    is derived from the private key used to sign the transaction.) The service ID
    includes the circuit name and the scabbard service name for the alpha node.
 
-4. Update the agent's permissions (Pike roles) to allow creating, updating, and
+5. Update the agent's permissions (Pike roles) to allow creating, updating, and
    deleting Grid products.
 
    ```
@@ -244,7 +237,7 @@ circuit is created.
    --role admin
    ```
 
-5. Use `cat` to create a product definition file, `product.yaml`, using the
+6. Use `cat` to create a product definition file, `product.yaml`, using the
    following contents.
 
    ```
@@ -267,22 +260,30 @@ circuit is created.
          number_value: 0
    ```
 
-6. Add a new product based on the definition in the example YAML file,
+7. Add a new product based on the definition in the example YAML file,
    `product.yaml`.
 
    ```
-   root@gridd-alpha:/# grid product create product.yaml
+   root@gridd-alpha:/# grid \
+     product create  product.yaml
    ```
 
-7. Open a new terminal and connect to the `gridd-beta` container.
+8. Open a new terminal and connect to the `gridd-beta` container.
 
    `$ docker exec -it gridd-beta bash`
 
-8. Display all products.
+9. Set an environment variable with the service_id.
+
+    ```
+    root@gridd-beta:/# export `GRID_SERVICE_ID=<circuit_id>::grid-scabbard-b'
+    ```
+
+10. Display all products.
 
    ```
    root@gridd-beta:/# grid product list
    ```
+
 
 ## Demonstrate Smart Contract Deployment
 
