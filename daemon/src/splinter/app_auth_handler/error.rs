@@ -15,11 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use sabre_sdk::protocol::payload::{
-    CreateContractActionBuildError, CreateContractRegistryActionBuildError,
-    CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
-    SabrePayloadBuildError,
-};
+use sabre_sdk::protocol::payload::{ActionBuildError, SabrePayloadBuildError};
 use sabre_sdk::protos::ProtoConversionError as SabreProtoConversionError;
 use sawtooth_sdk::signing::Error as SigningError;
 use splinter::{events, service::scabbard::client::Error as ScabbardError};
@@ -115,10 +111,7 @@ macro_rules! impl_from_sabre_errors {
 }
 
 impl_from_sabre_errors!(
-    CreateContractActionBuildError,
-    CreateContractRegistryActionBuildError,
-    CreateNamespaceRegistryActionBuildError,
-    CreateNamespaceRegistryPermissionActionBuildError,
+    ActionBuildError,
     SabreProtoConversionError,
     SabrePayloadBuildError
 );
