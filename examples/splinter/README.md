@@ -360,9 +360,9 @@ circuits.
    ```
    root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id my-grid-circuit::grid-scabbard-b
    NAME        VERSIONS OWNERS
-   grid_product 1.0      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
-   pike         0.1      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
-   sawtooth_xo  1.0      02ee0f386031f47bb04445bb4a422bf2654f31f350f306ed35929578d90447e786
+   grid_product 1.0      <gridd-alpha public key>
+   pike         0.1      <gridd-alpha public key>
+   sawtooth_xo  1.0      <gridd-alpha public key>
    ```
 
 10. Display the xo smart contract.

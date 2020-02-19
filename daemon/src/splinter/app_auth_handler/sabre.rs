@@ -51,7 +51,7 @@ const SMART_PERMISSION_PREFIX: &str = "00ec03";
 
 /// Sabre constants
 const SABRE_FAMILY_NAME: &str = "sabre";
-const SABRE_FAMILY_VERSION: &str = "0.4";
+const SABRE_FAMILY_VERSION: &str = "0.5";
 
 // Pike constants
 const PIKE_PREFIX: &str = "cad11d";
