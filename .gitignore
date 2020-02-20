@@ -2,6 +2,7 @@
 /.idea/
 *.sublime*
 *.vscode*
+.DS_Store
 
 # Rust
 Cargo.lock
@@ -15,6 +16,7 @@ contracts/track_and_trace/src/messages/
 **/node_modules
 **/package-lock.json
 **/npm-debug.log
+**/yarn.lock
 
 # Webpack
 **/dist
