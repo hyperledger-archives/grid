@@ -91,6 +91,7 @@ experimental = [
     "biome-notifications",
     "biome-user",
     "circuit-read",
+    "circuit-template",
     "connection-manager",
     "connection-manager-notification-iter-try-next",
     "database",
@@ -111,6 +112,7 @@ biome-key-management = ["biome", "database"]
 biome-notifications = ["biome", "database"]
 biome-user = ["biome", "database"]
 circuit-read = []
+circuit-template = []
 proposal-read = []
 connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]

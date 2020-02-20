@@ -16,6 +16,8 @@ pub mod directory;
 pub mod handlers;
 pub mod service;
 pub mod store;
+#[cfg(feature = "circuit-template")]
+pub mod template;
 
 use serde_derive::{Deserialize, Serialize};
 
