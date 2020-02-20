@@ -19,6 +19,10 @@ use std::time::Duration;
 
 use serde_json;
 
+#[cfg(feature = "service-arg-validation")]
+use crate::hex;
+#[cfg(feature = "service-arg-validation")]
+use crate::service::validation::{ServiceArgValidationError, ServiceArgValidator};
 use crate::service::{FactoryCreateError, Service, ServiceFactory};
 use crate::signing::SignatureVerifierFactory;
 
@@ -57,6 +61,46 @@ impl ScabbardFactory {
     }
 }
 
+#[cfg(feature = "service-arg-validation")]
+pub struct ScabbardArgValidator;
+
+#[cfg(feature = "service-arg-validation")]
+impl ServiceArgValidator for ScabbardArgValidator {
+    fn validate(&self, args: &HashMap<String, String>) -> Result<(), ServiceArgValidationError> {
+        let peer_services_str = args.get("peer_services").ok_or_else(|| {
+            ServiceArgValidationError("peer_services argument not provided".into())
+        })?;
+
+        serde_json::from_str::<Vec<String>>(peer_services_str).map_err(|err| {
+            ServiceArgValidationError(format!("failed to parse peer_services list: {}", err,))
+        })?;
+
+        let admin_keys_str = args
+            .get("admin_keys")
+            .ok_or_else(|| ServiceArgValidationError("admin_keys argument not provided".into()))?;
+        let admin_keys: Vec<String> = serde_json::from_str(admin_keys_str).map_err(|err| {
+            ServiceArgValidationError(format!("failed to parse admin_keys list: {}", err,))
+        })?;
+
+        for key in admin_keys {
+            let key_bytes = hex::parse_hex(&key).map_err(|_| {
+                ServiceArgValidationError(format!(
+                    "{} is not a valid hex-formatted public key",
+                    key
+                ))
+            })?;
+
+            if key_bytes.len() != 33 {
+                return Err(ServiceArgValidationError(format!(
+                    "{} is not a valid public key: invalid length",
+                    key
+                )));
+            }
+        }
+
+        Ok(())
+    }
+}
 impl ServiceFactory for ScabbardFactory {
     fn available_service_types(&self) -> &[String] {
         self.service_types.as_slice()
