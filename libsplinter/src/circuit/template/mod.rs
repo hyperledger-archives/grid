@@ -13,5 +13,6 @@
 // limitations under the License.
 
 mod error;
+mod yaml_parser;
 
 pub use error::CircuitTemplateError;
