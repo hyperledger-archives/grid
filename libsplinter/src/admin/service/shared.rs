@@ -652,6 +652,15 @@ impl AdminServiceShared {
 
         match header.get_action() {
             CircuitManagementPayload_Action::CIRCUIT_CREATE_REQUEST => {
+                let signer_public_key = header.get_requester();
+                let requester_node_id = header.get_requester_node_id();
+                self.validate_create_circuit(
+                    payload.get_circuit_create_request().get_circuit(),
+                    signer_public_key,
+                    requester_node_id,
+                )
+                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+
                 self.propose_circuit(payload, "local".to_string())
             }
             CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
