@@ -1173,6 +1173,11 @@ impl AdminServiceShared {
             } else {
                 services.push(service_id)
             }
+
+            #[cfg(feature = "service-arg-validation")]
+            {
+                self.validate_service_args(&service)?;
+            }
         }
 
         if circuit.get_circuit_management_type().is_empty() {
@@ -1182,6 +1187,23 @@ impl AdminServiceShared {
         }
 
         Ok(())
+    }
+
+    #[cfg(feature = "service-arg-validation")]
+    fn validate_service_args(&self, service: &SplinterService) -> Result<(), AdminSharedError> {
+        if let Some(validator) = self.service_arg_validators.get(service.get_service_type()) {
+            let args: HashMap<String, String> = service
+                .get_arguments()
+                .iter()
+                .map(|arg| (arg.get_key().into(), arg.get_value().into()))
+                .collect();
+
+            validator
+                .validate(&args)
+                .map_err(|err| AdminSharedError::ValidationFailed(err.to_string()))
+        } else {
+            Ok(())
+        }
     }
 
     fn validate_circuit_vote(
