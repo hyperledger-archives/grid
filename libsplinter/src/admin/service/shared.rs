@@ -36,6 +36,8 @@ use crate::network::{
     peer::PeerConnector,
 };
 use crate::orchestrator::{ServiceDefinition, ServiceOrchestrator, ShutdownServiceError};
+#[cfg(feature = "service-arg-validation")]
+use crate::protos::admin::SplinterService;
 use crate::protos::admin::{
     AdminMessage, AdminMessage_Type, Circuit, CircuitManagementPayload,
     CircuitManagementPayload_Action, CircuitManagementPayload_Header, CircuitProposal,
@@ -44,6 +46,9 @@ use crate::protos::admin::{
     Circuit_PersistenceType, Circuit_RouteType, MemberReady, SplinterNode,
 };
 use crate::service::error::ServiceError;
+#[cfg(feature = "service-arg-validation")]
+use crate::service::validation::ServiceArgValidator;
+
 use crate::service::ServiceNetworkSender;
 use crate::signing::SignatureVerifier;
 use crate::storage::sets::mem::DurableBTreeSet;
@@ -148,6 +153,9 @@ pub struct AdminServiceShared {
     uninitialized_circuits: HashMap<String, UninitializedCircuit>,
     // orchestrator used to initialize and shutdown services
     orchestrator: ServiceOrchestrator,
+    // map of service arg validators, by service type
+    #[cfg(feature = "service-arg-validation")]
+    service_arg_validators: HashMap<String, Box<dyn ServiceArgValidator + Send>>,
     // list of services that have been initialized using the orchestrator
     running_services: HashSet<ServiceDefinition>,
     // peer connector used to connect to new members listed in a circuit
@@ -187,6 +195,10 @@ impl AdminServiceShared {
     pub fn new(
         node_id: String,
         orchestrator: ServiceOrchestrator,
+        #[cfg(feature = "service-arg-validation")] service_arg_validators: HashMap<
+            String,
+            Box<dyn ServiceArgValidator + Send>,
+        >,
         peer_connector: PeerConnector,
         auth_inquisitor: Box<dyn AuthorizationInquisitor>,
         splinter_state: SplinterState,
@@ -221,6 +233,8 @@ impl AdminServiceShared {
             open_proposals,
             uninitialized_circuits: Default::default(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            service_arg_validators,
             running_services: HashSet::new(),
             peer_connector,
             auth_inquisitor,
@@ -1639,6 +1653,8 @@ mod tests {
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1719,6 +1735,8 @@ mod tests {
         let mut shared = AdminServiceShared::new(
             "my_peer_id".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1788,6 +1806,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1816,6 +1836,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1845,6 +1867,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1883,6 +1907,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1921,6 +1947,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -1962,6 +1990,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2000,6 +2030,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2043,6 +2075,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2075,6 +2109,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2109,6 +2145,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2147,6 +2185,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2192,6 +2232,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2237,6 +2279,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2278,6 +2322,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2319,6 +2365,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2352,6 +2400,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2385,6 +2435,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2418,6 +2470,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2451,6 +2505,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2485,6 +2541,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2516,6 +2574,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2551,6 +2611,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2584,6 +2646,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2626,6 +2690,8 @@ mod tests {
         let admin_shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2663,6 +2729,8 @@ mod tests {
         let shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2715,6 +2783,8 @@ mod tests {
         let shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2769,6 +2839,8 @@ mod tests {
         let shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
@@ -2825,6 +2897,8 @@ mod tests {
         let shared = AdminServiceShared::new(
             "node_a".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
