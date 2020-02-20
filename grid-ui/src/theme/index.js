@@ -13,25 +13,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { faLeaf, faUserCircle } from '@fortawesome/free-solid-svg-icons';
-import { CanopyProvider, SideNav } from 'splinter-canopyjs';
-import './App.scss';
-
-window.$CANOPY = {};
-
-library.add(faLeaf);
-library.add(faUserCircle);
-
-function AppWithProvider() {
-  return (
-    <CanopyProvider
-      saplingURL={process.env.REACT_APP_SAPLING_URL}
-      splinterURL={process.env.REACT_APP_SPLINTER_URL}
-    >
-      <SideNav />
-    </CanopyProvider>
-  );
-}
-export default AppWithProvider;
+import './index.scss';
