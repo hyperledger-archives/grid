@@ -21,7 +21,7 @@ use crate::protocol;
 use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET};
 use crate::rest_api::{Method, ProtocolVersionRangeGuard, Resource};
 
-use super::super::error::ProposalRouteError;
+use super::super::error::ProposalListError;
 use super::super::resources::proposals_read::ListProposalsResponse;
 
 pub fn make_list_proposals_resource<A: AdminCommands + Clone + 'static>(
@@ -117,7 +117,7 @@ fn query_list_proposals<A: AdminCommands + Clone + 'static>(
     web::block(move || {
         let proposals = admin_commands
             .list_proposals()
-            .map_err(|err| ProposalRouteError::InternalError(err.to_string()))?;
+            .map_err(|err| ProposalListError::InternalError(err.to_string()))?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| proposals.total());
         if proposals.total() != 0 {
@@ -159,11 +159,10 @@ fn query_list_proposals<A: AdminCommands + Clone + 'static>(
         }
         Err(err) => match err {
             BlockingError::Error(err) => match err {
-                ProposalRouteError::InternalError(_) => {
+                ProposalListError::InternalError(_) => {
                     error!("{}", err);
                     Ok(HttpResponse::InternalServerError().into())
                 }
-                ProposalRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
             },
             _ => Ok(HttpResponse::InternalServerError().into()),
         },

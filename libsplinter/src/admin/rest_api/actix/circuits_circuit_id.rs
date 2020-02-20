@@ -22,7 +22,7 @@ use crate::circuit::store::CircuitStore;
 use crate::protocol;
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
-use super::super::error::CircuitRouteError;
+use super::super::error::CircuitFetchError;
 use super::super::resources::circuits_circuit_id::CircuitResponse;
 
 pub fn make_fetch_circuit_resource<T: CircuitStore + 'static>(store: T) -> Resource {
@@ -61,7 +61,7 @@ fn fetch_circuit<T: CircuitStore + 'static>(
                 };
                 Ok(circuit_response)
             } else {
-                Err(CircuitRouteError::NotFound(format!(
+                Err(CircuitFetchError::NotFound(format!(
                     "Unable to find circuit: {}",
                     circuit_id
                 )))
@@ -71,12 +71,12 @@ fn fetch_circuit<T: CircuitStore + 'static>(
             Ok(circuit) => Ok(HttpResponse::Ok().json(circuit)),
             Err(err) => match err {
                 BlockingError::Error(err) => match err {
-                    CircuitRouteError::CircuitStoreError(err) => {
+                    CircuitFetchError::CircuitStoreError(err) => {
                         error!("{}", err);
                         Ok(HttpResponse::InternalServerError()
                             .json(ErrorResponse::internal_error()))
                     }
-                    CircuitRouteError::NotFound(err) => {
+                    CircuitFetchError::NotFound(err) => {
                         Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                     }
                 },

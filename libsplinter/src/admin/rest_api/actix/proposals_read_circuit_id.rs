@@ -16,7 +16,7 @@ use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::Future;
 
 use crate::admin::messages::CircuitProposal;
-use crate::admin::rest_api::error::ProposalRouteError;
+use crate::admin::rest_api::error::ProposalFetchError;
 use crate::admin::service::AdminCommands;
 use crate::protocol;
 use crate::rest_api::{Method, ProtocolVersionRangeGuard, Resource};
@@ -47,14 +47,14 @@ fn fetch_proposal<A: AdminCommands + Clone + 'static>(
         web::block(move || {
             let proposal = admin_commands
                 .fetch_proposal(circuit_id.clone())
-                .map_err(|err| ProposalRouteError::InternalError(err.to_string()))?;
+                .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?;
             if let Some(proposal) = proposal {
                 let proposal = CircuitProposal::from_proto(proposal)
-                    .map_err(|err| ProposalRouteError::InternalError(err.to_string()))?;
+                    .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?;
 
                 Ok(proposal)
             } else {
-                Err(ProposalRouteError::NotFound(format!(
+                Err(ProposalFetchError::NotFound(format!(
                     "Unable to find proposal: {}",
                     circuit_id
                 )))
@@ -64,11 +64,11 @@ fn fetch_proposal<A: AdminCommands + Clone + 'static>(
             Ok(proposal) => Ok(HttpResponse::Ok().json(proposal)),
             Err(err) => match err {
                 BlockingError::Error(err) => match err {
-                    ProposalRouteError::InternalError(_) => {
+                    ProposalFetchError::InternalError(_) => {
                         error!("{}", err);
                         Ok(HttpResponse::InternalServerError().into())
                     }
-                    ProposalRouteError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
+                    ProposalFetchError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
                 },
                 _ => Ok(HttpResponse::InternalServerError().into()),
             },

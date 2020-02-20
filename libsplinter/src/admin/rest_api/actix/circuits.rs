@@ -26,7 +26,7 @@ use crate::rest_api::{
     ErrorResponse, Method, ProtocolVersionRangeGuard, Resource,
 };
 
-use super::super::error::CircuitRouteError;
+use super::super::error::CircuitListError;
 use super::super::resources::circuits::{CircuitResponse, ListCircuitsResponse};
 
 pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resource {
@@ -162,12 +162,9 @@ fn query_list_circuits<T: CircuitStore + 'static>(
         }
         Err(err) => match err {
             BlockingError::Error(err) => match err {
-                CircuitRouteError::CircuitStoreError(err) => {
+                CircuitListError::CircuitStoreError(err) => {
                     error!("{}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-                CircuitRouteError::NotFound(err) => {
-                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                 }
             },
             _ => {
