@@ -90,18 +90,27 @@ circuit is created.
       --service-peer-group grid-scabbard-a,grid-scabbard-b
    ```
 
-5. Check the results by displaying the list of proposals. Then use the circuit
-   ID to view the details of the new proposal.
+5. Check the results by displaying the list of proposals. The following example
+   sets the CIRCUIT_ID environment variable; this environment variable is for
+   the purposes of this procedure and is not used directly by the `splinter`
+   CLI commands.
+
+   Set CIRCUIT_ID based on the output of the `proposals` subcommand; for
+   example:
 
    ```
    root@splinterd-alpha:/# splinter circuit proposals --url http://splinterd-alpha:8085
-   ID              MANAGEMENT MEMBERS
-   <circuit-id>    grid       alpha-node-000;beta-node-000
+   ID                                      MANAGEMENT MEMBERS
+   01234567-0123-0123-0123-012345678901    grid       alpha-node-000;beta-node-000
    ```
 
    ```
-   root@splinterd-alpha:/# splinter circuit show <circuit-id> --url http://splinterd-alpha:8085
-   Proposal to create: <circuit-id>
+   root@splinterd-alpha:/# export CIRCUIT_ID=01234567-0123-0123-0123-012345678901
+   ```
+
+   ```
+   root@splinterd-alpha:/# splinter circuit show $CIRCUIT_ID --url http://splinterd-alpha:8085
+   Proposal to create: 01234567-0123-0123-0123-012345678901
       Management Type: grid
 
       alpha-node-000 (tls://splinterd-alpha:8044)
@@ -131,19 +140,25 @@ circuit is created.
    root@splinterd-beta:/#
    ```
 
-7. Find the ID of the proposed circuit.
+7. Find the ID of the proposed circuit and save it to an environment variable.
+   The ID will be required for voting on the proposals and for interacting with
+   the circuit once it is approved. For example:
 
    ```
    root@splinterd-beta:/# splinter circuit proposals --url http://splinterd-beta:8085
-   ID              MANAGEMENT MEMBERS
-   <circuit-id>    grid       alpha-node-000;beta-node-000
+   ID                                      MANAGEMENT MEMBERS
+   01234567-0123-0123-0123-012345678901    grid       alpha-node-000;beta-node-000
+   ```
+
+   ```
+   root@splinterd-beta:/# export CIRCUIT_ID=01234567-0123-0123-0123-012345678901
    ```
 
 8. Use the ID to display the details of the proposed circuit.
 
    ```
-   root@splinterd-beta:/# splinter circuit show <circuit-id> --url http://splinterd-beta:8085
-   Proposal to create: <circuit-id>
+   root@splinterd-beta:/# splinter circuit show $CIRCUIT_ID --url http://splinterd-beta:8085
+   Proposal to create: 01234567-0123-0123-0123-012345678901
       Management Type: grid
 
       alpha-node-000 (tls://splinterd-alpha:8044)
@@ -166,21 +181,21 @@ circuit is created.
 
 9. Then vote to accept the proposal.
 
-   `root@splinterd-beta:/# splinter circuit vote --key /key_registry_shared/beta.priv --url http://splinterd-beta:8085 <circuit-id> --accept`
+   `root@splinterd-beta:/# splinter circuit vote --key /key_registry_shared/beta.priv --url http://splinterd-beta:8085 $CIRCUIT_ID --accept`
 
 10. Run the following command on each node to verify that the new circuit has
     been created. The circuit information should be the same on both nodes.
 
     ```
     root@splinterd-beta:/# splinter circuit list --url http://splinterd-beta:8085
-    ID              MANAGEMENT MEMBERS
-    <circuit-id>    grid       alpha-node-000;beta-node-000
+    ID                                     MANAGEMENT MEMBERS
+    01234567-0123-0123-0123-012345678901   grid       alpha-node-000;beta-node-000
     ```
 
     ```
     root@splinterd-alpha:/# splinter circuit list --url http://splinterd-alpha:8085
-    ID              MANAGEMENT MEMBERS
-    <circuit-id>    grid       alpha-node-000;beta-node-000
+    ID                                      MANAGEMENT MEMBERS
+    01234567-0123-0123-0123-012345678901    grid       alpha-node-000;beta-node-000
     ```
 
 
@@ -202,13 +217,14 @@ circuit is created.
    This command generates two files, `alpha-agent.priv` and `alpha-agent.pub`,
    in the `~/.grid/keys/` directory.
 
-3. Set an environment variable with the service_id. The commands below will
-check this variable to determine which circuit and service the command should
-be run against. An alternative to using the environment variable is to pass the
-service_id via the `--service-id` argument in each of these commands.
+3. Set an environment variable with the service_id. Use the circuit id of the
+   circuit that was created above. The commands below will check this variable
+   to determine which circuit and service the command should be run against. An
+   alternative to using the environment variable is to pass the service_id via
+   the `--service-id` argument in each of these commands.
 
    ```
-   root@gridd-alpha:/# export `GRID_SERVICE_ID=<circuit_id>::grid-scabbard-a'
+   root@gridd-alpha:/# export `GRID_SERVICE_ID=01234567-0123-0123-0123-012345678901::grid-scabbard-a'
    ```
 
 4. Create a new organization, `myorg`.
@@ -275,7 +291,7 @@ service_id via the `--service-id` argument in each of these commands.
 9. Set an environment variable with the service_id.
 
     ```
-    root@gridd-beta:/# export `GRID_SERVICE_ID=<circuit_id>::grid-scabbard-b'
+    root@gridd-beta:/# export `GRID_SERVICE_ID=01234567-0123-0123-0123-012345678901::grid-scabbard-b'
     ```
 
 10. Display all products.
@@ -298,86 +314,93 @@ circuits.
    root@scabbard-cli-alpha:/#
    ```
 
-2. Download the smart contract.
+2. Set an environment variable to the circuit id of the circuit that was created
+   above.
+
+   ```
+   root@scabbard-cli-alpha:/# export CIRCUIT_ID=01234567-0123-0123-0123-012345678901
+   ```
+
+3. Download the smart contract.
 
    `root@scabbard-cli-alpha:/# curl -OLsS https://files.splinter.dev/scar/xo_0.4.1.scar`
 
-3. Create the contract registry for the new smart contract.
+4. Create the contract registry for the new smart contract.
 
    ```
    root@scabbard-cli-alpha:/# scabbard cr create sawtooth_xo \
    --owner $(cat /root/.splinter/keys/gridd.pub) \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
-   --service-id my-grid-circuit::grid-scabbard-a
+   --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
 
-4. Upload the smart contract.
+5. Upload the smart contract.
 
    ```
    root@scabbard-cli-alpha:/# scabbard contract upload ./xo_0.4.1.scar \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
-   --service-id my-grid-circuit::grid-scabbard-a
+   --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
 
-5. Create the namespace registry for the smart contract.
+6. Create the namespace registry for the smart contract.
 
    ```
    root@scabbard-cli-alpha:/# scabbard ns create 5b7349 \
    --owner $(cat /root/.splinter/keys/gridd.pub) \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
-   --service-id my-grid-circuit::grid-scabbard-a
+   --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
 
-6. Grant the appropriate contract namespace permissions.
+7. Grant the appropriate contract namespace permissions.
 
    ```
    root@scabbard-cli-alpha:/# scabbard perm 5b7349 sawtooth_xo --read --write \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
-   --service-id my-grid-circuit::grid-scabbard-a
+   --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
 
-7. Grant the appropriate Pike namespace permissions.
+8. Grant the appropriate Pike namespace permissions.
 
    ```
    root@scabbard-cli-alpha:/# scabbard perm cad11d sawtooth_xo --read \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
-   --service-id my-grid-circuit::grid-scabbard-a
+   --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
-
-8. Open a new terminal and connect to the `scabbard-cli-beta` container.
+9. Open a new terminal and connect to the `scabbard-cli-beta` container and add
+   the circuit id environment variable
 
    ```
    $ docker-compose -f examples/splinter/docker-compose.yaml run scabbard-cli-beta bash
    root@scabbard-cli-beta:/#
    ```
 
-9. List all uploaded smart contracts.
+   ```
+   root@scabbard-cli-beta:/# export CIRCUIT_ID=01234567-0123-0123-0123-012345678901
+   ```
+
+10. List all uploaded smart contracts.
 
    ```
-   root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id my-grid-circuit::grid-scabbard-b
+   root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::grid-scabbard-b
    NAME        VERSIONS OWNERS
    grid_product 1.0      <gridd-alpha public key>
    pike         0.1      <gridd-alpha public key>
    sawtooth_xo  1.0      <gridd-alpha public key>
    ```
 
-10. Display the xo smart contract.
+11. Display the xo smart contract.
 
    ```
-   root@scabbard-cli-beta:/# scabbard contract show sawtooth_xo:1.0 -U 'http://splinterd-beta:8085' --service-id my-grid-circuit::grid-scabbard-b
+   root@scabbard-cli-beta:/# scabbard contract show sawtooth_xo:1.0 -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::grid-scabbard-b
    sawtooth_xo 1.0
      inputs:
-     - 00ec03
-     - cad11d
      - 5b7349
      outputs:
-     - 00ec03
-     - cad11d
      - 5b7349
      creator: <gridd-alpha public key>
    ```
@@ -413,8 +436,7 @@ For example, if gamma creates a circuit with alpha and a separate circuit with
 beta, then uploads the XO smart contract and plays a tic-tac-toe game with
 alpha, the xo list command on gamma will show only the gamma-alpha game. Even
 though alpha and beta are using the same XO smart contract, their game moves
-(smart contract transactions) remain private to their two-party circuit,
-my-grid-circuit.
+(smart contract transactions) remain private to their two-party circuit.
 
 ## For More Information
 - Hyperledger Grid documentation: https://grid.hyperledger.org/docs/grid/nightly/master/introduction.html
