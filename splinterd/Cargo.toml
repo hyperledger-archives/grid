@@ -61,6 +61,7 @@ experimental = [
     "circuit-read",
     "health",
     "proposal-read",
+    "rest-api-cors",
     "scabbard-get-state",
 ]
 
@@ -75,6 +76,7 @@ config-env-var = []
 config-toml = []
 database = ["splinter/database"]
 scabbard-get-state = ["splinter/scabbard-get-state"]
+rest-api-cors = ["splinter/rest-api-cors"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

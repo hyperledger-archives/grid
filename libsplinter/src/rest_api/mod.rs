@@ -51,14 +51,16 @@
 //!     .run();
 //! ```
 
+#[cfg(feature = "rest-api-cors")]
+pub mod cors;
 mod errors;
 mod events;
 pub mod paging;
 mod response_models;
 
 use actix_web::{
-    error::ErrorBadRequest, middleware, web, App, Error as ActixError, HttpRequest, HttpResponse,
-    HttpServer,
+    error::ErrorBadRequest, http::header, middleware, web, App, Error as ActixError, HttpRequest,
+    HttpResponse, HttpServer,
 };
 use futures::{future::FutureResult, stream::Stream, Future, IntoFuture};
 use percent_encoding::{AsciiSet, CONTROLS};
@@ -161,6 +163,19 @@ pub enum Method {
     Head,
 }
 
+impl std::fmt::Display for Method {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Method::Get => f.write_str("GET"),
+            Method::Post => f.write_str("POST"),
+            Method::Put => f.write_str("PUT"),
+            Method::Patch => f.write_str("PATCH"),
+            Method::Delete => f.write_str("DELETE"),
+            Method::Head => f.write_str("HEAD"),
+        }
+    }
+}
+
 /// `Resource` represents a RESTful endpoint.
 ///
 /// ```
@@ -259,7 +274,24 @@ impl Resource {
     }
 
     fn into_route(self) -> actix_web::Resource {
-        let resource = web::resource(&self.route);
+        let mut resource = web::resource(&self.route);
+
+        let mut allowed_methods = self
+            .methods
+            .iter()
+            .map(|(method, _)| method.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        allowed_methods += ", OPTIONS";
+
+        resource = resource.route(web::route().guard(actix_web::guard::Options()).to(
+            move |_: HttpRequest| {
+                HttpResponse::Ok()
+                    .header(header::ALLOW, allowed_methods.clone())
+                    .finish()
+            },
+        ));
 
         let request_guards = self.request_guards;
         self.methods
@@ -437,6 +469,14 @@ impl RestApi {
             .spawn(move || {
                 let sys = actix::System::new("SplinterD-Rest-API");
                 let mut server = HttpServer::new(move || {
+                    // Actix's type definitions require this to be chained, otherwise, the generic
+                    // type of App is changed as the values are returned.
+                    #[cfg(feature = "rest-api-cors")]
+                    let mut app = App::new()
+                        .wrap(middleware::Logger::default())
+                        .wrap(cors::Cors::new_allow_any());
+
+                    #[cfg(not(feature = "rest-api-cors"))]
                     let mut app = App::new().wrap(middleware::Logger::default());
 
                     for resource in self.resources.clone() {

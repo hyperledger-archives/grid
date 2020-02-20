@@ -70,7 +70,7 @@ impl<T: store::CircuitStore + 'static> RestResourceProvider for CircuitResourceP
         // Allowing unused_mut because resources must be mutable if feature circuit-read is enabled
         #[allow(unused_mut)]
         let mut resources = Vec::new();
-        #[cfg(feature = "circuit-read")]
+        #[cfg(all(feature = "circuit-read", feature = "rest-api-actix"))]
         {
             resources.append(&mut vec![
                 make_fetch_circuit_resource(self.store.clone()),
