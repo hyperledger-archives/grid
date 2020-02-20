@@ -43,6 +43,8 @@ mod registry;
 mod rest_api;
 pub mod scabbard;
 mod sender;
+#[cfg(feature = "service-arg-validation")]
+pub mod validation;
 
 use std::any::Any;
 
