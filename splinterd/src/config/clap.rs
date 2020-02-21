@@ -16,28 +16,8 @@ use crate::config::{ConfigError, ConfigSource, PartialConfig, PartialConfigBuild
 use clap::{ArgMatches, ErrorKind};
 
 /// Holds configuration values from command line arguments, represented by clap ArgMatches.
-pub struct CommandLineConfig {
-    storage: Option<String>,
-    transport: Option<String>,
-    cert_dir: Option<String>,
-    ca_certs: Option<String>,
-    client_cert: Option<String>,
-    client_key: Option<String>,
-    server_cert: Option<String>,
-    server_key: Option<String>,
-    service_endpoint: Option<String>,
-    network_endpoint: Option<String>,
-    peers: Option<Vec<String>>,
-    node_id: Option<String>,
-    bind: Option<String>,
-    #[cfg(feature = "database")]
-    database: Option<String>,
-    registry_backend: Option<String>,
-    registry_file: Option<String>,
-    heartbeat_interval: Option<u64>,
-    insecure: Option<bool>,
-    #[cfg(feature = "biome")]
-    biome_enabled: Option<bool>,
+pub struct ClapPartialConfigBuilder<'a> {
+    matches: ArgMatches<'a>,
 }
 
 fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
@@ -50,77 +30,60 @@ fn parse_value(matches: &ArgMatches) -> Result<Option<u64>, ConfigError> {
     }
 }
 
-impl CommandLineConfig {
-    pub fn new(matches: ArgMatches) -> Result<Self, ConfigError> {
-        Ok(CommandLineConfig {
-            storage: matches.value_of("storage").map(String::from),
-            transport: matches.value_of("transport").map(String::from),
-            cert_dir: matches.value_of("cert_dir").map(String::from),
-            ca_certs: matches.value_of("ca_file").map(String::from),
-            client_cert: matches.value_of("client_cert").map(String::from),
-            client_key: matches.value_of("client_key").map(String::from),
-            server_cert: matches.value_of("server_cert").map(String::from),
-            server_key: matches.value_of("server_key").map(String::from),
-            service_endpoint: matches.value_of("service_endpoint").map(String::from),
-            network_endpoint: matches.value_of("network_endpoint").map(String::from),
-            peers: matches
-                .values_of("peers")
-                .map(|values| values.map(String::from).collect::<Vec<String>>()),
-            node_id: matches.value_of("node_id").map(String::from),
-            bind: matches.value_of("bind").map(String::from),
-            #[cfg(feature = "database")]
-            database: matches.value_of("database").map(String::from),
-            registry_backend: matches.value_of("registry_backend").map(String::from),
-            registry_file: matches.value_of("registry_file").map(String::from),
-            heartbeat_interval: parse_value(&matches)?,
-            insecure: if matches.is_present("insecure") {
-                Some(true)
-            } else {
-                None
-            },
-            #[cfg(feature = "biome")]
-            biome_enabled: if matches.is_present("biome_enabled") {
-                Some(true)
-            } else {
-                None
-            },
-        })
+impl<'a> ClapPartialConfigBuilder<'a> {
+    pub fn new(matches: ArgMatches<'a>) -> Self {
+        ClapPartialConfigBuilder { matches }
     }
 }
 
-impl PartialConfigBuilder for CommandLineConfig {
-    fn build(self) -> PartialConfig {
+impl<'a> PartialConfigBuilder for ClapPartialConfigBuilder<'_> {
+    fn build(self) -> Result<PartialConfig, ConfigError> {
         let mut partial_config = PartialConfig::new(ConfigSource::CommandLine);
 
         partial_config = partial_config
-            .with_storage(self.storage)
-            .with_transport(self.transport)
-            .with_cert_dir(self.cert_dir)
-            .with_ca_certs(self.ca_certs)
-            .with_client_cert(self.client_cert)
-            .with_client_key(self.client_key)
-            .with_server_cert(self.server_cert)
-            .with_server_key(self.server_key)
-            .with_service_endpoint(self.service_endpoint)
-            .with_network_endpoint(self.network_endpoint)
-            .with_peers(self.peers)
-            .with_node_id(self.node_id)
-            .with_bind(self.bind)
-            .with_registry_backend(self.registry_backend)
-            .with_registry_file(self.registry_file)
-            .with_heartbeat_interval(self.heartbeat_interval)
-            .with_insecure(self.insecure);
+            .with_storage(self.matches.value_of("storage").map(String::from))
+            .with_transport(self.matches.value_of("transport").map(String::from))
+            .with_cert_dir(self.matches.value_of("cert_dir").map(String::from))
+            .with_ca_certs(self.matches.value_of("ca_file").map(String::from))
+            .with_client_cert(self.matches.value_of("client_cert").map(String::from))
+            .with_client_key(self.matches.value_of("client_key").map(String::from))
+            .with_server_cert(self.matches.value_of("server_cert").map(String::from))
+            .with_server_key(self.matches.value_of("server_key").map(String::from))
+            .with_service_endpoint(self.matches.value_of("service_endpoint").map(String::from))
+            .with_network_endpoint(self.matches.value_of("network_endpoint").map(String::from))
+            .with_peers(
+                self.matches
+                    .values_of("peers")
+                    .map(|values| values.map(String::from).collect::<Vec<String>>()),
+            )
+            .with_node_id(self.matches.value_of("node_id").map(String::from))
+            .with_bind(self.matches.value_of("bind").map(String::from))
+            .with_registry_backend(self.matches.value_of("registry_backend").map(String::from))
+            .with_registry_file(self.matches.value_of("registry_file").map(String::from))
+            .with_heartbeat_interval(parse_value(&self.matches)?)
+            .with_insecure(if self.matches.is_present("insecure") {
+                Some(true)
+            } else {
+                None
+            });
 
         #[cfg(feature = "biome")]
         {
-            partial_config = partial_config.with_biome_enabled(self.biome_enabled);
+            partial_config =
+                partial_config.with_biome_enabled(if self.matches.is_present("biome_enabled") {
+                    Some(true)
+                } else {
+                    None
+                });
         }
 
-        #[cfg(not(feature = "database"))]
-        return partial_config;
-
         #[cfg(feature = "database")]
-        return partial_config.with_database(self.database);
+        {
+            partial_config =
+                partial_config.with_database(self.matches.value_of("database").map(String::from))
+        }
+
+        Ok(partial_config)
     }
 }
 #[cfg(test)]
@@ -171,7 +134,7 @@ mod tests {
         assert_eq!(config.insecure(), Some(true));
     }
 
-    /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
+    /// Creates an ArgMatches object to be used to construct a ClapPartialConfigBuilder object.
     fn create_arg_matches(args: Vec<&str>) -> ArgMatches<'static> {
         clap_app!(configtest =>
             (version: crate_version!())
@@ -197,16 +160,17 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a PartialConfig object, constructed from the CommandLineConfig module,
-    /// contains the correct values using the following steps:
+    /// This test verifies that a PartialConfig object, constructed from the
+    /// ClapPartialConfigBuilder module, contains the correct values using the following steps:
     ///
     /// 1. An example ArgMatches object is created using `create_arg_matches`.
-    /// 2. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
-    /// 3. The CommandLineConfig object is transformed to a PartialConfig object using the `build`.
+    /// 2. A ClapPartialConfigBuilder object is constructed by passing in the example ArgMatches
+    ///    created in the previous step.
+    /// 3. The ClapPartialConfigBuilder object is transformed to a PartialConfig object using the
+    ///    `build`.
     ///
-    /// This test then verifies the PartialConfig object built from the CommandLineConfig object by
-    /// asserting each expected value.
+    /// This test then verifies the PartialConfig object built from the ClapPartialConfigBuilder
+    /// object by asserting each expected value.
     fn test_command_line_config() {
         let args = vec![
             "configtest",
@@ -232,13 +196,14 @@ mod tests {
             EXAMPLE_SERVER_KEY,
             "--insecure",
         ];
-        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        // Create an example ArgMatches object to initialize the ClapPartialConfigBuilder.
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.");
-        // Build a PartialConfig from the CommandLineConfig object created.
-        let built_config = command_config.build();
+        let command_config = ClapPartialConfigBuilder::new(matches);
+        // Build a PartialConfig from the ClapPartialConfigBuilder object created.
+        let built_config = command_config
+            .build()
+            .expect("Unable to build ClapPartialConfigBuilder");
         // Assert the source is correctly identified for this PartialConfig object.
         assert_eq!(built_config.source(), ConfigSource::CommandLine);
         // Compare the generated PartialConfig object against the expected values.

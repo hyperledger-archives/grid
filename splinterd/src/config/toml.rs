@@ -19,10 +19,11 @@ use serde_derive::Deserialize;
 
 use toml;
 
-/// Holds configuration values defined in a toml file.
+/// Holds configuration values defined in a toml file. This struct must be
+/// treated as part of the external API of splinter because changes here
+/// will impact the valid format of the config file.
 #[derive(Deserialize, Default, Debug)]
-pub struct TomlConfig {
-    source: Option<ConfigSource>,
+struct TomlConfig {
     storage: Option<String>,
     transport: Option<String>,
     cert_dir: Option<String>,
@@ -44,46 +45,58 @@ pub struct TomlConfig {
     admin_service_coordinator_timeout: Option<u64>,
 }
 
-impl TomlConfig {
-    pub fn new(toml: String, toml_path: String) -> Result<TomlConfig, ConfigError> {
-        let mut toml_config = toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?;
-        toml_config.source = Some(ConfigSource::Toml { file: toml_path });
-        Ok(toml_config)
+pub struct TomlPartialConfigBuilder {
+    source: Option<ConfigSource>,
+    toml_config: TomlConfig,
+}
+
+impl TomlPartialConfigBuilder {
+    pub fn new(toml: String, toml_path: String) -> Result<TomlPartialConfigBuilder, ConfigError> {
+        Ok(TomlPartialConfigBuilder {
+            source: Some(ConfigSource::Toml { file: toml_path }),
+            toml_config: toml::from_str::<TomlConfig>(&toml).map_err(ConfigError::from)?,
+        })
     }
 }
 
-impl PartialConfigBuilder for TomlConfig {
-    fn build(self) -> PartialConfig {
+impl PartialConfigBuilder for TomlPartialConfigBuilder {
+    fn build(self) -> Result<PartialConfig, ConfigError> {
         let source = match self.source {
             Some(s) => s,
             None => ConfigSource::Toml {
                 file: String::from(""),
             },
         };
-        let partial_config = PartialConfig::new(source)
-            .with_storage(self.storage)
-            .with_transport(self.transport)
-            .with_cert_dir(self.cert_dir)
-            .with_ca_certs(self.ca_certs)
-            .with_client_cert(self.client_cert)
-            .with_client_key(self.client_key)
-            .with_server_cert(self.server_cert)
-            .with_server_key(self.server_key)
-            .with_service_endpoint(self.service_endpoint)
-            .with_network_endpoint(self.network_endpoint)
-            .with_peers(self.peers)
-            .with_node_id(self.node_id)
-            .with_bind(self.bind)
-            .with_registry_backend(self.registry_backend)
-            .with_registry_file(self.registry_file)
-            .with_heartbeat_interval(self.heartbeat_interval)
-            .with_admin_service_coordinator_timeout(self.admin_service_coordinator_timeout);
 
-        #[cfg(not(feature = "database"))]
-        return partial_config;
+        let mut partial_config = PartialConfig::new(source);
+
+        partial_config = partial_config
+            .with_storage(self.toml_config.storage)
+            .with_transport(self.toml_config.transport)
+            .with_cert_dir(self.toml_config.cert_dir)
+            .with_ca_certs(self.toml_config.ca_certs)
+            .with_client_cert(self.toml_config.client_cert)
+            .with_client_key(self.toml_config.client_key)
+            .with_server_cert(self.toml_config.server_cert)
+            .with_server_key(self.toml_config.server_key)
+            .with_service_endpoint(self.toml_config.service_endpoint)
+            .with_network_endpoint(self.toml_config.network_endpoint)
+            .with_peers(self.toml_config.peers)
+            .with_node_id(self.toml_config.node_id)
+            .with_bind(self.toml_config.bind)
+            .with_registry_backend(self.toml_config.registry_backend)
+            .with_registry_file(self.toml_config.registry_file)
+            .with_heartbeat_interval(self.toml_config.heartbeat_interval)
+            .with_admin_service_coordinator_timeout(
+                self.toml_config.admin_service_coordinator_timeout,
+            );
 
         #[cfg(feature = "database")]
-        return partial_config.with_database(self.database);
+        {
+            partial_config = partial_config.with_database(self.toml_config.database);
+        }
+
+        Ok(partial_config)
     }
 }
 
@@ -166,24 +179,30 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a PartialConfig object, constructed from the TomlConfig module,
-    /// contains the correct values using the following steps:
+    /// This test verifies that a PartialConfig object, constructed from the
+    /// TomlPartialConfigBuilder module, contains the correct values using the following steps:
     ///
     /// 1. An example config toml is string is created.
-    /// 2. A TomlConfig object is constructed by passing in the toml string created in the previous
-    ///    step.
-    /// 3. The TomlConfig object is transformed to a PartialConfig object using the `build` method.
+    /// 2. A TomlPartialConfigBuilder object is constructed by passing in the toml string created
+    ///    in the previous step.
+    /// 3. The TomlPartialConfigBuilder object is transformed to a PartialConfig object using the
+    ///    `build` method.
     ///
-    /// This test then verifies the PartialConfig object built from the TomlConfig object by
-    /// asserting each expected value.
+    /// This test then verifies the PartialConfig object built from the TomlPartialConfigBuilder
+    /// object by asserting each expected value.
     fn test_toml_build() {
         // Create an example toml string.
         let toml_string = toml::to_string(&get_toml_value()).expect("Could not encode TOML value");
-        // Create a TomlConfig object from the toml string.
-        let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
-            .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
-        // Build a PartialConfig from the TomlConfig object created.
-        let built_config = toml_builder.build();
+        // Create a TomlPartialConfigBuilder object from the toml string.
+        let toml_builder = TomlPartialConfigBuilder::new(toml_string, TEST_TOML.to_string())
+            .expect(&format!(
+                "Unable to create TomlPartialConfigBuilder from: {}",
+                TEST_TOML
+            ));
+        // Build a PartialConfig from the TomlPartialConfigBuilder object created.
+        let built_config = toml_builder
+            .build()
+            .expect("Unable to build TomlPartialConfigBuilder");
         // Compare the generated PartialConfig object against the expected values.
         assert_config_values(built_config);
     }

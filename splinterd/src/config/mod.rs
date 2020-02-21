@@ -14,7 +14,7 @@
 
 mod builder;
 #[cfg(feature = "config-command-line")]
-mod command_line;
+mod clap;
 #[cfg(feature = "config-default")]
 mod default;
 #[cfg(feature = "config-env-var")]
@@ -27,13 +27,13 @@ mod toml;
 use std::time::Duration;
 
 #[cfg(feature = "config-command-line")]
-pub use crate::config::command_line::CommandLineConfig;
+pub use crate::config::clap::ClapPartialConfigBuilder;
 #[cfg(feature = "config-default")]
-pub use crate::config::default::DefaultConfig;
+pub use crate::config::default::DefaultPartialConfigBuilder;
 #[cfg(feature = "config-env-var")]
-pub use crate::config::env::EnvVarConfig;
+pub use crate::config::env::EnvPartialConfigBuilder;
 #[cfg(feature = "config-toml")]
-pub use crate::config::toml::TomlConfig;
+pub use crate::config::toml::TomlPartialConfigBuilder;
 pub use builder::{ConfigBuilder, PartialConfigBuilder};
 pub use error::ConfigError;
 pub use partial::{ConfigSource, PartialConfig};
@@ -362,10 +362,13 @@ mod tests {
     use std::env;
     use std::time::Duration;
 
+    use ::clap::ArgMatches;
     use ::toml::{map::Map, to_string, Value};
-    use clap::ArgMatches;
 
-    use crate::config::{CommandLineConfig, DefaultConfig, EnvVarConfig, TomlConfig};
+    use crate::config::{
+        ClapPartialConfigBuilder, DefaultPartialConfigBuilder, EnvPartialConfigBuilder,
+        TomlPartialConfigBuilder,
+    };
 
     /// Path to example config toml file.
     static TEST_TOML: &str = "config_test.toml";
@@ -416,7 +419,7 @@ mod tests {
         Value::Table(config_values)
     }
 
-    /// Creates an ArgMatches object to be used to construct a CommandLineConfig object.
+    /// Creates an ArgMatches object to be used to construct a ClapPartialConfigBuilder object.
     fn create_arg_matches(args: Vec<&str>) -> ArgMatches<'static> {
         clap_app!(configtest =>
         (version: crate_version!())
@@ -443,19 +446,25 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a finalized Config object constructed from just a DefaultConfig
-    /// object will be unsuccessful because of the missing values, in the following steps:
+    /// This test verifies that a finalized Config object constructed from just
+    /// a DefaultPartialConfigBuilder object will be unsuccessful because of the missing values, in
+    /// the following steps:
     ///
     /// 1. An empty ConfigBuilder object is created.
-    /// 2. A PartialConfig built from a DefaultConfig is added to the ConfigBuilder.
+    /// 2. A PartialConfig built from a DefaultPartialConfigBuilder is added to the ConfigBuilder.
     ///
     /// This test then verifies the final Config object built from the ConfigBuilder object has
     /// resulted in an error because of the missing values.
     fn test_default_final_config_err() {
         // Create a new ConfigBuilder object.
         let mut builder = ConfigBuilder::new();
-        // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(DefaultConfig::new().build());
+        // Add a PartialConfig built from a DefaultPartialConfigBuilder object to the
+        // ConfigBuilder.
+        builder = builder.with_partial_config(
+            DefaultPartialConfigBuilder::new()
+                .build()
+                .expect("Unable to build DefaultPartialConfigBuilder"),
+        );
         // Build the final Config object.
         let final_config = builder.build();
         // Asserts the final Config was not successfully built.
@@ -463,14 +472,15 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a finalized Config object constructed from just a TomlConfig
-    /// object will be unsuccessful because of the missing values, in the following steps:
+    /// This test verifies that a finalized Config object constructed from just
+    /// a TomlPartialConfigBuilder object will be unsuccessful because of the missing values, in
+    /// the following steps:
     ///
     /// 1. An empty ConfigBuilder object is created.
     /// 2. The example config toml, TEST_TOML, is created, read and converted to a string.
-    /// 3. A TomlConfig object is constructed by passing in the toml string created in the previous
-    ///    step.
-    /// 4. The TomlConfig object is added to the ConfigBuilder.
+    /// 3. A TomlPartialConfigBuilder object is constructed by passing in the toml string created
+    ///    in the previous step.
+    /// 4. The TomlPartialConfigBuilder object is added to the ConfigBuilder.
     ///
     /// This test then verifies the final Config object built from the ConfigBuilder object has
     /// resulted in an error because of the missing values.
@@ -479,11 +489,19 @@ mod tests {
         let mut builder = ConfigBuilder::new();
         // Create an example toml string.
         let toml_string = to_string(&get_toml_value()).expect("Could not encode TOML value");
-        // Create a TomlConfig object from the toml string.
-        let toml_builder = TomlConfig::new(toml_string, TEST_TOML.to_string())
-            .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML));
-        // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(toml_builder.build());
+        // Create a TomlPartialConfigBuilder object from the toml string.
+        let toml_builder = TomlPartialConfigBuilder::new(toml_string, TEST_TOML.to_string())
+            .expect(&format!(
+                "Unable to create TomlPartialConfigBuilder from: {}",
+                TEST_TOML
+            ));
+        // Add a PartialConfig built from a DefaultPartialConfigBuilder object to the
+        // ConfigBuilder.
+        builder = builder.with_partial_config(
+            toml_builder
+                .build()
+                .expect("Unable to build TomlPartialConfigBuilder"),
+        );
         // Build the final Config object.
         let final_config = builder.build();
         // Asserts the final Config was not successfully built.
@@ -491,18 +509,18 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a Config object, constructed from just a CommandLineConfig object,
-    /// is unsuccessful because of the missing values, in the following steps:
+    /// This test verifies that a Config object, constructed from just a ClapPartialConfigBuilder
+    /// object, is unsuccessful because of the missing values, in the following steps:
     ///
     /// 1. An empty ConfigBuilder object is created.
     /// 2. An example ArgMatches object is created using `create_arg_matches`.
-    /// 3. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
-    /// 4. A PartialConfig built from the CommandLineConfig is added to the ConfigBuilder.
+    /// 3. A ClapPartialConfigBuilder object is constructed by passing in the example ArgMatches
+    ///    created in the previous step.
+    /// 4. A PartialConfig built from the ClapPartialConfigBuilder is added to the ConfigBuilder.
     ///
-    /// This test then verifies the Config object built from the CommandLineConfig has resulted
-    /// in an error because of the missing values.
-    fn test_command_line_final_config_err() {
+    /// This test then verifies the Config object built from the ClapPartialConfigBuilder has
+    /// resulted in an error because of the missing values.
+    fn test_clap_final_config_err() {
         // Create a new ConfigBuilder object.
         let mut builder = ConfigBuilder::new();
         let args = vec![
@@ -534,42 +552,47 @@ mod tests {
             "--insecure",
             "--enable-biome",
         ];
-        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        // Create an example ArgMatches object to initialize the ClapPartialConfigBuilder.
         let matches = create_arg_matches(args);
         // Create a new CommandLiine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.");
-        // Add a PartialConfig built from a DefaultConfig object to the ConfigBuilder.
-        builder = builder.with_partial_config(command_config.build());
+        let command_config = ClapPartialConfigBuilder::new(matches);
+        // Add a PartialConfig built from a DefaultPartialConfigBuilder object to the
+        // ConfigBuilder.
+        builder = builder.with_partial_config(
+            command_config
+                .build()
+                .expect("Unable to build ClapPartialConfigBuilder"),
+        );
         let final_config = builder.build();
         // Assert the Config object was not successfully built.
         assert!(final_config.is_err());
     }
 
     #[test]
-    /// This test verifies that a Config object, constructed from multiple config modules,
-    /// contains the correct values, giving CommandLineConfig values ultimate precedence,
-    /// using the following steps:
+    /// This test verifies that a Config object, constructed from multiple config modules, contains
+    /// the correct values, giving ClapPartialConfigBuilder values ultimate precedence, using the
+    /// following steps:
     ///
     /// 1. An empty ConfigBuilder object is created.
-    /// 2. A PartialConfig is created from the EnvVarConfig module.
-    /// 3. A PartialConfig is created from the DefaultConfig module.
-    /// 4. A PartialConfig is created from the TomlConfig module, using the TEST_TOML string.
+    /// 2. A PartialConfig is created from the EnvPartialConfigBuilder module.
+    /// 3. A PartialConfig is created from the DefaultPartialConfigBuilder module.
+    /// 4. A PartialConfig is created from the TomlPartialConfigBuilder module, using the TEST_TOML
+    ///    string.
     /// 5. An example ArgMatches object is created using `create_arg_matches`.
-    /// 6. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
+    /// 6. A ClapPartialConfigBuilder object is constructed by passing in the example ArgMatches
+    ///    created in the previous step.
     /// 7. All PartialConfig objects are added to the ConfigBuilder and the final Config object is
     ///    built.
     ///
     /// This test then verifies the Config object built from the ConfigBuilder object by
     /// asserting each expected value.
     fn test_final_config_precedence() {
-        // Set the environment variables to populate the EnvVarConfig object.
+        // Set the environment variables to populate the EnvPartialConfigBuilder object.
         env::set_var("SPLINTER_STATE_DIR", "/state/test/config/");
         env::set_var("SPLINTER_CERT_DIR", "/cert/test/config/");
         // Create a new ConfigBuilder object.
         let builder = ConfigBuilder::new();
-        // Arguments to be used to create a CommandLineConfig object.
+        // Arguments to be used to create a ClapPartialConfigBuilder object.
         let args = vec![
             "configtest",
             "--node-id",
@@ -577,25 +600,33 @@ mod tests {
             "--registry-file",
             "/etc/splinter/test.yaml",
         ];
-        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        // Create an example ArgMatches object to initialize the ClapPartialConfigBuilder.
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.")
-            .build();
+        let command_config = ClapPartialConfigBuilder::new(matches)
+            .build()
+            .expect("Unable to build ClapPartialConfigBuilder");
 
         // Create an example toml string.
         let toml_string = to_string(&get_toml_value()).expect("Could not encode TOML value");
-        // Create a TomlConfig object from the toml string.
-        let toml_config = TomlConfig::new(toml_string, TEST_TOML.to_string())
-            .expect(&format!("Unable to create TomlConfig from: {}", TEST_TOML))
-            .build();
+        // Create a TomlPartialConfigBuilder object from the toml string.
+        let toml_config = TomlPartialConfigBuilder::new(toml_string, TEST_TOML.to_string())
+            .expect(&format!(
+                "Unable to create TomlPartialConfigBuilder from: {}",
+                TEST_TOML
+            ))
+            .build()
+            .expect("Unable to build TomlPartialConfigBuilder");
 
-        // Create a PartialConfig from the EnvVarConfig module.
-        let env_config = EnvVarConfig::new().build();
+        // Create a PartialConfig from the EnvPartialConfigBuilder module.
+        let env_config = EnvPartialConfigBuilder::new()
+            .build()
+            .expect("Unable to build EnvPartialConfigBuilder");
 
-        // Create a PartialConfig from the DefaultConfig module.
-        let default_config = DefaultConfig::new().build();
+        // Create a PartialConfig from the DefaultPartialConfigBuilder module.
+        let default_config = DefaultPartialConfigBuilder::new()
+            .build()
+            .expect("Unable to build DefaultPartialConfigBuilder");
 
         // Add the PartialConfigs to the final ConfigBuilder in the order of precedence.
         let final_config = builder
@@ -607,8 +638,9 @@ mod tests {
             .expect("Unable to build final Config.");
 
         // Assert the final configuration values.
-        // Both the DefaultConfig and TomlConfig had values for `storage`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `storage`, but the TomlPartialConfigBuilder value should have precedence (source should
+        // be Toml).
         assert_eq!(
             (final_config.storage(), final_config.storage_source()),
             (
@@ -618,8 +650,9 @@ mod tests {
                 }
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `transport`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `transport`, but the TomlPartialConfigBuilder value should have precedence (source
+        // should be Toml).
         assert_eq!(
             (final_config.transport(), final_config.transport_source()),
             (
@@ -629,14 +662,16 @@ mod tests {
                 }
             )
         );
-        // The DefaultConfig and EnvVarConfig had values for `cert_dir`, but the EnvVarConfig value
-        // should have precedence (source should be Environment).
+        // The DefaultPartialConfigBuilder and EnvPartialConfigBuilder had values for `cert_dir`,
+        // but the EnvPartialConfigBuilder value should have precedence (source should be
+        // Environment).
         assert_eq!(
             (final_config.cert_dir(), final_config.cert_dir_source()),
             ("/cert/test/config/", &ConfigSource::Environment)
         );
-        // Both the DefaultConfig and TomlConfig had values for `ca_certs`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `ca_certs`, but the TomlPartialConfigBuilder value should have precedence (source should
+        // be Toml).
         assert_eq!(
             (final_config.ca_certs(), final_config.ca_certs_source()),
             (
@@ -646,8 +681,9 @@ mod tests {
                 },
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `client_cert`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `client_cert`, but the TomlPartialConfigBuilder value should have precedence (source
+        // should be Toml).
         assert_eq!(
             (
                 final_config.client_cert(),
@@ -660,8 +696,9 @@ mod tests {
                 }
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `client_key`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `client_key`, but the TomlPartialConfigBuilder value should have precedence (source
+        // should be Toml).
         assert_eq!(
             (final_config.client_key(), final_config.client_key_source()),
             (
@@ -671,8 +708,9 @@ mod tests {
                 },
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `server_cert`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `server_cert`, but the TomlPartialConfigBuilder value should have precedence (source
+        // should be Toml).
         assert_eq!(
             (
                 final_config.server_cert(),
@@ -685,8 +723,9 @@ mod tests {
                 }
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `server_key`, but the TomlConfig
-        // value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `server_key`, but the TomlPartialConfigBuilder value should have precedence (source
+        // should be Toml).
         assert_eq!(
             (final_config.server_key(), final_config.server_key_source()),
             (
@@ -696,8 +735,9 @@ mod tests {
                 }
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `service_endpoint`, but the
-        // TomlConfig value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `service_endpoint`, but the TomlPartialConfigBuilder value should have precedence
+        // (source should be Toml).
         assert_eq!(
             (
                 final_config.service_endpoint(),
@@ -710,8 +750,9 @@ mod tests {
                 }
             )
         );
-        // Both the DefaultConfig and TomlConfig had values for `network_endpoint`, but the
-        // TomlConfig value should have precedence (source should be Toml).
+        // Both the DefaultPartialConfigBuilder and TomlPartialConfigBuilder had values for
+        // `network_endpoint`, but the TomlPartialConfigBuilder value should have precedence
+        // (source should be Toml).
         assert_eq!(
             (
                 final_config.network_endpoint(),
@@ -724,30 +765,34 @@ mod tests {
                 }
             )
         );
-        // The DefaultConfig is the only config with a value for `database` (source should be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `database` (source
+        // should be Default).
         assert_eq!(
             (final_config.peers(), final_config.peers_source()),
             (&[] as &[String], &ConfigSource::Default,)
         );
-        // Both the TomlConfig and CommandLineConfig had values for `node_id`, but the
-        // CommandLineConfig value should have precedence (source should be CommandLine).
+        // Both the TomlPartialConfigBuilder and ClapPartialConfigBuilder had values for `node_id`,
+        // but the ClapPartialConfigBuilder value should have precedence (source should be
+        // CommandLine).
         assert_eq!(
             (final_config.node_id(), final_config.node_id_source()),
             ("123", &ConfigSource::CommandLine)
         );
-        // The DefaultConfig is the only config with a value for `bind` (source should be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `bind` (source
+        // should be Default).
         assert_eq!(
             (final_config.bind(), final_config.bind_source()),
             ("127.0.0.1:8080", &ConfigSource::Default)
         );
         #[cfg(feature = "database")]
-        // The DefaultConfig is the only config with a value for `database` (source should be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `database` (source
+        // should be Default).
         assert_eq!(
             (final_config.database(), final_config.database_source()),
             ("127.0.0.1:5432", &ConfigSource::Default)
         );
-        // The DefaultConfig is the only config with a value for `registry_backend` (source should
-        // be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `registry_backend`
+        // (source should be Default).
         assert_eq!(
             (
                 final_config.registry_backend(),
@@ -755,8 +800,9 @@ mod tests {
             ),
             ("FILE", &ConfigSource::Default)
         );
-        // Both the DefaultConfig and CommandLineConfig had values for `registry_file`, but the
-        // CommandLineConfig value should have precedence (source should be CommandLine).
+        // Both the DefaultPartialConfigBuilder and ClapPartialConfigBuilder had values for
+        // `registry_file`, but the ClapPartialConfigBuilder value should have precedence (source
+        // should be CommandLine).
         assert_eq!(
             (
                 final_config.registry_file(),
@@ -764,8 +810,8 @@ mod tests {
             ),
             ("/etc/splinter/test.yaml", &ConfigSource::CommandLine,)
         );
-        // The DefaultConfig is the only config with a value for `registry_backend` (source should
-        // be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `registry_backend`
+        // (source should be Default).
         assert_eq!(
             (
                 final_config.heartbeat_interval(),
@@ -773,8 +819,8 @@ mod tests {
             ),
             (30, &ConfigSource::Default)
         );
-        // The DefaultConfig is the only config with a value for `registry_backend` (source should
-        // be Default).
+        // The DefaultPartialConfigBuilder is the only config with a value for `registry_backend`
+        // (source should be Default).
         assert_eq!(
             (
                 final_config.admin_service_coordinator_timeout(),
@@ -782,8 +828,9 @@ mod tests {
             ),
             (Duration::from_millis(30000), &ConfigSource::Default)
         );
-        // Both the DefaultConfig and EnvVarConfig had values for `state_dir`, but the
-        // EnvVarConfig value should have precedence (source should be EnvVarConfig).
+        // Both the DefaultPartialConfigBuilder and EnvPartialConfigBuilder had values for
+        // `state_dir`, but the EnvPartialConfigBuilder value should have precedence (source should
+        // be EnvVarConfig).
         assert_eq!(
             (final_config.state_dir(), final_config.state_dir_source()),
             ("/state/test/config/", &ConfigSource::Environment)
@@ -791,24 +838,24 @@ mod tests {
     }
 
     #[test]
-    /// This test verifies that a Config object, created from a DefaultConfig and CommandLineConfig
-    /// object holds the correct file paths, using the following steps:
+    /// This test verifies that a Config object, created from a DefaultPartialConfigBuilder and
+    /// ClapPartialConfigBuilder object holds the correct file paths, using the following steps:
     ///
     /// 1. An empty ConfigBuilder object is created.
-    /// 2. A PartialConfig is created from the DefaultConfig module.
+    /// 2. A PartialConfig is created from the DefaultPartialConfigBuilder module.
     /// 3. An example ArgMatches object is created using `create_arg_matches`.
-    /// 4. A CommandLineConfig object is constructed by passing in the example ArgMatches created
-    ///    in the previous step.
+    /// 4. A ClapPartialConfigBuilder object is constructed by passing in the example ArgMatches
+    ///    created in the previous step.
     /// 5. All PartialConfig objects are added to the ConfigBuilder and the final Config object is
     ///    built.
     ///
     /// This test then verifies the Config object built holds the correct file paths. The cert_dir
-    /// value passed into the CommandLineConfig object should be appended to the default file names
-    /// for the certificate files.
+    /// value passed into the ClapPartialConfigBuilder object should be appended to the default
+    /// file names for the certificate files.
     fn test_final_config_file_paths() {
         // Create a new ConfigBuilder object.
         let builder = ConfigBuilder::new();
-        // Arguments to be used to create a CommandLineConfig object, passing in a cert_dir.
+        // Arguments to be used to create a ClapPartialConfigBuilder object, passing in a cert_dir.
         let args = vec![
             "configtest",
             "--node-id",
@@ -818,15 +865,17 @@ mod tests {
             "--registry-file",
             "/etc/splinter/test.yaml",
         ];
-        // Create an example ArgMatches object to initialize the CommandLineConfig.
+        // Create an example ArgMatches object to initialize the ClapPartialConfigBuilder.
         let matches = create_arg_matches(args);
         // Create a new CommandLine object from the arg matches.
-        let command_config = CommandLineConfig::new(matches)
-            .expect("Unable to create new CommandLineConfig object.")
-            .build();
+        let command_config = ClapPartialConfigBuilder::new(matches)
+            .build()
+            .expect("Unable to build ClapPartialConfigBuilder");
 
-        // Create a PartialConfig from the DefaultConfig module.
-        let default_config = DefaultConfig::new().build();
+        // Create a PartialConfig from the DefaultPartialConfigBuilder module.
+        let default_config = DefaultPartialConfigBuilder::new()
+            .build()
+            .expect("Unable to build DefaultPartialConfigBuilder");
 
         // Add the PartialConfigs to the final ConfigBuilder in the order of precedence.
         let final_config = builder
@@ -835,14 +884,16 @@ mod tests {
             .build()
             .expect("Unable to build final Config.");
 
-        // The DefaultConfig and EnvVarConfig had values for `cert_dir`, but the EnvVarConfig value
-        // should have precedence (source should be Environment).
+        // The DefaultPartialConfigBuilder and EnvPartialConfigBuilder had values for `cert_dir`,
+        // but the EnvPartialConfigBuilder value should have precedence (source should be
+        // Environment).
         assert_eq!(
             (final_config.cert_dir(), final_config.cert_dir_source()),
             ("/my_files/", &ConfigSource::CommandLine)
         );
-        // The DefaultConfig had a value for the ca_certs, and since the cert_dir value was provided
-        // to the CommandLineConfig, the cert_dir value should be appended to the default file name.
+        // The DefaultPartialConfigBuilder had a value for the ca_certs, and since the cert_dir
+        // value was provided to the ClapPartialConfigBuilder, the cert_dir value should be
+        // appended to the default file name.
         assert_eq!(
             (final_config.ca_certs(), final_config.ca_certs_source()),
             (
@@ -850,8 +901,9 @@ mod tests {
                 &ConfigSource::Default,
             )
         );
-        // The DefaultConfig had a value for the client_cert, and since the cert_dir value was provided
-        // to the CommandLineConfig, the cert_dir value should be appended to the default file name.
+        // The DefaultPartialConfigBuilder had a value for the client_cert, and since the cert_dir
+        // value was provided to the ClapPartialConfigBuilder, the cert_dir value should be
+        // appended to the default file name.
         assert_eq!(
             (
                 final_config.client_cert(),
@@ -862,8 +914,9 @@ mod tests {
                 &ConfigSource::Default,
             )
         );
-        // The DefaultConfig had a value for the client_key, and since the cert_dir value was provided
-        // to the CommandLineConfig, the cert_dir value should be appended to the default file name.
+        // The DefaultPartialConfigBuilder had a value for the client_key, and since the cert_dir
+        // value was provided to the ClapPartialConfigBuilder, the cert_dir value should be
+        // appended to the default file name.
         assert_eq!(
             (final_config.client_key(), final_config.client_key_source()),
             (
@@ -871,8 +924,9 @@ mod tests {
                 &ConfigSource::Default,
             )
         );
-        // The DefaultConfig had a value for the server_cert, and since the cert_dir value was provided
-        // to the CommandLineConfig, the cert_dir value should be appended to the default file name.
+        // The DefaultPartialConfigBuilder had a value for the server_cert, and since the cert_dir
+        // value was provided to the ClapPartialConfigBuilder, the cert_dir value should be
+        // appended to the default file name.
         assert_eq!(
             (
                 final_config.server_cert(),
@@ -883,8 +937,9 @@ mod tests {
                 &ConfigSource::Default,
             )
         );
-        // The DefaultConfig had a value for the server_key, and since the cert_dir value was provided
-        // to the CommandLineConfig, the cert_dir value should be appended to the default file name.
+        // The DefaultPartialConfigBuilder had a value for the server_key, and since the cert_dir
+        // value was provided to the ClapPartialConfigBuilder, the cert_dir value should be
+        // appended to the default file name.
         assert_eq!(
             (final_config.server_key(), final_config.server_key_source()),
             (
