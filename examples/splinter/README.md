@@ -323,7 +323,7 @@ circuits.
 
 3. Download the smart contract.
 
-   `root@scabbard-cli-alpha:/# curl -OLsS https://files.splinter.dev/scar/xo_0.4.1.scar`
+   `root@scabbard-cli-alpha:/# curl -OLsS https://files.splinter.dev/scar/xo_0.4.2.scar`
 
 4. Create the contract registry for the new smart contract.
 
@@ -338,7 +338,7 @@ circuits.
 5. Upload the smart contract.
 
    ```
-   root@scabbard-cli-alpha:/# scabbard contract upload ./xo_0.4.1.scar \
+   root@scabbard-cli-alpha:/# scabbard contract upload ./xo_0.4.2.scar \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
    --service-id $CIRCUIT_ID::grid-scabbard-a
@@ -363,27 +363,18 @@ circuits.
    --service-id $CIRCUIT_ID::grid-scabbard-a
    ```
 
-8. Grant the appropriate Pike namespace permissions.
 
-   ```
-   root@scabbard-cli-alpha:/# scabbard perm cad11d sawtooth_xo --read \
-   -k gridd \
-   -U 'http://splinterd-alpha:8085' \
-   --service-id $CIRCUIT_ID::grid-scabbard-a
-   ```
-9. Open a new terminal and connect to the `scabbard-cli-beta` container and add
+8. Open a new terminal and connect to the `scabbard-cli-beta` container and add
    the circuit id environment variable
-
    ```
    $ docker-compose -f examples/splinter/docker-compose.yaml run scabbard-cli-beta bash
    root@scabbard-cli-beta:/#
    ```
-
    ```
    root@scabbard-cli-beta:/# export CIRCUIT_ID=01234567-0123-0123-0123-012345678901
    ```
 
-10. List all uploaded smart contracts.
+9. List all uploaded smart contracts.
 
    ```
    root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::grid-scabbard-b
@@ -393,7 +384,7 @@ circuits.
    sawtooth_xo  1.0      <gridd-alpha public key>
    ```
 
-11. Display the xo smart contract.
+10. Display the xo smart contract.
 
    ```
    root@scabbard-cli-beta:/# scabbard contract show sawtooth_xo:1.0 -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::grid-scabbard-b
