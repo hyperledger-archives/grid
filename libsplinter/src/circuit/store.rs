@@ -16,6 +16,25 @@ use std::collections::BTreeMap;
 
 use crate::circuit::Circuit;
 
+/// A filter that matches on aspects of a circuit definition.
+///
+/// Each variant applies to a different field on the circuit defition.
+#[derive(Debug)]
+pub enum CircuitFilter {
+    /// Matches any circuits that have the given node as a member.
+    WithMember(String),
+}
+
+impl CircuitFilter {
+    /// Returns true if the given circuit matches the filter criteria, false otherwise.
+    pub fn matches(&self, circuit: &Circuit) -> bool {
+        match self {
+            CircuitFilter::WithMember(ref member) if circuit.members().contains(member) => true,
+            _ => false,
+        }
+    }
+}
+
 pub trait CircuitStore: Send + Sync + Clone {
     fn circuits(&self) -> Result<BTreeMap<String, Circuit>, CircuitStoreError>;
 
