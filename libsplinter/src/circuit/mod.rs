@@ -27,7 +27,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::circuit::directory::CircuitDirectory;
 use crate::circuit::service::{Service, ServiceId, SplinterNode};
-use crate::circuit::store::{CircuitStore, CircuitStoreError};
+use crate::circuit::store::{CircuitFilter, CircuitStore, CircuitStoreError, Circuits};
 use crate::storage::get_storage;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -569,9 +569,30 @@ impl SplinterState {
 }
 
 impl CircuitStore for SplinterState {
-    fn circuits(&self) -> Result<BTreeMap<String, Circuit>, CircuitStoreError> {
-        self.circuits()
-            .map_err(|err| CircuitStoreError::new(err.context()))
+    fn circuits(&self, filter: Option<CircuitFilter>) -> Result<Circuits, CircuitStoreError> {
+        let circuits = self
+            .circuits()
+            .map_err(|err| CircuitStoreError::new(err.context()))?;
+
+        if let Some(filter) = filter {
+            let total = circuits
+                .iter()
+                .filter(|(_, circuit)| filter.matches(circuit))
+                .count();
+            let iter = Box::new(circuits.into_iter().filter_map(move |(_, circuit)| {
+                if filter.matches(&circuit) {
+                    Some(circuit)
+                } else {
+                    None
+                }
+            }));
+
+            Ok(Circuits::new(total as u64, iter))
+        } else {
+            let total = circuits.len();
+            let iter = Box::new(circuits.into_iter().map(|(_, circuit)| circuit));
+            Ok(Circuits::new(total as u64, iter))
+        }
     }
 
     fn circuit(&self, circuit_name: &str) -> Result<Option<Circuit>, CircuitStoreError> {
