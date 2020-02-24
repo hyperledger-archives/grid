@@ -217,10 +217,10 @@ circuit is created.
    This command generates two files, `alpha-agent.priv` and `alpha-agent.pub`,
    in the `~/.grid/keys/` directory.
 
-3. Set an environment variable with the service_id. Use the circuit id of the
+3. Set an environment variable with the service ID. Use the circuit ID of the
    circuit that was created above. The commands below will check this variable
    to determine which circuit and service the command should be run against. An
-   alternative to using the environment variable is to pass the service_id via
+   alternative to using the environment variable is to pass the service ID via
    the `--service-id` argument in each of these commands.
 
    ```
@@ -288,7 +288,7 @@ circuit is created.
 
    `$ docker exec -it gridd-beta bash`
 
-9. Set an environment variable with the service_id.
+9. Set an environment variable with the service ID.
 
     ```
     root@gridd-beta:/# export `GRID_SERVICE_ID=01234567-0123-0123-0123-012345678901::grid-scabbard-b'
@@ -314,7 +314,7 @@ circuits.
    root@scabbard-cli-alpha:/#
    ```
 
-2. Set an environment variable to the circuit id of the circuit that was created
+2. Set an environment variable to the circuit ID of the circuit that was created
    above.
 
    ```
@@ -365,7 +365,7 @@ circuits.
 
 
 8. Open a new terminal and connect to the `scabbard-cli-beta` container and add
-   the circuit id environment variable
+   the circuit ID environment variable
    ```
    $ docker-compose -f examples/splinter/docker-compose.yaml run scabbard-cli-beta bash
    root@scabbard-cli-beta:/#
