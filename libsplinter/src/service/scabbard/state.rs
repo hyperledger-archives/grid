@@ -564,14 +564,6 @@ impl ValidTransaction {
     }
 }
 
-impl From<TransactionReceipt> for ValidTransaction {
-    fn from(receipt: TransactionReceipt) -> Self {
-        Self {
-            transaction_id: receipt.transaction_id,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct InvalidTransaction {
     transaction_id: String,
