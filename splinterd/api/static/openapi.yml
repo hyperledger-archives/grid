@@ -581,8 +581,8 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /scabbard/{circuit}/{service_id}/batch_statuses:
-    post:
-      description: Send a list of Sabre batches to the specified Scabbard service
+    get:
+      description: Fetches the statuses for a set of Sabre batches
       parameters:
         - $ref: "#/components/parameters/protocol_version"
         - name: circuit
@@ -612,7 +612,7 @@ paths:
             default: 300
       responses:
         200:
-          description: Batch has been submitted
+          description: A list with the batch statuses of the batches
           content:
             application/json:
               schema:
