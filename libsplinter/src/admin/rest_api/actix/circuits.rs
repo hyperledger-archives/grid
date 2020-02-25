@@ -16,7 +16,7 @@ use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
 
-use crate::circuit::store::CircuitStore;
+use crate::circuit::store::{CircuitFilter, CircuitStore};
 use crate::protocol;
 use crate::rest_api::{
     paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET},
@@ -113,42 +113,27 @@ fn query_list_circuits<T: CircuitStore + 'static>(
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
-        let mut circuits = store.circuits()?;
+        let circuits = store.circuits(filters.map(CircuitFilter::WithMember))?;
         let offset_value = offset.unwrap_or(0);
-        let limit_value = limit.unwrap_or_else(|| circuits.len());
-        if !circuits.is_empty() {
-            if let Some(filter) = filters {
-                circuits = circuits
-                    .into_iter()
-                    .filter(|(_, circuit)| circuit.members().contains(&filter))
-                    .collect();
-            };
+        let total = circuits.total();
+        let limit_value = limit.unwrap_or_else(|| total as usize);
 
-            let circuits_data: Vec<CircuitResponse> = circuits
-                .into_iter()
-                .map(|(circuit_id, circuit)| CircuitResponse {
-                    id: circuit_id,
-                    auth: circuit.auth().clone(),
-                    members: circuit.members().to_vec(),
-                    roster: circuit.roster().clone(),
-                    persistence: circuit.persistence().clone(),
-                    durability: circuit.durability().clone(),
-                    routes: circuit.routes().clone(),
-                    circuit_management_type: circuit.circuit_management_type().to_string(),
-                })
-                .collect();
+        let circuits_data: Vec<CircuitResponse> = circuits
+            .map(|circuit| CircuitResponse {
+                id: circuit.id().into(),
+                auth: circuit.auth().clone(),
+                members: circuit.members().to_vec(),
+                roster: circuit.roster().clone(),
+                persistence: circuit.persistence().clone(),
+                durability: circuit.durability().clone(),
+                routes: circuit.routes().clone(),
+                circuit_management_type: circuit.circuit_management_type().to_string(),
+            })
+            .skip(offset_value)
+            .take(limit_value)
+            .collect();
 
-            let total_count = circuits_data.len();
-            let circuits_data: Vec<CircuitResponse> = circuits_data
-                .into_iter()
-                .skip(offset_value)
-                .take(limit_value)
-                .collect();
-
-            Ok((circuits_data, link, limit, offset, total_count))
-        } else {
-            Ok((vec![], link, limit, offset, circuits.len()))
-        }
+        Ok((circuits_data, link, limit, offset, total as usize))
     })
     .then(|res| match res {
         Ok((circuits, link, limit, offset, total_count)) => {
