@@ -608,53 +608,17 @@ impl BatchHistory {
     }
 
     pub fn add_batch(&mut self, signature: &str) {
-        self.history.insert(
-            signature.to_string(),
-            BatchInfo {
-                id: signature.to_string(),
-                status: BatchStatus::Pending,
-                timestamp: SystemTime::now(),
-            },
-        );
-
-        if self.history.len() > self.limit {
-            self.history
-                .clone()
-                .into_iter()
-                .min_by_key(|(_, v)| v.timestamp)
-                .and_then(|(k, _)| self.history.remove(&k));
-        }
+        self.upsert_batch(signature.into(), BatchStatus::Pending);
     }
 
     fn update_batch_status(&mut self, signature: &str, status: BatchStatus) {
-        let updated_batch_info = match self.history.get_mut(signature) {
-            Some(info) if info.status == BatchStatus::Pending => {
-                info.set_status(status);
-                Some(info.clone())
-            }
-            Some(_) => {
-                debug!(
-                    "Received status update for batch that was not pending: {:?}",
-                    signature
-                );
-                None
-            }
-            None => {
-                debug!(
-                    "Received status update for batch that is not in the history: {:?}",
-                    signature
-                );
-                None
-            }
-        };
+        let batch_info = self.upsert_batch(signature.into(), status);
 
-        if let Some(info) = updated_batch_info {
-            match info.status {
-                BatchStatus::Invalid(_) | BatchStatus::Valid(_) => {
-                    self.send_completed_batch_info_to_subscribers(info)
-                }
-                _ => {}
+        match batch_info.status {
+            BatchStatus::Invalid(_) | BatchStatus::Valid(_) => {
+                self.send_completed_batch_info_to_subscribers(batch_info)
             }
+            _ => {}
         }
     }
 
@@ -676,6 +640,34 @@ impl BatchHistory {
                     "Received commit for batch that is not in the history: {:?}",
                     signature
                 );
+            }
+        }
+    }
+
+    fn upsert_batch(&mut self, signature: String, status: BatchStatus) -> BatchInfo {
+        match self.history.get_mut(&signature) {
+            Some(info) => {
+                info.set_status(status);
+                info.clone()
+            }
+            None => {
+                let batch_info = BatchInfo {
+                    id: signature.clone(),
+                    status,
+                    timestamp: SystemTime::now(),
+                };
+
+                self.history.insert(signature, batch_info.clone());
+
+                if self.history.len() > self.limit {
+                    self.history
+                        .clone()
+                        .into_iter()
+                        .min_by_key(|(_, v)| v.timestamp)
+                        .and_then(|(k, _)| self.history.remove(&k));
+                }
+
+                batch_info
             }
         }
     }
