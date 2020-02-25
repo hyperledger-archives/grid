@@ -63,6 +63,7 @@ experimental = [
     "proposal-read",
     "rest-api-cors",
     "scabbard-get-state",
+    "service-arg-validation"
 ]
 
 biome = ["splinter/biome", "database"]
@@ -75,8 +76,9 @@ config-command-line = []
 config-env-var = []
 config-toml = []
 database = ["splinter/database"]
-scabbard-get-state = ["splinter/scabbard-get-state"]
 rest-api-cors = ["splinter/rest-api-cors"]
+scabbard-get-state = ["splinter/scabbard-get-state"]
+service-arg-validation = ["splinter/service-arg-validation"]
 
 [package.metadata.deb]
 maintainer = "The Splinter Team"

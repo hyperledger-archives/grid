@@ -49,6 +49,8 @@ use super::{
 
 use consensus::ScabbardConsensusManager;
 use error::ScabbardError;
+#[cfg(feature = "service-arg-validation")]
+pub use factory::ScabbardArgValidator;
 pub use factory::ScabbardFactory;
 use shared::ScabbardShared;
 #[cfg(feature = "scabbard-get-state")]

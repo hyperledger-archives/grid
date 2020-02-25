@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "service-arg-validation")]
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -62,7 +64,11 @@ use splinter::protos::network::{NetworkMessage, NetworkMessageType};
 use splinter::rest_api::{
     Method, Resource, RestApiBuilder, RestApiServerError, RestResourceProvider,
 };
+#[cfg(feature = "service-arg-validation")]
+use splinter::service::scabbard::ScabbardArgValidator;
 use splinter::service::scabbard::ScabbardFactory;
+#[cfg(feature = "service-arg-validation")]
+use splinter::service::validation::ServiceArgValidator;
 use splinter::service::{self, ServiceProcessor, ShutdownHandle};
 use splinter::signing::sawtooth::SawtoothSecp256k1SignatureVerifier;
 use splinter::storage::get_storage;
@@ -351,6 +357,13 @@ impl SplinterDaemon {
         let admin_service = AdminService::new(
             &self.node_id,
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            {
+                let mut validators: HashMap<String, Box<dyn ServiceArgValidator + Send>> =
+                    HashMap::new();
+                validators.insert("scabbard".into(), Box::new(ScabbardArgValidator));
+                validators
+            },
             peer_connector,
             Box::new(auth_manager),
             // Allowing possibly redundant clone of `state` since it will be needed again if the

@@ -20,6 +20,8 @@ mod open_proposals;
 mod shared;
 
 use std::any::Any;
+#[cfg(feature = "service-arg-validation")]
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
@@ -38,6 +40,8 @@ use crate::orchestrator::ServiceOrchestrator;
 use crate::protos::admin::{
     AdminMessage, AdminMessage_Type, CircuitManagementPayload, CircuitProposal,
 };
+#[cfg(feature = "service-arg-validation")]
+use crate::service::validation::ServiceArgValidator;
 use crate::service::{
     error::{ServiceDestroyError, ServiceError, ServiceStartError, ServiceStopError},
     Service, ServiceMessageContext, ServiceNetworkRegistry,
@@ -122,6 +126,10 @@ impl AdminService {
     pub fn new(
         node_id: &str,
         orchestrator: ServiceOrchestrator,
+        #[cfg(feature = "service-arg-validation")] service_arg_validators: HashMap<
+            String,
+            Box<dyn ServiceArgValidator + Send>,
+        >,
         peer_connector: PeerConnector,
         authorization_inquistor: Box<dyn AuthorizationInquisitor>,
         splinter_state: SplinterState,
@@ -141,6 +149,8 @@ impl AdminService {
             admin_service_shared: Arc::new(Mutex::new(AdminServiceShared::new(
                 node_id.to_string(),
                 orchestrator,
+                #[cfg(feature = "service-arg-validation")]
+                service_arg_validators,
                 peer_connector,
                 authorization_inquistor,
                 splinter_state,
@@ -513,6 +523,8 @@ mod tests {
         let mut admin_service = AdminService::new(
             "test-node".into(),
             orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
             peer_connector,
             Box::new(MockAuthInquisitor),
             state,
