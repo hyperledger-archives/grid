@@ -68,6 +68,7 @@ fn create_config(_toml_path: Option<&str>, _matches: ArgMatches) -> Result<Confi
     #[cfg(feature = "config-toml")]
     {
         if let Some(file) = _toml_path {
+            debug!("Loading config toml file: {:?}", fs::canonicalize(file)?);
             let toml_string = fs::read_to_string(file).map_err(|err| ConfigError::ReadError {
                 file: String::from(file),
                 err,
@@ -207,8 +208,6 @@ fn main() {
 }
 
 fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
-    debug!("Loading configuration file");
-
     // get provided config file or search default location
     let config_file = matches
         .value_of("config")
@@ -280,6 +279,10 @@ fn start_daemon(matches: ArgMatches) -> Result<(), UserError> {
     }
 
     if Path::new(&config.registry_file()).is_file() && registry_backend == "FILE" {
+        debug!(
+            "Using registry file: {:?}",
+            fs::canonicalize(&config.registry_file())?
+        );
         daemon_builder = daemon_builder
             .with_registry_backend(Some(String::from(registry_backend)))
             .with_registry_file(String::from(config.registry_file()));

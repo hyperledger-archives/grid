@@ -32,6 +32,10 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
                     client_cert
                 )));
             }
+            debug!(
+                "Using client certificate file: {:?}",
+                fs::canonicalize(&client_cert)?
+            );
 
             let server_cert = config.server_cert();
             if !Path::new(&server_cert).is_file() {
@@ -40,6 +44,10 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
                     server_cert
                 )));
             }
+            debug!(
+                "Using server certificate file: {:?}",
+                fs::canonicalize(&server_cert)?
+            );
 
             let server_key_file = config.server_key();
             if !Path::new(&server_key_file).is_file() {
@@ -48,6 +56,10 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
                     server_key_file
                 )));
             }
+            debug!(
+                "Using server key file: {:?}",
+                fs::canonicalize(&server_key_file)?
+            );
 
             let client_key_file = config.client_key();
             if !Path::new(&client_key_file).is_file() {
@@ -56,6 +68,10 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
                     client_key_file
                 )));
             }
+            debug!(
+                "Using client key file: {:?}",
+                fs::canonicalize(&client_key_file)?
+            );
 
             let insecure = config.insecure();
             if insecure {
@@ -73,7 +89,10 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
                         )));
                     }
                     match fs::canonicalize(&ca_file)?.to_str() {
-                        Some(ca_path) => Some(ca_path.to_string()),
+                        Some(ca_path) => {
+                            debug!("Using ca certs file: {:?}", ca_path);
+                            Some(ca_path.to_string())
+                        }
                         None => {
                             return Err(GetTransportError::CertError(
                                 "CA path is not a valid path".to_string(),

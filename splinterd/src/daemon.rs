@@ -16,6 +16,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -933,14 +934,20 @@ fn create_node_registry(
     registry_config: &RegistryConfig,
 ) -> Result<Box<dyn RwNodeRegistry>, RestApiServerError> {
     match registry_config {
-        RegistryConfig::File { registry_file } => Ok(Box::new(
-            node_registry::yaml::YamlNodeRegistry::new(&registry_file).map_err(|err| {
-                RestApiServerError::StartUpError(format!(
-                    "Failed to initialize YamlNodeRegistry: {}",
-                    err
-                ))
-            })?,
-        )),
+        RegistryConfig::File { registry_file } => {
+            debug!(
+                "Creating node registry with registry file: {:?}",
+                fs::canonicalize(&registry_file)?
+            );
+            Ok(Box::new(
+                node_registry::yaml::YamlNodeRegistry::new(&registry_file).map_err(|err| {
+                    RestApiServerError::StartUpError(format!(
+                        "Failed to initialize YamlNodeRegistry: {}",
+                        err
+                    ))
+                })?,
+            ))
+        }
         RegistryConfig::NoOp => Ok(Box::new(node_registry::noop::NoOpNodeRegistry)),
     }
 }

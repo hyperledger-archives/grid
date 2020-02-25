@@ -27,6 +27,7 @@ pub enum UserError {
     MissingArgument(String),
     InvalidArgument(String),
     ConfigError(ConfigError),
+    IoError(io::Error),
     DaemonError {
         context: String,
         source: Option<Box<dyn Error>>,
@@ -49,6 +50,7 @@ impl Error for UserError {
             UserError::MissingArgument(_) => None,
             UserError::InvalidArgument(_) => None,
             UserError::ConfigError(err) => Some(err),
+            UserError::IoError(err) => Some(err),
             UserError::DaemonError { source, .. } => {
                 if let Some(ref err) = source {
                     Some(&**err)
@@ -69,6 +71,7 @@ impl fmt::Display for UserError {
             UserError::ConfigError(msg) => {
                 write!(f, "error occurred building config object: {}", msg)
             }
+            UserError::IoError(err) => write!(f, "encountered an IoError: {}", err),
             UserError::DaemonError { context, source } => {
                 if let Some(ref err) = source {
                     write!(f, "{}: {}", context, err)
@@ -77,6 +80,12 @@ impl fmt::Display for UserError {
                 }
             }
         }
+    }
+}
+
+impl From<io::Error> for UserError {
+    fn from(io_error: io::Error) -> Self {
+        UserError::IoError(io_error)
     }
 }
 
