@@ -63,9 +63,11 @@ use super::user::store::diesel::SplinterUserStore;
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;
 
+#[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
+use self::actix::login::make_login_route;
 #[cfg(feature = "biome-credentials")]
 use super::credentials::{
-    rest_resources::{make_list_route, make_login_route, make_register_route, make_user_routes},
+    rest_resources::{make_list_route, make_register_route, make_user_routes},
     store::diesel::SplinterCredentialsStore,
 };
 
