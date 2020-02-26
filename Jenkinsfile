@@ -77,7 +77,25 @@ pipeline {
             }
         }
 
-        stage("Run Lint") {
+        stage("Build Grid UI Test Dependencies") {
+            steps {
+                sh 'docker build grid-ui -f grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
+            }
+        }
+
+        stage("Run Lint on Grid UI") {
+            steps {
+                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn lint'
+            }
+        }
+
+        stage("Run Grid UI tests") {
+            steps {
+                sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn test'
+            }
+        }
+
+        stage("Run Lint on Grid") {
             steps {
                 sh 'docker build . -f docker/lint -t lint-grid:$ISOLATION_ID'
                 sh 'docker run --rm -v $(pwd):/project/grid lint-grid:$ISOLATION_ID'
@@ -86,14 +104,14 @@ pipeline {
 
         // Use a docker container to build and protogen, so that the Jenkins
         // environment doesn't need all the dependencies.
-        stage("Build Test Dependencies") {
+        stage("Build Grid Test Dependencies") {
             steps {
                 sh 'VERSION=AUTO_STRICT REPO_VERSION=$(./bin/get_version) docker-compose -f docker-compose.yaml build --force-rm'
                 sh 'docker-compose -f docker/compose/grid_tests.yaml build --force-rm'
             }
         }
 
-        stage("Run unit tests") {
+        stage("Run Grid unit tests") {
             steps {
                 sh 'docker-compose -f docker/compose/grid_tests.yaml up --abort-on-container-exit --exit-code-from grid_tests'
                 sh 'docker-compose -f docker/compose/grid_tests.yaml down'
