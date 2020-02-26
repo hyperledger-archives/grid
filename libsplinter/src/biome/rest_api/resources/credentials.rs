@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-key-management")]
-pub(in super::super) mod authorize;
-#[cfg(feature = "biome-credentials")]
-pub(in super::super) mod credentials;
-#[cfg(feature = "biome-key-management")]
-pub(in super::super) mod key_management;
+#[derive(Deserialize)]
+pub(crate) struct UsernamePassword {
+    pub username: String,
+    pub hashed_password: String,
+}
