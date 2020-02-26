@@ -15,19 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-pub(crate) mod models;
-pub(crate) mod schema;
-
-embed_migrations!("./src/biome/notifications/database/migrations");
-
-use diesel::pg::PgConnection;
-
-pub use crate::database::error::DatabaseError;
-
-pub fn run_migrations(conn: &PgConnection) -> Result<(), DatabaseError> {
-    embedded_migrations::run(conn).map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?;
-
-    info!("Successfully applied biome notifications migrations");
-
-    Ok(())
-}
+pub(in crate::biome) mod models;
+#[cfg(feature = "postgres")]
+pub(in super::super) mod postgres;
+mod schema;
