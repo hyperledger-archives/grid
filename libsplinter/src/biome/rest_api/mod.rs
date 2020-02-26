@@ -41,8 +41,11 @@
 //!     .run();
 //! ```
 
+#[cfg(feature = "rest-api-actix")]
+mod actix;
 mod config;
 mod error;
+mod resources;
 
 use std::sync::Arc;
 
