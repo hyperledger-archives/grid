@@ -12,5 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-key-management")]
-pub(super) mod key_management;
+#[derive(Deserialize)]
+pub(crate) struct NewKey {
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub display_name: String,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct UpdatedKey {
+    pub public_key: String,
+    pub new_display_name: String,
+}

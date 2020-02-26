@@ -52,10 +52,11 @@ use std::sync::Arc;
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
+#[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
+use self::actix::key_management::make_key_management_route;
+
 #[cfg(feature = "biome-key-management")]
-use super::key_management::{
-    rest_resources::make_key_management_route, store::postgres::PostgresKeyStore,
-};
+use super::key_management::store::postgres::PostgresKeyStore;
 use super::secrets::{AutoSecretManager, SecretManager};
 use super::user::store::diesel::SplinterUserStore;
 
@@ -119,7 +120,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
                 );
             }
         };
-        #[cfg(feature = "biome-key-management")]
+        #[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
         resources.push(make_key_management_route(
             self.rest_config.clone(),
             self.key_store.clone(),
