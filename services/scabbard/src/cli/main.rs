@@ -17,10 +17,10 @@ extern crate log;
 
 mod error;
 mod key;
-mod transaction;
 
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::path::PathBuf;
 
 #[cfg(any(
     feature = "contract",
@@ -36,24 +36,23 @@ use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
 use sabre_sdk::{
     protocol::{
+        compute_contract_address,
         payload::{
-            Action, CreateContractActionBuilder, CreateContractRegistryActionBuilder,
+            CreateContractActionBuilder, CreateContractRegistryActionBuilder,
             CreateNamespaceRegistryActionBuilder, CreateNamespaceRegistryPermissionActionBuilder,
             CreateSmartPermissionActionBuilder, DeleteContractRegistryActionBuilder,
             DeleteNamespaceRegistryActionBuilder, DeleteNamespaceRegistryPermissionActionBuilder,
-            DeleteSmartPermissionActionBuilder, ExecuteContractActionBuilder, SabrePayloadBuilder,
+            DeleteSmartPermissionActionBuilder, ExecuteContractActionBuilder,
             UpdateContractRegistryOwnersActionBuilder, UpdateNamespaceRegistryOwnersActionBuilder,
             UpdateSmartPermissionActionBuilder,
         },
         state::{ContractList, ContractRegistryList},
+        CONTRACT_REGISTRY_ADDRESS_PREFIX,
     },
     protos::FromBytes,
 };
-use sawtooth_sdk::signing::secp256k1::Secp256k1Context;
-use splinter::{
-    service::scabbard::client::{SabreSmartContractDefinition, ScabbardClient, ServiceId},
-    signing::sawtooth::SawtoothSecp256k1RefSigner,
-};
+use splinter::service::scabbard::client::{ScabbardClient, ServiceId};
+use transact::contract::archive::{default_scar_path, SmartContractArchive};
 
 use error::CliError;
 
@@ -91,10 +90,21 @@ fn run() -> Result<(), CliError> {
                         .args(&[
                             Arg::with_name("scar")
                                 .long_help(
-                                    "The .scar to upload (either a file path or the name of a \
-                                     .scar in SCAR_PATH)",
+                                    "The name and version requirement of the .scar to upload, in \
+                                     the format 'name:version_req'. The version requirement can \
+                                     be any valid semver requirement string.",
                                 )
                                 .required(true),
+                            Arg::with_name("path")
+                                .long_help(
+                                    "Directory path(s) that may contain the desired .scar file; \
+                                     if not provided, the system's default .scar path(s) will be \
+                                     used.",
+                                )
+                                .long("path")
+                                .short("p")
+                                .takes_value(true)
+                                .multiple(true),
                             Arg::with_name("key")
                                 .long_help(
                                     "Key for signing transactions (either a file path or the name \
@@ -728,7 +738,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -741,34 +751,42 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let scar = matches
                     .value_of("scar")
                     .ok_or_else(|| CliError::MissingArgument("scar".into()))?;
-                let sc_definition = SabreSmartContractDefinition::new_from_scar(scar)?;
+                let mut split = scar.splitn(2, ':');
+                let name = split.next().ok_or_else(|| {
+                    CliError::InvalidArgument(
+                        "'scar' argument must be in the format 'name:version'".into(),
+                    )
+                })?;
+                let version = split.next().ok_or_else(|| {
+                    CliError::InvalidArgument(
+                        "'scar' argument must be in the format 'name:version'".into(),
+                    )
+                })?;
 
-                let action = CreateContractActionBuilder::new()
-                    .with_name(sc_definition.metadata.name)
-                    .with_version(sc_definition.metadata.version)
-                    .with_inputs(sc_definition.metadata.inputs)
-                    .with_outputs(sc_definition.metadata.outputs)
-                    .with_contract(sc_definition.contract)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::CreateContract(action))
-                    .build()?;
+                let paths = match matches.values_of("path") {
+                    Some(paths) => paths.map(PathBuf::from).collect(),
+                    None => default_scar_path(),
+                };
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
+                let smart_contract = SmartContractArchive::from_scar_file(name, version, &paths)?;
 
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                let batch = CreateContractActionBuilder::new()
+                    .with_name(smart_contract.metadata.name)
+                    .with_version(smart_contract.metadata.version)
+                    .with_inputs(smart_contract.metadata.inputs)
+                    .with_outputs(smart_contract.metadata.outputs)
+                    .with_contract(smart_contract.contract)
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
+
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("list", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -777,14 +795,14 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let format = matches
                     .value_of("format")
                     .expect("default not set for --format");
 
                 let registries = client
-                    .get_state_with_prefix(&service_id, Some("00ec01"))?
+                    .get_state_with_prefix(&service_id, Some(CONTRACT_REGISTRY_ADDRESS_PREFIX))?
                     .iter()
                     .map(|entry| ContractRegistryList::from_bytes(entry.value()))
                     .collect::<Result<Vec<_>, _>>()?;
@@ -827,7 +845,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let contract = matches
                     .value_of("contract")
@@ -842,9 +860,9 @@ fn run() -> Result<(), CliError> {
                     )
                 })?;
 
-                let address = transaction::compute_contract_address(name, version)?;
+                let address = compute_contract_address(name, version)?;
                 let contract_bytes = client
-                    .get_state_at_address(&service_id, &address)?
+                    .get_state_at_address(&service_id, &to_hex(&address))?
                     .ok_or_else(|| {
                         CliError::action_error(&format!("contract '{}' not found", contract))
                     })?;
@@ -876,7 +894,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let service_id = ServiceId::new(full_service_id)?;
+            let service_id = ServiceId::from_string(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -889,11 +907,7 @@ fn run() -> Result<(), CliError> {
             let key = matches
                 .value_of("key")
                 .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-            let signing_key = key::load_signing_key(key)?;
-            let context = Secp256k1Context::new();
-            let signer = SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                CliError::action_error_with_source("failed to create signer", err.into())
-            })?;
+            let signer = key::load_signer(key)?;
 
             let contract = matches
                 .value_of("contract")
@@ -922,22 +936,18 @@ fn run() -> Result<(), CliError> {
                 .ok_or_else(|| CliError::MissingArgument("payload".into()))?;
             let contract_payload = load_file_into_bytes(payload_file)?;
 
-            let action = ExecuteContractActionBuilder::new()
+            let batch = ExecuteContractActionBuilder::new()
                 .with_name(name.into())
                 .with_version(version.into())
                 .with_inputs(inputs)
                 .with_outputs(outputs)
                 .with_payload(contract_payload)
-                .build()?;
-            let payload = SabrePayloadBuilder::new()
-                .with_action(Action::ExecuteContract(action))
-                .build()?;
+                .into_payload_builder()?
+                .into_transaction_builder(&signer)?
+                .into_batch_builder(&signer)?
+                .build(&signer)?;
 
-            let txn = transaction::create_transaction(payload, &signer)?;
-            let batch = transaction::create_batch(vec![txn], &signer)?;
-            let batch_list = transaction::create_batch_list_from_one(batch);
-
-            Ok(client.submit(&service_id, batch_list, Some(wait))?)
+            Ok(client.submit(&service_id, vec![batch], Some(wait))?)
         }
         ("ns", Some(matches)) => match matches.subcommand() {
             ("create", Some(matches)) => {
@@ -947,7 +957,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -960,12 +970,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let namespace = matches
                     .value_of("namespace")
@@ -976,19 +981,15 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .collect();
 
-                let action = CreateNamespaceRegistryActionBuilder::new()
+                let batch = CreateNamespaceRegistryActionBuilder::new()
                     .with_namespace(namespace.into())
                     .with_owners(owners)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::CreateNamespaceRegistry(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -997,7 +998,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1010,12 +1011,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let namespace = matches
                     .value_of("namespace")
@@ -1026,19 +1022,15 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .collect();
 
-                let action = UpdateNamespaceRegistryOwnersActionBuilder::new()
+                let batch = UpdateNamespaceRegistryOwnersActionBuilder::new()
                     .with_namespace(namespace.into())
                     .with_owners(owners)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::UpdateNamespaceRegistryOwners(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1047,7 +1039,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1060,29 +1052,20 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let namespace = matches
                     .value_of("namespace")
                     .ok_or_else(|| CliError::MissingArgument("namespace".into()))?;
 
-                let action = DeleteNamespaceRegistryActionBuilder::new()
+                let batch = DeleteNamespaceRegistryActionBuilder::new()
                     .with_namespace(namespace.into())
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::DeleteNamespaceRegistry(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1093,7 +1076,7 @@ fn run() -> Result<(), CliError> {
             let full_service_id = matches
                 .value_of("service-id")
                 .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-            let service_id = ServiceId::new(full_service_id)?;
+            let service_id = ServiceId::from_string(full_service_id)?;
 
             let wait = matches
                 .value_of("wait")
@@ -1106,23 +1089,16 @@ fn run() -> Result<(), CliError> {
             let key = matches
                 .value_of("key")
                 .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-            let signing_key = key::load_signing_key(key)?;
-            let context = Secp256k1Context::new();
-            let signer = SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                CliError::action_error_with_source("failed to create signer", err.into())
-            })?;
+            let signer = key::load_signer(key)?;
 
             let namespace = matches
                 .value_of("namespace")
                 .ok_or_else(|| CliError::MissingArgument("namespace".into()))?;
 
-            let payload = if matches.is_present("delete") {
-                let action = DeleteNamespaceRegistryPermissionActionBuilder::new()
+            let payload_builder = if matches.is_present("delete") {
+                DeleteNamespaceRegistryPermissionActionBuilder::new()
                     .with_namespace(namespace.into())
-                    .build()?;
-                SabrePayloadBuilder::new()
-                    .with_action(Action::DeleteNamespaceRegistryPermission(action))
-                    .build()?
+                    .into_payload_builder()?
             } else {
                 let contract = matches
                     .value_of("contract")
@@ -1130,22 +1106,20 @@ fn run() -> Result<(), CliError> {
                 let read = matches.is_present("read");
                 let write = matches.is_present("write");
 
-                let action = CreateNamespaceRegistryPermissionActionBuilder::new()
+                CreateNamespaceRegistryPermissionActionBuilder::new()
                     .with_namespace(namespace.into())
                     .with_contract_name(contract.into())
                     .with_read(read)
                     .with_write(write)
-                    .build()?;
-                SabrePayloadBuilder::new()
-                    .with_action(Action::CreateNamespaceRegistryPermission(action))
-                    .build()?
+                    .into_payload_builder()?
             };
 
-            let txn = transaction::create_transaction(payload, &signer)?;
-            let batch = transaction::create_batch(vec![txn], &signer)?;
-            let batch_list = transaction::create_batch_list_from_one(batch);
+            let batch = payload_builder
+                .into_transaction_builder(&signer)?
+                .into_batch_builder(&signer)?
+                .build(&signer)?;
 
-            Ok(client.submit(&service_id, batch_list, Some(wait))?)
+            Ok(client.submit(&service_id, vec![batch], Some(wait))?)
         }
         ("cr", Some(matches)) => match matches.subcommand() {
             ("create", Some(matches)) => {
@@ -1155,7 +1129,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1168,12 +1142,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let name = matches
                     .value_of("name")
@@ -1184,19 +1153,15 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .collect();
 
-                let action = CreateContractRegistryActionBuilder::new()
+                let batch = CreateContractRegistryActionBuilder::new()
                     .with_name(name.into())
                     .with_owners(owners)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::CreateContractRegistry(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1205,7 +1170,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1218,12 +1183,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let name = matches
                     .value_of("name")
@@ -1234,19 +1194,15 @@ fn run() -> Result<(), CliError> {
                     .map(String::from)
                     .collect();
 
-                let action = UpdateContractRegistryOwnersActionBuilder::new()
+                let batch = UpdateContractRegistryOwnersActionBuilder::new()
                     .with_name(name.into())
                     .with_owners(owners)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::UpdateContractRegistryOwners(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1255,7 +1211,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1268,29 +1224,20 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let name = matches
                     .value_of("name")
                     .ok_or_else(|| CliError::MissingArgument("name".into()))?;
 
-                let action = DeleteContractRegistryActionBuilder::new()
+                let batch = DeleteContractRegistryActionBuilder::new()
                     .with_name(name.into())
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::DeleteContractRegistry(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1302,7 +1249,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1315,12 +1262,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let org_id = matches
                     .value_of("org_id")
@@ -1333,20 +1275,16 @@ fn run() -> Result<(), CliError> {
                     .ok_or_else(|| CliError::MissingArgument("filename".into()))?;
                 let function = load_file_into_bytes(sp_filename)?;
 
-                let action = CreateSmartPermissionActionBuilder::new()
+                let batch = CreateSmartPermissionActionBuilder::new()
                     .with_name(name.to_string())
                     .with_org_id(org_id.to_string())
                     .with_function(function)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::CreateSmartPermission(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("update", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1355,7 +1293,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1368,12 +1306,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let org_id = matches
                     .value_of("org_id")
@@ -1386,20 +1319,16 @@ fn run() -> Result<(), CliError> {
                     .ok_or_else(|| CliError::MissingArgument("filename".into()))?;
                 let function = load_file_into_bytes(sp_filename)?;
 
-                let action = UpdateSmartPermissionActionBuilder::new()
+                let batch = UpdateSmartPermissionActionBuilder::new()
                     .with_name(name.to_string())
                     .with_org_id(org_id.to_string())
                     .with_function(function)
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::UpdateSmartPermission(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             ("delete", Some(matches)) => {
                 let url = matches.value_of("url").expect("default not set for --url");
@@ -1408,7 +1337,7 @@ fn run() -> Result<(), CliError> {
                 let full_service_id = matches
                     .value_of("service-id")
                     .ok_or_else(|| CliError::MissingArgument("service-id".into()))?;
-                let service_id = ServiceId::new(full_service_id)?;
+                let service_id = ServiceId::from_string(full_service_id)?;
 
                 let wait = matches
                     .value_of("wait")
@@ -1421,12 +1350,7 @@ fn run() -> Result<(), CliError> {
                 let key = matches
                     .value_of("key")
                     .ok_or_else(|| CliError::MissingArgument("key".into()))?;
-                let signing_key = key::load_signing_key(key)?;
-                let context = Secp256k1Context::new();
-                let signer =
-                    SawtoothSecp256k1RefSigner::new(&context, signing_key).map_err(|err| {
-                        CliError::action_error_with_source("failed to create signer", err.into())
-                    })?;
+                let signer = key::load_signer(key)?;
 
                 let org_id = matches
                     .value_of("org_id")
@@ -1435,19 +1359,15 @@ fn run() -> Result<(), CliError> {
                     .value_of("name")
                     .ok_or_else(|| CliError::MissingArgument("name".into()))?;
 
-                let action = DeleteSmartPermissionActionBuilder::new()
+                let batch = DeleteSmartPermissionActionBuilder::new()
                     .with_name(name.to_string())
                     .with_org_id(org_id.to_string())
-                    .build()?;
-                let payload = SabrePayloadBuilder::new()
-                    .with_action(Action::DeleteSmartPermission(action))
-                    .build()?;
+                    .into_payload_builder()?
+                    .into_transaction_builder(&signer)?
+                    .into_batch_builder(&signer)?
+                    .build(&signer)?;
 
-                let txn = transaction::create_transaction(payload, &signer)?;
-                let batch = transaction::create_batch(vec![txn], &signer)?;
-                let batch_list = transaction::create_batch_list_from_one(batch);
-
-                Ok(client.submit(&service_id, batch_list, Some(wait))?)
+                Ok(client.submit(&service_id, vec![batch], Some(wait))?)
             }
             _ => Err(CliError::InvalidSubcommand),
         },
@@ -1518,4 +1438,12 @@ fn print_table(table: Vec<Vec<String>>) {
         }
         println!("{}", col_string);
     }
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<Vec<_>>()
+        .join("")
 }

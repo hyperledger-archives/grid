@@ -16,21 +16,19 @@ use std::error::Error;
 use std::fmt;
 
 use flexi_logger::FlexiLoggerError;
-use protobuf::error::ProtobufError;
 use sabre_sdk::{
-    protocol::payload::{
-        CreateContractActionBuildError, CreateContractRegistryActionBuildError,
-        CreateNamespaceRegistryActionBuildError, CreateNamespaceRegistryPermissionActionBuildError,
-        CreateSmartPermissionActionBuildError, DeleteContractActionBuildError,
-        DeleteContractRegistryActionBuildError, DeleteNamespaceRegistryActionBuildError,
-        DeleteNamespaceRegistryPermissionActionBuildError, DeleteSmartPermissionActionBuildError,
-        ExecuteContractActionBuildError, SabrePayloadBuildError,
-        UpdateContractRegistryOwnersActionBuildError,
-        UpdateNamespaceRegistryOwnersActionBuildError, UpdateSmartPermissionActionBuildError,
+    protocol::{
+        payload::{ActionBuildError, SabrePayloadBuildError},
+        AddressingError,
     },
     protos::ProtoConversionError,
 };
-use splinter::{service::scabbard::client::Error as ClientError, signing::Error as SigningError};
+use sawtooth_sdk::signing::Error as SigningError;
+use splinter::service::scabbard::client::Error as ClientError;
+use transact::{
+    contract::archive::Error as ContractArchiveError,
+    protocol::{batch::BatchBuildError, transaction::TransactionBuildError},
+};
 
 #[derive(Debug)]
 pub enum CliError {
@@ -86,9 +84,15 @@ impl From<FlexiLoggerError> for CliError {
     }
 }
 
-impl From<ProtobufError> for CliError {
-    fn from(err: ProtobufError) -> Self {
-        Self::action_error_with_source("protobuf serialization failed", err.into())
+impl From<AddressingError> for CliError {
+    fn from(err: AddressingError) -> Self {
+        Self::action_error_with_source("failed to compute Sabre address", err.into())
+    }
+}
+
+impl From<ActionBuildError> for CliError {
+    fn from(err: ActionBuildError) -> Self {
+        Self::action_error_with_source("failed to build Sabre action", err.into())
     }
 }
 
@@ -106,7 +110,7 @@ impl From<ProtoConversionError> for CliError {
 
 impl From<SigningError> for CliError {
     fn from(err: SigningError) -> Self {
-        Self::action_error_with_source("signing failed", err.into())
+        Self::action_error_with_source("signer failed", err.into())
     }
 }
 
@@ -116,31 +120,20 @@ impl From<ClientError> for CliError {
     }
 }
 
-macro_rules! impl_sabre_action_builder_errors {
-    ($($x:ty),*) => {
-        $(
-            impl From<$x> for CliError {
-                fn from(e: $x) -> Self {
-                    CliError::action_error_with_source("failed to build Sabre action", Box::new(e))
-                }
-            }
-        )*
-    };
+impl From<ContractArchiveError> for CliError {
+    fn from(err: ContractArchiveError) -> Self {
+        Self::action_error_with_source("failed to load .scar file", err.into())
+    }
 }
 
-impl_sabre_action_builder_errors!(
-    CreateContractActionBuildError,
-    DeleteContractActionBuildError,
-    ExecuteContractActionBuildError,
-    CreateContractRegistryActionBuildError,
-    DeleteContractRegistryActionBuildError,
-    UpdateContractRegistryOwnersActionBuildError,
-    CreateNamespaceRegistryActionBuildError,
-    DeleteNamespaceRegistryActionBuildError,
-    UpdateNamespaceRegistryOwnersActionBuildError,
-    CreateNamespaceRegistryPermissionActionBuildError,
-    DeleteNamespaceRegistryPermissionActionBuildError,
-    CreateSmartPermissionActionBuildError,
-    UpdateSmartPermissionActionBuildError,
-    DeleteSmartPermissionActionBuildError
-);
+impl From<BatchBuildError> for CliError {
+    fn from(err: BatchBuildError) -> Self {
+        Self::action_error_with_source("failed to build batch", err.into())
+    }
+}
+
+impl From<TransactionBuildError> for CliError {
+    fn from(err: TransactionBuildError) -> Self {
+        Self::action_error_with_source("failed to build transaction", err.into())
+    }
+}

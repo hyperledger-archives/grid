@@ -26,6 +26,7 @@ use gameroom_database::{
 use splinter::service::scabbard::{StateChange, StateChangeEvent};
 
 use crate::authorization_handler::sabre::{get_xo_contract_address, XO_PREFIX};
+use crate::authorization_handler::AppAuthHandlerError;
 
 pub struct XoStateDeltaProcessor {
     circuit_id: String,
@@ -36,14 +37,19 @@ pub struct XoStateDeltaProcessor {
 }
 
 impl XoStateDeltaProcessor {
-    pub fn new(circuit_id: &str, node_id: &str, requester: &str, db_pool: &ConnectionPool) -> Self {
-        XoStateDeltaProcessor {
+    pub fn new(
+        circuit_id: &str,
+        node_id: &str,
+        requester: &str,
+        db_pool: &ConnectionPool,
+    ) -> Result<Self, AppAuthHandlerError> {
+        Ok(XoStateDeltaProcessor {
             circuit_id: circuit_id.into(),
             node_id: node_id.to_string(),
             requester: requester.to_string(),
-            contract_address: get_xo_contract_address(),
+            contract_address: get_xo_contract_address()?,
             db_pool: db_pool.clone(),
-        }
+        })
     }
 
     pub fn handle_state_change_event(

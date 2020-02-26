@@ -19,13 +19,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use protobuf::Message;
 use reqwest::{
     blocking::{Client, RequestBuilder, Response},
     Url,
 };
 
-use sawtooth_sdk::messages::batch::BatchList;
+use transact::{protocol::batch::Batch, protos::IntoBytes};
 
 use crate::protocol::SCABBARD_PROTOCOL_VERSION;
 use crate::service::scabbard::{BatchInfo, BatchStatus, SERVICE_TYPE};
@@ -36,14 +35,14 @@ pub fn submit_batches(
     base_url: &str,
     circuit_id: &str,
     service_id: &str,
-    batches: BatchList,
+    batches: Vec<Batch>,
 ) -> Result<String, Error> {
     let url = parse_http_url(&format!(
         "{}/{}/{}/{}/batches",
         base_url, SERVICE_TYPE, circuit_id, service_id
     ))?;
 
-    let body = batches.write_to_bytes()?;
+    let body = batches.into_bytes()?;
 
     debug!("Submitting batches via {}", url);
     let request = Client::new().post(url).body(body);

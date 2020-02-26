@@ -13,11 +13,10 @@
 // limitations under the License.
 
 mod error;
-mod scar;
 mod submit;
 
 use reqwest::{blocking::Client, Url};
-use sawtooth_sdk::messages::batch::BatchList;
+use transact::protocol::batch::Batch;
 
 use crate::hex::parse_hex;
 use crate::protocol::SCABBARD_PROTOCOL_VERSION;
@@ -25,7 +24,6 @@ use crate::protocol::SCABBARD_PROTOCOL_VERSION;
 use super::SERVICE_TYPE;
 
 pub use error::Error;
-pub use scar::{SabreSmartContractDefinition, SabreSmartContractMetadata};
 use submit::{submit_batches, wait_for_batches};
 
 /// A client that can be used to submit transactions to scabbard services on a Splinter node.
@@ -45,7 +43,7 @@ impl ScabbardClient {
     pub fn submit(
         &self,
         service_id: &ServiceId,
-        batches: BatchList,
+        batches: Vec<Batch>,
         wait: Option<u64>,
     ) -> Result<(), Error> {
         let batch_link = submit_batches(
@@ -154,17 +152,32 @@ pub struct ServiceId {
 }
 
 impl ServiceId {
+    pub fn new(circuit: &str, service_id: &str) -> Self {
+        Self {
+            circuit: circuit.into(),
+            service_id: service_id.into(),
+        }
+    }
+
     /// Parse a fully-qualified service ID string ("circuit::service_id").
-    pub fn new(full_id: &str) -> Result<Self, Error> {
+    pub fn from_string(full_id: &str) -> Result<Self, Error> {
         let ids = full_id.splitn(2, "::").collect::<Vec<_>>();
+
         let circuit = (*ids
             .get(0)
             .ok_or_else(|| Error::new("service ID invalid: cannot be empty"))?)
         .to_string();
+        if circuit.is_empty() {
+            return Err(Error::new("service ID invalid: circuit ID cannot be empty"));
+        }
+
         let service_id = (*ids.get(1).ok_or_else(|| {
             Error::new("service ID invalid: must be of the form 'circuit_id::service_id'")
         })?)
         .to_string();
+        if service_id.is_empty() {
+            return Err(Error::new("service ID invalid: service ID cannot be empty"));
+        }
 
         Ok(Self {
             circuit,
@@ -205,5 +218,24 @@ struct ErrorResponse {
 impl std::fmt::Display for ErrorResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify that a `ServiceId` can be correctly parsed from a fully-qualified service ID string.
+    #[test]
+    fn service_id_from_string() {
+        assert!(ServiceId::from_string("").is_err());
+        assert!(ServiceId::from_string("circuit").is_err());
+        assert!(ServiceId::from_string("::").is_err());
+        assert!(ServiceId::from_string("circuit::").is_err());
+        assert!(ServiceId::from_string("::service_id").is_err());
+
+        let service_id = ServiceId::from_string("circuit::service_id").expect("failed to parse");
+        assert_eq!(service_id.circuit(), "circuit");
+        assert_eq!(service_id.service_id(), "service_id");
     }
 }

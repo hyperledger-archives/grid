@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use protobuf::error::ProtobufError;
+use transact::protos::ProtoConversionError;
 
 #[derive(Debug)]
 pub struct Error {
@@ -48,8 +48,8 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl From<ProtobufError> for Error {
-    fn from(err: ProtobufError) -> Self {
-        Self::new_with_source("failed to write protobuf to bytes", err.into())
+impl From<ProtoConversionError> for Error {
+    fn from(err: ProtoConversionError) -> Self {
+        Self::new_with_source("protobuf conversion failed", err.into())
     }
 }

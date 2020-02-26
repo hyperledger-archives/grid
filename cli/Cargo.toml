@@ -38,7 +38,7 @@ log = "0.4"
 openssl = "0.10"
 protobuf = "2"
 reqwest = { version = "0.10", features = ["blocking", "json"], optional = true }
-sawtooth-sdk = "0.3"
+sawtooth-sdk = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version ="1.0", optional = true }
 serde_yaml = "0.8"

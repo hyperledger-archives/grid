@@ -398,7 +398,7 @@ fn process_admin_event(
                 &proposal.requester_node_id,
                 &proposal.requester,
                 &pool,
-            );
+            )?;
 
             let mut xo_ws = WebSocketClient::new(
                 &format!(
@@ -500,11 +500,16 @@ fn resubscribe(
             url, gameroom.circuit_id, gameroom.service_id, query_string,
         ),
         move |_, event| {
-            if let Err(err) = processor.handle_state_change_event(event) {
-                error!(
-                    "An error occurred while handling a state change event: {:?}",
-                    err
-                );
+            match &processor {
+                Ok(processor) => {
+                    if let Err(err) = processor.handle_state_change_event(event) {
+                        error!(
+                            "An error occurred while handling a state change event: {:?}",
+                            err
+                        );
+                    }
+                }
+                Err(err) => error!("Failed to initialize state delta processor: {:?}", err),
             }
             WsResponse::Empty
         },

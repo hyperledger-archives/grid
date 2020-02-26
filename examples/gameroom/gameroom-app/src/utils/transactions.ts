@@ -27,8 +27,8 @@ const { Transaction, TransactionHeader, Batch, BatchHeader, BatchList } = requir
 
 // The Sawtooth Sabre transaction family name (sabre)
 const SABRE_FAMILY_NAME = 'sabre';
-// The Sawtooth Sabre transaction family version (0.4)
-const SABRE_FAMILY_VERSION = '0.4';
+// The Sawtooth Sabre transaction family version (0.5)
+const SABRE_FAMILY_VERSION = '0.5';
 
 
 export function createTransaction(
