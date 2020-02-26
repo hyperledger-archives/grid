@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This module defines the REST API endpoints for interacting with the Splinter admin service.
+
 #[cfg(feature = "rest-api-actix")]
 mod actix;
 #[cfg(any(feature = "circuit-read", feature = "proposal-read"))]
@@ -53,6 +55,14 @@ impl RestResourceProvider for AdminService {
     }
 }
 
+/// Provides the REST API [Resource](splinter::rest_api::Resource) definitions for
+/// listing and fetching the circuits in the splinter node's state.
+///
+/// The following endpoints are provided:
+///
+/// * `GET /admin/circuits` - List circuits in Splinter's state
+/// * `GET /admin/circuits/{circuit_id}` - Fetch a specific circuit in Splinter's state by circuit
+///   ID
 #[derive(Clone)]
 pub struct CircuitResourceProvider<T: store::CircuitStore> {
     node_id: String,

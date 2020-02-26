@@ -19,61 +19,116 @@ use crate::circuit::store;
 
 #[cfg(feature = "proposal-read")]
 #[derive(Debug)]
-pub enum ProposalRouteError {
+pub enum ProposalFetchError {
     NotFound(String),
     InternalError(String),
 }
 
 #[cfg(feature = "proposal-read")]
-impl Error for ProposalRouteError {
+impl Error for ProposalFetchError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ProposalRouteError::NotFound(_) => None,
-            ProposalRouteError::InternalError(_) => None,
+            ProposalFetchError::NotFound(_) => None,
+            ProposalFetchError::InternalError(_) => None,
         }
     }
 }
 
 #[cfg(feature = "proposal-read")]
-impl std::fmt::Display for ProposalRouteError {
+impl std::fmt::Display for ProposalFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ProposalRouteError::NotFound(msg) => write!(f, "Proposal not found: {}", msg),
-            ProposalRouteError::InternalError(msg) => write!(f, "Ran into internal error: {}", msg),
+            ProposalFetchError::NotFound(msg) => write!(f, "Proposal not found: {}", msg),
+            ProposalFetchError::InternalError(msg) => write!(f, "Ran into internal error: {}", msg),
+        }
+    }
+}
+
+#[cfg(feature = "proposal-read")]
+#[derive(Debug)]
+pub enum ProposalListError {
+    InternalError(String),
+}
+
+#[cfg(feature = "proposal-read")]
+impl Error for ProposalListError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ProposalListError::InternalError(_) => None,
+        }
+    }
+}
+
+#[cfg(feature = "proposal-read")]
+impl std::fmt::Display for ProposalListError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ProposalListError::InternalError(msg) => write!(f, "Ran into internal error: {}", msg),
         }
     }
 }
 
 #[cfg(feature = "circuit-read")]
 #[derive(Debug)]
-pub enum CircuitRouteError {
+pub enum CircuitFetchError {
     NotFound(String),
     CircuitStoreError(store::CircuitStoreError),
 }
 
 #[cfg(feature = "circuit-read")]
-impl Error for CircuitRouteError {
+impl Error for CircuitFetchError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            CircuitRouteError::NotFound(_) => None,
-            CircuitRouteError::CircuitStoreError(err) => Some(err),
+            CircuitFetchError::NotFound(_) => None,
+            CircuitFetchError::CircuitStoreError(err) => Some(err),
         }
     }
 }
 
 #[cfg(feature = "circuit-read")]
-impl std::fmt::Display for CircuitRouteError {
+impl std::fmt::Display for CircuitFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            CircuitRouteError::NotFound(msg) => write!(f, "Circuit not found: {}", msg),
-            CircuitRouteError::CircuitStoreError(err) => write!(f, "{}", err),
+            CircuitFetchError::NotFound(msg) => write!(f, "Circuit not found: {}", msg),
+            CircuitFetchError::CircuitStoreError(err) => write!(f, "{}", err),
         }
     }
 }
 
 #[cfg(feature = "circuit-read")]
-impl From<store::CircuitStoreError> for CircuitRouteError {
+impl From<store::CircuitStoreError> for CircuitFetchError {
     fn from(err: store::CircuitStoreError) -> Self {
-        CircuitRouteError::CircuitStoreError(err)
+        CircuitFetchError::CircuitStoreError(err)
+    }
+}
+
+#[cfg(feature = "circuit-read")]
+#[derive(Debug)]
+pub enum CircuitListError {
+    CircuitStoreError(store::CircuitStoreError),
+}
+
+#[cfg(feature = "circuit-read")]
+impl Error for CircuitListError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            CircuitListError::CircuitStoreError(err) => Some(err),
+        }
+    }
+}
+
+#[cfg(feature = "circuit-read")]
+impl std::fmt::Display for CircuitListError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            CircuitListError::CircuitStoreError(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+#[cfg(feature = "circuit-read")]
+impl From<store::CircuitStoreError> for CircuitListError {
+    fn from(err: store::CircuitStoreError) -> Self {
+        CircuitListError::CircuitStoreError(err)
     }
 }

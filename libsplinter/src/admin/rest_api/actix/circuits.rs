@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This module provides the `GET /admin/circuits` endpoint for listing the definitions of circuits
+//! in Splinter's state.
+
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
@@ -23,7 +26,7 @@ use crate::rest_api::{
     ErrorResponse, Method, ProtocolVersionRangeGuard, Resource,
 };
 
-use super::super::error::CircuitRouteError;
+use super::super::error::CircuitListError;
 use super::super::resources::circuits::{CircuitResponse, ListCircuitsResponse};
 
 pub fn make_list_circuits_resource<T: CircuitStore + 'static>(store: T) -> Resource {
@@ -144,12 +147,9 @@ fn query_list_circuits<T: CircuitStore + 'static>(
         }
         Err(err) => match err {
             BlockingError::Error(err) => match err {
-                CircuitRouteError::CircuitStoreError(err) => {
+                CircuitListError::CircuitStoreError(err) => {
                     error!("{}", err);
                     Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
-                }
-                CircuitRouteError::NotFound(err) => {
-                    Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
                 }
             },
             _ => {

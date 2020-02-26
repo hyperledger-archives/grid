@@ -198,9 +198,15 @@ paths:
 
   /admin/circuits:
     get:
+      summary: Fetches a list of circuits that the node belongs to
+      description: |
+        This endpoint can be used to view all or some of the circuits that the
+        node is a member of. If a node ID is provided via the "filter" query
+        parameter, only circuits that have the given node ID as a member will be
+        returned; if no filter is provided, all of the node's circuits will be
+        returned.
       tags:
-          - Circuits
-      description: Experimental - List of circuits in Splinter state
+        - Circuits
       parameters:
         - $ref: "#/components/parameters/protocol_version"
         - name: offset
@@ -219,14 +225,13 @@ paths:
             default: 100
         - name: filter
           in: query
-          description: node id that must be present in the circuits returned
+          description: Node ID that must be present in the returned circuits
           required: false
           schema:
             type: string
-          example: "node-001"
       responses:
         200:
-          description: list of circuits
+          description: Successfully retrieved the list of circuits
           content:
             application/json:
               schema:
@@ -244,32 +249,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: An internal server error occurrred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /admin/circuits/{circuit_id}:
     get:
+      summary: Fetches a circuit by its ID
+      description: |
+        This endpoint can be used to view a specific circuit that the node is a
+        member of.
       tags:
         - Circuits
-      description: Experimental - Fetch a circuit in Splinter State by its circuit id
       parameters:
         - $ref: "#/components/parameters/protocol_version"
         - name: circuit_id
           in: path
-          description: cirucit id of circuit to fetch
+          description: ID of the circuit to fetch
           required: true
           schema:
             type: string
       responses:
         200:
-          description: Circuit
+          description: Successfully retrieved the requested circuit
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Circuit"
+                $ref: "#/components/schemas/Circuit"
         404:
-          description: The circuit with {circuit_id} was not found
+          description: The requested circuit was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: An internal server error occurrred
           content:
             application/json:
               schema:
@@ -1162,12 +1179,15 @@ paths:
 components:
   parameters:
     protocol_version:
+      name: SplinterProtocolVersion
+      in: header
+      description: |
+        The protocol version which the client can understand. If not provided,
+        the node will respond using its latest protocol version.
+      required: false
       schema:
         type: integer
         example: 1
-      description: The protocol version which the client can understand
-      in: header
-      name: SplinterProtocolVersion
 
   schemas:
     Error:
