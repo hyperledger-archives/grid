@@ -15,6 +15,4 @@
 //! Defines a basic API to register and authenticate a SplinterUser using a username and a password.
 //! Not recommended for use in production.
 
-#[cfg(feature = "rest-api")]
-pub(in crate::biome) mod rest_resources;
 pub mod store;

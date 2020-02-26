@@ -19,14 +19,12 @@ use crate::futures::{Future, IntoFuture};
 use crate::protocol;
 use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
-use super::super::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
-use super::store::{diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError};
+use crate::biome::credentials::store::{
+    diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
+};
+use crate::biome::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
 
-#[derive(Deserialize)]
-struct UsernamePassword {
-    username: String,
-    hashed_password: String,
-}
+use super::super::resources::credentials::UsernamePassword;
 
 /// Defines a REST endpoint to list users from the db
 pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Resource {

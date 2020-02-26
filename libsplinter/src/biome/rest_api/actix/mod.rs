@@ -20,3 +20,5 @@ pub(super) mod key_management;
 pub(super) mod login;
 #[cfg(feature = "biome-credentials")]
 pub(super) mod register;
+#[cfg(feature = "biome-credentials")]
+pub(super) mod user;
