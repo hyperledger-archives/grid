@@ -18,3 +18,5 @@ pub(crate) mod authorize;
 pub(super) mod key_management;
 #[cfg(feature = "biome-credentials")]
 pub(super) mod login;
+#[cfg(feature = "biome-credentials")]
+pub(super) mod register;
