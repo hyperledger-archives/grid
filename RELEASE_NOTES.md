@@ -1,5 +1,180 @@
 # Release Notes
 
+## Changes in Splinter 0.3.12
+
+### Highlights:
+* REST APIs and clients are now versioned with a ProtocolVersion.
+* OPTIONS/CORS is now supported by the splinterd REST API
+* [CanopyJs](https://github.com/Cargill/splinter-canopyjs) and [SaplingJS](https://github.com/Cargill/splinter-saplingjs) have been moved to their own repos.
+* The scabbard CLI now provides experimental list and show commands for uploaded
+  smart contracts.
+* The scabbard REST API now has an experimental get state route
+* Numerous bug fixes and documentation improvements.
+
+### Deprecations and Breaking Changes:
+  For information on upgrading from 0.3.11 to 0.3.12 see [Upgrading](https://github.com/Cargill/splinter-docs/blob/master/docs/upgrading/splinter-v0.3.12-from-v0.3.11.md) documentation
+* Added “admin” prefix to circuits, key registry and node registry REST API
+  routes.
+* Rewrote the circuit create command so it does not accept a circuit definition
+  in a YAML file, but rather it creates the circuit definition based on CLI
+  arguments.
+* Removed the deprecated generate-cert feature. Now you must use the `splinter
+  cert generate` command to create development certificates and keys for using
+  the TLS transport. See the how-to for [Generating Insecure Certificates for
+  Development](https://github.com/Cargill/splinter-docs/blob/master/docs/howto/generating_insecure_certificates_for_development.md) for more information.
+* Changed `scabbard upload` command to `scabbard contract upload` and updated
+  .scar file to be loaded by name and version from a specified `--path`
+  argument.
+* Updated the version of Sawtooth Sabre used by scabbard to v0.5.
+
+### libsplinter:
+* Add “admin” prefix to circuits route, key registry and node registry routes.
+* Add optional protocol headers to REST APIs. The protocol guard looks for an
+  optional header, SplinterProtocolVersion. If this is provided, it will return
+  a BadRequest if the version provided is out of range.
+* Add protocol guards to the Scabbard REST API endpoints
+* Add protocol guards to the Admin service REST API endpoints
+* Add protocol guards to the splinterd REST API endpoints
+* Add protocol version guards to biome endpoints
+* Add openapi documentation for the Biome routes.
+* Wait full time in scabbard batch status check.
+* Add a CircuitStore trait. This trait will be the external interface for access
+  circuit information. This trait was also implemented for SplinterState
+  directly.
+* Update the circuit routes to use CircuitStore instead of an
+  Arc<RwLock<SplinterState>> directly.
+* Include node_id in circuit vote error message when the node is not allowed to
+  vote for a node on the proposal.
+* Validate the requestor's public key length when acting on a circuit proposal
+  or vote in the AdminService.
+* Reorganize the admin REST API and move circuit REST API into the
+  admin::rest_api module.
+* Improve shutdown of event reactor by removing the delay on shutdown caused by
+  the event::Reactor using the combination of a running flag and reacting to
+  that flag based on the, as well as signalling and joining shutdown in the
+  same function (delaying other shutdown activities).
+* Remove unwrap in libsplinter storage module. This error was propagated to the
+  CLI and made debugging difficult.
+* Add better documentation updates for circuit-read. Includes fixing the openapi
+  documentation for the circuit routes, as well as adding rust doc comments to
+  the route implementations.
+* Add ServiceArgValidator and implement the trait for Scabbard. The admin
+  services will now validate that a circuit proposal has valid service
+  arguments, using the new, experimental, trait ServiceArgValidator.
+* Add the CircuitFilter, for use as strongly-typed filter parameters to the
+  circuits function on CircuitStore.
+* Update the sawtooth, sawtooth-sdk, and transact dependencies to the latest
+  versions.
+* Remove sawtooth-sdk dependency from the scabbard client; it is no longer
+  needed with updates to transact.
+* Update the scabbard client's ServiceId struct to allow creating directly from
+  circuit and service IDs, and to check that circuit and service ID are
+  non-empty when parsing from a string.
+
+### splinterd:
+* Add a ClapPartialConfigBuilder object, used to construct a PartialConfig
+  object from Clap argument values, available behind the `config-command-line`
+  feature flag.
+* Add a DefaultPartialConfigBuilder object, used to construct a PartialConfig
+  object from default values, available behind the `config-default` feature
+  flag.
+* Add an EnvPartialConfigBuilder object, used to construct a PartialConfig
+  object from configuration values defined as environment variables, available
+  behind the `config-env-var` feature flag.
+* Separate the TomlConfig object from the PartialConfigBuilder implementation as
+  this object is now used to define the valid format for a configuration toml
+  file.
+* Renamed the previous PartialConfigBuilder implementation for the TomlConfig to
+  TomlPartialConfigBuilder.
+* Add the ConfigBuilder object, which takes in PartialConfigs and then
+  constructs a Config object from the values set in the PartialConfig objects.
+* Add the Config object; it is used to hold configuration variables compiled
+  from several PartialConfig builder objects as well as the source of each
+  respective value.
+* Simplify logging for the Config object to display the raw configuration
+  variables defined in the Config object.
+* Added more robust logging for file operations, logging the fully qualified
+  path of a file anytime a file is used.
+* Remove the deprecated generate-cert feature. Now you must use the
+  `splinter cert generate` command to create development certificates and keys
+  for using the TLS transport.
+* Clean up the main function in splinterd, specifically in how the Config
+  objects are used.
+* Handle OPTIONS and CORS Requests in splinterd. Respond to an HTTP OPTIONS
+  request by returning all of the allowed methods. Also add support for
+  handling CORS requests, guarded by a rust feature "rest-api-cors".  This
+  checks the preflight conditions of the request, and fails the request if the
+  preflight conditions are not met.
+
+
+### splinter CLI:
+* Update the output of the `circuit` and `proposal` subcommands to default to a
+  human readable format.
+* Add experimental `node alias` subcommand to save node information locally.
+  This information can be used to simplify creating circuits.
+* Add experimental `circuit default` commands to save local defaults for
+  service-types and management type. This information can be used to simplify
+  creating circuits.
+* Rename keygen `--admin` to `--system` to better reflect the functionality of
+  the flag, which is to generate keys for use by a splinter node.
+* Send the ADMIN_PROTOCOL_VERSION with the SplinterProtocolVersion header when
+  making admin client requests.
+* Set the log level for low level crates to Warn to reduce the noise when using
+  the cli with -vv
+* Rewrite the circuit create command so it does not accept a circuit definition
+  in a YAML file, but rather it creates the circuit definition based on CLI
+  arguments.
+* Add improved help text for `splinter cert generate`.
+
+## scabbard CLI
+* Add `GET /state` and `GET /state/{address}` endpoints for scabbard, behind the
+  experimental `scabbard-get-state` feature.
+* Add contract list/show subcommands to scabbard CLI. `scabbard list` will list
+  the name, versions and owners of deployed contracts. `scabbard show` will
+  print out the name version, inputs, outputs and who created the contract.
+* Send the SCABBARD_PROTOCOL_VERSION with the SplinterProtocolVersion header
+  when making scabbard client requests.
+* Fix "execute" feature name in cfg's.
+* Eliminate recursion in scabbard client's wait. Update the scabbard client's
+  `wait_for_batches` function to use a loop rather than recursion to avoid stack
+  overflows.
+* Use new transaction/batch building pattern enabled by sabre/sawtooth/transact
+  to simplify submitting transactions.
+* Load .scar files using transact's new .scar file loading functionality; this
+  changes the `contract upload` command to take a path and a contract
+  name/version as arguments rather than a file path for the .scar file.
+
+### health service:
+* Add rest-api feature to Cargo toml. This fixes a bug where it could not build
+  if built outside of the workspace.
+
+### Gameroom:
+* Fix games disappearing on refresh. Adds a check to ensure that games are not
+  refreshed if selectedGameroom state is empty.
+* Remove the vuex-module-decorators dependency, which was causing issues with
+  debugging and provides little benefit.
+* Implement a new component, Loading, which renders a spinner and a message
+  supplied by a prop. This standardizes the approach to loading indicators
+  throughout gameroom.
+* Update the vuex page loading store to store a message.
+* Trigger a loading indicator when pages are being lazy loaded or data has to be
+  fetched before the page can fully load
+* Update gameroom daemon to actix 2.0.
+* Remove unnecessary Pike namespace permissions from setting up the XO contract
+  in the gameroom daemon.
+* Use new transaction/batch building pattern enabled by sabre/sawtooth/transact
+  to simplify submitting transactions to scabbard.
+* Update the Sabre version for transactions submitted by the gameroom web app to
+  match the Sabre version used by scabbard (v0.5).
+
+### Gameroom cli:
+* Change gameroom cli version to match the rest of the repo
+
+### Packaging:
+* Add curl to the scabbard-cli docker image to enable fetching remote .scar
+  files.
+* Add scabbard to splinter-dev dockerfile
+
 ## Changes in Splinter 0.3.11
 
 ### Highlights:
