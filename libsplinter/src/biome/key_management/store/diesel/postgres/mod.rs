@@ -17,10 +17,9 @@
 embed_migrations!("./src/biome/key_management/store/diesel/postgres/migrations");
 
 use diesel::pg::PgConnection;
-use diesel::result::{DatabaseErrorKind, Error as QueryError};
 
 use super::super::{KeyStore, KeyStoreError};
-use super::operations::keys::insert_key;
+use super::operations::insert_key::KeyStoreInsertKeyOperation as _;
 use super::operations::list_keys::KeyStoreListKeysOperation as _;
 use super::operations::list_keys::KeyStoreListKeysWithUserIDOperation as _;
 use super::operations::update_key::KeyStoreUpdateKeyOperation as _;
@@ -63,36 +62,7 @@ impl PostgresKeyStore {
 
 impl KeyStore<Key> for PostgresKeyStore {
     fn add_key(&self, key: Key) -> Result<(), KeyStoreError> {
-        let key_model = key.into();
-        insert_key(&*self.connection_pool.get()?, &key_model).map_err(|err| {
-            if let QueryError::DatabaseError(db_err, _) = err {
-                match db_err {
-                    DatabaseErrorKind::UniqueViolation => {
-                        return KeyStoreError::DuplicateKeyError(format!(
-                            "Public key {} for user {} is already in database",
-                            key_model.public_key, key_model.user_id
-                        ));
-                    }
-                    DatabaseErrorKind::ForeignKeyViolation => {
-                        return KeyStoreError::UserDoesNotExistError(format!(
-                            "User with ID {} does not exist in database",
-                            key_model.user_id
-                        ));
-                    }
-                    _ => {
-                        return KeyStoreError::OperationError {
-                            context: "Failed to add key".to_string(),
-                            source: Box::new(err),
-                        }
-                    }
-                }
-            }
-            KeyStoreError::OperationError {
-                context: "Failed to add key".to_string(),
-                source: Box::new(err),
-            }
-        })?;
-        Ok(())
+        KeyStoreOperations::new(&*self.connection_pool.get()?).insert_key(key)
     }
 
     fn update_key(
