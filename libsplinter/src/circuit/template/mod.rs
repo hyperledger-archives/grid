@@ -17,3 +17,28 @@ mod rules;
 mod yaml_parser;
 
 pub use error::CircuitTemplateError;
+
+pub(self) use crate::admin::messages::{CreateCircuitBuilder, SplinterServiceBuilder};
+
+pub struct Builders {
+    create_circuit_builder: CreateCircuitBuilder,
+    service_builders: Vec<SplinterServiceBuilder>,
+}
+
+impl Builders {
+    pub fn set_create_circuit_builder(&mut self, builder: CreateCircuitBuilder) {
+        self.create_circuit_builder = builder;
+    }
+
+    pub fn set_service_builders(&mut self, builders: Vec<SplinterServiceBuilder>) {
+        self.service_builders = builders;
+    }
+
+    pub fn create_circuit_builder(&self) -> CreateCircuitBuilder {
+        self.create_circuit_builder.clone()
+    }
+
+    pub fn service_builders(&self) -> Vec<SplinterServiceBuilder> {
+        self.service_builders.clone()
+    }
+}
