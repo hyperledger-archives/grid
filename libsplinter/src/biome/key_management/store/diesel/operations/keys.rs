@@ -20,14 +20,3 @@ use diesel::{dsl::insert_into, pg::PgConnection, prelude::*, QueryResult};
 pub fn insert_key(conn: &PgConnection, key: &KeyModel) -> QueryResult<usize> {
     insert_into(keys::table).values(vec![key]).execute(conn)
 }
-
-pub fn update_key(
-    conn: &PgConnection,
-    user_id: &str,
-    public_key: &str,
-    display_name: &str,
-) -> QueryResult<usize> {
-    diesel::update(keys::table.find((public_key, user_id)))
-        .set((keys::display_name.eq(display_name),))
-        .execute(conn)
-}

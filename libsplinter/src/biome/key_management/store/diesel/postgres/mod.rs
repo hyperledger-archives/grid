@@ -20,9 +20,10 @@ use diesel::pg::PgConnection;
 use diesel::result::{DatabaseErrorKind, Error as QueryError};
 
 use super::super::{KeyStore, KeyStoreError};
-use super::operations::keys::{insert_key, update_key};
+use super::operations::keys::insert_key;
 use super::operations::list_keys::KeyStoreListKeysOperation as _;
 use super::operations::list_keys::KeyStoreListKeysWithUserIDOperation as _;
+use super::operations::update_key::KeyStoreUpdateKeyOperation as _;
 use super::operations::KeyStoreOperations;
 
 use crate::biome::key_management::Key;
@@ -100,23 +101,11 @@ impl KeyStore<Key> for PostgresKeyStore {
         user_id: &str,
         new_display_name: &str,
     ) -> Result<(), KeyStoreError> {
-        let updated_row = update_key(
-            &*self.connection_pool.get()?,
-            &user_id,
-            &public_key,
-            &new_display_name,
+        KeyStoreOperations::new(&*self.connection_pool.get()?).update_key(
+            public_key,
+            user_id,
+            new_display_name,
         )
-        .map_err(|err| KeyStoreError::OperationError {
-            context: "Failed to update key".to_string(),
-            source: Box::new(err),
-        })?;
-        if updated_row == 0 {
-            return Err(KeyStoreError::NotFoundError(format!(
-                "Key with public key {}, and user ID {} not found",
-                public_key, user_id
-            )));
-        }
-        Ok(())
     }
 
     fn remove_key(&self, _public_key: &str, _user_id: &str) -> Result<Key, KeyStoreError> {

@@ -14,6 +14,7 @@
 
 pub(super) mod keys;
 pub(super) mod list_keys;
+pub(super) mod update_key;
 
 pub(super) struct KeyStoreOperations<'a, C> {
     conn: &'a C,
