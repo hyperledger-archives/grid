@@ -13,3 +13,16 @@
 // limitations under the License.
 
 pub(super) mod keys;
+
+pub(super) struct KeyStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> KeyStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        KeyStoreOperations { conn }
+    }
+}
