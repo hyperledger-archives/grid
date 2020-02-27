@@ -12,12 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::yaml_parser::v1;
+use std::collections::HashMap;
+
+use super::{yaml_parser::v1, CircuitTemplateError};
+use super::{Builders, CreateCircuitBuilder};
 
 pub struct CircuitCreateTemplate {
     _version: String,
     _args: Vec<RuleArgument>,
     rules: Rules,
+}
+
+impl CircuitCreateTemplate {
+    pub fn apply_rules(
+        &self,
+        builders: &mut Builders,
+        arguments: &HashMap<String, String>,
+    ) -> Result<(), CircuitTemplateError> {
+        self.rules.apply_rules(builders, arguments)
+    }
 }
 
 impl From<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
@@ -55,6 +68,23 @@ struct Rules {
     set_management_type: Option<CircuitManagement>,
 }
 
+impl Rules {
+    fn apply_rules(
+        &self,
+        builders: &mut Builders,
+        _arguments: &HashMap<String, String>,
+    ) -> Result<(), CircuitTemplateError> {
+        let mut create_service_builder = builders.create_circuit_builder();
+
+        if let Some(circuit_management) = &self.set_management_type {
+            create_service_builder = circuit_management.apply_rule(create_service_builder)?;
+        }
+
+        builders.set_create_circuit_builder(create_service_builder);
+        Ok(())
+    }
+}
+
 impl From<v1::Rules> for Rules {
     fn from(rules: v1::Rules) -> Self {
         Rules {
@@ -67,6 +97,15 @@ impl From<v1::Rules> for Rules {
 
 struct CircuitManagement {
     management_type: String,
+}
+
+impl CircuitManagement {
+    fn apply_rule(
+        &self,
+        builder: CreateCircuitBuilder,
+    ) -> Result<CreateCircuitBuilder, CircuitTemplateError> {
+        Ok(builder.with_circuit_management_type(&self.management_type))
+    }
 }
 
 impl From<v1::CircuitManagement> for CircuitManagement {
