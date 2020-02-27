@@ -111,6 +111,8 @@ impl RestResourceProvider for BiomeRestResourceManager {
                     Arc::new(AccessTokenIssuer::new(self.token_secret_manager.clone())),
                 ));
                 resources.push(make_user_routes(
+                    self.rest_config.clone(),
+                    self.token_secret_manager.clone(),
                     credentials_store.clone(),
                     self.user_store.clone(),
                 ));
