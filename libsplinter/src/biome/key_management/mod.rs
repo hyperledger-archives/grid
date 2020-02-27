@@ -16,9 +16,6 @@
 
 pub mod database;
 
-#[cfg(feature = "rest-api")]
-pub(in crate::biome) mod rest_resources;
-
 pub(in crate::biome) mod store;
 
 use database::postgres::models::KeyModel;

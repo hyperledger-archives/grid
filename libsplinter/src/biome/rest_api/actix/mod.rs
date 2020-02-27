@@ -13,4 +13,6 @@
 // limitations under the License.
 
 #[cfg(feature = "biome-key-management")]
+pub(crate) mod authorize;
+#[cfg(feature = "biome-key-management")]
 pub(super) mod key_management;

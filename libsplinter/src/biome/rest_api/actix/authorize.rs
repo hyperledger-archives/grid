@@ -15,17 +15,12 @@
 use std::sync::Arc;
 
 use crate::actix_web::HttpRequest;
+use crate::biome::rest_api::BiomeRestConfig;
+use crate::biome::secrets::SecretManager;
+use crate::biome::sessions::{validate_token, TokenValidationError};
 use crate::rest_api::get_authorization_token;
 
-use super::super::rest_api::BiomeRestConfig;
-use super::super::secrets::SecretManager;
-use super::super::sessions::{validate_token, TokenValidationError};
-
-pub(crate) enum AuthorizationResult {
-    Authorized,
-    Unauthorized(String),
-    Failed,
-}
+use super::super::resources::authorize::AuthorizationResult;
 
 pub(crate) fn authorize_user(
     request: &HttpRequest,

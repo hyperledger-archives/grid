@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-key-management")]
-pub(in super::super) mod authorize;
-#[cfg(feature = "biome-key-management")]
-pub(in super::super) mod key_management;
+pub(crate) enum AuthorizationResult {
+    Authorized,
+    Unauthorized(String),
+    Failed,
+}

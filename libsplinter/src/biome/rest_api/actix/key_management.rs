@@ -22,14 +22,15 @@ use crate::rest_api::{
 };
 
 use crate::biome::key_management::{
-    rest_resources::{authorize_user, AuthorizationResult},
     store::{KeyStore, KeyStoreError},
     Key,
 };
 use crate::biome::rest_api::BiomeRestConfig;
 use crate::biome::secrets::SecretManager;
 
+use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::key_management::{NewKey, UpdatedKey};
+use super::authorize::authorize_user;
 
 /// Defines a REST endpoint for managing keys
 pub fn make_key_management_route(
