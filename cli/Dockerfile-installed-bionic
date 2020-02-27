@@ -14,6 +14,12 @@
 
 FROM splintercommunity/splinter-dev as BUILDER
 
+ENV SPLINTER_FORCE_PANDOC=true
+
+RUN apt-get update \
+ && apt-get install -y -q \
+    pandoc
+
 # Copy over source files
 COPY client /build/client
 COPY libsplinter /build/libsplinter
