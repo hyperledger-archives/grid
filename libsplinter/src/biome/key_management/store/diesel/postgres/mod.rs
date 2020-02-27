@@ -8,22 +8,40 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WI()HOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Defines methods and utilities to interact with key management tables in the database.
+
+embed_migrations!("./src/biome/key_management/store/diesel/postgres/migrations");
+
+use diesel::pg::PgConnection;
 use diesel::result::{DatabaseErrorKind, Error as QueryError};
 
-use super::super::database::postgres::helpers::{
-    insert_key, list_keys, list_keys_with_user_id, update_key,
-};
-use super::super::store::{KeyStore, KeyStoreError};
-use super::super::Key;
+use super::super::{KeyStore, KeyStoreError};
+use super::operations::keys::{insert_key, list_keys, list_keys_with_user_id, update_key};
+use crate::biome::key_management::Key;
+use crate::database::error::DatabaseError;
 use crate::database::ConnectionPool;
+
+/// Run database migrations to create tables defined in the key management module
+///
+/// # Arguments
+///
+/// * `conn` - Connection to database
+///
+pub fn run_migrations(conn: &PgConnection) -> Result<(), DatabaseError> {
+    embedded_migrations::run(conn).map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?;
+
+    info!("Successfully applied Biome key management migrations");
+
+    Ok(())
+}
 
 /// Manages creating, updating and fetching keys from a PostgreSQL database.
 pub struct PostgresKeyStore {
-    connection_pool: ConnectionPool,
+    pub connection_pool: ConnectionPool,
 }
 
 impl PostgresKeyStore {
@@ -33,8 +51,6 @@ impl PostgresKeyStore {
     ///
     ///  * `connection_pool`: connection pool to the PostgreSQL database
     ///
-    // Allow dead code if biome-key-management feature is not enabled
-    #[allow(dead_code)]
     pub fn new(connection_pool: ConnectionPool) -> Self {
         PostgresKeyStore { connection_pool }
     }
