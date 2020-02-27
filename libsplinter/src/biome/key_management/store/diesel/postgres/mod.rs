@@ -20,7 +20,11 @@ use diesel::pg::PgConnection;
 use diesel::result::{DatabaseErrorKind, Error as QueryError};
 
 use super::super::{KeyStore, KeyStoreError};
-use super::operations::keys::{insert_key, list_keys, list_keys_with_user_id, update_key};
+use super::operations::keys::{insert_key, update_key};
+use super::operations::list_keys::KeyStoreListKeysOperation as _;
+use super::operations::list_keys::KeyStoreListKeysWithUserIDOperation as _;
+use super::operations::KeyStoreOperations;
+
 use crate::biome::key_management::Key;
 use crate::database::error::DatabaseError;
 use crate::database::ConnectionPool;
@@ -124,20 +128,10 @@ impl KeyStore<Key> for PostgresKeyStore {
     }
 
     fn list_keys(&self, user_id: Option<&str>) -> Result<Vec<Key>, KeyStoreError> {
-        let query_result = match user_id {
-            Some(user_id) => list_keys_with_user_id(&*self.connection_pool.get()?, user_id)
-                .map_err(|err| KeyStoreError::OperationError {
-                    context: "Failed to retrieve keys".to_string(),
-                    source: Box::new(err),
-                })?,
-            None => list_keys(&*self.connection_pool.get()?).map_err(|err| {
-                KeyStoreError::OperationError {
-                    context: "Failed to retrieve keys".to_string(),
-                    source: Box::new(err),
-                }
-            })?,
-        };
-        let keys = query_result.into_iter().map(Key::from).collect();
-        Ok(keys)
+        match user_id {
+            Some(user_id) => KeyStoreOperations::new(&*self.connection_pool.get()?)
+                .list_keys_with_user_id(user_id),
+            None => KeyStoreOperations::new(&*self.connection_pool.get()?).list_keys(),
+        }
     }
 }

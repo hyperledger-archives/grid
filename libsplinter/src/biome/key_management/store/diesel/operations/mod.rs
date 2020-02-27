@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub(super) mod keys;
+pub(super) mod list_keys;
 
 pub(super) struct KeyStoreOperations<'a, C> {
     conn: &'a C,
