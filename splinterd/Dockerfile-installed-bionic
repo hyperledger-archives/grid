@@ -63,6 +63,8 @@ COPY --from=builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && apt-get install -y -q \
+    man \
     postgresql-client \
+ && mandb \
  && dpkg --unpack /tmp/splinter-*.deb \
  && apt-get -f -y install

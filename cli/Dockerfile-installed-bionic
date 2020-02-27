@@ -48,5 +48,8 @@ COPY --from=builder /build/target/debian/splinter-cli_*.deb /tmp
 COPY --from=builder /commit-hash /commit-hash
 
 RUN apt-get update \
+ && apt-get install -y -q \
+   man \
+ && mandb \
  && dpkg --unpack /tmp/splinter-cli_*.deb \
  && apt-get -f -y install
