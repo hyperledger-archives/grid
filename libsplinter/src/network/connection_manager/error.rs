@@ -23,6 +23,7 @@ pub enum ConnectionManagerError {
     SendTimeoutError(String),
     ConnectionCreationError(String),
     ConnectionRemovalError(String),
+    ConnectionReconnectError(String),
     StatePoisoned,
 }
 
@@ -36,6 +37,7 @@ impl error::Error for ConnectionManagerError {
             ConnectionManagerError::SendTimeoutError(_) => None,
             ConnectionManagerError::ConnectionCreationError(_) => None,
             ConnectionManagerError::ConnectionRemovalError(_) => None,
+            ConnectionManagerError::ConnectionReconnectError(_) => None,
             ConnectionManagerError::StatePoisoned => None,
         }
     }
@@ -51,6 +53,7 @@ impl fmt::Display for ConnectionManagerError {
             ConnectionManagerError::SendTimeoutError(ref s) => write!(f, "{}", s),
             ConnectionManagerError::ConnectionCreationError(ref s) => write!(f, "{}", s),
             ConnectionManagerError::ConnectionRemovalError(ref s) => write!(f, "{}", s),
+            ConnectionManagerError::ConnectionReconnectError(ref s) => write!(f, "{}", s),
             ConnectionManagerError::StatePoisoned => {
                 write!(f, "Connection state has been poisoned")
             }
