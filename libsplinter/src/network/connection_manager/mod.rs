@@ -17,11 +17,13 @@ mod messages;
 mod pacemaker;
 
 use std;
+use std::cmp::min;
 use std::collections::HashMap;
 #[cfg(feature = "connection-manager-notification-iter-try-next")]
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread;
+use std::time::Instant;
 
 pub use error::ConnectionManagerError;
 pub use messages::{
@@ -36,6 +38,8 @@ use crate::transport::Transport;
 
 const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const CHANNEL_CAPACITY: usize = 15;
+const INITIAL_RETRY_FREQUENCY: u64 = 10;
+const DEFAULT_MAXIMUM_RETRY_FREQUENCY: u64 = 300;
 
 pub struct ConnectionManager<T: 'static, U: 'static>
 where
@@ -54,9 +58,22 @@ where
     T: MatrixLifeCycle,
     U: MatrixSender,
 {
-    pub fn new(life_cycle: T, matrix_sender: U, transport: Box<dyn Transport + Send>) -> Self {
-        let connection_state = Some(ConnectionState::new(life_cycle, matrix_sender, transport));
-        let pacemaker = Pacemaker::new(DEFAULT_HEARTBEAT_INTERVAL);
+    pub fn new(
+        life_cycle: T,
+        matrix_sender: U,
+        transport: Box<dyn Transport + Send>,
+        heartbeat_interval: Option<u64>,
+        maximum_retry_frequency: Option<u64>,
+    ) -> Self {
+        let heartbeat = heartbeat_interval.unwrap_or(DEFAULT_HEARTBEAT_INTERVAL);
+        let retry_frequency = maximum_retry_frequency.unwrap_or(DEFAULT_MAXIMUM_RETRY_FREQUENCY);
+        let connection_state = Some(ConnectionState::new(
+            life_cycle,
+            matrix_sender,
+            transport,
+            retry_frequency,
+        ));
+        let pacemaker = Pacemaker::new(heartbeat);
 
         Self {
             pacemaker,
@@ -247,11 +264,14 @@ impl Iterator for NotificationIter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ConnectionMetadata {
     id: usize,
     endpoint: String,
     ref_count: u64,
+    reconnecting: bool,
+    retry_frequency: u64,
+    last_connection_attempt: Instant,
 }
 
 struct ConnectionState<T, U>
@@ -263,6 +283,7 @@ where
     life_cycle: T,
     matrix_sender: U,
     transport: Box<dyn Transport>,
+    maximum_retry_frequency: u64,
 }
 
 impl<T, U> ConnectionState<T, U>
@@ -270,12 +291,18 @@ where
     T: MatrixLifeCycle,
     U: MatrixSender,
 {
-    fn new(life_cycle: T, matrix_sender: U, transport: Box<dyn Transport + Send>) -> Self {
+    fn new(
+        life_cycle: T,
+        matrix_sender: U,
+        transport: Box<dyn Transport + Send>,
+        maximum_retry_frequency: u64,
+    ) -> Self {
         Self {
             life_cycle,
             matrix_sender,
             transport,
             connections: HashMap::new(),
+            maximum_retry_frequency,
         }
     }
 
@@ -297,6 +324,9 @@ where
                     id,
                     endpoint: endpoint.to_string(),
                     ref_count: 1,
+                    reconnecting: false,
+                    retry_frequency: INITIAL_RETRY_FREQUENCY,
+                    last_connection_attempt: Instant::now(),
                 },
             );
         };
@@ -325,9 +355,54 @@ where
         Ok(Some(meta))
     }
 
-    fn reconnect(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
-        self.remove_connection(endpoint)?;
-        self.add_connection(endpoint)
+    fn reconnect(
+        &mut self,
+        endpoint: &str,
+        subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+    ) -> Result<(), ConnectionManagerError> {
+        let mut meta = if let Some(meta) = self.connections.get_mut(endpoint) {
+            meta.clone()
+        } else {
+            return Err(ConnectionManagerError::ConnectionRemovalError(
+                "Cannot reconnect to endpoint without metadata".into(),
+            ));
+        };
+
+        if let Ok(connection) = self.transport.connect(endpoint) {
+            // remove old mesh id, this may happen before reconnection is attempted
+            if self.life_cycle.remove(meta.id).is_err() {
+                trace!(
+                    "Connection was already removed from life_cycle: {}",
+                    endpoint
+                );
+            }
+
+            // add new connection to mesh
+            let id = self.life_cycle.add(connection).map_err(|err| {
+                ConnectionManagerError::ConnectionReconnectError(format!("{:?}", err))
+            })?;
+
+            // replace mesh id and reset reconnecting fields
+            meta.id = id;
+            meta.reconnecting = false;
+            meta.retry_frequency = INITIAL_RETRY_FREQUENCY;
+            meta.last_connection_attempt = Instant::now();
+            self.connections.insert(endpoint.to_string(), meta);
+
+            // Notify subscribers of success
+            notify_subscribers(
+                subscribers,
+                ConnectionManagerNotification::Connected {
+                    endpoint: endpoint.to_string(),
+                },
+            );
+        } else {
+            meta.reconnecting = true;
+            meta.retry_frequency = min(meta.retry_frequency * 2, self.maximum_retry_frequency);
+            meta.last_connection_attempt = Instant::now();
+            self.connections.insert(endpoint.to_string(), meta);
+        }
+        Ok(())
     }
 
     fn connection_metadata(&self) -> HashMap<String, ConnectionMetadata> {
@@ -405,48 +480,39 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     };
 
     for (endpoint, metadata) in state.connection_metadata() {
-        info!("Sending heartbeat to {}", endpoint);
-        if let Err(err) = state
+        if state
             .matrix_sender()
             .send(metadata.id, heartbeat_message.clone())
+            .is_err()
         {
-            error!(
-                "failed to send heartbeat: {:?} attempting reconnection",
-                err
-            );
-
-            notify_subscribers(
-                subscribers,
-                ConnectionManagerNotification::HeartbeatSendFail {
-                    endpoint: endpoint.clone(),
-                    message: format!("{:?}", err),
-                },
-            );
-
-            if let Err(err) = state.reconnect(&endpoint) {
-                error!("Connection reattempt failed: {:?}", err);
-                notify_subscribers(
-                    subscribers,
-                    ConnectionManagerNotification::ReconnectAttemptFailed {
-                        endpoint: endpoint.clone(),
-                        message: format!("{:?}", err),
-                    },
-                );
+            // if connection is already attempting reconnection, call reconnect
+            if metadata.reconnecting {
+                if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
+                    if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                        error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
+                    }
+                }
             } else {
+                info!("Sending heartbeat to {}", endpoint);
+                if let Err(err) = state
+                    .matrix_sender()
+                    .send(metadata.id, heartbeat_message.clone())
+                {
+                    error!(
+                        "failed to send heartbeat: {:?} attempting reconnection",
+                        err
+                    )
+                }
                 notify_subscribers(
                     subscribers,
-                    ConnectionManagerNotification::ReconnectAttemptSuccess {
+                    ConnectionManagerNotification::Disconnected {
                         endpoint: endpoint.clone(),
                     },
                 );
+                if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                    error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
+                }
             }
-        } else {
-            notify_subscribers(
-                subscribers,
-                ConnectionManagerNotification::HeartbeatSent {
-                    endpoint: endpoint.clone(),
-                },
-            );
         }
     }
 }
@@ -477,7 +543,13 @@ pub mod tests {
         transport.listen("inproc://test").unwrap();
         let mesh = Mesh::new(512, 128);
 
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
 
         cm.start().unwrap();
         cm.shutdown_and_wait();
@@ -493,7 +565,13 @@ pub mod tests {
         });
 
         let mesh = Mesh::new(512, 128);
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -520,7 +598,13 @@ pub mod tests {
         });
 
         let mesh = Mesh::new(512, 128);
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -545,12 +629,11 @@ pub mod tests {
         cm.shutdown_and_wait();
     }
 
-    /// test_heartbeat_notifications
+    /// test_heartbeat_inproc
     ///
-    /// Test that heartbeats are correctly sent
-    /// to subscribers
+    /// Test that heartbeats are correctly sent to connections
     #[test]
-    fn test_heartbeat_notifications() {
+    fn test_heartbeat_inproc() {
         let mut transport = Box::new(InprocTransport::default());
         let mut listener = transport.listen("inproc://test").unwrap();
         let mesh = Mesh::new(512, 128);
@@ -561,7 +644,13 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            Some(1),
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection("inproc://test").unwrap();
@@ -574,17 +663,6 @@ pub mod tests {
             }
         );
 
-        let mut subscriber = connector.subscribe().unwrap();
-
-        let notification = subscriber.next().unwrap();
-
-        assert!(
-            notification
-                == ConnectionManagerNotification::HeartbeatSent {
-                    endpoint: "inproc://test".to_string(),
-                }
-        );
-
         // Verify mesh received heartbeat
 
         let envelope = mesh.recv().unwrap();
@@ -595,8 +673,11 @@ pub mod tests {
         );
     }
 
+    // test_heartbeat_raw_tcp
+    ///
+    /// Test that heartbeats are correctly sent to connections
     #[test]
-    fn test_heartbeat_notifications_raw_tcp() {
+    fn test_heartbeat_raw_tcp() {
         let mut transport = Box::new(RawTransport::default());
         let mut listener = transport.listen("tcp://localhost:0").unwrap();
         let endpoint = listener.endpoint();
@@ -609,7 +690,13 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let response = connector.request_connection(&endpoint).unwrap();
@@ -621,12 +708,6 @@ pub mod tests {
                 error_message: None
             }
         );
-
-        let mut subscriber = connector.subscribe().unwrap();
-
-        let notification = subscriber.next().unwrap();
-
-        assert!(notification == ConnectionManagerNotification::HeartbeatSent { endpoint });
 
         // Verify mesh received heartbeat
 
@@ -651,7 +732,13 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let add_response = connector.request_connection(&endpoint).unwrap();
@@ -688,7 +775,13 @@ pub mod tests {
             mesh_clone.add(conn).unwrap();
         });
 
-        let mut cm = ConnectionManager::new(mesh.get_life_cycle(), mesh.get_sender(), transport);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            transport,
+            None,
+            None,
+        );
         let connector = cm.start().unwrap();
 
         let remove_response = connector.remove_connection(&endpoint).unwrap();
@@ -709,7 +802,7 @@ pub mod tests {
     /// Procedure:
     ///
     /// The test creates a sync channel and a notifier, then it
-    /// creates a thread that send HeartbeatSent notifications to
+    /// creates a thread that send AttemptingReconnect notifications to
     /// the notifier.
     ///
     /// Asserts:
@@ -725,7 +818,7 @@ pub mod tests {
 
         let join_handle = thread::spawn(move || {
             for _ in 0..5 {
-                send.send(ConnectionManagerNotification::HeartbeatSent {
+                send.send(ConnectionManagerNotification::Connected {
                     endpoint: "tcp://localhost:3030".to_string(),
                 })
                 .unwrap();
@@ -736,7 +829,7 @@ pub mod tests {
         for n in nh {
             assert_eq!(
                 n,
-                ConnectionManagerNotification::HeartbeatSent {
+                ConnectionManagerNotification::Connected {
                     endpoint: "tcp://localhost:3030".to_string()
                 }
             );
@@ -746,5 +839,91 @@ pub mod tests {
         assert_eq!(notifications_sent, 5);
 
         join_handle.join().unwrap();
+    }
+
+    /// test_reconnect_raw_tcp
+    ///
+    /// Test that if a connection disconnects, the connection manager will detect the connection
+    /// has disconnected by trying to send a heartbeat. Then connection manger will try to
+    /// reconnect to the endpoint.
+    #[test]
+    fn test_reconnect_raw_tcp() {
+        let mut transport = Box::new(RawTransport::default());
+        let mut listener = transport
+            .listen("tcp://localhost:0")
+            .expect("Cannot listen for connections");
+        let endpoint = listener.endpoint();
+        let mesh1 = Mesh::new(512, 128);
+        let mesh2 = Mesh::new(512, 128);
+
+        thread::spawn(move || {
+            // accept incoming connection and add it to mesh2
+            let conn = listener.accept().expect("Cannot accept connection");
+            let id = mesh2.add(conn).expect("Cannot add connection to mesh");
+
+            // Verify mesh received heartbeat
+            let envelope = mesh2.recv().expect("Cannot receive message");
+            let heartbeat: NetworkMessage = protobuf::parse_from_bytes(&envelope.payload())
+                .expect("Cannot parse NetworkMessage");
+            assert_eq!(
+                heartbeat.get_message_type(),
+                NetworkMessageType::NETWORK_HEARTBEAT
+            );
+
+            // remove connection to cause reconnection attempt
+            let mut connection = mesh2
+                .remove(id)
+                .expect("Cannot remove connection from mesh");
+            connection
+                .disconnect()
+                .expect("Connection failed to disconnect");
+
+            // wait for reconnection attempt
+            listener.accept().expect("Unable to accept connection");
+        });
+
+        let mut cm = ConnectionManager::new(
+            mesh1.get_life_cycle(),
+            mesh1.get_sender(),
+            transport,
+            Some(1),
+            None,
+        );
+        let connector = cm.start().expect("Unable to start ConnectionManager");
+
+        let response = connector
+            .request_connection(&endpoint)
+            .expect("Unable to request connection");
+
+        assert_eq!(
+            response,
+            CmResponse::AddConnection {
+                status: CmResponseStatus::OK,
+                error_message: None
+            }
+        );
+
+        let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+        // receive reconnecting attempt
+        let reconnecting_notification = subscriber
+            .next()
+            .expect("Cannot get message from subscriber");
+        assert!(
+            reconnecting_notification
+                == ConnectionManagerNotification::Disconnected {
+                    endpoint: endpoint.clone(),
+                }
+        );
+
+        // receive successful reconnect attempt
+        let reconnection_notification = subscriber
+            .next()
+            .expect("Cannot get message from subscriber");
+        assert!(
+            reconnection_notification
+                == ConnectionManagerNotification::Connected {
+                    endpoint: endpoint.clone(),
+                }
+        );
     }
 }
