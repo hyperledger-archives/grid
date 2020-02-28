@@ -358,7 +358,8 @@ circuits.
 5. Upload the smart contract.
 
    ```
-   root@scabbard-cli-alpha:/# scabbard contract upload ./xo_0.4.2.scar \
+   root@scabbard-cli-alpha:/# scabbard contract upload xo:0.4.2 \
+   --path . \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
    --service-id $CIRCUIT_ID::grid-scabbard-a
