@@ -39,18 +39,18 @@ pub trait CircuitStore: Send + Sync + Clone {
     /// Return an iterator over the circuits in this store.
     ///
     /// A circuit filter may optionally provided, to reduces the results.
-    fn circuits(&self, filter: Option<CircuitFilter>) -> Result<Circuits, CircuitStoreError>;
+    fn circuits(&self, filter: Option<CircuitFilter>) -> Result<CircuitIter, CircuitStoreError>;
 
     fn circuit(&self, circuit_name: &str) -> Result<Option<Circuit>, CircuitStoreError>;
 }
 
 /// An iterator over circuits, with a well-known count of values.
-pub struct Circuits {
+pub struct CircuitIter {
     inner: Box<dyn Iterator<Item = Circuit> + Send>,
     total: u64,
 }
 
-impl Circuits {
+impl CircuitIter {
     /// Construct the new iterator with the given total and an inner iterator.
     pub(crate) fn new(total: u64, inner: Box<dyn Iterator<Item = Circuit> + Send>) -> Self {
         Self { inner, total }
@@ -62,7 +62,7 @@ impl Circuits {
     }
 }
 
-impl Iterator for Circuits {
+impl Iterator for CircuitIter {
     type Item = Circuit;
 
     fn next(&mut self) -> Option<Self::Item> {

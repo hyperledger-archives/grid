@@ -29,7 +29,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::circuit::directory::CircuitDirectory;
 use crate::circuit::service::{Service, ServiceId, SplinterNode};
-use crate::circuit::store::{CircuitFilter, CircuitStore, CircuitStoreError, Circuits};
+use crate::circuit::store::{CircuitFilter, CircuitIter, CircuitStore, CircuitStoreError};
 use crate::storage::get_storage;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -571,7 +571,7 @@ impl SplinterState {
 }
 
 impl CircuitStore for SplinterState {
-    fn circuits(&self, filter: Option<CircuitFilter>) -> Result<Circuits, CircuitStoreError> {
+    fn circuits(&self, filter: Option<CircuitFilter>) -> Result<CircuitIter, CircuitStoreError> {
         let circuits = self
             .circuits()
             .map_err(|err| CircuitStoreError::new(err.context()))?;
@@ -589,11 +589,11 @@ impl CircuitStore for SplinterState {
                 }
             }));
 
-            Ok(Circuits::new(total as u64, iter))
+            Ok(CircuitIter::new(total as u64, iter))
         } else {
             let total = circuits.len();
             let iter = Box::new(circuits.into_iter().map(|(_, circuit)| circuit));
-            Ok(Circuits::new(total as u64, iter))
+            Ok(CircuitIter::new(total as u64, iter))
         }
     }
 
