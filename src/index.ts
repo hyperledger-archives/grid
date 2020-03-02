@@ -21,8 +21,17 @@ interface User {
   displayName?: string;
 }
 
+interface KeyPair {
+  publicKey: string;
+  privateKey: string;
+}
+
 interface SetUser {
   (user: User): void;
+}
+
+interface SetKeys {
+  (keys: KeyPair): void;
 }
 
 interface SharedConfig {
@@ -37,6 +46,10 @@ interface GetSharedConfig {
 
 interface GetUser {
   (): User;
+}
+
+interface GetKeys {
+  (): KeyPair
 }
 
 interface RegisterApp {
@@ -54,6 +67,8 @@ interface Canopy {
   registerConfigSapling: RegisterConfigSapling;
   getUser: GetUser;
   setUser: SetUser;
+  setKeys: SetKeys;
+  getKeys: GetKeys;
   getSharedConfig: GetSharedConfig;
 }
 
@@ -77,5 +92,7 @@ export const {
   registerConfigSapling,
   getUser,
   setUser,
+  setKeys,
+  getKeys,
   getSharedConfig
 }: Canopy = canopy;
