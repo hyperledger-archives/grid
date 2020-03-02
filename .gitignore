@@ -27,6 +27,7 @@
 
 /cli/target
 /cli/Cargo.lock
+/cli/packaging/man/*.1
 
 /examples/private_xo/target
 /examples/private_xo/Cargo.lock
