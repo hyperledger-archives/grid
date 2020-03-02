@@ -16,7 +16,7 @@ use crate::admin::messages::CircuitProposal;
 use crate::rest_api::paging::Paging;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct ListProposalsResponse {
+pub(crate) struct ListProposalsResponse {
     pub data: Vec<CircuitProposal>,
     pub paging: Paging,
 }
