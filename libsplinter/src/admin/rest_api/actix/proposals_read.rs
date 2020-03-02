@@ -19,7 +19,7 @@ use crate::admin::messages::CircuitProposal;
 use crate::admin::service::AdminCommands;
 use crate::protocol;
 use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET};
-use crate::rest_api::{Method, ProtocolVersionRangeGuard, Resource};
+use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 use super::super::error::ProposalListError;
 use super::super::resources::proposals_read::ListProposalsResponse;
@@ -47,9 +47,7 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
         } else {
             return Box::new(
                 HttpResponse::BadRequest()
-                    .json(json!({
-                        "message": "Invalid query"
-                    }))
+                    .json(ErrorResponse::bad_request("Invalid query"))
                     .into_future(),
             );
         };
@@ -60,10 +58,10 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid offset value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -77,10 +75,10 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
             Err(err) => {
                 return Box::new(
                     HttpResponse::BadRequest()
-                        .json(format!(
+                        .json(ErrorResponse::bad_request(&format!(
                             "Invalid limit value passed: {}. Error: {}",
                             value, err
-                        ))
+                        )))
                         .into_future(),
                 )
             }
@@ -88,11 +86,11 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
         None => DEFAULT_LIMIT,
     };
 
-    let mut link = format!("{}?", req.uri().path());
+    let mut link = req.uri().path().to_string();
 
     let filters = match query.get("filter") {
         Some(value) => {
-            link.push_str(&format!("filter={}&", value));
+            link.push_str(&format!("?filter={}&", value));
             Some(value.to_string())
         }
         None => None,

@@ -19,7 +19,7 @@ use crate::admin::messages::CircuitProposal;
 use crate::admin::rest_api::error::ProposalFetchError;
 use crate::admin::service::AdminCommands;
 use crate::protocol;
-use crate::rest_api::{Method, ProtocolVersionRangeGuard, Resource};
+use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 pub fn make_fetch_proposal_resource<A: AdminCommands + Clone + 'static>(
     admin_commands: A,
@@ -66,11 +66,17 @@ fn fetch_proposal<A: AdminCommands + Clone + 'static>(
                 BlockingError::Error(err) => match err {
                     ProposalFetchError::InternalError(_) => {
                         error!("{}", err);
-                        Ok(HttpResponse::InternalServerError().into())
+                        Ok(HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error()))
                     }
-                    ProposalFetchError::NotFound(err) => Ok(HttpResponse::NotFound().json(err)),
+                    ProposalFetchError::NotFound(err) => {
+                        Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)))
+                    }
                 },
-                _ => Ok(HttpResponse::InternalServerError().into()),
+                _ => {
+                    error!("{}", err);
+                    Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error()))
+                }
             },
         }),
     )
