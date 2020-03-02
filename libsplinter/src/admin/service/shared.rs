@@ -489,7 +489,7 @@ impl AdminServiceShared {
                     .get_proposal(proposal_vote.get_circuit_id())
                     .map_err(|err| {
                         AdminSharedError::ValidationFailed(format!(
-                            "error occured when trying to get proposal {}",
+                            "error occurred when trying to get proposal {}",
                             err
                         ))
                     })?
@@ -585,7 +585,7 @@ impl AdminServiceShared {
             .get_proposal(circuit_id)
             .map_err(|err| {
                 ServiceError::UnableToHandleMessage(Box::new(AdminSharedError::ValidationFailed(
-                    format!("error occured when trying to get proposal {}", err),
+                    format!("error occurred when trying to get proposal {}", err),
                 )))
             })?
             .ok_or_else(|| {
