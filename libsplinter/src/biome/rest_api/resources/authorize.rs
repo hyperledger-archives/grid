@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Defines results from user authorization.
+
 pub(crate) enum AuthorizationResult {
     Authorized,
     Unauthorized(String),

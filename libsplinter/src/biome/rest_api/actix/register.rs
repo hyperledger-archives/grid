@@ -30,6 +30,7 @@ use crate::biome::user::store::{diesel::SplinterUserStore, SplinterUser, UserSto
 use super::super::resources::credentials::UsernamePassword;
 
 /// Defines a REST endpoint to add a user and credentials to the database
+///
 /// The payload should be in the JSON format:
 ///   {
 ///       "username": <username of new user>

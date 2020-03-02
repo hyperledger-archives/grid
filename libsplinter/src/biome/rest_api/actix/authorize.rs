@@ -22,6 +22,7 @@ use crate::rest_api::get_authorization_token;
 
 use super::super::resources::authorize::AuthorizationResult;
 
+/// Verifies the user has the correct permissions
 pub(crate) fn authorize_user(
     request: &HttpRequest,
     user_id: &str,

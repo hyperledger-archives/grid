@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Defines credentials used to register and authenticate users.
+
 #[derive(Deserialize)]
 pub(crate) struct UsernamePassword {
     pub username: String,

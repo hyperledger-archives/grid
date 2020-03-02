@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Defines structures used in key management.
+
 #[derive(Deserialize)]
 pub(crate) struct NewKey {
     pub public_key: String,

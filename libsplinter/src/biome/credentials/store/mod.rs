@@ -60,7 +60,7 @@ pub struct UserCredentialsBuilder {
 }
 
 impl UserCredentialsBuilder {
-    /// Sets the user_id for the credentials belong to
+    /// Sets the user_id for the user the credentials belong to
     ///
     /// # Arguments
     ///
@@ -154,7 +154,7 @@ pub trait CredentialsStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `user_id` - The unique identifier of the user credential belongs to
+    ///  * `user_id` - The unique identifier of the user the credential belongs to
     ///  * `updated_username` - The updated username for the user
     ///  * `updated_password` - The updated password for the user
     ///
@@ -169,7 +169,7 @@ pub trait CredentialsStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `user_id` - The unique identifier of the user credential belongs to
+    ///  * `user_id` - The unique identifier of the user the credential belongs to
     ///
     fn remove_credentials(&self, user_id: &str) -> Result<(), CredentialsStoreError>;
 
@@ -177,7 +177,7 @@ pub trait CredentialsStore<T> {
     ///
     /// # Arguments
     ///
-    ///  * `user_id` - The unique identifier of the user credential belongs to
+    ///  * `user_id` - The unique identifier of the user the credential belongs to
     ///
     fn fetch_credential_by_user_id(&self, user_id: &str) -> Result<T, CredentialsStoreError>;
 

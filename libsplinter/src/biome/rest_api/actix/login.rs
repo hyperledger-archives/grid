@@ -28,6 +28,12 @@ use crate::biome::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
 use super::super::resources::credentials::UsernamePassword;
 
 /// Defines a REST endpoint for login
+///
+/// The payload should be in the JSON format:
+///   {
+///       "username": <existing username of the user>
+///       "hashed_password": <hash of the user's existing password>
+///   }
 pub fn make_login_route(
     credentials_store: Arc<SplinterCredentialsStore>,
     rest_config: Arc<BiomeRestConfig>,

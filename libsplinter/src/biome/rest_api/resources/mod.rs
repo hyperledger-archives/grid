@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides structures for the REST resources.
+
 #[cfg(feature = "biome-key-management")]
 pub(in super::super) mod authorize;
 #[cfg(feature = "biome-credentials")]

@@ -53,7 +53,7 @@ pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Reso
         })
 }
 
-/// Defines REST endpoints to modify, delete, or fetch a specific user
+/// Defines the `/biome/users/{id}` REST resource for managing users
 pub fn make_user_routes(
     rest_config: Arc<BiomeRestConfig>,
     secret_manager: Arc<dyn SecretManager>,
@@ -127,6 +127,7 @@ fn add_fetch_user_method(
 }
 
 /// Defines a REST endpoint to edit a user's credentials in the database
+///
 /// The payload should be in the JSON format:
 ///   {
 ///       "username": <existing username of the user>
