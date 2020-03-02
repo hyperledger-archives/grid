@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-saplings/*
-build/*
-sapling-dev-server/*
+FROM httpd:2.4
+
+COPY . /usr/local/apache2/htdocs/
+
+RUN echo "\
+  \n\
+  Header set Access-Control-Allow-Origin "*"\n\
+  \n\
+  " >>/usr/local/apache2/conf/httpd.conf
+
+EXPOSE 80/tcp

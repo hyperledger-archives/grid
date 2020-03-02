@@ -1,0 +1,12 @@
+[
+  {
+    "displayName": "Product",
+    "namespace": "product",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/product.js"
+    ],
+    "styleFiles": [],
+    "workerFiles": [],
+    "icon": "https://via.placeholder.com/48/333333/FFFFFF?text=P"
+  }
+]
