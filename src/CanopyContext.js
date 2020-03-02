@@ -47,6 +47,11 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
     sessionUser ? JSON.parse(sessionUser) : null
   );
 
+  const sessionKeys = window.sessionStorage.getItem('CANOPY_KEYS');
+  const [keys, setKeys] = useState(
+    sessionKeys ? JSON.parse(sessionKeys) : null
+  );
+
   window.$CANOPY.getSharedConfig = () => {
     return {
       canopyConfig: {
@@ -60,7 +65,14 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
     setUser(canopyUser);
   };
 
+  window.$CANOPY.setKeys = signingKeys => {
+    window.sessionStorage.setItem('CANOPY_KEYS', JSON.stringify(signingKeys));
+    setKeys(signingKeys);
+  };
+
   window.$CANOPY.getUser = () => user;
+
+  window.$CANOPY.getKeys = () => keys;
 
   useEffect(() => {
     window.$CANOPY = window.$CANOPY || {};
@@ -92,7 +104,7 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
   }, [saplingURL]);
 
   return (
-    <CanopyContext.Provider value={{ configSaplings, userSaplings, user }}>
+    <CanopyContext.Provider value={{ configSaplings, userSaplings, user, keys }}>
       {children}
     </CanopyContext.Provider>
   );
@@ -117,4 +129,9 @@ export function useConfigSaplings() {
 export function useUser() {
   const context = React.useContext(CanopyContext);
   return context.user;
+}
+
+export function useKeys() {
+  const context = React.useContext(CanopyContext);
+  return context.keys;
 }
