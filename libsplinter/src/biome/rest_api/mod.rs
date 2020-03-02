@@ -41,29 +41,36 @@
 //!     .run();
 //! ```
 
+#[cfg(feature = "rest-api-actix")]
+mod actix;
 mod config;
 mod error;
+mod resources;
 
 use std::sync::Arc;
 
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
+#[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
+use self::actix::key_management::make_key_management_route;
+
 #[cfg(feature = "biome-key-management")]
-use super::key_management::{
-    rest_resources::make_key_management_route, store::postgres::PostgresKeyStore,
-};
+use super::key_management::store::postgres::PostgresKeyStore;
 use super::secrets::{AutoSecretManager, SecretManager};
 use super::user::store::diesel::SplinterUserStore;
 
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;
 
-#[cfg(feature = "biome-credentials")]
-use super::credentials::{
-    rest_resources::{make_list_route, make_login_route, make_register_route, make_user_routes},
-    store::diesel::SplinterCredentialsStore,
+#[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
+use self::actix::{
+    login::make_login_route,
+    register::make_register_route,
+    user::{make_list_route, make_user_routes},
 };
+#[cfg(feature = "biome-credentials")]
+use super::credentials::store::diesel::SplinterCredentialsStore;
 
 #[allow(unused_imports)]
 use super::sessions::AccessTokenIssuer;
@@ -116,7 +123,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
                 );
             }
         };
-        #[cfg(feature = "biome-key-management")]
+        #[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
         resources.push(make_key_management_route(
             self.rest_config.clone(),
             self.key_store.clone(),

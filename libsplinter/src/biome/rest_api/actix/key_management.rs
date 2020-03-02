@@ -14,35 +14,23 @@
 
 use std::sync::Arc;
 
-use crate::actix_web::{HttpRequest, HttpResponse};
+use crate::actix_web::HttpResponse;
 use crate::futures::{Future, IntoFuture};
 use crate::protocol;
 use crate::rest_api::{
-    get_authorization_token, into_bytes, ErrorResponse, HandlerFunction, Method,
-    ProtocolVersionRangeGuard, Resource,
+    into_bytes, ErrorResponse, HandlerFunction, Method, ProtocolVersionRangeGuard, Resource,
 };
 
-use super::super::rest_api::BiomeRestConfig;
-use super::super::secrets::SecretManager;
-use super::super::sessions::{validate_token, TokenValidationError};
-
-use super::{
+use crate::biome::key_management::{
     store::{KeyStore, KeyStoreError},
     Key,
 };
+use crate::biome::rest_api::BiomeRestConfig;
+use crate::biome::secrets::SecretManager;
 
-#[derive(Deserialize)]
-struct NewKey {
-    public_key: String,
-    encrypted_private_key: String,
-    display_name: String,
-}
-
-#[derive(Deserialize)]
-struct UpdatedKey {
-    public_key: String,
-    new_display_name: String,
-}
+use super::super::resources::authorize::AuthorizationResult;
+use super::super::resources::key_management::{NewKey, UpdatedKey};
+use super::authorize::authorize_user;
 
 /// Defines a REST endpoint for managing keys
 pub fn make_key_management_route(
@@ -285,48 +273,4 @@ fn handle_patch(
             }
         }))
     })
-}
-
-enum AuthorizationResult {
-    Authorized,
-    Unauthorized(String),
-    Failed,
-}
-
-fn authorize_user(
-    request: &HttpRequest,
-    user_id: &str,
-    secret_manager: &Arc<dyn SecretManager>,
-    rest_config: &BiomeRestConfig,
-) -> AuthorizationResult {
-    let auth_token = match get_authorization_token(&request) {
-        Ok(token) => token,
-        Err(err) => {
-            debug!("Failed to get token: {}", err);
-            return AuthorizationResult::Unauthorized("User is not authorized".to_string());
-        }
-    };
-
-    let secret = match secret_manager.secret() {
-        Ok(secret) => secret,
-        Err(err) => {
-            debug!("Failed to fetch secret {}", err);
-            return AuthorizationResult::Failed;
-        }
-    };
-
-    if let Err(err) = validate_token(&auth_token, &secret, &rest_config.issuer(), |claim| {
-        if user_id != claim.user_id() {
-            return Err(TokenValidationError::InvalidClaim(format!(
-                "User is not update keys for user {}",
-                user_id
-            )));
-        }
-        Ok(())
-    }) {
-        debug!("Invalid token: {}", err);
-        return AuthorizationResult::Unauthorized("User is not authorized".to_string());
-    };
-
-    AuthorizationResult::Authorized
 }

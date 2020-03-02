@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Defines a basic API to register and authenticate a SplinterUser using a username and a password.
-//! Not recommended for use in production.
-
-pub mod store;
+#[cfg(feature = "biome-key-management")]
+pub(crate) mod authorize;
+#[cfg(feature = "biome-key-management")]
+pub(super) mod key_management;
+#[cfg(feature = "biome-credentials")]
+pub(super) mod login;
+#[cfg(feature = "biome-credentials")]
+pub(super) mod register;
+#[cfg(feature = "biome-credentials")]
+pub(super) mod user;

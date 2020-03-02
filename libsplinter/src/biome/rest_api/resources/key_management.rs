@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Defines a basic API to register and authenticate a SplinterUser using a username and a password.
-//! Not recommended for use in production.
+#[derive(Deserialize)]
+pub(crate) struct NewKey {
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub display_name: String,
+}
 
-pub mod store;
+#[derive(Deserialize)]
+pub(crate) struct UpdatedKey {
+    pub public_key: String,
+    pub new_display_name: String,
+}
