@@ -50,7 +50,7 @@ interface GetUser {
 }
 
 interface GetKeys {
-  (): KeyPair
+  (): KeyPair;
 }
 
 interface RegisterApp {
