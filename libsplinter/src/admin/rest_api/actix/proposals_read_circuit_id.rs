@@ -17,26 +17,24 @@ use futures::Future;
 
 use crate::admin::messages::CircuitProposal;
 use crate::admin::rest_api::error::ProposalFetchError;
-use crate::admin::service::AdminCommands;
+use crate::admin::service::proposal_store::ProposalStore;
 use crate::protocol;
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
-pub fn make_fetch_proposal_resource<A: AdminCommands + Clone + 'static>(
-    admin_commands: A,
-) -> Resource {
+pub fn make_fetch_proposal_resource<PS: ProposalStore + 'static>(proposal_store: PS) -> Resource {
     Resource::build("admin/proposals/{circuit_id}")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_FETCH_PROPOSALS_PROTOCOL_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
         ))
         .add_method(Method::Get, move |r, _| {
-            fetch_proposal(r, web::Data::new(admin_commands.clone()))
+            fetch_proposal(r, web::Data::new(proposal_store.clone()))
         })
 }
 
-fn fetch_proposal<A: AdminCommands + Clone + 'static>(
+fn fetch_proposal<PS: ProposalStore + 'static>(
     request: HttpRequest,
-    admin_commands: web::Data<A>,
+    proposal_store: web::Data<PS>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let circuit_id = request
         .match_info()
@@ -45,8 +43,8 @@ fn fetch_proposal<A: AdminCommands + Clone + 'static>(
         .to_string();
     Box::new(
         web::block(move || {
-            let proposal = admin_commands
-                .fetch_proposal(circuit_id.clone())
+            let proposal = proposal_store
+                .proposal(&circuit_id)
                 .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?;
             if let Some(proposal) = proposal {
                 let proposal = CircuitProposal::from_proto(proposal)

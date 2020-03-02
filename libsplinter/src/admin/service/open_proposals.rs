@@ -72,6 +72,7 @@ impl OpenProposals {
         self.proposal_registry.get_proposal(circuit_id)
     }
 
+    #[cfg(feature = "proposal-read")]
     pub fn get_proposals(&self) -> Proposals {
         self.proposal_registry.get_proposals()
     }
@@ -135,6 +136,7 @@ impl ProposalRegistry {
         }
     }
 
+    #[cfg(feature = "proposal-read")]
     pub fn get_proposals(&self) -> Proposals {
         Proposals {
             inner: Box::new(self.proposals.clone().into_iter()),
@@ -154,6 +156,7 @@ pub struct Proposals {
 }
 
 impl Proposals {
+    #[cfg(feature = "proposal-read")]
     pub fn total(&self) -> usize {
         self.size
     }

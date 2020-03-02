@@ -17,6 +17,8 @@ pub(crate) mod error;
 mod mailbox;
 pub(crate) mod messages;
 mod open_proposals;
+#[cfg(feature = "proposal-read")]
+pub(super) mod proposal_store;
 mod shared;
 
 use std::any::Any;
@@ -37,9 +39,7 @@ use crate::network::{
     peer::PeerConnector,
 };
 use crate::orchestrator::ServiceOrchestrator;
-use crate::protos::admin::{
-    AdminMessage, AdminMessage_Type, CircuitManagementPayload, CircuitProposal,
-};
+use crate::protos::admin::{AdminMessage, AdminMessage_Type, CircuitManagementPayload};
 #[cfg(feature = "service-arg-validation")]
 use crate::service::validation::ServiceArgValidator;
 use crate::service::{
@@ -50,7 +50,8 @@ use crate::signing::SignatureVerifier;
 
 use self::consensus::AdminConsensusManager;
 use self::error::{AdminError, Sha256Error};
-use self::open_proposals::Proposals;
+#[cfg(feature = "proposal-read")]
+use self::proposal_store::{AdminServiceProposals, ProposalStore};
 use self::shared::AdminServiceShared;
 
 pub use self::error::AdminServiceError;
@@ -85,13 +86,6 @@ pub trait AdminCommands: Send + Sync {
     ) -> Result<Events, AdminServiceError>;
 
     fn clone_boxed(&self) -> Box<dyn AdminCommands>;
-
-    fn fetch_proposal(
-        &self,
-        circuit_id: String,
-    ) -> Result<Option<CircuitProposal>, AdminServiceError>;
-
-    fn list_proposals(&self) -> Result<Proposals, AdminServiceError>;
 }
 
 impl Clone for Box<dyn AdminCommands> {
@@ -200,6 +194,11 @@ impl AdminService {
         AdminServiceCommands {
             shared: Arc::clone(&self.admin_service_shared),
         }
+    }
+
+    #[cfg(feature = "proposal-read")]
+    pub fn proposals(&self) -> impl ProposalStore {
+        AdminServiceProposals::new(&self.admin_service_shared)
     }
 }
 
@@ -419,30 +418,6 @@ impl AdminCommands for AdminServiceCommands {
 
     fn clone_boxed(&self) -> Box<dyn AdminCommands> {
         Box::new(self.clone())
-    }
-
-    fn fetch_proposal(
-        &self,
-        circuit_id: String,
-    ) -> Result<Option<CircuitProposal>, AdminServiceError> {
-        self.shared
-            .lock()
-            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
-            .get_proposal(&circuit_id)
-            .map_err(|err| {
-                AdminServiceError::general_error_with_source(
-                    "Unable to get proposal",
-                    Box::new(err),
-                )
-            })
-    }
-
-    fn list_proposals(&self) -> Result<Proposals, AdminServiceError> {
-        Ok(self
-            .shared
-            .lock()
-            .map_err(|_| AdminServiceError::general_error("Admin shared lock was lock poisoned"))?
-            .get_proposals())
     }
 }
 
