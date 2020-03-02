@@ -666,6 +666,38 @@ impl AdminServiceShared {
                 self.propose_circuit(payload, "local".to_string())
             }
             CircuitManagementPayload_Action::CIRCUIT_PROPOSAL_VOTE => {
+                let proposal_vote = payload.get_circuit_proposal_vote();
+
+                // validate vote proposal
+                // check that the circuit proposal exists
+                let circuit_proposal = self
+                    .get_proposal(proposal_vote.get_circuit_id())
+                    .map_err(|err| {
+                        ServiceError::UnableToHandleMessage(Box::new(
+                            AdminSharedError::ValidationFailed(format!(
+                                "error occurred when trying to get proposal {}",
+                                err
+                            )),
+                        ))
+                    })?
+                    .ok_or_else(|| {
+                        ServiceError::UnableToHandleMessage(Box::new(
+                            AdminSharedError::ValidationFailed(format!(
+                                "Received vote for a proposal that does not exist: circuit id {}",
+                                proposal_vote.circuit_id
+                            )),
+                        ))
+                    })?;
+
+                let signer_public_key = header.get_requester();
+                self.validate_circuit_vote(
+                    proposal_vote,
+                    signer_public_key,
+                    &circuit_proposal,
+                    header.get_requester_node_id(),
+                )
+                .map_err(|err| ServiceError::UnableToHandleMessage(Box::new(err)))?;
+
                 self.propose_vote(payload, "local".to_string())
             }
             CircuitManagementPayload_Action::ACTION_UNSET => {
