@@ -15,6 +15,7 @@
  */
 
 export { submitBatchList } from './submitter';
+export { decryptKey, encryptKey } from './crypto';
 
 interface User {
   userId: string;
