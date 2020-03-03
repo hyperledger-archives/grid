@@ -14,8 +14,29 @@
  * limitations under the License.
  */
 
-@import './../components/progress/Progress.scss';
-@import './../components/tabBox/TabBox.scss';
-@import './../components/navigation/SideNav.scss';
-@import './../components/input/Input.scss';
-@import './../components/button/Button.scss';
+.button {
+  border: none;
+  background: #555555;
+  padding: 1rem;
+
+  &.flat {
+    background: transparent;
+    color: #555555;
+    border: 1px solid #555555;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #555555;
+      color: #ffffff;
+    }
+  }
+
+  &.fab {
+    border-radius: 50%;
+    background: var(--color-success);
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+}
