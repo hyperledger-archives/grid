@@ -63,6 +63,11 @@ interface RegisterConfigSapling {
     bootstrapFunction: () => void
   ): void;
 }
+
+interface HideCanopy {
+  (): void;
+}
+
 interface Canopy {
   registerApp: RegisterApp;
   registerConfigSapling: RegisterConfigSapling;
@@ -71,6 +76,7 @@ interface Canopy {
   setKeys: SetKeys;
   getKeys: GetKeys;
   getSharedConfig: GetSharedConfig;
+  hideCanopy: HideCanopy;
 }
 
 function assertAndGetWindowCanopy(): Canopy {
@@ -95,5 +101,6 @@ export const {
   setUser,
   setKeys,
   getKeys,
-  getSharedConfig
+  getSharedConfig,
+  hideCanopy
 }: Canopy = canopy;
