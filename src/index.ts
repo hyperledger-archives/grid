@@ -19,6 +19,7 @@ export { submitBatchList } from './submitter';
 interface User {
   userId: string;
   displayName?: string;
+  token?: string;
 }
 
 interface KeyPair {

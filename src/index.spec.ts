@@ -17,7 +17,11 @@
 const bootstrap = (): void => {
   /* no op */
 };
-const completeUser = { userId: 'COMPLETE', displayName: 'canopy' };
+const completeUser = {
+  userId: 'COMPLETE',
+  displayName: 'canopy',
+  token: 'canopy.token'
+};
 const minimalUser = { userId: 'MINIMAL' };
 
 // In order to prevent the need to overwrite the window interface,
