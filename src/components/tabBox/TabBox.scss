@@ -15,6 +15,8 @@
  */
 
 .tab-box {
+  width: fit-content;
+
   .tab-box-options {
     display: flex;
     flex-direction: row;
@@ -27,35 +29,36 @@
       flex-grow: 1;
       min-width: $padding-s * 6;
       padding: $padding-s;
-      text-decoration: underline;
-      color: $text-light;
+      color: $text-primary;
       background-color: $background-light;
       cursor: pointer;
       font-family: var(--fontFamily-primary) !important;
-      border: 1px solid $text-light;
-      outline: none;
+      border: none;
 
-      &:focus {
-        outline: none;
+      &:first-of-type {
+        border-radius: 5px 0 0;
+        border-right: 0;
       }
 
       &:not(:first-of-type) {
         margin-left: -1px;
+        border-radius: 0 5px 0 0;
+        border-left: 0;
       }
 
       &.active {
-        background-color: $color-primary-light;
-        border-bottom-color: $color-primary-light;
+        background: var(--color-primary-light);
       }
     }
   }
 
   .tab-box-content {
-    padding: $padding-s;
-    border: 1px solid $text-light;
+    background-color: $background-white;
+    border-radius: 0 0 5px 5px;
     border-top: 0;
+    padding: $padding-s;
     overflow-y: auto;
-    height: 30vh;
+    outline: none;
   }
 
   clear: both;
