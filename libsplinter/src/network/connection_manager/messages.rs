@@ -14,8 +14,6 @@
 
 use std::sync::mpsc::SyncSender;
 
-use crate::network::connection_manager::error::ConnectionManagerError;
-
 pub enum CmMessage {
     Shutdown,
     Subscribe(SyncSender<ConnectionManagerNotification>),
@@ -61,22 +59,6 @@ pub enum CmResponseStatus {
 /// subscription handlers
 #[derive(Debug, PartialEq, Clone)]
 pub enum ConnectionManagerNotification {
-    FatalError {
-        error: ConnectionManagerError,
-        message: String,
-    },
-    HeartbeatSent {
-        endpoint: String,
-    },
-    HeartbeatSendFail {
-        endpoint: String,
-        message: String,
-    },
-    ReconnectAttemptSuccess {
-        endpoint: String,
-    },
-    ReconnectAttemptFailed {
-        endpoint: String,
-        message: String,
-    },
+    Connected { endpoint: String },
+    Disconnected { endpoint: String },
 }
