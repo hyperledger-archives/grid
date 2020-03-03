@@ -14,9 +14,33 @@
  * limitations under the License.
  */
 
-@import './../components/progress/Progress.scss';
-@import './../components/tabBox/TabBox.scss';
-@import './../components/navigation/SideNav.scss';
-@import './../components/input/Input.scss';
-@import './../components/forms/AuthForm.scss';
-@import './../components/button/Button.scss';
+.auth-form {
+  padding: 1rem;
+  width: 30rem;
+
+  h3 {
+    margin: 0;
+  }
+
+  hr {
+    border-top: 2px solid var(--color-dark-grey);
+    margin-left: 0;
+    margin-bottom: 1rem;
+    width: 12rem;
+  }
+
+  form {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+
+    button.submit {
+      display: flex;
+      margin: 2rem 0 0;
+      position: relative;
+      margin-left: auto;
+      background: var(--color-secondary);
+    }
+  }
+}
