@@ -226,7 +226,8 @@
 
     sapling-dev-server:
       build:
-        context: ../sapling-dev-server
+        context: ..
+        dockerfile: sapling-dev-server/Dockerfile
       container_name: sapling-dev-server
       expose:
         - 80
