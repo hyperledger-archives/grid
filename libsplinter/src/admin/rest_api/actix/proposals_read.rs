@@ -16,7 +16,7 @@ use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
 
 use crate::admin::messages::CircuitProposal;
-use crate::admin::service::AdminCommands;
+use crate::admin::service::proposal_store::ProposalStore;
 use crate::protocol;
 use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET};
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
@@ -24,22 +24,20 @@ use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource
 use super::super::error::ProposalListError;
 use super::super::resources::proposals_read::ListProposalsResponse;
 
-pub fn make_list_proposals_resource<A: AdminCommands + Clone + 'static>(
-    admin_commands: A,
-) -> Resource {
+pub fn make_list_proposals_resource<PS: ProposalStore + 'static>(proposal_store: PS) -> Resource {
     Resource::build("admin/proposals")
         .add_request_guard(ProtocolVersionRangeGuard::new(
             protocol::ADMIN_LIST_PROPOSALS_PROTOCOL_MIN,
             protocol::ADMIN_PROTOCOL_VERSION,
         ))
         .add_method(Method::Get, move |r, _| {
-            list_proposals(r, web::Data::new(admin_commands.clone()))
+            list_proposals(r, web::Data::new(proposal_store.clone()))
         })
 }
 
-fn list_proposals<A: AdminCommands + Clone + 'static>(
+fn list_proposals<PS: ProposalStore + 'static>(
     req: HttpRequest,
-    admin_commands: web::Data<A>,
+    proposal_store: web::Data<PS>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let query: web::Query<HashMap<String, String>> =
         if let Ok(q) = web::Query::from_query(req.query_string()) {
@@ -97,7 +95,7 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
     };
 
     Box::new(query_list_proposals(
-        admin_commands,
+        proposal_store,
         link,
         filters,
         Some(offset),
@@ -105,16 +103,16 @@ fn list_proposals<A: AdminCommands + Clone + 'static>(
     ))
 }
 
-fn query_list_proposals<A: AdminCommands + Clone + 'static>(
-    admin_commands: web::Data<A>,
+fn query_list_proposals<PS: ProposalStore + 'static>(
+    proposal_store: web::Data<PS>,
     link: String,
     filters: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
-        let proposals = admin_commands
-            .list_proposals()
+        let proposals = proposal_store
+            .proposals()
             .map_err(|err| ProposalListError::InternalError(err.to_string()))?;
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| proposals.total());

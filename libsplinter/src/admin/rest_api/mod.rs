@@ -47,9 +47,9 @@ impl RestResourceProvider for AdminService {
         resources.push(make_submit_route(self.commands()));
 
         #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
-        resources.push(make_fetch_proposal_resource(self.commands()));
+        resources.push(make_fetch_proposal_resource(self.proposals()));
         #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
-        resources.push(make_list_proposals_resource(self.commands()));
+        resources.push(make_list_proposals_resource(self.proposals()));
 
         resources
     }
