@@ -22,9 +22,15 @@ use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGua
 use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
 };
-use crate::biome::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
+use crate::biome::rest_api::BiomeRestConfig;
+use crate::biome::secrets::SecretManager;
+use crate::biome::user::store::{
+    diesel::SplinterUserStore, SplinterUser, UserStore, UserStoreError,
+};
 
+use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::credentials::UsernamePassword;
+use super::authorize::authorize_user;
 
 /// Defines a REST endpoint to list users from the db
 pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Resource {
@@ -49,12 +55,13 @@ pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Reso
 
 /// Defines REST endpoints to modify, delete, or fetch a specific user
 pub fn make_user_routes(
+    rest_config: Arc<BiomeRestConfig>,
+    secret_manager: Arc<dyn SecretManager>,
     credentials_store: Arc<SplinterCredentialsStore>,
     user_store: Arc<SplinterUserStore>,
 ) -> Resource {
     let credentials_store_modify = credentials_store.clone();
-    let credentials_store_fetch = credentials_store.clone();
-    let credentials_store_delete = credentials_store;
+    let credentials_store_fetch = credentials_store;
     let user_store_modify = user_store.clone();
     let user_store_delete = user_store;
     Resource::build("/biome/users/{id}")
@@ -73,11 +80,11 @@ pub fn make_user_routes(
         .add_method(Method::Get, move |request, _| {
             add_fetch_user_method(request, credentials_store_fetch.clone())
         })
-        .add_method(Method::Delete, move |request, payload| {
+        .add_method(Method::Delete, move |request, _| {
             add_delete_user_method(
                 request,
-                payload,
-                credentials_store_delete.clone(),
+                rest_config.clone(),
+                secret_manager.clone(),
                 user_store_delete.clone(),
             )
         })
@@ -255,15 +262,10 @@ fn add_modify_user_method(
 }
 
 /// Defines a REST endpoint to delete a user from the database
-/// The payload should be in the JSON format:
-///   {
-///       "username": <existing username of the user>
-///       "hashed_password": <hash of the user's existing password>
-///   }
 fn add_delete_user_method(
     request: HttpRequest,
-    payload: Payload,
-    credentials_store: Arc<SplinterCredentialsStore>,
+    rest_config: Arc<BiomeRestConfig>,
+    secret_manager: Arc<dyn SecretManager>,
     user_store: Arc<SplinterUserStore>,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let user_id = if let Some(t) = request.match_info().get("id") {
@@ -277,69 +279,47 @@ fn add_delete_user_method(
                 .into_future(),
         );
     };
-    Box::new(into_bytes(payload).and_then(move |bytes| {
-        let username_password = match serde_json::from_slice::<UsernamePassword>(&bytes) {
-            Ok(val) => val,
-            Err(err) => {
-                debug!("Error parsing payload {}", err);
-                return HttpResponse::BadRequest()
-                    .json(ErrorResponse::bad_request(&format!(
-                        "Failed to parse payload: {}",
-                        err
-                    )))
-                    .into_future();
-            }
-        };
-
-        let credentials =
-            match credentials_store.fetch_credential_by_username(&username_password.username) {
-                Ok(credentials) => credentials,
-                Err(err) => {
-                    debug!("Failed to fetch credentials {}", err);
-                    match err {
-                        CredentialsStoreError::NotFoundError(_) => {
-                            return HttpResponse::NotFound()
-                                .json(ErrorResponse::not_found(&format!(
-                                    "Username not found: {}",
-                                    username_password.username
-                                )))
-                                .into_future();
-                        }
-                        _ => {
-                            return HttpResponse::InternalServerError()
-                                .json(ErrorResponse::internal_error())
-                                .into_future()
-                        }
-                    }
-                }
-            };
-
-        match credentials.verify_password(&username_password.hashed_password) {
-            Ok(is_valid) => {
-                if is_valid {
-                    match user_store.remove_user(&user_id) {
-                        Ok(()) => HttpResponse::Ok()
-                            .json(json!({ "message": "User deleted sucessfully" }))
+    match authorize_user(&request, &user_id, &secret_manager, &rest_config) {
+        AuthorizationResult::Authorized => match user_store.remove_user(&user_id) {
+            Ok(()) => Box::new(
+                HttpResponse::Ok()
+                    .json(json!({ "message": "User deleted sucessfully" }))
+                    .into_future(),
+            ),
+            Err(err) => match err {
+                UserStoreError::NotFoundError(msg) => {
+                    debug!("User not found: {}", msg);
+                    Box::new(
+                        HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&format!(
+                                "User ID not found: {}",
+                                &user_id
+                            )))
                             .into_future(),
-                        Err(err) => {
-                            debug!("Failed to delete user in database {}", err);
-                            HttpResponse::InternalServerError()
-                                .json(ErrorResponse::internal_error())
-                                .into_future()
-                        }
-                    }
-                } else {
-                    HttpResponse::BadRequest()
-                        .json(ErrorResponse::bad_request("Invalid password"))
-                        .into_future()
+                    )
                 }
-            }
-            Err(err) => {
-                debug!("Failed to verify password {}", err);
+                _ => {
+                    error!("Failed to delete user in database {}", err);
+                    Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error())
+                            .into_future(),
+                    )
+                }
+            },
+        },
+        AuthorizationResult::Unauthorized(msg) => Box::new(
+            HttpResponse::Unauthorized()
+                .json(ErrorResponse::unauthorized(&msg))
+                .into_future(),
+        ),
+        AuthorizationResult::Failed => {
+            error!("Failed to authorize user");
+            Box::new(
                 HttpResponse::InternalServerError()
                     .json(ErrorResponse::internal_error())
-                    .into_future()
-            }
+                    .into_future(),
+            )
         }
-    }))
+    }
 }

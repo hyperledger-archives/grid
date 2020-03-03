@@ -1021,6 +1021,54 @@ paths:
             application/json:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
+    delete:
+      tags:
+        - Biome
+      description: Delete a user
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+      responses:
+        200:
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: Unauthorized request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: User with {user_id} not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
 
   /biome/users/{user_id}/keys:
     get:
