@@ -16,8 +16,8 @@ openapi: '3.0.0'
 
 info:
   version: 0.3.13
-  title: SplinterD API
-  description: REST API for SplinterD
+  title: splinterd API
+  description: REST API for the Splinter daemon
 
 servers:
   - url: http://localhost:9000/api
