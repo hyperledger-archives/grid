@@ -1223,7 +1223,9 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "User deleted successfully"
+                    example: "Key added successfully"
+                  data:
+                    $ref: '#/components/schemas/BiomeUserKey'
         400:
           description: Invalid request
           content:

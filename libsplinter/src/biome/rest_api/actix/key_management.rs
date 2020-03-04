@@ -122,10 +122,11 @@ fn handle_post(
                 &user_id,
                 &new_key.display_name,
             );
+            let response_key = ResponseKey::from(&key);
 
-            match key_store.add_key(key) {
+            match key_store.add_key(key.clone()) {
                 Ok(()) => HttpResponse::Ok()
-                    .json(json!({ "message": "Key added successfully" }))
+                    .json(json!({ "message": "Key added successfully", "data": response_key }))
                     .into_future(),
                 Err(err) => {
                     debug!("Failed to add new key to database {}", err);
