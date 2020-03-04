@@ -18,7 +18,6 @@
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::Future;
 
-use crate::admin::messages::CircuitProposal;
 use crate::admin::rest_api::error::ProposalFetchError;
 use crate::admin::service::proposal_store::ProposalStore;
 use crate::protocol;
@@ -46,20 +45,12 @@ fn fetch_proposal<PS: ProposalStore + 'static>(
         .to_string();
     Box::new(
         web::block(move || {
-            let proposal = proposal_store
+            proposal_store
                 .proposal(&circuit_id)
-                .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?;
-            if let Some(proposal) = proposal {
-                let proposal = CircuitProposal::from_proto(proposal)
-                    .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?;
-
-                Ok(proposal)
-            } else {
-                Err(ProposalFetchError::NotFound(format!(
-                    "Unable to find proposal: {}",
-                    circuit_id
-                )))
-            }
+                .map_err(|err| ProposalFetchError::InternalError(err.to_string()))?
+                .ok_or_else(|| {
+                    ProposalFetchError::NotFound(format!("Unable to find proposal: {}", circuit_id))
+                })
         })
         .then(|res| match res {
             Ok(proposal) => Ok(HttpResponse::Ok().json(proposal)),

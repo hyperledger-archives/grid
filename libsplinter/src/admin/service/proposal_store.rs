@@ -14,8 +14,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::protos::admin::CircuitProposal;
-
+use super::messages::CircuitProposal;
 use super::open_proposals::Proposals;
 use super::shared::AdminServiceShared;
 
@@ -94,6 +93,17 @@ impl ProposalStore for AdminServiceProposals {
             .lock()
             .map_err(|_| ProposalStoreError::new("Admin shared lock was lock poisoned"))?
             .get_proposal(circuit_id)
-            .map_err(|err| ProposalStoreError::from_source("Unable to get proposal", Box::new(err)))
+            .map_err(|err| {
+                ProposalStoreError::from_source("Unable to get proposal", Box::new(err))
+            })?
+            .map(|proto| {
+                CircuitProposal::from_proto(proto).map_err(|err| {
+                    ProposalStoreError::from_source(
+                        "Unable to convert proposal protobuf to native",
+                        Box::new(err),
+                    )
+                })
+            })
+            .transpose()
     }
 }
