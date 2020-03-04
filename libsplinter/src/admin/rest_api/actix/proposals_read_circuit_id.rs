@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides the `GET /admin/proposals/{circuit_id} endpoint for fetching circuit proposals by
+//! circuit ID.
+
 use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::Future;
 

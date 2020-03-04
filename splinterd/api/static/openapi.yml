@@ -46,9 +46,15 @@ paths:
 
   /admin/proposals:
     get:
+      summary: Fetches a list of pending circuit proposals for this node
+      description: |
+        This endpoint can be used to view all of the circuit proposals that the
+        node is a proposed member of. If a circuit management type is provided
+        via the "filter" query parameter, only circuit proposals that have the
+        given circuit management type will be returned; if no filter is
+        provided, all of the node's circuit proposals will be returned.
       tags:
-          - Proposals
-      description: Experimental - List of proposals in Admin Service state
+        - Proposals
       parameters:
         - $ref: "#/components/parameters/protocol_version"
         - name: offset
@@ -67,14 +73,13 @@ paths:
             default: 100
         - name: filter
           in: query
-          description: circuit management type of the proposed circuit
+          description: Circuit management type of the proposed circuits
           required: false
           schema:
             type: string
-          example: "my-type"
       responses:
         200:
-          description: list of proposals
+          description: Successfully retrieved the list of proposals
           content:
             application/json:
               schema:
@@ -92,32 +97,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: An internal server error occurrred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /admin/proposals/{circuit_id}:
     get:
+      summary: Fetches a circuit proposal by the circuit's ID
+      description: |
+        This endpoint can be used to view a specific circuit proposal that the
+        node is a proposed member of.
       tags:
         - Proposals
-      description: Experimental - Fetch a proposal in Admin Service state by its circuit id
       parameters:
         - $ref: "#/components/parameters/protocol_version"
         - name: circuit_id
           in: path
-          description: circuit id of the proposal to fetch
+          description: Circuit ID of the proposal to fetch
           required: true
           schema:
             type: string
       responses:
         200:
-          description: Proposal
+          description: Successfully retrieved the requested proposal
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Proposal"
+                $ref: "#/components/schemas/Proposal"
         404:
-          description: The proposal with {circuit_id} was not found
+          description: The requested circuit proposal was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: An internal server error occurrred
           content:
             application/json:
               schema:
