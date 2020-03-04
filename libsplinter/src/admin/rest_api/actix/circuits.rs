@@ -164,36 +164,30 @@ fn query_list_circuits<T: CircuitStore + 'static>(
 mod tests {
     use super::*;
 
-    use crate::actix_web::{
-        http::{header, StatusCode},
-        test, web, App,
-    };
+    use reqwest::{blocking::Client, StatusCode, Url};
+
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
         Roster, RouteType, ServiceDefinition, SplinterState,
     };
-    use crate::rest_api::paging::Paging;
+    use crate::rest_api::{paging::Paging, RestApiBuilder, RestApiShutdownHandle};
     use crate::storage::get_storage;
 
     #[test]
     /// Tests a GET /admin/circuits request with no filters returns the expected circuits.
     fn test_list_circuits_ok() {
-        let splinter_state = filled_splinter_state();
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_circuits_resource(filled_splinter_state())]);
 
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/admin/circuits")
-                    .route(web::get().to_async(list_circuits::<SplinterState>)),
-            ),
-        );
-
-        let req = test::TestRequest::get().uri("/admin/circuits").to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!("http://{}/admin/circuits", bind_url))
+            .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse =
-            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(circuits.data, vec![get_circuit_1(), get_circuit_2()]);
         assert_eq!(
             circuits.paging,
@@ -204,27 +198,20 @@ mod tests {
     #[test]
     /// Tests a GET /admin/circuits request with filter returns the expected circuit.
     fn test_list_circuit_with_filters_ok() {
-        let splinter_state = filled_splinter_state();
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_circuits_resource(filled_splinter_state())]);
 
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/admin/circuits")
-                    .route(web::get().to_async(list_circuits::<SplinterState>)),
-            ),
-        );
-
-        let req = test::TestRequest::get()
-            .uri(&format!("/admin/circuits?filter={}", "node_1"))
-            .header(header::CONTENT_TYPE, "application/json")
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!("http://{}/admin/circuits?filter=node_1", bind_url))
+            .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse =
-            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(circuits.data, vec![get_circuit_1()]);
-        let link = format!("/admin/circuits?filter={}&", "node_1");
+        let link = format!("/admin/circuits?filter=node_1&");
         assert_eq!(
             circuits.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
@@ -232,54 +219,46 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /circuits?limit=1 request returns the expected circuit.
+    /// Tests a GET /admin/circuits?limit=1 request returns the expected circuit.
     fn test_list_circuit_with_limit() {
-        let splinter_state = filled_splinter_state();
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_circuits_resource(filled_splinter_state())]);
 
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
-        ));
-
-        let req = test::TestRequest::get()
-            .uri(&format!("/circuits?limit={}", 1))
-            .header(header::CONTENT_TYPE, "application/json")
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!("http://{}/admin/circuits?limit=1", bind_url))
+            .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse =
-            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(circuits.data, vec![get_circuit_1()]);
         assert_eq!(
             circuits.paging,
-            create_test_paging_response(0, 1, 1, 0, 1, 2, "/circuits?")
+            create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/circuits?")
         )
     }
 
     #[test]
-    /// Tests a GET /circuits?offset=1 request returns the expected circuit.
+    /// Tests a GET /admin/circuits?offset=1 request returns the expected circuit.
     fn test_list_circuit_with_offset() {
-        let splinter_state = filled_splinter_state();
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_circuits_resource(filled_splinter_state())]);
 
-        let mut app = test::init_service(App::new().data(splinter_state.clone()).service(
-            web::resource("/circuits").route(web::get().to_async(list_circuits::<SplinterState>)),
-        ));
-
-        let req = test::TestRequest::get()
-            .uri(&format!("/circuits?offset={}", 1))
-            .header(header::CONTENT_TYPE, "application/json")
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!("http://{}/admin/circuits?offset=1", bind_url))
+            .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse =
-            serde_yaml::from_slice(&test::read_body(resp)).unwrap();
+        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(circuits.data, vec![get_circuit_2()]);
         assert_eq!(
             circuits.paging,
-            create_test_paging_response(1, 100, 0, 0, 0, 2, "/circuits?")
+            create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/circuits?")
         )
     }
 
@@ -395,5 +374,28 @@ mod tests {
             .expect("Unable to add circuit_2");
 
         splinter_state
+    }
+
+    fn run_rest_api_on_open_port(
+        resources: Vec<Resource>,
+    ) -> (RestApiShutdownHandle, std::thread::JoinHandle<()>, String) {
+        (10000..20000)
+            .find_map(|port| {
+                let bind_url = format!("127.0.0.1:{}", port);
+                let result = RestApiBuilder::new()
+                    .with_bind(&bind_url)
+                    .add_resources(resources.clone())
+                    .build()
+                    .expect("Failed to build REST API")
+                    .run();
+                match result {
+                    Ok((shutdown_handle, join_handle)) => {
+                        Some((shutdown_handle, join_handle, bind_url))
+                    }
+                    Err(RestApiServerError::BindError(_)) => None,
+                    Err(err) => panic!("Failed to run REST API: {}", err),
+                }
+            })
+            .expect("No port available")
     }
 }

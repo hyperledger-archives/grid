@@ -94,53 +94,53 @@ fn fetch_circuit<T: CircuitStore + 'static>(
 mod tests {
     use super::*;
 
-    use crate::actix_web::{http::StatusCode, test, web, App};
+    use reqwest::{blocking::Client, StatusCode, Url};
+
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
         Roster, RouteType, ServiceDefinition, SplinterState,
     };
+    use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
     use crate::storage::get_storage;
 
     #[test]
-    /// Tests a GET /admin/circuit/{identity} request returns the expected circuit.
+    /// Tests a GET /admin/circuit/{circuit_id} request returns the expected circuit.
     fn test_fetch_circuit_ok() {
-        let splinter_state = filled_splinter_state();
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_fetch_circuit_resource(filled_splinter_state())]);
 
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/admin/circuits/{circuit_id}")
-                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
-            ),
-        );
-
-        let req = test::TestRequest::get()
-            .uri(&format!("/admin/circuits/{}", get_circuit_1().id))
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!(
+            "http://{}/admin/circuits/{}",
+            bind_url,
+            get_circuit_1().id
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuit: CircuitResponse = serde_yaml::from_slice(&test::read_body(resp)).unwrap();
-        assert_eq!(circuit, get_circuit_1())
+        let circuit: CircuitResponse = resp.json().expect("Failed to deserialize body");
+        assert_eq!(circuit, get_circuit_1());
     }
 
     #[test]
-    /// Tests a GET /admin/circuits/{identity} request returns NotFound when an invalid identity is
-    /// passed
+    /// Tests a GET /admin/circuits/{circuit_id} request returns NotFound when an invalid
+    /// circuit_id is passed.
     fn test_fetch_circuit_not_found() {
-        let splinter_state = filled_splinter_state();
-        let mut app = test::init_service(
-            App::new().data(splinter_state.clone()).service(
-                web::resource("/admin/circuits/{circuit_id}")
-                    .route(web::get().to_async(fetch_circuit::<SplinterState>)),
-            ),
-        );
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_fetch_circuit_resource(filled_splinter_state())]);
 
-        let req = test::TestRequest::get()
-            .uri("/admin/circuit/Circuit-not-valid")
-            .to_request();
-
-        let resp = test::call_service(&mut app, req);
+        let url = Url::parse(&format!(
+            "http://{}/admin/circuits/Circuit-not-valid",
+            bind_url,
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
@@ -212,5 +212,28 @@ mod tests {
             .expect("Unable to add circuit_2");
 
         splinter_state
+    }
+
+    fn run_rest_api_on_open_port(
+        resources: Vec<Resource>,
+    ) -> (RestApiShutdownHandle, std::thread::JoinHandle<()>, String) {
+        (10000..20000)
+            .find_map(|port| {
+                let bind_url = format!("127.0.0.1:{}", port);
+                let result = RestApiBuilder::new()
+                    .with_bind(&bind_url)
+                    .add_resources(resources.clone())
+                    .build()
+                    .expect("Failed to build REST API")
+                    .run();
+                match result {
+                    Ok((shutdown_handle, join_handle)) => {
+                        Some((shutdown_handle, join_handle, bind_url))
+                    }
+                    Err(RestApiServerError::BindError(_)) => None,
+                    Err(err) => panic!("Failed to run REST API: {}", err),
+                }
+            })
+            .expect("No port available")
     }
 }
