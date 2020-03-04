@@ -19,12 +19,11 @@ pub mod store;
 use store::diesel::models::KeyModel;
 
 // Represents a public and private key pair
-#[derive(Serialize)]
 pub struct Key {
-    public_key: String,
-    encrypted_private_key: String,
-    user_id: String,
-    display_name: String,
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub user_id: String,
+    pub display_name: String,
 }
 
 impl Key {
@@ -64,6 +63,7 @@ impl From<KeyModel> for Key {
         }
     }
 }
+
 impl Into<KeyModel> for Key {
     fn into(self) -> KeyModel {
         KeyModel {

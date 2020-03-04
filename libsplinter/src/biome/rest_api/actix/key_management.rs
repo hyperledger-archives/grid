@@ -29,7 +29,7 @@ use crate::biome::rest_api::BiomeRestConfig;
 use crate::biome::secrets::SecretManager;
 
 use super::super::resources::authorize::AuthorizationResult;
-use super::super::resources::key_management::{NewKey, UpdatedKey};
+use super::super::resources::key_management::{NewKey, ResponseKey, UpdatedKey};
 use super::authorize::authorize_user;
 
 /// Defines the `/biome/users/{user_id}/keys` REST resource for managing keys
@@ -187,7 +187,7 @@ fn handle_get(
         match key_store.list_keys(Some(&user_id)) {
             Ok(keys) => Box::new(
                 HttpResponse::Ok()
-                    .json(json!({ "data": keys }))
+                    .json(json!({ "data": keys.iter().map(ResponseKey::from).collect::<Vec<ResponseKey>>() }))
                     .into_future(),
             ),
             Err(err) => {

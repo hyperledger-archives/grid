@@ -14,6 +14,8 @@
 
 //! Defines structures used in key management.
 
+use crate::biome::key_management::Key;
+
 #[derive(Deserialize)]
 pub(crate) struct NewKey {
     pub public_key: String,
@@ -25,4 +27,23 @@ pub(crate) struct NewKey {
 pub(crate) struct UpdatedKey {
     pub public_key: String,
     pub new_display_name: String,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ResponseKey<'a> {
+    public_key: &'a str,
+    user_id: &'a str,
+    display_name: &'a str,
+    encrypted_private_key: &'a str,
+}
+
+impl<'a> From<&'a Key> for ResponseKey<'a> {
+    fn from(key: &'a Key) -> Self {
+        ResponseKey {
+            public_key: &key.public_key,
+            user_id: &key.user_id,
+            display_name: &key.display_name,
+            encrypted_private_key: &key.encrypted_private_key,
+        }
+    }
 }
