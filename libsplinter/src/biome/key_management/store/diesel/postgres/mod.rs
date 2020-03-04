@@ -19,6 +19,7 @@ embed_migrations!("./src/biome/key_management/store/diesel/postgres/migrations")
 use diesel::pg::PgConnection;
 
 use super::super::{KeyStore, KeyStoreError};
+use super::operations::fetch_key::KeyStoreFetchKeyOperation as _;
 use super::operations::insert_key::KeyStoreInsertKeyOperation as _;
 use super::operations::list_keys::KeyStoreListKeysOperation as _;
 use super::operations::list_keys::KeyStoreListKeysWithUserIDOperation as _;
@@ -82,8 +83,8 @@ impl KeyStore<Key> for PostgresKeyStore {
         unimplemented!()
     }
 
-    fn fetch_key(&self, _public_key: &str, _user_id: &str) -> Result<Key, KeyStoreError> {
-        unimplemented!()
+    fn fetch_key(&self, public_key: &str, user_id: &str) -> Result<Key, KeyStoreError> {
+        KeyStoreOperations::new(&*self.connection_pool.get()?).fetch_key(public_key, user_id)
     }
 
     fn list_keys(&self, user_id: Option<&str>) -> Result<Vec<Key>, KeyStoreError> {
