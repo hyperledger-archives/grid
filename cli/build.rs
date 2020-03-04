@@ -30,7 +30,7 @@ fn main() -> Result<(), BuildError> {
     let paths = env::var(PATH)
         .map_err(|_| BuildError("Unable to read PATH environment variable".into()))?;
     let mut pandoc_exist = false;
-    for path in paths.split(":") {
+    for path in paths.split(':') {
         for entry in fs::read_dir(path)
             .map_err(|err| BuildError(format!("Cannot check if pandoc is in PATH: {}", err)))?
         {
@@ -46,9 +46,10 @@ fn main() -> Result<(), BuildError> {
 
     if !pandoc_exist {
         if let Ok(var) = env::var(FORCE_PANDOC) {
-            if var.parse().map_err(|_| {
+            let map_to_build_err = move |_| {
                 BuildError("Unable to read SPLINTER_FORCE_PANDOC environment variable".into())
-            })? {
+            };
+            if var.parse().map_err(map_to_build_err)? {
                 return Err(BuildError(
                     "Cannot generate man pages, pandoc is not installed".into(),
                 ));
@@ -86,12 +87,10 @@ fn main() -> Result<(), BuildError> {
 
     for entry in entries {
         // This conversion would only fail if the filename is not valid UTF-8
-        let markdown = &format!(
-            "{}",
-            entry
-                .to_str()
-                .ok_or_else(|| BuildError("Cannot get markdown file path".into()))?
-        );
+        let markdown = &entry
+            .to_str()
+            .ok_or_else(|| BuildError("Cannot get markdown file path".into()))?
+            .to_string();
 
         let file = entry
             .file_stem()
@@ -123,7 +122,7 @@ fn main() -> Result<(), BuildError> {
             }
         }
     }
-    return Ok(());
+    Ok(())
 }
 
 pub struct BuildError(String);
