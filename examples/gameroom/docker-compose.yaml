@@ -107,7 +107,7 @@ services:
 
             # check if splinterd-node-acme is available
             while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-node-acme:8085/status) -ne 200 ]] ; do
-               >&2 echo \"SplinterD is unavailable - sleeping\"
+               >&2 echo \"splinterd is unavailable - sleeping\"
                sleep 1
             done
 
@@ -216,7 +216,7 @@ services:
 
             # check if splinterd-node-bubba is available
             while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-node-bubba:8085/status) -ne 200 ]] ; do
-               >&2 echo \"SplinterD is unavailable - sleeping\"
+               >&2 echo \"splinterd is unavailable - sleeping\"
                sleep 1
             done
 
