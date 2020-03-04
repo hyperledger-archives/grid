@@ -15,6 +15,7 @@
  */
 
 export { submitBatchList } from './submitter';
+export { decryptKey, encryptKey } from './crypto';
 
 interface User {
   userId: string;
@@ -49,7 +50,7 @@ interface GetUser {
 }
 
 interface GetKeys {
-  (): KeyPair
+  (): KeyPair;
 }
 
 interface RegisterApp {
