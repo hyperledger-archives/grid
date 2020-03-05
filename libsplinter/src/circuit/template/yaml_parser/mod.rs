@@ -72,6 +72,7 @@ impl CircuitTemplate {
 
 #[cfg(test)]
 mod test {
+    use super::v1::Value;
     use super::*;
     use std::fs::File;
     use std::io::Write;
@@ -79,14 +80,22 @@ mod test {
 
     use tempdir::TempDir;
 
-    static EXAMPLE_TEMPLATE_YAML: &[u8; 166] = br##"version: v1
+    const EXAMPLE_TEMPLATE_YAML: &[u8] = br##"version: v1
 args:
     - name: admin-keys
       required: false
       default: $(a:SIGNER_PUB_KEY)
 rules:
     set-management-type:
-        management-type: "gameroom" "##;
+        management-type: "gameroom"
+    create-services:
+        service-type: 'scabbard'
+        service-args:
+        - key: 'admin-keys'
+          value: [$(admin-keys)]
+        - key: 'peer-services'
+          value: '$(r:ALL_OTHER_SERVICES)'
+        first-service: 'a000' "##;
 
     /*
      * Verifies load_template correctly loads a template version 1
@@ -113,6 +122,20 @@ rules:
                         arg.default_value(),
                         Some(&"$(a:SIGNER_PUB_KEY)".to_string())
                     );
+
+                    let create_services = template
+                        .rules()
+                        .create_services()
+                        .expect("Did not parse create_services rule");
+                    assert_eq!(create_services.service_type(), "scabbard");
+
+                    assert_eq!(create_services.first_service(), "a000");
+
+                    let service_args = create_services.service_args();
+                    assert!(service_args.iter().any(|arg| arg.key() == "admin-keys"
+                        && arg.value() == &Value::List(vec!["$(admin-keys)".to_string()])));
+                    assert!(service_args.iter().any(|arg| arg.key() == "peer-services"
+                        && arg.value() == &Value::Single("$(r:ALL_OTHER_SERVICES)".to_string())));
                 }
 
                 let management_type = template
