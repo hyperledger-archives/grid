@@ -145,9 +145,9 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
         }
     })
     .then(|res| match res {
-        Ok((circuits, link, limit, offset, total_count)) => {
+        Ok((proposals, link, limit, offset, total_count)) => {
             Ok(HttpResponse::Ok().json(ListProposalsResponse {
-                data: circuits,
+                data: proposals,
                 paging: get_response_paging_info(limit, offset, &link, total_count),
             }))
         }
