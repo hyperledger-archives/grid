@@ -33,12 +33,20 @@ impl Rules {
         builders: &mut Builders,
         template_arguments: &[RuleArgument],
     ) -> Result<(), CircuitTemplateError> {
+        let mut service_builders = builders.service_builders();
+
         let mut circuit_builder = builders.create_circuit_builder();
 
         if let Some(circuit_management) = &self.set_management_type {
             circuit_builder = circuit_management.apply_rule(circuit_builder)?;
         }
+
+        if let Some(create_services) = &self.create_services {
+            service_builders.extend(create_services.apply_rule(template_arguments)?);
+        }
+
         builders.set_create_circuit_builder(circuit_builder);
+        builders.set_service_builders(service_builders);
         Ok(())
     }
 }
