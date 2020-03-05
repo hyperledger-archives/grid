@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod set_management_type;
 use std::collections::HashMap;
 
-use super::{yaml_parser::v1, CircuitTemplateError};
-use super::{Builders, CreateCircuitBuilder};
+use super::{yaml_parser::v1, Builders, CircuitTemplateError};
+use set_management_type::CircuitManagement;
 
 pub struct CircuitCreateTemplate {
     _version: String,
@@ -74,13 +75,13 @@ impl Rules {
         builders: &mut Builders,
         _arguments: &HashMap<String, String>,
     ) -> Result<(), CircuitTemplateError> {
-        let mut create_service_builder = builders.create_circuit_builder();
+        let mut circuit_builder = builders.create_circuit_builder();
 
         if let Some(circuit_management) = &self.set_management_type {
-            create_service_builder = circuit_management.apply_rule(create_service_builder)?;
+            circuit_builder = circuit_management.apply_rule(circuit_builder)?;
         }
 
-        builders.set_create_circuit_builder(create_service_builder);
+        builders.set_create_circuit_builder(circuit_builder);
         Ok(())
     }
 }
@@ -91,27 +92,6 @@ impl From<v1::Rules> for Rules {
             set_management_type: rules
                 .set_management_type()
                 .map(|val| CircuitManagement::from(val.clone())),
-        }
-    }
-}
-
-struct CircuitManagement {
-    management_type: String,
-}
-
-impl CircuitManagement {
-    fn apply_rule(
-        &self,
-        builder: CreateCircuitBuilder,
-    ) -> Result<CreateCircuitBuilder, CircuitTemplateError> {
-        Ok(builder.with_circuit_management_type(&self.management_type))
-    }
-}
-
-impl From<v1::CircuitManagement> for CircuitManagement {
-    fn from(yaml_circuit_management: v1::CircuitManagement) -> Self {
-        CircuitManagement {
-            management_type: yaml_circuit_management.management_type().to_string(),
         }
     }
 }
