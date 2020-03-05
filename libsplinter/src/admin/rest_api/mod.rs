@@ -29,9 +29,9 @@ use self::actix::circuits::make_list_circuits_resource;
 #[cfg(all(feature = "circuit-read", feature = "rest-api-actix"))]
 use self::actix::circuits_circuit_id::make_fetch_circuit_resource;
 #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
-use self::actix::proposals_read::make_list_proposals_resource;
+use self::actix::proposals::make_list_proposals_resource;
 #[cfg(all(feature = "proposal-read", feature = "rest-api-actix"))]
-use self::actix::proposals_read_circuit_id::make_fetch_proposal_resource;
+use self::actix::proposals_circuit_id::make_fetch_proposal_resource;
 #[cfg(feature = "rest-api-actix")]
 use self::actix::submit::make_submit_route;
 #[cfg(feature = "rest-api-actix")]
