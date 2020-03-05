@@ -32,7 +32,7 @@ use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::key_management::{NewKey, ResponseKey, UpdatedKey};
 use super::authorize::authorize_user;
 
-/// Defines the `/biome/users/{user_id}/keys` REST resource for managing keys
+/// Defines a REST endpoint for managing keys including inserting, listing and updating keys
 pub fn make_key_management_route(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
@@ -147,7 +147,7 @@ fn handle_post(
     })
 }
 
-/// Defines a REST endpoint for retrieving a key from the underlying storage
+/// Defines a REST endpoint for retrieving keys from the underlying storage
 fn handle_get(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
@@ -276,5 +276,108 @@ fn handle_patch(
                 }
             }
         }))
+    })
+}
+
+/// Defines a REST endpoint for managing keys including fetching and deleting a user's key
+pub fn make_key_management_route_with_public_key(
+    rest_config: Arc<BiomeRestConfig>,
+    key_store: Arc<dyn KeyStore<Key>>,
+    secret_manager: Arc<dyn SecretManager>,
+) -> Resource {
+    Resource::build("/biome/users/{user_id}/keys/{public_key}")
+        .add_request_guard(ProtocolVersionRangeGuard::new(
+            protocol::BIOME_KEYS_PROTOCOL_MIN,
+            protocol::BIOME_PROTOCOL_VERSION,
+        ))
+        .add_method(
+            Method::Get,
+            handle_fetch(
+                rest_config.clone(),
+                key_store.clone(),
+                secret_manager.clone(),
+            ),
+        )
+}
+
+/// Defines a REST endpoint method to fetch a key from the underlying storage
+fn handle_fetch(
+    rest_config: Arc<BiomeRestConfig>,
+    key_store: Arc<dyn KeyStore<Key>>,
+    secret_manager: Arc<dyn SecretManager>,
+) -> HandlerFunction {
+    Box::new(move |request, _| {
+        let key_store = key_store.clone();
+        let user_id = match request.match_info().get("user_id") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("User ID is not in path request");
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(
+                            &"Failed to process request: no user id".to_string(),
+                        ))
+                        .into_future(),
+                );
+            }
+        };
+
+        let public_key = match request.match_info().get("public_key") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("Public key is not in path request");
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(
+                            &"Failed to process request: no public key".to_string(),
+                        ))
+                        .into_future(),
+                );
+            }
+        };
+
+        match authorize_user(&request, &user_id, &secret_manager, &rest_config) {
+            AuthorizationResult::Authorized => (),
+            AuthorizationResult::Unauthorized(msg) => {
+                return Box::new(
+                    HttpResponse::Unauthorized()
+                        .json(ErrorResponse::unauthorized(&msg))
+                        .into_future(),
+                )
+            }
+            AuthorizationResult::Failed => {
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        }
+
+        match key_store.fetch_key(&user_id, &public_key) {
+            Ok(key) => Box::new(
+                HttpResponse::Ok()
+                    .json(json!({ "data": ResponseKey::from(&key) }))
+                    .into_future(),
+            ),
+            Err(err) => match err {
+                KeyStoreError::NotFoundError(msg) => {
+                    debug!("Failed to fetch key: {}", msg);
+                    Box::new(
+                        HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&msg))
+                            .into_future(),
+                    )
+                }
+                _ => {
+                    error!("Failed to fetch key: {}", err);
+                    Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error())
+                            .into_future(),
+                    )
+                }
+            },
+        }
     })
 }

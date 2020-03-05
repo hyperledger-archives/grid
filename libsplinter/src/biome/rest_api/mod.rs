@@ -53,7 +53,9 @@ use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
 #[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
-use self::actix::key_management::make_key_management_route;
+use self::actix::key_management::{
+    make_key_management_route, make_key_management_route_with_public_key,
+};
 
 #[cfg(feature = "biome-key-management")]
 use super::key_management::store::PostgresKeyStore;
@@ -126,11 +128,18 @@ impl RestResourceProvider for BiomeRestResourceManager {
             }
         };
         #[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
-        resources.push(make_key_management_route(
-            self.rest_config.clone(),
-            self.key_store.clone(),
-            self.token_secret_manager.clone(),
-        ));
+        {
+            resources.push(make_key_management_route(
+                self.rest_config.clone(),
+                self.key_store.clone(),
+                self.token_secret_manager.clone(),
+            ));
+            resources.push(make_key_management_route_with_public_key(
+                self.rest_config.clone(),
+                self.key_store.clone(),
+                self.token_secret_manager.clone(),
+            ));
+        }
         resources
     }
 }
