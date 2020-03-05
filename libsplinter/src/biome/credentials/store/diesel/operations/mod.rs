@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides CredentialsStoreOperations implemented for a diesel backend
+
 pub(super) mod add_credentials;
 pub(super) mod fetch_credential_by_id;
 pub(super) mod fetch_credential_by_username;

@@ -106,7 +106,7 @@ pub enum UserCredentialsBuilderError {
     MissingRequiredField(String),
     /// Returned when an error occurs building the credentials
     BuildError(Box<dyn Error>),
-    /// Returned when a error occurs while attempting to encrypt the password
+    /// Returned when an error occurs while attempting to encrypt the password
     EncryptionError(Box<dyn Error>),
 }
 
@@ -142,9 +142,10 @@ impl From<BcryptError> for UserCredentialsBuilderError {
     }
 }
 
+/// Represents UserCredentials errors
 #[derive(Debug)]
 pub enum UserCredentialsError {
-    /// Returned when a error occurs while attempting to verify the password
+    /// Returned when an error occurs while attempting to verify the password
     VerificationError(Box<dyn Error>),
 }
 

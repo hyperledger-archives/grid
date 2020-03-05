@@ -32,7 +32,7 @@ use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::key_management::{NewKey, UpdatedKey};
 use super::authorize::authorize_user;
 
-/// Defines a REST endpoint for managing keys
+/// Defines the `/biome/users/{user_id}/keys` REST resource for managing keys
 pub fn make_key_management_route(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
@@ -65,6 +65,7 @@ pub fn make_key_management_route(
         )
 }
 
+/// Defines a REST endpoint for adding a key to the underlying storage
 fn handle_post(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
@@ -145,6 +146,7 @@ fn handle_post(
     })
 }
 
+/// Defines a REST endpoint for retrieving a key from the underlying storage
 fn handle_get(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
@@ -200,6 +202,7 @@ fn handle_get(
     })
 }
 
+/// Defines a REST endpoint for updating a key in the underlying storage
 fn handle_patch(
     rest_config: Arc<BiomeRestConfig>,
     key_store: Arc<dyn KeyStore<Key>>,
