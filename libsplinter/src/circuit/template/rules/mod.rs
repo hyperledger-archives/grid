@@ -48,6 +48,10 @@ impl Rules {
             service_builders.extend(create_services.apply_rule(template_arguments)?);
         }
 
+        if let Some(set_metadata) = &self.set_metadata {
+            circuit_builder = set_metadata.apply_rule(circuit_builder, template_arguments)?;
+        }
+
         builders.set_create_circuit_builder(circuit_builder);
         builders.set_service_builders(service_builders);
         Ok(())
