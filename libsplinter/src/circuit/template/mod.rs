@@ -77,6 +77,18 @@ impl CircuitCreateTemplate {
         self.arguments[index] = arg;
         Ok(())
     }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    pub fn arguments(&self) -> &[RuleArgument] {
+        &self.arguments
+    }
+
+    pub fn rules(&self) -> &Rules {
+        &self.rules
+    }
 }
 
 impl TryFrom<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
