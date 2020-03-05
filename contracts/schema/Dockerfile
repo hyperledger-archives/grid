@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as grid-schema-builder
+FROM hyperledger/grid-dev:v1 as grid-schema-builder
 
 COPY contracts/schema /build/contracts/schema
 COPY sdk/ /build/sdk/

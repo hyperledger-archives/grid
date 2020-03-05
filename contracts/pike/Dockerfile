@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as grid-pike-builder
+FROM hyperledger/grid-dev:v1 as grid-pike-builder
 
 COPY contracts/pike /build/contracts/pike
 COPY sdk/ /build/sdk/

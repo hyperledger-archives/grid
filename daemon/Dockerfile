@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as gridd-builder
+FROM hyperledger/grid-dev:v1 as gridd-builder
 
 COPY cli /build/cli
 COPY daemon /build/daemon
