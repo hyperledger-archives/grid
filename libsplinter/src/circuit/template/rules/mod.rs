@@ -13,74 +13,25 @@
 // limitations under the License.
 
 mod set_management_type;
-use std::collections::HashMap;
 
 use super::{yaml_parser::v1, Builders, CircuitTemplateError};
 use set_management_type::CircuitManagement;
 
-pub struct CircuitCreateTemplate {
-    _version: String,
-    _args: Vec<RuleArgument>,
-    rules: Rules,
-}
-
-impl CircuitCreateTemplate {
-    pub fn apply_rules(
-        &self,
-        builders: &mut Builders,
-        arguments: &HashMap<String, String>,
-    ) -> Result<(), CircuitTemplateError> {
-        self.rules.apply_rules(builders, arguments)
-    }
-}
-
-impl From<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
-    fn from(create_circuit_template: v1::CircuitCreateTemplate) -> Self {
-        CircuitCreateTemplate {
-            _version: create_circuit_template.version().to_string(),
-            _args: create_circuit_template
-                .args()
-                .to_owned()
-                .into_iter()
-                .map(RuleArgument::from)
-                .collect(),
-            rules: Rules::from(create_circuit_template.rules().clone()),
-        }
-    }
-}
-
-struct RuleArgument {
-    _name: String,
-    _required: bool,
-    _default_value: Option<String>,
-}
-
-impl From<v1::RuleArgument> for RuleArgument {
-    fn from(arguments: v1::RuleArgument) -> Self {
-        RuleArgument {
-            _name: arguments.name().to_string(),
-            _required: arguments.required(),
-            _default_value: arguments.default_value().map(String::from),
-        }
-    }
-}
-
-struct Rules {
+pub struct Rules {
     set_management_type: Option<CircuitManagement>,
 }
 
 impl Rules {
-    fn apply_rules(
+    pub fn apply_rules(
         &self,
         builders: &mut Builders,
-        _arguments: &HashMap<String, String>,
+        template_arguments: &[RuleArgument],
     ) -> Result<(), CircuitTemplateError> {
         let mut circuit_builder = builders.create_circuit_builder();
 
         if let Some(circuit_management) = &self.set_management_type {
             circuit_builder = circuit_management.apply_rule(circuit_builder)?;
         }
-
         builders.set_create_circuit_builder(circuit_builder);
         Ok(())
     }
@@ -92,6 +43,22 @@ impl From<v1::Rules> for Rules {
             set_management_type: rules
                 .set_management_type()
                 .map(|val| CircuitManagement::from(val.clone())),
+        }
+    }
+}
+
+pub struct RuleArgument {
+    _name: String,
+    _required: bool,
+    _default_value: Option<String>,
+}
+
+impl From<v1::RuleArgument> for RuleArgument {
+    fn from(arguments: v1::RuleArgument) -> Self {
+        RuleArgument {
+            _name: arguments.name().to_string(),
+            _required: arguments.required(),
+            _default_value: arguments.default_value().map(String::from),
         }
     }
 }

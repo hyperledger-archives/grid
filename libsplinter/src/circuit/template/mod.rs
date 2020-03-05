@@ -16,14 +16,54 @@ mod error;
 mod rules;
 mod yaml_parser;
 
-use std::collections::HashMap;
-
 pub use error::CircuitTemplateError;
 
-use rules::CircuitCreateTemplate;
-use yaml_parser::CircuitTemplate;
+use rules::{RuleArgument, Rules};
+use yaml_parser::{v1, CircuitTemplate};
 
 pub(self) use crate::admin::messages::{CreateCircuitBuilder, SplinterServiceBuilder};
+
+pub struct CircuitCreateTemplate {
+    version: String,
+    arguments: Vec<RuleArgument>,
+    rules: Rules,
+}
+
+impl CircuitCreateTemplate {
+    pub fn from_yaml_file(path: &str) -> Result<Self, CircuitTemplateError> {
+        let circuit_template = CircuitTemplate::load_from_file(path)?;
+        match circuit_template {
+            CircuitTemplate::V1(template) => Ok(Self::from(template)),
+        }
+    }
+
+    pub fn into_builders(self) -> Result<Builders, CircuitTemplateError> {
+        let mut builders = Builders {
+            create_circuit_builder: CreateCircuitBuilder::new(),
+            service_builders: vec![],
+        };
+
+        self.rules.apply_rules(&mut builders, &self.arguments)?;
+
+        Ok(builders)
+    }
+
+}
+
+impl From<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
+    fn from(create_circuit_template: v1::CircuitCreateTemplate) -> Self {
+        CircuitCreateTemplate {
+            version: create_circuit_template.version().to_string(),
+            arguments: create_circuit_template
+                .args()
+                .to_owned()
+                .into_iter()
+                .map(RuleArgument::from)
+                .collect(),
+            rules: Rules::from(create_circuit_template.rules().clone()),
+        }
+    }
+}
 
 pub struct Builders {
     create_circuit_builder: CreateCircuitBuilder,
@@ -31,24 +71,6 @@ pub struct Builders {
 }
 
 impl Builders {
-    pub fn try_from_template_file(
-        path: &str,
-        arguments: &HashMap<String, String>,
-    ) -> Result<Builders, CircuitTemplateError> {
-        let template = CircuitTemplate::load_from_file(path)?;
-        let mut builders = Builders {
-            create_circuit_builder: CreateCircuitBuilder::new(),
-            service_builders: vec![],
-        };
-        match template {
-            CircuitTemplate::V1(template) => {
-                let template_rules = CircuitCreateTemplate::from(template);
-                template_rules.apply_rules(&mut builders, &arguments)?;
-            }
-        }
-        Ok(builders)
-    }
-
     pub fn set_create_circuit_builder(&mut self, builder: CreateCircuitBuilder) {
         self.create_circuit_builder = builder;
     }
@@ -75,7 +97,7 @@ mod test {
 
     use tempdir::TempDir;
 
-    static EXAMPLE_TEMPLATE_YAML: &[u8; 165] = br##"version: v1
+    const EXAMPLE_TEMPLATE_YAML: &[u8] = br##"version: v1
 args:
     - name: admin-keys
       required: true
@@ -95,9 +117,13 @@ rules:
         let file_path = get_file_path(temp_dir);
 
         write_yaml_file(&file_path, EXAMPLE_TEMPLATE_YAML);
+        let mut template =
+            CircuitCreateTemplate::from_yaml_file(&file_path).expect("failed to parse template");
 
-        let builders = Builders::try_from_template_file(&file_path, &HashMap::new())
+        let builders = template
+            .into_builders()
             .expect("Error getting builders from templates");
+
         let circuit_create_builder = builders.create_circuit_builder();
         assert_eq!(
             circuit_create_builder.circuit_management_type(),
