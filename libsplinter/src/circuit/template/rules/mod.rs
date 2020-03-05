@@ -14,6 +14,7 @@
 
 mod create_services;
 mod set_management_type;
+mod set_metadata;
 
 use std::convert::TryFrom;
 
@@ -21,10 +22,12 @@ use super::{yaml_parser::v1, Builders, CircuitTemplateError};
 
 use create_services::CreateServices;
 use set_management_type::CircuitManagement;
+use set_metadata::SetMetadata;
 
 pub struct Rules {
     set_management_type: Option<CircuitManagement>,
     create_services: Option<CreateServices>,
+    set_metadata: Option<SetMetadata>,
 }
 
 impl Rules {
@@ -60,6 +63,9 @@ impl From<v1::Rules> for Rules {
             create_services: rules
                 .create_services()
                 .map(|val| CreateServices::from(val.clone())),
+            set_metadata: rules
+                .set_metadata()
+                .map(|val| SetMetadata::from(val.clone())),
         }
     }
 }
