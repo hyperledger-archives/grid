@@ -1245,6 +1245,119 @@ paths:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
 
+  /biome/users/{user_id}/keys/{public_key}:
+    get:
+      tags:
+      - Biome
+      description: Fetch key of a user
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        - name: public_key
+          in: path
+          description: Public key of the user
+          required: true
+          schema:
+            type: string
+            example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+      responses:
+        200:
+          description: User's key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BiomeUserKey'
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+    delete:
+      tags:
+      - Biome
+      description: Delete key of a user
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
+        - name: user_id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            type: string
+            example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        - name: public_key
+          in: path
+          description: Public key of the user
+          required: true
+          schema:
+            type: string
+            example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+      responses:
+        200:
+          description: User's key deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+                  data:
+                    $ref: '#/components/schemas/BiomeUserKey'
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: User not authorized
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
 components:
   parameters:
     protocol_version:
