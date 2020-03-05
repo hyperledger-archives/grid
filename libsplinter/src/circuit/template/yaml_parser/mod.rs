@@ -72,7 +72,7 @@ impl CircuitTemplate {
 
 #[cfg(test)]
 mod test {
-    use super::v1::Value;
+    use super::v1::{Metadata, Value};
     use super::*;
     use std::fs::File;
     use std::io::Write;
@@ -95,7 +95,14 @@ rules:
           value: [$(admin-keys)]
         - key: 'peer-services'
           value: '$(r:ALL_OTHER_SERVICES)'
-        first-service: 'a000' "##;
+        first-service: 'a000'
+    set-metadata:
+        encoding: json
+        metadata:
+            - key: "scabbard_admin_keys"
+              value: [$(cs:ADMIN)]
+            - key: "alias"
+              value: "$(sm:gameroom_name)" "##;
 
     /*
      * Verifies load_template correctly loads a template version 1
@@ -143,6 +150,23 @@ rules:
                     .set_management_type()
                     .expect("Management type was not deserialize correctly");
                 assert_eq!(management_type.management_type(), "gameroom");
+
+                let metadata = template
+                    .rules()
+                    .set_metadata()
+                    .expect("Metadata was not deserialize correctly")
+                    .metadata();
+
+                match metadata {
+                    Metadata::Json { metadata } => {
+                        assert!(metadata.iter().any(|metadata| metadata.key()
+                            == "scabbard_admin_keys"
+                            && metadata.value() == &Value::List(vec!["$(cs:ADMIN)".to_string()])));
+                        assert!(metadata.iter().any(|metadata| metadata.key() == "alias"
+                            && metadata.value()
+                                == &Value::Single("$(sm:gameroom_name)".to_string())));
+                    }
+                }
             }
         }
     }

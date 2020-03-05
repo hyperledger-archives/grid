@@ -60,6 +60,7 @@ impl RuleArgument {
 pub struct Rules {
     set_management_type: Option<CircuitManagement>,
     create_services: Option<CreateServices>,
+    set_metadata: Option<SetMetadata>,
 }
 
 impl Rules {
@@ -69,6 +70,10 @@ impl Rules {
 
     pub fn create_services(&self) -> Option<&CreateServices> {
         self.create_services.as_ref()
+    }
+
+    pub fn set_metadata(&self) -> Option<&SetMetadata> {
+        self.set_metadata.as_ref()
     }
 }
 
@@ -113,6 +118,41 @@ pub struct ServiceArgument {
 }
 
 impl ServiceArgument {
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn value(&self) -> &Value {
+        &self.value
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SetMetadata {
+    #[serde(flatten)]
+    metadata: Metadata,
+}
+
+impl SetMetadata {
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(tag = "encoding")]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub enum Metadata {
+    Json { metadata: Vec<JsonMetadata> },
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct JsonMetadata {
+    key: String,
+    value: Value,
+}
+
+impl JsonMetadata {
     pub fn key(&self) -> &str {
         &self.key
     }
