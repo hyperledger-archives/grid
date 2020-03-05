@@ -141,16 +141,37 @@ mod test {
 
     const EXAMPLE_TEMPLATE_YAML: &[u8] = br##"version: v1
 args:
-    - name: $(ADMIN_KEYS)
-      required: true
+    - name: $(a:ADMIN_KEYS)
+      required: false
       default: $(a:SIGNER_PUB_KEY)
+    - name: $(a:NODES)
+      required: true
+    - name: $(a:SIGNER_PUB_KEY)
+      required: false
+    - name: $(a:GAMEROOM_NAME)
+      required: true
 rules:
     set-management-type:
-        management-type: "gameroom" "##;
+        management-type: "gameroom"
+    create-services:
+        service-type: 'scabbard'
+        service-args:
+        - key: 'admin-keys'
+          value: [$(a:ADMIN_KEYS)]
+        - key: 'peer-services'
+          value: '$(r:ALL_OTHER_SERVICES)'
+        first-service: 'a000'
+    set-metadata:
+        encoding: json
+        metadata:
+            - key: "scabbard_admin_keys"
+              value: ["$(a:ADMIN_KEYS)"]
+            - key: "alias"
+              value: "$(a:GAMEROOM_NAME)" "##;
 
     /*
      * Verifies that Builders can be parsed from template v1 and correctly
-     * applies the set-management-type rule
+     * applies the set-management-type, create-services and set-metadata rules correctly
      */
     #[test]
     fn test_builds_template_v1() {
@@ -162,6 +183,16 @@ rules:
         let mut template =
             CircuitCreateTemplate::from_yaml_file(&file_path).expect("failed to parse template");
 
+        template
+            .set_argument_value("nodes", "alpha-node-000,beta-node-000")
+            .expect("Error setting argument");
+        template
+            .set_argument_value("signer_pub_key", "signer_key")
+            .expect("Error setting argument");
+        template
+            .set_argument_value("gameroom_name", "my gameroom")
+            .expect("Error setting argument");
+
         let builders = template
             .into_builders()
             .expect("Error getting builders from templates");
@@ -171,6 +202,60 @@ rules:
             circuit_create_builder.circuit_management_type(),
             Some("gameroom".to_string())
         );
+
+        let metadata = String::from_utf8(
+            circuit_create_builder
+                .application_metadata()
+                .expect("Application metadata is not set"),
+        )
+        .expect("Failed to parse metadata to string");
+        assert_eq!(
+            metadata,
+            "{[\"scabbard_admin_keys\":[\"signer_key\"],\"alias\":\"my gameroom\"]}"
+        );
+
+        let service_builders = builders.service_builders();
+        let service_alpha_node = service_builders
+            .iter()
+            .find(|service| service.allowed_nodes() == Some(vec!["alpha-node-000".to_string()]))
+            .expect("service builder for alpha-node was not created correctly");
+
+        assert_eq!(service_alpha_node.service_id(), Some("a000".to_string()));
+        assert_eq!(
+            service_alpha_node.service_type(),
+            Some("scabbard".to_string())
+        );
+
+        let alpha_service_args = service_alpha_node
+            .arguments()
+            .expect("service for alpha node has no arguments set");
+        assert!(alpha_service_args
+            .iter()
+            .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
+        assert!(alpha_service_args
+            .iter()
+            .any(|(key, value)| key == "peer-services" && value == "[\"a001\"]"));
+
+        let service_beta_node = service_builders
+            .iter()
+            .find(|service| service.allowed_nodes() == Some(vec!["beta-node-000".to_string()]))
+            .expect("service builder for beta-node was not created correctly");
+
+        assert_eq!(service_beta_node.service_id(), Some("a001".to_string()));
+        assert_eq!(
+            service_beta_node.service_type(),
+            Some("scabbard".to_string())
+        );
+
+        let beta_service_args = service_beta_node
+            .arguments()
+            .expect("service for beta node has no arguments set");
+        assert!(beta_service_args
+            .iter()
+            .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
+        assert!(beta_service_args
+            .iter()
+            .any(|(key, value)| key == "peer-services" && value == "[\"a000\"]"));
     }
 
     fn get_file_path(mut temp_dir: PathBuf) -> String {
