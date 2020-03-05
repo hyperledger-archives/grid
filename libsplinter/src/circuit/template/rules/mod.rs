@@ -14,6 +14,8 @@
 
 mod set_management_type;
 
+use std::convert::TryFrom;
+
 use super::{yaml_parser::v1, Builders, CircuitTemplateError};
 use set_management_type::CircuitManagement;
 
@@ -47,18 +49,63 @@ impl From<v1::Rules> for Rules {
     }
 }
 
+#[derive(Clone)]
 pub struct RuleArgument {
-    _name: String,
-    _required: bool,
-    _default_value: Option<String>,
+    name: String,
+    required: bool,
+    default_value: Option<String>,
+    user_value: Option<String>,
 }
 
-impl From<v1::RuleArgument> for RuleArgument {
-    fn from(arguments: v1::RuleArgument) -> Self {
-        RuleArgument {
-            _name: arguments.name().to_string(),
-            _required: arguments.required(),
-            _default_value: arguments.default_value().map(String::from),
-        }
+impl RuleArgument {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn required(&self) -> bool {
+        self.required
+    }
+
+    pub fn default_value(&self) -> Option<&String> {
+        self.default_value.as_ref()
+    }
+
+    pub fn user_value(&self) -> Option<&String> {
+        self.user_value.as_ref()
+    }
+
+    pub fn set_user_value(&mut self, value: &str) {
+        self.user_value = Some(value.to_string())
+    }
+}
+
+impl TryFrom<v1::RuleArgument> for RuleArgument {
+    type Error = CircuitTemplateError;
+    fn try_from(arguments: v1::RuleArgument) -> Result<Self, Self::Error> {
+        Ok(RuleArgument {
+            name: strip_arg_marker(arguments.name())?,
+            required: arguments.required(),
+            default_value: arguments.default_value().map(String::from),
+            user_value: None,
+        })
+    }
+}
+
+fn strip_arg_marker(key: &str) -> Result<String, CircuitTemplateError> {
+    if key.starts_with("$(a:") && key.ends_with(')') {
+        let mut key = key.to_string();
+        key.pop();
+        Ok(key
+            .get(4..)
+            .ok_or_else(|| {
+                CircuitTemplateError::new(&format!("{} is not a valid argument name", key))
+            })?
+            .to_string()
+            .to_lowercase())
+    } else {
+        Err(CircuitTemplateError::new(&format!(
+            "{} is not a valid argument name",
+            key
+        )))
     }
 }

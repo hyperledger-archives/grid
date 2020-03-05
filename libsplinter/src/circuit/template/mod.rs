@@ -16,6 +16,8 @@ mod error;
 mod rules;
 mod yaml_parser;
 
+use std::convert::TryFrom;
+
 pub use error::CircuitTemplateError;
 
 use rules::{RuleArgument, Rules};
@@ -33,7 +35,7 @@ impl CircuitCreateTemplate {
     pub fn from_yaml_file(path: &str) -> Result<Self, CircuitTemplateError> {
         let circuit_template = CircuitTemplate::load_from_file(path)?;
         match circuit_template {
-            CircuitTemplate::V1(template) => Ok(Self::from(template)),
+            CircuitTemplate::V1(template) => Ok(Self::try_from(template)?),
         }
     }
 
@@ -47,21 +49,21 @@ impl CircuitCreateTemplate {
 
         Ok(builders)
     }
-
 }
 
-impl From<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
-    fn from(create_circuit_template: v1::CircuitCreateTemplate) -> Self {
-        CircuitCreateTemplate {
+impl TryFrom<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
+    type Error = CircuitTemplateError;
+    fn try_from(create_circuit_template: v1::CircuitCreateTemplate) -> Result<Self, Self::Error> {
+        Ok(CircuitCreateTemplate {
             version: create_circuit_template.version().to_string(),
             arguments: create_circuit_template
                 .args()
                 .to_owned()
                 .into_iter()
-                .map(RuleArgument::from)
-                .collect(),
+                .map(RuleArgument::try_from)
+                .collect::<Result<_, CircuitTemplateError>>()?,
             rules: Rules::from(create_circuit_template.rules().clone()),
-        }
+        })
     }
 }
 
@@ -99,7 +101,7 @@ mod test {
 
     const EXAMPLE_TEMPLATE_YAML: &[u8] = br##"version: v1
 args:
-    - name: admin-keys
+    - name: $(ADMIN_KEYS)
       required: true
       default: $(a:SIGNER_PUB_KEY)
 rules:
