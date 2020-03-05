@@ -298,6 +298,10 @@ pub fn make_key_management_route_with_public_key(
                 secret_manager.clone(),
             ),
         )
+        .add_method(
+            Method::Delete,
+            handle_delete(rest_config, key_store, secret_manager),
+        )
 }
 
 /// Defines a REST endpoint method to fetch a key from the underlying storage
@@ -371,6 +375,88 @@ fn handle_fetch(
                 }
                 _ => {
                     error!("Failed to fetch key: {}", err);
+                    Box::new(
+                        HttpResponse::InternalServerError()
+                            .json(ErrorResponse::internal_error())
+                            .into_future(),
+                    )
+                }
+            },
+        }
+    })
+}
+
+/// Defines a REST endpoint method to delete a key from the underlying storage
+fn handle_delete(
+    rest_config: Arc<BiomeRestConfig>,
+    key_store: Arc<dyn KeyStore<Key>>,
+    secret_manager: Arc<dyn SecretManager>,
+) -> HandlerFunction {
+    Box::new(move |request, _| {
+        let key_store = key_store.clone();
+        let user_id = match request.match_info().get("user_id") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("User ID is not in path request");
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(
+                            &"Failed to process request: no user id".to_string(),
+                        ))
+                        .into_future(),
+                );
+            }
+        };
+
+        let public_key = match request.match_info().get("public_key") {
+            Some(id) => id.to_owned(),
+            None => {
+                error!("Public key is not in path request");
+                return Box::new(
+                    HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(
+                            &"Failed to process request: no public key".to_string(),
+                        ))
+                        .into_future(),
+                );
+            }
+        };
+
+        match authorize_user(&request, &user_id, &secret_manager, &rest_config) {
+            AuthorizationResult::Authorized => (),
+            AuthorizationResult::Unauthorized(msg) => {
+                return Box::new(
+                    HttpResponse::Unauthorized()
+                        .json(ErrorResponse::unauthorized(&msg))
+                        .into_future(),
+                )
+            }
+            AuthorizationResult::Failed => {
+                return Box::new(
+                    HttpResponse::InternalServerError()
+                        .json(ErrorResponse::internal_error())
+                        .into_future(),
+                );
+            }
+        }
+
+        match key_store.remove_key(&user_id, &public_key) {
+            Ok(key) => Box::new(
+                HttpResponse::Ok()
+                    .json(json!({ "message": "Key successfully deleted", "data": ResponseKey::from(&key) }))
+                    .into_future(),
+            ),
+            Err(err) => match err {
+                KeyStoreError::NotFoundError(msg) => {
+                    debug!("Failed to delete key: {}", msg);
+                    Box::new(
+                        HttpResponse::NotFound()
+                            .json(ErrorResponse::not_found(&msg))
+                            .into_future(),
+                    )
+                }
+                _ => {
+                    error!("Failed to delete key: {}", err);
                     Box::new(
                         HttpResponse::InternalServerError()
                             .json(ErrorResponse::internal_error())
