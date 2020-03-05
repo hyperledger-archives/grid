@@ -58,7 +58,7 @@ use super::mailbox::Mailbox;
 use super::messages;
 use super::open_proposals::OpenProposals;
 #[cfg(feature = "proposal-read")]
-use super::open_proposals::Proposals;
+use super::open_proposals::ProposalIter;
 use super::{admin_service_id, sha256, AdminServiceEventSubscriber, AdminSubscriberError, Events};
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -898,7 +898,7 @@ impl AdminServiceShared {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> Proposals {
+    pub fn get_proposals(&self) -> ProposalIter {
         self.open_proposals.get_proposals()
     }
 

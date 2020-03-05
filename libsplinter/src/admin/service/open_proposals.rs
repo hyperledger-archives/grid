@@ -73,7 +73,7 @@ impl OpenProposals {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> Proposals {
+    pub fn get_proposals(&self) -> ProposalIter {
         self.proposal_registry.get_proposals()
     }
 
@@ -137,11 +137,16 @@ impl ProposalRegistry {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> Proposals {
-        Proposals {
-            inner: Box::new(self.proposals.clone().into_iter()),
-            size: self.proposals.len(),
-        }
+    pub fn get_proposals(&self) -> ProposalIter {
+        ProposalIter::new(
+            Box::new(
+                self.proposals
+                    .clone()
+                    .into_iter()
+                    .map(|(_, proposal)| proposal),
+            ),
+            self.proposals.len(),
+        )
     }
 
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
@@ -149,21 +154,28 @@ impl ProposalRegistry {
     }
 }
 
-/// An iterator over CircuitProposals and the time that each occurred.
-pub struct Proposals {
-    inner: Box<dyn Iterator<Item = (String, messages::CircuitProposal)>>,
+/// An iterator over CircuitProposals, with a well-known count of values.
+pub struct ProposalIter {
+    inner: Box<dyn Iterator<Item = messages::CircuitProposal>>,
     size: usize,
 }
 
-impl Proposals {
+impl ProposalIter {
+    pub fn new(iter: Box<dyn Iterator<Item = messages::CircuitProposal>>, count: usize) -> Self {
+        Self {
+            inner: iter,
+            size: count,
+        }
+    }
+
     #[cfg(feature = "proposal-read")]
     pub fn total(&self) -> usize {
         self.size
     }
 }
 
-impl Iterator for Proposals {
-    type Item = (String, messages::CircuitProposal);
+impl Iterator for ProposalIter {
+    type Item = messages::CircuitProposal;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next()

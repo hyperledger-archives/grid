@@ -121,8 +121,7 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
         if proposals.total() != 0 {
             if let Some(filter) = filters {
                 let filtered_proposals: Vec<CircuitProposal> = proposals
-                    .filter(|(_, proposal)| proposal.circuit.circuit_management_type == filter)
-                    .map(|(_, proposal)| proposal)
+                    .filter(|proposal| proposal.circuit.circuit_management_type == filter)
                     .collect();
 
                 let total_count = filtered_proposals.len();
@@ -136,11 +135,8 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
                 Ok((proposals_data, link, limit, offset, total_count))
             } else {
                 let total_count = proposals.total();
-                let proposals_data: Vec<CircuitProposal> = proposals
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .map(|(_, proposal)| proposal)
-                    .collect();
+                let proposals_data: Vec<CircuitProposal> =
+                    proposals.skip(offset_value).take(limit_value).collect();
 
                 Ok((proposals_data, link, limit, offset, total_count))
             }
