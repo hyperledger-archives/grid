@@ -98,6 +98,10 @@ impl TryFrom<v1::RuleArgument> for RuleArgument {
     }
 }
 
+fn is_arg(key: &str) -> bool {
+    key.starts_with("$(a:")
+}
+
 fn strip_arg_marker(key: &str) -> Result<String, CircuitTemplateError> {
     if key.starts_with("$(a:") && key.ends_with(')') {
         let mut key = key.to_string();
@@ -130,4 +134,44 @@ impl From<v1::Value> for Value {
             v1::Value::List(values) => Self::List(values),
         }
     }
+}
+
+fn get_argument_value(
+    key: &str,
+    template_arguments: &[RuleArgument],
+) -> Result<String, CircuitTemplateError> {
+    let key = strip_arg_marker(key)?;
+    let value = match template_arguments.iter().find(|arg| arg.name == key) {
+        Some(arg) => match arg.user_value() {
+            Some(val) => val.to_string(),
+            None => {
+                if arg.required {
+                    return Err(CircuitTemplateError::new(&format!(
+                        "Argument {} is required but was not provided",
+                        key
+                    )));
+                } else {
+                    let default_value = arg.default_value.to_owned().ok_or_else(|| {
+                        CircuitTemplateError::new(&format!(
+                            "Argument {} was not provided and no default value is set",
+                            key
+                        ))
+                    })?;
+                    if is_arg(&default_value) {
+                        get_argument_value(&default_value, template_arguments)?
+                    } else {
+                        default_value
+                    }
+                }
+            }
+        },
+        None => {
+            return Err(CircuitTemplateError::new(&format!(
+                "Invalid template. Argument {} was expected but not provided",
+                key
+            )));
+        }
+    };
+
+    Ok(value)
 }
