@@ -16,7 +16,7 @@ mod consensus;
 pub(crate) mod error;
 mod mailbox;
 pub(crate) mod messages;
-mod open_proposals;
+pub(super) mod open_proposals;
 #[cfg(feature = "proposal-read")]
 pub(super) mod proposal_store;
 mod shared;

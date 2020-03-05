@@ -73,3 +73,126 @@ fn fetch_proposal<PS: ProposalStore + 'static>(
         }),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use reqwest::{blocking::Client, StatusCode, Url};
+
+    use crate::admin::{
+        messages::{
+            AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
+            ProposalType, RouteType,
+        },
+        service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
+    };
+    use crate::rest_api::{RestApiBuilder, RestApiShutdownHandle};
+
+    #[test]
+    /// Tests a GET /admin/proposals/{circuit_id} request returns the expected proposal.
+    fn test_fetch_proposal_ok() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_fetch_proposal_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals/{}",
+            bind_url,
+            get_proposal().circuit_id
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let proposal: CircuitProposal = resp.json().expect("Failed to deserialize body");
+        assert_eq!(proposal, get_proposal());
+    }
+
+    #[test]
+    /// Tests a GET /admin/proposals/{circuit_id} request returns NotFound when an invalid
+    /// circuit_id is passed.
+    fn test_fetch_proposal_not_found() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_fetch_proposal_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals/Circuit-not-valid",
+            bind_url,
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[derive(Clone)]
+    struct MockProposalStore;
+
+    impl ProposalStore for MockProposalStore {
+        fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
+            unimplemented!()
+        }
+
+        fn proposal(
+            &self,
+            circuit_id: &str,
+        ) -> Result<Option<CircuitProposal>, ProposalStoreError> {
+            Ok(if circuit_id == &get_proposal().circuit_id {
+                Some(get_proposal())
+            } else {
+                None
+            })
+        }
+    }
+
+    fn get_proposal() -> CircuitProposal {
+        CircuitProposal {
+            proposal_type: ProposalType::Create,
+            circuit_id: "circuit1".into(),
+            circuit_hash: "012345".into(),
+            circuit: CreateCircuit {
+                circuit_id: "circuit1".into(),
+                roster: vec![],
+                members: vec![],
+                authorization_type: AuthorizationType::Trust,
+                persistence: PersistenceType::Any,
+                durability: DurabilityType::NoDurability,
+                routes: RouteType::Any,
+                circuit_management_type: "mgmt_type".into(),
+                application_metadata: vec![],
+            },
+            votes: vec![],
+            requester: vec![],
+            requester_node_id: "node_id".into(),
+        }
+    }
+
+    fn run_rest_api_on_open_port(
+        resources: Vec<Resource>,
+    ) -> (RestApiShutdownHandle, std::thread::JoinHandle<()>, String) {
+        (10000..20000)
+            .find_map(|port| {
+                let bind_url = format!("127.0.0.1:{}", port);
+                let result = RestApiBuilder::new()
+                    .with_bind(&bind_url)
+                    .add_resources(resources.clone())
+                    .build()
+                    .expect("Failed to build REST API")
+                    .run();
+                match result {
+                    Ok((shutdown_handle, join_handle)) => {
+                        Some((shutdown_handle, join_handle, bind_url))
+                    }
+                    Err(RestApiServerError::BindError(_)) => None,
+                    Err(err) => panic!("Failed to run REST API: {}", err),
+                }
+            })
+            .expect("No port available")
+    }
+}
