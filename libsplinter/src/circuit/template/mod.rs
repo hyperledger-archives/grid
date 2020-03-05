@@ -49,6 +49,34 @@ impl CircuitCreateTemplate {
 
         Ok(builders)
     }
+
+    pub fn set_argument_value(
+        &mut self,
+        key: &str,
+        value: &str,
+    ) -> Result<(), CircuitTemplateError> {
+        let name = key.to_lowercase();
+        let (index, mut arg) = self
+            .arguments
+            .iter()
+            .enumerate()
+            .find_map(|(index, arg)| {
+                if arg.name() == name {
+                    Some((index, arg.clone()))
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| {
+                CircuitTemplateError::new(&format!(
+                    "Argument {} is not defined in the template",
+                    key
+                ))
+            })?;
+        arg.set_user_value(value);
+        self.arguments[index] = arg;
+        Ok(())
+    }
 }
 
 impl TryFrom<v1::CircuitCreateTemplate> for CircuitCreateTemplate {
