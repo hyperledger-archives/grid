@@ -1,0 +1,116 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#profile {
+  .key-card {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: 1.8rem 1fr 2rem;
+    grid-template-areas:
+      'header'
+      'info'
+      'action';
+    padding-top: 1rem;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: var(--background-color-light);
+    min-width: 250px;
+
+    .header {
+      grid-area: header;
+      padding: 0 1rem;
+      display: flex;
+      justify-content: space-between;
+
+      .name {
+        font-weight: bold;
+      }
+
+      .edit {
+        cursor: pointer;
+        color: var(--color-grey);
+
+        &:hover {
+          color: var(--color-dark-grey);
+        }
+      }
+    }
+
+    .keys {
+      grid-area: info;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+
+      span {
+        overflow-wrap: break-word;
+
+        &.label {
+          font-style: italic;
+        }
+      }
+    }
+
+    .set-active,
+    .active {
+      grid-area: action;
+      width: 100%;
+      height: 2rem;
+      padding: 0;
+      justify-content: center;
+      font-family: var(--fontFamily-primary);
+      font-size: 1rem;
+    }
+
+    .active {
+      display: flex;
+      align-items: center;
+      background-image: linear-gradient(
+        to right,
+        var(--color-primary) 0%,
+        var(--color-primary-light) 60%
+      );
+      color: var(--color-grey);
+    }
+
+    .set-active {
+      background-image: linear-gradient(
+        to right,
+        var(--color-secondary) 0%,
+        var(--color-secondary-light) 60%
+      );
+      color: var(--color-dark-grey);
+      border-width: 0;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      transform: translateY(100%);
+      transition: all 0.2s;
+    }
+
+    &:hover {
+      .set-active {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  @media only screen and (min-device-width: 320px) and (max-device-width: 1024px) {
+    .key-card {
+      .set-active {
+        transform: translateY(0);
+      }
+    }
+  }
+}
