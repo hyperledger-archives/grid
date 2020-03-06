@@ -15,6 +15,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import proptypes from 'prop-types';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -28,6 +29,8 @@ import { ActionList } from './ActionList';
 import { KeyCard } from './KeyCard';
 import { ChangePasswordForm } from './forms/ChangePasswordForm';
 import { AddKeyForm } from './forms/AddKeyForm';
+import { UpdateKeyForm } from './forms/UpdateKeyForm';
+import { EnterPasswordForm } from './forms/EnterPasswordForm';
 import { OverlayModal } from './OverlayModal';
 import { http } from './http';
 
@@ -81,14 +84,89 @@ export function Profile() {
     setModalActive(true);
   };
 
+  const updateKeyCallback = async () => {
+    setModalActive(false);
+    try {
+      const { splinterURL } = getSharedConfig().canopyConfig;
+      const userKeys = await http(
+        'GET',
+        `${splinterURL}/biome/users/${user.userId}/keys`,
+        {},
+        request => {
+          request.setRequestHeader('Authorization', `Bearer ${user.token}`);
+        }
+      );
+      setKeys(JSON.parse(userKeys).data);
+    } catch (err) {
+      switch (err.code) {
+        case '401':
+          window.location.href = `${window.location.origin}/login`;
+          break;
+        default:
+          break;
+      }
+    }
+  };
+
   const formView = ({ formName, params }) => {
     switch (formName) {
       case 'add-key':
         return <AddKeyForm successFn={params.successFn} />;
+      case 'update-key':
+        return (
+          <UpdateKeyForm userKey={params.key} closeFn={updateKeyCallback} />
+        );
       case 'update-password':
         return <ChangePasswordForm />;
+      case 'enter-password':
+        return (
+          <EnterPasswordForm
+            callbackFn={params.callbackFn}
+            errorMessage={params.errorMessage}
+          />
+        );
       default:
-        break;
+        return null;
+    }
+  };
+
+  formView.propTypes = {
+    formName: proptypes.string,
+    params: proptypes.object
+  };
+
+  formView.defaultProps = {
+    formName: '',
+    params: undefined
+  };
+
+  const activateKey = key => {
+    const { public_key, encrypted_private_key } = key;
+    const keySecret = sessionStorage.getItem('KEY_SECRET');
+    if (keySecret) {
+      try {
+        const privateKey = decryptKey(
+          JSON.parse(encrypted_private_key),
+          keySecret
+        );
+        setStateKeys({
+          publicKey: public_key,
+          privateKey
+        });
+        setSigningKeys({
+          publicKey: public_key,
+          privateKey
+        });
+        setModalActive(false);
+      } catch (err) {
+        openModalForm('enter-password', {
+          callbackFn: () => activateKey(key),
+          errorMessage: `Unable to decrypt key. Error: ${err.message}`
+        });
+        throw new Error(err.message);
+      }
+    } else {
+      openModalForm('enter-password', { callbackFn: () => activateKey(key) });
     }
   };
 

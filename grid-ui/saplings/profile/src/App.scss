@@ -169,4 +169,9 @@ button.submit {
   &:disabled {
     background: var(--color-grey);
   }
+
+  button.danger {
+    background: var(--color-failure);
+    color: #333333;
+  }
 }
