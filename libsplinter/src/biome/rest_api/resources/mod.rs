@@ -14,7 +14,7 @@
 
 //! Provides structures for the REST resources.
 
-#[cfg(feature = "biome-key-management")]
+#[cfg(any(feature = "biome-key-management", feature = "biome-credentials"))]
 pub(in super::super) mod authorize;
 #[cfg(feature = "biome-credentials")]
 pub(in super::super) mod credentials;
