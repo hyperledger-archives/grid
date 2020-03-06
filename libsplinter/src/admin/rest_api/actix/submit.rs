@@ -35,11 +35,14 @@ pub fn make_submit_route<A: AdminCommands + Clone + 'static>(admin_commands: A) 
                         Ok(()) => HttpResponse::Accepted().finish().into_future(),
                         Err(AdminServiceError::ServiceError(
                             ServiceError::UnableToHandleMessage(err),
-                        )) => HttpResponse::BadRequest()
-                            .json(json!({
-                                "message": format!("Unable to handle message: {}", err)
-                            }))
-                            .into_future(),
+                        )) => {
+                            debug!("{}", err);
+                            HttpResponse::BadRequest()
+                                .json(json!({
+                                    "message": format!("Unable to handle message: {}", err)
+                                }))
+                                .into_future()
+                        }
                         Err(AdminServiceError::ServiceError(
                             ServiceError::InvalidMessageFormat(err),
                         )) => HttpResponse::BadRequest()

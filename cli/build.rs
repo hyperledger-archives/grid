@@ -31,11 +31,25 @@ fn main() -> Result<(), BuildError> {
         .map_err(|_| BuildError("Unable to read PATH environment variable".into()))?;
     let mut pandoc_exist = false;
     for path in paths.split(':') {
-        for entry in fs::read_dir(path)
-            .map_err(|err| BuildError(format!("Cannot check if pandoc is in PATH: {}", err)))?
-        {
-            let entry = entry
-                .map_err(|err| BuildError(format!("Cannot check if file is pandoc: {}", err)))?;
+        let entries = match fs::read_dir(path) {
+            Ok(entries) => entries,
+            Err(err) => {
+                // skip a directory in the path that cannot be read.
+                println!("Unable to read path entry {}: {}", path, err);
+                continue;
+            }
+        };
+
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(err) => {
+                    // skip an entry in the path that cannot be read.
+                    println!("Unable to read entry in {}: {}", path, err);
+                    continue;
+                }
+            };
+
             let path = entry.path();
             if path.ends_with("pandoc") {
                 pandoc_exist = true;
