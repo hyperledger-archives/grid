@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as grid-product-builder
+FROM hyperledger/grid-dev:v1 as grid-product-builder
 
 COPY contracts/product /build/contracts/product
 COPY sdk/ /build/sdk/

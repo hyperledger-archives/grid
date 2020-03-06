@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev as grid-track_and_trace-builder
+FROM hyperledger/grid-dev:v1 as grid-track_and_trace-builder
 
 COPY contracts/track_and_trace /build/contracts/track_and_trace
 COPY sdk/ /build/sdk/
