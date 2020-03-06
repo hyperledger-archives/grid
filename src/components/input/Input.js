@@ -13,8 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export { NavItem } from './navigation/NavItem';
-export { SideNav } from './navigation/SideNav';
-export { Progress } from './progress/Progress';
-export { TabBox } from './tabBox/TabBox';
-export { Input } from './input/Input';
+import React from 'react';
+import PropTypes from 'prop-types';
+
+export const Input = ({ type, id, label, required }) => {
+  return (
+    <div className="canopy-input">
+      <input
+        type={type}
+        id={id}
+        aria-label={`${label} field`}
+        placeholder={`${label}`}
+        required={required}
+      />
+      <label htmlFor={id}>{label}</label>
+    </div>
+  );
+};
+
+Input.propTypes = {
+  type: PropTypes.string.isRequired,
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  required: PropTypes.bool.isRequired
+};

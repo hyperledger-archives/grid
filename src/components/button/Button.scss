@@ -13,8 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export { NavItem } from './navigation/NavItem';
-export { SideNav } from './navigation/SideNav';
-export { Progress } from './progress/Progress';
-export { TabBox } from './tabBox/TabBox';
-export { Input } from './input/Input';
+
+.button {
+  border: none;
+  background: #555555;
+  padding: 1rem;
+
+  &.flat {
+    background: transparent;
+    color: #555555;
+    border: 1px solid #555555;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #555555;
+      color: #ffffff;
+    }
+  }
+
+  &.fab {
+    border-radius: 50%;
+    background: var(--color-success);
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+}

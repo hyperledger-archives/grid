@@ -13,8 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export { NavItem } from './navigation/NavItem';
-export { SideNav } from './navigation/SideNav';
-export { Progress } from './progress/Progress';
-export { TabBox } from './tabBox/TabBox';
-export { Input } from './input/Input';
+
+.auth-form {
+  padding: 1rem;
+  width: 30rem;
+
+  h3 {
+    margin: 0;
+  }
+
+  hr {
+    border-top: 2px solid var(--color-dark-grey);
+    margin-left: 0;
+    margin-bottom: 1rem;
+    width: 12rem;
+  }
+
+  form {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+
+    button.submit {
+      display: flex;
+      margin: 2rem 0 0;
+      position: relative;
+      margin-left: auto;
+      background: var(--color-secondary);
+    }
+  }
+}

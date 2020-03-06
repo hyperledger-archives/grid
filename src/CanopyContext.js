@@ -60,6 +60,12 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
       }
     };
   };
+
+  window.$CANOPY.hideCanopy = () => {
+    const sideNavElement = document.getElementById('root');
+    sideNavElement.classList.add('display-none');
+  };
+
   window.$CANOPY.setUser = canopyUser => {
     window.sessionStorage.setItem('CANOPY_USER', JSON.stringify(canopyUser));
     setUser(canopyUser);
