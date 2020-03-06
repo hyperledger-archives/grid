@@ -56,7 +56,7 @@ use crate::rest_api::{Resource, RestResourceProvider};
 use self::actix::key_management::make_key_management_route;
 
 #[cfg(feature = "biome-key-management")]
-use super::key_management::store::postgres::PostgresKeyStore;
+use super::key_management::store::PostgresKeyStore;
 use super::secrets::{AutoSecretManager, SecretManager};
 use super::user::store::diesel::SplinterUserStore;
 

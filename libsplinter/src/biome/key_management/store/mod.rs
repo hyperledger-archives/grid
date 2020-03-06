@@ -12,8 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "diesel")]
+pub(in crate::biome) mod diesel;
 pub mod error;
-pub mod postgres;
+
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::PostgresKeyStore;
 
 pub use error::KeyStoreError;
 

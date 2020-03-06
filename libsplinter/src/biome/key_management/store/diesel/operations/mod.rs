@@ -12,4 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod postgres;
+pub(super) mod insert_key;
+pub(super) mod list_keys;
+pub(super) mod update_key;
+
+pub(super) struct KeyStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+impl<'a, C> KeyStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        KeyStoreOperations { conn }
+    }
+}
