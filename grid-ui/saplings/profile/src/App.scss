@@ -1,0 +1,172 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#root {
+  height: 100%;
+}
+
+#profile {
+  position: relative;
+  background: var(--color-dark-grey);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .user-info {
+    position: relative;
+    display: flex;
+    padding: 1.5rem;
+    justify-content: flex-start;
+    align-items: flex-end;
+
+    .display-name {
+      margin: 3rem 0 2rem;
+      color: var(--color-text-lighter--on-dark);
+    }
+
+    .action-list {
+      .actions.open {
+        background: #ffffff;
+      }
+    }
+  }
+
+  .action-list {
+    position: absolute;
+    top: 1rem;
+    right: 0.25rem;
+  }
+
+  .user-keys {
+    background: #ffffff;
+    flex: 0 1 100%;
+    padding: 1.5rem;
+
+    #keys-label {
+      display: inline-block;
+      width: 150px;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #000000;
+    }
+
+    .key-list {
+      display: grid;
+      grid-auto-columns: 20rem;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      grid-template-rows: auto;
+      grid-column-gap: 1rem;
+      grid-row-gap: 3rem;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .add-key {
+      position: fixed;
+      bottom: 3rem;
+      right: 3rem;
+
+      .icon {
+        width: 2rem;
+        height: 2rem;
+      }
+    }
+  }
+}
+
+.info-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr;
+  grid-template-areas: 'info actions';
+  width: fit-content;
+
+  .label {
+    width: fit-content;
+    color: var(--color-text-light--on-dark);
+  }
+
+  .value {
+    width: fit-content;
+    margin: 0;
+  }
+
+  .field-action {
+    margin: 0 2rem;
+    align-self: center;
+    justify-self: flex-start;
+  }
+}
+
+button {
+  border: none;
+  color: #ffffff;
+  background: #555555;
+  padding: 1rem;
+
+  &.flat {
+    background: transparent;
+    color: #555555;
+    border: 1px solid #555555;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #555555;
+      color: #ffffff;
+    }
+  }
+
+  &.fab {
+    border-radius: 50%;
+    background: var(--color-secondary);
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+form {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 1rem;
+
+  button.submit {
+    margin: 1rem 0 0;
+    position: relative;
+    left: 100%;
+    transform: translateX(-100%);
+  }
+}
+
+.form-wrapper {
+  display: flex;
+  flex-direction: column;
+
+  .error {
+    border: 1px solid var(--color-failure);
+    padding: 1rem;
+    margin: 1rem 0;
+    color: var(--color-failure);
+  }
+}
+
+button.submit {
+  background: var(--color-secondary);
+
+  &:disabled {
+    background: var(--color-grey);
+  }
+}
