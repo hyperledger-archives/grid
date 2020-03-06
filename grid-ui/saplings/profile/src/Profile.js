@@ -26,6 +26,7 @@ import {
 } from 'splinter-saplingjs';
 import { ActionList } from './ActionList';
 import { KeyCard } from './KeyCard';
+import { ChangePasswordForm } from './forms/ChangePasswordForm';
 import { AddKeyForm } from './forms/AddKeyForm';
 import { OverlayModal } from './OverlayModal';
 import { http } from './http';
@@ -84,6 +85,8 @@ export function Profile() {
     switch (formName) {
       case 'add-key':
         return <AddKeyForm successFn={params.successFn} />;
+      case 'update-password':
+        return <ChangePasswordForm />;
       default:
         break;
     }
@@ -105,6 +108,7 @@ export function Profile() {
         <ActionList className="user-actions">
           <button
             className="flat"
+            onClick={() => openModalForm('update-password')}
           >
             Change password
           </button>
