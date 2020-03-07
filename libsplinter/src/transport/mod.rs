@@ -16,7 +16,6 @@ mod frame;
 pub mod inproc;
 pub mod multi;
 pub mod raw;
-mod rw;
 pub mod tls;
 #[cfg(feature = "zmq-transport")]
 pub mod zmq;
