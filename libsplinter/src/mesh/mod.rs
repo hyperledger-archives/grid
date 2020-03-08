@@ -15,11 +15,11 @@
 //! Mesh is an asynchronous Connection handler that sends and receives across many Connections in a
 //! background thread.
 //!
-//!     use splinter::{mesh::{Envelope, Mesh}, transport::{Transport, raw::RawTransport}};
+//!     use splinter::{mesh::{Envelope, Mesh}, transport::{Transport, inproc::InprocTransport}};
 //!
-//!     let mut transport = RawTransport::default();
+//!     let mut transport = InprocTransport::default();
 //!     let mesh = Mesh::new(1, 1);
-//!     let mut listener = transport.listen("127.0.0.1:0").unwrap();
+//!     let mut listener = transport.listen("inproc://my-connection").unwrap();
 //!
 //!     let client = mesh.add(transport.connect(&listener.endpoint()).unwrap()).unwrap();
 //!     let server = mesh.add(listener.accept().unwrap()).unwrap();
