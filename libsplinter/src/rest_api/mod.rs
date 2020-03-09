@@ -461,9 +461,10 @@ impl RestApi {
     pub fn run(
         self,
     ) -> Result<(RestApiShutdownHandle, thread::JoinHandle<()>), RestApiServerError> {
-        let bind_url = self.bind.to_owned();
         let (tx, rx) = mpsc::channel();
 
+        let bind_url = self.bind.to_owned();
+        let resources = self.resources.to_owned();
         let join_handle = thread::Builder::new()
             .name("SplinterDRestApi".into())
             .spawn(move || {
@@ -479,7 +480,7 @@ impl RestApi {
                     #[cfg(not(feature = "rest-api-cors"))]
                     let mut app = App::new().wrap(middleware::Logger::default());
 
-                    for resource in self.resources.clone() {
+                    for resource in resources.clone() {
                         app = app.service(resource.into_route());
                     }
                     app
@@ -488,14 +489,18 @@ impl RestApi {
                 server = match server.bind(&bind_url) {
                     Ok(server) => server,
                     Err(err) => {
-                        error!("Invalid REST API bind {}: {}", bind_url, err);
+                        let error_msg = format!("Invalid REST API bind {}: {}", bind_url, err);
+                        error!("{}", error_msg);
+                        if let Err(err) = tx.send(Err(error_msg)) {
+                            error!("Failed to notify receiver of bind error: {}", err);
+                        }
                         return;
                     }
                 };
 
                 let addr = server.disable_signals().system_exit().start();
 
-                if let Err(err) = tx.send(addr) {
+                if let Err(err) = tx.send(Ok(addr)) {
                     error!("Unable to send Server Addr: {}", err);
                 }
 
@@ -506,9 +511,17 @@ impl RestApi {
                 info!("Rest API terminating");
             })?;
 
-        let addr = rx.recv().map_err(|err| {
-            RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
-        })?;
+        let addr = rx
+            .recv()
+            .map_err(|err| {
+                RestApiServerError::StartUpError(format!("Unable to receive Server Addr: {}", err))
+            })?
+            .map_err(|err| {
+                RestApiServerError::BindError(format!(
+                    "Failed to bind to URL {}: {}",
+                    self.bind, err
+                ))
+            })?;
 
         let do_shutdown = Box::new(move || {
             debug!("Shutting down Rest API");
