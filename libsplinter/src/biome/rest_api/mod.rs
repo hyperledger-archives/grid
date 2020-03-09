@@ -97,7 +97,7 @@ impl RestResourceProvider for BiomeRestResourceManager {
         #[allow(unused_mut)]
         let mut resources = Vec::new();
 
-        #[cfg(feature = "biome-credentials")]
+        #[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
         match &self.credentials_store {
             Some(credentials_store) => {
                 resources.push(make_register_route(
