@@ -137,6 +137,8 @@ impl Action for CircuitCreateAction {
 
         let create_circuit = builder.build()?;
 
+        let circuit_id = create_circuit.circuit_id.clone();
+
         let client = api::SplinterRestClient::new(url);
         let requester_node = client.fetch_node_id()?;
         let private_key_hex = read_private_key(key)?;
@@ -145,6 +147,11 @@ impl Action for CircuitCreateAction {
             payload::make_signed_payload(&requester_node, &private_key_hex, create_circuit)?;
 
         client.submit_admin_payload(signed_payload)?;
+
+        info!(
+            "The circuit proposal was submited successfully. Circuit ID: {}",
+            circuit_id
+        );
 
         Ok(())
     }
