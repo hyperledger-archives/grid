@@ -823,6 +823,8 @@ paths:
                   message:
                     type: string
                     example: "User created successfully"
+                  data:
+                    ref: '#/components/schemas/BiomeNewUser'
         400:
           description: Invalid request
           content:
@@ -1221,7 +1223,9 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "User deleted successfully"
+                    example: "Key added successfully"
+                  data:
+                    $ref: '#/components/schemas/BiomeUserKey'
         400:
           description: Invalid request
           content:
@@ -1543,6 +1547,19 @@ components:
           type: string
           description: "Internal unique identifier for the user"
           example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+
+    BiomeCredentials:
+      type: object
+      properties:
+        user_id:
+          type: string
+          description: "Internal unique identifier for the user"
+          example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        username:
+          type: string
+          description: "Username of a user"
+          example: "bob@biome.com"
+
 
 tags:
   - name: Biome

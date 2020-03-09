@@ -19,3 +19,9 @@ pub(crate) struct UsernamePassword {
     pub username: String,
     pub hashed_password: String,
 }
+
+#[derive(Serialize)]
+pub(crate) struct NewUser<'a> {
+    pub user_id: &'a str,
+    pub username: &'a str,
+}

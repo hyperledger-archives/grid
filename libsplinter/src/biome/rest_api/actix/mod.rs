@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-key-management")]
+#[cfg(any(feature = "biome-key-management", feature = "biome-credentials"))]
 pub(crate) mod authorize;
 #[cfg(feature = "biome-key-management")]
 pub(super) mod key_management;

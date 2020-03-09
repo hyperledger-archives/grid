@@ -27,7 +27,7 @@ use crate::biome::credentials::store::{
 use crate::biome::rest_api::BiomeRestConfig;
 use crate::biome::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
 
-use super::super::resources::credentials::UsernamePassword;
+use super::super::resources::credentials::{NewUser, UsernamePassword};
 
 /// Defines a REST endpoint to add a user and credentials to the database
 ///
@@ -85,9 +85,18 @@ pub fn make_register_route(
                         };
 
                         match credentials_store.add_credentials(credentials) {
-                            Ok(()) => HttpResponse::Ok()
-                                .json(json!({ "message": "User created successfully" }))
-                                .into_future(),
+                            Ok(()) => {
+                                let new_user = NewUser {
+                                    user_id: &user_id,
+                                    username: &username_password.username,
+                                };
+                                HttpResponse::Ok()
+                                    .json(json!({
+                                        "message": "User created successfully",
+                                        "data": new_user,
+                                    }))
+                                    .into_future()
+                            }
                             Err(err) => {
                                 debug!("Failed to add new credentials to database {}", err);
                                 match err {
