@@ -40,7 +40,7 @@ services:
           sleep 1
         done
         splinter database migrate -C postgres://splinter_admin:splinter_test@splinter-db:5432/splinter && \
-        splinter cert generate --skip && \
+        sudo splinter cert generate --skip && \
         splinterd \
             -c ./configs/splinterd-node-0-docker.toml \
             --registry-file ./node_registries/nodes.yaml \

@@ -96,7 +96,7 @@ items:
             args:
               - -c
               - |
-                  splinter cert generate \
+                  sudo splinter cert generate \
                   --common-name acme \
                   --cert-dir /config/certs/ \
                   --force \
@@ -270,7 +270,7 @@ items:
             args:
               - -c
               - |
-                  splinter cert generate \
+                  sudo splinter cert generate \
                   --common-name bubba \
                   --cert-dir /config/certs/ \
                   --force \
