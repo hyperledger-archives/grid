@@ -58,6 +58,8 @@ mod events;
 pub mod paging;
 mod response_models;
 pub mod secrets;
+#[cfg(feature = "json-web-tokens")]
+pub mod sessions;
 
 use actix_web::{
     error::ErrorBadRequest, http::header, middleware, web, App, Error as ActixError, HttpRequest,

@@ -73,7 +73,7 @@ use self::actix::{
 use super::credentials::store::diesel::SplinterCredentialsStore;
 
 #[allow(unused_imports)]
-use super::sessions::AccessTokenIssuer;
+use crate::rest_api::sessions::AccessTokenIssuer;
 
 /// Manages Biome REST API endpoints
 pub struct BiomeRestResourceManager {
