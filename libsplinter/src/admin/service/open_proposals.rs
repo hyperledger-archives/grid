@@ -154,12 +154,14 @@ impl ProposalRegistry {
     }
 }
 
+#[cfg(feature = "proposal-read")]
 /// An iterator over CircuitProposals, with a well-known count of values.
 pub struct ProposalIter {
     inner: Box<dyn Iterator<Item = messages::CircuitProposal>>,
     size: usize,
 }
 
+#[cfg(feature = "proposal-read")]
 impl ProposalIter {
     pub fn new(iter: Box<dyn Iterator<Item = messages::CircuitProposal>>, count: usize) -> Self {
         Self {
@@ -174,6 +176,7 @@ impl ProposalIter {
     }
 }
 
+#[cfg(feature = "proposal-read")]
 impl Iterator for ProposalIter {
     type Item = messages::CircuitProposal;
 
