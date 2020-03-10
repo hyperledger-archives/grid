@@ -23,10 +23,10 @@ use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
 };
 use crate::biome::rest_api::BiomeRestConfig;
-use crate::biome::secrets::SecretManager;
 use crate::biome::user::store::{
     diesel::SplinterUserStore, SplinterUser, UserStore, UserStoreError,
 };
+use crate::rest_api::secrets::SecretManager;
 
 use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::credentials::UsernamePassword;

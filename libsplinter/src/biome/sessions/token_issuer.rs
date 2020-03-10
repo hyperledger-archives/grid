@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use jsonwebtoken::{encode, Header};
 
-use super::super::secrets::SecretManager;
 use super::{Claims, TokenIssuer, TokenIssuerError};
+use crate::rest_api::secrets::SecretManager;
 
 /// Issues JWT access tokens
 pub struct AccessTokenIssuer {

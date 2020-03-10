@@ -17,7 +17,7 @@ use std::fmt;
 
 use jsonwebtoken::errors::{Error as JWTError, ErrorKind};
 
-use super::super::secrets::SecretManagerError;
+use crate::rest_api::secrets::SecretManagerError;
 
 /// Error for TokenIssuer
 #[derive(Debug)]

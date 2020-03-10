@@ -57,6 +57,7 @@ mod errors;
 mod events;
 pub mod paging;
 mod response_models;
+pub mod secrets;
 
 use actix_web::{
     error::ErrorBadRequest, http::header, middleware, web, App, Error as ActixError, HttpRequest,

@@ -32,6 +32,6 @@ pub mod notifications;
 
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
-pub mod secrets;
+#[cfg(feature = "rest-api")]
 pub mod sessions;
 pub mod user;

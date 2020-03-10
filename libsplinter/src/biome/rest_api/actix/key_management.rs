@@ -26,7 +26,7 @@ use crate::biome::key_management::{
     Key,
 };
 use crate::biome::rest_api::BiomeRestConfig;
-use crate::biome::secrets::SecretManager;
+use crate::rest_api::secrets::SecretManager;
 
 use super::super::resources::authorize::AuthorizationResult;
 use super::super::resources::key_management::{NewKey, ResponseKey, UpdatedKey};
