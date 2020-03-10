@@ -20,6 +20,7 @@ use actix_web::Error as ActixError;
 /// Error module for `rest_api`.
 #[derive(Debug)]
 pub enum RestApiServerError {
+    BindError(String),
     StartUpError(String),
     MissingField(String),
     StdError(std::io::Error),
@@ -34,6 +35,7 @@ impl From<std::io::Error> for RestApiServerError {
 impl Error for RestApiServerError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            RestApiServerError::BindError(_) => None,
             RestApiServerError::StartUpError(_) => None,
             RestApiServerError::StdError(err) => Some(err),
             RestApiServerError::MissingField(_) => None,
@@ -44,6 +46,7 @@ impl Error for RestApiServerError {
 impl fmt::Display for RestApiServerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            RestApiServerError::BindError(e) => write!(f, "Bind Error: {}", e),
             RestApiServerError::StartUpError(e) => write!(f, "Start-up Error: {}", e),
             RestApiServerError::StdError(e) => write!(f, "Std Error: {}", e),
             RestApiServerError::MissingField(field) => {
