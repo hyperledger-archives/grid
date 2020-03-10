@@ -21,7 +21,7 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
-use crate::network::connection_manager::{error::ConnectionManagerError, messages::CmMessage};
+use crate::network::connection_manager::error::ConnectionManagerError;
 
 pub struct Pacemaker {
     interval: u64,
@@ -38,10 +38,14 @@ impl Pacemaker {
         }
     }
 
-    pub fn start(
+    pub fn start<M>(
         &mut self,
-        cm_sender: SyncSender<CmMessage>,
-    ) -> Result<(), ConnectionManagerError> {
+        message: M,
+        cm_sender: SyncSender<M>,
+    ) -> Result<(), ConnectionManagerError>
+    where
+        M: Send + Clone + 'static,
+    {
         if self.join_handle.is_some() {
             return Ok(());
         }
@@ -57,7 +61,7 @@ impl Pacemaker {
 
                 while running_clone.load(Ordering::SeqCst) {
                     thread::sleep(Duration::from_secs(interval));
-                    if let Err(err) = cm_sender.send(CmMessage::SendHeartbeats) {
+                    if let Err(err) = cm_sender.send(message.clone()) {
                         error!(
                             "Connection manager has disconnected before 
                             shutting down heartbeat monitor {:?}",
