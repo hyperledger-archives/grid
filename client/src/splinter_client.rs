@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use openssl::ssl::{SslConnector, SslFiletype, SslMethod};
 use protobuf;
 use splinter::protos::network::NetworkMessage;
-use splinter::transport::tls::TlsConnection;
-use splinter::transport::Connection;
+use splinter::transport::tls::TlsTransport;
+use splinter::transport::{Connection, Transport};
 use url;
-
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 
 use crate::error::SplinterError;
 
@@ -52,7 +49,7 @@ impl Certs {
 }
 
 pub struct SplinterClient {
-    socket: TlsConnection,
+    socket: Box<dyn Connection>,
 }
 
 impl SplinterClient {
@@ -74,22 +71,32 @@ impl SplinterClient {
             (hs, p)
         };
 
-        let addr = resolve_hostname(&format!("{}:{}", hostname, port))?;
+        let mut transport = match TlsTransport::new(
+            Some(certs.get_ca_cert().to_string()),
+            certs.get_client_priv().to_string(),
+            certs.get_client_cert().to_string(),
+            certs.get_client_priv().to_string(),
+            certs.get_client_cert().to_string(),
+        ) {
+            Ok(transport) => transport,
+            Err(err) => {
+                return Err(SplinterError::TLSError(format!(
+                    "An error occurred while creating TLS transport: {}",
+                    err
+                )))
+            }
+        };
 
-        // Build TLS Connector
-        let mut connector = SslConnector::builder(SslMethod::tls())?;
-        connector.set_private_key_file(certs.get_client_priv(), SslFiletype::PEM)?;
-        connector.set_certificate_chain_file(certs.get_client_cert())?;
-        connector.check_private_key()?;
-        connector.set_ca_file(certs.get_ca_cert())?;
-        let connector = connector.build();
-
-        let endpoint = &format!("{}:{}", addr.ip(), addr.port());
-        let stream = TcpStream::connect(endpoint)?;
-        let tls_stream = connector.connect("localhost", stream)?;
-        let connection = TlsConnection::new(tls_stream);
-
-        Ok(SplinterClient { socket: connection })
+        Ok(SplinterClient {
+            socket: transport
+                .connect(&format!("tls://{}:{}", hostname, port))
+                .map_err(|err| {
+                    SplinterError::TLSError(format!(
+                        "Unable to connect to \"{}:{}\":h  {}",
+                        hostname, port, err
+                    ))
+                })?,
+        })
     }
 
     pub fn send(&mut self, req: &NetworkMessage) -> Result<(), SplinterError> {
@@ -97,11 +104,4 @@ impl SplinterClient {
         self.socket.send(&raw_msg)?;
         Ok(())
     }
-}
-
-fn resolve_hostname(hostname: &str) -> Result<SocketAddr, SplinterError> {
-    hostname
-        .to_socket_addrs()?
-        .find(std::net::SocketAddr::is_ipv4)
-        .ok_or(SplinterError::CouldNotResolveHostName)
 }

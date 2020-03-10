@@ -27,11 +27,12 @@ use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
-use crate::transport::rw::{read, write};
 use crate::transport::{
     AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
     SendError, Transport,
 };
+
+use super::frame::{Frame, FrameError, FrameNegotiation, FrameRef, FrameVersion};
 
 const PROTOCOL_PREFIX: &str = "tls://";
 
@@ -125,10 +126,23 @@ impl Transport for TlsTransport {
         let dns_name = endpoint_to_dns_name(address)?;
 
         let stream = TcpStream::connect(address)?;
-        let tls_stream = self.connector.connect(&dns_name, stream)?;
+        let mut tls_stream = self.connector.connect(&dns_name, stream)?;
+
+        let frame_version = FrameNegotiation::outbound(FrameVersion::V1, FrameVersion::V1)
+            .negotiate(&mut tls_stream)
+            .map_err(|err| match err {
+                FrameError::UnsupportedVersion => ConnectError::ProtocolError(
+                    "Unable to connect; remote version is not with in range".into(),
+                ),
+                FrameError::IoError(err) => ConnectError::IoError(err),
+                e => ConnectError::ProtocolError(format!("Unexpected protocol error: {}", e)),
+            })?;
 
         tls_stream.get_ref().set_nonblocking(true)?;
-        let connection = TlsConnection { stream: tls_stream };
+        let connection = TlsConnection {
+            frame_version,
+            stream: tls_stream,
+        };
         Ok(Box::new(connection))
     }
 
@@ -161,9 +175,23 @@ pub struct TlsListener {
 impl Listener for TlsListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (stream, _) = self.listener.accept()?;
-        let tls_stream = self.acceptor.accept(stream)?;
+        let mut tls_stream = self.acceptor.accept(stream)?;
+
+        let frame_version = FrameNegotiation::inbound(FrameVersion::V1)
+            .negotiate(&mut tls_stream)
+            .map_err(|err| match err {
+                FrameError::UnsupportedVersion => AcceptError::ProtocolError(
+                    "Unable to connect; local version not supported by remote".into(),
+                ),
+                FrameError::IoError(err) => AcceptError::IoError(err),
+                err => AcceptError::ProtocolError(format!("Unexpected protocol error: {}", err)),
+            })?;
+
         tls_stream.get_ref().set_nonblocking(true)?;
-        let connection = TlsConnection { stream: tls_stream };
+        let connection = TlsConnection {
+            frame_version,
+            stream: tls_stream,
+        };
         Ok(Box::new(connection))
     }
 
@@ -173,16 +201,25 @@ impl Listener for TlsListener {
 }
 
 pub struct TlsConnection {
+    frame_version: FrameVersion,
     stream: SslStream<TcpStream>,
 }
 
 impl Connection for TlsConnection {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError> {
-        write(&mut self.stream, message)
+        match FrameRef::new(self.frame_version, message).write(&mut self.stream) {
+            Err(FrameError::IoError(e)) => Err(SendError::IoError(e)),
+            Err(err) => Err(SendError::ProtocolError(err.to_string())),
+            Ok(_) => Ok(()),
+        }
     }
 
     fn recv(&mut self) -> Result<Vec<u8>, RecvError> {
-        read(&mut self.stream)
+        match Frame::read(&mut self.stream) {
+            Err(FrameError::IoError(e)) => Err(RecvError::IoError(e)),
+            Err(err) => Err(RecvError::ProtocolError(err.to_string())),
+            Ok(frame) => Ok(frame.into_inner()),
+        }
     }
 
     fn remote_endpoint(&self) -> String {
@@ -205,8 +242,16 @@ impl Connection for TlsConnection {
 }
 
 impl TlsConnection {
+    #[deprecated(
+        since = "0.3.13",
+        note = "connections should only be made through the TlsTransport, as it negotiates the \
+        wire protocol version"
+    )]
     pub fn new(stream: SslStream<TcpStream>) -> Self {
-        TlsConnection { stream }
+        TlsConnection {
+            frame_version: FrameVersion::V1,
+            stream,
+        }
     }
 }
 
