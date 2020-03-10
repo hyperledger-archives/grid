@@ -12,49 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::mpsc::SyncSender;
-
-pub enum CmMessage {
-    Shutdown,
-    Subscribe(SyncSender<ConnectionManagerNotification>),
-    Request(CmRequest),
-    SendHeartbeats,
-}
-
-pub struct CmRequest {
-    pub sender: SyncSender<CmResponse>,
-    pub payload: CmPayload,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum CmPayload {
-    AddConnection { endpoint: String },
-    RemoveConnection { endpoint: String },
-    ListConnections,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum CmResponse {
-    AddConnection {
-        status: CmResponseStatus,
-        error_message: Option<String>,
-    },
-    RemoveConnection {
-        status: CmResponseStatus,
-        error_message: Option<String>,
-    },
-    ListConnections {
-        endpoints: Vec<String>,
-    },
-}
-
-#[derive(Debug, PartialEq)]
-pub enum CmResponseStatus {
-    OK,
-    Error,
-    ConnectionNotFound,
-}
-
 /// Messages that will be dispatched to all
 /// subscription handlers
 #[derive(Debug, PartialEq, Clone)]

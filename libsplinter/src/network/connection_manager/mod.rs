@@ -26,9 +26,7 @@ use std::thread;
 use std::time::Instant;
 
 pub use error::ConnectionManagerError;
-pub use messages::{
-    CmMessage, CmPayload, CmRequest, CmResponse, CmResponseStatus, ConnectionManagerNotification,
-};
+pub use messages::ConnectionManagerNotification;
 use pacemaker::Pacemaker;
 use protobuf::Message;
 
@@ -40,6 +38,29 @@ const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const CHANNEL_CAPACITY: usize = 15;
 const INITIAL_RETRY_FREQUENCY: u64 = 10;
 const DEFAULT_MAXIMUM_RETRY_FREQUENCY: u64 = 300;
+
+#[derive(Clone)]
+enum CmMessage {
+    Shutdown,
+    Subscribe(SyncSender<ConnectionManagerNotification>),
+    Request(CmRequest),
+    SendHeartbeats,
+}
+
+#[derive(Clone)]
+enum CmRequest {
+    AddConnection {
+        endpoint: String,
+        sender: SyncSender<Result<(), ConnectionManagerError>>,
+    },
+    RemoveConnection {
+        endpoint: String,
+        sender: SyncSender<Result<Option<String>, ConnectionManagerError>>,
+    },
+    ListConnections {
+        sender: SyncSender<Result<Vec<String>, ConnectionManagerError>>,
+    },
+}
 
 pub struct ConnectionManager<T: 'static, U: 'static>
 where
@@ -114,7 +135,8 @@ where
                 }
             })?;
 
-        self.pacemaker.start(sender.clone())?;
+        self.pacemaker
+            .start(CmMessage::SendHeartbeats, sender.clone())?;
         self.join_handle = Some(join_handle);
         self.shutdown_handle = Some(ShutdownHandle {
             sender: sender.clone(),
@@ -163,16 +185,56 @@ pub struct Connector {
 }
 
 impl Connector {
-    pub fn request_connection(&self, endpoint: &str) -> Result<CmResponse, ConnectionManagerError> {
-        self.send_payload(CmPayload::AddConnection {
-            endpoint: endpoint.to_string(),
-        })
+    pub fn request_connection(&self, endpoint: &str) -> Result<(), ConnectionManagerError> {
+        let (sender, recv) = sync_channel(1);
+        self.sender
+            .send(CmMessage::Request(CmRequest::AddConnection {
+                sender,
+                endpoint: endpoint.to_string(),
+            }))
+            .map_err(|_| {
+                ConnectionManagerError::SendMessageError(
+                    "The connection manager is no longer running".into(),
+                )
+            })?;
+
+        recv.recv().map_err(|_| {
+            ConnectionManagerError::SendMessageError(
+                "The connection manager is no longer running".into(),
+            )
+        })?
     }
 
-    pub fn remove_connection(&self, endpoint: &str) -> Result<CmResponse, ConnectionManagerError> {
-        self.send_payload(CmPayload::RemoveConnection {
-            endpoint: endpoint.to_string(),
-        })
+    // Removes a connection
+    //
+    // # Returns
+    //
+    // The endpoint, if the connection exists; None, otherwise.
+    //
+    // # Errors
+    //
+    // Returns a ConnectionManagerError if the query cannot be performed.
+    pub fn remove_connection(
+        &self,
+        endpoint: &str,
+    ) -> Result<Option<String>, ConnectionManagerError> {
+        let (sender, recv) = sync_channel(1);
+        self.sender
+            .send(CmMessage::Request(CmRequest::RemoveConnection {
+                sender,
+                endpoint: endpoint.to_string(),
+            }))
+            .map_err(|_| {
+                ConnectionManagerError::SendMessageError(
+                    "The connection manager is no longer running".into(),
+                )
+            })?;
+
+        recv.recv().map_err(|_| {
+            ConnectionManagerError::SendMessageError(
+                "The connection manager is no longer running".into(),
+            )
+        })?
     }
 
     pub fn subscribe(&self) -> Result<NotificationIter, ConnectionManagerError> {
@@ -186,31 +248,20 @@ impl Connector {
     }
 
     pub fn list_connections(&self) -> Result<Vec<String>, ConnectionManagerError> {
-        match self.send_payload(CmPayload::ListConnections) {
-            Ok(CmResponse::ListConnections { endpoints }) => Ok(endpoints),
-            Err(err) => Err(err),
-            _ => {
-                panic!("This cannot return a response type that is not CmResponse::ListConnections")
-            }
-        }
-    }
-
-    fn send_payload(&self, payload: CmPayload) -> Result<CmResponse, ConnectionManagerError> {
         let (sender, recv) = sync_channel(1);
-
-        let message = CmMessage::Request(CmRequest { sender, payload });
-
-        match self.sender.send(message) {
-            Ok(()) => (),
-            Err(_) => {
-                return Err(ConnectionManagerError::SendMessageError(
+        self.sender
+            .send(CmMessage::Request(CmRequest::ListConnections { sender }))
+            .map_err(|_| {
+                ConnectionManagerError::SendMessageError(
                     "The connection manager is no longer running".into(),
-                ))
-            }
-        };
+                )
+            })?;
 
-        recv.recv()
-            .map_err(|err| ConnectionManagerError::SendMessageError(format!("{:?}", err)))
+        recv.recv().map_err(|_| {
+            ConnectionManagerError::SendMessageError(
+                "The connection manager is no longer running".into(),
+            )
+        })?
     }
 }
 
@@ -418,46 +469,34 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
     req: CmRequest,
     state: &mut ConnectionState<T, U>,
 ) {
-    let response = match req.payload {
-        CmPayload::AddConnection { ref endpoint } => {
-            if let Err(err) = state.add_connection(endpoint) {
-                CmResponse::AddConnection {
-                    status: CmResponseStatus::Error,
-                    error_message: Some(format!("{:?}", err)),
-                }
-            } else {
-                CmResponse::AddConnection {
-                    status: CmResponseStatus::OK,
-                    error_message: None,
-                }
+    match req {
+        CmRequest::AddConnection { endpoint, sender } => {
+            if sender.send(state.add_connection(&endpoint)).is_err() {
+                warn!("connector dropped before receiving result of add connection");
             }
         }
-        CmPayload::RemoveConnection { ref endpoint } => match state.remove_connection(endpoint) {
-            Ok(Some(_)) => CmResponse::RemoveConnection {
-                status: CmResponseStatus::OK,
-                error_message: None,
-            },
-            Ok(None) => CmResponse::RemoveConnection {
-                status: CmResponseStatus::ConnectionNotFound,
-                error_message: None,
-            },
-            Err(err) => CmResponse::RemoveConnection {
-                status: CmResponseStatus::Error,
-                error_message: Some(format!("{:?}", err)),
-            },
-        },
-        CmPayload::ListConnections => CmResponse::ListConnections {
-            endpoints: state
-                .connection_metadata()
-                .iter()
-                .map(|(key, _)| key.to_string())
-                .collect(),
-        },
-    };
+        CmRequest::RemoveConnection { endpoint, sender } => {
+            let response = state
+                .remove_connection(&endpoint)
+                .map(|meta_opt| meta_opt.map(|meta| meta.endpoint));
 
-    if req.sender.send(response).is_err() {
-        error!("Requester has dropped its connection to connection manager");
-    }
+            if sender.send(response).is_err() {
+                warn!("connector dropped before receiving result of remove connection");
+            }
+        }
+        CmRequest::ListConnections { sender } => {
+            if sender
+                .send(Ok(state
+                    .connection_metadata()
+                    .iter()
+                    .map(|(key, _)| key.to_string())
+                    .collect()))
+                .is_err()
+            {
+                warn!("connector dropped before receiving result of list connections");
+            }
+        }
+    };
 }
 
 fn notify_subscribers(
@@ -574,15 +613,9 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let response = connector.request_connection("inproc://test").unwrap();
-
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
+        connector
+            .request_connection("inproc://test")
+            .expect("A connection could not be created");
 
         cm.shutdown_and_wait();
     }
@@ -607,24 +640,13 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let response = connector.request_connection("inproc://test").unwrap();
+        connector
+            .request_connection("inproc://test")
+            .expect("A connection could not be created");
 
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
-
-        let response = connector.request_connection("inproc://test").unwrap();
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
+        connector
+            .request_connection("inproc://test")
+            .expect("A connection could not be re-requested");
 
         cm.shutdown_and_wait();
     }
@@ -653,15 +675,9 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let response = connector.request_connection("inproc://test").unwrap();
-
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
+        connector
+            .request_connection("inproc://test")
+            .expect("A connection could not be created");
 
         // Verify mesh received heartbeat
 
@@ -699,15 +715,9 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let response = connector.request_connection(&endpoint).unwrap();
-
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
+        connector
+            .request_connection(&endpoint)
+            .expect("A connection could not be created");
 
         // Verify mesh received heartbeat
 
@@ -741,25 +751,27 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let add_response = connector.request_connection(&endpoint).unwrap();
+        connector
+            .request_connection(&endpoint)
+            .expect("A connection could not be created");
 
         assert_eq!(
-            add_response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
+            vec![endpoint.clone()],
+            connector
+                .list_connections()
+                .expect("Unable to list connections")
         );
 
-        let remove_response = connector.remove_connection(&endpoint).unwrap();
+        let endpoint_removed = connector
+            .remove_connection(&endpoint)
+            .expect("Unable to remove connection");
 
-        assert_eq!(
-            remove_response,
-            CmResponse::RemoveConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
+        assert_eq!(Some(endpoint.clone()), endpoint_removed);
+
+        assert!(connector
+            .list_connections()
+            .expect("Unable to list connections")
+            .is_empty());
     }
 
     #[test]
@@ -784,15 +796,11 @@ pub mod tests {
         );
         let connector = cm.start().unwrap();
 
-        let remove_response = connector.remove_connection(&endpoint).unwrap();
+        let endpoint_removed = connector
+            .remove_connection(&endpoint)
+            .expect("Unable to remove connection");
 
-        assert_eq!(
-            remove_response,
-            CmResponse::RemoveConnection {
-                status: CmResponseStatus::ConnectionNotFound,
-                error_message: None,
-            }
-        );
+        assert_eq!(None, endpoint_removed);
     }
 
     #[test]
@@ -891,17 +899,9 @@ pub mod tests {
         );
         let connector = cm.start().expect("Unable to start ConnectionManager");
 
-        let response = connector
+        connector
             .request_connection(&endpoint)
             .expect("Unable to request connection");
-
-        assert_eq!(
-            response,
-            CmResponse::AddConnection {
-                status: CmResponseStatus::OK,
-                error_message: None
-            }
-        );
 
         let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
         // receive reconnecting attempt
