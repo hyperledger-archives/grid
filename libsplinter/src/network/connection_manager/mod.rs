@@ -13,20 +13,18 @@
 // limitations under the License.
 
 mod error;
-mod messages;
+mod notification;
 mod pacemaker;
 
 use std;
 use std::cmp::min;
 use std::collections::HashMap;
-#[cfg(feature = "connection-manager-notification-iter-try-next")]
-use std::sync::mpsc::TryRecvError;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::mpsc::{sync_channel, SyncSender};
 use std::thread;
 use std::time::Instant;
 
 pub use error::ConnectionManagerError;
-pub use messages::ConnectionManagerNotification;
+pub use notification::{ConnectionManagerNotification, NotificationIter};
 use pacemaker::Pacemaker;
 use protobuf::Message;
 
@@ -277,40 +275,6 @@ impl ShutdownHandle {
 
         if self.sender.send(CmMessage::Shutdown).is_err() {
             warn!("Connection manager is no longer running");
-        }
-    }
-}
-
-pub struct NotificationIter {
-    recv: Receiver<ConnectionManagerNotification>,
-}
-
-#[cfg(feature = "connection-manager-notification-iter-try-next")]
-impl NotificationIter {
-    pub fn try_next(
-        &self,
-    ) -> Result<Option<ConnectionManagerNotification>, ConnectionManagerError> {
-        match self.recv.try_recv() {
-            Ok(notifications) => Ok(Some(notifications)),
-            Err(TryRecvError::Empty) => Ok(None),
-            Err(TryRecvError::Disconnected) => Err(ConnectionManagerError::SendMessageError(
-                "The connection manager is no longer running".into(),
-            )),
-        }
-    }
-}
-
-impl Iterator for NotificationIter {
-    type Item = ConnectionManagerNotification;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.recv.recv() {
-            Ok(notification) => Some(notification),
-            Err(_) => {
-                // This is expected if the connection manager shuts down before
-                // this end
-                None
-            }
         }
     }
 }
