@@ -1,0 +1,41 @@
+{
+  "name": "register-login-sapling",
+  "private": true,
+  "version": "0.0.0-alpha",
+  "license": "Apache-2.0",
+  "author": "Cargill Incorporated",
+  "main": "dist/index.js",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "history": "^4.10.1",
+    "js-sha256": "^0.9.0",
+    "splinter-saplingjs": "github:cargill/splinter-saplingjs#master"
+  },
+  "scripts": {
+    "test": "jest",
+    "build": "webpack",
+    "add-to-canopy": "cp ./dist/* ../../sapling-dev-server/",
+    "deploy": "npm run build && npm run add-to-canopy",
+    "format": "prettier --write \"**/*.+(ts|*rc|json|js)\"",
+    "lint": "eslint src/*"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.19",
+    "@typescript-eslint/eslint-plugin": "^2.5.0",
+    "@typescript-eslint/parser": "^2.5.0",
+    "eslint": "^6.5.1",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-html": "^6.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-prettier": "^3.1.1",
+    "html-loader": "^0.5.5",
+    "jest": "^24.9.0",
+    "prettier": "^1.18.2",
+    "ts-jest": "^24.1.0",
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.7.2",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
+  }
+}
