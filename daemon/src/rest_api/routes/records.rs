@@ -34,6 +34,9 @@ use serde_json::{Map, Value as JsonValue};
 pub struct AssociatedAgentSlice {
     pub agent_id: String,
     pub timestamp: u64,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl AssociatedAgentSlice {
@@ -41,6 +44,7 @@ impl AssociatedAgentSlice {
         Self {
             agent_id: associated_agent.agent_id.clone(),
             timestamp: associated_agent.timestamp as u64,
+            service_id: associated_agent.service_id.clone(),
         }
     }
 }
@@ -54,6 +58,9 @@ pub struct ProposalSlice {
     pub status: String,
     pub terms: String,
     pub timestamp: u64,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl ProposalSlice {
@@ -66,6 +73,7 @@ impl ProposalSlice {
             status: proposal.status.clone(),
             terms: proposal.terms.clone(),
             timestamp: proposal.timestamp as u64,
+            service_id: proposal.service_id.clone(),
         }
     }
 }
@@ -81,6 +89,9 @@ pub struct RecordSlice {
     pub proposals: Vec<ProposalSlice>,
     pub owner_updates: Vec<AssociatedAgentSlice>,
     pub custodian_updates: Vec<AssociatedAgentSlice>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl RecordSlice {
@@ -120,6 +131,7 @@ impl RecordSlice {
             proposals: proposals.iter().map(ProposalSlice::from_model).collect(),
             owner_updates,
             custodian_updates,
+            service_id: record.service_id.clone(),
         }
     }
 }
@@ -284,6 +296,9 @@ pub struct PropertySlice {
     pub reporters: Vec<String>,
     pub updates: Vec<PropertyValueSlice>,
     pub value: Option<PropertyValueSlice>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 impl PropertySlice {
     pub fn from_model(
@@ -300,6 +315,7 @@ impl PropertySlice {
             reporters: reporters.to_vec(),
             updates: updates.to_vec(),
             value,
+            service_id: property.service_id.clone(),
         }
     }
 }
@@ -309,6 +325,9 @@ pub struct PropertyValueSlice {
     pub timestamp: u64,
     pub value: Value,
     pub reporter: ReporterSlice,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -342,6 +361,9 @@ impl LatLong {
 pub struct ReporterSlice {
     pub public_key: String,
     pub metadata: JsonValue,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -382,7 +404,9 @@ impl PropertyValueSlice {
                     .metadata
                     .clone()
                     .unwrap_or_else(|| JsonValue::Object(Map::new())),
+                service_id: reported_value_with_reporter.service_id.clone(),
             },
+            service_id: reported_value_with_reporter.service_id.clone(),
         })
     }
 }

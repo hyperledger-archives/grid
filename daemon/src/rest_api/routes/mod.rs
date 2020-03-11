@@ -1537,9 +1537,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
 
         assert_eq!(property_info.data_type, "Struct".to_string());
-
         assert_eq!(property_info.name, "TestProperty".to_string());
-
         assert_eq!(property_info.record_id, "record_01".to_string());
 
         assert_eq!(
@@ -1586,9 +1584,7 @@ mod test {
 
     fn validate_current_value(property_value: &PropertyValueSlice) {
         validate_reporter(&property_value.reporter, KEY1, "Arya Stark");
-
         assert_eq!(property_value.timestamp, 5);
-
         match &property_value.value {
             Value::Struct(struct_values) => {
                 assert_eq!(struct_values.len(), 5);
