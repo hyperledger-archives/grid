@@ -143,6 +143,16 @@ impl Action for CircuitCreateAction {
         let requester_node = client.fetch_node_id()?;
         let private_key_hex = read_private_key(key)?;
 
+        if args.is_present("dry_run") {
+            println!(
+                "\n{}",
+                serde_yaml::to_string(&create_circuit).map_err(|err| CliError::ActionError(
+                    format!("Cannot format circuit into yaml: {}", err)
+                ))?
+            );
+            return Ok(());
+        }
+
         let signed_payload =
             payload::make_signed_payload(&requester_node, &private_key_hex, create_circuit)?;
 
