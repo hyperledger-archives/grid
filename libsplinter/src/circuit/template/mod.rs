@@ -211,7 +211,7 @@ rules:
         .expect("Failed to parse metadata to string");
         assert_eq!(
             metadata,
-            "{[\"scabbard_admin_keys\":[\"signer_key\"],\"alias\":\"my gameroom\"]}"
+            "{\"scabbard_admin_keys\":[\"signer_key\"],\"alias\":\"my gameroom\"}"
         );
 
         let service_builders = builders.service_builders();
