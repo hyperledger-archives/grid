@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use uuid::Uuid;
-
 #[cfg(feature = "node-alias")]
 use super::super::node::get_node_store;
 #[cfg(feature = "node-alias")]
@@ -196,7 +194,6 @@ impl CreateCircuitMessageBuilder {
     }
 
     pub fn build(self) -> Result<CreateCircuit, CliError> {
-        let circuit_id = make_circuit_id();
         let default_store = get_default_value_store();
 
         // if management type is not set check for default value
@@ -237,7 +234,6 @@ impl CreateCircuitMessageBuilder {
                 })?;
 
         let create_circuit_builder = CreateCircuitBuilder::new()
-            .with_circuit_id(&circuit_id)
             .with_members(&self.nodes)
             .with_roster(&services)
             .with_application_metadata(&self.application_metadata)
@@ -286,8 +282,4 @@ fn make_splinter_node(node_id: &str, endpoint: &str) -> Result<SplinterNode, Cli
         .build()
         .map_err(|err| CliError::ActionError(format!("Failed to build SplinterNode: {}", err)))?;
     Ok(node)
-}
-
-fn make_circuit_id() -> String {
-    Uuid::new_v4().to_string()
 }
