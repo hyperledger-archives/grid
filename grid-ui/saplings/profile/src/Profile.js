@@ -175,6 +175,13 @@ export function Profile() {
     setModalActive(false);
   };
 
+  const logout = () => {
+    sessionStorage.removeItem('CANOPY_USER');
+    sessionStorage.removeItem('CANOPY_KEYS');
+    sessionStorage.removeItem('KEY_SECRET');
+    window.location.href = `${window.location.origin}/login`;
+  };
+
   return (
     <div id="profile">
       <section className="user-info">
@@ -189,6 +196,9 @@ export function Profile() {
             onClick={() => openModalForm('update-password')}
           >
             Change password
+          </button>
+          <button className="flat" onClick={logout}>
+            Logout
           </button>
         </ActionList>
       </section>
