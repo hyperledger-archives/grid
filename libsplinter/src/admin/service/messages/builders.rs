@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::error::Error as StdError;
+
 use crate::base62::generate_random_base62_string;
 
 use super::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
 };
-use std::error::Error as StdError;
 
 #[derive(Default, Clone)]
 pub struct CreateCircuitBuilder {
