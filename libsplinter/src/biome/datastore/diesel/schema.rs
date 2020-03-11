@@ -22,7 +22,12 @@ table! {
     }
 }
 
-#[cfg(feature = "biome-key-management")]
+table! {
+    splinter_user (id) {
+        id -> Text,
+    }
+}
+
 table! {
     keys (public_key, user_id) {
         public_key -> Text,

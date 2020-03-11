@@ -16,7 +16,7 @@
 use std::time::SystemTime;
 
 use super::schema::*;
-use crate::biome::user::store::diesel::models::UserModel;
+use crate::biome::user::store::SplinterUser;
 
 #[cfg(feature = "biome-credentials")]
 #[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
@@ -77,4 +77,17 @@ pub struct NotificationProperty {
     pub notification_id: String,
     pub property: String,
     pub property_value: String,
+}
+
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "splinter_user"]
+#[primary_key(id)]
+pub struct UserModel {
+    pub id: String,
+}
+
+impl From<SplinterUser> for UserModel {
+    fn from(user: SplinterUser) -> Self {
+        UserModel { id: user.id() }
+    }
 }

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::UserModel;
-use super::super::schema::splinter_user;
 use super::super::{SplinterUser, UserStoreError};
 use super::UserStoreOperations;
+use crate::biome::datastore::models::UserModel;
+use crate::biome::datastore::schema::splinter_user;
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in super::super) trait UserStoreListUsersOperation {
