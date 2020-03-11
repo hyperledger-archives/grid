@@ -134,6 +134,22 @@ impl CreateCircuitBuilder {
             )
         })?;
 
+        let mut split = circuit_id.splitn(2, '-');
+        let is_two_parts = split.clone().count() == 2;
+        let are_parts_valid = split.all(|part| {
+            let is_correct_len = part.len() == 5;
+            let is_base62 = part.chars().all(|c| c.is_ascii_alphanumeric());
+            is_correct_len && is_base62
+        });
+        if !is_two_parts || !are_parts_valid {
+            return Err(BuilderError::InvalidField(
+                "Unable to build CreateCircuit. Field circuit_id must be an 11 character string \
+                 composed of two, 5 character base62 strings joined with a '-' (example: \
+                 abcDE-F0123)"
+                    .to_string(),
+            ));
+        }
+
         let roster = self.roster.ok_or_else(|| {
             BuilderError::MissingField(
                 "Unable to build CreateCircuit message. Missing required field roster".to_string(),
