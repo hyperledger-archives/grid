@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Defines methods and utilities to interact with key management tables in the database.
-
-embed_migrations!("./src/biome/key_management/store/diesel/postgres/migrations");
-
-use diesel::pg::PgConnection;
-
 use super::super::{KeyStore, KeyStoreError};
 use super::operations::fetch_key::KeyStoreFetchKeyOperation as _;
 use super::operations::insert_key::KeyStoreInsertKeyOperation as _;
@@ -28,22 +22,7 @@ use super::operations::update_key::KeyStoreUpdateKeyOperation as _;
 use super::operations::KeyStoreOperations;
 
 use crate::biome::key_management::Key;
-use crate::database::error::DatabaseError;
 use crate::database::ConnectionPool;
-
-/// Run database migrations to create tables defined in the key management module
-///
-/// # Arguments
-///
-/// * `conn` - Connection to database
-///
-pub fn run_migrations(conn: &PgConnection) -> Result<(), DatabaseError> {
-    embedded_migrations::run(conn).map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?;
-
-    info!("Successfully applied Biome key management migrations");
-
-    Ok(())
-}
 
 /// Manages creating, updating and fetching keys from a PostgreSQL database.
 pub struct PostgresKeyStore {

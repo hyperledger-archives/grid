@@ -14,8 +14,6 @@
 
 pub(in crate::biome) mod models;
 mod operations;
-#[cfg(feature = "postgres")]
-pub(in super::super) mod postgres;
 mod schema;
 
 use super::{SplinterUser, UserStore, UserStoreError};

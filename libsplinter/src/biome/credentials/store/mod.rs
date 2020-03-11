@@ -19,8 +19,6 @@ pub(in crate::biome) mod diesel;
 use std::str::FromStr;
 mod error;
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
 pub use error::CredentialsStoreError;
 
 use bcrypt::{hash, verify, DEFAULT_COST};

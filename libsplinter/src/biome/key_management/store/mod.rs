@@ -17,8 +17,6 @@ pub(in crate::biome) mod diesel;
 pub mod error;
 
 #[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
-#[cfg(feature = "postgres")]
 pub use self::diesel::postgres::PostgresKeyStore;
 
 pub use error::KeyStoreError;

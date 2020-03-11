@@ -24,6 +24,8 @@
 #[cfg(feature = "biome-credentials")]
 pub mod credentials;
 
+pub mod datastore;
+
 #[cfg(feature = "biome-key-management")]
 pub mod key_management;
 
