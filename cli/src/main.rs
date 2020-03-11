@@ -255,7 +255,7 @@ fn run() -> Result<(), CliError> {
                     .takes_value(true)
                     .multiple(true)
                     .min_values(2)
-                    .required(true)
+                    .required_unless("template")
                     .long_help(
                         "Service ID and allowed node. \
                          Format <service-id>::<allowed_nodes>",
@@ -326,6 +326,23 @@ fn run() -> Result<(), CliError> {
                 .takes_value(true)
                 .help("Authorization type for the circuit"),
         );
+
+        #[cfg(feature = "circuit-template")]
+        let create_circuit = create_circuit
+            .arg(
+                Arg::with_name("template")
+                    .long("template")
+                    .takes_value(true)
+                    .help("Template name to be applied to circuit"),
+            )
+            .arg(
+                Arg::with_name("template_arg")
+                    .long("template-arg")
+                    .multiple(true)
+                    .takes_value(true)
+                    .requires("template")
+                    .help("Arguments for the template argument. Format <key>=<value>"),
+            );
 
         app = app.subcommand(
             SubCommand::with_name("circuit")

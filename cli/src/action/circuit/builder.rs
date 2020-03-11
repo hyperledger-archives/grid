@@ -29,6 +29,7 @@ use splinter::admin::messages::{
 const PEER_SERVICES_ARG: &str = "peer_services";
 
 pub struct CreateCircuitMessageBuilder {
+    create_circuit_builder: CreateCircuitBuilder,
     services: Vec<SplinterServiceBuilder>,
     nodes: Vec<SplinterNode>,
     management_type: Option<String>,
@@ -40,6 +41,7 @@ pub struct CreateCircuitMessageBuilder {
 impl CreateCircuitMessageBuilder {
     pub fn new() -> CreateCircuitMessageBuilder {
         CreateCircuitMessageBuilder {
+            create_circuit_builder: CreateCircuitBuilder::new(),
             services: vec![],
             nodes: vec![],
             management_type: None,
@@ -47,6 +49,21 @@ impl CreateCircuitMessageBuilder {
             authorization_type: None,
             application_metadata: vec![],
         }
+    }
+
+    #[cfg(feature = "circuit-template")]
+    pub fn add_services(&mut self, service_builders: &[SplinterServiceBuilder]) {
+        self.services.extend(service_builders.to_owned());
+    }
+
+    #[cfg(feature = "circuit-template")]
+    pub fn set_create_circuit_builder(&mut self, create_circuit_builder: &CreateCircuitBuilder) {
+        self.create_circuit_builder = create_circuit_builder.clone()
+    }
+
+    #[cfg(feature = "circuit-template")]
+    pub fn get_node_ids(&self) -> Vec<String> {
+        self.nodes.iter().map(|node| node.node_id.clone()).collect()
     }
 
     pub fn apply_service_type(&mut self, service_id_match: &str, service_type: &str) {
@@ -199,13 +216,16 @@ impl CreateCircuitMessageBuilder {
         // if management type is not set check for default value
         let management_type = match self.management_type {
             Some(management_type) => management_type,
-            None => match default_store.get_default_value(MANAGEMENT_TYPE_KEY)? {
-                Some(management_type) => management_type.value(),
-                None => {
-                    return Err(CliError::ActionError(
-                        "Management type not provided and no default value set".to_string(),
-                    ))
-                }
+            None => match self.create_circuit_builder.circuit_management_type() {
+                Some(management_type) => management_type,
+                None => match default_store.get_default_value(MANAGEMENT_TYPE_KEY)? {
+                    Some(management_type) => management_type.value(),
+                    None => {
+                        return Err(CliError::ActionError(
+                            "Management type not provided and no default value set".to_string(),
+                        ))
+                    }
+                },
             },
         };
 
@@ -233,11 +253,16 @@ impl CreateCircuitMessageBuilder {
                     Ok(services)
                 })?;
 
-        let create_circuit_builder = CreateCircuitBuilder::new()
+        let mut create_circuit_builder = self
+            .create_circuit_builder
             .with_members(&self.nodes)
             .with_roster(&services)
-            .with_application_metadata(&self.application_metadata)
             .with_circuit_management_type(&management_type);
+
+        if !self.application_metadata.is_empty() {
+            create_circuit_builder =
+                create_circuit_builder.with_application_metadata(&self.application_metadata);
+        }
 
         #[cfg(not(feature = "circuit-auth-type"))]
         let create_circuit_builder =
