@@ -75,7 +75,8 @@ depends = "$auto"
 assets = [
     ["packaging/systemd/gameroomd.service", "/lib/systemd/system/gameroomd.service", "644"],
     ["packaging/systemd/gameroomd", "/etc/default/gameroomd", "644"],
-    ["target/release/gameroomd", "/usr/bin/gameroomd", "755"]
+    ["target/release/gameroomd", "/usr/bin/gameroomd", "755"],
+    ["packaging/gameroom_circuit_template.yaml", "/usr/share/splinter/circuit-templates/gameroom.yaml", "644"]
 ]
 conf-files = [
     "/etc/default/gameroomd",

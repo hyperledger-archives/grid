@@ -36,6 +36,12 @@ case "$1" in
         chown root:$group /var/lib/gameroomd/
         chmod 775 /var/lib/gameroomd/
 
+        if [ ! -d /usr/share/splinter/circuit-templates ]; then
+          mkdir -p /usr/share/splinter/circuit-templates
+        fi
+        chmod 755 /usr/share/splinter/circuit-templates
+        chmod 640 /usr/share/splinter/circuit-templates/*.yaml
+
     else
         true
     fi
