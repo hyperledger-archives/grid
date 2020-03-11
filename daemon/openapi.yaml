@@ -675,6 +675,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - description
+        - owner
+        - properties
     PropertyDefinition:
       properties:
         name:
@@ -704,6 +712,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - data_type
+        - active
+        - description
+        - required
+        - number_exponent
+        - enum_options
+        - struct_properties
     DataTypeEnum:
       description: Data type of a PropertyDefinition
       type: string
