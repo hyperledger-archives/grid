@@ -21,6 +21,9 @@ mod action;
 mod error;
 mod store;
 
+#[cfg(feature = "circuit-template")]
+mod template;
+
 use clap::{clap_app, AppSettings, Arg, SubCommand};
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use log::Record;
