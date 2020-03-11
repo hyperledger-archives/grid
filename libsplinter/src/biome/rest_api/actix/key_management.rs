@@ -256,8 +256,8 @@ fn handle_patch(
             };
 
             match key_store.update_key(
-                &updated_key.public_key,
                 &user_id,
+                &updated_key.public_key,
                 &updated_key.new_display_name,
             ) {
                 Ok(()) => HttpResponse::Ok()
