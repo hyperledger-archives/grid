@@ -29,6 +29,9 @@ pub struct AgentSlice {
     pub active: bool,
     pub roles: Vec<String>,
     pub metadata: JsonValue,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl AgentSlice {
@@ -39,6 +42,7 @@ impl AgentSlice {
             active: agent.active,
             roles: agent.roles.clone(),
             metadata: agent.metadata.clone(),
+            service_id: agent.service_id.clone(),
         }
     }
 }
