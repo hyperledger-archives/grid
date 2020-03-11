@@ -23,7 +23,7 @@ pub use error::CredentialsStoreError;
 
 use bcrypt::{hash, verify, DEFAULT_COST};
 
-use self::diesel::models::{NewUserCredentialsModel, UserCredentialsModel};
+use crate::biome::datastore::models::NewUserCredentialsModel;
 use error::{UserCredentialsBuilderError, UserCredentialsError};
 
 const MEDIUM_COST: u32 = 8;

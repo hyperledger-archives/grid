@@ -16,3 +16,6 @@ mod diesel;
 
 #[cfg(feature = "postgres")]
 pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+
+pub(in crate::biome) use self::diesel::models;
+pub(in crate::biome) use self::diesel::schema;
