@@ -379,3 +379,369 @@ impl std::fmt::Display for BuilderError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify that the `CreateCircuitBuilder` works properly and builds a correct `CreateCircuit`
+    /// when all fields are set.
+    #[test]
+    fn circuit_builder_successful() {
+        let mut builder = CreateCircuitBuilder::new();
+        assert!(builder.circuit_id().is_none());
+        assert!(builder.roster().is_none());
+        assert!(builder.members().is_none());
+        assert!(builder.authorization_type().is_none());
+        assert!(builder.persistence().is_none());
+        assert!(builder.durability().is_none());
+        assert!(builder.routes().is_none());
+        assert!(builder.circuit_management_type().is_none());
+        assert!(builder.application_metadata().is_none());
+
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+        let node = SplinterNodeBuilder::new()
+            .with_node_id("node_id")
+            .with_endpoint("endpoint")
+            .build()
+            .expect("failed to build node");
+        builder = builder
+            .with_circuit_id("0123a-bcDEF")
+            .with_roster(&[service.clone()])
+            .with_members(&[node.clone()])
+            .with_authorization_type(&AuthorizationType::Trust)
+            .with_persistence(&PersistenceType::Any)
+            .with_durability(&DurabilityType::NoDurability)
+            .with_routes(&RouteType::Any)
+            .with_circuit_management_type("mgmt_type")
+            .with_application_metadata(b"abcd");
+        assert_eq!(builder.circuit_id(), Some("0123a-bcDEF".into()));
+        assert_eq!(builder.roster(), Some(vec![service.clone()]));
+        assert_eq!(builder.members(), Some(vec![node.clone()]));
+        assert_eq!(builder.authorization_type(), Some(AuthorizationType::Trust));
+        assert_eq!(builder.persistence(), Some(PersistenceType::Any));
+        assert_eq!(builder.durability(), Some(DurabilityType::NoDurability));
+        assert_eq!(builder.routes(), Some(RouteType::Any));
+        assert_eq!(builder.circuit_management_type(), Some("mgmt_type".into()));
+        assert_eq!(builder.application_metadata(), Some(b"abcd".to_vec()));
+
+        let circuit = builder.build().expect("failed to build circuit");
+        assert_eq!(&circuit.circuit_id, "0123a-bcDEF");
+        assert_eq!(circuit.roster, vec![service]);
+        assert_eq!(circuit.members, vec![node]);
+        assert_eq!(circuit.authorization_type, AuthorizationType::Trust);
+        assert_eq!(circuit.persistence, PersistenceType::Any);
+        assert_eq!(circuit.durability, DurabilityType::NoDurability);
+        assert_eq!(circuit.routes, RouteType::Any);
+        assert_eq!(&circuit.circuit_management_type, "mgmt_type");
+        assert_eq!(&circuit.application_metadata, b"abcd");
+    }
+
+    /// Verify that the `CreateCircuitBuilder` builds a correct `CreateCircuit` when `circuit_id`,
+    /// `authorization_type`, `persistence`, `durability`, `routes`, and `application_metadata` are
+    /// unset.
+    #[test]
+    fn circuit_builder_successful_with_defaults() {
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+        let node = SplinterNodeBuilder::new()
+            .with_node_id("node_id")
+            .with_endpoint("endpoint")
+            .build()
+            .expect("failed to build node");
+        let circuit = CreateCircuitBuilder::new()
+            .with_roster(&[service.clone()])
+            .with_members(&[node.clone()])
+            .with_circuit_management_type("mgmt_type")
+            .build()
+            .expect("failed to build circuit");
+
+        assert_eq!(circuit.circuit_id.len(), 11);
+        assert_eq!(circuit.circuit_id.chars().nth(5), Some('-'));
+        assert!(circuit.circuit_id[0..5]
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric()));
+        assert!(circuit.circuit_id[6..11]
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric()));
+        assert_eq!(circuit.roster, vec![service]);
+        assert_eq!(circuit.members, vec![node]);
+        assert_eq!(circuit.authorization_type, AuthorizationType::Trust);
+        assert_eq!(circuit.persistence, PersistenceType::Any);
+        assert_eq!(circuit.durability, DurabilityType::NoDurability);
+        assert_eq!(circuit.routes, RouteType::Any);
+        assert_eq!(&circuit.circuit_management_type, "mgmt_type");
+        assert!(circuit.application_metadata.is_empty());
+    }
+
+    /// Verify that the `CreateCircuitBuilder` fails to build when an invalid `circuit_id` is
+    /// given.
+    #[test]
+    fn circuit_builder_invalid_circuit_id() {
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+        let node = SplinterNodeBuilder::new()
+            .with_node_id("node_id")
+            .with_endpoint("endpoint")
+            .build()
+            .expect("failed to build node");
+        let builder = CreateCircuitBuilder::new()
+            .with_roster(&[service.clone()])
+            .with_members(&[node.clone()])
+            .with_circuit_management_type("mgmt_type");
+
+        // Empty string
+        match builder.clone().with_circuit_id("").build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Too short
+        match builder.clone().with_circuit_id("0123-bcDE").build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Too long
+        match builder.clone().with_circuit_id("0123a-bcDEFG").build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // No dash
+        match builder.clone().with_circuit_id("0123abcDEFG").build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Invalid character
+        match builder.clone().with_circuit_id("0123a-bc:EF").build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `CreateCircuitBuilder` fails to build when `roster` is not set.
+    #[test]
+    fn circuit_builder_unset_roster() {
+        let node = SplinterNodeBuilder::new()
+            .with_node_id("node_id")
+            .with_endpoint("endpoint")
+            .build()
+            .expect("failed to build node");
+        let builder = CreateCircuitBuilder::new()
+            .with_members(&[node])
+            .with_circuit_management_type("mgmt_type");
+        match builder.build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `CreateCircuitBuilder` fails to build when `members` is not set.
+    #[test]
+    fn circuit_builder_unset_members() {
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+        let builder = CreateCircuitBuilder::new()
+            .with_roster(&[service])
+            .with_circuit_management_type("mgmt_type");
+        match builder.build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `CreateCircuitBuilder` fails to build when `circuit_management_type` is not
+    /// set.
+    #[test]
+    fn circuit_builder_unset_circuit_management_type() {
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+        let node = SplinterNodeBuilder::new()
+            .with_node_id("node_id")
+            .with_endpoint("endpoint")
+            .build()
+            .expect("failed to build node");
+        let builder = CreateCircuitBuilder::new()
+            .with_roster(&[service])
+            .with_members(&[node]);
+        match builder.build() {
+            Ok(circuit) => panic!("Build did not fail; got circuit: {:?}", circuit),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `SplinterServiceBuilder` works properly and builds a correct
+    /// `SplinterService` when all fields are set.
+    #[test]
+    fn service_builder_successful() {
+        let mut builder = SplinterServiceBuilder::new();
+        assert!(builder.service_id().is_none());
+        assert!(builder.service_type().is_none());
+        assert!(builder.allowed_nodes().is_none());
+        assert!(builder.arguments().is_none());
+
+        builder = builder
+            .with_service_id("0aZ9")
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .with_arguments(&[("key".into(), "value".into())]);
+        assert_eq!(builder.service_id(), Some("0aZ9".into()));
+        assert_eq!(builder.service_type(), Some("service_type".into()));
+        assert_eq!(builder.allowed_nodes(), Some(vec!["node_id".into()]));
+        assert_eq!(
+            builder.arguments(),
+            Some(vec![("key".into(), "value".into())])
+        );
+
+        let service = builder.build().expect("failed to build service");
+        assert_eq!(&service.service_id, "0aZ9");
+        assert_eq!(&service.service_type, "service_type");
+        assert_eq!(&service.allowed_nodes, &["node_id".to_string()]);
+        assert_eq!(&service.arguments, &[("key".into(), "value".into())]);
+    }
+
+    /// Verify that the `SplinterServiceBuilder` builds a correct `SplinterService` when
+    /// `service_id` and `arguments` are unset.
+    #[test]
+    fn service_builder_successful_with_defaults() {
+        let service = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+            .expect("failed to build service");
+
+        assert_eq!(service.service_id.len(), 4);
+        assert!(service
+            .service_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric()));
+        assert_eq!(&service.service_type, "service_type");
+        assert_eq!(&service.allowed_nodes, &["node_id".to_string()]);
+        assert_eq!(&service.arguments, &[]);
+    }
+
+    /// Verify that the `SplinterServiceBuilder` fails to build when an invalid `service_id` is
+    /// given.
+    #[test]
+    fn service_builder_invalid_service_id() {
+        let builder = SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .with_allowed_nodes(&["node_id".into()]);
+
+        // Empty string
+        match builder.clone().with_service_id("").build() {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Too short
+        match builder.clone().with_service_id("abc").build() {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Too long
+        match builder.clone().with_service_id("toolong").build() {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+
+        // Invalid character
+        match builder.with_service_id("ab:c").build() {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::InvalidField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `SplinterServiceBuilder` fails to build when `service_type` is not set.
+    #[test]
+    fn service_builder_unset_service_type() {
+        match SplinterServiceBuilder::new()
+            .with_allowed_nodes(&["node_id".into()])
+            .build()
+        {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `SplinterServiceBuilder` fails to build when `allowed_nodes` is not set.
+    #[test]
+    fn service_builder_unset_allowed_nodes() {
+        match SplinterServiceBuilder::new()
+            .with_service_type("service_type")
+            .build()
+        {
+            Ok(service) => panic!("Build did not fail; got service: {:?}", service),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `SplinterNodeBuilder` works properly and builds a correct `SplinterNode`.
+    #[test]
+    fn node_builder_success() {
+        let mut builder = SplinterNodeBuilder::new();
+        assert!(builder.node_id().is_none());
+        assert!(builder.endpoint().is_none());
+
+        builder = builder.with_node_id("node_id").with_endpoint("endpoint");
+        assert_eq!(builder.node_id(), Some("node_id".into()));
+        assert_eq!(builder.endpoint(), Some("endpoint".into()));
+
+        let node = builder.build().expect("failed to build node");
+        assert_eq!(&node.node_id, "node_id");
+        assert_eq!(&node.endpoint, "endpoint");
+    }
+
+    /// Verify that the `SplinterNodeBuilder` fails to build when `node_id` is not set.
+    #[test]
+    fn node_builder_unset_node_id() {
+        match SplinterNodeBuilder::new().with_endpoint("endpoint").build() {
+            Ok(node) => panic!("Build did not fail; got node: {:?}", node),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+
+    /// Verify that the `SplinterNodeBuilder` fails to build when `endpoint` is not set.
+    #[test]
+    fn node_builder_unset_endpoint() {
+        match SplinterNodeBuilder::new().with_node_id("node_id").build() {
+            Ok(node) => panic!("Build did not fail; got node: {:?}", node),
+            Err(BuilderError::MissingField(_)) => {}
+            Err(err) => panic!("Got unexpected error: {}", err),
+        }
+    }
+}
