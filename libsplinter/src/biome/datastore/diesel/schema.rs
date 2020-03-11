@@ -31,3 +31,41 @@ table! {
         display_name -> Text,
     }
 }
+
+#[cfg(feature = "biome-notifications")]
+table! {
+    notifications (id) {
+        id -> Text,
+        payload_title -> Text,
+        payload_body -> Text,
+        created -> Timestamp,
+        recipients -> Array<Text>,
+    }
+}
+
+#[cfg(feature = "biome-notifications")]
+table! {
+    user_notifications (notification_id) {
+        notification_id -> Text,
+        user_id -> Text,
+        unread -> Bool,
+    }
+}
+
+#[cfg(feature = "biome-notifications")]
+table! {
+    notification_properties (id) {
+        id -> Int8,
+        notification_id -> Text,
+        property -> Text,
+        property_value -> Text,
+    }
+}
+
+#[cfg(feature = "biome-notifications")]
+joinable!(user_notifications -> notifications (notification_id));
+#[cfg(feature = "biome-notifications")]
+joinable!(notification_properties -> notifications (notification_id));
+
+#[cfg(feature = "biome-notifications")]
+allow_tables_to_appear_in_same_query!(notifications, user_notifications, notification_properties);

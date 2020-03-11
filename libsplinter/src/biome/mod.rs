@@ -29,9 +29,6 @@ pub mod datastore;
 #[cfg(feature = "biome-key-management")]
 pub mod key_management;
 
-#[cfg(feature = "biome-notifications")]
-pub mod notifications;
-
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
 pub mod user;
