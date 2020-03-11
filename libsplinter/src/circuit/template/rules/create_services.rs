@@ -19,7 +19,7 @@ use super::{get_argument_value, is_arg, RuleArgument, Value};
 
 const ALL_OTHER_SERVICES: &str = "$(r:ALL_OTHER_SERVICES)";
 const NODES_ARG: &str = "$(a:NODES)";
-const PEER_SERVICES_ARG: &str = "peer-services";
+const PEER_SERVICES_ARG: &str = "peer_services";
 
 pub(super) struct CreateServices {
     service_type: String,

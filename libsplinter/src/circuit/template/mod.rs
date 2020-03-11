@@ -158,7 +158,7 @@ rules:
         service-args:
         - key: 'admin-keys'
           value: [$(a:ADMIN_KEYS)]
-        - key: 'peer-services'
+        - key: 'peer_services'
           value: '$(r:ALL_OTHER_SERVICES)'
         first-service: 'a000'
     set-metadata:
@@ -234,7 +234,7 @@ rules:
             .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
         assert!(alpha_service_args
             .iter()
-            .any(|(key, value)| key == "peer-services" && value == "[\"a001\"]"));
+            .any(|(key, value)| key == "peer_services" && value == "[\"a001\"]"));
 
         let service_beta_node = service_builders
             .iter()
@@ -255,7 +255,7 @@ rules:
             .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
         assert!(beta_service_args
             .iter()
-            .any(|(key, value)| key == "peer-services" && value == "[\"a000\"]"));
+            .any(|(key, value)| key == "peer_services" && value == "[\"a000\"]"));
     }
 
     fn get_file_path(mut temp_dir: PathBuf) -> String {
