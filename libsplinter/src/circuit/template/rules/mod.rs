@@ -79,6 +79,7 @@ pub struct RuleArgument {
     name: String,
     required: bool,
     default_value: Option<String>,
+    description: Option<String>,
     user_value: Option<String>,
 }
 
@@ -93,6 +94,10 @@ impl RuleArgument {
 
     pub fn default_value(&self) -> Option<&String> {
         self.default_value.as_ref()
+    }
+
+    pub fn description(&self) -> Option<&String> {
+        self.description.as_ref()
     }
 
     pub fn user_value(&self) -> Option<&String> {
@@ -111,6 +116,7 @@ impl TryFrom<v1::RuleArgument> for RuleArgument {
             name: strip_arg_marker(arguments.name())?,
             required: arguments.required(),
             default_value: arguments.default_value().map(String::from),
+            description: arguments.description().map(String::from),
             user_value: None,
         })
     }

@@ -39,6 +39,7 @@ pub struct RuleArgument {
     required: bool,
     #[serde(rename = "default")]
     default_value: Option<String>,
+    description: Option<String>,
 }
 
 impl RuleArgument {
@@ -52,6 +53,10 @@ impl RuleArgument {
 
     pub fn default_value(&self) -> Option<&String> {
         self.default_value.as_ref()
+    }
+
+    pub fn description(&self) -> Option<&String> {
+        self.description.as_ref()
     }
 }
 
