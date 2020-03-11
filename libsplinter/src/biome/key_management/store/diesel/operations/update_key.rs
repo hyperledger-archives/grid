@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::schema::keys;
 use super::KeyStoreOperations;
+use crate::biome::datastore::schema::keys;
 use crate::biome::key_management::store::KeyStoreError;
 
 use diesel::prelude::*;

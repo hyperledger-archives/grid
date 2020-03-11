@@ -34,3 +34,14 @@ pub struct NewUserCredentialsModel {
     pub username: String,
     pub password: String,
 }
+
+#[cfg(feature = "biome-key-management")]
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "keys"]
+#[primary_key(public_key, user_id)]
+pub struct KeyModel {
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub user_id: String,
+    pub display_name: String,
+}

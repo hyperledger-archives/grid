@@ -16,7 +16,7 @@
 
 pub mod store;
 
-use store::diesel::models::KeyModel;
+use crate::biome::datastore::models::KeyModel;
 
 // Represents a public and private key pair
 #[derive(Clone)]

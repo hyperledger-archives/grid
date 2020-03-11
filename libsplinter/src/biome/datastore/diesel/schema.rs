@@ -21,3 +21,13 @@ table! {
         password -> Text,
     }
 }
+
+#[cfg(feature = "biome-key-management")]
+table! {
+    keys (public_key, user_id) {
+        public_key -> Text,
+        encrypted_private_key -> Text,
+        user_id -> Text,
+        display_name -> Text,
+    }
+}
