@@ -260,6 +260,16 @@ impl SplinterServiceBuilder {
             )
         })?;
 
+        let is_correct_len = service_id.len() == 4;
+        let is_base62 = service_id.chars().all(|c| c.is_ascii_alphanumeric());
+        if !is_correct_len || !is_base62 {
+            return Err(BuilderError::InvalidField(
+                "Unable to build SplinterService. Field service_id must be a 4 character \
+                 base62 string"
+                    .to_string(),
+            ));
+        }
+
         let service_type = self.service_type.ok_or_else(|| {
             BuilderError::MissingField(
                 "Unable to build SplinterService. Missing required field service_type".to_string(),
@@ -335,6 +345,7 @@ impl SplinterNodeBuilder {
 
 #[derive(Debug)]
 pub enum BuilderError {
+    InvalidField(String),
     MissingField(String),
 }
 
@@ -343,6 +354,7 @@ impl StdError for BuilderError {}
 impl std::fmt::Display for BuilderError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
+            BuilderError::InvalidField(ref s) => write!(f, "InvalidField: {}", s),
             BuilderError::MissingField(ref s) => write!(f, "MissingField: {}", s),
         }
     }
