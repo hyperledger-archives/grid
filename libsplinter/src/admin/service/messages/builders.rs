@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::base62::generate_random_base62_string;
+
 use super::{
     AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
     SplinterService,
@@ -270,21 +272,22 @@ impl SplinterServiceBuilder {
     }
 
     pub fn build(self) -> Result<SplinterService, BuilderError> {
-        let service_id = self.service_id.ok_or_else(|| {
-            BuilderError::MissingField(
-                "Unable to build SplinterService. Missing required field service_id".to_string(),
-            )
-        })?;
-
-        let is_correct_len = service_id.len() == 4;
-        let is_base62 = service_id.chars().all(|c| c.is_ascii_alphanumeric());
-        if !is_correct_len || !is_base62 {
-            return Err(BuilderError::InvalidField(
-                "Unable to build SplinterService. Field service_id must be a 4 character \
-                 base62 string"
-                    .to_string(),
-            ));
-        }
+        let service_id = match self.service_id {
+            Some(service_id) => {
+                let is_correct_len = service_id.len() == 4;
+                let is_base62 = service_id.chars().all(|c| c.is_ascii_alphanumeric());
+                if !is_correct_len || !is_base62 {
+                    return Err(BuilderError::InvalidField(
+                        "Unable to build SplinterService. Field service_id must be a 4 character \
+                         base62 string"
+                            .to_string(),
+                    ));
+                } else {
+                    service_id
+                }
+            }
+            None => generate_random_base62_string(4),
+        };
 
         let service_type = self.service_type.ok_or_else(|| {
             BuilderError::MissingField(
