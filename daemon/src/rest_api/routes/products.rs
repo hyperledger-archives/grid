@@ -36,6 +36,9 @@ pub struct ProductSlice {
     pub product_namespace: String,
     pub owner: String,
     pub properties: Vec<ProductPropertyValueSlice>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl ProductSlice {
@@ -49,6 +52,7 @@ impl ProductSlice {
                 .iter()
                 .map(|prop| ProductPropertyValueSlice::from_model(prop))
                 .collect(),
+            service_id: product.service_id.clone(),
         }
     }
 }
@@ -57,6 +61,9 @@ impl ProductSlice {
 pub struct ProductPropertyValueSlice {
     pub name: String,
     pub data_type: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
     pub bytes_value: Option<Vec<u8>>,
     pub boolean_value: Option<bool>,
     pub number_value: Option<i64>,
@@ -71,6 +78,7 @@ impl ProductPropertyValueSlice {
         Self {
             name: property_value.property_name.clone(),
             data_type: property_value.data_type.clone(),
+            service_id: property_value.service_id.clone(),
             bytes_value: property_value.bytes_value.clone(),
             boolean_value: property_value.boolean_value,
             number_value: property_value.number_value,
