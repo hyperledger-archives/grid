@@ -344,185 +344,213 @@ fn run() -> Result<(), CliError> {
                     .help("Arguments for the template argument. Format <key>=<value>"),
             );
 
-        app = app.subcommand(
-            SubCommand::with_name("circuit")
-                .about("Provides circuit management functionality")
+        let circuit_command = SubCommand::with_name("circuit")
+            .about("Provides circuit management functionality")
+            .setting(AppSettings::SubcommandRequiredElseHelp)
+            .subcommand(create_circuit)
+            .subcommand(
+                SubCommand::with_name("vote")
+                    .about("Vote on a new circuit proposal")
+                    .arg(
+                        Arg::with_name("url")
+                            .short("U")
+                            .long("url")
+                            .takes_value(true)
+                            .help("URL of Splinter Daemon"),
+                    )
+                    .arg(
+                        Arg::with_name("private_key_file")
+                            .value_name("private-key-file")
+                            .short("k")
+                            .long("key")
+                            .takes_value(true)
+                            .help("Path to private key file"),
+                    )
+                    .arg(
+                        Arg::with_name("circuit_id")
+                            .value_name("circuit-id")
+                            .takes_value(true)
+                            .required(true)
+                            .help("The circuit id of the proposed circuit"),
+                    )
+                    .arg(
+                        Arg::with_name("accept")
+                            .required(true)
+                            .long("accept")
+                            .conflicts_with("reject")
+                            .help("Accept the proposal"),
+                    )
+                    .arg(
+                        Arg::with_name("reject")
+                            .required(true)
+                            .long("reject")
+                            .conflicts_with("accept")
+                            .help("Reject the proposal"),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("list")
+                    .about("List the circuits")
+                    .arg(
+                        Arg::with_name("url")
+                            .short("U")
+                            .long("url")
+                            .help("The URL of the Splinter daemon REST API")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("member")
+                            .short("m")
+                            .long("member")
+                            .help("Filter the circuits by a node ID in the member list")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "csv"])
+                            .default_value("human")
+                            .takes_value(true),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("show")
+                    .about("Show a specific circuit or proposal")
+                    .arg(
+                        Arg::with_name("url")
+                            .short("U")
+                            .long("url")
+                            .help("The URL of the Splinter daemon REST API")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("circuit")
+                            .help("The circuit ID of the circuit to be shown")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "yaml", "json"])
+                            .default_value("human")
+                            .takes_value(true),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("proposals")
+                    .about("List the circuit proposals")
+                    .arg(
+                        Arg::with_name("url")
+                            .short("U")
+                            .long("url")
+                            .help("The URL of the Splinter daemon REST API")
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("management_type")
+                            .short("m")
+                            .long("management-type")
+                            .long_help(
+                                "Filter the circuit proposals by the circuit \
+                                 management type of the circuits",
+                            )
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("format")
+                            .short("f")
+                            .long("format")
+                            .help("Output format")
+                            .possible_values(&["human", "csv"])
+                            .default_value("human")
+                            .takes_value(true),
+                    ),
+            )
+            .subcommand(
+                SubCommand::with_name("default")
+                    .about("Manage default values for circuit creation")
+                    .setting(AppSettings::SubcommandRequiredElseHelp)
+                    .subcommand(
+                        SubCommand::with_name("set")
+                            .about("Set a default value")
+                            .arg(
+                                Arg::with_name("name")
+                                    .takes_value(true)
+                                    .value_name("name")
+                                    .possible_values(&["service-type", "management-type"])
+                                    .help("The name of the default setting"),
+                            )
+                            .arg(
+                                Arg::with_name("value")
+                                    .takes_value(true)
+                                    .value_name("value")
+                                    .help("The value for the default setting"),
+                            )
+                            .arg(
+                                Arg::with_name("force")
+                                    .short("f")
+                                    .long("force")
+                                    .help("Overwrite default if it is already set"),
+                            ),
+                    )
+                    .subcommand(
+                        SubCommand::with_name("unset")
+                            .about("Unset a default value")
+                            .arg(
+                                Arg::with_name("name")
+                                    .takes_value(true)
+                                    .value_name("name")
+                                    .possible_values(&["service-type", "management-type"])
+                                    .help("The name of the default setting"),
+                            ),
+                    )
+                    .subcommand(SubCommand::with_name("list").about("List set default values"))
+                    .subcommand(
+                        SubCommand::with_name("show")
+                            .about("Show a default value")
+                            .arg(
+                                Arg::with_name("name")
+                                    .takes_value(true)
+                                    .value_name("name")
+                                    .possible_values(&["service-type", "management-type"])
+                                    .help("The name of the default setting"),
+                            ),
+                    ),
+            );
+
+        #[cfg(feature = "circuit-template")]
+        let circuit_command = circuit_command.subcommand(
+            SubCommand::with_name("template")
+                .about("Manage circuit templates")
                 .setting(AppSettings::SubcommandRequiredElseHelp)
-                .subcommand(create_circuit)
+                .subcommand(SubCommand::with_name("list").about("List available templates"))
                 .subcommand(
-                    SubCommand::with_name("vote")
-                        .about("Vote on a new circuit proposal")
+                    SubCommand::with_name("show").about("Show a template").arg(
+                        Arg::with_name("name")
+                            .required(true)
+                            .takes_value(true)
+                            .value_name("name")
+                            .help("The name of the template"),
+                    ),
+                )
+                .subcommand(
+                    SubCommand::with_name("arguments")
+                        .about("List arguments of a template")
                         .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .takes_value(true)
-                                .help("URL of Splinter Daemon"),
-                        )
-                        .arg(
-                            Arg::with_name("private_key_file")
-                                .value_name("private-key-file")
-                                .short("k")
-                                .long("key")
-                                .takes_value(true)
-                                .help("Path to private key file"),
-                        )
-                        .arg(
-                            Arg::with_name("circuit_id")
-                                .value_name("circuit-id")
-                                .takes_value(true)
+                            Arg::with_name("name")
                                 .required(true)
-                                .help("The circuit id of the proposed circuit"),
-                        )
-                        .arg(
-                            Arg::with_name("accept")
-                                .required(true)
-                                .long("accept")
-                                .conflicts_with("reject")
-                                .help("Accept the proposal"),
-                        )
-                        .arg(
-                            Arg::with_name("reject")
-                                .required(true)
-                                .long("reject")
-                                .conflicts_with("accept")
-                                .help("Reject the proposal"),
-                        ),
-                )
-                .subcommand(
-                    SubCommand::with_name("list")
-                        .about("List the circuits")
-                        .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .help("The URL of the Splinter daemon REST API")
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("member")
-                                .short("m")
-                                .long("member")
-                                .help("Filter the circuits by a node ID in the member list")
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("format")
-                                .short("f")
-                                .long("format")
-                                .help("Output format")
-                                .possible_values(&["human", "csv"])
-                                .default_value("human")
-                                .takes_value(true),
-                        ),
-                )
-                .subcommand(
-                    SubCommand::with_name("show")
-                        .about("Show a specific circuit or proposal")
-                        .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .help("The URL of the Splinter daemon REST API")
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("circuit")
-                                .help("The circuit ID of the circuit to be shown")
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("format")
-                                .short("f")
-                                .long("format")
-                                .help("Output format")
-                                .possible_values(&["human", "yaml", "json"])
-                                .default_value("human")
-                                .takes_value(true),
-                        ),
-                )
-                .subcommand(
-                    SubCommand::with_name("proposals")
-                        .about("List the circuit proposals")
-                        .arg(
-                            Arg::with_name("url")
-                                .short("U")
-                                .long("url")
-                                .help("The URL of the Splinter daemon REST API")
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("management_type")
-                                .short("m")
-                                .long("management-type")
-                                .long_help(
-                                    "Filter the circuit proposals by the circuit \
-                                     management type of the circuits",
-                                )
-                                .takes_value(true),
-                        )
-                        .arg(
-                            Arg::with_name("format")
-                                .short("f")
-                                .long("format")
-                                .help("Output format")
-                                .possible_values(&["human", "csv"])
-                                .default_value("human")
-                                .takes_value(true),
-                        ),
-                )
-                .subcommand(
-                    SubCommand::with_name("default")
-                        .about("Manage default values for circuit creation")
-                        .setting(AppSettings::SubcommandRequiredElseHelp)
-                        .subcommand(
-                            SubCommand::with_name("set")
-                                .about("Set a default value")
-                                .arg(
-                                    Arg::with_name("name")
-                                        .takes_value(true)
-                                        .value_name("name")
-                                        .possible_values(&["service-type", "management-type"])
-                                        .help("The name of the default setting"),
-                                )
-                                .arg(
-                                    Arg::with_name("value")
-                                        .takes_value(true)
-                                        .value_name("value")
-                                        .help("The value for the default setting"),
-                                )
-                                .arg(
-                                    Arg::with_name("force")
-                                        .short("f")
-                                        .long("force")
-                                        .help("Overwrite default if it is already set"),
-                                ),
-                        )
-                        .subcommand(
-                            SubCommand::with_name("unset")
-                                .about("Unset a default value")
-                                .arg(
-                                    Arg::with_name("name")
-                                        .takes_value(true)
-                                        .value_name("name")
-                                        .possible_values(&["service-type", "management-type"])
-                                        .help("The name of the default setting"),
-                                ),
-                        )
-                        .subcommand(SubCommand::with_name("list").about("List set default values"))
-                        .subcommand(
-                            SubCommand::with_name("show")
-                                .about("Show a default value")
-                                .arg(
-                                    Arg::with_name("name")
-                                        .takes_value(true)
-                                        .value_name("name")
-                                        .possible_values(&["service-type", "management-type"])
-                                        .help("The name of the default setting"),
-                                ),
+                                .takes_value(true)
+                                .value_name("name")
+                                .help("The name of the template"),
                         ),
                 ),
         );
+
+        app = app.subcommand(circuit_command);
     }
 
     #[cfg(feature = "node-alias")]
@@ -642,23 +670,31 @@ fn run() -> Result<(), CliError> {
     #[cfg(feature = "circuit")]
     {
         use action::circuit;
-        subcommands = subcommands.with_command(
-            "circuit",
+        let circuit_command = SubcommandActions::new()
+            .with_command("create", circuit::CircuitCreateAction)
+            .with_command("vote", circuit::CircuitVoteAction)
+            .with_command("list", circuit::CircuitListAction)
+            .with_command("show", circuit::CircuitShowAction)
+            .with_command("proposals", circuit::CircuitProposalsAction)
+            .with_command(
+                "default",
+                SubcommandActions::new()
+                    .with_command("set", circuit::defaults::SetDefaultValueAction)
+                    .with_command("unset", circuit::defaults::UnsetDefaultValueAction)
+                    .with_command("list", circuit::defaults::ListDefaultsAction)
+                    .with_command("show", circuit::defaults::ShowDefaultValueAction),
+            );
+
+        #[cfg(feature = "circuit-template")]
+        let circuit_command = circuit_command.with_command(
+            "template",
             SubcommandActions::new()
-                .with_command("create", circuit::CircuitCreateAction)
-                .with_command("vote", circuit::CircuitVoteAction)
-                .with_command("list", circuit::CircuitListAction)
-                .with_command("show", circuit::CircuitShowAction)
-                .with_command("proposals", circuit::CircuitProposalsAction)
-                .with_command(
-                    "default",
-                    SubcommandActions::new()
-                        .with_command("set", circuit::defaults::SetDefaultValueAction)
-                        .with_command("unset", circuit::defaults::UnsetDefaultValueAction)
-                        .with_command("list", circuit::defaults::ListDefaultsAction)
-                        .with_command("show", circuit::defaults::ShowDefaultValueAction),
-                ),
+                .with_command("list", circuit::template::ListCircuitTemplates)
+                .with_command("show", circuit::template::ShowCircuitTemplate)
+                .with_command("arguments", circuit::template::ListCircuitTemplateArguments),
         );
+
+        subcommands = subcommands.with_command("circuit", circuit_command);
     }
 
     #[cfg(feature = "node-alias")]

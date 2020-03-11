@@ -16,6 +16,8 @@ mod api;
 mod builder;
 pub mod defaults;
 mod payload;
+#[cfg(feature = "circuit-template")]
+pub mod template;
 
 #[cfg(feature = "circuit-template")]
 use std::collections::HashMap;
