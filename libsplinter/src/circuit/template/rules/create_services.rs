@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
+use crate::base62::next_base62_string;
 
 use super::super::{yaml_parser::v1, CircuitTemplateError, SplinterServiceBuilder};
 use super::{get_argument_value, is_arg, RuleArgument, Value};
@@ -52,7 +52,9 @@ impl CreateServices {
                 .with_service_type(&self.service_type);
 
             service_builders.push(splinter_service_builder);
-            service_id = get_next_service_id(&service_id)?;
+            service_id = next_base62_string(&service_id).ok_or_else(|| {
+                CircuitTemplateError::new("Exceeded number of services that can be built")
+            })?;
         }
 
         let mut new_service_args = Vec::new();
@@ -131,54 +133,6 @@ impl From<v1::ServiceArgument> for ServiceArgument {
             value: Value::from(yaml_service_argument.value().clone()),
         }
     }
-}
-
-fn add1_char(c: char) -> Result<char, CircuitTemplateError> {
-    let char_value = c as u32;
-    if char_value >= 'z' as u32 {
-        return Ok('0');
-    }
-    let next_char = std::char::from_u32(char_value + 1).ok_or_else(|| {
-        CircuitTemplateError::new("Failed to generate service id. Failed to convert char from u32.")
-    })?;
-    if !next_char.is_ascii_alphanumeric() {
-        return add1_char(next_char);
-    }
-    Ok(next_char)
-}
-
-fn get_next_service_id(current_id: &str) -> Result<String, CircuitTemplateError> {
-    generate_id(current_id, current_id.len() - 1)
-}
-
-fn generate_id(current_id: &str, index: usize) -> Result<String, CircuitTemplateError> {
-    let mut next_id = current_id.to_string();
-    let character = char::from_str(&next_id[index..=index]).map_err(|_| {
-        CircuitTemplateError::new(&format!(
-            "Failed to generate service id. Could not extract valid char from string {}",
-            next_id
-        ))
-    })?;
-    if !character.is_ascii_alphanumeric() {
-        return Err(CircuitTemplateError::new(&format!(
-            "The service id contains an invalid character: {}. \
-             Only ASCII alphanumeric characters are allowed",
-            character
-        )));
-    }
-    let next_char = add1_char(character)?;
-    next_id.replace_range(index..=index, &next_char.to_string());
-
-    if next_char == '0' {
-        if index == 0 {
-            return Err(CircuitTemplateError::new(
-                "Exceed number of services that can be built",
-            ));
-        }
-
-        return generate_id(&next_id, index - 1);
-    }
-    Ok(next_id)
 }
 
 fn all_services(
