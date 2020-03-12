@@ -63,10 +63,10 @@ impl std::fmt::Display for CliError {
             CliError::PayloadError(ref err) => write!(f, "PayloadError: {}", err),
             CliError::IoError(ref err) => write!(f, "IoError: {}", err),
             CliError::DatabaseError(ref err) => write!(f, "DatabaseError: {}", err),
-            CliError::SigningError(ref err) => write!(f, "SigningError: {}", err.description()),
-            CliError::ProtobufError(ref err) => write!(f, "ProtobufError: {}", err.description()),
+            CliError::SigningError(ref err) => write!(f, "SigningError: {}", err),
+            CliError::ProtobufError(ref err) => write!(f, "ProtobufError: {}", err),
             CliError::LoggingInitializationError(ref err) => {
-                write!(f, "LoggingInitializationError: {}", err.description())
+                write!(f, "LoggingInitializationError: {}", err)
             }
             CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
