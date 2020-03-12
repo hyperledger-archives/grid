@@ -283,7 +283,6 @@ impl ShutdownHandle {
 struct ConnectionMetadata {
     id: usize,
     endpoint: String,
-    ref_count: u64,
     reconnecting: bool,
     retry_frequency: u64,
     last_connection_attempt: Instant,
@@ -322,8 +321,8 @@ where
     }
 
     fn add_connection(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
-        if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count += 1;
+        if self.connections.get_mut(endpoint).is_some() {
+            return Ok(());
         } else {
             let connection = self.transport.connect(endpoint).map_err(|err| {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
@@ -338,7 +337,6 @@ where
                 ConnectionMetadata {
                     id,
                     endpoint: endpoint.to_string(),
-                    ref_count: 1,
                     reconnecting: false,
                     retry_frequency: INITIAL_RETRY_FREQUENCY,
                     last_connection_attempt: Instant::now(),
@@ -354,18 +352,15 @@ where
         endpoint: &str,
     ) -> Result<Option<ConnectionMetadata>, ConnectionManagerError> {
         let meta = if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count -= 1;
             meta.clone()
         } else {
             return Ok(None);
         };
 
-        if meta.ref_count < 1 {
-            self.connections.remove(endpoint);
-            self.life_cycle.remove(meta.id).map_err(|err| {
-                ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err))
-            })?;
-        }
+        self.connections.remove(endpoint);
+        self.life_cycle
+            .remove(meta.id)
+            .map_err(|err| ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err)))?;
 
         Ok(Some(meta))
     }
