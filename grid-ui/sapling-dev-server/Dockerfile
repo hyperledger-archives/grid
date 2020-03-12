@@ -30,6 +30,10 @@ RUN cd /saplings/product && \
   npm install && \
   yarn deploy
 
+RUN cd /saplings/profile && \
+  npm install && \
+  yarn deploy
+
 FROM httpd:2.4 as prod-stage
 
 RUN echo "\
