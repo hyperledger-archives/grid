@@ -478,29 +478,24 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     };
 
     for (endpoint, metadata) in state.connection_metadata() {
-        if state
-            .matrix_sender()
-            .send(metadata.id, heartbeat_message.clone())
-            .is_err()
-        {
-            // if connection is already attempting reconnection, call reconnect
-            if metadata.reconnecting {
-                if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
-                    if let Err(err) = state.reconnect(&endpoint, subscribers) {
-                        error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
-                    }
+        // if connection is already attempting reconnection, call reconnect
+        if metadata.reconnecting {
+            if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
+                if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                    error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
                 }
-            } else {
-                info!("Sending heartbeat to {}", endpoint);
-                if let Err(err) = state
-                    .matrix_sender()
-                    .send(metadata.id, heartbeat_message.clone())
-                {
-                    error!(
-                        "failed to send heartbeat: {:?} attempting reconnection",
-                        err
-                    )
-                }
+            }
+        } else {
+            info!("Sending heartbeat to {}", endpoint);
+            if let Err(err) = state
+                .matrix_sender()
+                .send(metadata.id, heartbeat_message.clone())
+            {
+                error!(
+                    "failed to send heartbeat: {:?} attempting reconnection",
+                    err
+                );
+
                 notify_subscribers(
                     subscribers,
                     ConnectionManagerNotification::Disconnected {
