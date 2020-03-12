@@ -19,8 +19,7 @@ use std::sync::mpsc::TryRecvError;
 #[cfg(feature = "connection-manager-notification-iter-try-next")]
 use super::error::ConnectionManagerError;
 
-/// Messages that will be dispatched to all
-/// subscription handlers
+/// Messages that will be dispatched to all subscription handlers
 #[derive(Debug, PartialEq, Clone)]
 pub enum ConnectionManagerNotification {
     Connected { endpoint: String },
@@ -28,12 +27,14 @@ pub enum ConnectionManagerNotification {
     ReconnectionFailed { endpoint: String, attempts: u64 },
 }
 
+/// An iterator over ConnectionManagerNotification values
 pub struct NotificationIter {
     pub(super) recv: Receiver<ConnectionManagerNotification>,
 }
 
 #[cfg(feature = "connection-manager-notification-iter-try-next")]
 impl NotificationIter {
+    /// Try to get the next notificaion, if it is available.
     pub fn try_next(
         &self,
     ) -> Result<Option<ConnectionManagerNotification>, ConnectionManagerError> {

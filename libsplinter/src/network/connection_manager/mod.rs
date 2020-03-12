@@ -183,6 +183,14 @@ pub struct Connector {
 }
 
 impl Connector {
+    /// Request a connection to the given endpoint.
+    ///
+    /// This operation is idempotent: if a connection to that endpoint already exists, a new
+    /// connection is not created.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if the connection cannot be created
     pub fn request_connection(
         &self,
         endpoint: &str,
@@ -208,15 +216,15 @@ impl Connector {
         })?
     }
 
-    // Removes a connection
-    //
-    // # Returns
-    //
-    // The endpoint, if the connection exists; None, otherwise.
-    //
-    // # Errors
-    //
-    // Returns a ConnectionManagerError if the query cannot be performed.
+    /// Removes a connection
+    ///
+    ///  # Returns
+    ///
+    ///  The endpoint, if the connection exists; None, otherwise.
+    ///
+    ///  # Errors
+    ///
+    ///  Returns a ConnectionManagerError if the query cannot be performed.
     pub fn remove_connection(
         &self,
         endpoint: &str,
@@ -240,6 +248,16 @@ impl Connector {
         })?
     }
 
+    /// Subscribe to notfications for connection events
+    ///
+    /// # Returns
+    ///
+    /// Notifications are received via an iterator.  The iterator will block when using standard
+    /// `next`, but also provides a `try_next`
+    ///
+    /// # Errors
+    ///
+    /// Return a ConnectionManagerError if the notification iterator cannot be created.
     pub fn subscribe(&self) -> Result<NotificationIter, ConnectionManagerError> {
         let (send, recv) = channel();
         match self.sender.send(CmMessage::Subscribe(send)) {
@@ -250,6 +268,15 @@ impl Connector {
         }
     }
 
+    /// List the connections available to this Connector instance.
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of connection endpoints.
+    ///
+    /// # Errors
+    ///
+    /// Returns a ConnectionManagerError if the connections cannot be queried.
     pub fn list_connections(&self) -> Result<Vec<String>, ConnectionManagerError> {
         let (sender, recv) = channel();
         self.sender
@@ -268,6 +295,7 @@ impl Connector {
     }
 }
 
+/// Signals shutdown to the ConnectionManager
 #[derive(Clone)]
 pub struct ShutdownHandle {
     sender: Sender<CmMessage>,
@@ -275,7 +303,8 @@ pub struct ShutdownHandle {
 }
 
 impl ShutdownHandle {
-    pub fn shutdown(&self) {
+    /// Signal the ConnectionManager to shutdown.
+    pub fn shutdown(self) {
         self.pacemaker_shutdown_handle.shutdown();
 
         if self.sender.send(CmMessage::Shutdown).is_err() {
