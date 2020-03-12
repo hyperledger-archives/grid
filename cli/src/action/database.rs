@@ -17,14 +17,8 @@ use clap::ArgMatches;
 use super::Action;
 use crate::error::CliError;
 use diesel::{connection::Connection as _, pg::PgConnection};
-#[cfg(feature = "database-migrate-biome-credentials")]
-use splinter::biome::credentials::store::run_postgres_migrations as run_biome_credentials_migrations;
-#[cfg(feature = "database-migrate-biome-key-management")]
-use splinter::biome::key_management::store::run_postgres_migrations as run_biome_key_management_migrations;
-#[cfg(feature = "database-migrate-biome-notifications")]
-use splinter::biome::notifications::store::run_postgres_migrations as run_biome_notifications_migrations;
-#[cfg(feature = "database-migrate-biome-user")]
-use splinter::biome::user::store::run_postgres_migrations as run_biome_user_migrations;
+#[cfg(feature = "database-migrate-biome")]
+use splinter::biome::datastore::run_postgres_migrations;
 use splinter::database::run_migrations as run_setup_migrations;
 
 pub struct MigrateAction;
@@ -45,30 +39,9 @@ impl Action for MigrateAction {
             CliError::DatabaseError(format!("Unable to run Biome setup migrations: {}", err))
         })?;
 
-        #[cfg(feature = "database-migrate-biome-user")]
-        run_biome_user_migrations(&connection).map_err(|err| {
-            CliError::DatabaseError(format!("Unable to run Biome users migrations: {}", err))
-        })?;
-        #[cfg(feature = "database-migrate-biome-credentials")]
-        run_biome_credentials_migrations(&connection).map_err(|err| {
-            CliError::DatabaseError(format!(
-                "Unable to run Biome credentials migrations: {}",
-                err
-            ))
-        })?;
-        #[cfg(feature = "database-migrate-biome-key-management")]
-        run_biome_key_management_migrations(&connection).map_err(|err| {
-            CliError::DatabaseError(format!(
-                "Unable to run Biome key management migrations: {}",
-                err
-            ))
-        })?;
-        #[cfg(feature = "database-migrate-biome-notifications")]
-        run_biome_notifications_migrations(&connection).map_err(|err| {
-            CliError::DatabaseError(format!(
-                "Unable to run Biome notifications migrations: {}",
-                err
-            ))
+        #[cfg(feature = "database-migrate-biome")]
+        run_postgres_migrations(&connection).map_err(|err| {
+            CliError::DatabaseError(format!("Unable to run Biome migrations: {}", err))
         })?;
 
         Ok(())
