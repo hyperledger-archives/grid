@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod frame;
 pub mod inproc;
 pub mod multi;
-pub mod raw;
-pub mod tls;
+pub mod socket;
 #[cfg(feature = "zmq-transport")]
 pub mod zmq;
 

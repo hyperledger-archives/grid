@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use splinter::{
     mesh::{Envelope, Mesh},
-    transport::{raw::RawTransport, Listener, Transport},
+    transport::{socket::RawTransport, Listener, Transport},
 };
 
 // An example of creating a Transport and a Mesh, and doing reads and writes in a single thread.

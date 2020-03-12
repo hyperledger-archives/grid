@@ -285,7 +285,9 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::thread;
 
-    use crate::transport::{raw::RawTransport, tls::tests::create_test_tls_transport, Transport};
+    use crate::transport::{
+        socket::tests::create_test_tls_transport, socket::RawTransport, Transport,
+    };
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
         match result {

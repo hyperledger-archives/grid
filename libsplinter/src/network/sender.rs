@@ -117,7 +117,7 @@ mod tests {
     use super::*;
     use crate::mesh::Mesh;
     use crate::network::Network;
-    use crate::transport::raw::RawTransport;
+    use crate::transport::socket::RawTransport;
     use crate::transport::Transport;
 
     // Test that a message can successfully be sent by passing it to the sender end of the

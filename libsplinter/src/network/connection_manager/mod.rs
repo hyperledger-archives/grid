@@ -527,7 +527,7 @@ pub mod tests {
     use super::*;
     use crate::mesh::Mesh;
     use crate::transport::inproc::InprocTransport;
-    use crate::transport::raw::RawTransport;
+    use crate::transport::socket::RawTransport;
 
     #[test]
     fn test_connection_manager_startup_and_shutdown() {

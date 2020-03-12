@@ -14,7 +14,7 @@
 
 use protobuf;
 use splinter::protos::network::NetworkMessage;
-use splinter::transport::tls::TlsTransport;
+use splinter::transport::socket::TlsTransport;
 use splinter::transport::{Connection, Transport};
 use url;
 

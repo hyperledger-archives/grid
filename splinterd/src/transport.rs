@@ -15,8 +15,8 @@
 use std::fs;
 use std::path::Path;
 
-use splinter::transport::raw::RawTransport;
-use splinter::transport::tls::TlsTransport;
+use splinter::transport::socket::RawTransport;
+use splinter::transport::socket::TlsTransport;
 use splinter::transport::Transport;
 
 use crate::config::Config;

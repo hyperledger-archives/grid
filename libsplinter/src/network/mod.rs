@@ -472,7 +472,7 @@ impl std::fmt::Display for PeerUpdateError {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::transport::raw::RawTransport;
+    use crate::transport::socket::RawTransport;
     use crate::transport::Transport;
     use std::fmt::Debug;
     use std::thread;

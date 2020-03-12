@@ -38,7 +38,10 @@ use splinter::consensus::two_phase::TwoPhaseEngine;
 use splinter::consensus::{ConsensusEngine, StartupState};
 use splinter::mesh::Mesh;
 use splinter::network::Network;
-use splinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
+use splinter::transport::{
+    socket::{RawTransport, TlsTransport},
+    Transport,
+};
 
 use crate::error::CliError;
 use crate::routes::{batches, state, State};

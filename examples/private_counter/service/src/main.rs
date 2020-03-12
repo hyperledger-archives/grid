@@ -57,7 +57,10 @@ use splinter::protos::circuit::{
     ServiceConnectResponse, ServiceConnectResponse_Status, ServiceDisconnectRequest,
 };
 use splinter::protos::network::{NetworkMessage, NetworkMessageType};
-use splinter::transport::{raw::RawTransport, tls::TlsTransport, Transport};
+use splinter::transport::{
+    socket::{RawTransport, TlsTransport},
+    Transport,
+};
 
 use crate::consensus::{PrivateCounterNetworkSender, PrivateCounterProposalManager};
 use crate::error::{HandleError, ServiceError};
