@@ -80,18 +80,21 @@ pipeline {
         stage("Build Grid UI Test Dependencies") {
             steps {
                 sh 'docker build grid-ui -f grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
+                sh 'docker build grid-ui/saplings/product -f grid-ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
             }
         }
 
         stage("Run Lint on Grid UI") {
             steps {
                 sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn lint'
+                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn lint'
             }
         }
 
         stage("Run Grid UI tests") {
             steps {
                 sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn test'
+                sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn test'
             }
         }
 
