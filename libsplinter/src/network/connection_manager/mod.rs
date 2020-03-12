@@ -641,6 +641,8 @@ pub mod tests {
             heartbeat.get_message_type(),
             NetworkMessageType::NETWORK_HEARTBEAT
         );
+
+        cm.shutdown_and_wait();
     }
 
     // test_heartbeat_raw_tcp
@@ -681,6 +683,7 @@ pub mod tests {
             heartbeat.get_message_type(),
             NetworkMessageType::NETWORK_HEARTBEAT
         );
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -726,6 +729,8 @@ pub mod tests {
             .list_connections()
             .expect("Unable to list connections")
             .is_empty());
+
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -755,6 +760,7 @@ pub mod tests {
             .expect("Unable to remove connection");
 
         assert_eq!(None, endpoint_removed);
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -879,5 +885,6 @@ pub mod tests {
                     endpoint: endpoint.clone(),
                 }
         );
+        cm.shutdown_and_wait();
     }
 }
