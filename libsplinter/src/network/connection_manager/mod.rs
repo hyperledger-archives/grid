@@ -415,6 +415,15 @@ where
             meta.last_connection_attempt = Instant::now();
             meta.reconnection_attempts += 1;
             self.connections.insert(endpoint.to_string(), meta);
+
+            // Notify subscribers of reconnection failure
+            notify_subscribers(
+                subscribers,
+                ConnectionManagerNotification::ReconnectionFailed {
+                    endpoint: endpoint.to_string(),
+                    attempts: reconnection_attempts,
+                },
+            );
         }
         Ok(())
     }
@@ -868,6 +877,7 @@ pub mod tests {
             .expect("Unable to request connection");
 
         let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+
         // receive reconnecting attempt
         let reconnecting_notification = subscriber
             .next()
