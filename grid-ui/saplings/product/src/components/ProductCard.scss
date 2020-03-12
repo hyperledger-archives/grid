@@ -1,0 +1,81 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.product-card {
+  position: relative;
+  border: 2px solid var(--color-dark-grey);
+  border-radius: 5px;
+  padding: 0.8rem;
+  height: 12rem;
+
+  &:hover {
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  }
+
+  .product-card-edit-button {
+    position: absolute;
+    z-index: 10;
+    padding: 0;
+    top: 0.8rem;
+    right: 0.8rem;
+    width: 1rem;
+    height: 1rem;
+    border: none;
+    color: var(--color-grey);
+
+    :hover {
+      color: var(--color-dark-grey);
+    }
+
+    .icon {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  .product-card-content {
+    display: flex;
+    height: 100%;
+    justify-content: space-between;
+
+    .product-card-properties {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      .product-card-property {
+        display: flex;
+        flex-direction: column;
+
+        .label {
+          color: var(--color-grey);
+          font-weight: 300;
+        }
+
+        .value {
+          font-size: 1.3rem;
+        }
+      }
+    }
+
+    .product-card-image {
+      width: 8rem;
+      height: 8rem;
+      align-self: center;
+      object-fit: contain;
+    }
+  }
+}
