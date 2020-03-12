@@ -18,6 +18,9 @@ pub mod dispatch;
 mod dispatch_proto;
 pub mod handlers;
 pub mod peer;
+
+#[cfg(feature = "network-ref-map")]
+pub(crate) mod ref_map;
 pub(crate) mod reply;
 pub mod sender;
 
