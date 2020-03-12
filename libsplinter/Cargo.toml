@@ -98,6 +98,7 @@ experimental = [
     "database",
     "json-web-tokens",
     "matrix",
+    "network-peer-manager",
     "network-ref-map",
     "node-registry-unified",
     "postgres",
@@ -123,6 +124,7 @@ database = ["diesel_migrations", "postgres"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
 json-web-tokens = ["jsonwebtoken"]
 matrix = []
+network-peer-manager = ["connection-manager", "network-ref-map"]
 network-ref-map = []
 node-registry-unified = []
 postgres = ["diesel/postgres"]

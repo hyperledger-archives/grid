@@ -19,6 +19,8 @@ mod dispatch_proto;
 pub mod handlers;
 pub mod peer;
 
+#[cfg(feature = "network-peer-manager")]
+pub mod peer_manager;
 #[cfg(feature = "network-ref-map")]
 pub(crate) mod ref_map;
 pub(crate) mod reply;
