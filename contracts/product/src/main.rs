@@ -58,7 +58,7 @@ fn main() {
         0 => console_log_level = LogLevelFilter::Warn,
         1 => console_log_level = LogLevelFilter::Info,
         2 => console_log_level = LogLevelFilter::Debug,
-        3 | _ => console_log_level = LogLevelFilter::Trace,
+        _ => console_log_level = LogLevelFilter::Trace,
     }
 
     let stdout = ConsoleAppender::builder()
