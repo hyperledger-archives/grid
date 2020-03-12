@@ -898,6 +898,64 @@ paths:
                 schema:
                   $ref: '#/components/schemas/ErrorBiome'
 
+  /biome/verify:
+    post:
+      tags:
+        - Biome
+      description: Verifies a user with username and password credentials
+      parameters:
+        - $ref: "#/components/parameters/protocol_version"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  description: username of user
+                hashed_password:
+                  description: |
+                    Hashed password to be used for user authentication
+              required:
+                - username
+                - hashed_password
+              example:
+                username: alice@acme.com
+                hashed_password: |-
+                  8945622435187243046536949706b5272644c71336c7254563679727565494b376d4b3554696b734662685962652f6v52562e437a70462f6552489c8b
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successful verification"
+                  user_id:
+                    type: string
+                    description: "Internal unique identifier for the user"
+                    example: "f35aacc1-a9cd-4eda-b6d0-2efaddf0c8a4"
+        400:
+          description: Invalid request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        401:
+          description: Unauthorized request
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+        500:
+          description: Internal server error occurred
+          content:
+            application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorBiome'
+
   /biome/users:
     get:
       tags:
