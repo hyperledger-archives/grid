@@ -26,6 +26,10 @@ RUN cd /saplings/register-login && \
   npm install && \
   yarn deploy
 
+RUN cd /saplings/product && \
+  npm install && \
+  yarn deploy
+
 FROM httpd:2.4 as prod-stage
 
 RUN echo "\
@@ -34,6 +38,6 @@ RUN echo "\
   \n\
   " >>/usr/local/apache2/conf/httpd.conf
 
-COPY --from=build-stage /sapling-dev-server/* /usr/local/apache2/htdocs/
+COPY --from=build-stage /sapling-dev-server/ /usr/local/apache2/htdocs/
 
 EXPOSE 80/tcp
