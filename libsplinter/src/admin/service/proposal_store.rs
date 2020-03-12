@@ -14,17 +14,19 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::protos::admin::CircuitProposal;
-
-use super::open_proposals::Proposals;
+use super::messages::CircuitProposal;
+#[cfg(feature = "proposal-read")]
+use super::open_proposals::ProposalIter;
 use super::shared::AdminServiceShared;
 
+#[cfg(feature = "proposal-read")]
 pub trait ProposalStore: Send + Sync + Clone {
-    fn proposals(&self) -> Result<Proposals, ProposalStoreError>;
+    fn proposals(&self) -> Result<ProposalIter, ProposalStoreError>;
 
     fn proposal(&self, circuit_id: &str) -> Result<Option<CircuitProposal>, ProposalStoreError>;
 }
 
+#[cfg(feature = "proposal-read")]
 #[derive(Debug)]
 pub struct ProposalStoreError {
     context: String,
@@ -80,8 +82,9 @@ impl AdminServiceProposals {
     }
 }
 
+#[cfg(feature = "proposal-read")]
 impl ProposalStore for AdminServiceProposals {
-    fn proposals(&self) -> Result<Proposals, ProposalStoreError> {
+    fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
         Ok(self
             .shared
             .lock()
@@ -94,6 +97,17 @@ impl ProposalStore for AdminServiceProposals {
             .lock()
             .map_err(|_| ProposalStoreError::new("Admin shared lock was lock poisoned"))?
             .get_proposal(circuit_id)
-            .map_err(|err| ProposalStoreError::from_source("Unable to get proposal", Box::new(err)))
+            .map_err(|err| {
+                ProposalStoreError::from_source("Unable to get proposal", Box::new(err))
+            })?
+            .map(|proto| {
+                CircuitProposal::from_proto(proto).map_err(|err| {
+                    ProposalStoreError::from_source(
+                        "Unable to convert proposal protobuf to native",
+                        Box::new(err),
+                    )
+                })
+            })
+            .transpose()
     }
 }
