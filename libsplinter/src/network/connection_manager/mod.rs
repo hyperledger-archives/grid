@@ -770,7 +770,7 @@ pub mod tests {
     /// Procedure:
     ///
     /// The test creates a sync channel and a notifier, then it
-    /// creates a thread that send AttemptingReconnect notifications to
+    /// creates a thread that send Connected notifications to
     /// the notifier.
     ///
     /// Asserts:
