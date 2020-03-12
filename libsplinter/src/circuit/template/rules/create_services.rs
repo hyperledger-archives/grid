@@ -37,9 +37,15 @@ impl CreateServices {
             .map(String::from)
             .collect::<Vec<String>>();
 
-        if self.first_service.is_empty() {
+        let is_correct_len = self.first_service.len() == 4;
+        let is_base62 = self
+            .first_service
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric());
+        if !is_correct_len || !is_base62 {
             return Err(CircuitTemplateError::new(
-                "The first_service field must be an non-empty string",
+                "The first_service field must be a valid service_id: must be a 4 character base62 \
+                 string",
             ));
         }
 
@@ -52,9 +58,16 @@ impl CreateServices {
                 .with_service_type(&self.service_type);
 
             service_builders.push(splinter_service_builder);
-            service_id = next_base62_string(&service_id).ok_or_else(|| {
-                CircuitTemplateError::new("Exceeded number of services that can be built")
-            })?;
+            service_id = next_base62_string(&service_id)
+                .map_err(|err| {
+                    CircuitTemplateError::new_with_source(
+                        "Failed to get next service ID",
+                        err.into(),
+                    )
+                })?
+                .ok_or_else(|| {
+                    CircuitTemplateError::new("Exceeded number of services that can be built")
+                })?;
         }
 
         let mut new_service_args = Vec::new();
@@ -231,6 +244,30 @@ mod test {
         // test that building services succeeds:
         assert!(service_builders[0].clone().build().is_ok());
         assert!(service_builders[1].clone().build().is_ok());
+    }
+
+    /*
+     * Test that CreateServices::apply_rules accurately detects an invalid `first_service`.
+     */
+    #[test]
+    fn test_create_service_apply_rules_invalid_first_service() {
+        let template_arguments = make_rule_arguments();
+
+        let mut empty = make_create_service();
+        empty.first_service = "".to_string();
+        assert!(empty.apply_rule(&template_arguments).is_err());
+
+        let mut too_short = make_create_service();
+        too_short.first_service = "a00".to_string();
+        assert!(too_short.apply_rule(&template_arguments).is_err());
+
+        let mut too_long = make_create_service();
+        too_long.first_service = "a0000".to_string();
+        assert!(too_long.apply_rule(&template_arguments).is_err());
+
+        let mut invalid_char = make_create_service();
+        invalid_char.first_service = "a0:0".to_string();
+        assert!(invalid_char.apply_rule(&template_arguments).is_err());
     }
 
     fn make_create_service() -> CreateServices {
