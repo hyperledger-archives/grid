@@ -39,7 +39,7 @@ use splinter::consensus::{ConsensusEngine, StartupState};
 use splinter::mesh::Mesh;
 use splinter::network::Network;
 use splinter::transport::{
-    socket::{RawTransport, TlsTransport},
+    socket::{TcpTransport, TlsTransport},
     Transport,
 };
 
@@ -228,7 +228,7 @@ fn get_transport(matches: &clap::ArgMatches) -> Result<Box<dyn Transport + Send>
                 ))),
             }
         }
-        Some("raw") => Ok(Box::new(RawTransport::default())),
+        Some("raw") => Ok(Box::new(TcpTransport::default())),
         // this should have been caught by clap, so panic
         _ => panic!(
             "Transport type is not supported: {:?}",

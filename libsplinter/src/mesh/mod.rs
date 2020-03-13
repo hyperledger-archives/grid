@@ -286,7 +286,7 @@ mod tests {
     use std::thread;
 
     use crate::transport::{
-        socket::tests::create_test_tls_transport, socket::RawTransport, Transport,
+        socket::tests::create_test_tls_transport, socket::TcpTransport, Transport,
     };
 
     fn assert_ok<T, E: Debug>(result: Result<T, E>) -> T {
@@ -423,7 +423,7 @@ mod tests {
     #[cfg(not(unix))]
     #[test]
     fn test_connection_send_receive_raw() {
-        let raw = RawTransport::default();
+        let raw = TcpTransport::default();
         test_single_connection_send_receive(raw, "127.0.0.1:0");
     }
 
@@ -436,13 +436,13 @@ mod tests {
 
     #[test]
     fn test_add_remove_connections_raw() {
-        let raw = RawTransport::default();
+        let raw = TcpTransport::default();
         test_add_remove_connections(raw, "127.0.0.1:0");
     }
 
     #[test]
     fn test_many_connections_raw() {
-        let raw = RawTransport::default();
+        let raw = TcpTransport::default();
         test_many_connections(raw, "127.0.0.1:0");
     }
 

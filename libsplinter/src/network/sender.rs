@@ -117,7 +117,7 @@ mod tests {
     use super::*;
     use crate::mesh::Mesh;
     use crate::network::Network;
-    use crate::transport::socket::RawTransport;
+    use crate::transport::socket::TcpTransport;
     use crate::transport::Transport;
 
     // Test that a message can successfully be sent by passing it to the sender end of the
@@ -126,7 +126,7 @@ mod tests {
         sender: Box<dyn Sender<SendRequest>>,
         receiver: Box<dyn Receiver<SendRequest>>,
     ) {
-        let mut transport = RawTransport::default();
+        let mut transport = TcpTransport::default();
         let mut listener = transport.listen("127.0.0.1:0").unwrap();
         let endpoint = listener.endpoint();
 
@@ -165,7 +165,7 @@ mod tests {
         sender: Box<dyn Sender<SendRequest>>,
         receiver: Box<dyn Receiver<SendRequest>>,
     ) {
-        let mut transport = RawTransport::default();
+        let mut transport = TcpTransport::default();
         let mut listener = transport.listen("127.0.0.1:0").unwrap();
         let endpoint = listener.endpoint();
 

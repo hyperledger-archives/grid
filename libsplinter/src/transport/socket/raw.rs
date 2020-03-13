@@ -14,7 +14,7 @@
 
 use mio::{net::TcpStream as MioTcpStream, Evented};
 
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::net::{Shutdown, TcpListener as StdTcpListener, TcpStream};
 
 use crate::transport::{
     AcceptError, ConnectError, Connection, DisconnectError, ListenError, Listener, RecvError,
@@ -26,9 +26,9 @@ use super::frame::{Frame, FrameError, FrameNegotiation, FrameRef, FrameVersion};
 const PROTOCOL_PREFIX: &str = "tcp://";
 
 #[derive(Default)]
-pub struct RawTransport {}
+pub struct TcpTransport {}
 
-impl Transport for RawTransport {
+impl Transport for TcpTransport {
     fn accepts(&self, address: &str) -> bool {
         address.starts_with(PROTOCOL_PREFIX) || !address.contains("://")
     }
@@ -60,7 +60,7 @@ impl Transport for RawTransport {
             })?;
 
         let mio_stream = MioTcpStream::from_stream(stream)?;
-        Ok(Box::new(RawConnection {
+        Ok(Box::new(TcpConnection {
             frame_version,
             stream: mio_stream,
         }))
@@ -80,17 +80,17 @@ impl Transport for RawTransport {
             bind
         };
 
-        Ok(Box::new(RawListener {
-            listener: TcpListener::bind(address)?,
+        Ok(Box::new(TcpListener {
+            listener: StdTcpListener::bind(address)?,
         }))
     }
 }
 
-pub struct RawListener {
-    listener: TcpListener,
+pub struct TcpListener {
+    listener: StdTcpListener,
 }
 
-impl Listener for RawListener {
+impl Listener for TcpListener {
     fn accept(&mut self) -> Result<Box<dyn Connection>, AcceptError> {
         let (mut stream, _) = self.listener.accept()?;
 
@@ -104,7 +104,7 @@ impl Listener for RawListener {
                 err => AcceptError::ProtocolError(format!("Unexpected protocol error: {}", err)),
             })?;
 
-        let connection = RawConnection {
+        let connection = TcpConnection {
             frame_version,
             stream: MioTcpStream::from_stream(stream)?,
         };
@@ -116,12 +116,12 @@ impl Listener for RawListener {
     }
 }
 
-pub struct RawConnection {
+pub struct TcpConnection {
     frame_version: FrameVersion,
     stream: MioTcpStream,
 }
 
-impl Connection for RawConnection {
+impl Connection for TcpConnection {
     fn send(&mut self, message: &[u8]) -> Result<(), SendError> {
         match FrameRef::new(self.frame_version, message).write(&mut self.stream) {
             Err(FrameError::IoError(e)) => Err(SendError::IoError(e)),
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_accepts() {
-        let transport = RawTransport::default();
+        let transport = TcpTransport::default();
         assert!(transport.accepts("127.0.0.1:0"));
         assert!(transport.accepts("tcp://127.0.0.1:0"));
         assert!(transport.accepts("tcp://somewhere.example.com:4000"));
@@ -175,21 +175,21 @@ mod tests {
 
     #[test]
     fn test_transport() {
-        let transport = RawTransport::default();
+        let transport = TcpTransport::default();
 
         tests::test_transport(transport, "127.0.0.1:0");
     }
 
     #[test]
     fn test_transport_explicit_protocol() {
-        let transport = RawTransport::default();
+        let transport = TcpTransport::default();
 
         tests::test_transport(transport, "tcp://127.0.0.1:0");
     }
 
     #[test]
     fn test_poll() {
-        let transport = RawTransport::default();
+        let transport = TcpTransport::default();
         tests::test_poll(
             transport,
             "127.0.0.1:0",

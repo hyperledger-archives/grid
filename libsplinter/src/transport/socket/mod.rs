@@ -16,7 +16,7 @@ mod frame;
 mod raw;
 mod tls;
 
-pub use raw::RawTransport;
+pub use raw::TcpTransport;
 pub use tls::{TlsConnection, TlsInitError, TlsTransport};
 
 #[cfg(test)]
