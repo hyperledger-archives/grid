@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::admin::messages::is_valid_service_id;
 use crate::base62::next_base62_string;
 
 use super::super::{yaml_parser::v1, CircuitTemplateError, SplinterServiceBuilder};
@@ -37,16 +38,11 @@ impl CreateServices {
             .map(String::from)
             .collect::<Vec<String>>();
 
-        let is_correct_len = self.first_service.len() == 4;
-        let is_base62 = self
-            .first_service
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric());
-        if !is_correct_len || !is_base62 {
-            return Err(CircuitTemplateError::new(
-                "The first_service field must be a valid service_id: must be a 4 character base62 \
-                 string",
-            ));
+        if !is_valid_service_id(&self.first_service) {
+            return Err(CircuitTemplateError::new(&format!(
+                "Field first_service is invalid ({}): must be a 4 character base62 string",
+                self.first_service,
+            )));
         }
 
         let mut service_id = self.first_service.clone();

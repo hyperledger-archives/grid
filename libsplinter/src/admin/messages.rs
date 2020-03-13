@@ -13,9 +13,9 @@
 // limitations under the License.
 
 pub use super::service::messages::{
-    AdminServiceEvent, AuthorizationType, CircuitProposal, CircuitProposalVote, CreateCircuit,
-    DurabilityType, PersistenceType, ProposalType, RouteType, SplinterNode, SplinterService, Vote,
-    VoteRecord,
+    is_valid_circuit_id, is_valid_service_id, AdminServiceEvent, AuthorizationType,
+    CircuitProposal, CircuitProposalVote, CreateCircuit, DurabilityType, PersistenceType,
+    ProposalType, RouteType, SplinterNode, SplinterService, Vote, VoteRecord,
 };
 
 pub use super::service::messages::builders::{
