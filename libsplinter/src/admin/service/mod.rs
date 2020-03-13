@@ -517,7 +517,7 @@ mod tests {
             .expect("Service should have started correctly");
 
         let mut proposed_circuit = admin::Circuit::new();
-        proposed_circuit.set_circuit_id("test_propose_circuit".into());
+        proposed_circuit.set_circuit_id("01234-ABCDE".into());
         proposed_circuit
             .set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         proposed_circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
@@ -530,8 +530,8 @@ mod tests {
             splinter_node("other-node", "tcp://otherplace:8000"),
         ]));
         proposed_circuit.set_roster(protobuf::RepeatedField::from_vec(vec![
-            splinter_service("service-a", "sabre", "test-node"),
-            splinter_service("service-b", "sabre", "other-node"),
+            splinter_service("0123", "sabre", "test-node"),
+            splinter_service("ABCD", "sabre", "other-node"),
         ]));
 
         let mut request = admin::CircuitCreateRequest::new();

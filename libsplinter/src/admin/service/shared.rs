@@ -1124,6 +1124,13 @@ impl AdminServiceShared {
                 "circuit_id must be set".to_string(),
             ));
         }
+        if !messages::is_valid_circuit_id(circuit.get_circuit_id()) {
+            return Err(AdminSharedError::ValidationFailed(format!(
+                "'{}' is not a valid circuit ID: must be an 11 character string compose of two, 5 \
+                 character base62 strings joined with a '-' (example: abcDE-F0123)",
+                circuit.get_circuit_id(),
+            )));
+        }
 
         if circuit.get_circuit_management_type().is_empty() {
             return Err(AdminSharedError::ValidationFailed(
@@ -1210,6 +1217,11 @@ impl AdminServiceShared {
                 return Err(AdminSharedError::ValidationFailed(
                     "Service id cannot be empty".to_string(),
                 ));
+            } else if !messages::is_valid_service_id(&service_id) {
+                return Err(AdminSharedError::ValidationFailed(format!(
+                    "'{}' is not a valid service ID: must be a 4 character base62 string",
+                    service_id,
+                )));
             } else if services.contains(&service_id) {
                 return Err(AdminSharedError::ValidationFailed(
                     "Every service must be unique in the circuit.".to_string(),
@@ -1732,7 +1744,7 @@ mod tests {
         .unwrap();
 
         let mut circuit = admin::Circuit::new();
-        circuit.set_circuit_id("test_propose_circuit".into());
+        circuit.set_circuit_id("01234-ABCDE".into());
         circuit.set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
@@ -1744,8 +1756,8 @@ mod tests {
             splinter_node("other-node", "tcp://otherplace:8000"),
         ]));
         circuit.set_roster(protobuf::RepeatedField::from_vec(vec![
-            splinter_service("service-a", "sabre"),
-            splinter_service("service-b", "sabre"),
+            splinter_service("0123", "sabre"),
+            splinter_service("ABCD", "sabre"),
         ]));
 
         let mut request = admin::CircuitCreateRequest::new();
@@ -1814,7 +1826,7 @@ mod tests {
         .unwrap();
 
         let mut circuit = admin::Circuit::new();
-        circuit.set_circuit_id("test_propose_circuit".into());
+        circuit.set_circuit_id("01234-ABCDE".into());
         circuit.set_authorization_type(admin::Circuit_AuthorizationType::TRUST_AUTHORIZATION);
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
@@ -1825,8 +1837,8 @@ mod tests {
             splinter_node("other-node", "tcp://otherplace:8000"),
         ]));
         circuit.set_roster(protobuf::RepeatedField::from_vec(vec![
-            splinter_service("service-a", "sabre"),
-            splinter_service("service-b", "sabre"),
+            splinter_service("0123", "sabre"),
+            splinter_service("ABCD", "sabre"),
         ]));
 
         let mut request = admin::CircuitCreateRequest::new();
@@ -1987,7 +1999,7 @@ mod tests {
         let mut circuit = setup_test_circuit();
 
         let mut service_bad = SplinterService::new();
-        service_bad.set_service_id("service_b".to_string());
+        service_bad.set_service_id("0123".to_string());
         service_bad.set_service_type("type_a".to_string());
         service_bad.set_allowed_nodes(RepeatedField::from_vec(vec!["node_bad".to_string()]));
 
@@ -2027,7 +2039,7 @@ mod tests {
         let mut circuit = setup_test_circuit();
 
         let mut service_bad = SplinterService::new();
-        service_bad.set_service_id("service_b".to_string());
+        service_bad.set_service_id("0123".to_string());
         service_bad.set_service_type("type_a".to_string());
         service_bad.set_allowed_nodes(RepeatedField::from_vec(vec![
             "node_b".to_string(),
@@ -2082,6 +2094,46 @@ mod tests {
     }
 
     #[test]
+    // test that if a circuit has a service with an invalid service id an error is returned
+    fn test_validate_circuit_invalid_service_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        let mut service_ = SplinterService::new();
+        service_.set_service_id("invalid_service_id".to_string());
+        service_.set_service_type("type_a".to_string());
+        service_.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
+
+        circuit.set_roster(RepeatedField::from_vec(vec![service_]));
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
+            panic!("Should have been invalid due to service's id being empty");
+        }
+    }
+
+    #[test]
     // test that if a circuit has a service with duplicate service ids an error is returned
     fn test_validate_circuit_duplicate_service_id() {
         let state = setup_splinter_state();
@@ -2110,12 +2162,12 @@ mod tests {
         let mut circuit = setup_test_circuit();
 
         let mut service_a = SplinterService::new();
-        service_a.set_service_id("service_a".to_string());
+        service_a.set_service_id("0123".to_string());
         service_a.set_service_type("type_a".to_string());
         service_a.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
 
         let mut service_a2 = SplinterService::new();
-        service_a2.set_service_id("service_a".to_string());
+        service_a2.set_service_id("0123".to_string());
         service_a2.set_service_type("type_a".to_string());
         service_a2.set_allowed_nodes(RepeatedField::from_vec(vec!["node_b".to_string()]));
 
@@ -2327,6 +2379,76 @@ mod tests {
 
         if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
             panic!("Should have been invalid because there are duplicate members");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has an empty circuit id an error is returned
+    fn test_validate_circuit_empty_circuit_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_circuit_id("".to_string());
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
+            panic!("Should have been invalid because the circuit ID is empty");
+        }
+    }
+
+    #[test]
+    // test that if a circuit has an invalid circuit id an error is returned
+    fn test_validate_circuit_invalid_circuit_id() {
+        let state = setup_splinter_state();
+        let peer_connector = setup_peer_connector();
+        let orchestrator = setup_orchestrator();
+        // set up key registry
+        let pub_key = (0u8..33).collect::<Vec<_>>();
+        let mut key_registry = StorageKeyRegistry::new("memory".to_string()).unwrap();
+        let key_info = KeyInfo::builder(pub_key.clone(), "node_a".to_string()).build();
+        key_registry.save_key(key_info).unwrap();
+
+        let admin_shared = AdminServiceShared::new(
+            "node_a".into(),
+            orchestrator,
+            #[cfg(feature = "service-arg-validation")]
+            HashMap::new(),
+            peer_connector,
+            Box::new(MockAuthInquisitor),
+            state,
+            Box::new(HashVerifier),
+            Box::new(key_registry),
+            Box::new(AllowAllKeyPermissionManager),
+            "memory",
+        )
+        .unwrap();
+        let mut circuit = setup_test_circuit();
+
+        circuit.set_circuit_id("invalid_circuit_id".to_string());
+
+        if let Ok(_) = admin_shared.validate_create_circuit(&circuit, &pub_key, "node_a") {
+            panic!("Should have been invalid because the circuit ID is invalid");
         }
     }
 
@@ -3006,12 +3128,12 @@ mod tests {
 
     pub fn setup_test_circuit() -> Circuit {
         let mut service_a = SplinterService::new();
-        service_a.set_service_id("service_a".to_string());
+        service_a.set_service_id("0123".to_string());
         service_a.set_service_type("type_a".to_string());
         service_a.set_allowed_nodes(RepeatedField::from_vec(vec!["node_a".to_string()]));
 
         let mut service_b = SplinterService::new();
-        service_b.set_service_id("service_b".to_string());
+        service_b.set_service_id("ABCD".to_string());
         service_b.set_service_type("type_a".to_string());
         service_b.set_allowed_nodes(RepeatedField::from_vec(vec!["node_b".to_string()]));
 
@@ -3024,7 +3146,7 @@ mod tests {
         node_b.set_endpoint("test://endpoint_b:0".to_string());
 
         let mut circuit = Circuit::new();
-        circuit.set_circuit_id("alpha".to_string());
+        circuit.set_circuit_id("01234-ABCDE".to_string());
         circuit.set_members(RepeatedField::from_vec(vec![node_a, node_b]));
         circuit.set_roster(RepeatedField::from_vec(vec![service_b, service_a]));
         circuit.set_authorization_type(Circuit_AuthorizationType::TRUST_AUTHORIZATION);
