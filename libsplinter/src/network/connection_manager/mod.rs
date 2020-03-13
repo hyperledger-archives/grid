@@ -283,7 +283,6 @@ impl ShutdownHandle {
 struct ConnectionMetadata {
     id: usize,
     endpoint: String,
-    ref_count: u64,
     reconnecting: bool,
     retry_frequency: u64,
     last_connection_attempt: Instant,
@@ -322,8 +321,8 @@ where
     }
 
     fn add_connection(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
-        if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count += 1;
+        if self.connections.get_mut(endpoint).is_some() {
+            return Ok(());
         } else {
             let connection = self.transport.connect(endpoint).map_err(|err| {
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
@@ -338,7 +337,6 @@ where
                 ConnectionMetadata {
                     id,
                     endpoint: endpoint.to_string(),
-                    ref_count: 1,
                     reconnecting: false,
                     retry_frequency: INITIAL_RETRY_FREQUENCY,
                     last_connection_attempt: Instant::now(),
@@ -354,18 +352,15 @@ where
         endpoint: &str,
     ) -> Result<Option<ConnectionMetadata>, ConnectionManagerError> {
         let meta = if let Some(meta) = self.connections.get_mut(endpoint) {
-            meta.ref_count -= 1;
             meta.clone()
         } else {
             return Ok(None);
         };
 
-        if meta.ref_count < 1 {
-            self.connections.remove(endpoint);
-            self.life_cycle.remove(meta.id).map_err(|err| {
-                ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err))
-            })?;
-        }
+        self.connections.remove(endpoint);
+        self.life_cycle
+            .remove(meta.id)
+            .map_err(|err| ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err)))?;
 
         Ok(Some(meta))
     }
@@ -483,29 +478,24 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     };
 
     for (endpoint, metadata) in state.connection_metadata() {
-        if state
-            .matrix_sender()
-            .send(metadata.id, heartbeat_message.clone())
-            .is_err()
-        {
-            // if connection is already attempting reconnection, call reconnect
-            if metadata.reconnecting {
-                if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
-                    if let Err(err) = state.reconnect(&endpoint, subscribers) {
-                        error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
-                    }
+        // if connection is already attempting reconnection, call reconnect
+        if metadata.reconnecting {
+            if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
+                if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                    error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
                 }
-            } else {
-                info!("Sending heartbeat to {}", endpoint);
-                if let Err(err) = state
-                    .matrix_sender()
-                    .send(metadata.id, heartbeat_message.clone())
-                {
-                    error!(
-                        "failed to send heartbeat: {:?} attempting reconnection",
-                        err
-                    )
-                }
+            }
+        } else {
+            info!("Sending heartbeat to {}", endpoint);
+            if let Err(err) = state
+                .matrix_sender()
+                .send(metadata.id, heartbeat_message.clone())
+            {
+                error!(
+                    "failed to send heartbeat: {:?} attempting reconnection",
+                    err
+                );
+
                 notify_subscribers(
                     subscribers,
                     ConnectionManagerNotification::Disconnected {
@@ -651,6 +641,8 @@ pub mod tests {
             heartbeat.get_message_type(),
             NetworkMessageType::NETWORK_HEARTBEAT
         );
+
+        cm.shutdown_and_wait();
     }
 
     // test_heartbeat_raw_tcp
@@ -691,6 +683,7 @@ pub mod tests {
             heartbeat.get_message_type(),
             NetworkMessageType::NETWORK_HEARTBEAT
         );
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -736,6 +729,8 @@ pub mod tests {
             .list_connections()
             .expect("Unable to list connections")
             .is_empty());
+
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -765,6 +760,7 @@ pub mod tests {
             .expect("Unable to remove connection");
 
         assert_eq!(None, endpoint_removed);
+        cm.shutdown_and_wait();
     }
 
     #[test]
@@ -774,7 +770,7 @@ pub mod tests {
     /// Procedure:
     ///
     /// The test creates a sync channel and a notifier, then it
-    /// creates a thread that send AttemptingReconnect notifications to
+    /// creates a thread that send Connected notifications to
     /// the notifier.
     ///
     /// Asserts:
@@ -889,5 +885,6 @@ pub mod tests {
                     endpoint: endpoint.clone(),
                 }
         );
+        cm.shutdown_and_wait();
     }
 }
