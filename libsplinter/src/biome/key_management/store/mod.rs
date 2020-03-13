@@ -63,8 +63,8 @@ pub trait KeyStore<T>: Sync + Send {
     ///
     /// # Arguments
     ///
-    /// * `public_key`: The public key of the key record to be removed.
-    /// * `user_id`: The ID owner of the key record to be removed.
+    /// * `public_key`: The public key of the key record to be fetched.
+    /// * `user_id`: The ID owner of the key record to be fetched.
     ///
     fn fetch_key(&self, public_key: &str, user_id: &str) -> Result<T, KeyStoreError>;
 

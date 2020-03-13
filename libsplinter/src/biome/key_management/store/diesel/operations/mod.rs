@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub(super) mod fetch_key;
 pub(super) mod insert_key;
 pub(super) mod list_keys;
+pub(super) mod remove_key;
 pub(super) mod update_key;
 
 pub(super) struct KeyStoreOperations<'a, C> {
