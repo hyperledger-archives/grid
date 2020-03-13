@@ -59,8 +59,8 @@ use self::actix::key_management::{
 
 #[cfg(feature = "biome-key-management")]
 use super::key_management::store::PostgresKeyStore;
-use super::secrets::{AutoSecretManager, SecretManager};
 use super::user::store::diesel::SplinterUserStore;
+use crate::rest_api::secrets::{AutoSecretManager, SecretManager};
 
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;
@@ -75,7 +75,7 @@ use self::actix::{
 use super::credentials::store::diesel::SplinterCredentialsStore;
 
 #[allow(unused_imports)]
-use super::sessions::AccessTokenIssuer;
+use crate::rest_api::sessions::AccessTokenIssuer;
 
 /// Manages Biome REST API endpoints
 pub struct BiomeRestResourceManager {

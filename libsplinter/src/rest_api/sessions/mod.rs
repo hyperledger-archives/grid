@@ -45,7 +45,7 @@ pub trait TokenIssuer<T: Serialize> {
 ///  are valid or an error if they are not.
 ///
 /// ```
-/// use splinter::biome::sessions::{validate_token, TokenValidationError};
+/// use splinter::rest_api::sessions::{validate_token, TokenValidationError};
 ///
 /// let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
 ///              eyJ1c2VyX2lkIjoiY2RmMTIwNzAtNjk1Mi00NTNmLWFiNmMtYjRlMzllZmM3YzA4IiwiZXhwIjo0MTMzO\

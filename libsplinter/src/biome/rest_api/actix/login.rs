@@ -23,7 +23,7 @@ use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
 };
 use crate::biome::rest_api::BiomeRestConfig;
-use crate::biome::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
+use crate::rest_api::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
 
 use super::super::resources::credentials::UsernamePassword;
 

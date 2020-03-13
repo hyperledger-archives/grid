@@ -16,9 +16,9 @@ use std::sync::Arc;
 
 use crate::actix_web::HttpRequest;
 use crate::biome::rest_api::BiomeRestConfig;
-use crate::biome::secrets::SecretManager;
-use crate::biome::sessions::{validate_token, TokenValidationError};
 use crate::rest_api::get_authorization_token;
+use crate::rest_api::secrets::SecretManager;
+use crate::rest_api::sessions::{validate_token, TokenValidationError};
 
 use super::super::resources::authorize::AuthorizationResult;
 

@@ -56,14 +56,34 @@ pub(crate) const SCABBARD_LIST_STATE_PROTOCOL_MIN: u32 = 1;
 #[cfg(feature = "biome")]
 pub const BIOME_PROTOCOL_VERSION: u32 = 1;
 
-#[cfg(all(feature = "biome-credentials", feature = "rest-api"))]
+#[cfg(all(
+    feature = "biome-credentials",
+    feature = "rest-api",
+    feature = "json-web-tokens"
+))]
 pub(crate) const BIOME_REGISTER_PROTOCOL_MIN: u32 = 1;
-#[cfg(all(feature = "biome-credentials", feature = "rest-api"))]
+#[cfg(all(
+    feature = "biome-credentials",
+    feature = "rest-api",
+    feature = "json-web-tokens"
+))]
 pub(crate) const BIOME_LOGIN_PROTOCOL_MIN: u32 = 1;
-#[cfg(all(feature = "biome-credentials", feature = "rest-api"))]
+#[cfg(all(
+    feature = "biome-credentials",
+    feature = "rest-api",
+    feature = "json-web-tokens"
+))]
 pub(crate) const BIOME_USER_PROTOCOL_MIN: u32 = 1;
-#[cfg(all(feature = "biome-credentials", feature = "rest-api"))]
+#[cfg(all(
+    feature = "biome-credentials",
+    feature = "rest-api",
+    feature = "json-web-tokens"
+))]
 pub(crate) const BIOME_LIST_USERS_PROTOCOL_MIN: u32 = 1;
 
-#[cfg(all(feature = "biome-key-management", feature = "rest-api"))]
+#[cfg(all(
+    feature = "biome-key-management",
+    feature = "rest-api",
+    feature = "json-web-tokens"
+))]
 pub(crate) const BIOME_KEYS_PROTOCOL_MIN: u32 = 1;

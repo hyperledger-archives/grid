@@ -96,6 +96,7 @@ experimental = [
     "connection-manager",
     "connection-manager-notification-iter-try-next",
     "database",
+    "json-web-tokens",
     "matrix",
     "node-registry-unified",
     "postgres",
@@ -107,7 +108,7 @@ experimental = [
     "zmq-transport",
 ]
 
-biome = ["database", "jsonwebtoken", "rand"]
+biome = ["database"]
 biome-credentials = ["biome", "biome-user", "database", "bcrypt"]
 biome-key-management = ["biome", "database"]
 biome-notifications = ["biome", "database"]
@@ -119,10 +120,18 @@ connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel_migrations", "postgres"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
+json-web-tokens = ["jsonwebtoken", "rand"]
 matrix = []
 node-registry-unified = []
 postgres = ["diesel/postgres"]
-rest-api = ["actix", "actix-http", "actix-web", "actix-web-actors", "futures", "percent-encoding"]
+rest-api = [
+    "actix",
+    "actix-http",
+    "actix-web",
+    "actix-web-actors",
+    "futures",
+    "percent-encoding",
+]
 rest-api-actix = ["actix", "actix-http", "actix-web", "actix-web-actors"]
 rest-api-cors = []
 sawtooth-signing-compat = ["sawtooth-sdk"]
