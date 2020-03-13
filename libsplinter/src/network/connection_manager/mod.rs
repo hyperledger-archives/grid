@@ -285,6 +285,7 @@ struct ConnectionMetadata {
     reconnecting: bool,
     retry_frequency: u64,
     last_connection_attempt: Instant,
+    reconnection_attempts: u64,
 }
 
 struct ConnectionState<T, U>
@@ -339,6 +340,7 @@ where
                     reconnecting: false,
                     retry_frequency: INITIAL_RETRY_FREQUENCY,
                     last_connection_attempt: Instant::now(),
+                    reconnection_attempts: 0,
                 },
             );
         };
@@ -396,6 +398,7 @@ where
             meta.reconnecting = false;
             meta.retry_frequency = INITIAL_RETRY_FREQUENCY;
             meta.last_connection_attempt = Instant::now();
+            meta.reconnection_attempts = 0;
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of success
@@ -406,9 +409,11 @@ where
                 },
             );
         } else {
+            let reconnection_attempts = meta.reconnection_attempts + 1;
             meta.reconnecting = true;
             meta.retry_frequency = min(meta.retry_frequency * 2, self.maximum_retry_frequency);
             meta.last_connection_attempt = Instant::now();
+            meta.reconnection_attempts += 1;
             self.connections.insert(endpoint.to_string(), meta);
         }
         Ok(())
