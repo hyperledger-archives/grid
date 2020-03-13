@@ -176,7 +176,9 @@ mod tests {
         },
         service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
     };
-    use crate::rest_api::{paging::Paging, RestApiBuilder, RestApiShutdownHandle};
+    use crate::rest_api::{
+        paging::Paging, RestApiBuilder, RestApiServerError, RestApiShutdownHandle,
+    };
 
     #[test]
     /// Tests a GET /admin/proposals request with no filters returns the expected proposals.

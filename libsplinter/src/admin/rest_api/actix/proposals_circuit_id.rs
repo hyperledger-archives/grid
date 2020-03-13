@@ -87,7 +87,7 @@ mod tests {
         },
         service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
     };
-    use crate::rest_api::{RestApiBuilder, RestApiShutdownHandle};
+    use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
 
     #[test]
     /// Tests a GET /admin/proposals/{circuit_id} request returns the expected proposal.
