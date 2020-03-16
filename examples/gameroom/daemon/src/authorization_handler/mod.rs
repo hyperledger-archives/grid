@@ -675,7 +675,7 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let message = get_submit_proposal_msg("my_circuit");
+        let message = get_submit_proposal_msg("01234-ABCDE");
         process_admin_event(message, &pool, "", "", "", reactor.igniter())
             .expect("Error processing message");
 
@@ -684,7 +684,7 @@ mod test {
         assert_eq!(proposals.len(), 1);
 
         let proposal = &proposals[0];
-        let expected_proposal = get_gameroom_proposal("my_circuit", SystemTime::now());
+        let expected_proposal = get_gameroom_proposal("01234-ABCDE", SystemTime::now());
 
         assert_eq!(proposal.proposal_type, expected_proposal.proposal_type);
         assert_eq!(proposal.circuit_id, expected_proposal.circuit_id);
@@ -705,7 +705,7 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let message = get_submit_proposal_msg("my_circuit");
+        let message = get_submit_proposal_msg("01234-ABCDE");
         process_admin_event(message, &pool, "", "", "", reactor.igniter())
             .expect("Error processing message");
 
@@ -714,7 +714,7 @@ mod test {
         assert_eq!(gamerooms.len(), 1);
 
         let gameroom = &gamerooms[0];
-        let expected_gameroom = get_gameroom("my_circuit", SystemTime::now());
+        let expected_gameroom = get_gameroom("01234-ABCDE", SystemTime::now());
 
         assert_eq!(gameroom.circuit_id, expected_gameroom.circuit_id);
         assert_eq!(
@@ -743,7 +743,7 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let message = get_submit_proposal_msg("my_circuit");
+        let message = get_submit_proposal_msg("01234-ABCDE");
         process_admin_event(message, &pool, "", "", "", reactor.igniter())
             .expect("Error processing message");
 
@@ -752,7 +752,7 @@ mod test {
         assert_eq!(members.len(), 1);
 
         let node = &members[0];
-        let expected_node = get_new_gameroom_member("my_circuit", SystemTime::now());
+        let expected_node = get_new_gameroom_member("01234-ABCDE", SystemTime::now());
 
         assert_eq!(node.node_id, expected_node.node_id);
         assert_eq!(node.endpoint, expected_node.endpoint);
@@ -769,7 +769,7 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let message = get_submit_proposal_msg("my_circuit");
+        let message = get_submit_proposal_msg("01234-ABCDE");
         process_admin_event(message, &pool, "", "", "", reactor.igniter())
             .expect("Error processing message");
 
@@ -778,7 +778,7 @@ mod test {
         assert_eq!(services.len(), 1);
 
         let service = &services[0];
-        let expected_service = get_new_gameroom_service("my_circuit", SystemTime::now());
+        let expected_service = get_new_gameroom_service("01234-ABCDE", SystemTime::now());
 
         assert_eq!(service.service_id, expected_service.service_id);
         assert_eq!(service.service_type, expected_service.service_type);
@@ -796,7 +796,7 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let message = get_submit_proposal_msg("my_circuit");
+        let message = get_submit_proposal_msg("01234-ABCDE");
         process_admin_event(message, &pool, "", "", "", reactor.igniter())
             .expect("Error processing message");
 
@@ -806,7 +806,7 @@ mod test {
 
         let notification = &notifications[0];
         let expected_notification =
-            get_new_gameroom_notification_proposal("my_circuit", SystemTime::now());
+            get_new_gameroom_notification_proposal("01234-ABCDE", SystemTime::now());
 
         assert_eq!(
             notification.notification_type,
@@ -831,24 +831,24 @@ mod test {
         let created_time = SystemTime::now();
 
         // insert gameroom into database
-        insert_gameroom_table(&pool, get_gameroom("my_circuit", created_time.clone()));
+        insert_gameroom_table(&pool, get_gameroom("01234-ABCDE", created_time.clone()));
 
         // insert pending proposal into database
         insert_proposals_table(
             &pool,
-            get_gameroom_proposal("my_circuit", created_time.clone()),
+            get_gameroom_proposal("01234-ABCDE", created_time.clone()),
         );
 
         insert_member_table(
             &pool,
-            get_new_gameroom_member("my_circuit", created_time.clone()),
+            get_new_gameroom_member("01234-ABCDE", created_time.clone()),
         );
         insert_service_table(
             &pool,
-            get_new_gameroom_service("my_circuit", created_time.clone()),
+            get_new_gameroom_service("01234-ABCDE", created_time.clone()),
         );
 
-        let accept_message = get_accept_proposal_msg("my_circuit");
+        let accept_message = get_accept_proposal_msg("01234-ABCDE");
 
         // accept proposal
         process_admin_event(accept_message, &pool, "", "", "", reactor.igniter())
@@ -899,13 +899,13 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let accept_message = get_accept_proposal_msg("my_circuit");
+        let accept_message = get_accept_proposal_msg("01234-ABCDE");
 
         // accept proposal
         match process_admin_event(accept_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
-                assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
+                assert!(msg.contains("Could not find open proposal for circuit: 01234-ABCDE"));
             }
             Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
         }
@@ -925,24 +925,24 @@ mod test {
         let created_time = SystemTime::now();
 
         // insert gameroom into database
-        insert_gameroom_table(&pool, get_gameroom("my_circuit", created_time.clone()));
+        insert_gameroom_table(&pool, get_gameroom("01234-ABCDE", created_time.clone()));
 
         // insert pending proposal into database
         insert_proposals_table(
             &pool,
-            get_gameroom_proposal("my_circuit", created_time.clone()),
+            get_gameroom_proposal("01234-ABCDE", created_time.clone()),
         );
 
         insert_member_table(
             &pool,
-            get_new_gameroom_member("my_circuit", created_time.clone()),
+            get_new_gameroom_member("01234-ABCDE", created_time.clone()),
         );
         insert_service_table(
             &pool,
-            get_new_gameroom_service("my_circuit", created_time.clone()),
+            get_new_gameroom_service("01234-ABCDE", created_time.clone()),
         );
 
-        let rejected_message = get_reject_proposal_msg("my_circuit");
+        let rejected_message = get_reject_proposal_msg("01234-ABCDE");
 
         // reject proposal
         process_admin_event(rejected_message, &pool, "", "", "", reactor.igniter())
@@ -1004,13 +1004,13 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let rejected_message = get_reject_proposal_msg("my_circuit");
+        let rejected_message = get_reject_proposal_msg("01234-ABCDE");
 
         // reject proposal
         match process_admin_event(rejected_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
-                assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
+                assert!(msg.contains("Could not find open proposal for circuit: 01234-ABCDE"));
             }
             Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
         }
@@ -1030,15 +1030,15 @@ mod test {
         let created_time = SystemTime::now();
 
         // insert gameroom into database
-        insert_gameroom_table(&pool, get_gameroom("my_circuit", created_time.clone()));
+        insert_gameroom_table(&pool, get_gameroom("01234-ABCDE", created_time.clone()));
 
         // insert pending proposal into database
         insert_proposals_table(
             &pool,
-            get_gameroom_proposal("my_circuit", created_time.clone()),
+            get_gameroom_proposal("01234-ABCDE", created_time.clone()),
         );
 
-        let vote_message = get_vote_proposal_msg("my_circuit");
+        let vote_message = get_vote_proposal_msg("01234-ABCDE");
 
         // vote proposal
         process_admin_event(vote_message, &pool, "", "", "", reactor.igniter())
@@ -1077,15 +1077,15 @@ mod test {
         let created_time = SystemTime::now();
 
         // insert gameroom into database
-        insert_gameroom_table(&pool, get_gameroom("my_circuit", created_time.clone()));
+        insert_gameroom_table(&pool, get_gameroom("01234-ABCDE", created_time.clone()));
 
         // insert pending proposal into database
         insert_proposals_table(
             &pool,
-            get_gameroom_proposal("my_circuit", created_time.clone()),
+            get_gameroom_proposal("01234-ABCDE", created_time.clone()),
         );
 
-        let vote_message = get_vote_proposal_msg("my_circuit");
+        let vote_message = get_vote_proposal_msg("01234-ABCDE");
 
         // vote proposal
         process_admin_event(vote_message, &pool, "", "", "", reactor.igniter())
@@ -1102,7 +1102,7 @@ mod test {
 
         let notification = &notifications[0];
         let expected_notification =
-            get_new_gameroom_notification_vote("my_circuit", SystemTime::now());
+            get_new_gameroom_notification_vote("01234-ABCDE", SystemTime::now());
 
         assert_eq!(
             notification.notification_type,
@@ -1124,13 +1124,13 @@ mod test {
         clear_gameroom_table(&pool);
         clear_gameroom_notification_table(&pool);
 
-        let vote_message = get_vote_proposal_msg("my_circuit");
+        let vote_message = get_vote_proposal_msg("01234-ABCDE");
 
         // vote proposal
         match process_admin_event(vote_message, &pool, "", "", "", reactor.igniter()) {
             Ok(()) => panic!("Pending proposal for circuit is missing, error should be returned"),
             Err(AppAuthHandlerError::DatabaseError(msg)) => {
-                assert!(msg.contains("Could not find open proposal for circuit: my_circuit"));
+                assert!(msg.contains("Could not find open proposal for circuit: 01234-ABCDE"));
             }
             Err(err) => panic!("Should have gotten DatabaseError error but got {}", err),
         }
@@ -1141,22 +1141,22 @@ mod test {
     fn test_parse_proposal() {
         let time = SystemTime::now();
         let proposal = parse_proposal(
-            &get_msg_proposal("my_circuit"),
+            &get_msg_proposal("01234-ABCDE"),
             time.clone(),
             to_hex(&public_key()),
         );
 
-        assert_eq!(proposal, get_gameroom_proposal("my_circuit", time.clone()));
+        assert_eq!(proposal, get_gameroom_proposal("01234-ABCDE", time.clone()));
     }
 
     #[test]
     /// Tests if the admin message CreateCircuit to a database Gameroom is successful
     fn test_parse_gameroom() {
         let time = SystemTime::now();
-        let gameroom = parse_gameroom(&get_create_circuit_msg("my_circuit"), time)
+        let gameroom = parse_gameroom(&get_create_circuit_msg("01234-ABCDE"), time)
             .expect("Failed to parse gameroom");
 
-        assert_eq!(gameroom, get_gameroom("my_circuit", time.clone()))
+        assert_eq!(gameroom, get_gameroom("01234-ABCDE", time.clone()))
     }
 
     #[test]
@@ -1164,12 +1164,15 @@ mod test {
     fn test_parse_gameroom_service() {
         let time = SystemTime::now();
         let services = parse_splinter_services(
-            "my_circuit",
-            &get_msg_proposal("my_circuit").circuit.roster,
+            "01234-ABCDE",
+            &get_msg_proposal("01234-ABCDE").circuit.roster,
             time,
         );
 
-        assert_eq!(services, vec![get_new_gameroom_service("my_circuit", time)]);
+        assert_eq!(
+            services,
+            vec![get_new_gameroom_service("01234-ABCDE", time)]
+        );
     }
 
     #[test]
@@ -1177,12 +1180,12 @@ mod test {
     fn test_parse_gameroom_member() {
         let time = SystemTime::now();
         let members = parse_splinter_nodes(
-            "my_circuit",
-            &get_msg_proposal("my_circuit").circuit.members,
+            "01234-ABCDE",
+            &get_msg_proposal("01234-ABCDE").circuit.members,
             time,
         );
 
-        assert_eq!(members, vec![get_new_gameroom_member("my_circuit", time)]);
+        assert_eq!(members, vec![get_new_gameroom_member("01234-ABCDE", time)]);
     }
 
     fn get_create_circuit_msg(circuit_id: &str) -> CreateCircuit {
@@ -1194,7 +1197,7 @@ mod test {
         CreateCircuit {
             circuit_id: circuit_id.to_string(),
             roster: vec![SplinterService {
-                service_id: "scabbard_123".to_string(),
+                service_id: "gr00".to_string(),
                 service_type: "scabbard".to_string(),
                 allowed_nodes: vec!["acme_corp".to_string()],
                 arguments: arguments,
@@ -1323,7 +1326,7 @@ mod test {
     fn get_new_gameroom_service(circuit_id: &str, timestamp: SystemTime) -> NewGameroomService {
         NewGameroomService {
             circuit_id: circuit_id.to_string(),
-            service_id: "scabbard_123".to_string(),
+            service_id: "gr00".to_string(),
             service_type: "scabbard".to_string(),
             allowed_nodes: vec!["acme_corp".to_string()],
             arguments: vec![json!({
