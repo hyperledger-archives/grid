@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(in crate::biome) mod models;
 mod operations;
 #[cfg(feature = "postgres")]
 pub(in super::super) mod postgres;
-mod schema;

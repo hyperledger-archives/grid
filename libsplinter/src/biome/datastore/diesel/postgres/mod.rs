@@ -14,7 +14,7 @@
 
 //! Defines methods and utilities to interact with user tables in the database.
 
-embed_migrations!("./src/biome/credentials/store/diesel/postgres/migrations");
+embed_migrations!("./src/biome/datastore/diesel/postgres/migrations");
 
 use diesel::pg::PgConnection;
 

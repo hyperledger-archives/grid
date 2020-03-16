@@ -12,23 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::schema::*;
-use crate::biome::user::store::diesel::models::UserModel;
-
-#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
-#[table_name = "user_credentials"]
-#[belongs_to(UserModel, foreign_key = "user_id")]
-pub struct UserCredentialsModel {
-    pub id: i64,
-    pub user_id: String,
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Insertable, PartialEq, Debug)]
-#[table_name = "user_credentials"]
-pub struct NewUserCredentialsModel {
-    pub user_id: String,
-    pub username: String,
-    pub password: String,
-}
+pub mod models;
+pub mod postgres;
+pub mod schema;

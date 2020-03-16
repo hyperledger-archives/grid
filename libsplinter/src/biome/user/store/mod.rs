@@ -18,8 +18,8 @@
 pub(in crate::biome) mod diesel;
 mod error;
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+pub use crate::biome::datastore::models::UserModel;
+#[cfg(feature = "diesel")]
 pub use error::UserStoreError;
 
 /// Represents a user of a splinter application
@@ -44,6 +44,13 @@ impl SplinterUser {
     /// Returns the user's id.
     pub fn id(&self) -> String {
         self.id.to_string()
+    }
+}
+
+#[cfg(feature = "diesel")]
+impl From<UserModel> for SplinterUser {
+    fn from(user: UserModel) -> Self {
+        SplinterUser { id: user.id }
     }
 }
 

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::{UserCredentialsModel, UsernameId};
-use super::super::schema::user_credentials;
 use super::super::CredentialsStoreError;
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::UsernameId;
+use crate::biome::datastore::models::UserCredentialsModel;
+use crate::biome::datastore::schema::user_credentials;
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in super::super) trait CredentialsStoreFetchUsernameOperation {

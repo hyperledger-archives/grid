@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(in crate::biome) mod models;
 mod operations;
-#[cfg(feature = "postgres")]
-pub(in super::super) mod postgres;
-mod schema;
 
 use super::{CredentialsStore, CredentialsStoreError, UserCredentials, UsernameId};
+use crate::biome::datastore::models::UserCredentialsModel;
 use crate::database::ConnectionPool;
-use models::UserCredentialsModel;
 use operations::add_credentials::CredentialsStoreAddCredentialsOperation as _;
 use operations::fetch_credential_by_id::CredentialsStoreFetchCredentialByIdOperation as _;
 use operations::fetch_credential_by_username::CredentialsStoreFetchCredentialByUsernameOperation as _;
