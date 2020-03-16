@@ -22,7 +22,7 @@ use gameroom_database::{
 use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 use splinter::admin::messages::{
-    CreateCircuit, CreateCircuitBuilder, SplinterNode, SplinterService,
+    CreateCircuit, CreateCircuitBuilder, SplinterNode, SplinterServiceBuilder,
 };
 use splinter::node_registry::Node;
 use splinter::protocol;
@@ -140,18 +140,21 @@ pub async fn propose_gameroom(
         },
     ));
 
+    let service_and_node_ids = members
+        .iter()
+        .enumerate()
+        .map(|(member_number, node)| (format!("gr{:02}", member_number), node.node_id.to_string()));
+
+    let all_service_ids = service_and_node_ids
+        .clone()
+        .map(|(service_id, _)| service_id);
+
     let mut roster = vec![];
-    for node in members.iter() {
+    for (service_id, node_id) in service_and_node_ids {
         let peer_services = match serde_json::to_string(
-            &members
-                .iter()
-                .filter_map(|other_node| {
-                    if other_node.node_id != node.node_id {
-                        Some(format!("gameroom_{}", other_node.node_id))
-                    } else {
-                        None
-                    }
-                })
+            &all_service_ids
+                .clone()
+                .filter(|other_service_id| other_service_id != &service_id)
                 .collect::<Vec<_>>(),
         ) {
             Ok(s) => s,
@@ -164,12 +167,19 @@ pub async fn propose_gameroom(
         let mut service_args = scabbard_args.clone();
         service_args.push(("peer_services".into(), peer_services));
 
-        roster.push(SplinterService {
-            service_id: format!("gameroom_{}", node.node_id),
-            service_type: "scabbard".to_string(),
-            allowed_nodes: vec![node.node_id.to_string()],
-            arguments: service_args,
-        });
+        match SplinterServiceBuilder::new()
+            .with_service_id(&service_id)
+            .with_service_type("scabbard")
+            .with_allowed_nodes(&[node_id])
+            .with_arguments(&service_args)
+            .build()
+        {
+            Ok(service) => roster.push(service),
+            Err(err) => {
+                debug!("Failed to build SplinterService: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+            }
+        }
     }
 
     let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
