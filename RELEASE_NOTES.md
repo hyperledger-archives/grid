@@ -11,7 +11,8 @@
 
 ### Deprecations and Breaking Changes
 
-For upgrade information, see [Upgrading](https://github.com/Cargill/splinter-docs/blob/master/docs/upgrading/splinter-v0.3.13-from-v0.3.12.md) to Splinter 0.3.13 from Splinter 0.3.12.
+For upgrade information, see [Upgrading to Splinter 0.3.13 from
+Splinter 0.3.12](https://github.com/Cargill/splinter-docs/blob/master/docs/upgrading/splinter-v0.3.13-from-v0.3.12.md).
 
 * Socket-based transports, such as TCP and TLS, require a version handshake when
   connecting. This handshake allows the pair to negotiate the header version for
@@ -38,14 +39,14 @@ For upgrade information, see [Upgrading](https://github.com/Cargill/splinter-doc
   key management REST API routes.
 * Experimental feature "biome-user":
   - Added response bodies to the user REST API routes.
-  - Added /biome/users/{user_id}/keys/{public_key} endpoint, with both GET and
+  - Added `/biome/users/{user_id}/keys/{public_key}` endpoint, with both GET and
     DELETE handlers to fetch a specific user by public key and delete a user,
     respectively.
 * Experimental feature “json-web-tokens” (new): Moved the sessions and secrets
   modules from behind the biome experimental feature to the REST API module,
   behind the “json-web-tokens” experimental feature
 * Experimental feature "connection-manager":
-    - Remove `CmResponse` from Connector API in order to provide a more
+    - Remove `CmResponse` from the Connector API in order to provide a more
       idiomatic Rust API.
     - Automatic reconnection for broken connections.
 
