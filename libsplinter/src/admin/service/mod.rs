@@ -524,6 +524,7 @@ mod tests {
         proposed_circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
         proposed_circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
         proposed_circuit.set_circuit_management_type("test app auth handler".into());
+        proposed_circuit.set_comments("test circuit".into());
 
         proposed_circuit.set_members(protobuf::RepeatedField::from_vec(vec![
             splinter_node("test-node", "tcp://someplace:8000"),
