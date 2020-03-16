@@ -1,0 +1,13 @@
+# Node
+**/node_modules
+**/yarn.lock
+**/package-lock.json
+**/npm-debug.log
+
+# Build artifacts
+**/build
+**/dist
+
+# Sapling artifacts
+sapling-dev-server/product
+sapling-dev-server/register-login.js
