@@ -581,6 +581,7 @@ fn list_proposals(url: &str, filter: Option<&str>, format: &str) -> Result<(), C
         "ID".to_string(),
         "MANAGEMENT".to_string(),
         "MEMBERS".to_string(),
+        "COMMENTS".to_string(),
     ]);
     proposals.data.iter().for_each(|proposal| {
         let members = proposal
@@ -594,6 +595,7 @@ fn list_proposals(url: &str, filter: Option<&str>, format: &str) -> Result<(), C
             proposal.circuit_id.to_string(),
             proposal.circuit.circuit_management_type.to_string(),
             members,
+            proposal.circuit.comments.to_string(),
         ]);
     });
 
