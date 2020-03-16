@@ -48,7 +48,7 @@ mio-extras = "2"
 openssl = "0.10"
 percent-encoding = { version = "2.0", optional = true }
 protobuf = "2"
-rand = { version = "0.7", optional = true }
+rand = "0.7"
 reqwest = { version = "0.10", optional = true, features = ["blocking", "json"] }
 sawtooth = { version = "0.3", default-features = false, features = ["lmdb-store", "receipt-store"] }
 sawtooth-sabre = "0.5"
@@ -120,7 +120,7 @@ connection-manager = ["matrix"]
 connection-manager-notification-iter-try-next = ["connection-manager"]
 database = ["diesel_migrations", "postgres"]
 events = ["actix-http", "futures", "hyper", "tokio", "awc"]
-json-web-tokens = ["jsonwebtoken", "rand"]
+json-web-tokens = ["jsonwebtoken"]
 matrix = []
 node-registry-unified = []
 postgres = ["diesel/postgres"]

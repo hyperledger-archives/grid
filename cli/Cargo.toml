@@ -43,7 +43,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version ="1.0", optional = true }
 serde_yaml = "0.8"
 splinter = { path = "../libsplinter" }
-uuid = { version = "0.7", features = ["v4"], optional = true }
 whoami = { version = "0.7.0", optional = true }
 
 [features]
@@ -62,7 +61,7 @@ experimental = [
     "node-alias"
 ]
 
-circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat", "dirs", "uuid"]
+circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat", "dirs"]
 circuit-auth-type = []
 database-migrate-biome = [
     "splinter/biome-credentials",

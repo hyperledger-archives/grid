@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
+use crate::base62::next_base62_string;
 
 use super::super::{yaml_parser::v1, CircuitTemplateError, SplinterServiceBuilder};
 use super::{get_argument_value, is_arg, RuleArgument, Value};
@@ -37,9 +37,15 @@ impl CreateServices {
             .map(String::from)
             .collect::<Vec<String>>();
 
-        if self.first_service.is_empty() {
+        let is_correct_len = self.first_service.len() == 4;
+        let is_base62 = self
+            .first_service
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric());
+        if !is_correct_len || !is_base62 {
             return Err(CircuitTemplateError::new(
-                "The first_service field must be an non-empty string",
+                "The first_service field must be a valid service_id: must be a 4 character base62 \
+                 string",
             ));
         }
 
@@ -52,7 +58,16 @@ impl CreateServices {
                 .with_service_type(&self.service_type);
 
             service_builders.push(splinter_service_builder);
-            service_id = get_next_service_id(&service_id)?;
+            service_id = next_base62_string(&service_id)
+                .map_err(|err| {
+                    CircuitTemplateError::new_with_source(
+                        "Failed to get next service ID",
+                        err.into(),
+                    )
+                })?
+                .ok_or_else(|| {
+                    CircuitTemplateError::new("Exceeded number of services that can be built")
+                })?;
         }
 
         let mut new_service_args = Vec::new();
@@ -131,54 +146,6 @@ impl From<v1::ServiceArgument> for ServiceArgument {
             value: Value::from(yaml_service_argument.value().clone()),
         }
     }
-}
-
-fn add1_char(c: char) -> Result<char, CircuitTemplateError> {
-    let char_value = c as u32;
-    if char_value >= 'z' as u32 {
-        return Ok('0');
-    }
-    let next_char = std::char::from_u32(char_value + 1).ok_or_else(|| {
-        CircuitTemplateError::new("Failed to generate service id. Failed to convert char from u32.")
-    })?;
-    if !next_char.is_ascii_alphanumeric() {
-        return add1_char(next_char);
-    }
-    Ok(next_char)
-}
-
-fn get_next_service_id(current_id: &str) -> Result<String, CircuitTemplateError> {
-    generate_id(current_id, current_id.len() - 1)
-}
-
-fn generate_id(current_id: &str, index: usize) -> Result<String, CircuitTemplateError> {
-    let mut next_id = current_id.to_string();
-    let character = char::from_str(&next_id[index..=index]).map_err(|_| {
-        CircuitTemplateError::new(&format!(
-            "Failed to generate service id. Could not extract valid char from string {}",
-            next_id
-        ))
-    })?;
-    if !character.is_ascii_alphanumeric() {
-        return Err(CircuitTemplateError::new(&format!(
-            "The service id contains an invalid character: {}. \
-             Only ASCII alphanumeric characters are allowed",
-            character
-        )));
-    }
-    let next_char = add1_char(character)?;
-    next_id.replace_range(index..=index, &next_char.to_string());
-
-    if next_char == '0' {
-        if index == 0 {
-            return Err(CircuitTemplateError::new(
-                "Exceed number of services that can be built",
-            ));
-        }
-
-        return generate_id(&next_id, index - 1);
-    }
-    Ok(next_id)
 }
 
 fn all_services(
@@ -277,6 +244,30 @@ mod test {
         // test that building services succeeds:
         assert!(service_builders[0].clone().build().is_ok());
         assert!(service_builders[1].clone().build().is_ok());
+    }
+
+    /*
+     * Test that CreateServices::apply_rules accurately detects an invalid `first_service`.
+     */
+    #[test]
+    fn test_create_service_apply_rules_invalid_first_service() {
+        let template_arguments = make_rule_arguments();
+
+        let mut empty = make_create_service();
+        empty.first_service = "".to_string();
+        assert!(empty.apply_rule(&template_arguments).is_err());
+
+        let mut too_short = make_create_service();
+        too_short.first_service = "a00".to_string();
+        assert!(too_short.apply_rule(&template_arguments).is_err());
+
+        let mut too_long = make_create_service();
+        too_long.first_service = "a0000".to_string();
+        assert!(too_long.apply_rule(&template_arguments).is_err());
+
+        let mut invalid_char = make_create_service();
+        invalid_char.first_service = "a0:0".to_string();
+        assert!(invalid_char.apply_rule(&template_arguments).is_err());
     }
 
     fn make_create_service() -> CreateServices {

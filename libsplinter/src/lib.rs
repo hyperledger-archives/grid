@@ -57,6 +57,7 @@ macro_rules! mutex_lock_unwrap {
 }
 
 pub mod admin;
+mod base62;
 #[cfg(feature = "biome")]
 pub mod biome;
 pub mod channel;
