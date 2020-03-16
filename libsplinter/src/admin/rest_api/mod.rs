@@ -37,6 +37,18 @@ use self::actix::submit::make_submit_route;
 #[cfg(feature = "rest-api-actix")]
 use self::actix::ws_register_type::make_application_handler_registration_route;
 
+/// The admin service provides the following endpoints as REST API resources:
+///
+/// * `GET /ws/admin/register/{type}` - Register as an application authorization handler for the
+///   given circuit management type
+/// * `POST /admin/submit` - Submit a circuit management payload
+/// * `GET /admin/proposals` - List circuit proposals in Splinter's state
+/// * `GET /admin/proposals/{circuit_id}` - Fetch a specific circuit proposal in Splinter's state
+///   by circuit ID
+///
+/// These endpoints are only available if the following REST API backend feature is enabled:
+///
+/// * `rest-api-actix`
 impl RestResourceProvider for AdminService {
     fn resources(&self) -> Vec<Resource> {
         let mut resources = vec![];
@@ -63,6 +75,10 @@ impl RestResourceProvider for AdminService {
 /// * `GET /admin/circuits` - List circuits in Splinter's state
 /// * `GET /admin/circuits/{circuit_id}` - Fetch a specific circuit in Splinter's state by circuit
 ///   ID
+///
+/// These endpoints are only available if the following REST API backend feature is enabled:
+///
+/// * `rest-api-actix`
 #[derive(Clone)]
 pub struct CircuitResourceProvider<T: store::CircuitStore> {
     node_id: String,
@@ -75,6 +91,15 @@ impl<T: store::CircuitStore + 'static> CircuitResourceProvider<T> {
     }
 }
 
+/// The circuit store provides the following endpoints as REST API resources:
+///
+/// * `GET /admin/circuits` - List circuits in Splinter's state
+/// * `GET /admin/circuits/{circuit_id}` - Fetch a specific circuit in Splinter's state by circuit
+///   ID
+///
+/// These endpoints are only available if the following REST API backend feature is enabled:
+///
+/// * `rest-api-actix`
 impl<T: store::CircuitStore + 'static> RestResourceProvider for CircuitResourceProvider<T> {
     fn resources(&self) -> Vec<Resource> {
         // Allowing unused_mut because resources must be mutable if feature circuit-read is enabled
