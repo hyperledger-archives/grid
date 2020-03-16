@@ -52,6 +52,7 @@ stable = ["default"]
 
 experimental = [
     "circuit",
+    "circuit-template",
     "health",
     "database",
     "database-migrate-biome",
@@ -63,6 +64,7 @@ experimental = [
 
 circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat", "dirs"]
 circuit-auth-type = []
+circuit-template = ["splinter/circuit-template", "circuit"]
 database-migrate-biome = [
     "splinter/biome-credentials",
     "splinter/biome-key-management",
