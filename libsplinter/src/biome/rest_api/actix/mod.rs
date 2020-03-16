@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(any(feature = "biome-key-management", feature = "biome-credentials"))]
+#[cfg(all(
+    feature = "json-web-tokens",
+    any(feature = "biome-key-management", feature = "biome-credentials")
+))]
 pub(crate) mod authorize;
-#[cfg(feature = "biome-key-management")]
+#[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
 pub(super) mod key_management;
-#[cfg(feature = "biome-credentials")]
+#[cfg(all(feature = "biome-credentials", feature = "json-web-tokens"))]
 pub(super) mod login;
 #[cfg(feature = "biome-credentials")]
 pub(super) mod register;
-#[cfg(feature = "biome-credentials")]
+#[cfg(all(feature = "biome-credentials", feature = "json-web-tokens"))]
 pub(super) mod user;
