@@ -15,7 +15,7 @@
 use std;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    mpsc::SyncSender,
+    mpsc::Sender,
     Arc,
 };
 use std::thread;
@@ -41,7 +41,7 @@ impl Pacemaker {
     pub fn start<M>(
         &mut self,
         message: M,
-        cm_sender: SyncSender<M>,
+        cm_sender: Sender<M>,
     ) -> Result<(), ConnectionManagerError>
     where
         M: Send + Clone + 'static,
