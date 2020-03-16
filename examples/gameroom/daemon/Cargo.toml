@@ -55,7 +55,6 @@ serde_json = "1.0"
 splinter = { path = "../../../libsplinter", features = ["events"]}
 tokio = "0.1"
 transact = "0.2"
-uuid = { version = "0.7", features = ["v4"]}
 
 [features]
 default = []
