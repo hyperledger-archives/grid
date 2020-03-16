@@ -1,5 +1,59 @@
 # Release Notes
 
+## Changes in Splinter 0.3.13
+
+### Highlights
+
+* Breaking change: Socket-based transports (TCP and TLS) now require a version
+  handshake when connecting.
+* New experimental feature `circuit-template`: Circuit template library to
+  simplify circuit creation.
+
+### Deprecations and Breaking Changes
+
+For upgrade information, see [Upgrading](https://github.com/Cargill/splinter-docs/blob/master/docs/upgrading/splinter-v0.3.13-from-v0.3.12.md) to Splinter 0.3.13 from Splinter 0.3.12.
+
+* Socket-based transports, such as TCP and TLS, require a version handshake when
+  connecting. This handshake allows the pair to negotiate the header version for
+  messages sent over the connection. The V1 header currently consists of a
+  version, a payload length, and a header checksum.
+* `TlsConnection::new` is deprecated. A `TlsConnection` should only be created
+  via `TlsTransport`.
+
+### libsplinter
+
+* `RestApi::run` now returns a bind error if it fails to bind to an address.
+  `RestApiServerError` has an additional variant, `BindError`.  Matching on
+  specific errors will require a new statement for this variant, unless a
+  catch-all statement is used.
+* Experimental feature "circuit-template" (new): The circuit::template module
+  provides library code for building tools to create circuits using templates.
+* All experimental Biome features:
+    - New OpenAPI documentation for REST API routes.
+    - Improved Rust documentation; see
+      [docs.rs/splinter](https://docs.rs/splinter/).
+    - Restructured data stores to follow new model that enables future
+      database selections.
+* Experimental feature "biome-key-management": Added response bodies to the
+  key management REST API routes.
+* Experimental feature "biome-user":
+  - Added response bodies to the user REST API routes.
+  - Added /biome/users/{user_id}/keys/{public_key} endpoint, with both GET and
+    DELETE handlers to fetch a specific user by public key and delete a user,
+    respectively.
+* Experimental feature “json-web-tokens” (new): Moved the sessions and secrets
+  modules from behind the biome experimental feature to the REST API module,
+  behind the “json-web-tokens” experimental feature
+* Experimental feature "connection-manager":
+    - Remove `CmResponse` from Connector API in order to provide a more
+      idiomatic Rust API.
+    - Automatic reconnection for broken connections.
+
+### CLI
+
+* Experimental feature "circuit": The `splinter circuit create` subcommand now
+  displays the circuit ID for a new circuit.
+
 ## Changes in Splinter 0.3.12
 
 ### Highlights:
