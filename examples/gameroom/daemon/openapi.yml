@@ -673,19 +673,19 @@ paths:
             content:
               application/json:
                 schema:
-                  allOf:
-                    - $ref: '#/components/schemas/Error'
-                    - type: object
-                      properties:
-                          data:
-                            description: List of BatchStatus
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/BatchStatus'
-
-
+                  $ref: '#/components/schemas/Error'
+          404:
+            description: Circuit does not exist
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
           500:
             description: Internal server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
 
   /ws/subscribe:
     get:

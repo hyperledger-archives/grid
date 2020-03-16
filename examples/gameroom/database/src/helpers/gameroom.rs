@@ -316,3 +316,19 @@ pub fn fetch_gameroom_by_alias(conn: &PgConnection, alias: &str) -> QueryResult<
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
 }
+
+pub fn fetch_service_id_for_gameroom_service(
+    conn: &PgConnection,
+    circuit_id: &str,
+    node_id: &str,
+) -> QueryResult<Option<String>> {
+    gameroom_service::table
+        .filter(
+            gameroom_service::circuit_id
+                .eq(circuit_id)
+                .and(gameroom_service::allowed_nodes.contains(vec![node_id])),
+        )
+        .first::<GameroomService>(conn)
+        .map(|service| Some(service.service_id))
+        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
