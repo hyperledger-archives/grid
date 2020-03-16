@@ -164,6 +164,10 @@ impl Action for CircuitCreateAction {
             }
         }
 
+        if let Some(comments) = args.value_of("comments") {
+            builder.set_comments(comments);
+        }
+
         let create_circuit = builder.build()?;
 
         let circuit_id = create_circuit.circuit_id.clone();
