@@ -15,7 +15,7 @@
 openapi: '3.0.0'
 
 info:
-  version: 0.3.13
+  version: 0.3.14
   title: splinterd API
   description: REST API for the Splinter daemon
 
@@ -1402,7 +1402,7 @@ components:
         version:
           description: Rest API version
           type: string
-          example: "0.3.13"
+          example: "0.3.14"
         node_id:
           description: Node id
           type: string

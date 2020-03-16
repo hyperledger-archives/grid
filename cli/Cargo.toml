@@ -14,7 +14,7 @@
 
 [package]
 name = "splinter-cli"
-version = "0.3.13"
+version = "0.3.14"
 authors = ["Cargill Incorporated"]
 edition = "2018"
 license = "Apache-2.0"
