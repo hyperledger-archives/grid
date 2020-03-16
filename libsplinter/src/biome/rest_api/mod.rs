@@ -52,7 +52,11 @@ use std::sync::Arc;
 use crate::database::ConnectionPool;
 use crate::rest_api::{Resource, RestResourceProvider};
 
-#[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
+#[cfg(all(
+    feature = "biome-key-management",
+    feature = "rest-api-actix",
+    feature = "json-web-tokens"
+))]
 use self::actix::key_management::{
     make_key_management_route, make_key_management_route_with_public_key,
 };
@@ -60,21 +64,28 @@ use self::actix::key_management::{
 #[cfg(feature = "biome-key-management")]
 use super::key_management::store::PostgresKeyStore;
 use super::user::store::diesel::SplinterUserStore;
+#[cfg(feature = "json-web-tokens")]
 use crate::rest_api::secrets::{AutoSecretManager, SecretManager};
 
 pub use config::{BiomeRestConfig, BiomeRestConfigBuilder};
 pub use error::BiomeRestResourceManagerBuilderError;
 
 #[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
+use self::actix::register::make_register_route;
+#[cfg(all(
+    feature = "biome-credentials",
+    feature = "rest-api-actix",
+    feature = "json-web-tokens"
+))]
 use self::actix::{
     login::make_login_route,
-    register::make_register_route,
     user::{make_list_route, make_user_routes},
 };
 #[cfg(feature = "biome-credentials")]
 use super::credentials::store::diesel::SplinterCredentialsStore;
 
 #[allow(unused_imports)]
+#[cfg(feature = "json-web-tokens")]
 use crate::rest_api::sessions::AccessTokenIssuer;
 
 /// Manages Biome REST API endpoints
@@ -82,12 +93,13 @@ pub struct BiomeRestResourceManager {
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
     user_store: Arc<SplinterUserStore>,
-    #[cfg(feature = "biome-key-management")]
+    #[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
     key_store: Arc<PostgresKeyStore>,
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
     rest_config: Arc<BiomeRestConfig>,
     #[allow(dead_code)]
+    #[cfg(feature = "json-web-tokens")]
     token_secret_manager: Arc<dyn SecretManager>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<Arc<SplinterCredentialsStore>>,
@@ -99,7 +111,11 @@ impl RestResourceProvider for BiomeRestResourceManager {
         #[allow(unused_mut)]
         let mut resources = Vec::new();
 
-        #[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
+        #[cfg(all(
+            feature = "biome-credentials",
+            feature = "rest-api-actix",
+            feature = "json-web-tokens"
+        ))]
         match &self.credentials_store {
             Some(credentials_store) => {
                 resources.push(make_register_route(
@@ -127,7 +143,27 @@ impl RestResourceProvider for BiomeRestResourceManager {
                 );
             }
         };
-        #[cfg(all(feature = "biome-key-management", feature = "rest-api-actix"))]
+        #[cfg(all(feature = "biome-credentials", feature = "rest-api-actix"))]
+        match &self.credentials_store {
+            Some(credentials_store) => {
+                resources.push(make_register_route(
+                    credentials_store.clone(),
+                    self.user_store.clone(),
+                    self.rest_config.clone(),
+                ));
+            }
+            None => {
+                debug!(
+                    "Credentials store not provided. Credentials REST API resources will not be'
+                ' included in the biome endpoints."
+                );
+            }
+        };
+        #[cfg(all(
+            feature = "biome-key-management",
+            feature = "rest-api-actix",
+            feature = "json-web-tokens"
+        ))]
         {
             resources.push(make_key_management_route(
                 self.rest_config.clone(),
@@ -151,6 +187,7 @@ pub struct BiomeRestResourceManagerBuilder {
     #[cfg(feature = "biome-key-management")]
     key_store: Option<PostgresKeyStore>,
     rest_config: Option<BiomeRestConfig>,
+    #[cfg(feature = "json-web-tokens")]
     token_secret_manager: Option<Arc<dyn SecretManager>>,
     #[cfg(feature = "biome-credentials")]
     credentials_store: Option<SplinterCredentialsStore>,
@@ -202,6 +239,7 @@ impl BiomeRestResourceManagerBuilder {
         self
     }
 
+    #[cfg(feature = "json-web-tokens")]
     /// Sets a SecretManager for JWT tokens for the BiomeRestResourceManager
     ///
     /// # Arguments
@@ -223,7 +261,7 @@ impl BiomeRestResourceManagerBuilder {
                 "Missing user store".to_string(),
             )
         })?;
-        #[cfg(feature = "biome-key-management")]
+        #[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
         let key_store = self.key_store.ok_or_else(|| {
             BiomeRestResourceManagerBuilderError::MissingRequiredField(
                 "MissingKeyStore".to_string(),
@@ -237,6 +275,7 @@ impl BiomeRestResourceManagerBuilder {
             }
         };
 
+        #[cfg(feature = "json-web-tokens")]
         let token_secret_manager = self.token_secret_manager.unwrap_or_else(|| {
             debug!("Building BiomeRestResourceManager with default SecretManager.");
             Arc::new(AutoSecretManager::default())
@@ -244,9 +283,10 @@ impl BiomeRestResourceManagerBuilder {
 
         Ok(BiomeRestResourceManager {
             user_store: Arc::new(user_store),
-            #[cfg(feature = "biome-key-management")]
+            #[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
             key_store: Arc::new(key_store),
             rest_config: Arc::new(rest_config),
+            #[cfg(feature = "json-web-tokens")]
             token_secret_manager,
             #[cfg(feature = "biome-credentials")]
             credentials_store: match self.credentials_store {
