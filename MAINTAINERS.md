@@ -7,6 +7,7 @@
 | Anne Chenette | chenette |
 | Darian Plumb | dplumb94 |
 | Dave Cecchi | davececchi |
+| Davey Newhall | dnewh |
 | Eloá Franca Verona | eloaverona |
 | James Mitchell | jsmitchell |
 | Logan Seeley | ltseeley |
