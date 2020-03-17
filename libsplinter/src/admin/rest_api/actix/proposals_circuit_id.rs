@@ -23,6 +23,8 @@ use crate::admin::service::proposal_store::ProposalStore;
 use crate::protocol;
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
+use super::super::resources::proposals_circuit_id::ProposalResponse;
+
 pub fn make_fetch_proposal_resource<PS: ProposalStore + 'static>(proposal_store: PS) -> Resource {
     Resource::build("admin/proposals/{circuit_id}")
         .add_request_guard(ProtocolVersionRangeGuard::new(
@@ -53,7 +55,7 @@ fn fetch_proposal<PS: ProposalStore + 'static>(
                 })
         })
         .then(|res| match res {
-            Ok(proposal) => Ok(HttpResponse::Ok().json(proposal)),
+            Ok(proposal) => Ok(HttpResponse::Ok().json(ProposalResponse::from(&proposal))),
             Err(err) => match err {
                 BlockingError::Error(err) => match err {
                     ProposalFetchError::InternalError(_) => {
@@ -107,8 +109,8 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposal: CircuitProposal = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposal, get_proposal());
+        let proposal: ProposalResponse = resp.json().expect("Failed to deserialize body");
+        assert_eq!(proposal, get_proposal().into());
     }
 
     #[test]
