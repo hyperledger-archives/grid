@@ -314,8 +314,35 @@ impl ShutdownHandle {
 }
 
 #[derive(Clone, Debug)]
-struct ConnectionMetadata {
-    id: String,
+enum ConnectionMetadata {
+    Outbound {
+        id: String,
+        outbound: OutboundConnection,
+    },
+}
+
+impl ConnectionMetadata {
+    fn is_outbound(&self) -> bool {
+        match self {
+            ConnectionMetadata::Outbound { .. } => true,
+        }
+    }
+
+    fn id(&self) -> &str {
+        match self {
+            ConnectionMetadata::Outbound { id, .. } => id,
+        }
+    }
+
+    fn endpoint(&self) -> &str {
+        match self {
+            ConnectionMetadata::Outbound { outbound, .. } => &outbound.endpoint,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct OutboundConnection {
     endpoint: String,
     reconnecting: bool,
     retry_frequency: u64,
@@ -371,13 +398,15 @@ where
 
             self.connections.insert(
                 endpoint.to_string(),
-                ConnectionMetadata {
+                ConnectionMetadata::Outbound {
                     id,
-                    endpoint: endpoint.to_string(),
-                    reconnecting: false,
-                    retry_frequency: INITIAL_RETRY_FREQUENCY,
-                    last_connection_attempt: Instant::now(),
-                    reconnection_attempts: 0,
+                    outbound: OutboundConnection {
+                        endpoint: endpoint.to_string(),
+                        reconnecting: false,
+                        retry_frequency: INITIAL_RETRY_FREQUENCY,
+                        last_connection_attempt: Instant::now(),
+                        reconnection_attempts: 0,
+                    },
                 },
             );
         };
@@ -397,7 +426,7 @@ where
 
         self.connections.remove(endpoint);
         // remove mesh id, this may happen before reconnection is attempted
-        self.life_cycle.remove(&meta.id).map_err(|err| {
+        self.life_cycle.remove(meta.id()).map_err(|err| {
             ConnectionManagerError::ConnectionRemovalError(format!(
                 "Cannot remove connection {} from life cycle: {}",
                 endpoint, err
@@ -420,9 +449,14 @@ where
             ));
         };
 
+        if !meta.is_outbound() {
+            // Do not attempt to reconnect inbound connections.
+            return Ok(());
+        }
+
         if let Ok(connection) = self.transport.connect(endpoint) {
             // remove old mesh id, this may happen before reconnection is attempted
-            self.life_cycle.remove(&meta.id).map_err(|err| {
+            self.life_cycle.remove(meta.id()).map_err(|err| {
                 ConnectionManagerError::ConnectionRemovalError(format!(
                     "Cannot remove connection {} from life cycle: {}",
                     endpoint, err
@@ -431,16 +465,23 @@ where
 
             // add new connection to mesh
             self.life_cycle
-                .add(connection, meta.id.to_string())
+                .add(connection, meta.id().to_string())
                 .map_err(|err| {
                     ConnectionManagerError::ConnectionReconnectError(format!("{:?}", err))
                 })?;
 
-            // reset reconnecting fields
-            meta.reconnecting = false;
-            meta.retry_frequency = INITIAL_RETRY_FREQUENCY;
-            meta.last_connection_attempt = Instant::now();
-            meta.reconnection_attempts = 0;
+            // replace mesh id and reset reconnecting fields
+            match meta {
+                ConnectionMetadata::Outbound {
+                    ref mut outbound, ..
+                } => {
+                    outbound.reconnecting = false;
+                    outbound.retry_frequency = INITIAL_RETRY_FREQUENCY;
+                    outbound.last_connection_attempt = Instant::now();
+                    outbound.reconnection_attempts = 0;
+                }
+            }
+
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of success
@@ -451,11 +492,20 @@ where
                 },
             );
         } else {
-            let reconnection_attempts = meta.reconnection_attempts + 1;
-            meta.reconnecting = true;
-            meta.retry_frequency = min(meta.retry_frequency * 2, self.maximum_retry_frequency);
-            meta.last_connection_attempt = Instant::now();
-            meta.reconnection_attempts += 1;
+            let reconnection_attempts = match meta {
+                ConnectionMetadata::Outbound {
+                    ref mut outbound, ..
+                } => {
+                    outbound.reconnecting = true;
+                    outbound.retry_frequency =
+                        min(outbound.retry_frequency * 2, self.maximum_retry_frequency);
+                    outbound.last_connection_attempt = Instant::now();
+                    outbound.reconnection_attempts += 1;
+
+                    outbound.reconnection_attempts
+                }
+            };
+
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of reconnection failure
@@ -499,7 +549,7 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
         CmRequest::RemoveConnection { endpoint, sender } => {
             let response = state
                 .remove_connection(&endpoint)
-                .map(|meta_opt| meta_opt.map(|meta| meta.endpoint));
+                .map(|meta_opt| meta_opt.map(|meta| meta.endpoint().to_owned()));
 
             if sender.send(response).is_err() {
                 warn!("connector dropped before receiving result of remove connection");
@@ -540,32 +590,35 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     };
 
     for (endpoint, metadata) in state.connection_metadata() {
-        // if connection is already attempting reconnection, call reconnect
-        if metadata.reconnecting {
-            if metadata.last_connection_attempt.elapsed().as_secs() > metadata.retry_frequency {
-                if let Err(err) = state.reconnect(&endpoint, subscribers) {
-                    error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
-                }
-            }
-        } else {
-            info!("Sending heartbeat to {}", endpoint);
-            if let Err(err) = state
-                .matrix_sender()
-                .send(metadata.id, heartbeat_message.clone())
-            {
-                error!(
-                    "failed to send heartbeat: {:?} attempting reconnection",
-                    err
-                );
+        match metadata {
+            ConnectionMetadata::Outbound { id, outbound } => {
+                // if connection is already attempting reconnection, call reconnect
+                if outbound.reconnecting {
+                    if outbound.last_connection_attempt.elapsed().as_secs()
+                        > outbound.retry_frequency
+                    {
+                        if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                            error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
+                        }
+                    }
+                } else {
+                    info!("Sending heartbeat to {}", endpoint);
+                    if let Err(err) = state.matrix_sender().send(id, heartbeat_message.clone()) {
+                        error!(
+                            "failed to send heartbeat: {:?} attempting reconnection",
+                            err
+                        );
 
-                notify_subscribers(
-                    subscribers,
-                    ConnectionManagerNotification::Disconnected {
-                        endpoint: endpoint.clone(),
-                    },
-                );
-                if let Err(err) = state.reconnect(&endpoint, subscribers) {
-                    error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
+                        notify_subscribers(
+                            subscribers,
+                            ConnectionManagerNotification::Disconnected {
+                                endpoint: endpoint.clone(),
+                            },
+                        );
+                        if let Err(err) = state.reconnect(&endpoint, subscribers) {
+                            error!("Reconnection attempt to {} failed: {:?}", endpoint, err);
+                        }
+                    }
                 }
             }
         }
