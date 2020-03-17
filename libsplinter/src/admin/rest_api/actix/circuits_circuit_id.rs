@@ -47,28 +47,12 @@ fn fetch_circuit<T: CircuitStore + 'static>(
         .to_string();
     Box::new(
         web::block(move || {
-            let circuit = store.circuit(&circuit_id)?;
-            if let Some(circuit) = circuit {
-                let circuit_response = CircuitResponse {
-                    id: circuit_id,
-                    auth: circuit.auth().clone(),
-                    members: circuit.members().to_vec(),
-                    roster: circuit.roster().clone(),
-                    persistence: circuit.persistence().clone(),
-                    durability: circuit.durability().clone(),
-                    routes: circuit.routes().clone(),
-                    circuit_management_type: circuit.circuit_management_type().to_string(),
-                };
-                Ok(circuit_response)
-            } else {
-                Err(CircuitFetchError::NotFound(format!(
-                    "Unable to find circuit: {}",
-                    circuit_id
-                )))
-            }
+            store.circuit(&circuit_id)?.ok_or_else(|| {
+                CircuitFetchError::NotFound(format!("Unable to find circuit: {}", circuit_id))
+            })
         })
         .then(|res| match res {
-            Ok(circuit) => Ok(HttpResponse::Ok().json(circuit)),
+            Ok(circuit) => Ok(HttpResponse::Ok().json(CircuitResponse::from(&circuit))),
             Err(err) => match err {
                 BlockingError::Error(err) => match err {
                     CircuitFetchError::CircuitStoreError(err) => {
@@ -98,7 +82,7 @@ mod tests {
 
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
-        Roster, RouteType, ServiceDefinition, SplinterState,
+        RouteType, ServiceDefinition, SplinterState,
     };
     use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
     use crate::storage::get_storage;
@@ -112,7 +96,7 @@ mod tests {
         let url = Url::parse(&format!(
             "http://{}/admin/circuits/{}",
             bind_url,
-            get_circuit_1().id
+            get_circuit_1().id()
         ))
         .expect("Failed to parse URL");
         let req = Client::new()
@@ -122,7 +106,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let circuit: CircuitResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuit, get_circuit_1());
+        assert_eq!(circuit, get_circuit_1().into());
     }
 
     #[test]
@@ -145,21 +129,40 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
-    fn get_circuit_1() -> CircuitResponse {
+    fn get_circuit_1() -> Circuit {
         let service_definition =
             ServiceDefinition::builder("service_1".to_string(), "type_a".to_string())
                 .with_allowed_nodes(vec!["node_1".to_string()])
                 .build();
-        CircuitResponse {
-            id: "circuit_1".to_string(),
-            auth: AuthorizationType::Trust,
-            members: vec!["node_1".to_string(), "node_2".to_string()],
-            roster: Roster::Standard(vec![service_definition]),
-            persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurability,
-            routes: RouteType::Any,
-            circuit_management_type: "circuit_1_type".to_string(),
-        }
+        Circuit::builder()
+            .with_id("circuit_1".into())
+            .with_auth(AuthorizationType::Trust)
+            .with_members(vec!["node_1".to_string(), "node_2".to_string()])
+            .with_roster(vec![service_definition])
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurability)
+            .with_routes(RouteType::Any)
+            .with_circuit_management_type("circuit_1_type".into())
+            .build()
+            .expect("Should have built a correct circuit")
+    }
+
+    fn get_circuit_2() -> Circuit {
+        let service_definition =
+            ServiceDefinition::builder("service_2".to_string(), "other_type".to_string())
+                .with_allowed_nodes(vec!["node_3".to_string()])
+                .build();
+        Circuit::builder()
+            .with_id("circuit_2".into())
+            .with_auth(AuthorizationType::Trust)
+            .with_members(vec!["node_3".to_string(), "node_4".to_string()])
+            .with_roster(vec![service_definition])
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurability)
+            .with_routes(RouteType::Any)
+            .with_circuit_management_type("circuit_2_type".into())
+            .build()
+            .expect("Should have built a correct circuit")
     }
 
     fn setup_splinter_state() -> SplinterState {
@@ -169,46 +172,12 @@ mod tests {
     }
 
     fn filled_splinter_state() -> SplinterState {
-        let service_definition_1 =
-            ServiceDefinition::builder("service_1".to_string(), "type_a".to_string())
-                .with_allowed_nodes(vec!["node_1".to_string()])
-                .build();
-
-        let service_definition_2 =
-            ServiceDefinition::builder("service_2".to_string(), "other_type".to_string())
-                .with_allowed_nodes(vec!["node_3".to_string()])
-                .build();
-
-        let circuit_1 = Circuit::builder()
-            .with_id("circuit_1".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["node_1".to_string(), "node_2".to_string()])
-            .with_roster(vec![service_definition_1])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurability)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("circuit_1_type".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
-        let circuit_2 = Circuit::builder()
-            .with_id("circuit_2".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["node_3".to_string(), "node_4".to_string()])
-            .with_roster(vec![service_definition_2])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurability)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("circuit_2_type".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
         let mut splinter_state = setup_splinter_state();
         splinter_state
-            .add_circuit("circuit_1".into(), circuit_1)
+            .add_circuit("circuit_1".into(), get_circuit_1())
             .expect("Unable to add circuit_1");
         splinter_state
-            .add_circuit("circuit_2".into(), circuit_2)
+            .add_circuit("circuit_2".into(), get_circuit_2())
             .expect("Unable to add circuit_2");
 
         splinter_state

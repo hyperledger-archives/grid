@@ -12,16 +12,55 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
+use std::collections::BTreeMap;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub(crate) struct CircuitResponse {
-    pub id: String,
-    pub auth: AuthorizationType,
+use crate::circuit::{Circuit, Roster, ServiceDefinition};
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+pub(crate) struct CircuitResponse<'a> {
+    pub id: &'a str,
     pub members: Vec<String>,
-    pub roster: Roster,
-    pub persistence: PersistenceType,
-    pub durability: DurabilityType,
-    pub routes: RouteType,
-    pub circuit_management_type: String,
+    pub roster: Vec<ServiceResponse<'a>>,
+    pub management_type: &'a str,
+}
+
+impl<'a> From<&'a Circuit> for CircuitResponse<'a> {
+    fn from(circuit: &'a Circuit) -> Self {
+        Self {
+            id: circuit.id(),
+            members: circuit.members().to_vec(),
+            roster: circuit.roster().into(),
+            management_type: circuit.circuit_management_type(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+pub(crate) struct ServiceResponse<'a> {
+    pub service_id: &'a str,
+    pub service_type: &'a str,
+    pub allowed_nodes: &'a [String],
+    pub arguments: &'a BTreeMap<String, String>,
+}
+
+impl<'a> From<&'a ServiceDefinition> for ServiceResponse<'a> {
+    fn from(service_def: &'a ServiceDefinition) -> Self {
+        Self {
+            service_id: service_def.service_id(),
+            service_type: service_def.service_type(),
+            allowed_nodes: service_def.allowed_nodes(),
+            arguments: service_def.arguments(),
+        }
+    }
+}
+
+impl<'a> From<&'a Roster> for Vec<ServiceResponse<'a>> {
+    fn from(roster: &'a Roster) -> Self {
+        match roster {
+            Roster::Standard(service_defs) => {
+                service_defs.iter().map(ServiceResponse::from).collect()
+            }
+            Roster::Admin => vec![],
+        }
+    }
 }

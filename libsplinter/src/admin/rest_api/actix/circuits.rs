@@ -121,27 +121,17 @@ fn query_list_circuits<T: CircuitStore + 'static>(
         let total = circuits.total();
         let limit_value = limit.unwrap_or_else(|| total as usize);
 
-        let circuits_data: Vec<CircuitResponse> = circuits
-            .map(|circuit| CircuitResponse {
-                id: circuit.id().into(),
-                auth: circuit.auth().clone(),
-                members: circuit.members().to_vec(),
-                roster: circuit.roster().clone(),
-                persistence: circuit.persistence().clone(),
-                durability: circuit.durability().clone(),
-                routes: circuit.routes().clone(),
-                circuit_management_type: circuit.circuit_management_type().to_string(),
-            })
+        let circuits = circuits
             .skip(offset_value)
             .take(limit_value)
-            .collect();
+            .collect::<Vec<_>>();
 
-        Ok((circuits_data, link, limit, offset, total as usize))
+        Ok((circuits, link, limit, offset, total as usize))
     })
     .then(|res| match res {
         Ok((circuits, link, limit, offset, total_count)) => {
             Ok(HttpResponse::Ok().json(ListCircuitsResponse {
-                data: circuits,
+                data: circuits.iter().map(CircuitResponse::from).collect(),
                 paging: get_response_paging_info(limit, offset, &link, total_count),
             }))
         }
@@ -168,7 +158,7 @@ mod tests {
 
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
-        Roster, RouteType, ServiceDefinition, SplinterState,
+        RouteType, ServiceDefinition, SplinterState,
     };
     use crate::rest_api::{
         paging::Paging, RestApiBuilder, RestApiServerError, RestApiShutdownHandle,
@@ -190,7 +180,10 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_1(), get_circuit_2()]);
+        assert_eq!(
+            circuits.data,
+            vec![get_circuit_1().into(), get_circuit_2().into()]
+        );
         assert_eq!(
             circuits.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/circuits?")
@@ -212,7 +205,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_1()]);
+        assert_eq!(circuits.data, vec![get_circuit_1().into()]);
         let link = format!("/admin/circuits?filter=node_1&");
         assert_eq!(
             circuits.paging,
@@ -235,7 +228,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_1()]);
+        assert_eq!(circuits.data, vec![get_circuit_1().into()]);
         assert_eq!(
             circuits.paging,
             create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/circuits?")
@@ -257,7 +250,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_2()]);
+        assert_eq!(circuits.data, vec![get_circuit_2().into()]);
         assert_eq!(
             circuits.paging,
             create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/circuits?")
@@ -292,38 +285,40 @@ mod tests {
         }
     }
 
-    fn get_circuit_1() -> CircuitResponse {
+    fn get_circuit_1() -> Circuit {
         let service_definition =
             ServiceDefinition::builder("service_1".to_string(), "type_a".to_string())
                 .with_allowed_nodes(vec!["node_1".to_string()])
                 .build();
-        CircuitResponse {
-            id: "circuit_1".to_string(),
-            auth: AuthorizationType::Trust,
-            members: vec!["node_1".to_string(), "node_2".to_string()],
-            roster: Roster::Standard(vec![service_definition]),
-            persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurability,
-            routes: RouteType::Any,
-            circuit_management_type: "circuit_1_type".to_string(),
-        }
+        Circuit::builder()
+            .with_id("circuit_1".into())
+            .with_auth(AuthorizationType::Trust)
+            .with_members(vec!["node_1".to_string(), "node_2".to_string()])
+            .with_roster(vec![service_definition])
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurability)
+            .with_routes(RouteType::Any)
+            .with_circuit_management_type("circuit_1_type".into())
+            .build()
+            .expect("Should have built a correct circuit")
     }
 
-    fn get_circuit_2() -> CircuitResponse {
+    fn get_circuit_2() -> Circuit {
         let service_definition =
             ServiceDefinition::builder("service_2".to_string(), "other_type".to_string())
                 .with_allowed_nodes(vec!["node_3".to_string()])
                 .build();
-        CircuitResponse {
-            id: "circuit_2".to_string(),
-            auth: AuthorizationType::Trust,
-            members: vec!["node_3".to_string(), "node_4".to_string()],
-            roster: Roster::Standard(vec![service_definition]),
-            persistence: PersistenceType::Any,
-            durability: DurabilityType::NoDurability,
-            routes: RouteType::Any,
-            circuit_management_type: "circuit_2_type".to_string(),
-        }
+        Circuit::builder()
+            .with_id("circuit_2".into())
+            .with_auth(AuthorizationType::Trust)
+            .with_members(vec!["node_3".to_string(), "node_4".to_string()])
+            .with_roster(vec![service_definition])
+            .with_persistence(PersistenceType::Any)
+            .with_durability(DurabilityType::NoDurability)
+            .with_routes(RouteType::Any)
+            .with_circuit_management_type("circuit_2_type".into())
+            .build()
+            .expect("Should have built a correct circuit")
     }
 
     fn setup_splinter_state() -> SplinterState {
@@ -333,46 +328,12 @@ mod tests {
     }
 
     fn filled_splinter_state() -> SplinterState {
-        let service_definition_1 =
-            ServiceDefinition::builder("service_1".to_string(), "type_a".to_string())
-                .with_allowed_nodes(vec!["node_1".to_string()])
-                .build();
-
-        let service_definition_2 =
-            ServiceDefinition::builder("service_2".to_string(), "other_type".to_string())
-                .with_allowed_nodes(vec!["node_3".to_string()])
-                .build();
-
-        let circuit_1 = Circuit::builder()
-            .with_id("circuit_1".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["node_1".to_string(), "node_2".to_string()])
-            .with_roster(vec![service_definition_1])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurability)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("circuit_1_type".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
-        let circuit_2 = Circuit::builder()
-            .with_id("circuit_2".into())
-            .with_auth(AuthorizationType::Trust)
-            .with_members(vec!["node_3".to_string(), "node_4".to_string()])
-            .with_roster(vec![service_definition_2])
-            .with_persistence(PersistenceType::Any)
-            .with_durability(DurabilityType::NoDurability)
-            .with_routes(RouteType::Any)
-            .with_circuit_management_type("circuit_2_type".into())
-            .build()
-            .expect("Should have built a correct circuit");
-
         let mut splinter_state = setup_splinter_state();
         splinter_state
-            .add_circuit("circuit_1".into(), circuit_1)
+            .add_circuit("circuit_1".into(), get_circuit_1())
             .expect("Unable to add circuit_1");
         splinter_state
-            .add_circuit("circuit_2".into(), circuit_2)
+            .add_circuit("circuit_2".into(), get_circuit_2())
             .expect("Unable to add circuit_2");
 
         splinter_state
