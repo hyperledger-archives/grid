@@ -13,10 +13,10 @@
 // limitations under the License.
 
 mod frame;
-mod raw;
+mod tcp;
 mod tls;
 
-pub use raw::TcpTransport;
+pub use tcp::TcpTransport;
 pub use tls::{TlsConnection, TlsInitError, TlsTransport};
 
 #[cfg(test)]
