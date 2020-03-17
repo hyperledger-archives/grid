@@ -36,6 +36,8 @@ services:
                 -d /key_registry \
                 --force
             fi
+            # group 101 is "splinterd" in the splinterd images
+            chown root:101 /key_registry/*
           "
 
     db-acme:
