@@ -86,7 +86,7 @@ impl Transport for TcpTransport {
     }
 }
 
-pub struct TcpListener {
+struct TcpListener {
     listener: StdTcpListener,
 }
 
@@ -116,7 +116,7 @@ impl Listener for TcpListener {
     }
 }
 
-pub struct TcpConnection {
+struct TcpConnection {
     frame_version: FrameVersion,
     stream: MioTcpStream,
 }
