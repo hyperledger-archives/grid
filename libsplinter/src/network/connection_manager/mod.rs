@@ -19,7 +19,7 @@ mod pacemaker;
 use std;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::sync::mpsc::{sync_channel, SyncSender};
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::time::Instant;
 
@@ -33,14 +33,13 @@ use crate::protos::network::{NetworkHeartbeat, NetworkMessage, NetworkMessageTyp
 use crate::transport::Transport;
 
 const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
-const CHANNEL_CAPACITY: usize = 15;
 const INITIAL_RETRY_FREQUENCY: u64 = 10;
 const DEFAULT_MAXIMUM_RETRY_FREQUENCY: u64 = 300;
 
 #[derive(Clone)]
 enum CmMessage {
     Shutdown,
-    Subscribe(SyncSender<ConnectionManagerNotification>),
+    Subscribe(Sender<ConnectionManagerNotification>),
     Request(CmRequest),
     SendHeartbeats,
 }
@@ -49,14 +48,14 @@ enum CmMessage {
 enum CmRequest {
     AddConnection {
         endpoint: String,
-        sender: SyncSender<Result<(), ConnectionManagerError>>,
+        sender: Sender<Result<(), ConnectionManagerError>>,
     },
     RemoveConnection {
         endpoint: String,
-        sender: SyncSender<Result<Option<String>, ConnectionManagerError>>,
+        sender: Sender<Result<Option<String>, ConnectionManagerError>>,
     },
     ListConnections {
-        sender: SyncSender<Result<Vec<String>, ConnectionManagerError>>,
+        sender: Sender<Result<Vec<String>, ConnectionManagerError>>,
     },
 }
 
@@ -68,7 +67,7 @@ where
     pacemaker: Pacemaker,
     connection_state: Option<ConnectionState<T, U>>,
     join_handle: Option<thread::JoinHandle<()>>,
-    sender: Option<SyncSender<CmMessage>>,
+    sender: Option<Sender<CmMessage>>,
     shutdown_handle: Option<ShutdownHandle>,
 }
 
@@ -104,7 +103,7 @@ where
     }
 
     pub fn start(&mut self) -> Result<Connector, ConnectionManagerError> {
-        let (sender, recv) = sync_channel(CHANNEL_CAPACITY);
+        let (sender, recv) = channel();
         let mut state = self.connection_state.take().ok_or_else(|| {
             ConnectionManagerError::StartUpError("Service has already started".into())
         })?;
@@ -179,12 +178,12 @@ where
 
 #[derive(Clone)]
 pub struct Connector {
-    sender: SyncSender<CmMessage>,
+    sender: Sender<CmMessage>,
 }
 
 impl Connector {
     pub fn request_connection(&self, endpoint: &str) -> Result<(), ConnectionManagerError> {
-        let (sender, recv) = sync_channel(1);
+        let (sender, recv) = channel();
         self.sender
             .send(CmMessage::Request(CmRequest::AddConnection {
                 sender,
@@ -216,7 +215,7 @@ impl Connector {
         &self,
         endpoint: &str,
     ) -> Result<Option<String>, ConnectionManagerError> {
-        let (sender, recv) = sync_channel(1);
+        let (sender, recv) = channel();
         self.sender
             .send(CmMessage::Request(CmRequest::RemoveConnection {
                 sender,
@@ -236,7 +235,7 @@ impl Connector {
     }
 
     pub fn subscribe(&self) -> Result<NotificationIter, ConnectionManagerError> {
-        let (send, recv) = sync_channel(CHANNEL_CAPACITY);
+        let (send, recv) = channel();
         match self.sender.send(CmMessage::Subscribe(send)) {
             Ok(()) => Ok(NotificationIter { recv }),
             Err(_) => Err(ConnectionManagerError::SendMessageError(
@@ -246,7 +245,7 @@ impl Connector {
     }
 
     pub fn list_connections(&self) -> Result<Vec<String>, ConnectionManagerError> {
-        let (sender, recv) = sync_channel(1);
+        let (sender, recv) = channel();
         self.sender
             .send(CmMessage::Request(CmRequest::ListConnections { sender }))
             .map_err(|_| {
@@ -265,7 +264,7 @@ impl Connector {
 
 #[derive(Clone)]
 pub struct ShutdownHandle {
-    sender: SyncSender<CmMessage>,
+    sender: Sender<CmMessage>,
     pacemaker_shutdown_handle: pacemaker::ShutdownHandle,
 }
 
@@ -368,7 +367,7 @@ where
     fn reconnect(
         &mut self,
         endpoint: &str,
-        subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+        subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
     ) -> Result<(), ConnectionManagerError> {
         let mut meta = if let Some(meta) = self.connections.get_mut(endpoint) {
             meta.clone()
@@ -459,7 +458,7 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
 }
 
 fn notify_subscribers(
-    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
     notification: ConnectionManagerNotification,
 ) {
     subscribers.retain(|sender| sender.send(notification.clone()).is_ok());
@@ -467,7 +466,7 @@ fn notify_subscribers(
 
 fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     state: &mut ConnectionState<T, U>,
-    subscribers: &mut Vec<SyncSender<ConnectionManagerNotification>>,
+    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
 ) {
     let heartbeat_message = match create_heartbeat() {
         Ok(h) => h,
@@ -780,7 +779,7 @@ pub mod tests {
     ///
     /// That the total number of notifications sent equals 5
     fn test_notifications_handler_iterator() {
-        let (send, recv) = sync_channel(2);
+        let (send, recv) = channel();
 
         let nh = NotificationIter { recv };
 
