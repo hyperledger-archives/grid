@@ -58,7 +58,7 @@ pub fn make_user_routes(
     rest_config: Arc<BiomeRestConfig>,
     secret_manager: Arc<dyn SecretManager>,
     credentials_store: Arc<SplinterCredentialsStore>,
-    user_store: Arc<SplinterUserStore>,
+    user_store: SplinterUserStore,
 ) -> Resource {
     let credentials_store_modify = credentials_store.clone();
     let credentials_store_fetch = credentials_store;
@@ -138,7 +138,7 @@ fn add_modify_user_method(
     request: HttpRequest,
     payload: Payload,
     credentials_store: Arc<SplinterCredentialsStore>,
-    user_store: Arc<SplinterUserStore>,
+    mut user_store: SplinterUserStore,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let user_id = if let Some(t) = request.match_info().get("id") {
         t.to_string()
@@ -267,7 +267,7 @@ fn add_delete_user_method(
     request: HttpRequest,
     rest_config: Arc<BiomeRestConfig>,
     secret_manager: Arc<dyn SecretManager>,
-    user_store: Arc<SplinterUserStore>,
+    mut user_store: SplinterUserStore,
 ) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
     let user_id = if let Some(t) = request.match_info().get("id") {
         t.to_string()

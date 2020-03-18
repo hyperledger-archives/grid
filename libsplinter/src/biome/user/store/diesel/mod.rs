@@ -24,6 +24,7 @@ use operations::update_user::UserStoreUpdateUserOperation as _;
 use operations::UserStoreOperations;
 
 /// Manages creating, updating and fetching SplinterUser from the databae
+#[derive(Clone)]
 pub struct SplinterUserStore {
     connection_pool: ConnectionPool,
 }

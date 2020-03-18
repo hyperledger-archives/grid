@@ -56,7 +56,7 @@ impl From<UserModel> for SplinterUser {
 
 /// Defines methods for CRUD operations and fetching and listing users
 /// without defining a storage strategy
-pub trait UserStore<T> {
+pub trait UserStore<T>: Send + Sync {
     /// Adds a user to the underlying storage
     ///
     /// # Arguments
