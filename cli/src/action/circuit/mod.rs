@@ -16,13 +16,19 @@ mod api;
 mod builder;
 pub mod defaults;
 mod payload;
+#[cfg(feature = "circuit-template")]
+pub mod template;
 
+#[cfg(feature = "circuit-template")]
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
 use clap::ArgMatches;
 
 use crate::error::CliError;
+#[cfg(feature = "circuit-template")]
+use crate::template::CircuitTemplate;
 
 use super::Action;
 use crate::action::DEFAULT_ENDPOINT;
@@ -59,15 +65,38 @@ impl Action for CircuitCreateAction {
             }
         }
 
-        let services = match args.values_of("service") {
-            Some(services) => services,
-            None => return Err(CliError::ActionError("Service is required".into())),
-        };
+        #[cfg(feature = "circuit-template")]
+        {
+            if let Some(template_name) = args.value_of("template") {
+                let mut template = CircuitTemplate::load(template_name)?;
 
-        for service in services {
-            let (service_id, allowed_nodes) = parse_service(service)?;
-            builder.add_service(&service_id, &allowed_nodes);
+                let user_args = match args.values_of("template_arg") {
+                    Some(template_args) => {
+                        parse_template_args(&template_args.collect::<Vec<&str>>())?
+                    }
+                    None => HashMap::new(),
+                };
+                template.add_arguments(&user_args);
+                template.set_nodes(&builder.get_node_ids());
+                let template_builders = template.into_builders()?;
+                builder.add_services(&template_builders.service_builders());
+                builder.set_create_circuit_builder(&template_builders.create_circuit_builder());
+            }
         }
+
+        match args.values_of("service") {
+            Some(services) => {
+                for service in services {
+                    let (service_id, allowed_nodes) = parse_service(service)?;
+                    builder.add_service(&service_id, &allowed_nodes);
+                }
+            }
+            None => {
+                if args.value_of("template").is_none() {
+                    return Err(CliError::ActionError("Service is required".into()));
+                }
+            }
+        };
 
         if let Some(service_arguments) = args.values_of("service_argument") {
             for service_argument in service_arguments {
@@ -142,6 +171,16 @@ impl Action for CircuitCreateAction {
         let client = api::SplinterRestClient::new(url);
         let requester_node = client.fetch_node_id()?;
         let private_key_hex = read_private_key(key)?;
+
+        if args.is_present("dry_run") {
+            println!(
+                "\n{}",
+                serde_yaml::to_string(&create_circuit).map_err(|err| CliError::ActionError(
+                    format!("Cannot format circuit into yaml: {}", err)
+                ))?
+            );
+            return Ok(());
+        }
 
         let signed_payload =
             payload::make_signed_payload(&requester_node, &private_key_hex, create_circuit)?;
@@ -223,6 +262,43 @@ fn parse_application_metadata_json(metadata: &str) -> Result<String, CliError> {
     }
 
     Ok(format!("\"{}\":{}", key, value))
+}
+
+#[cfg(feature = "circuit-template")]
+fn parse_template_args(args: &[&str]) -> Result<HashMap<String, String>, CliError> {
+    args.iter().try_fold(HashMap::new(), |mut acc, arg| {
+        let mut iter = arg.split('=');
+        let key = iter
+            .next()
+            .ok_or_else(|| {
+                CliError::ActionError(format!(
+                    "Invalid template argument. Expected value in form <key>=<value> found {}",
+                    arg
+                ))
+            })?
+            .to_string();
+
+        let value = iter
+            .next()
+            .ok_or_else(|| {
+                CliError::ActionError(format!(
+                    "Invalid template argument. Expected value in form <key>=<value> found {}",
+                    arg
+                ))
+            })?
+            .to_string();
+
+        if key.is_empty() || value.is_empty() {
+            return Err(CliError::ActionError(format!(
+                "Invalid template argument. Key or value cannot be empty.\
+                 Expected value in form <key>=<value> found {}",
+                arg
+            )));
+        }
+
+        acc.insert(key, value);
+        Ok(acc)
+    })
 }
 
 fn parse_service_argument(service_argument: &str) -> Result<(String, (String, String)), CliError> {

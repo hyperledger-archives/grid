@@ -17,13 +17,97 @@ mod rules;
 mod yaml_parser;
 
 use std::convert::TryFrom;
+use std::path::Path;
 
 pub use error::CircuitTemplateError;
 
-use rules::{RuleArgument, Rules};
+pub use rules::RuleArgument;
+use rules::Rules;
+
 use yaml_parser::{v1, CircuitTemplate};
 
 pub(self) use crate::admin::messages::{CreateCircuitBuilder, SplinterServiceBuilder};
+
+pub const DEFAULT_TEMPLATE_DIR: &str = "/usr/share/splinter/circuit-templates";
+
+pub struct CircuitTemplateManager {
+    path: String,
+}
+
+impl Default for CircuitTemplateManager {
+    fn default() -> Self {
+        CircuitTemplateManager {
+            path: DEFAULT_TEMPLATE_DIR.to_string(),
+        }
+    }
+}
+
+impl CircuitTemplateManager {
+    pub fn new(path: &str) -> Result<CircuitTemplateManager, CircuitTemplateError> {
+        if !Path::new(&path).is_dir() {
+            Err(CircuitTemplateError::new(&format!(
+                "{} is not a valid directory",
+                path
+            )))
+        } else {
+            Ok(CircuitTemplateManager {
+                path: path.to_string(),
+            })
+        }
+    }
+
+    /// Loads a YAML circuit template file into a CircuitCreateTemplate
+    pub fn load(&self, name: &str) -> Result<CircuitCreateTemplate, CircuitTemplateError> {
+        let path = format!("{}/{}.yaml", self.path, name);
+        CircuitCreateTemplate::from_yaml_file(&path)
+    }
+
+    /// Loads a YAML circuit template file into a YAML string
+    pub fn load_raw_yaml(&self, name: &str) -> Result<String, CircuitTemplateError> {
+        let path = format!("{}/{}.yaml", self.path, name);
+        let template = CircuitTemplate::load_from_file(&path)?;
+        match template {
+            CircuitTemplate::V1(template) => serde_yaml::to_string(&template).map_err(|err| {
+                CircuitTemplateError::new_with_source(
+                    "Failed to load template to yaml string",
+                    Box::new(err),
+                )
+            }),
+        }
+    }
+
+    pub fn list_available_templates(&self) -> Result<Vec<String>, CircuitTemplateError> {
+        let path = Path::new(&self.path);
+
+        path.read_dir()
+            .map_err(|err| {
+                CircuitTemplateError::new_with_source(
+                    &format!("Failed to read files in {}", self.path),
+                    Box::new(err),
+                )
+            })?
+            .map(|entry| {
+                let file = entry.map_err(|err| {
+                    CircuitTemplateError::new_with_source(
+                        &format!("Failed to read file in {}", self.path),
+                        Box::new(err),
+                    )
+                })?;
+                Ok(file
+                    .file_name()
+                    .into_string()
+                    .map_err(|_| {
+                        CircuitTemplateError::new(&format!(
+                            "Failed to read file name {}",
+                            self.path
+                        ))
+                    })?
+                    .trim_end_matches(".yaml")
+                    .to_string())
+            })
+            .collect::<Result<_, CircuitTemplateError>>()
+    }
+}
 
 pub struct CircuitCreateTemplate {
     version: String,
@@ -158,7 +242,7 @@ rules:
         service-args:
         - key: 'admin-keys'
           value: [$(a:ADMIN_KEYS)]
-        - key: 'peer-services'
+        - key: 'peer_services'
           value: '$(r:ALL_OTHER_SERVICES)'
         first-service: 'a000'
     set-metadata:
@@ -211,7 +295,7 @@ rules:
         .expect("Failed to parse metadata to string");
         assert_eq!(
             metadata,
-            "{[\"scabbard_admin_keys\":[\"signer_key\"],\"alias\":\"my gameroom\"]}"
+            "{\"scabbard_admin_keys\":[\"signer_key\"],\"alias\":\"my gameroom\"}"
         );
 
         let service_builders = builders.service_builders();
@@ -234,7 +318,7 @@ rules:
             .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
         assert!(alpha_service_args
             .iter()
-            .any(|(key, value)| key == "peer-services" && value == "[\"a001\"]"));
+            .any(|(key, value)| key == "peer_services" && value == "[\"a001\"]"));
 
         let service_beta_node = service_builders
             .iter()
@@ -255,7 +339,7 @@ rules:
             .any(|(key, value)| key == "admin-keys" && value == "[\"signer_key\"]"));
         assert!(beta_service_args
             .iter()
-            .any(|(key, value)| key == "peer-services" && value == "[\"a000\"]"));
+            .any(|(key, value)| key == "peer_services" && value == "[\"a000\"]"));
     }
 
     fn get_file_path(mut temp_dir: PathBuf) -> String {

@@ -60,7 +60,7 @@ impl SetMetadata {
                     })
                     .collect::<Result<Vec<String>, CircuitTemplateError>>()?;
 
-                let json_metadata = format!("{{[{}]}}", metadata.join(","));
+                let json_metadata = format!("{{{}}}", metadata.join(","));
 
                 Ok(builder.with_application_metadata(&json_metadata.as_bytes()))
             }

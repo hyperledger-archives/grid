@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CircuitCreateTemplate {
     version: String,
     args: Vec<RuleArgument>,
@@ -33,12 +33,15 @@ impl CircuitCreateTemplate {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RuleArgument {
     name: String,
     required: bool,
     #[serde(rename = "default")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     default_value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
 }
 
 impl RuleArgument {
@@ -53,13 +56,20 @@ impl RuleArgument {
     pub fn default_value(&self) -> Option<&String> {
         self.default_value.as_ref()
     }
+
+    pub fn description(&self) -> Option<&String> {
+        self.description.as_ref()
+    }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Rules {
+    #[serde(skip_serializing_if = "Option::is_none")]
     set_management_type: Option<CircuitManagement>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     create_services: Option<CreateServices>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     set_metadata: Option<SetMetadata>,
 }
 
@@ -77,7 +87,7 @@ impl Rules {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct CircuitManagement {
     management_type: String,
@@ -89,7 +99,7 @@ impl CircuitManagement {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateServices {
     service_type: String,
@@ -111,7 +121,7 @@ impl CreateServices {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceArgument {
     key: String,
     value: Value,
@@ -127,7 +137,7 @@ impl ServiceArgument {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SetMetadata {
     #[serde(flatten)]
     metadata: Metadata,
@@ -139,14 +149,14 @@ impl SetMetadata {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "encoding")]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub enum Metadata {
     Json { metadata: Vec<JsonMetadata> },
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JsonMetadata {
     key: String,
     value: Value,
@@ -162,7 +172,7 @@ impl JsonMetadata {
     }
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
     Single(String),

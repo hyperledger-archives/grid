@@ -20,7 +20,7 @@ use super::{get_argument_value, is_arg, RuleArgument, Value};
 
 const ALL_OTHER_SERVICES: &str = "$(r:ALL_OTHER_SERVICES)";
 const NODES_ARG: &str = "$(a:NODES)";
-const PEER_SERVICES_ARG: &str = "peer-services";
+const PEER_SERVICES_ARG: &str = "peer_services";
 
 pub(super) struct CreateServices {
     service_type: String,
@@ -288,6 +288,7 @@ mod test {
             name: "admin_keys".to_string(),
             required: false,
             default_value: Some("$(a:SIGNER_PUB_KEY)".to_string()),
+            description: None,
             user_value: None,
         };
 
@@ -295,6 +296,7 @@ mod test {
             name: "nodes".to_string(),
             required: true,
             default_value: None,
+            description: None,
             user_value: Some("alpha-node-000,beta-node-000".to_string()),
         };
 
@@ -302,6 +304,7 @@ mod test {
             name: "signer_pub_key".to_string(),
             required: false,
             default_value: None,
+            description: None,
             user_value: Some("signer_key".to_string()),
         };
 

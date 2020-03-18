@@ -52,6 +52,7 @@ stable = ["default"]
 
 experimental = [
     "circuit",
+    "circuit-template",
     "health",
     "database",
     "database-migrate-biome",
@@ -62,7 +63,8 @@ experimental = [
 ]
 
 circuit = ["reqwest", "serde_json", "splinter/sawtooth-signing-compat", "dirs"]
-circuit-auth-type = []
+circuit-auth-type = ["circuit"]
+circuit-template = ["splinter/circuit-template", "circuit"]
 database-migrate-biome = [
     "splinter/biome-credentials",
     "splinter/biome-key-management",
@@ -86,5 +88,6 @@ depends = "$auto"
 maintainer-scripts = "packaging/ubuntu"
 assets = [
     ["packaging/man/*", "/usr/share/man/man1", "644"],
-    ["target/release/splinter", "/usr/bin/splinter", "755"]
+    ["target/release/splinter", "/usr/bin/splinter", "755"],
+    ["packaging/scabbard_circuit_template.yaml", "/usr/share/splinter/circuit-templates/scabbard.yaml", "644"]
 ]
