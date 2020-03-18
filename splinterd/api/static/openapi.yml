@@ -1505,53 +1505,39 @@ components:
                       type: array
                       items:
                         type: integer
+
     Circuit:
       type: object
       properties:
-        circuit_id:
+        id:
           type: string
-          example: alpha
-        authorization_type:
-          type: string
-          example: Trust
-        persistence:
-          type: string
-          example: Any
-        routes:
-          type: string
-          example: Any
-        circuit_management_type:
-          type: string
-          example: Gameroom
+          example: 01234-ABCDE
         members:
+          description: Node IDs of the circuit's members
           type: array
           items:
-            $ref: '#/components/schemas/CircuitMember'
+            type: string
+            example: alpha-node-000
         roster:
+          description: All services defined for the circuit
           type: array
           items:
             $ref: '#/components/schemas/CircuitService'
-
-    CircuitMember:
-      type: object
-      properties:
-        node_id:
+        management_type:
           type: string
-          example: node-000
-        endpoint:
-          type: string
-          example: tls://127.0.0.1:8080
+          example: gameroom
 
     CircuitService:
       type: object
       properties:
         service_id:
           type: string
-          example: service-a
+          example: abcd
         service_type:
           type: string
           example: scabbard
         allowed_nodes:
+          description: IDs of the nodes that are allowed to run this service
           type: array
           items:
             type: string
@@ -1560,56 +1546,104 @@ components:
       type: object
       properties:
         proposal_type:
-          type: object
-          description: The type of circuit proposal
-          properties:
-            statusType:
-              type: string
-              enum:
-                - Create
-                - UpdateRoster
-                - AddNode
-                - RemoveNode
-                - Destroy
+          type: string
+          enum:
+            - Create
+            - UpdateRoster
+            - AddNode
+            - RemoveNode
+            - Destroy
         circuit_id:
           type: string
-          example: "circuit-000"
-        ciircuit_hash:
+          example: 01234-ABCDE
+        circuit_hash:
           type: string
-          example: "8ce518770b962429a953b10220905ac9adf86a855f0b085695f444edf991b8ca"
-        circuit_proposal:
+          example: 8ce518770b962429a953b10220905ac9adf86a855f0b085695f444edf991b8ca
+        circuit:
             type: object
             properties:
-              data:
-                $ref: "#/components/schemas/Circuit"
+              circuit_id:
+                type: string
+                example: 01234-ABCDE
+              members:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProposedCircuitMember'
+              roster:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProposedCircuitService'
+              management_type:
+                type: string
+                example: gameroom
+              application_metadata:
+                type: string
+                format: binary
+              comments:
+                description: Arbitrary comments to describe the proposed circuit
+                type: string
         votes:
           type: array
           items:
-            $ref: '#/components/schemas/VoteRecord'
+            $ref: '#/components/schemas/Vote'
         requester:
           type: string
-          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+          example: 026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118
         requester_node_id:
           type: string
-          example: "node-000"
+          example: alpha-node-000
 
-    VoteRecord:
+    ProposedCircuitMember:
+      type: object
+      properties:
+        node_id:
+          type: string
+          example: alpha-node-000
+        endpoint:
+          type: string
+          example: tls://12.0.0.123:8431
+
+    ProposedCircuitService:
+      type: object
+      properties:
+        service_id:
+          type: string
+          example: abcd
+        service_type:
+          type: string
+          example: scabbard
+        allowed_nodes:
+          description: List of node IDs that are allowed to run this service
+          type: array
+          items:
+            type: string
+            example: alpha-node-000
+        arguments:
+          description: |-
+            Arbitrary arguments to be passed to this service on initialization,
+            formatted as an array of (key, value) pairs
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+            minItems: 2
+            maxItems: 2
+
+    Vote:
       type: object
       properties:
         public_key:
           type: string
-          example: "026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118"
+          example: 026c889058c2d22558ead2c61b321634b74e705c42f890e6b7bc2c80abb4713118
         vote:
-          type: object
-          properties:
-            voteType:
-              type: string
-              enum:
-                - Accept
-                - Reject
+          type: string
+          enum:
+            - Accept
+            - Reject
         voter_node_id:
           type: string
-          example: "node-000"
+          example: alpha-node-000
 
     Paging:
       type: object
