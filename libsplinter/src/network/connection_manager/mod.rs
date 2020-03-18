@@ -36,7 +36,6 @@ const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const INITIAL_RETRY_FREQUENCY: u64 = 10;
 const DEFAULT_MAXIMUM_RETRY_FREQUENCY: u64 = 300;
 
-#[derive(Clone)]
 enum CmMessage {
     Shutdown,
     Subscribe(Sender<ConnectionManagerNotification>),
@@ -44,7 +43,6 @@ enum CmMessage {
     SendHeartbeats,
 }
 
-#[derive(Clone)]
 enum CmRequest {
     AddConnection {
         endpoint: String,
@@ -134,7 +132,7 @@ where
             })?;
 
         self.pacemaker
-            .start(CmMessage::SendHeartbeats, sender.clone())?;
+            .start(sender.clone(), || CmMessage::SendHeartbeats)?;
         self.join_handle = Some(join_handle);
         self.shutdown_handle = Some(ShutdownHandle {
             sender: sender.clone(),
