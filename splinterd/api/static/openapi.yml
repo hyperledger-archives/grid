@@ -50,8 +50,8 @@ paths:
       description: |
         This endpoint can be used to view all of the circuit proposals that the
         node is a proposed member of. If a circuit management type is provided
-        via the "filter" query parameter, only circuit proposals that have the
-        given circuit management type will be returned; if no filter is
+        via the "management_type" query parameter, only circuit proposals that
+        have the given circuit management type will be returned; if no filter is
         provided, all of the node's circuit proposals will be returned.
       tags:
         - Proposals
@@ -71,9 +71,11 @@ paths:
           schema:
             type: integer
             default: 100
-        - name: filter
+        - name: management_type
           in: query
-          description: Circuit management type of the proposed circuits
+          description: |-
+            Only show proposed circuits matching the given circuit management
+            type
           required: false
           schema:
             type: string

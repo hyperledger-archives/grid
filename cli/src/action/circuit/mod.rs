@@ -564,18 +564,22 @@ impl Action for CircuitProposalsAction {
 
         let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
 
-        let filter = args.value_of("management_type");
+        let management_type_filter = args.value_of("management_type");
 
         let format = args.value_of("format").unwrap_or("human");
 
-        list_proposals(url, filter, format)
+        list_proposals(url, management_type_filter, format)
     }
 }
 
-fn list_proposals(url: &str, filter: Option<&str>, format: &str) -> Result<(), CliError> {
+fn list_proposals(
+    url: &str,
+    management_type_filter: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
     let client = api::SplinterRestClient::new(url);
 
-    let proposals = client.list_proposals(filter)?;
+    let proposals = client.list_proposals(management_type_filter)?;
     let mut data = Vec::new();
     data.push(vec![
         "ID".to_string(),

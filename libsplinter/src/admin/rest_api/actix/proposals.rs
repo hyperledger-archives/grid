@@ -88,18 +88,15 @@ fn list_proposals<PS: ProposalStore + 'static>(
 
     let mut link = req.uri().path().to_string();
 
-    let filters = match query.get("filter") {
-        Some(value) => {
-            link.push_str(&format!("?filter={}&", value));
-            Some(value.to_string())
-        }
-        None => None,
-    };
+    let management_type_filter = query.get("management_type").map(|management_type| {
+        link.push_str(&format!("?management_type={}&", management_type));
+        management_type.to_string()
+    });
 
     Box::new(query_list_proposals(
         proposal_store,
         link,
-        filters,
+        management_type_filter,
         Some(offset),
         Some(limit),
     ))
@@ -108,7 +105,7 @@ fn list_proposals<PS: ProposalStore + 'static>(
 fn query_list_proposals<PS: ProposalStore + 'static>(
     proposal_store: web::Data<PS>,
     link: String,
-    filters: Option<String>,
+    management_type_filter: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -119,9 +116,11 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
         let offset_value = offset.unwrap_or(0);
         let limit_value = limit.unwrap_or_else(|| proposals.total());
         if proposals.total() != 0 {
-            if let Some(filter) = filters {
+            if let Some(management_type_filter) = management_type_filter {
                 let filtered_proposals: Vec<CircuitProposal> = proposals
-                    .filter(|proposal| proposal.circuit.circuit_management_type == filter)
+                    .filter(|proposal| {
+                        proposal.circuit.circuit_management_type == management_type_filter
+                    })
                     .collect();
 
                 let total_count = filtered_proposals.len();
@@ -208,13 +207,14 @@ mod tests {
     }
 
     #[test]
-    /// Tests a GET /admin/proposals request with filter returns the expected proposal.
-    fn test_list_proposals_with_filters_ok() {
+    /// Tests a GET /admin/proposals request with the `management_type` filter returns the expected
+    /// proposal.
+    fn test_list_proposals_with_management_type_ok() {
         let (_shutdown_handle, _join_handle, bind_url) =
             run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
 
         let url = Url::parse(&format!(
-            "http://{}/admin/proposals?filter=mgmt_type_1",
+            "http://{}/admin/proposals?management_type=mgmt_type_1",
             bind_url
         ))
         .expect("Failed to parse URL");
@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(proposals.data, vec![get_proposal_1().into()]);
-        let link = format!("/admin/proposals?filter=mgmt_type_1&");
+        let link = format!("/admin/proposals?management_type=mgmt_type_1&");
         assert_eq!(
             proposals.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 1, &link)

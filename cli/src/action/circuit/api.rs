@@ -152,10 +152,13 @@ impl<'a> SplinterRestClient<'a> {
             })
     }
 
-    pub fn list_proposals(&self, filter: Option<&str>) -> Result<ProposalListSlice, CliError> {
+    pub fn list_proposals(
+        &self,
+        management_type_filter: Option<&str>,
+    ) -> Result<ProposalListSlice, CliError> {
         let mut request = format!("{}/admin/proposals", self.url);
-        if let Some(filter) = filter {
-            request = format!("{}?filter={}", &request, &filter);
+        if let Some(management_type) = management_type_filter {
+            request = format!("{}?management_type={}", &request, &management_type);
         }
 
         Client::new()
