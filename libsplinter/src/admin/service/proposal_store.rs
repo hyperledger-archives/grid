@@ -15,18 +15,15 @@
 use std::sync::{Arc, Mutex};
 
 use super::messages::CircuitProposal;
-#[cfg(feature = "proposal-read")]
 use super::open_proposals::ProposalIter;
 use super::shared::AdminServiceShared;
 
-#[cfg(feature = "proposal-read")]
 pub trait ProposalStore: Send + Sync + Clone {
     fn proposals(&self) -> Result<ProposalIter, ProposalStoreError>;
 
     fn proposal(&self, circuit_id: &str) -> Result<Option<CircuitProposal>, ProposalStoreError>;
 }
 
-#[cfg(feature = "proposal-read")]
 #[derive(Debug)]
 pub struct ProposalStoreError {
     context: String,
@@ -82,7 +79,6 @@ impl AdminServiceProposals {
     }
 }
 
-#[cfg(feature = "proposal-read")]
 impl ProposalStore for AdminServiceProposals {
     fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
         Ok(self
