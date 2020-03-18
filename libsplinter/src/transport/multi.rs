@@ -67,14 +67,14 @@ mod tests {
 
     use super::*;
     use crate::transport::{
-        raw, tests, tls::tests::create_test_tls_transport, RecvError, SendError,
+        socket, socket::tests::create_test_tls_transport, tests, RecvError, SendError,
     };
 
     /// Test that the MultiTransport will accept all possible connect/bind strings for the
     /// underlying transports.
     #[test]
     fn test_accepts() {
-        let raw_transport = Box::new(raw::RawTransport::default());
+        let raw_transport = Box::new(socket::TcpTransport::default());
         let tls_transport = Box::new(create_test_tls_transport(true));
 
         let transport = MultiTransport::new(vec![raw_transport, tls_transport]);
@@ -88,7 +88,7 @@ mod tests {
     /// transport tests.
     #[test]
     fn test_transport_raw_default_listener() {
-        let raw_transport = Box::new(raw::RawTransport::default());
+        let raw_transport = Box::new(socket::TcpTransport::default());
         let tls_transport = Box::new(create_test_tls_transport(true));
 
         let transport = MultiTransport::new(vec![raw_transport, tls_transport]);
@@ -99,7 +99,7 @@ mod tests {
     /// transport tests.
     #[test]
     fn test_transport_tls_default_listener() {
-        let raw_transport = Box::new(raw::RawTransport::default());
+        let raw_transport = Box::new(socket::TcpTransport::default());
         let tls_transport = Box::new(create_test_tls_transport(true));
 
         let transport = MultiTransport::new(vec![tls_transport, raw_transport]);
@@ -110,7 +110,7 @@ mod tests {
     /// Expect that a protocol error should be returned.
     #[test]
     fn test_invalid_protocol() {
-        let raw_transport = Box::new(raw::RawTransport::default());
+        let raw_transport = Box::new(socket::TcpTransport::default());
         let tls_transport = Box::new(create_test_tls_transport(true));
 
         let mut transport = MultiTransport::new(vec![raw_transport, tls_transport]);
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn test_outbound_tls_only() {
         test_outgoing_connections(create_test_tls_transport(true), "127.0.0.1:0", {
-            let raw_transport = Box::new(raw::RawTransport::default());
+            let raw_transport = Box::new(socket::TcpTransport::default());
             let tls_transport = Box::new(create_test_tls_transport(true));
 
             MultiTransport::new(vec![raw_transport, tls_transport])
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_outbound_tls_listener() {
         test_outgoing_connections(create_test_tls_transport(true), "127.0.0.1:0", {
-            let raw_transport = Box::new(raw::RawTransport::default());
+            let raw_transport = Box::new(socket::TcpTransport::default());
             let tls_transport = Box::new(create_test_tls_transport(true));
 
             MultiTransport::new(vec![tls_transport, raw_transport])
@@ -178,8 +178,8 @@ mod tests {
     /// an outbound-only transport.
     #[test]
     fn test_outbound_raw_only() {
-        test_outgoing_connections(raw::RawTransport::default(), "127.0.0.1:0", {
-            let raw_transport = Box::new(raw::RawTransport::default());
+        test_outgoing_connections(socket::TcpTransport::default(), "127.0.0.1:0", {
+            let raw_transport = Box::new(socket::TcpTransport::default());
             let tls_transport = Box::new(create_test_tls_transport(true));
 
             MultiTransport::new(vec![tls_transport, raw_transport])
@@ -190,8 +190,8 @@ mod tests {
     /// the listenting connection
     #[test]
     fn test_outbound_raw_listener() {
-        test_outgoing_connections(raw::RawTransport::default(), "127.0.0.1:0", {
-            let raw_transport = Box::new(raw::RawTransport::default());
+        test_outgoing_connections(socket::TcpTransport::default(), "127.0.0.1:0", {
+            let raw_transport = Box::new(socket::TcpTransport::default());
             let tls_transport = Box::new(create_test_tls_transport(true));
 
             MultiTransport::new(vec![raw_transport, tls_transport])

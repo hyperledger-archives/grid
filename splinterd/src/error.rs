@@ -16,7 +16,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
-use splinter::transport::tls::TlsInitError;
+use splinter::transport::socket::TlsInitError;
 
 use crate::config::ConfigError;
 use crate::daemon::StartError;

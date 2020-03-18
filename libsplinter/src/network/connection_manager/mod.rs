@@ -527,7 +527,7 @@ pub mod tests {
     use super::*;
     use crate::mesh::Mesh;
     use crate::transport::inproc::InprocTransport;
-    use crate::transport::raw::RawTransport;
+    use crate::transport::socket::TcpTransport;
 
     #[test]
     fn test_connection_manager_startup_and_shutdown() {
@@ -649,7 +649,7 @@ pub mod tests {
     /// Test that heartbeats are correctly sent to connections
     #[test]
     fn test_heartbeat_raw_tcp() {
-        let mut transport = Box::new(RawTransport::default());
+        let mut transport = Box::new(TcpTransport::default());
         let mut listener = transport.listen("tcp://localhost:0").unwrap();
         let endpoint = listener.endpoint();
 
@@ -687,7 +687,7 @@ pub mod tests {
 
     #[test]
     fn test_remove_connection() {
-        let mut transport = Box::new(RawTransport::default());
+        let mut transport = Box::new(TcpTransport::default());
         let mut listener = transport.listen("tcp://localhost:0").unwrap();
         let endpoint = listener.endpoint();
         let mesh = Mesh::new(512, 128);
@@ -734,7 +734,7 @@ pub mod tests {
 
     #[test]
     fn test_remove_nonexistent_connection() {
-        let mut transport = Box::new(RawTransport::default());
+        let mut transport = Box::new(TcpTransport::default());
         let mut listener = transport.listen("tcp://localhost:0").unwrap();
         let endpoint = listener.endpoint();
         let mesh = Mesh::new(512, 128);
@@ -815,7 +815,7 @@ pub mod tests {
     /// reconnect to the endpoint.
     #[test]
     fn test_reconnect_raw_tcp() {
-        let mut transport = Box::new(RawTransport::default());
+        let mut transport = Box::new(TcpTransport::default());
         let mut listener = transport
             .listen("tcp://localhost:0")
             .expect("Cannot listen for connections");

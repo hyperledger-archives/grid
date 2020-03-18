@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use splinter::{
     mesh::{Envelope, Mesh},
-    transport::{raw::RawTransport, Listener, Transport},
+    transport::{socket::TcpTransport, Listener, Transport},
 };
 
 // An example of creating a Transport and a Mesh, and doing reads and writes in a single thread.
@@ -39,7 +39,7 @@ fn main() {
     let endpoint = args.next().unwrap();
     let peers: Vec<String> = args.collect();
 
-    let mut transport = RawTransport::default();
+    let mut transport = TcpTransport::default();
     let mesh = Mesh::new(512, 128);
 
     listen(mesh.clone(), transport.listen(&endpoint).unwrap());

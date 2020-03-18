@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub use super::socket::TlsConnection;
-pub use super::socket::TlsInitError;
-pub use super::socket::TlsTransport;
+mod frame;
+mod tcp;
+mod tls;
+
+pub use tcp::TcpTransport;
+pub use tls::{TlsConnection, TlsInitError, TlsTransport};
+
+#[cfg(test)]
+pub mod tests {
+    pub use super::tls::tests::create_test_tls_transport;
+}

@@ -15,8 +15,8 @@
 use std::fs;
 use std::path::Path;
 
-use splinter::transport::raw::RawTransport;
-use splinter::transport::tls::TlsTransport;
+use splinter::transport::socket::TcpTransport;
+use splinter::transport::socket::TlsTransport;
 use splinter::transport::Transport;
 
 use crate::config::Config;
@@ -112,7 +112,7 @@ pub fn get_transport(config: &Config) -> Result<Box<dyn Transport + Send>, GetTr
 
             Ok(Box::new(transport))
         }
-        "raw" => Ok(Box::new(RawTransport::default())),
+        "raw" => Ok(Box::new(TcpTransport::default())),
         _ => Err(GetTransportError::NotSupportedError(format!(
             "Transport type {} is not supported",
             config.transport()
