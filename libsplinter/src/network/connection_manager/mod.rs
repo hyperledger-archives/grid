@@ -765,6 +765,9 @@ fn create_heartbeat() -> Result<Vec<u8>, ConnectionManagerError> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+
+    use std::sync::mpsc;
+
     use crate::mesh::Mesh;
     use crate::transport::inproc::InprocTransport;
     use crate::transport::socket::TcpTransport;
@@ -1127,6 +1130,73 @@ pub mod tests {
                     endpoint: endpoint.clone(),
                 }
         );
+        cm.shutdown_and_wait();
+    }
+
+    /// Test that an inbound connection may be added to the connection manager
+    /// This test does the following:
+    /// 1. Add an inbound connection to a connection manager
+    /// 2. Notify inbound listeners
+    /// 3. The connection can be removed by its reported remote endpoint
+    #[test]
+    fn test_inbound_connection() {
+        let mut transport = InprocTransport::default();
+        let mut listener = transport
+            .listen("inproc://test_inbound_connection")
+            .expect("Cannot listen for connections");
+
+        let mesh = Mesh::new(512, 128);
+        let mut cm = ConnectionManager::new(
+            mesh.get_life_cycle(),
+            mesh.get_sender(),
+            Box::new(transport.clone()),
+            Some(1),
+            None,
+        );
+
+        let (conn_tx, conn_rx) = mpsc::channel();
+
+        let jh = thread::spawn(move || {
+            let _connection = transport
+                .connect("inproc://test_inbound_connection")
+                .unwrap();
+
+            // block until done
+            conn_rx.recv().unwrap();
+        });
+        let connector = cm.start().expect("Unable to start ConnectionManager");
+
+        let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+
+        let connection = listener.accept().unwrap();
+        connector
+            .add_inbound_connection(connection)
+            .expect("Unable to add inbound connection");
+
+        let notification = subscriber
+            .next()
+            .expect("Cannot get message from subscriber");
+        if let ConnectionManagerNotification::InboundConnection { endpoint, .. } = notification {
+            assert_eq!("inproc://test_inbound_connection", &endpoint);
+        } else {
+            panic!("Incorrect notification received: {:?}", notification);
+        }
+
+        let connection_endpoints = connector.list_connections().unwrap();
+        assert_eq!(
+            vec!["inproc://test_inbound_connection".to_string()],
+            connection_endpoints
+        );
+
+        connector
+            .remove_connection("inproc://test_inbound_connection")
+            .unwrap();
+        let connection_endpoints = connector.list_connections().unwrap();
+        assert!(connection_endpoints.is_empty());
+
+        conn_tx.send(()).unwrap();
+        jh.join().unwrap();
+
         cm.shutdown_and_wait();
     }
 }
