@@ -16,7 +16,8 @@ use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use actix_web::{client::Client, dev::Body, http::StatusCode, web, Error, HttpResponse};
+use actix_web::{client::Client, dev::Body, error, http::StatusCode, web, Error, HttpResponse};
+use gameroom_database::{helpers, ConnectionPool};
 use splinter::node_registry::Node;
 use splinter::protocol;
 use splinter::service::scabbard::{BatchInfo, BatchStatus};
@@ -71,12 +72,38 @@ pub async fn submit_signed_payload(
 pub async fn submit_scabbard_payload(
     client: web::Data<Client>,
     splinterd_url: web::Data<String>,
+    pool: web::Data<ConnectionPool>,
     circuit_id: web::Path<String>,
     node_info: web::Data<Node>,
     signed_payload: web::Bytes,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, Error> {
-    let service_id = format!("gameroom_{}", node_info.identity);
+    let circuit_id_clone = circuit_id.clone();
+    let service_id = match web::block(move || {
+        fetch_service_id_for_gameroom_service_from_db(pool, &circuit_id_clone, &node_info.identity)
+    })
+    .await
+    {
+        Ok(service_id) => service_id,
+        Err(err) => match err {
+            error::BlockingError::Error(err) => match err {
+                RestApiResponseError::NotFound(err) => {
+                    return Ok(HttpResponse::NotFound().json(ErrorResponse::not_found(&err)));
+                }
+                _ => {
+                    return Ok(HttpResponse::BadRequest()
+                        .json(ErrorResponse::bad_request(&err.to_string())))
+                }
+            },
+            error::BlockingError::Canceled => {
+                debug!("Internal Server Error: {}", err);
+                return Ok(
+                    HttpResponse::InternalServerError().json(ErrorResponse::internal_error())
+                );
+            }
+        },
+    };
+
     let wait = query
         .get("wait")
         .map(|val| match val.as_ref() {
@@ -176,6 +203,21 @@ pub async fn submit_scabbard_payload(
             _ => Ok(HttpResponse::InternalServerError().json(ErrorResponse::internal_error())),
         },
     }
+}
+
+fn fetch_service_id_for_gameroom_service_from_db(
+    pool: web::Data<ConnectionPool>,
+    circuit_id: &str,
+    node_id: &str,
+) -> Result<String, RestApiResponseError> {
+    helpers::fetch_service_id_for_gameroom_service(&*pool.get()?, circuit_id, node_id)?.ok_or_else(
+        || {
+            RestApiResponseError::NotFound(format!(
+                "Gameroom service for circuit ID {} not found",
+                circuit_id,
+            ))
+        },
+    )
 }
 
 fn parse_link(response_bytes: &[u8]) -> Result<String, RestApiResponseError> {

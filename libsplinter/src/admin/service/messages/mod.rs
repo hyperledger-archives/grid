@@ -145,6 +145,19 @@ impl CreateCircuit {
     }
 }
 
+/// Determines if a circuit ID is valid. A valid circuit ID is an 11 character string composed of
+/// two, 5 character base62 strings joined with a '-' (example: abcDE-F0123).
+pub fn is_valid_circuit_id(circuit_id: &str) -> bool {
+    let mut split = circuit_id.splitn(2, '-');
+    let is_two_parts = split.clone().count() == 2;
+    let are_parts_valid = split.all(|part| {
+        let is_correct_len = part.len() == 5;
+        let is_base62 = part.chars().all(|c| c.is_ascii_alphanumeric());
+        is_correct_len && is_base62
+    });
+    is_two_parts && are_parts_valid
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum AuthorizationType {
     Trust,
@@ -247,6 +260,13 @@ impl SplinterService {
                 .collect(),
         })
     }
+}
+
+/// Determines if a service ID is valid. A valid service ID is a 4 character base62 string.
+pub fn is_valid_service_id(service_id: &str) -> bool {
+    let is_correct_len = service_id.len() == 4;
+    let is_base62 = service_id.chars().all(|c| c.is_ascii_alphanumeric());
+    is_correct_len && is_base62
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]

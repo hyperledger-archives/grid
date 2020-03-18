@@ -22,8 +22,7 @@ use gameroom_database::{
 use openssl::hash::{hash, MessageDigest};
 use protobuf::Message;
 use splinter::admin::messages::{
-    AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
-    SplinterService,
+    CreateCircuit, CreateCircuitBuilder, SplinterNode, SplinterServiceBuilder,
 };
 use splinter::node_registry::Node;
 use splinter::protocol;
@@ -31,7 +30,6 @@ use splinter::protos::admin::{
     CircuitManagementPayload, CircuitManagementPayload_Action as Action,
     CircuitManagementPayload_Header as Header,
 };
-use uuid::Uuid;
 
 use crate::application_metadata::ApplicationMetadata;
 use crate::rest_api::{GameroomdData, RestApiResponseError};
@@ -127,10 +125,6 @@ pub async fn propose_gameroom(
         node_id: node_info.identity.to_string(),
         endpoint: node_info.endpoint.to_string(),
     });
-    let partial_circuit_id = members.iter().fold(String::new(), |mut acc, member| {
-        acc.push_str(&format!("::{}", member.node_id));
-        acc
-    });
 
     let scabbard_admin_keys = vec![gameroomd_data.get_ref().public_key.clone()];
 
@@ -146,18 +140,21 @@ pub async fn propose_gameroom(
         },
     ));
 
+    let service_and_node_ids = members
+        .iter()
+        .enumerate()
+        .map(|(member_number, node)| (format!("gr{:02}", member_number), node.node_id.to_string()));
+
+    let all_service_ids = service_and_node_ids
+        .clone()
+        .map(|(service_id, _)| service_id);
+
     let mut roster = vec![];
-    for node in members.iter() {
+    for (service_id, node_id) in service_and_node_ids {
         let peer_services = match serde_json::to_string(
-            &members
-                .iter()
-                .filter_map(|other_node| {
-                    if other_node.node_id != node.node_id {
-                        Some(format!("gameroom_{}", other_node.node_id))
-                    } else {
-                        None
-                    }
-                })
+            &all_service_ids
+                .clone()
+                .filter(|other_service_id| other_service_id != &service_id)
                 .collect::<Vec<_>>(),
         ) {
             Ok(s) => s,
@@ -170,12 +167,19 @@ pub async fn propose_gameroom(
         let mut service_args = scabbard_args.clone();
         service_args.push(("peer_services".into(), peer_services));
 
-        roster.push(SplinterService {
-            service_id: format!("gameroom_{}", node.node_id),
-            service_type: "scabbard".to_string(),
-            allowed_nodes: vec![node.node_id.to_string()],
-            arguments: service_args,
-        });
+        match SplinterServiceBuilder::new()
+            .with_service_id(&service_id)
+            .with_service_type("scabbard")
+            .with_allowed_nodes(&[node_id])
+            .with_arguments(&service_args)
+            .build()
+        {
+            Ok(service) => roster.push(service),
+            Err(err) => {
+                debug!("Failed to build SplinterService: {}", err);
+                return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+            }
+        }
     }
 
     let application_metadata = match check_alias_uniqueness(pool, &create_gameroom.alias) {
@@ -193,20 +197,18 @@ pub async fn propose_gameroom(
         }
     };
 
-    let create_request = CreateCircuit {
-        circuit_id: format!(
-            "gameroom{}::{}",
-            partial_circuit_id,
-            Uuid::new_v4().to_string()
-        ),
-        roster,
-        members,
-        authorization_type: AuthorizationType::Trust,
-        persistence: PersistenceType::Any,
-        durability: DurabilityType::NoDurability,
-        routes: RouteType::Any,
-        circuit_management_type: "gameroom".to_string(),
-        application_metadata,
+    let create_request = match CreateCircuitBuilder::new()
+        .with_roster(&roster)
+        .with_members(&members)
+        .with_circuit_management_type("gameroom")
+        .with_application_metadata(&application_metadata)
+        .build()
+    {
+        Ok(create_request) => create_request,
+        Err(err) => {
+            debug!("Failed to build CreateCircuit: {}", err);
+            return HttpResponse::InternalServerError().json(ErrorResponse::internal_error());
+        }
     };
 
     let payload_bytes = match make_payload(create_request, node_info.identity.to_string()) {

@@ -17,8 +17,8 @@ use std::error::Error as StdError;
 use crate::base62::generate_random_base62_string;
 
 use super::{
-    AuthorizationType, CreateCircuit, DurabilityType, PersistenceType, RouteType, SplinterNode,
-    SplinterService,
+    is_valid_circuit_id, is_valid_service_id, AuthorizationType, CreateCircuit, DurabilityType,
+    PersistenceType, RouteType, SplinterNode, SplinterService,
 };
 
 #[derive(Default, Clone)]
@@ -131,24 +131,14 @@ impl CreateCircuitBuilder {
 
     pub fn build(self) -> Result<CreateCircuit, BuilderError> {
         let circuit_id = match self.circuit_id {
+            Some(circuit_id) if is_valid_circuit_id(&circuit_id) => circuit_id,
             Some(circuit_id) => {
-                let mut split = circuit_id.splitn(2, '-');
-                let is_two_parts = split.clone().count() == 2;
-                let are_parts_valid = split.all(|part| {
-                    let is_correct_len = part.len() == 5;
-                    let is_base62 = part.chars().all(|c| c.is_ascii_alphanumeric());
-                    is_correct_len && is_base62
-                });
-                if !is_two_parts || !are_parts_valid {
-                    return Err(BuilderError::InvalidField(
-                        "Unable to build CreateCircuit. Field circuit_id must be an 11 character \
-                        string composed of two, 5 character base62 strings joined with a '-' \
-                        (example: abcDE-F0123)"
-                            .to_string(),
-                    ));
-                } else {
-                    circuit_id
-                }
+                return Err(BuilderError::InvalidField(format!(
+                    "Field circuit_id is invalid ({}): must be an 11 character string \
+                     composed of two, 5 character base62 strings joined with a '-' (example: \
+                     abcDE-F0123)",
+                    circuit_id,
+                )))
             }
             None => generate_random_base62_string(5) + "-" + &generate_random_base62_string(5),
         };
@@ -274,18 +264,12 @@ impl SplinterServiceBuilder {
 
     pub fn build(self) -> Result<SplinterService, BuilderError> {
         let service_id = match self.service_id {
+            Some(service_id) if is_valid_service_id(&service_id) => service_id,
             Some(service_id) => {
-                let is_correct_len = service_id.len() == 4;
-                let is_base62 = service_id.chars().all(|c| c.is_ascii_alphanumeric());
-                if !is_correct_len || !is_base62 {
-                    return Err(BuilderError::InvalidField(
-                        "Unable to build SplinterService. Field service_id must be a 4 character \
-                         base62 string"
-                            .to_string(),
-                    ));
-                } else {
-                    service_id
-                }
+                return Err(BuilderError::InvalidField(format!(
+                    "Field service_id is invalid ({}): must be a 4 character base62 string",
+                    service_id,
+                )))
             }
             None => generate_random_base62_string(4),
         };

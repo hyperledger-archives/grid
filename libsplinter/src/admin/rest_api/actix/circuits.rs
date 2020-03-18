@@ -170,7 +170,9 @@ mod tests {
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
         Roster, RouteType, ServiceDefinition, SplinterState,
     };
-    use crate::rest_api::{paging::Paging, RestApiBuilder, RestApiShutdownHandle};
+    use crate::rest_api::{
+        paging::Paging, RestApiBuilder, RestApiServerError, RestApiShutdownHandle,
+    };
     use crate::storage::get_storage;
 
     #[test]
