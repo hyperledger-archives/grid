@@ -87,7 +87,7 @@ mod tests {
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
             ProposalType, RouteType,
         },
-        service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
+        service::proposal_store::{ProposalIter, ProposalStoreError},
     };
     use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
 

@@ -15,7 +15,6 @@
 use std::sync::{Arc, Mutex};
 
 use super::messages::CircuitProposal;
-use super::open_proposals::ProposalIter;
 use super::shared::AdminServiceShared;
 
 pub trait ProposalStore: Send + Sync + Clone {
@@ -81,11 +80,16 @@ impl AdminServiceProposals {
 
 impl ProposalStore for AdminServiceProposals {
     fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
-        Ok(self
+        let proposals = self
             .shared
             .lock()
             .map_err(|_| ProposalStoreError::new("Admin shared lock was lock poisoned"))?
-            .get_proposals())
+            .get_proposals();
+
+        let total = proposals.iter().count();
+        let iter = Box::new(proposals.into_iter().map(|(_, proposal)| proposal));
+
+        Ok(ProposalIter::new(iter, total))
     }
 
     fn proposal(&self, circuit_id: &str) -> Result<Option<CircuitProposal>, ProposalStoreError> {
@@ -105,5 +109,36 @@ impl ProposalStore for AdminServiceProposals {
                 })
             })
             .transpose()
+    }
+}
+
+/// An iterator over CircuitProposals, with a well-known count of values.
+pub struct ProposalIter {
+    inner: Box<dyn Iterator<Item = CircuitProposal>>,
+    size: usize,
+}
+
+impl ProposalIter {
+    pub fn new(iter: Box<dyn Iterator<Item = CircuitProposal>>, count: usize) -> Self {
+        Self {
+            inner: iter,
+            size: count,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.size
+    }
+}
+
+impl Iterator for ProposalIter {
+    type Item = CircuitProposal;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size, Some(self.size))
     }
 }
