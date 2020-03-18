@@ -87,7 +87,7 @@ mod tests {
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
             ProposalType, RouteType,
         },
-        service::proposal_store::{ProposalIter, ProposalStoreError},
+        service::proposal_store::{ProposalFilter, ProposalIter, ProposalStoreError},
     };
     use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
 
@@ -137,7 +137,10 @@ mod tests {
     struct MockProposalStore;
 
     impl ProposalStore for MockProposalStore {
-        fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
+        fn proposals(
+            &self,
+            _filters: Vec<ProposalFilter>,
+        ) -> Result<ProposalIter, ProposalStoreError> {
             unimplemented!()
         }
 

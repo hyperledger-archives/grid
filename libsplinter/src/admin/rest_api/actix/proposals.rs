@@ -17,8 +17,7 @@ use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
 
-use crate::admin::messages::CircuitProposal;
-use crate::admin::service::proposal_store::ProposalStore;
+use crate::admin::service::proposal_store::{ProposalFilter, ProposalStore};
 use crate::protocol;
 use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET};
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
@@ -110,40 +109,24 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
+        let mut filters = vec![];
+        if let Some(management_type) = management_type_filter {
+            filters.push(ProposalFilter::WithManagementType(management_type));
+        }
+
         let proposals = proposal_store
-            .proposals()
+            .proposals(filters)
             .map_err(|err| ProposalListError::InternalError(err.to_string()))?;
         let offset_value = offset.unwrap_or(0);
-        let limit_value = limit.unwrap_or_else(|| proposals.total());
-        if proposals.total() != 0 {
-            if let Some(management_type_filter) = management_type_filter {
-                let filtered_proposals: Vec<CircuitProposal> = proposals
-                    .filter(|proposal| {
-                        proposal.circuit.circuit_management_type == management_type_filter
-                    })
-                    .collect();
+        let total = proposals.total() as usize;
+        let limit_value = limit.unwrap_or(total);
 
-                let total_count = filtered_proposals.len();
+        let proposals = proposals
+            .skip(offset_value)
+            .take(limit_value)
+            .collect::<Vec<_>>();
 
-                let proposals_data = filtered_proposals
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect::<Vec<_>>();
-
-                Ok((proposals_data, link, limit, offset, total_count))
-            } else {
-                let total_count = proposals.total();
-                let proposals_data = proposals
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect::<Vec<_>>();
-
-                Ok((proposals_data, link, limit, offset, total_count))
-            }
-        } else {
-            Ok((vec![], link, limit, offset, proposals.total()))
-        }
+        Ok((proposals, link, limit, offset, total))
     })
     .then(|res| match res {
         Ok((proposals, link, limit, offset, total_count)) => {
@@ -175,7 +158,7 @@ mod tests {
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
             ProposalType, RouteType,
         },
-        service::proposal_store::{ProposalIter, ProposalStoreError},
+        service::proposal_store::{ProposalFilter, ProposalIter, ProposalStoreError},
     };
     use crate::rest_api::{
         paging::Paging, RestApiBuilder, RestApiServerError, RestApiShutdownHandle,
@@ -309,11 +292,23 @@ mod tests {
     struct MockProposalStore;
 
     impl ProposalStore for MockProposalStore {
-        fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
-            Ok(ProposalIter::new(
-                Box::new(vec![get_proposal_1(), get_proposal_2()].into_iter()),
-                2,
-            ))
+        fn proposals(
+            &self,
+            filters: Vec<ProposalFilter>,
+        ) -> Result<ProposalIter, ProposalStoreError> {
+            let proposals = vec![get_proposal_1(), get_proposal_2()];
+
+            let total = proposals
+                .iter()
+                .filter(|proposal| filters.iter().all(|filter| filter.matches(&proposal)))
+                .count();
+
+            let iter =
+                Box::new(proposals.into_iter().filter(move |proposal| {
+                    filters.iter().all(|filter| filter.matches(&proposal))
+                }));
+
+            Ok(ProposalIter::new(iter, total))
         }
 
         fn proposal(

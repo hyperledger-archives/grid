@@ -17,8 +17,30 @@ use std::sync::{Arc, Mutex};
 use super::messages::CircuitProposal;
 use super::shared::AdminServiceShared;
 
+/// A filter that matches on aspects of a proposal.
+///
+/// Each variant applies to a different field on the proposal or its circuit defition.
+#[derive(Debug)]
+pub enum ProposalFilter {
+    /// Matches any proposals whose circuits have the given management type.
+    WithManagementType(String),
+}
+
+impl ProposalFilter {
+    /// Returns true if the given proposal matches the filter criteria, false otherwise.
+    pub fn matches(&self, proposal: &CircuitProposal) -> bool {
+        match self {
+            ProposalFilter::WithManagementType(ref management_type) => {
+                &proposal.circuit.circuit_management_type == management_type
+            }
+        }
+    }
+}
+
 pub trait ProposalStore: Send + Sync + Clone {
-    fn proposals(&self) -> Result<ProposalIter, ProposalStoreError>;
+    /// Return an iterator over the proposals in this store. Proposal filters may optionally be
+    /// provided.
+    fn proposals(&self, filters: Vec<ProposalFilter>) -> Result<ProposalIter, ProposalStoreError>;
 
     fn proposal(&self, circuit_id: &str) -> Result<Option<CircuitProposal>, ProposalStoreError>;
 }
@@ -79,15 +101,25 @@ impl AdminServiceProposals {
 }
 
 impl ProposalStore for AdminServiceProposals {
-    fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
+    fn proposals(&self, filters: Vec<ProposalFilter>) -> Result<ProposalIter, ProposalStoreError> {
         let proposals = self
             .shared
             .lock()
             .map_err(|_| ProposalStoreError::new("Admin shared lock was lock poisoned"))?
             .get_proposals();
 
-        let total = proposals.iter().count();
-        let iter = Box::new(proposals.into_iter().map(|(_, proposal)| proposal));
+        let total = proposals
+            .iter()
+            .filter(|(_, proposal)| filters.iter().all(|filter| filter.matches(proposal)))
+            .count();
+
+        let iter = Box::new(proposals.into_iter().filter_map(move |(_, proposal)| {
+            if filters.iter().all(|filter| filter.matches(&proposal)) {
+                Some(proposal)
+            } else {
+                None
+            }
+        }));
 
         Ok(ProposalIter::new(iter, total))
     }
