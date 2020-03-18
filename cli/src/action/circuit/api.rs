@@ -11,12 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+use std::collections::BTreeMap;
 use std::fmt;
 
 use reqwest::{blocking::Client, header, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Result as JsonResult;
-use splinter::circuit::{AuthorizationType, DurabilityType, PersistenceType, Roster, RouteType};
 use splinter::protocol::ADMIN_PROTOCOL_VERSION;
 
 use crate::error::CliError;
@@ -238,37 +239,32 @@ struct ServerError {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CircuitSlice {
     pub id: String,
-    pub auth: AuthorizationType,
-    pub persistence: PersistenceType,
-    pub durability: DurabilityType,
-    pub routes: RouteType,
-    pub circuit_management_type: String,
     pub members: Vec<String>,
-    pub roster: Roster,
+    pub roster: Vec<CircuitServiceSlice>,
+    pub management_type: String,
 }
 
 impl fmt::Display for CircuitSlice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut display_string = format!(
             "Circuit: {}\n    Management Type: {}\n",
-            self.id, self.circuit_management_type
+            self.id, self.management_type
         );
 
         for member in self.members.iter() {
             display_string += &format!("\n    {}\n", member);
             for service in self.roster.iter() {
-                if service.allowed_nodes().contains(member) {
+                if service.allowed_nodes.contains(member) {
                     display_string += &format!(
                         "        Service ({}): {}\n ",
-                        service.service_type(),
-                        service.service_id()
+                        service.service_type, service.service_id
                     );
 
-                    for (key, value) in service.arguments() {
+                    for (key, value) in &service.arguments {
                         display_string += &format!("          {}:\n", key);
                         // break apart value if its a list
                         if value.starts_with('[') && value.ends_with(']') {
-                            let values: JsonResult<Vec<String>> = serde_json::from_str(value);
+                            let values: JsonResult<Vec<String>> = serde_json::from_str(&value);
                             match values {
                                 Ok(values) => {
                                     for i in values {
@@ -287,6 +283,14 @@ impl fmt::Display for CircuitSlice {
 
         write!(f, "{}", display_string)
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CircuitServiceSlice {
+    pub service_id: String,
+    pub service_type: String,
+    pub allowed_nodes: Vec<String>,
+    pub arguments: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -310,7 +314,7 @@ impl fmt::Display for ProposalSlice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut display_string = format!(
             "Proposal to create: {}\n    Management Type: {}\n",
-            self.circuit_id, self.circuit.circuit_management_type
+            self.circuit_id, self.circuit.management_type
         );
 
         for member in self.circuit.members.iter() {
@@ -364,13 +368,9 @@ impl fmt::Display for ProposalSlice {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ProposalCircuitSlice {
     pub circuit_id: String,
-    pub authorization_type: AuthorizationType,
-    pub persistence: PersistenceType,
-    pub durability: DurabilityType,
-    pub routes: RouteType,
-    pub circuit_management_type: String,
     pub members: Vec<CircuitMembers>,
     pub roster: Vec<CircuitService>,
+    pub management_type: String,
     pub comments: String,
 }
 
@@ -397,23 +397,8 @@ pub struct ProposalListSlice {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct VoteRecord {
     pub public_key: String,
-    pub vote: Vote,
+    pub vote: String,
     pub voter_node_id: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum Vote {
-    Accept,
-    Reject,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ProposalType {
-    Create,
-    UpdateRoster,
-    AddNode,
-    RemoveNode,
-    Destroy,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
