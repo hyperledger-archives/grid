@@ -64,7 +64,7 @@ pub trait UserStore<T> {
     ///  * `user` - The user to be added
     ///
     ///
-    fn add_user(&self, user: T) -> Result<(), UserStoreError>;
+    fn add_user(&mut self, user: T) -> Result<(), UserStoreError>;
 
     /// Updates a user information in the underling storage
     ///
@@ -72,7 +72,7 @@ pub trait UserStore<T> {
     ///
     ///  * `user` - The user with the updated information
     ///
-    fn update_user(&self, updated_user: T) -> Result<(), UserStoreError>;
+    fn update_user(&mut self, updated_user: T) -> Result<(), UserStoreError>;
 
     /// Removes a user from the underlying storage
     ///
@@ -80,7 +80,7 @@ pub trait UserStore<T> {
     ///
     ///  * `id` - The unique id of the user to be removed
     ///
-    fn remove_user(&self, id: &str) -> Result<(), UserStoreError>;
+    fn remove_user(&mut self, id: &str) -> Result<(), UserStoreError>;
 
     /// Fetches a user from the underlying storage
     ///

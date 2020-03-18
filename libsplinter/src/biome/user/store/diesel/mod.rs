@@ -42,15 +42,15 @@ impl SplinterUserStore {
 }
 
 impl UserStore<SplinterUser> for SplinterUserStore {
-    fn add_user(&self, user: SplinterUser) -> Result<(), UserStoreError> {
+    fn add_user(&mut self, user: SplinterUser) -> Result<(), UserStoreError> {
         UserStoreOperations::new(&*self.connection_pool.get()?).add_user(user.into())
     }
 
-    fn update_user(&self, updated_user: SplinterUser) -> Result<(), UserStoreError> {
+    fn update_user(&mut self, updated_user: SplinterUser) -> Result<(), UserStoreError> {
         UserStoreOperations::new(&*self.connection_pool.get()?).update_user(updated_user)
     }
 
-    fn remove_user(&self, id: &str) -> Result<(), UserStoreError> {
+    fn remove_user(&mut self, id: &str) -> Result<(), UserStoreError> {
         UserStoreOperations::new(&*self.connection_pool.get()?).delete_user(id)
     }
 
