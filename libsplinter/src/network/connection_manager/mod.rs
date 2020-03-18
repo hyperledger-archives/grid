@@ -359,9 +359,13 @@ where
         };
 
         self.connections.remove(endpoint);
-        self.life_cycle
-            .remove(meta.id)
-            .map_err(|err| ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err)))?;
+        // remove mesh id, this may happen before reconnection is attempted
+        self.life_cycle.remove(meta.id).map_err(|err| {
+            ConnectionManagerError::ConnectionRemovalError(format!(
+                "Cannot remove connection {} from life cycle: {}",
+                endpoint, err
+            ))
+        })?;
 
         Ok(Some(meta))
     }
@@ -381,12 +385,12 @@ where
 
         if let Ok(connection) = self.transport.connect(endpoint) {
             // remove old mesh id, this may happen before reconnection is attempted
-            if self.life_cycle.remove(meta.id).is_err() {
-                trace!(
-                    "Connection was already removed from life_cycle: {}",
-                    endpoint
-                );
-            }
+            self.life_cycle.remove(meta.id).map_err(|err| {
+                ConnectionManagerError::ConnectionRemovalError(format!(
+                    "Cannot remove connection {} from life cycle: {}",
+                    endpoint, err
+                ))
+            })?;
 
             // add new connection to mesh
             let id = self.life_cycle.add(connection).map_err(|err| {
