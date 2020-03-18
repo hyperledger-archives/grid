@@ -24,6 +24,8 @@ use super::shared::AdminServiceShared;
 pub enum ProposalFilter {
     /// Matches any proposals whose circuits have the given management type.
     WithManagementType(String),
+    /// Matches any proposals whose circuits have the given node as a member.
+    WithMember(String),
 }
 
 impl ProposalFilter {
@@ -33,6 +35,11 @@ impl ProposalFilter {
             ProposalFilter::WithManagementType(ref management_type) => {
                 &proposal.circuit.circuit_management_type == management_type
             }
+            ProposalFilter::WithMember(ref member_id) => proposal
+                .circuit
+                .members
+                .iter()
+                .any(|member| &member.node_id == member_id),
         }
     }
 }

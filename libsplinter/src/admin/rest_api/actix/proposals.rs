@@ -85,17 +85,26 @@ fn list_proposals<PS: ProposalStore + 'static>(
         None => DEFAULT_LIMIT,
     };
 
-    let mut link = req.uri().path().to_string();
-
+    let mut new_queries = vec![];
     let management_type_filter = query.get("management_type").map(|management_type| {
-        link.push_str(&format!("?management_type={}&", management_type));
+        new_queries.push(format!("management_type={}", management_type));
         management_type.to_string()
     });
+    let member_filter = query.get("member").map(|member| {
+        new_queries.push(format!("member={}", member));
+        member.to_string()
+    });
+
+    let mut link = req.uri().path().to_string();
+    if !new_queries.is_empty() {
+        link.push_str(&format!("?{}&", new_queries.join("&")));
+    }
 
     Box::new(query_list_proposals(
         proposal_store,
         link,
         management_type_filter,
+        member_filter,
         Some(offset),
         Some(limit),
     ))
@@ -105,6 +114,7 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
     proposal_store: web::Data<PS>,
     link: String,
     management_type_filter: Option<String>,
+    member_filter: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -112,6 +122,9 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
         let mut filters = vec![];
         if let Some(management_type) = management_type_filter {
             filters.push(ProposalFilter::WithManagementType(management_type));
+        }
+        if let Some(member) = member_filter {
+            filters.push(ProposalFilter::WithMember(member));
         }
 
         let proposals = proposal_store
@@ -156,7 +169,7 @@ mod tests {
     use crate::admin::{
         messages::{
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
-            ProposalType, RouteType,
+            ProposalType, RouteType, SplinterNode,
         },
         service::proposal_store::{ProposalFilter, ProposalIter, ProposalStoreError},
     };
@@ -181,11 +194,15 @@ mod tests {
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
         assert_eq!(
             proposals.data,
-            vec![get_proposal_1().into(), get_proposal_2().into()]
+            vec![
+                get_proposal_1().into(),
+                get_proposal_2().into(),
+                get_proposal_3().into()
+            ]
         );
         assert_eq!(
             proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/proposals?")
+            create_test_paging_response(0, 100, 0, 0, 0, 3, "/admin/proposals?")
         )
     }
 
@@ -217,6 +234,63 @@ mod tests {
     }
 
     #[test]
+    /// Tests a GET /admin/proposals request with the `member` filter returns the expected
+    /// proposals.
+    fn test_list_proposals_with_member_ok() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals?member=node_id",
+            bind_url
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        assert_eq!(
+            proposals.data,
+            vec![get_proposal_1().into(), get_proposal_3().into()]
+        );
+        let link = format!("/admin/proposals?member=node_id&");
+        assert_eq!(
+            proposals.paging,
+            create_test_paging_response(0, 100, 0, 0, 0, 2, &link)
+        )
+    }
+
+    #[test]
+    /// Tests a GET /admin/proposals request with both the `management_type` and `member` filters returns
+    /// the expected proposal.
+    fn test_list_proposals_with_management_type_and_member_ok() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals?management_type=mgmt_type_2&member=node_id",
+            bind_url
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        assert_eq!(proposals.data, vec![get_proposal_3().into()]);
+        let link = format!("/admin/proposals?management_type=mgmt_type_2&member=node_id&");
+        assert_eq!(
+            proposals.paging,
+            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+        )
+    }
+
+    #[test]
     /// Tests a GET /admin/proposals?limit=1 request returns the expected proposal.
     fn test_list_proposal_with_limit() {
         let (_shutdown_handle, _join_handle, bind_url) =
@@ -234,12 +308,12 @@ mod tests {
         assert_eq!(proposals.data, vec![get_proposal_1().into()]);
         assert_eq!(
             proposals.paging,
-            create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/proposals?")
+            create_test_paging_response(0, 1, 1, 0, 2, 3, "/admin/proposals?")
         )
     }
 
     #[test]
-    /// Tests a GET /admin/proposals?offset=1 request returns the expected proposal.
+    /// Tests a GET /admin/proposals?offset=1 request returns the expected proposals.
     fn test_list_proposal_with_offset() {
         let (_shutdown_handle, _join_handle, bind_url) =
             run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
@@ -253,10 +327,13 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_2().into()]);
+        assert_eq!(
+            proposals.data,
+            vec![get_proposal_2().into(), get_proposal_3().into()]
+        );
         assert_eq!(
             proposals.paging,
-            create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/proposals?")
+            create_test_paging_response(1, 100, 0, 0, 0, 3, "/admin/proposals?")
         )
     }
 
@@ -296,7 +373,7 @@ mod tests {
             &self,
             filters: Vec<ProposalFilter>,
         ) -> Result<ProposalIter, ProposalStoreError> {
-            let proposals = vec![get_proposal_1(), get_proposal_2()];
+            let proposals = vec![get_proposal_1(), get_proposal_2(), get_proposal_3()];
 
             let total = proposals
                 .iter()
@@ -327,7 +404,10 @@ mod tests {
             circuit: CreateCircuit {
                 circuit_id: "circuit1".into(),
                 roster: vec![],
-                members: vec![],
+                members: vec![SplinterNode {
+                    node_id: "node_id".into(),
+                    endpoint: "".into(),
+                }],
                 authorization_type: AuthorizationType::Trust,
                 persistence: PersistenceType::Any,
                 durability: DurabilityType::NoDurability,
@@ -358,6 +438,32 @@ mod tests {
                 circuit_management_type: "mgmt_type_2".into(),
                 application_metadata: vec![],
                 comments: "mock circuit 2".into(),
+            },
+            votes: vec![],
+            requester: vec![],
+            requester_node_id: "node_id".into(),
+        }
+    }
+
+    fn get_proposal_3() -> CircuitProposal {
+        CircuitProposal {
+            proposal_type: ProposalType::Create,
+            circuit_id: "circuit3".into(),
+            circuit_hash: "678910".into(),
+            circuit: CreateCircuit {
+                circuit_id: "circuit3".into(),
+                roster: vec![],
+                members: vec![SplinterNode {
+                    node_id: "node_id".into(),
+                    endpoint: "".into(),
+                }],
+                authorization_type: AuthorizationType::Trust,
+                persistence: PersistenceType::Any,
+                durability: DurabilityType::NoDurability,
+                routes: RouteType::Any,
+                circuit_management_type: "mgmt_type_2".into(),
+                application_metadata: vec![],
+                comments: "mock circuit 3".into(),
             },
             votes: vec![],
             requester: vec![],
