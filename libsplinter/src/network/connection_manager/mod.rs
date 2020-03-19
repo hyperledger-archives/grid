@@ -46,7 +46,7 @@ enum CmMessage {
 }
 
 enum CmRequest {
-    AddConnection {
+    RequestOutboundConnection {
         endpoint: String,
         connection_id: String,
         sender: Sender<Result<(), ConnectionManagerError>>,
@@ -202,7 +202,7 @@ impl Connector {
     ) -> Result<(), ConnectionManagerError> {
         let (sender, recv) = channel();
         self.sender
-            .send(CmMessage::Request(CmRequest::AddConnection {
+            .send(CmMessage::Request(CmRequest::RequestOutboundConnection {
                 sender,
                 endpoint: endpoint.to_string(),
                 connection_id: id.to_string(),
@@ -610,7 +610,7 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
     subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
 ) {
     match req {
-        CmRequest::AddConnection {
+        CmRequest::RequestOutboundConnection {
             endpoint,
             sender,
             connection_id,
