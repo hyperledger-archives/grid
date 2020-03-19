@@ -33,6 +33,8 @@ pub use crate::network::peer_manager::notification::{
 use crate::network::peer_manager::peer_map::{PeerMap, PeerMetadata, PeerStatus};
 use crate::network::ref_map::RefMap;
 
+use uuid::Uuid;
+
 // the number of retry attempts for an active endpoint before the PeerManager will try other
 // endpoints associated with a peer
 const DEFAULT_MAXIMUM_RETRY_ATTEMPTS: u64 = 5;
@@ -343,12 +345,18 @@ fn add_peer(
     };
 
     debug!("Attempting to peer with {}", peer_id);
+    let connection_id = format!("{}", Uuid::new_v4());
     // If new, try to create a connection
     for endpoint in endpoints.iter() {
-        match connector.request_connection(&endpoint) {
+        match connector.request_connection(&endpoint, &connection_id) {
             Ok(()) => {
                 debug!("Peer {} connected via {}", peer_id, endpoint);
-                peers.insert(peer_id.clone(), endpoints.clone(), endpoint.to_string());
+                peers.insert(
+                    peer_id.clone(),
+                    connection_id,
+                    endpoints.clone(),
+                    endpoint.to_string(),
+                );
                 let peer_ref = PeerRef::new(peer_id, peer_remover.clone());
                 return Ok(peer_ref);
             }
@@ -443,7 +451,7 @@ fn retry_endpoints(
 ) -> Result<bool, PeerManagerError> {
     debug!("Trying to find active endpoint for {}", peer_metadata.id);
     for endpoint in peer_metadata.endpoints.iter() {
-        match connector.request_connection(&endpoint) {
+        match connector.request_connection(&endpoint, &peer_metadata.connection_id) {
             Ok(()) => {
                 debug!("Peered with {}: {}", peer_metadata.id, endpoint);
                 if endpoint != &peer_metadata.active_endpoint {
@@ -949,7 +957,9 @@ pub mod tests {
         thread::spawn(move || {
             // accept incoming connection and add it to mesh2
             let conn = listener.accept().expect("Cannot accept connection");
-            let id = mesh2.add(conn).expect("Cannot add connection to mesh");
+            mesh2
+                .add(conn, "test_id".to_string())
+                .expect("Cannot add connection to mesh");
             // Verify mesh received heartbeat
             let envelope = mesh2.recv().expect("Cannot receive message");
             let heartbeat: NetworkMessage = protobuf::parse_from_bytes(&envelope.payload())
@@ -960,7 +970,7 @@ pub mod tests {
             );
             // remove connection to cause reconnection attempt
             let mut connection = mesh2
-                .remove(id)
+                .remove("test_id")
                 .expect("Cannot remove connection from mesh");
             connection
                 .disconnect()
@@ -969,7 +979,9 @@ pub mod tests {
             drop(listener);
             // wait for the peer manager to switch endpoints
             let conn = listener2.accept().expect("Unable to accept connection");
-            mesh2.add(conn).expect("Cannot add connection to mesh");
+            mesh2
+                .add(conn, "test_id".to_string())
+                .expect("Cannot add connection to mesh");
             mesh2.recv().expect("Cannot receive message");
         });
 

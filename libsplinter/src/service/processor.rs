@@ -14,6 +14,7 @@
 
 use crossbeam_channel::{Receiver, Sender};
 use protobuf::Message;
+use uuid::Uuid;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -75,7 +76,7 @@ pub struct ServiceProcessor {
     services: Vec<Box<dyn Service>>,
     mesh: Mesh,
     circuit: String,
-    node_mesh_id: usize,
+    node_mesh_id: String,
     network_sender: Sender<Vec<u8>>,
     network_receiver: Receiver<Vec<u8>>,
     running: Arc<AtomicBool>,
@@ -94,8 +95,8 @@ impl ServiceProcessor {
         running: Arc<AtomicBool>,
     ) -> Result<Self, ServiceProcessorError> {
         let mesh = Mesh::new(incoming_capacity, outgoing_capacity);
-        let node_mesh_id = mesh
-            .add(connection)
+        let node_mesh_id = format!("{}", Uuid::new_v4());
+        mesh.add(connection, node_mesh_id.to_string())
             .map_err(|err| process_err!(err, "unable to add connection to mesh"))?;
         let (network_sender, network_receiver) = crossbeam_channel::bounded(channel_capacity);
         let (inbound_sender, inbound_receiver) = crossbeam_channel::bounded(channel_capacity);
@@ -155,7 +156,10 @@ impl ServiceProcessor {
         let connect_request = create_connect_request()
             .map_err(|err| process_err!(err, "unable to create connect request"))?;
         self.mesh
-            .send(Envelope::new(self.node_mesh_id, connect_request))
+            .send(Envelope::new(
+                self.node_mesh_id.to_string(),
+                connect_request,
+            ))
             .map_err(|err| process_err!(err, "unable to send connect request"))?;
 
         // Wait for the auth response.  Currently, this is on an inproc transport, so this will be
@@ -208,6 +212,10 @@ impl ServiceProcessor {
                                 error!("Mesh Disconnected");
                                 break;
                             }
+                            Err(MeshRecvTimeoutError::PoisonedLock) => {
+                                error!("Mesh lock was poisoned");
+                                break;
+                            }
                         };
 
                         if let Err(err) = process_incoming_msg(&message_bytes, &mut inbound_router)
@@ -251,7 +259,7 @@ impl ServiceProcessor {
         let outgoing_mesh = self.mesh;
         let outgoing_running = self.running.clone();
         let outgoing_receiver = self.network_receiver;
-        let node_mesh_id = self.node_mesh_id;
+        let node_mesh_id = self.node_mesh_id.to_string();
 
         // Thread that handles outgoing messages that need to be sent to the splinter node
         let outgoing_join_handle: JoinHandle<Result<(), ServiceProcessorError>> =
@@ -270,8 +278,8 @@ impl ServiceProcessor {
                         };
 
                         // Send message to splinter node
-                        if let Err(err) =
-                            outgoing_mesh.send(Envelope::new(node_mesh_id, message_bytes))
+                        if let Err(err) = outgoing_mesh
+                            .send(Envelope::new(node_mesh_id.to_string(), message_bytes))
                         {
                             error!(
                                 "Unable to send message via mesh to {}: {}",

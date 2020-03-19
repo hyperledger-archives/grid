@@ -18,6 +18,8 @@ use std::env;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use uuid::Uuid;
+
 use splinter::{
     mesh::{Envelope, Mesh},
     transport::{socket::TcpTransport, Listener, Transport},
@@ -46,7 +48,7 @@ fn main() {
     let ids = connect(&mut transport, &mesh, &peers, connections);
 
     for id in &ids {
-        send(&mesh, *id, b"hello");
+        send(&mesh, id.to_string(), b"hello");
     }
 
     let mut tx: usize = 0;
@@ -58,12 +60,12 @@ fn main() {
             Ok(envelope) => match envelope.payload() {
                 b"hello" => {
                     rx += 1;
-                    send(&mesh, envelope.id(), b"world");
+                    send(&mesh, envelope.id().to_string(), b"world");
                     tx += 1;
                 }
                 b"world" => {
                     rx += 1;
-                    send(&mesh, envelope.id(), b"hello");
+                    send(&mesh, envelope.id().to_string(), b"hello");
                     tx += 1;
                 }
                 _ => (),
@@ -101,7 +103,8 @@ fn listen(mesh: Mesh, mut listener: Box<dyn Listener>) {
                         "Accepted new connection from {}",
                         connection.remote_endpoint()
                     );
-                    if let Err(err) = mesh.add(connection) {
+                    let id = Uuid::new_v4().to_string();
+                    if let Err(err) = mesh.add(connection, id) {
                         eprintln!("Error adding connection to mesh: {:?}", err);
                     }
                 }
@@ -113,7 +116,12 @@ fn listen(mesh: Mesh, mut listener: Box<dyn Listener>) {
     });
 }
 
-fn connect<T: Transport>(transport: &mut T, mesh: &Mesh, peers: &[String], n: usize) -> Vec<usize> {
+fn connect<T: Transport>(
+    transport: &mut T,
+    mesh: &Mesh,
+    peers: &[String],
+    n: usize,
+) -> Vec<String> {
     if peers.len() == 0 {
         return Vec::with_capacity(0);
     }
@@ -123,8 +131,12 @@ fn connect<T: Transport>(transport: &mut T, mesh: &Mesh, peers: &[String], n: us
         loop {
             let peer = &peers[i % peers.len()];
             println!("Connecting to {}", peer);
-            match transport.connect(peer).map(|conn| mesh.add(conn)) {
-                Ok(Ok(id)) => {
+            let id = Uuid::new_v4().to_string();
+            match transport
+                .connect(peer)
+                .map(|conn| mesh.add(conn, id.clone()))
+            {
+                Ok(Ok(_)) => {
                     ids.push(id);
                     break;
                 }
@@ -142,8 +154,8 @@ fn connect<T: Transport>(transport: &mut T, mesh: &Mesh, peers: &[String], n: us
     ids
 }
 
-fn send(mesh: &Mesh, id: usize, msg: &[u8]) {
-    if let Err(err) = mesh.send(Envelope::new(id, msg.to_vec())) {
+fn send(mesh: &Mesh, id: String, msg: &[u8]) {
+    if let Err(err) = mesh.send(Envelope::new(id.clone(), msg.to_vec())) {
         eprintln!("Error sending to {}: {:?}", id, err);
     }
 }

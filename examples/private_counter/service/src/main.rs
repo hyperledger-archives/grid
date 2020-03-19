@@ -360,6 +360,10 @@ fn run_service_loop(
                 error!("Network has disconnected");
                 break;
             }
+            Err(RecvTimeoutError::PoisonedLock) => {
+                error!("Mesh lock was poisoned");
+                break;
+            }
             Err(RecvTimeoutError::Timeout) => continue,
             Err(RecvTimeoutError::NoPeerError(err)) => {
                 warn!("Received NoPeerError: {}", err);

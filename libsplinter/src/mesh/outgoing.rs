@@ -16,22 +16,22 @@ use mio_extras::channel::{SyncSender, TrySendError};
 
 use std::io;
 
-use crate::mesh::Envelope;
+use super::InternalEnvelope;
 
 /// Handle for sending to a specific connection in the mesh
 #[derive(Clone)]
 pub struct Outgoing {
     id: usize,
-    tx: SyncSender<Envelope>,
+    tx: SyncSender<InternalEnvelope>,
 }
 
 impl Outgoing {
-    pub(super) fn new(id: usize, tx: SyncSender<Envelope>) -> Self {
+    pub(super) fn new(id: usize, tx: SyncSender<InternalEnvelope>) -> Self {
         Outgoing { id, tx }
     }
 
     pub fn send(&self, payload: Vec<u8>) -> Result<(), SendError> {
-        self.tx.try_send(Envelope::new(self.id, payload))?;
+        self.tx.try_send(InternalEnvelope::new(self.id, payload))?;
         Ok(())
     }
 
@@ -47,8 +47,8 @@ pub enum SendError {
     Disconnected(Vec<u8>),
 }
 
-impl From<TrySendError<Envelope>> for SendError {
-    fn from(err: TrySendError<Envelope>) -> Self {
+impl From<TrySendError<InternalEnvelope>> for SendError {
+    fn from(err: TrySendError<InternalEnvelope>) -> Self {
         match err {
             TrySendError::Full(envelope) => SendError::Full(envelope.payload),
             TrySendError::Disconnected(envelope) => SendError::Disconnected(envelope.payload),

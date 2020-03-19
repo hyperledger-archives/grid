@@ -48,6 +48,7 @@ enum CmMessage {
 enum CmRequest {
     AddConnection {
         endpoint: String,
+        connection_id: String,
         sender: Sender<Result<(), ConnectionManagerError>>,
     },
     RemoveConnection {
@@ -182,12 +183,17 @@ pub struct Connector {
 }
 
 impl Connector {
-    pub fn request_connection(&self, endpoint: &str) -> Result<(), ConnectionManagerError> {
+    pub fn request_connection(
+        &self,
+        endpoint: &str,
+        id: &str,
+    ) -> Result<(), ConnectionManagerError> {
         let (sender, recv) = channel();
         self.sender
             .send(CmMessage::Request(CmRequest::AddConnection {
                 sender,
                 endpoint: endpoint.to_string(),
+                connection_id: id.to_string(),
             }))
             .map_err(|_| {
                 ConnectionManagerError::SendMessageError(
@@ -280,7 +286,7 @@ impl ShutdownHandle {
 
 #[derive(Clone, Debug)]
 struct ConnectionMetadata {
-    id: usize,
+    id: String,
     endpoint: String,
     reconnecting: bool,
     retry_frequency: u64,
@@ -320,7 +326,7 @@ where
         }
     }
 
-    fn add_connection(&mut self, endpoint: &str) -> Result<(), ConnectionManagerError> {
+    fn add_connection(&mut self, endpoint: &str, id: String) -> Result<(), ConnectionManagerError> {
         if self.connections.get_mut(endpoint).is_some() {
             return Ok(());
         } else {
@@ -328,9 +334,11 @@ where
                 ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
             })?;
 
-            let id = self.life_cycle.add(connection).map_err(|err| {
-                ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
-            })?;
+            self.life_cycle
+                .add(connection, id.to_string())
+                .map_err(|err| {
+                    ConnectionManagerError::ConnectionCreationError(format!("{:?}", err))
+                })?;
 
             self.connections.insert(
                 endpoint.to_string(),
@@ -360,7 +368,7 @@ where
 
         self.connections.remove(endpoint);
         // remove mesh id, this may happen before reconnection is attempted
-        self.life_cycle.remove(meta.id).map_err(|err| {
+        self.life_cycle.remove(&meta.id).map_err(|err| {
             ConnectionManagerError::ConnectionRemovalError(format!(
                 "Cannot remove connection {} from life cycle: {}",
                 endpoint, err
@@ -385,7 +393,7 @@ where
 
         if let Ok(connection) = self.transport.connect(endpoint) {
             // remove old mesh id, this may happen before reconnection is attempted
-            self.life_cycle.remove(meta.id).map_err(|err| {
+            self.life_cycle.remove(&meta.id).map_err(|err| {
                 ConnectionManagerError::ConnectionRemovalError(format!(
                     "Cannot remove connection {} from life cycle: {}",
                     endpoint, err
@@ -393,12 +401,13 @@ where
             })?;
 
             // add new connection to mesh
-            let id = self.life_cycle.add(connection).map_err(|err| {
-                ConnectionManagerError::ConnectionReconnectError(format!("{:?}", err))
-            })?;
+            self.life_cycle
+                .add(connection, meta.id.to_string())
+                .map_err(|err| {
+                    ConnectionManagerError::ConnectionReconnectError(format!("{:?}", err))
+                })?;
 
-            // replace mesh id and reset reconnecting fields
-            meta.id = id;
+            // reset reconnecting fields
             meta.reconnecting = false;
             meta.retry_frequency = INITIAL_RETRY_FREQUENCY;
             meta.last_connection_attempt = Instant::now();
@@ -446,8 +455,15 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
     state: &mut ConnectionState<T, U>,
 ) {
     match req {
-        CmRequest::AddConnection { endpoint, sender } => {
-            if sender.send(state.add_connection(&endpoint)).is_err() {
+        CmRequest::AddConnection {
+            endpoint,
+            sender,
+            connection_id,
+        } => {
+            if sender
+                .send(state.add_connection(&endpoint, connection_id))
+                .is_err()
+            {
                 warn!("connector dropped before receiving result of add connection");
             }
         }
@@ -585,7 +601,7 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         connector
-            .request_connection("inproc://test")
+            .request_connection("inproc://test", "test_id")
             .expect("A connection could not be created");
 
         cm.shutdown_and_wait();
@@ -612,11 +628,11 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         connector
-            .request_connection("inproc://test")
+            .request_connection("inproc://test", "test_id")
             .expect("A connection could not be created");
 
         connector
-            .request_connection("inproc://test")
+            .request_connection("inproc://test", "test_id")
             .expect("A connection could not be re-requested");
 
         cm.shutdown_and_wait();
@@ -634,7 +650,7 @@ pub mod tests {
 
         thread::spawn(move || {
             let conn = listener.accept().unwrap();
-            mesh_clone.add(conn).unwrap();
+            mesh_clone.add(conn, "test_id".to_string()).unwrap();
         });
 
         let mut cm = ConnectionManager::new(
@@ -647,7 +663,7 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         connector
-            .request_connection("inproc://test")
+            .request_connection("inproc://test", "test_id")
             .expect("A connection could not be created");
 
         // Verify mesh received heartbeat
@@ -676,7 +692,7 @@ pub mod tests {
 
         thread::spawn(move || {
             let conn = listener.accept().unwrap();
-            mesh_clone.add(conn).unwrap();
+            mesh_clone.add(conn, "test_id".to_string()).unwrap();
         });
 
         let mut cm = ConnectionManager::new(
@@ -689,7 +705,7 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         connector
-            .request_connection(&endpoint)
+            .request_connection(&endpoint, "test_id")
             .expect("A connection could not be created");
 
         // Verify mesh received heartbeat
@@ -713,7 +729,7 @@ pub mod tests {
 
         thread::spawn(move || {
             let conn = listener.accept().unwrap();
-            mesh_clone.add(conn).unwrap();
+            mesh_clone.add(conn, "test_id".to_string()).unwrap();
         });
 
         let mut cm = ConnectionManager::new(
@@ -726,7 +742,7 @@ pub mod tests {
         let connector = cm.start().unwrap();
 
         connector
-            .request_connection(&endpoint)
+            .request_connection(&endpoint, "test_id")
             .expect("A connection could not be created");
 
         assert_eq!(
@@ -760,7 +776,7 @@ pub mod tests {
 
         thread::spawn(move || {
             let conn = listener.accept().unwrap();
-            mesh_clone.add(conn).unwrap();
+            mesh_clone.add(conn, "test_id".to_string()).unwrap();
         });
 
         let mut cm = ConnectionManager::new(
@@ -844,7 +860,9 @@ pub mod tests {
         thread::spawn(move || {
             // accept incoming connection and add it to mesh2
             let conn = listener.accept().expect("Cannot accept connection");
-            let id = mesh2.add(conn).expect("Cannot add connection to mesh");
+            mesh2
+                .add(conn, "test_id".to_string())
+                .expect("Cannot add connection to mesh");
 
             // Verify mesh received heartbeat
             let envelope = mesh2.recv().expect("Cannot receive message");
@@ -857,7 +875,7 @@ pub mod tests {
 
             // remove connection to cause reconnection attempt
             let mut connection = mesh2
-                .remove(id)
+                .remove(&"test_id".to_string())
                 .expect("Cannot remove connection from mesh");
             connection
                 .disconnect()
@@ -877,7 +895,7 @@ pub mod tests {
         let connector = cm.start().expect("Unable to start ConnectionManager");
 
         connector
-            .request_connection(&endpoint)
+            .request_connection(&endpoint, "test_id")
             .expect("Unable to request connection");
 
         let mut subscriber = connector.subscribe().expect("Cannot get subscriber");

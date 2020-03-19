@@ -21,17 +21,17 @@
 //!     let mesh = Mesh::new(1, 1);
 //!     let mut listener = transport.listen("inproc://my-connection").unwrap();
 //!
-//!     let client = mesh.add(transport.connect(&listener.endpoint()).unwrap()).unwrap();
-//!     let server = mesh.add(listener.accept().unwrap()).unwrap();
+//!     mesh.add(transport.connect(&listener.endpoint()).unwrap(), "client".to_string()).unwrap();
+//!     mesh.add(listener.accept().unwrap(), "server".to_string()).unwrap();
 //!
-//!     mesh.send(Envelope::new(client, b"hello".to_vec())).unwrap();
+//!     mesh.send(Envelope::new("client".to_string(), b"hello".to_vec())).unwrap();
 //!     mesh.recv().unwrap();
 //!
-//!     let client = mesh.remove(client).unwrap();
+//!     let client = mesh.remove("client").unwrap();
 //!     // If we were to drop client above, the reactor could detect that client disconnected from
 //!     // the server and automatically cleanup and remove server, causing this to fail with
 //!     // RemoveError::NotFound.
-//!     let server = mesh.remove(server).unwrap();
+//!     let server = mesh.remove("server").unwrap();
 //!
 //! Mesh can be cloned relatively cheaply and passed between threads. If receiving is performed
 //! from many clones, envelopes will be distributed among them.
@@ -69,19 +69,20 @@ pub use crate::mesh::incoming::Incoming;
 pub use crate::mesh::matrix::{MeshLifeCycle, MeshMatrixSender};
 pub use crate::mesh::outgoing::Outgoing;
 
+pub use crate::collections::BiHashMap;
 use crate::mesh::reactor::Reactor;
 use crate::transport::Connection;
 
 /// Wrapper around payload to include connection id
 #[derive(Debug, Default, PartialEq)]
-pub struct Envelope {
+pub struct InternalEnvelope {
     id: usize,
     payload: Vec<u8>,
 }
 
-impl Envelope {
+impl InternalEnvelope {
     pub fn new(id: usize, payload: Vec<u8>) -> Self {
-        Envelope { id, payload }
+        InternalEnvelope { id, payload }
     }
 
     pub fn id(&self) -> usize {
@@ -97,10 +98,49 @@ impl Envelope {
     }
 }
 
+/// Wrapper around payload to include connection id
+#[derive(Debug, Default, PartialEq)]
+pub struct Envelope {
+    id: String,
+    payload: Vec<u8>,
+}
+
+impl Envelope {
+    pub fn new(id: String, payload: Vec<u8>) -> Self {
+        Envelope { id, payload }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+
+    pub fn take_payload(self) -> Vec<u8> {
+        self.payload
+    }
+}
+
+struct MeshState {
+    pub outgoings: HashMap<usize, Outgoing>,
+    pub unique_ids: BiHashMap<String, usize>,
+}
+
+impl MeshState {
+    fn new() -> Self {
+        MeshState {
+            outgoings: HashMap::new(),
+            unique_ids: BiHashMap::new(),
+        }
+    }
+}
+
 /// A Connection reactor
 #[derive(Clone)]
 pub struct Mesh {
-    outgoings: Arc<RwLock<HashMap<usize, Outgoing>>>,
+    state: Arc<RwLock<MeshState>>,
     incoming: Incoming,
     ctrl: Control,
 }
@@ -111,29 +151,43 @@ impl Mesh {
     pub fn new(incoming_capacity: usize, outgoing_capacity: usize) -> Self {
         let (ctrl, incoming) = Reactor::spawn(incoming_capacity, outgoing_capacity);
         Mesh {
-            outgoings: Arc::new(RwLock::new(HashMap::new())),
+            state: Arc::new(RwLock::new(MeshState::new())),
             incoming,
             ctrl,
         }
     }
 
-    /// Add a new connection to the mesh, moving it to the background thread, and return its id.
-    pub fn add(&self, connection: Box<dyn Connection>) -> Result<usize, AddError> {
+    /// Add a new connection to the mesh, moving it to the background thread, and add the returned
+    /// mesh id to the unique_ids map
+    pub fn add(
+        &self,
+        connection: Box<dyn Connection>,
+        unique_id: String,
+    ) -> Result<usize, AddError> {
         let outgoing = self.ctrl.add(connection)?;
-        let id = outgoing.id();
-        rwlock_write_unwrap!(self.outgoings).insert(id, outgoing);
+        let mesh_id = outgoing.id();
+        let mut state = self.state.write().map_err(|_| AddError::PoisonedLock)?;
 
-        Ok(id)
+        state.outgoings.insert(mesh_id, outgoing);
+        state.unique_ids.insert(unique_id, mesh_id);
+
+        Ok(mesh_id)
     }
 
     /// Remove an existing connection from the mesh and return it.
-    pub fn remove(&self, id: usize) -> Result<Box<dyn Connection>, RemoveError> {
-        let connection = self.ctrl.remove(id)?;
-        // The outgoing channel needs to be removed after the control request completes, or else
-        // the reactor will detect that the outgoing sender has dropped and clean it up
-        // automatically, causing the control request to fail with NotFound.
-        rwlock_write_unwrap!(self.outgoings).remove(&id);
-        Ok(connection)
+    pub fn remove(&self, unique_id: &str) -> Result<Box<dyn Connection>, RemoveError> {
+        let mut state = self.state.write().map_err(|_| RemoveError::PoisonedLock)?;
+        if let Some((_, mesh_id)) = state.unique_ids.remove_by_key(&unique_id.to_string()) {
+            let connection = self.ctrl.remove(mesh_id)?;
+            // The outgoing channel needs to be removed after the control request completes, or else
+            // the reactor will detect that the outgoing sender has dropped and clean it up
+            // automatically, causing the control request to fail with NotFound.
+
+            state.outgoings.remove(&mesh_id);
+            Ok(connection)
+        } else {
+            Err(RemoveError::NotFound)
+        }
     }
 
     /// Send the envelope on the mesh.
@@ -141,27 +195,62 @@ impl Mesh {
     /// This is a convenience function and is equivalent to
     /// `mesh.outgoing(envelope.id()).send(envelope.take_payload())`.
     pub fn send(&self, envelope: Envelope) -> Result<(), SendError> {
-        let outgoings = rwlock_read_unwrap!(self.outgoings);
-        let id = envelope.id();
-        match outgoings.get(&envelope.id()) {
-            Some(ref outgoing) => match outgoing.send(envelope.take_payload()) {
-                Ok(()) => Ok(()),
-                Err(err) => Err(SendError::from_outgoing_send_error(err, id)),
-            },
-            None => Err(SendError::NotFound),
+        let state = &self.state.read().map_err(|_| SendError::PoisonedLock)?;
+        let id = envelope.id.to_string();
+        if let Some(mesh_id) = state.unique_ids.get_by_key(&id) {
+            match state.outgoings.get(mesh_id) {
+                Some(ref outgoing) => match outgoing.send(envelope.take_payload()) {
+                    Ok(()) => Ok(()),
+                    Err(err) => Err(SendError::from_outgoing_send_error(err, id.to_string())),
+                },
+                None => Err(SendError::NotFound),
+            }
+        } else {
+            Err(SendError::NotFound)
         }
     }
 
     /// Receive a new envelope from the mesh.
     pub fn recv(&self) -> Result<Envelope, RecvError> {
-        self.incoming.recv().map_err(|_| RecvError)
+        let internal_envelope = self
+            .incoming
+            .recv()
+            .map_err(|_| RecvError::InternalError("Cannot receive message".to_string()))?;
+        let id = self
+            .state
+            .read()
+            .map_err(|_| RecvError::PoisonedLock)?
+            .unique_ids
+            .get_by_value(&internal_envelope.id)
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(Envelope {
+            id,
+            payload: internal_envelope.take_payload(),
+        })
     }
 
     /// Receive a new envelope from the mesh.
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
-        self.incoming
+        let internal_envelope = self
+            .incoming
             .recv_timeout(timeout)
-            .map_err(RecvTimeoutError::from)
+            .map_err(RecvTimeoutError::from)?;
+
+        let id = self
+            .state
+            .read()
+            .map_err(|_| RecvTimeoutError::PoisonedLock)?
+            .unique_ids
+            .get_by_value(&internal_envelope.id)
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(Envelope {
+            id,
+            payload: internal_envelope.take_payload(),
+        })
     }
 
     /// Create a new handle for sending to the existing connection with the given id.
@@ -169,7 +258,7 @@ impl Mesh {
     /// This may be faster if many sends on the same Connection are going to be performed because
     /// the internal lock around the pool of senders does not need to be reacquired.
     pub fn outgoing(&self, id: usize) -> Option<Outgoing> {
-        rwlock_read_unwrap!(self.outgoings).get(&id).cloned()
+        rwlock_read_unwrap!(self.state).outgoings.get(&id).cloned()
     }
 
     /// Create a new handle for receiving envelopes from the mesh.
@@ -198,6 +287,7 @@ pub enum SendError {
     IoError(io::Error),
     Full(Envelope),
     Disconnected(Envelope),
+    PoisonedLock,
 }
 
 impl Error for SendError {
@@ -207,6 +297,7 @@ impl Error for SendError {
             SendError::IoError(err) => Some(err),
             SendError::Full(_) => None,
             SendError::Disconnected(_) => None,
+            SendError::PoisonedLock => None,
         }
     }
 }
@@ -222,12 +313,13 @@ impl std::fmt::Display for SendError {
             SendError::Disconnected(ref envelope) => {
                 write!(f, "connection disconnected {}", envelope.id)
             }
+            SendError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
     }
 }
 
 impl SendError {
-    fn from_outgoing_send_error(err: outgoing::SendError, id: usize) -> Self {
+    fn from_outgoing_send_error(err: outgoing::SendError, id: String) -> Self {
         match err {
             outgoing::SendError::IoError(err) => SendError::IoError(err),
             outgoing::SendError::Full(payload) => SendError::Full(Envelope::new(id, payload)),
@@ -239,13 +331,19 @@ impl SendError {
 }
 
 #[derive(Debug)]
-pub struct RecvError;
+pub enum RecvError {
+    InternalError(String),
+    PoisonedLock,
+}
 
 impl Error for RecvError {}
 
 impl std::fmt::Display for RecvError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Receive Error")
+        match self {
+            RecvError::InternalError(msg) => write!(f, "Receive Error: {}", msg),
+            RecvError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
+        }
     }
 }
 
@@ -253,6 +351,7 @@ impl std::fmt::Display for RecvError {
 pub enum RecvTimeoutError {
     Timeout,
     Disconnected,
+    PoisonedLock,
 }
 
 impl Error for RecvTimeoutError {}
@@ -264,6 +363,7 @@ impl std::fmt::Display for RecvTimeoutError {
             RecvTimeoutError::Disconnected => {
                 f.write_str("Unable to receive: channel has disconnected")
             }
+            RecvTimeoutError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
     }
 }
@@ -308,18 +408,19 @@ mod tests {
             let client = assert_ok(transport.connect(&endpoint));
 
             let mesh = Mesh::new(1, 1);
-            let id = assert_ok(mesh.add(client));
+            assert_ok(mesh.add(client, "client".to_string()));
 
-            assert_ok(mesh.send(Envelope::new(id, b"hello".to_vec())));
+            assert_ok(mesh.send(Envelope::new("client".to_string(), b"hello".to_vec())));
         });
 
         let mesh = Mesh::new(1, 1);
         let server = assert_ok(listener.accept());
-        assert_ok(mesh.add(server));
+        assert_ok(mesh.add(server, "server".to_string()));
 
         let envelope = assert_ok(mesh.recv());
 
         assert_eq!(b"hello", envelope.payload());
+        assert_eq!("server", envelope.id());
 
         handle.join().unwrap();
     }
@@ -338,26 +439,28 @@ mod tests {
             let mesh = mesh_clone;
 
             let mut ids = Vec::new();
-            for _ in 0..8 {
+            for i in 0..8 {
                 let conn = assert_ok(transport.connect(&endpoint));
-                let id = assert_ok(mesh.add(conn));
+                let id = format!("thread_{}", i);
+                assert_ok(mesh.add(conn, id.clone()));
                 ids.push(id);
             }
 
             ids
         });
 
-        for _ in 0..8 {
+        for i in 0..8 {
             let conn = assert_ok(listener.accept());
-            let id = assert_ok(mesh.add(conn));
+            let id = format!("main_{}", i);
+            assert_ok(mesh.add(conn, id.clone()));
             ids.push(id);
         }
 
-        ids.extend(handle.join().unwrap().as_slice());
+        ids.extend(handle.join().unwrap());
         ids.sort();
 
         for id in &ids {
-            assert_ok(mesh.remove(*id));
+            assert_ok(mesh.remove(id));
         }
     }
 
@@ -377,8 +480,9 @@ mod tests {
         let handle = thread::spawn(move || {
             let mesh = mesh_clone;
 
-            for _ in 0..CONNECTIONS {
-                assert_ok(mesh.add(assert_ok(transport.connect(&endpoint))));
+            for i in 0..CONNECTIONS {
+                let id = format!("thread_{}", i);
+                assert_ok(mesh.add(assert_ok(transport.connect(&endpoint)), id));
             }
 
             // Block waiting for other thread to send everything
@@ -388,20 +492,21 @@ mod tests {
             for _ in 0..CONNECTIONS {
                 let envelope = assert_ok(mesh.recv());
                 assert_eq!(b"hello", envelope.payload());
-                ids.push(envelope.id());
+                ids.push(envelope.id().to_string());
             }
 
             // Signal to other thread we are done receiving
             server_ready_tx.send(()).unwrap();
 
             for id in ids {
-                assert_ok(mesh.send(Envelope::new(id, b"world".to_vec())));
+                assert_ok(mesh.send(Envelope::new(id.to_string(), b"world".to_vec())));
             }
         });
 
-        for _ in 0..CONNECTIONS {
+        for i in 0..CONNECTIONS {
             let conn = assert_ok(listener.accept());
-            let id = assert_ok(mesh.add(conn));
+            let id = format!("main_{}", i);
+            assert_ok(mesh.add(conn, id.clone()));
             assert_ok(mesh.send(Envelope::new(id, b"hello".to_vec())));
         }
 
