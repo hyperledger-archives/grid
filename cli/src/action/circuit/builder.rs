@@ -36,6 +36,7 @@ pub struct CreateCircuitMessageBuilder {
     #[cfg(feature = "circuit-auth-type")]
     authorization_type: Option<AuthorizationType>,
     application_metadata: Vec<u8>,
+    comments: Option<String>,
 }
 
 impl CreateCircuitMessageBuilder {
@@ -48,6 +49,7 @@ impl CreateCircuitMessageBuilder {
             #[cfg(feature = "circuit-auth-type")]
             authorization_type: None,
             application_metadata: vec![],
+            comments: None,
         }
     }
 
@@ -210,6 +212,10 @@ impl CreateCircuitMessageBuilder {
         self.application_metadata = application_metadata.into();
     }
 
+    pub fn set_comments(&mut self, comments: &str) {
+        self.comments = Some(comments.into());
+    }
+
     pub fn build(self) -> Result<CreateCircuit, CliError> {
         let default_store = get_default_value_store();
 
@@ -257,7 +263,8 @@ impl CreateCircuitMessageBuilder {
             .create_circuit_builder
             .with_members(&self.nodes)
             .with_roster(&services)
-            .with_circuit_management_type(&management_type);
+            .with_circuit_management_type(&management_type)
+            .with_comments(&self.comments.unwrap_or_default());
 
         if !self.application_metadata.is_empty() {
             create_circuit_builder =

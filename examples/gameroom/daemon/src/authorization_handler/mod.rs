@@ -1212,6 +1212,7 @@ mod test {
             routes: RouteType::Any,
             circuit_management_type: "gameroom".to_string(),
             application_metadata,
+            comments: "test circuit".to_string(),
         }
     }
 

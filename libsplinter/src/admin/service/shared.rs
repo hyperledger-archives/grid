@@ -1750,6 +1750,7 @@ mod tests {
         circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
         circuit.set_durability(admin::Circuit_DurabilityType::NO_DURABILITY);
         circuit.set_circuit_management_type("test app auth handler".into());
+        circuit.set_comments("test circuit".into());
 
         circuit.set_members(protobuf::RepeatedField::from_vec(vec![
             splinter_node("test-node", "tcp://someplace:8000"),
@@ -1831,6 +1832,7 @@ mod tests {
         circuit.set_persistence(admin::Circuit_PersistenceType::ANY_PERSISTENCE);
         circuit.set_routes(admin::Circuit_RouteType::ANY_ROUTE);
         circuit.set_circuit_management_type("test app auth handler".into());
+        circuit.set_comments("test circuit".into());
 
         circuit.set_members(protobuf::RepeatedField::from_vec(vec![
             splinter_node("test-node", "tcp://someplace:8000"),
@@ -3155,6 +3157,7 @@ mod tests {
         circuit.set_routes(Circuit_RouteType::ANY_ROUTE);
         circuit.set_circuit_management_type("test_circuit".to_string());
         circuit.set_application_metadata(b"test_data".to_vec());
+        circuit.set_comments("test circuit".to_string());
 
         circuit
     }

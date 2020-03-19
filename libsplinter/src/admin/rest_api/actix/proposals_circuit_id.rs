@@ -166,6 +166,7 @@ mod tests {
                 routes: RouteType::Any,
                 circuit_management_type: "mgmt_type".into(),
                 application_metadata: vec![],
+                comments: "mock circuit".into(),
             },
             votes: vec![],
             requester: vec![],

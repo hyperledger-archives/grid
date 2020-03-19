@@ -371,6 +371,7 @@ pub struct ProposalCircuitSlice {
     pub circuit_management_type: String,
     pub members: Vec<CircuitMembers>,
     pub roster: Vec<CircuitService>,
+    pub comments: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

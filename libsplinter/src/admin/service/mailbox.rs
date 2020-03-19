@@ -331,6 +331,7 @@ mod tests {
                 routes: messages::RouteType::Any,
                 circuit_management_type: event_type.into(),
                 application_metadata: vec![],
+                comments: "mock circuit".into(),
             },
             votes: vec![],
             requester: vec![],

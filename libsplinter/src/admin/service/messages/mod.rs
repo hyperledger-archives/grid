@@ -37,6 +37,8 @@ pub struct CreateCircuit {
     #[serde(deserialize_with = "deserialize_hex")]
     #[serde(default)]
     pub application_metadata: Vec<u8>,
+    #[serde(default)]
+    pub comments: String,
 }
 
 impl CreateCircuit {
@@ -93,6 +95,7 @@ impl CreateCircuit {
             routes,
             circuit_management_type: proto.take_circuit_management_type(),
             application_metadata: proto.take_application_metadata(),
+            comments: proto.take_comments(),
         })
     }
 
@@ -115,6 +118,7 @@ impl CreateCircuit {
 
         circuit.set_circuit_management_type(self.circuit_management_type);
         circuit.set_application_metadata(self.application_metadata);
+        circuit.set_comments(self.comments);
 
         match self.authorization_type {
             AuthorizationType::Trust => {

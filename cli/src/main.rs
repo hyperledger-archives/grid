@@ -311,6 +311,12 @@ fn run() -> Result<(), CliError> {
                     .help("Set the encoding for the application metadata. Default value: string"),
             )
             .arg(
+                Arg::with_name("comments")
+                    .long("comments")
+                    .takes_value(true)
+                    .help("Add human-readable comments to the circuit proposal"),
+            )
+            .arg(
                 Arg::with_name("dry_run")
                     .long("dry-run")
                     .short("n")

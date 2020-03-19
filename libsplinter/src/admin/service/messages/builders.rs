@@ -32,6 +32,7 @@ pub struct CreateCircuitBuilder {
     routes: Option<RouteType>,
     circuit_management_type: Option<String>,
     application_metadata: Option<Vec<u8>>,
+    comments: Option<String>,
 }
 
 impl CreateCircuitBuilder {
@@ -73,6 +74,10 @@ impl CreateCircuitBuilder {
 
     pub fn application_metadata(&self) -> Option<Vec<u8>> {
         self.application_metadata.clone()
+    }
+
+    pub fn comments(&self) -> Option<String> {
+        self.comments.clone()
     }
 
     pub fn with_circuit_id(mut self, circuit_id: &str) -> CreateCircuitBuilder {
@@ -126,6 +131,11 @@ impl CreateCircuitBuilder {
         application_metadata: &[u8],
     ) -> CreateCircuitBuilder {
         self.application_metadata = Some(application_metadata.into());
+        self
+    }
+
+    pub fn with_comments(mut self, comments: &str) -> CreateCircuitBuilder {
+        self.comments = Some(comments.into());
         self
     }
 
@@ -197,6 +207,8 @@ impl CreateCircuitBuilder {
 
         let application_metadata = self.application_metadata.unwrap_or_default();
 
+        let comments = self.comments.unwrap_or_default();
+
         let create_circuit_message = CreateCircuit {
             circuit_id,
             roster,
@@ -207,6 +219,7 @@ impl CreateCircuitBuilder {
             routes,
             circuit_management_type,
             application_metadata,
+            comments,
         };
 
         Ok(create_circuit_message)
@@ -382,6 +395,7 @@ mod tests {
         assert!(builder.routes().is_none());
         assert!(builder.circuit_management_type().is_none());
         assert!(builder.application_metadata().is_none());
+        assert!(builder.comments().is_none());
 
         let service = SplinterServiceBuilder::new()
             .with_service_type("service_type")
@@ -402,7 +416,8 @@ mod tests {
             .with_durability(&DurabilityType::NoDurability)
             .with_routes(&RouteType::Any)
             .with_circuit_management_type("mgmt_type")
-            .with_application_metadata(b"abcd");
+            .with_application_metadata(b"abcd")
+            .with_comments("new circuit");
         assert_eq!(builder.circuit_id(), Some("0123a-bcDEF".into()));
         assert_eq!(builder.roster(), Some(vec![service.clone()]));
         assert_eq!(builder.members(), Some(vec![node.clone()]));
@@ -412,6 +427,7 @@ mod tests {
         assert_eq!(builder.routes(), Some(RouteType::Any));
         assert_eq!(builder.circuit_management_type(), Some("mgmt_type".into()));
         assert_eq!(builder.application_metadata(), Some(b"abcd".to_vec()));
+        assert_eq!(builder.comments(), Some("new circuit".into()));
 
         let circuit = builder.build().expect("failed to build circuit");
         assert_eq!(&circuit.circuit_id, "0123a-bcDEF");
@@ -423,11 +439,12 @@ mod tests {
         assert_eq!(circuit.routes, RouteType::Any);
         assert_eq!(&circuit.circuit_management_type, "mgmt_type");
         assert_eq!(&circuit.application_metadata, b"abcd");
+        assert_eq!(&circuit.comments, "new circuit");
     }
 
     /// Verify that the `CreateCircuitBuilder` builds a correct `CreateCircuit` when `circuit_id`,
-    /// `authorization_type`, `persistence`, `durability`, `routes`, and `application_metadata` are
-    /// unset.
+    /// `authorization_type`, `persistence`, `durability`, `routes`, `application_metadata`, and
+    /// `comments` are unset.
     #[test]
     fn circuit_builder_successful_with_defaults() {
         let service = SplinterServiceBuilder::new()
@@ -463,6 +480,7 @@ mod tests {
         assert_eq!(circuit.routes, RouteType::Any);
         assert_eq!(&circuit.circuit_management_type, "mgmt_type");
         assert!(circuit.application_metadata.is_empty());
+        assert!(circuit.comments.is_empty());
     }
 
     /// Verify that the `CreateCircuitBuilder` fails to build when an invalid `circuit_id` is
