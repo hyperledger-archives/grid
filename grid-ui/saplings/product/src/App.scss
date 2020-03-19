@@ -18,6 +18,28 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+
+  button {
+    &:hover {
+      cursor: pointer;
+    }
+
+    &.fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--color-secondary);
+      color: #ffffff;
+      font-size: 2rem;
+    }
+  }
 }
 
 .link {
