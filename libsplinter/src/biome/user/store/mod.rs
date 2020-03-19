@@ -94,3 +94,13 @@ pub trait UserStore<T>: Send + Sync {
     ///
     fn list_users(&self) -> Result<Vec<T>, UserStoreError>;
 }
+
+pub trait CloneBoxUserStore<T>: UserStore<T> {
+    fn clone_box(&self) -> Box<dyn CloneBoxUserStore<T>>;
+}
+
+impl<T> Clone for Box<dyn CloneBoxUserStore<T>> {
+    fn clone(&self) -> Box<dyn CloneBoxUserStore<T>> {
+        self.clone_box()
+    }
+}
