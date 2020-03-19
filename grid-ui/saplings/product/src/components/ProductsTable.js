@@ -15,6 +15,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useServiceState } from '../state/service-context';
 
 import './ProductsTable.scss';
@@ -22,7 +24,7 @@ import ProductCard from './ProductCard';
 import mockProducts from '../test/mock-products';
 import { getProperty } from '../data/property-parsing';
 
-function ProductsTable() {
+function ProductsTable({ actions }) {
   const [products, setProducts] = useState(mockProducts);
   const { selectedService } = useServiceState();
 
@@ -56,8 +58,19 @@ function ProductsTable() {
         <hr />
       </div>
       <div className="products-table">{productCards}</div>
+      <button
+        className="fab add-product"
+        type="button"
+        onClick={actions.addProduct}
+      >
+        <FontAwesomeIcon icon="plus" />
+      </button>
     </div>
   );
 }
+
+ProductsTable.propTypes = {
+  actions: PropTypes.object.isRequired
+};
 
 export default ProductsTable;
