@@ -25,6 +25,7 @@ use super::error::ConnectionManagerError;
 pub enum ConnectionManagerNotification {
     Connected { endpoint: String },
     Disconnected { endpoint: String },
+    ReconnectionFailed { endpoint: String, attempts: u64 },
 }
 
 pub struct NotificationIter {

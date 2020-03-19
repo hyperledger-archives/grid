@@ -32,6 +32,7 @@ pub struct Pool {
     tokens: HashMap<Token, usize>,
     next_id: usize,
     poll: Poll,
+    disconnected: HashMap<usize, Option<Box<dyn Connection>>>,
 }
 
 impl fmt::Debug for Pool {
@@ -52,6 +53,7 @@ impl Pool {
             tokens: HashMap::new(),
             next_id: 0,
             poll,
+            disconnected: HashMap::new(),
         }
     }
 
@@ -105,6 +107,8 @@ impl Pool {
             self.poll.deregister(&outgoing)?;
 
             Ok(Some(connection))
+        } else if let Some(connection) = self.disconnected.remove(&id) {
+            Ok(connection)
         } else {
             Ok(None)
         }
@@ -132,8 +136,14 @@ impl Pool {
                 "Removing Connection {} due to error handling event: {:?}",
                 id, err
             );
-            if let Err(err) = self.remove(id) {
-                error!("Error removing connection: {:?}", err);
+            match self.remove(id) {
+                Ok(connection) => {
+                    self.disconnected.insert(id, connection);
+                }
+                Err(err) => {
+                    error!("Error removing connection: {:?}", err);
+                    self.disconnected.insert(id, None);
+                }
             }
         }
     }

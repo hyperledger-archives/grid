@@ -285,6 +285,7 @@ struct ConnectionMetadata {
     reconnecting: bool,
     retry_frequency: u64,
     last_connection_attempt: Instant,
+    reconnection_attempts: u64,
 }
 
 struct ConnectionState<T, U>
@@ -339,6 +340,7 @@ where
                     reconnecting: false,
                     retry_frequency: INITIAL_RETRY_FREQUENCY,
                     last_connection_attempt: Instant::now(),
+                    reconnection_attempts: 0,
                 },
             );
         };
@@ -357,9 +359,13 @@ where
         };
 
         self.connections.remove(endpoint);
-        self.life_cycle
-            .remove(meta.id)
-            .map_err(|err| ConnectionManagerError::ConnectionRemovalError(format!("{:?}", err)))?;
+        // remove mesh id, this may happen before reconnection is attempted
+        self.life_cycle.remove(meta.id).map_err(|err| {
+            ConnectionManagerError::ConnectionRemovalError(format!(
+                "Cannot remove connection {} from life cycle: {}",
+                endpoint, err
+            ))
+        })?;
 
         Ok(Some(meta))
     }
@@ -379,12 +385,12 @@ where
 
         if let Ok(connection) = self.transport.connect(endpoint) {
             // remove old mesh id, this may happen before reconnection is attempted
-            if self.life_cycle.remove(meta.id).is_err() {
-                trace!(
-                    "Connection was already removed from life_cycle: {}",
-                    endpoint
-                );
-            }
+            self.life_cycle.remove(meta.id).map_err(|err| {
+                ConnectionManagerError::ConnectionRemovalError(format!(
+                    "Cannot remove connection {} from life cycle: {}",
+                    endpoint, err
+                ))
+            })?;
 
             // add new connection to mesh
             let id = self.life_cycle.add(connection).map_err(|err| {
@@ -396,6 +402,7 @@ where
             meta.reconnecting = false;
             meta.retry_frequency = INITIAL_RETRY_FREQUENCY;
             meta.last_connection_attempt = Instant::now();
+            meta.reconnection_attempts = 0;
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of success
@@ -406,10 +413,21 @@ where
                 },
             );
         } else {
+            let reconnection_attempts = meta.reconnection_attempts + 1;
             meta.reconnecting = true;
             meta.retry_frequency = min(meta.retry_frequency * 2, self.maximum_retry_frequency);
             meta.last_connection_attempt = Instant::now();
+            meta.reconnection_attempts += 1;
             self.connections.insert(endpoint.to_string(), meta);
+
+            // Notify subscribers of reconnection failure
+            notify_subscribers(
+                subscribers,
+                ConnectionManagerNotification::ReconnectionFailed {
+                    endpoint: endpoint.to_string(),
+                    attempts: reconnection_attempts,
+                },
+            );
         }
         Ok(())
     }
@@ -863,6 +881,7 @@ pub mod tests {
             .expect("Unable to request connection");
 
         let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+
         // receive reconnecting attempt
         let reconnecting_notification = subscriber
             .next()
