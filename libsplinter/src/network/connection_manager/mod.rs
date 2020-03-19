@@ -124,7 +124,7 @@ where
                             subscribers.push(sender);
                         }
                         Ok(CmMessage::Request(req)) => {
-                            handle_request(req, &mut state);
+                            handle_request(req, &mut state, &mut subscribers);
                         }
                         Ok(CmMessage::SendHeartbeats) => {
                             send_heartbeats(&mut state, &mut subscribers)
@@ -426,7 +426,7 @@ where
     fn add_inbound_connection(
         &mut self,
         connection: Box<dyn Connection>,
-    ) -> Result<(), ConnectionManagerError> {
+    ) -> Result<String, ConnectionManagerError> {
         let endpoint = connection.remote_endpoint();
 
         let id = Uuid::new_v4().to_string();
@@ -438,7 +438,7 @@ where
         self.connections.insert(
             endpoint.clone(),
             ConnectionMetadata::Inbound {
-                id,
+                id: id.clone(),
                 inbound: InboundConnection {
                     endpoint,
                     disconnected: false,
@@ -446,7 +446,7 @@ where
             },
         );
 
-        Ok(())
+        Ok(id)
     }
 
     fn add_connection(&mut self, endpoint: &str, id: String) -> Result<(), ConnectionManagerError> {
@@ -607,6 +607,7 @@ where
 fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
     req: CmRequest,
     state: &mut ConnectionState<T, U>,
+    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
 ) {
     match req {
         CmRequest::AddConnection {
@@ -643,7 +644,20 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
             }
         }
         CmRequest::AddInboundConnection { sender, connection } => {
-            let res = state.add_inbound_connection(connection);
+            let endpoint = connection.remote_endpoint();
+            let res = state
+                .add_inbound_connection(connection)
+                .and_then(|connection_id| {
+                    notify_subscribers(
+                        subscribers,
+                        ConnectionManagerNotification::InboundConnection {
+                            endpoint,
+                            connection_id,
+                        },
+                    );
+                    Ok(())
+                });
+
             if sender.send(res).is_err() {
                 warn!("connector dropped before receiving result of add inbound callback");
             }
@@ -713,12 +727,15 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
                         err
                     );
 
-                    notify_subscribers(
-                        subscribers,
-                        ConnectionManagerNotification::Disconnected {
-                            endpoint: endpoint.clone(),
-                        },
-                    );
+                    if !inbound.disconnected {
+                        inbound.disconnected = true;
+                        notify_subscribers(
+                            subscribers,
+                            ConnectionManagerNotification::Disconnected {
+                                endpoint: endpoint.clone(),
+                            },
+                        );
+                    }
                 }
                 inbound.disconnected = false;
             }

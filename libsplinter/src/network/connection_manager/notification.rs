@@ -22,9 +22,20 @@ use super::error::ConnectionManagerError;
 /// Messages that will be dispatched to all subscription handlers
 #[derive(Debug, PartialEq, Clone)]
 pub enum ConnectionManagerNotification {
-    Connected { endpoint: String },
-    Disconnected { endpoint: String },
-    ReconnectionFailed { endpoint: String, attempts: u64 },
+    Connected {
+        endpoint: String,
+    },
+    InboundConnection {
+        endpoint: String,
+        connection_id: String,
+    },
+    Disconnected {
+        endpoint: String,
+    },
+    ReconnectionFailed {
+        endpoint: String,
+        attempts: u64,
+    },
 }
 
 /// An iterator over ConnectionManagerNotification values
