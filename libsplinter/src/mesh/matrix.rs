@@ -11,13 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::time::Duration;
 
 use crate::matrix::{
-    Envelope, MatrixAddError, MatrixLifeCycle, MatrixRemoveError, MatrixSendError, MatrixSender,
+    Envelope, MatrixAddError, MatrixLifeCycle, MatrixReceiver, MatrixRecvError,
+    MatrixRecvTimeoutError, MatrixRemoveError, MatrixSendError, MatrixSender,
 };
 use crate::transport::Connection;
 
-use super::Mesh;
+use super::{Mesh, RecvError, RecvTimeoutError};
 
 #[derive(Clone)]
 pub struct MeshLifeCycle {
@@ -70,5 +72,39 @@ impl MatrixSender for MeshMatrixSender {
                 Some(Box::new(err)),
             )
         })
+    }
+}
+
+#[derive(Clone)]
+pub struct MeshMatrixReceiver {
+    mesh: Mesh,
+}
+
+impl MatrixReceiver for MeshMatrixReceiver {
+    fn recv(&self) -> Result<Envelope, MatrixRecvError> {
+        match self.mesh.recv() {
+            Ok(envelope) => Ok(envelope),
+            Err(err) => match err {
+                RecvError::Disconnected => Err(MatrixRecvError::Disconnected),
+                RecvError::PoisonedLock => Err(MatrixRecvError::new_internal_error(
+                    "Internal state poisoned".to_string(),
+                    Some(Box::new(err)),
+                )),
+            },
+        }
+    }
+
+    fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, MatrixRecvTimeoutError> {
+        match self.mesh.recv_timeout(timeout) {
+            Ok(envelope) => Ok(envelope),
+            Err(err) => match err {
+                RecvTimeoutError::Timeout => Err(MatrixRecvTimeoutError::Timeout),
+                RecvTimeoutError::Disconnected => Err(MatrixRecvTimeoutError::Disconnected),
+                RecvTimeoutError::PoisonedLock => Err(MatrixRecvTimeoutError::new_internal_error(
+                    "Internal state poisoned".to_string(),
+                    Some(Box::new(err)),
+                )),
+            },
+        }
     }
 }
