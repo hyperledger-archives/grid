@@ -81,6 +81,7 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::admin::{
         messages::{
@@ -109,8 +110,13 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposal: ProposalResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposal, get_proposal().into());
+        let proposal: JsonValue = resp.json().expect("Failed to deserialize body");
+
+        assert_eq!(
+            proposal,
+            to_value(ProposalResponse::from(&get_proposal()))
+                .expect("failed to convert expected data")
+        );
     }
 
     #[test]

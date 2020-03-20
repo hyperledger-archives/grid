@@ -165,6 +165,7 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::admin::{
         messages::{
@@ -191,18 +192,32 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.data,
-            vec![
-                get_proposal_1().into(),
-                get_proposal_2().into(),
-                get_proposal_3().into()
-            ]
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_1()),
+                ProposalResponse::from(&get_proposal_2()),
+                ProposalResponse::from(&get_proposal_3()),
+            ])
+            .expect("failed to convert expected data"),
         );
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 3, "/admin/proposals?")
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -224,12 +239,28 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
-        let link = format!("/admin/proposals?management_type=mgmt_type_1&");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                1,
+                &format!("/admin/proposals?management_type=mgmt_type_1&")
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -251,15 +282,31 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.data,
-            vec![get_proposal_1().into(), get_proposal_3().into()]
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_1()),
+                ProposalResponse::from(&get_proposal_3())
+            ])
+            .expect("failed to convert expected data"),
         );
-        let link = format!("/admin/proposals?member=node_id&");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, &link)
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                2,
+                &format!("/admin/proposals?member=node_id&")
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -281,12 +328,28 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_3().into()]);
-        let link = format!("/admin/proposals?management_type=mgmt_type_2&member=node_id&");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_3())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                1,
+                &format!("/admin/proposals?management_type=mgmt_type_2&member=node_id&")
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -304,11 +367,28 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 1, 1, 0, 2, 3, "/admin/proposals?")
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                1,
+                1,
+                0,
+                2,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -326,14 +406,31 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.data,
-            vec![get_proposal_2().into(), get_proposal_3().into()]
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_2()),
+                ProposalResponse::from(&get_proposal_3())
+            ])
+            .expect("failed to convert expected data"),
         );
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(1, 100, 0, 0, 0, 3, "/admin/proposals?")
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                1,
+                100,
+                0,
+                0,
+                0,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
