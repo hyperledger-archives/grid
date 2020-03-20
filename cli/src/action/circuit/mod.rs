@@ -464,7 +464,7 @@ fn list_circuits(url: &str, filter: Option<&str>, format: &str) -> Result<(), Cl
         let members = circuit.members.join(";");
         data.push(vec![
             circuit.id.to_string(),
-            circuit.circuit_management_type.to_string(),
+            circuit.management_type.to_string(),
             members,
         ]);
     });
@@ -593,7 +593,7 @@ fn list_proposals(url: &str, filter: Option<&str>, format: &str) -> Result<(), C
             .join(";");
         data.push(vec![
             proposal.circuit_id.to_string(),
-            proposal.circuit.circuit_management_type.to_string(),
+            proposal.circuit.management_type.to_string(),
             members,
             proposal.circuit.comments.to_string(),
         ]);

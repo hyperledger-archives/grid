@@ -24,7 +24,7 @@ use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_O
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 use super::super::error::ProposalListError;
-use super::super::resources::proposals_read::ListProposalsResponse;
+use super::super::resources::proposals::{ListProposalsResponse, ProposalResponse};
 
 pub fn make_list_proposals_resource<PS: ProposalStore + 'static>(proposal_store: PS) -> Resource {
     Resource::build("admin/proposals")
@@ -126,17 +126,19 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
 
                 let total_count = filtered_proposals.len();
 
-                let proposals_data: Vec<CircuitProposal> = filtered_proposals
+                let proposals_data = filtered_proposals
                     .into_iter()
                     .skip(offset_value)
                     .take(limit_value)
-                    .collect();
+                    .collect::<Vec<_>>();
 
                 Ok((proposals_data, link, limit, offset, total_count))
             } else {
                 let total_count = proposals.total();
-                let proposals_data: Vec<CircuitProposal> =
-                    proposals.skip(offset_value).take(limit_value).collect();
+                let proposals_data = proposals
+                    .skip(offset_value)
+                    .take(limit_value)
+                    .collect::<Vec<_>>();
 
                 Ok((proposals_data, link, limit, offset, total_count))
             }
@@ -147,7 +149,7 @@ fn query_list_proposals<PS: ProposalStore + 'static>(
     .then(|res| match res {
         Ok((proposals, link, limit, offset, total_count)) => {
             Ok(HttpResponse::Ok().json(ListProposalsResponse {
-                data: proposals,
+                data: proposals.iter().map(ProposalResponse::from).collect(),
                 paging: get_response_paging_info(limit, offset, &link, total_count),
             }))
         }
@@ -195,7 +197,10 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1(), get_proposal_2()]);
+        assert_eq!(
+            proposals.data,
+            vec![get_proposal_1().into(), get_proposal_2().into()]
+        );
         assert_eq!(
             proposals.paging,
             create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/proposals?")
@@ -220,7 +225,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1()]);
+        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
         let link = format!("/admin/proposals?filter=mgmt_type_1&");
         assert_eq!(
             proposals.paging,
@@ -243,7 +248,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1()]);
+        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
         assert_eq!(
             proposals.paging,
             create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/proposals?")
@@ -265,7 +270,7 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::OK);
         let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_2()]);
+        assert_eq!(proposals.data, vec![get_proposal_2().into()]);
         assert_eq!(
             proposals.paging,
             create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/proposals?")
