@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-credentials")]
-table! {
-    user_credentials {
-        id -> Int8,
-        user_id -> Text,
-        username -> Text,
-        password -> Text,
-    }
+use super::schema::*;
+
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "keys"]
+#[primary_key(public_key, user_id)]
+pub struct KeyModel {
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub user_id: String,
+    pub display_name: String,
 }

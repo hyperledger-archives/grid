@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-credentials")]
 table! {
-    user_credentials {
-        id -> Int8,
+    keys (public_key, user_id) {
+        public_key -> Text,
+        encrypted_private_key -> Text,
         user_id -> Text,
-        username -> Text,
-        password -> Text,
+        display_name -> Text,
     }
 }

@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::super::models::KeyModel;
+use super::super::schema::keys;
 use super::KeyStoreOperations;
-use crate::biome::datastore::{models::KeyModel, schema::keys};
 use crate::biome::key_management::{store::KeyStoreError, Key};
 
 use diesel::{dsl::delete, prelude::*, result::Error::NotFound};
