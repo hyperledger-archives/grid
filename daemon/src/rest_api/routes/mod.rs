@@ -108,6 +108,14 @@ mod test {
     static BATCH_ID_2: &str = "batch_2";
     static BATCH_ID_3: &str = "batch_3";
 
+    static TEST_SERVICE_ID: &str = "test_service";
+
+    #[derive(Clone)]
+    enum Backend {
+        Splinter,
+        Sawtooth,
+    }
+
     struct MockMessageSender {
         response_type: ResponseType,
     }
@@ -276,7 +284,7 @@ mod test {
         database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
     }
 
-    fn create_test_server(response_type: ResponseType) -> TestServer {
+    fn create_test_server(backend: Backend, response_type: ResponseType) -> TestServer {
         start(move || {
             let state = {
                 let mock_sender = MockMessageSender::new(response_type);
@@ -285,9 +293,15 @@ mod test {
                 });
                 AppState::new(mock_batch_submitter, get_connection_pool())
             };
+            let endpoint_backend = match backend {
+                Backend::Splinter => "splinter:",
+                Backend::Sawtooth => "sawtooth:",
+            };
             App::new()
                 .data(state)
-                .app_data(Endpoint::from("tcp://localhost:9090"))
+                .app_data(Endpoint::from(
+                    format!("{}tcp://localhost:9090", endpoint_backend).as_str(),
+                ))
                 .service(web::resource("/batches").route(web::post().to(submit_batches)))
                 .service(
                     web::resource("/batch_statuses")
@@ -342,7 +356,7 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_get_batch_status_one_id() {
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         let mut response = srv
             .request(
@@ -383,7 +397,7 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_get_batch_status_multiple_ids() {
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         let mut response = srv
             .request(
@@ -431,7 +445,10 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_get_batch_status_invalid_id() {
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseInvalidId);
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseInvalidId,
+        );
 
         let response = srv
             .request(
@@ -455,7 +472,10 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_get_batch_status_internal_error() {
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseInternalError);
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchStatusResponseInternalError,
+        );
 
         let response = srv
             .request(
@@ -480,7 +500,7 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_get_batch_status_wait_error() {
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         let response = srv
             .request(
@@ -508,7 +528,7 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_post_batches_ok() {
-        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchSubmitResponseOK);
 
         let mut response = srv
             .request(http::Method::POST, srv.url("/batches"))
@@ -536,7 +556,10 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_post_batches_invalid_batch() {
-        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInvalidBatch);
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchSubmitResponseInvalidBatch,
+        );
 
         let response = srv
             .request(http::Method::POST, srv.url("/batches"))
@@ -557,7 +580,10 @@ mod test {
     ///
     #[actix_rt::test]
     async fn test_post_batches_internal_error() {
-        let srv = create_test_server(ResponseType::ClientBatchSubmitResponseInternalError);
+        let srv = create_test_server(
+            Backend::Sawtooth,
+            ResponseType::ClientBatchSubmitResponseInternalError,
+        );
 
         let response = srv
             .request(http::Method::POST, srv.url("/batches"))
@@ -580,7 +606,7 @@ mod test {
     async fn test_list_agents() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
         let mut response = srv
@@ -594,7 +620,7 @@ mod test {
         assert!(body.is_empty());
 
         // Adds a single Agent to the test database
-        populate_agent_table(&test_pool.get().unwrap(), &get_agent());
+        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
 
         // Making another request to the database
         let mut response = srv
@@ -613,6 +639,60 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /agent?service_id=test_service responds with an Ok response
+    ///     with an empty Agents table and a single Agent with the matching service_id.
+    ///
+    ///     The TestServer will receive a request with service_id equal to 'test'
+    ///     It will receive a response with status Ok
+    ///     It should send back a response with:
+    ///         - body containing a list of Agents
+    #[actix_rt::test]
+    async fn test_list_agents_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        // Clears the agents table in the test database
+        clear_agents_table(&test_pool.get().unwrap());
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/agent?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert!(body.is_empty());
+
+        // Adds a single Agent to the test database
+        populate_agent_table(
+            &test_pool.get().unwrap(),
+            &get_agent(Some(TEST_SERVICE_ID.to_string())),
+        );
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/agent?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+
+        assert!(response.status().is_success());
+        let body: Vec<AgentSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let agent = body.first().unwrap();
+        assert_eq!(agent.public_key, KEY1.to_string());
+        assert_eq!(agent.org_id, KEY2.to_string());
+        assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /organization responds with an Ok response
     ///     with an empty organization table
     ///
@@ -620,7 +700,7 @@ mod test {
     async fn test_list_organizations_empty() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
         let mut response = srv
@@ -642,10 +722,10 @@ mod test {
     async fn test_list_organizations() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_organization());
+        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
 
         // Making another request to the database
         let mut response = srv
@@ -664,6 +744,42 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /organization?service_id=test_service responds with an Ok response
+    ///     with a list containing one organization with a matching service_id
+    ///
+    #[actix_rt::test]
+    async fn test_list_organizations_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds an organization to the test database
+        populate_organization_table(
+            &test_pool.get().unwrap(),
+            get_organization(Some(TEST_SERVICE_ID.to_string())),
+        );
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/organization?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<OrganizationSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let org = body.first().unwrap();
+        assert_eq!(org.name, ORG_NAME_1.to_string());
+        assert_eq!(org.org_id, KEY2.to_string());
+        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /organization responds with an Ok response
     /// with a list containing one organization, when there's two records for the same
     /// organization_id. The rest-api should return a list with a single organization with the
@@ -674,7 +790,7 @@ mod test {
     async fn test_list_organizations_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of organization with the same org_id to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
@@ -704,11 +820,36 @@ mod test {
     async fn test_fetch_organization_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
         clear_organization_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /organization/{id}?service_id=test_service responds with NotFound response
+    /// when there is no organization with the specified id and service_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_organization_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        //Adds an organization to the test database
+        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/organization/not_a_valid_id?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
             .send()
             .await
             .unwrap();
@@ -723,10 +864,10 @@ mod test {
     async fn test_fetch_organization_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_organization());
+        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
 
         // Making another request to the database
         let mut response = srv
@@ -756,7 +897,7 @@ mod test {
     async fn test_fetch_organization_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
         populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
@@ -780,6 +921,43 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /organization/{id}?service_id=test_service responds with Ok response
+    /// when there is an organization with the specified id and matching service_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_organization_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        // Adds an organization to the test database
+        populate_organization_table(
+            &test_pool.get().unwrap(),
+            get_organization(Some(TEST_SERVICE_ID.to_string())),
+        );
+
+        // Making another request to the database
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/organization/{}?service_id={}",
+                    KEY2, TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let org: OrganizationSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(org.name, ORG_NAME_1.to_string());
+        assert_eq!(org.org_id, KEY2.to_string());
+        assert_eq!(org.address, ADDRESS_1.to_string());
+        assert_eq!(org.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /agent/{public_key} responds with an Ok response
     ///     with an Agent with the specified public key.
     ///
@@ -787,10 +965,10 @@ mod test {
     async fn test_fetch_agent_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         //Adds an agent to the test database
-        populate_agent_table(&test_pool.get().unwrap(), &get_agent());
+        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
 
         let mut response = srv
             .request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
@@ -805,6 +983,38 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /agent/{public_key}?service_id=test_service responds with an Ok response
+    ///     with an Agent with the specified public key and service_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_agent_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        //Adds an agent to the test database
+        populate_agent_table(
+            &test_pool.get().unwrap(),
+            &get_agent(Some(TEST_SERVICE_ID.to_string())),
+        );
+
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/agent/{}?service_id={}", KEY1, TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+
+        assert!(response.status().is_success());
+        let agent: AgentSlice = serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(agent.public_key, KEY1.to_string());
+        assert_eq!(agent.org_id, KEY2.to_string());
+        assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /agent/{public_key} responds with a Not Found response
     ///     when the public key is not assigned to any Agent.
     ///
@@ -812,11 +1022,37 @@ mod test {
     async fn test_fetch_agent_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clear the agents table in the test database
         clear_agents_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/agent/unknown_public_key"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /agent/{public_key}?service_id=test_service responds with a Not Found response
+    ///     when the public key is not assigned to any Agent with the service_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_agent_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        //Adds an agent to the test database
+        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
+
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/agent/unknown_public_key?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
             .send()
             .await
             .unwrap();
@@ -832,7 +1068,7 @@ mod test {
     async fn test_list_schemas() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
         clear_grid_schema_table(&test_pool.get().unwrap());
         let mut response = srv
@@ -845,7 +1081,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
+        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
         let mut response = srv
             .request(http::Method::GET, srv.url("/schema"))
             .send()
@@ -862,6 +1098,56 @@ mod test {
         assert_eq!(test_schema.properties.len(), 2);
     }
 
+    /// Verifies a GET /schema?service_id=test_service responds with an OK response with a
+    ///     list_grid_schemas request.
+    ///
+    ///     The TestServer will receive a request with the service ID,
+    ///         then will respond with an Ok status and a list of Grid Schemas.
+    #[actix_rt::test]
+    async fn test_list_schemas_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        // Clears the grid schema table in the test database
+        clear_grid_schema_table(&test_pool.get().unwrap());
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/schema?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<GridSchemaSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_grid_schema_table(
+            &test_pool.get().unwrap(),
+            &get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/schema?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<GridSchemaSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_schema = body.first().unwrap();
+        assert_eq!(test_schema.name, "TestGridSchema".to_string());
+        assert_eq!(test_schema.owner, "phillips001".to_string());
+        assert_eq!(test_schema.properties.len(), 2);
+        assert_eq!(test_schema.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
     ///
     /// Verifies a GET /schema/{name} responds with an OK response
     ///     and the Grid Schema with the specified name
@@ -870,8 +1156,8 @@ mod test {
     async fn test_fetch_schema_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema());
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -889,6 +1175,40 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /schema/{name}?service_id=test_service responds with an OK response
+    ///     and the Grid Schema with the specified name and service_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_schema_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_grid_schema_table(
+            &test_pool.get().unwrap(),
+            &get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/schema/{}?service_id={}",
+                    "TestGridSchema", TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_schema: GridSchemaSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(test_schema.name, "TestGridSchema".to_string());
+        assert_eq!(test_schema.owner, "phillips001".to_string());
+        assert_eq!(test_schema.properties.len(), 2);
+        assert_eq!(test_schema.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /schema/{name} responds with a Not Found error
     ///     when there is no Grid Schema with the specified name
     ///
@@ -896,10 +1216,34 @@ mod test {
     async fn test_fetch_schema_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         clear_grid_schema_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/schema/not_in_database"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /schema/{name}?service_id=test_service responds with a Not Found error
+    ///     when there is no Grid Schema with the specified name and service id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_schema_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/schema/not_in_database?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
             .send()
             .await
             .unwrap();
@@ -915,7 +1259,7 @@ mod test {
     async fn test_list_products() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the product table in the test database
         clear_product_table(&test_pool.get().unwrap());
         let mut response = srv
@@ -928,7 +1272,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_product_table(&test_pool.get().unwrap(), &get_product());
+        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
         let mut response = srv
             .request(http::Method::GET, srv.url("/product"))
             .send()
@@ -947,6 +1291,58 @@ mod test {
         assert_eq!(test_product.properties.len(), 2);
     }
 
+    /// Verifies a GET /product?service_id=test_service responds with an OK response with a
+    ///     list_products request.
+    ///
+    ///     The TestServer will receive a request with a service_id,
+    ///         then will respond with an Ok status and a list of Products.
+    #[actix_rt::test]
+    async fn test_list_products_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        // Clears the product table in the test database
+        clear_product_table(&test_pool.get().unwrap());
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/product?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<ProductSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_product_table(
+            &test_pool.get().unwrap(),
+            &get_product(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/product?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<ProductSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_product = body.first().unwrap();
+        assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_address, "test_address".to_string());
+        assert_eq!(test_product.product_namespace, "Grid Product".to_string());
+        assert_eq!(test_product.owner, "phillips001".to_string());
+        assert_eq!(test_product.properties.len(), 2);
+        assert_eq!(test_product.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
     ///
     /// Verifies a GET /product/{id} responds with an OK response
     ///     and the Product with the specified id
@@ -955,8 +1351,8 @@ mod test {
     async fn test_fetch_product_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_product_table(&test_pool.get().unwrap(), &get_product());
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -976,6 +1372,42 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /product/{id}?service_id=test_service responds with an OK response
+    ///     and the Product with the specified id and service id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_product_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_product_table(
+            &test_pool.get().unwrap(),
+            &get_product(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/product/{}?service_id={}",
+                    "041205707820", TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_product: ProductSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(test_product.product_id, "041205707820".to_string());
+        assert_eq!(test_product.product_address, "test_address".to_string());
+        assert_eq!(test_product.product_namespace, "Grid Product".to_string());
+        assert_eq!(test_product.owner, "phillips001".to_string());
+        assert_eq!(test_product.properties.len(), 2);
+        assert_eq!(test_product.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /product/{id} responds with a Not Found error
     ///     when there is no Product with the specified id
     ///
@@ -983,10 +1415,35 @@ mod test {
     async fn test_fetch_product_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         clear_product_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/product/not_in_database"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /product/{id}?service_id=test_service responds with a Not Found error
+    ///     when there is no Product with the specified id and service id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_product_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        clear_product_table(&test_pool.get().unwrap());
+        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/product/{}?service_id={}",
+                    "041205707820", TEST_SERVICE_ID
+                )),
+            )
             .send()
             .await
             .unwrap();
@@ -1001,20 +1458,20 @@ mod test {
     async fn test_list_records() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
-        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
-        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles(None));
+        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents(None));
+        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal(None));
         populate_property_definition_table(
             &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(),
+            &get_grid_property_definition_for_record(None),
         );
-        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord"));
+        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord", None));
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property_for_record(),
-            &get_reported_value_for_property_record(),
-            &get_reporter_for_property_record(),
+            &get_property_for_record(None),
+            &get_reported_value_for_property_record(None),
+            &get_reporter_for_property_record(None),
         );
         let mut response = srv
             .request(http::Method::GET, srv.url(&format!("/record")))
@@ -1045,6 +1502,7 @@ mod test {
             &test_record.properties[0].updates[0].reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
         assert_eq!(
             test_record.properties[0]
@@ -1070,6 +1528,7 @@ mod test {
                 .reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
@@ -1086,6 +1545,7 @@ mod test {
             &test_record.properties[1].updates[0].reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
         assert_eq!(
             test_record.properties[1]
@@ -1111,6 +1571,7 @@ mod test {
                 .reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
 
         assert_eq!(test_record.r#final, false);
@@ -1132,6 +1593,192 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /record?service_id=test_service responds with an Ok response
+    ///     with a list containing one record with the correct service id.
+    ///
+    #[actix_rt::test]
+    async fn test_list_records_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_agent_table(
+            &test_pool.get().unwrap(),
+            &get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_associated_agent_table(
+            &test_pool.get().unwrap(),
+            &get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_proposal_table(
+            &test_pool.get().unwrap(),
+            &get_proposal(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_for_record(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_record_table(
+            &test_pool.get().unwrap(),
+            &get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
+            &get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            &get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/record?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<RecordSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+        let test_record = body.first().unwrap();
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
+        assert_eq!(test_record.owner, KEY1.to_string());
+        assert_eq!(test_record.custodian, KEY2.to_string());
+        assert_eq!(test_record.service_id, Some(TEST_SERVICE_ID.to_string()));
+        assert_eq!(test_record.properties.len(), 2);
+        assert_eq!(test_record.properties[0].name, "TestProperty1");
+        assert_eq!(test_record.properties[0].record_id, "TestRecord");
+        assert_eq!(test_record.properties[0].data_type, "String");
+        assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
+        assert_eq!(test_record.properties[0].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[0].updates[0].value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
+        assert_eq!(
+            test_record.properties[0].service_id,
+            Some(TEST_SERVICE_ID.to_string())
+        );
+        validate_reporter(
+            &test_record.properties[0].updates[0].reporter,
+            KEY1,
+            "Arya Stark",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .service_id,
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        validate_reporter(
+            &test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY1,
+            "Arya Stark",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(test_record.properties[1].name, "TestProperty2");
+        assert_eq!(test_record.properties[1].record_id, "TestRecord");
+        assert_eq!(test_record.properties[1].data_type, "Boolean");
+        assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
+        assert_eq!(test_record.properties[1].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[1].updates[0].value,
+            Value::Bool(true)
+        );
+        assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
+        assert_eq!(
+            test_record.properties[1].updates[0].service_id,
+            Some(TEST_SERVICE_ID.to_string())
+        );
+        validate_reporter(
+            &test_record.properties[1].updates[0].reporter,
+            KEY2,
+            "Jon Snow",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::Bool(true)
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .service_id,
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        validate_reporter(
+            &test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY2,
+            "Jon Snow",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(test_record.r#final, false);
+
+        assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
+        assert_eq!(test_record.owner_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.custodian_updates[0].agent_id, KEY2.to_string());
+        assert_eq!(test_record.custodian_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.proposals[0].timestamp, 1);
+        assert_eq!(test_record.proposals[0].role, "OWNER");
+        assert_eq!(
+            test_record.proposals[0].properties,
+            vec!["location".to_string()]
+        );
+        assert_eq!(test_record.proposals[0].status, "OPEN");
+        assert_eq!(test_record.proposals[0].terms, "Proposal Terms".to_string());
+        assert_eq!(
+            test_record.proposals[0].service_id,
+            Some(TEST_SERVICE_ID.to_string())
+        );
+    }
+
+    ///
     /// Verifies a GET /record responds with an Ok response
     /// with a list containing one record, when there's two records for the same
     /// record_id. The rest-api should return a list with a single record with the
@@ -1142,7 +1789,7 @@ mod test {
     async fn test_list_records_updated() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
@@ -1172,15 +1819,15 @@ mod test {
     async fn test_list_records_multiple() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of record with the same org_id to the test database
         populate_record_table(&test_pool.get().unwrap(), &get_multuple_records());
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property_for_record(),
-            &get_reported_value_for_property_record(),
-            &get_reporter_for_property_record(),
+            &get_property_for_record(None),
+            &get_reported_value_for_property_record(None),
+            &get_reporter_for_property_record(None),
         );
 
         // Making another request to the database
@@ -1209,20 +1856,20 @@ mod test {
     async fn test_fetch_record_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
-        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles());
-        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents());
-        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal());
-        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord"));
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles(None));
+        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents(None));
+        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal(None));
+        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord", None));
         populate_property_definition_table(
             &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(),
+            &get_grid_property_definition_for_record(None),
         );
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property_for_record(),
-            &get_reported_value_for_property_record(),
-            &get_reporter_for_property_record(),
+            &get_property_for_record(None),
+            &get_reported_value_for_property_record(None),
+            &get_reporter_for_property_record(None),
         );
         let mut response = srv
             .request(
@@ -1255,6 +1902,7 @@ mod test {
             &test_record.properties[0].updates[0].reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
         assert_eq!(
             test_record.properties[0]
@@ -1280,6 +1928,7 @@ mod test {
                 .reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
@@ -1296,6 +1945,7 @@ mod test {
             &test_record.properties[1].updates[0].reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
         assert_eq!(
             test_record.properties[1]
@@ -1321,6 +1971,7 @@ mod test {
                 .reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
 
         assert_eq!(test_record.r#final, false);
@@ -1342,6 +1993,182 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /record/{record_id}?service_id=test_service responds with an OK response
+    ///     and the Record with the specified record ID.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_record_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_agent_table(
+            &test_pool.get().unwrap(),
+            &get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_associated_agent_table(
+            &test_pool.get().unwrap(),
+            &get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_proposal_table(
+            &test_pool.get().unwrap(),
+            &get_proposal(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_record_table(
+            &test_pool.get().unwrap(),
+            &get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_for_record(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
+            &get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            &get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/record/{}?service_id={}",
+                    "TestRecord", TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_record: RecordSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(test_record.record_id, "TestRecord".to_string());
+        assert_eq!(test_record.schema, "TestGridSchema".to_string());
+        assert_eq!(test_record.owner, KEY1.to_string());
+        assert_eq!(test_record.custodian, KEY2.to_string());
+        assert_eq!(test_record.service_id, Some(TEST_SERVICE_ID.to_string()));
+
+        assert_eq!(test_record.properties.len(), 2);
+        assert_eq!(test_record.properties[0].name, "TestProperty1");
+        assert_eq!(test_record.properties[0].record_id, "TestRecord");
+        assert_eq!(test_record.properties[0].data_type, "String");
+        assert_eq!(
+            test_record.properties[0].service_id,
+            Some(TEST_SERVICE_ID.to_string())
+        );
+        assert_eq!(test_record.properties[0].reporters, vec![KEY1.to_string()]);
+        assert_eq!(test_record.properties[0].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[0].updates[0].value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[0].updates[0].reporter,
+            KEY1,
+            "Arya Stark",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::String("value_1".to_string())
+        );
+        assert_eq!(
+            test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        validate_reporter(
+            &test_record.properties[0]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY1,
+            "Arya Stark",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(test_record.properties[1].name, "TestProperty2");
+        assert_eq!(test_record.properties[1].record_id, "TestRecord");
+        assert_eq!(test_record.properties[1].data_type, "Boolean");
+        assert_eq!(test_record.properties[1].reporters, vec![KEY2.to_string()]);
+        assert_eq!(test_record.properties[1].updates.len(), 1);
+        assert_eq!(
+            test_record.properties[1].updates[0].value,
+            Value::Bool(true)
+        );
+        assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
+        validate_reporter(
+            &test_record.properties[1].updates[0].reporter,
+            KEY2,
+            "Jon Snow",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .value,
+            Value::Bool(true)
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .timestamp,
+            5
+        );
+        assert_eq!(
+            test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .service_id,
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        validate_reporter(
+            &test_record.properties[1]
+                .value
+                .clone()
+                .expect("Property value not returned")
+                .reporter,
+            KEY2,
+            "Jon Snow",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(test_record.r#final, false);
+
+        assert_eq!(test_record.owner_updates[0].agent_id, KEY1.to_string());
+        assert_eq!(test_record.owner_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.custodian_updates[0].agent_id, KEY2.to_string());
+        assert_eq!(test_record.custodian_updates[0].timestamp, 1);
+
+        assert_eq!(test_record.proposals[0].timestamp, 1);
+        assert_eq!(test_record.proposals[0].role, "OWNER");
+        assert_eq!(
+            test_record.proposals[0].properties,
+            vec!["location".to_string()]
+        );
+        assert_eq!(test_record.proposals[0].status, "OPEN");
+        assert_eq!(test_record.proposals[0].terms, "Proposal Terms".to_string());
+        assert_eq!(
+            test_record.proposals[0].service_id,
+            Some(TEST_SERVICE_ID.to_string())
+        );
+    }
+
+    ///
     /// Verifies a GET /record/{record_id} responds with an OK response
     ///     and the Record with the specified record ID after the Record's
     ///     owners, custodians, and proposals have been updated.
@@ -1350,17 +2177,17 @@ mod test {
     async fn test_fetch_record_updated_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
             &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(),
+            &get_grid_property_definition_for_record(None),
         );
         populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property_for_record(),
-            &get_reported_value_for_property_record(),
-            &get_reporter_for_property_record(),
+            &get_property_for_record(None),
+            &get_reported_value_for_property_record(None),
+            &get_reporter_for_property_record(None),
         );
         populate_associated_agent_table(
             &test_pool.get().unwrap(),
@@ -1399,6 +2226,7 @@ mod test {
             &test_record.properties[0].updates[0].reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
         assert_eq!(
             test_record.properties[0]
@@ -1424,6 +2252,7 @@ mod test {
                 .reporter,
             KEY1,
             "Arya Stark",
+            None,
         );
 
         assert_eq!(test_record.properties[1].name, "TestProperty2");
@@ -1440,6 +2269,7 @@ mod test {
             &test_record.properties[1].updates[0].reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
         assert_eq!(
             test_record.properties[1]
@@ -1465,6 +2295,7 @@ mod test {
                 .reporter,
             KEY2,
             "Jon Snow",
+            None,
         );
 
         assert_eq!(test_record.r#final, true);
@@ -1492,10 +2323,34 @@ mod test {
     async fn test_fetch_record_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         clear_record_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/record/not_in_database"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /record/{record_id}?service_id=test_service responds with a Not Found error
+    ///     when there is no Record with the specified record_id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_record_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        clear_record_table(&test_pool.get().unwrap());
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/record/not_in_database?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
             .send()
             .await
             .unwrap();
@@ -1510,17 +2365,17 @@ mod test {
     async fn test_fetch_record_property_ok() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         populate_property_definition_table(
             &test_pool.get().unwrap(),
-            &get_grid_property_definition_struct_for_record(),
+            &get_grid_property_definition_struct_for_record(None),
         );
-        populate_record_table(&test_pool.get().unwrap(), &get_record("record_01"));
+        populate_record_table(&test_pool.get().unwrap(), &get_record("record_01", None));
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property(),
-            &get_reported_value(),
-            &get_reporter(),
+            &get_property(None),
+            &get_reported_value(None),
+            &get_reporter(None),
         );
         let mut response = srv
             .request(
@@ -1550,13 +2405,14 @@ mod test {
                 .value
                 .clone()
                 .expect("Property value not returned"),
+            None,
         );
 
         assert_eq!(property_info.updates.len(), 2);
 
         let first_update = &property_info.updates[0];
 
-        validate_reporter(&first_update.reporter, KEY2, "Jon Snow");
+        validate_reporter(&first_update.reporter, KEY2, "Jon Snow", None);
 
         assert_eq!(first_update.timestamp, 3);
 
@@ -1579,12 +2435,111 @@ mod test {
         }
 
         let second_update = &property_info.updates[1];
-        validate_current_value(second_update);
+        validate_current_value(second_update, None);
     }
 
-    fn validate_current_value(property_value: &PropertyValueSlice) {
-        validate_reporter(&property_value.reporter, KEY1, "Arya Stark");
+    ///
+    /// Verifies a GET /record/{record_id}/property/{property_name}?service_id=test_service responds
+    ///     with an OK response and the infomation on the Property requested.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_record_property_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_property_definition_table(
+            &test_pool.get().unwrap(),
+            &get_grid_property_definition_struct_for_record(Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_record_table(
+            &test_pool.get().unwrap(),
+            &get_record("record_01", Some(TEST_SERVICE_ID.to_string())),
+        );
+        populate_tnt_property_table(
+            &test_pool.get().unwrap(),
+            &get_property(Some(TEST_SERVICE_ID.to_string())),
+            &get_reported_value(Some(TEST_SERVICE_ID.to_string())),
+            &get_reporter(Some(TEST_SERVICE_ID.to_string())),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/record/record_01/property/TestProperty?service_id={}",
+                    TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+
+        assert!(response.status().is_success());
+
+        let property_info: PropertySlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+
+        assert_eq!(property_info.data_type, "Struct".to_string());
+        assert_eq!(property_info.name, "TestProperty".to_string());
+        assert_eq!(property_info.record_id, "record_01".to_string());
+        assert_eq!(property_info.service_id, Some(TEST_SERVICE_ID.to_string()));
+
+        assert_eq!(
+            property_info.reporters,
+            vec![KEY1.to_string(), KEY2.to_string()]
+        );
+
+        validate_current_value(
+            &property_info
+                .value
+                .clone()
+                .expect("Property value not returned"),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(property_info.updates.len(), 2);
+
+        let first_update = &property_info.updates[0];
+
+        validate_reporter(
+            &first_update.reporter,
+            KEY2,
+            "Jon Snow",
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+
+        assert_eq!(first_update.timestamp, 3);
+
+        match &first_update.value {
+            Value::Struct(struct_values) => {
+                assert_eq!(struct_values.len(), 5);
+                validate_struct_value(&struct_values[0], "value_1", false);
+                validate_location_value(
+                    &struct_values[1],
+                    LatLong {
+                        latitude: 1,
+                        longitude: 1,
+                    },
+                );
+                validate_number_value(&struct_values[2], 1);
+                validate_enum_value(&struct_values[3], 1);
+                validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+            }
+            _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
+        }
+
+        let second_update = &property_info.updates[1];
+        validate_current_value(second_update, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    fn validate_current_value(property_value: &PropertyValueSlice, service_id: Option<String>) {
+        validate_reporter(
+            &property_value.reporter,
+            KEY1,
+            "Arya Stark",
+            service_id.clone(),
+        );
         assert_eq!(property_value.timestamp, 5);
+        assert_eq!(property_value.service_id, service_id);
         match &property_value.value {
             Value::Struct(struct_values) => {
                 assert_eq!(struct_values.len(), 5);
@@ -1607,12 +2562,18 @@ mod test {
         }
     }
 
-    fn validate_reporter(reporter: &ReporterSlice, public_key: &str, name: &str) {
+    fn validate_reporter(
+        reporter: &ReporterSlice,
+        public_key: &str,
+        name: &str,
+        service_id: Option<String>,
+    ) {
         assert_eq!(
             reporter.metadata.get("agent_name"),
             Some(&JsonValue::String(name.to_string()))
         );
         assert_eq!(reporter.public_key, public_key.to_string());
+        assert_eq!(reporter.service_id, service_id);
     }
 
     fn validate_struct_value(
@@ -1689,7 +2650,7 @@ mod test {
     async fn test_fetch_property_name_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         clear_tnt_property_table(&test_pool.get().unwrap());
         let response = srv
             .request(
@@ -1711,12 +2672,12 @@ mod test {
     async fn test_fetch_property_record_id_not_found() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
-        let srv = create_test_server(ResponseType::ClientBatchStatusResponseOK);
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         populate_tnt_property_table(
             &test_pool.get().unwrap(),
-            &get_property(),
-            &get_reported_value(),
-            &get_reporter(),
+            &get_property(None),
+            &get_reported_value(None),
+            &get_reporter(None),
         );
         let response = srv
             .request(
@@ -1793,7 +2754,7 @@ mod test {
             .expect("Failed to write batch statuses to bytes")
     }
 
-    fn get_agent() -> Vec<NewAgent> {
+    fn get_agent(service_id: Option<String>) -> Vec<NewAgent> {
         vec![NewAgent {
             public_key: KEY1.to_string(),
             org_id: KEY2.to_string(),
@@ -1802,11 +2763,11 @@ mod test {
             metadata: JsonValue::Object(Map::new()),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: None,
+            service_id,
         }]
     }
 
-    fn get_agents_with_roles() -> Vec<NewAgent> {
+    fn get_agents_with_roles(service_id: Option<String>) -> Vec<NewAgent> {
         vec![
             NewAgent {
                 public_key: KEY1.to_string(),
@@ -1816,7 +2777,7 @@ mod test {
                 metadata: JsonValue::Object(Map::new()),
                 start_commit_num: 0,
                 end_commit_num: MAX_COMMIT_NUM,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewAgent {
                 public_key: KEY2.to_string(),
@@ -1826,7 +2787,7 @@ mod test {
                 metadata: JsonValue::Object(Map::new()),
                 start_commit_num: 0,
                 end_commit_num: MAX_COMMIT_NUM,
-                service_id: None,
+                service_id,
             },
         ]
     }
@@ -1841,7 +2802,7 @@ mod test {
         diesel::delete(agent).execute(conn).unwrap();
     }
 
-    fn get_organization() -> Vec<NewOrganization> {
+    fn get_organization(service_id: Option<String>) -> Vec<NewOrganization> {
         vec![NewOrganization {
             org_id: KEY2.to_string(),
             name: ORG_NAME_1.to_string(),
@@ -1849,7 +2810,7 @@ mod test {
             metadata: vec![],
             start_commit_num: 1,
             end_commit_num: database::helpers::MAX_COMMIT_NUM,
-            service_id: None,
+            service_id,
         }]
     }
 
@@ -1886,18 +2847,18 @@ mod test {
         diesel::delete(organization).execute(conn).unwrap();
     }
 
-    fn get_grid_schema() -> Vec<NewGridSchema> {
+    fn get_grid_schema(service_id: Option<String>) -> Vec<NewGridSchema> {
         vec![NewGridSchema {
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
             name: "TestGridSchema".to_string(),
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
-            service_id: None,
+            service_id,
         }]
     }
 
-    fn get_product() -> Vec<NewProduct> {
+    fn get_product(service_id: Option<String>) -> Vec<NewProduct> {
         vec![NewProduct {
             product_id: "041205707820".to_string(),
             product_address: "test_address".to_string(),
@@ -1905,11 +2866,11 @@ mod test {
             owner: "phillips001".to_string(),
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
-            service_id: None,
+            service_id,
         }]
     }
 
-    fn get_associated_agents() -> Vec<NewAssociatedAgent> {
+    fn get_associated_agents(service_id: Option<String>) -> Vec<NewAssociatedAgent> {
         vec![
             NewAssociatedAgent {
                 start_commit_num: 0,
@@ -1918,7 +2879,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "OWNER".to_string(),
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewAssociatedAgent {
                 start_commit_num: 0,
@@ -1927,7 +2888,7 @@ mod test {
                 timestamp: 1,
                 record_id: "TestRecord".to_string(),
                 role: "CUSTODIAN".to_string(),
-                service_id: None,
+                service_id,
             },
         ]
     }
@@ -1973,7 +2934,7 @@ mod test {
         ]
     }
 
-    fn get_proposal() -> Vec<NewProposal> {
+    fn get_proposal(service_id: Option<String>) -> Vec<NewProposal> {
         vec![NewProposal {
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
@@ -1985,7 +2946,7 @@ mod test {
             role: "OWNER".to_string(),
             status: "OPEN".to_string(),
             terms: "Proposal Terms".to_string(),
-            service_id: None,
+            service_id,
         }]
     }
 
@@ -2020,7 +2981,7 @@ mod test {
         ]
     }
 
-    fn get_record(record_id: &str) -> Vec<NewRecord> {
+    fn get_record(record_id: &str, service_id: Option<String>) -> Vec<NewRecord> {
         vec![NewRecord {
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
@@ -2029,7 +2990,7 @@ mod test {
             final_: false,
             owners: vec![KEY1.to_string()],
             custodians: vec![KEY2.to_string()],
-            service_id: None,
+            service_id,
         }]
     }
 
@@ -2093,9 +3054,13 @@ mod test {
         ]
     }
 
-    fn populate_grid_schema_table(conn: &PgConnection, schemas: &[NewGridSchema]) {
+    fn populate_grid_schema_table(
+        conn: &PgConnection,
+        schemas: &[NewGridSchema],
+        service_id: Option<String>,
+    ) {
         clear_grid_schema_table(conn);
-        populate_property_definition_table(conn, &get_property_definition());
+        populate_property_definition_table(conn, &get_property_definition(service_id));
         insert_into(grid_schema::table)
             .values(schemas)
             .execute(conn)
@@ -2103,9 +3068,13 @@ mod test {
             .unwrap();
     }
 
-    fn populate_product_table(conn: &PgConnection, products: &[NewProduct]) {
+    fn populate_product_table(
+        conn: &PgConnection,
+        products: &[NewProduct],
+        service_id: Option<String>,
+    ) {
         clear_product_table(conn);
-        populate_product_property_value_table(conn, &get_product_property_value());
+        populate_product_property_value_table(conn, &get_product_property_value(service_id));
         insert_into(product::table)
             .values(products)
             .execute(conn)
@@ -2113,7 +3082,7 @@ mod test {
             .unwrap();
     }
 
-    fn get_property_for_record() -> Vec<NewProperty> {
+    fn get_property_for_record(service_id: Option<String>) -> Vec<NewProperty> {
         vec![
             NewProperty {
                 start_commit_num: 0,
@@ -2123,7 +3092,7 @@ mod test {
                 property_definition: "property_definition_1".to_string(),
                 current_page: 1,
                 wrapped: false,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewProperty {
                 start_commit_num: 0,
@@ -2133,12 +3102,12 @@ mod test {
                 property_definition: "property_definition_2".to_string(),
                 current_page: 1,
                 wrapped: false,
-                service_id: None,
+                service_id,
             },
         ]
     }
 
-    fn get_reporter_for_property_record() -> Vec<NewReporter> {
+    fn get_reporter_for_property_record(service_id: Option<String>) -> Vec<NewReporter> {
         vec![
             NewReporter {
                 start_commit_num: 0,
@@ -2148,7 +3117,7 @@ mod test {
                 public_key: KEY1.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReporter {
                 start_commit_num: 0,
@@ -2158,12 +3127,12 @@ mod test {
                 public_key: KEY2.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                service_id: None,
+                service_id,
             },
         ]
     }
 
-    fn get_reported_value_for_property_record() -> Vec<NewReportedValue> {
+    fn get_reported_value_for_property_record(service_id: Option<String>) -> Vec<NewReportedValue> {
         vec![
             NewReportedValue {
                 start_commit_num: 0,
@@ -2180,7 +3149,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2197,11 +3166,11 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id,
             },
         ]
     }
-    fn get_property() -> Vec<NewProperty> {
+    fn get_property(service_id: Option<String>) -> Vec<NewProperty> {
         vec![NewProperty {
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
@@ -2210,11 +3179,11 @@ mod test {
             property_definition: "property_definition_1".to_string(),
             current_page: 1,
             wrapped: false,
-            service_id: None,
+            service_id,
         }]
     }
 
-    fn get_reporter() -> Vec<NewReporter> {
+    fn get_reporter(service_id: Option<String>) -> Vec<NewReporter> {
         vec![
             NewReporter {
                 start_commit_num: 0,
@@ -2224,7 +3193,7 @@ mod test {
                 public_key: KEY1.to_string(),
                 authorized: true,
                 reporter_index: 0,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReporter {
                 start_commit_num: 0,
@@ -2234,7 +3203,7 @@ mod test {
                 public_key: KEY2.to_string(),
                 authorized: true,
                 reporter_index: 1,
-                service_id: None,
+                service_id,
             },
         ]
     }
@@ -2334,7 +3303,7 @@ mod test {
         diesel::delete(property).execute(conn).unwrap();
     }
 
-    fn get_property_definition() -> Vec<NewGridPropertyDefinition> {
+    fn get_property_definition(service_id: Option<String>) -> Vec<NewGridPropertyDefinition> {
         vec![
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2347,7 +3316,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2360,12 +3329,14 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                service_id: None,
+                service_id: service_id,
             },
         ]
     }
 
-    fn get_grid_property_definition_struct_for_record() -> Vec<NewGridPropertyDefinition> {
+    fn get_grid_property_definition_struct_for_record(
+        service_id: Option<String>,
+    ) -> Vec<NewGridPropertyDefinition> {
         vec![NewGridPropertyDefinition {
             start_commit_num: 0,
             end_commit_num: MAX_COMMIT_NUM,
@@ -2377,11 +3348,13 @@ mod test {
             number_exponent: 0,
             enum_options: vec![],
             struct_properties: vec![],
-            service_id: None,
+            service_id,
         }]
     }
 
-    fn get_grid_property_definition_for_record() -> Vec<NewGridPropertyDefinition> {
+    fn get_grid_property_definition_for_record(
+        service_id: Option<String>,
+    ) -> Vec<NewGridPropertyDefinition> {
         vec![
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2394,7 +3367,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewGridPropertyDefinition {
                 start_commit_num: 0,
@@ -2407,7 +3380,7 @@ mod test {
                 number_exponent: 0,
                 enum_options: vec![],
                 struct_properties: vec![],
-                service_id: None,
+                service_id,
             },
         ]
     }
@@ -2431,7 +3404,7 @@ mod test {
             .unwrap();
     }
 
-    fn get_product_property_value() -> Vec<NewProductPropertyValue> {
+    fn get_product_property_value(service_id: Option<String>) -> Vec<NewProductPropertyValue> {
         vec![
             NewProductPropertyValue {
                 start_commit_num: 0,
@@ -2447,7 +3420,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewProductPropertyValue {
                 start_commit_num: 0,
@@ -2463,7 +3436,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id,
             },
         ]
     }
@@ -2538,7 +3511,7 @@ mod test {
         diesel_migrations::run_pending_migrations(&connection).expect("Failed to run migrations");
     }
 
-    fn get_reported_value() -> Vec<NewReportedValue> {
+    fn get_reported_value(service_id: Option<String>) -> Vec<NewReportedValue> {
         vec![
             NewReportedValue {
                 start_commit_num: 2,
@@ -2555,7 +3528,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2572,7 +3545,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2592,7 +3565,7 @@ mod test {
                     "BoolProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2612,7 +3585,7 @@ mod test {
                     "BoolProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2629,7 +3602,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2646,7 +3619,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2669,7 +3642,7 @@ mod test {
                     "BytesProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2692,7 +3665,7 @@ mod test {
                     "BytesProperty".to_string(),
                 ]),
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2709,7 +3682,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: Some(LatLongValue(2, 2)),
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2726,7 +3699,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: Some(LatLongValue(1, 1)),
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2743,7 +3716,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2760,7 +3733,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2777,7 +3750,7 @@ mod test {
                 enum_value: Some(2),
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2794,7 +3767,7 @@ mod test {
                 enum_value: Some(1),
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 2,
@@ -2811,7 +3784,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id: service_id.clone(),
             },
             NewReportedValue {
                 start_commit_num: 0,
@@ -2828,7 +3801,7 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
-                service_id: None,
+                service_id,
             },
         ]
     }
