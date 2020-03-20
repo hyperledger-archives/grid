@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::UserModel;
-use super::super::schema::splinter_user;
-use super::super::{SplinterUser, UserStoreError};
 use super::UserStoreOperations;
+use crate::biome::user::store::diesel::models::UserModel;
+use crate::biome::user::store::diesel::schema::splinter_user;
+use crate::biome::user::store::error::UserStoreError;
+use crate::biome::user::store::SplinterUser;
+
 use diesel::{dsl::update, prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait UserStoreUpdateUserOperation {
+pub(in crate::biome::user) trait UserStoreUpdateUserOperation {
     fn update_user(&self, updated_user: SplinterUser) -> Result<(), UserStoreError>;
 }
 

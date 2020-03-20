@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::{NewUserCredentialsModel, UserCredentialsModel};
-use super::super::{schema::user_credentials, CredentialsStoreError, UserCredentials};
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::diesel::{
+    schema::user_credentials, CredentialsStoreError, UserCredentials,
+};
+use crate::biome::credentials::store::{NewUserCredentialsModel, UserCredentialsModel};
 use diesel::{dsl::insert_into, prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait CredentialsStoreAddCredentialsOperation {
+pub(in crate::biome::credentials) trait CredentialsStoreAddCredentialsOperation {
     fn add_credentials(&self, credentials: UserCredentials) -> Result<(), CredentialsStoreError>;
 }
 

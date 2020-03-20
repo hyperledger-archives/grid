@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::schema::*;
+use super::schema::keys;
 
 #[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
 #[table_name = "keys"]

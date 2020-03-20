@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::UserCredentialsModel;
-use super::super::{schema::user_credentials, CredentialsStoreError, UsernameId};
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::diesel::{
+    schema::user_credentials, CredentialsStoreError, UsernameId,
+};
+use crate::biome::credentials::store::UserCredentialsModel;
 use diesel::prelude::*;
 
-pub(in super::super) trait CredentialsStoreGetUsernamesOperation {
+pub(in crate::biome::credentials) trait CredentialsStoreGetUsernamesOperation {
     fn get_usernames(&self) -> Result<Vec<UsernameId>, CredentialsStoreError>;
 }
 

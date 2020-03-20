@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::UserCredentialsModel;
-use super::super::{schema::user_credentials, CredentialsStoreError};
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::diesel::{schema::user_credentials, CredentialsStoreError};
+use crate::biome::credentials::store::UserCredentialsModel;
 use diesel::{dsl::delete, prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait CredentialsStoreRemoveCredentialsOperation {
+pub(in crate::biome::credentials) trait CredentialsStoreRemoveCredentialsOperation {
     fn remove_credentials(&self, user_id: &str) -> Result<(), CredentialsStoreError>;
 }
 

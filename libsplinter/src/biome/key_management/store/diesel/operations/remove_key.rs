@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::KeyModel;
-use super::super::schema::keys;
 use super::KeyStoreOperations;
+use crate::biome::key_management::store::diesel::models::KeyModel;
+use crate::biome::key_management::store::diesel::schema::keys;
 use crate::biome::key_management::{store::KeyStoreError, Key};
 
 use diesel::{dsl::delete, prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait KeyStoreRemoveKeyOperation {
+pub(in crate::biome::key_management) trait KeyStoreRemoveKeyOperation {
     fn remove_key(&self, public_key: &str, user_id: &str) -> Result<Key, KeyStoreError>;
 }
 

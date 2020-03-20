@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::UserModel;
-use super::super::schema::splinter_user;
-use super::super::UserStoreError;
 use super::UserStoreOperations;
+use crate::biome::user::store::diesel::models::UserModel;
+use crate::biome::user::store::diesel::schema::splinter_user;
+use crate::biome::user::store::error::UserStoreError;
+
 use diesel::{dsl::delete, prelude::*};
 
-pub(in super::super) trait UserStoreDeleteUserOperation {
+pub(in crate::biome::user) trait UserStoreDeleteUserOperation {
     fn delete_user(&self, user_id: &str) -> Result<(), UserStoreError>;
 }
 

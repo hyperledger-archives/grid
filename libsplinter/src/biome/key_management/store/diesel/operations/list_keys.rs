@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::KeyModel;
-use super::super::schema::keys;
 use super::KeyStoreOperations;
+use crate::biome::key_management::store::diesel::models::KeyModel;
+use crate::biome::key_management::store::diesel::schema::keys;
 use crate::biome::key_management::{store::KeyStoreError, Key};
 
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait KeyStoreListKeysOperation {
+pub(in crate::biome::key_management) trait KeyStoreListKeysOperation {
     fn list_keys(&self) -> Result<Vec<Key>, KeyStoreError>;
 }
 
@@ -49,7 +49,7 @@ where
     }
 }
 
-pub(in super::super) trait KeyStoreListKeysWithUserIDOperation {
+pub(in crate::biome::key_management) trait KeyStoreListKeysWithUserIDOperation {
     fn list_keys_with_user_id(&self, user_id: &str) -> Result<Vec<Key>, KeyStoreError>;
 }
 

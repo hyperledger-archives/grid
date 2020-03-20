@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::{UserCredentialsBuilder, UserCredentialsModel};
-use super::super::schema::user_credentials;
-use super::super::CredentialsStoreError;
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::diesel::schema::user_credentials;
+use crate::biome::credentials::store::error::CredentialsStoreError;
+use crate::biome::credentials::store::{UserCredentialsBuilder, UserCredentialsModel};
 use diesel::{dsl::update, prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait CredentialsStoreUpdateCredentialsOperation {
+pub(in crate::biome::credentials) trait CredentialsStoreUpdateCredentialsOperation {
     fn update_credentials(
         &self,
         user_id: &str,

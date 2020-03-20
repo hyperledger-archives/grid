@@ -14,23 +14,21 @@
 
 use std::sync::Arc;
 
+use super::authorize::authorize_user;
 use crate::actix_web::HttpResponse;
-use crate::futures::{Future, IntoFuture};
-use crate::protocol;
-use crate::rest_api::{
-    into_bytes, ErrorResponse, HandlerFunction, Method, ProtocolVersionRangeGuard, Resource,
-};
-
 use crate::biome::key_management::{
     store::{KeyStore, KeyStoreError},
     Key,
 };
+use crate::biome::rest_api::resources::authorize::AuthorizationResult;
+use crate::biome::rest_api::resources::key_management::{NewKey, ResponseKey, UpdatedKey};
 use crate::biome::rest_api::BiomeRestConfig;
+use crate::futures::{Future, IntoFuture};
+use crate::protocol;
 use crate::rest_api::secrets::SecretManager;
-
-use super::super::resources::authorize::AuthorizationResult;
-use super::super::resources::key_management::{NewKey, ResponseKey, UpdatedKey};
-use super::authorize::authorize_user;
+use crate::rest_api::{
+    into_bytes, ErrorResponse, HandlerFunction, Method, ProtocolVersionRangeGuard, Resource,
+};
 
 /// Defines a REST endpoint for managing keys including inserting, listing and updating keys
 pub fn make_key_management_route(

@@ -18,8 +18,8 @@
     feature = "json-web-tokens",
     any(feature = "biome-key-management", feature = "biome-credentials")
 ))]
-pub(in super::super) mod authorize;
+pub(in crate::biome::rest_api) mod authorize;
 #[cfg(feature = "biome-credentials")]
-pub(in super::super) mod credentials;
+pub(in crate::biome::rest_api) mod credentials;
 #[cfg(feature = "biome-key-management")]
-pub(in super::super) mod key_management;
+pub(in crate::biome::rest_api) mod key_management;
