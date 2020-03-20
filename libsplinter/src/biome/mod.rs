@@ -34,4 +34,4 @@ pub mod notifications;
 
 #[cfg(feature = "rest-api")]
 pub mod rest_api;
-pub mod user;
+mod user;
