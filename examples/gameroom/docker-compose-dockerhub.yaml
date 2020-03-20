@@ -36,8 +36,6 @@ services:
                 -d /key_registry \
                 --force
             fi
-            # group 101 is "splinterd" in the splinterd images
-            chown root:101 /key_registry/*
           "
 
     db-acme:
@@ -117,7 +115,7 @@ services:
           done && \
           # Copy the generated key registry to its expected location
           cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
-          sudo splinter cert generate --skip && \
+          splinter cert generate --skip && \
           splinterd -c ./configs/splinterd-node-acme.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \
@@ -203,7 +201,7 @@ services:
           done && \
           # Copy the generated key registry to its expected location
           cp -a /key_registry_shared/keys.yaml /var/lib/splinter && \
-          sudo splinter cert generate --skip && \
+          splinter cert generate --skip && \
           splinterd -c ./configs/splinterd-node-bubba.toml -vv \
               --service-endpoint 0.0.0.0:8043 \
               --network-endpoint 0.0.0.0:8044 \
