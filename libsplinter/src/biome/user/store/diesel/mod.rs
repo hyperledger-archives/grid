@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub(in crate::biome) mod models;
 mod operations;
+mod schema;
 
 use super::{SplinterUser, UserStore, UserStoreError};
 use crate::database::ConnectionPool;
