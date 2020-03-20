@@ -12,22 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-credentials")]
-table! {
-    user_credentials {
-        id -> Int8,
-        user_id -> Text,
-        username -> Text,
-        password -> Text,
-    }
-}
+//! Defines a basic representation of a notification.
 
-#[cfg(feature = "biome-key-management")]
-table! {
-    keys (public_key, user_id) {
-        public_key -> Text,
-        encrypted_private_key -> Text,
-        user_id -> Text,
-        display_name -> Text,
-    }
-}
+#[cfg(feature = "diesel")]
+pub(in crate::biome) mod diesel;

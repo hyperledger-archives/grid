@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "biome-notifications")]
-use std::time::SystemTime;
-
 use super::schema::*;
 use crate::biome::user::store::diesel::models::UserModel;
 
@@ -47,34 +44,4 @@ pub struct KeyModel {
     pub encrypted_private_key: String,
     pub user_id: String,
     pub display_name: String,
-}
-
-#[cfg(feature = "biome-notifications")]
-#[derive(Insertable, Queryable)]
-#[table_name = "notifications"]
-pub struct Notification {
-    pub id: String,
-    pub payload_title: String,
-    pub payload_body: String,
-    pub created: SystemTime,
-    pub recipients: Vec<String>,
-}
-
-#[cfg(feature = "biome-notifications")]
-#[derive(Insertable, Queryable)]
-#[table_name = "user_notifications"]
-pub struct UserNotification {
-    pub notification_id: String,
-    pub user_id: String,
-    pub unread: bool,
-}
-
-#[cfg(feature = "biome-notifications")]
-#[derive(Insertable, Queryable)]
-#[table_name = "notification_properties"]
-pub struct NotificationProperty {
-    pub id: i64,
-    pub notification_id: String,
-    pub property: String,
-    pub property_value: String,
 }
