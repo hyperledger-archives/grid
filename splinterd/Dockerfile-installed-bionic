@@ -65,6 +65,12 @@ RUN apt-get update \
  && apt-get install -y -q \
     man \
     postgresql-client \
+    sudo \
  && mandb \
  && dpkg --unpack /tmp/splinter-*.deb \
  && apt-get -f -y install
+
+RUN echo "splinterd ALL = (root) NOPASSWD: /usr/bin/splinter cert generate --skip" \
+    >> /etc/sudoers.d/splinterd
+
+USER splinterd
