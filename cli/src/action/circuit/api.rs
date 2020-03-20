@@ -152,10 +152,22 @@ impl<'a> SplinterRestClient<'a> {
             })
     }
 
-    pub fn list_proposals(&self, filter: Option<&str>) -> Result<ProposalListSlice, CliError> {
+    pub fn list_proposals(
+        &self,
+        management_type_filter: Option<&str>,
+        member_filter: Option<&str>,
+    ) -> Result<ProposalListSlice, CliError> {
+        let mut filters = vec![];
+        if let Some(management_type) = management_type_filter {
+            filters.push(format!("management_type={}", management_type));
+        }
+        if let Some(member) = member_filter {
+            filters.push(format!("member={}", member));
+        }
+
         let mut request = format!("{}/admin/proposals", self.url);
-        if let Some(filter) = filter {
-            request = format!("{}?filter={}", &request, &filter);
+        if !filters.is_empty() {
+            request.push_str(&format!("?{}", filters.join("&")));
         }
 
         Client::new()

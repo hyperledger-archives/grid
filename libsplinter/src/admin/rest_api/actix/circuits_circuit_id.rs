@@ -79,6 +79,7 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
@@ -105,8 +106,13 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuit: CircuitResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuit, get_circuit_1().into());
+        let circuit: JsonValue = resp.json().expect("Failed to deserialize body");
+
+        assert_eq!(
+            circuit,
+            to_value(CircuitResponse::from(&get_circuit_1()))
+                .expect("failed to convert expected circuit"),
+        );
     }
 
     #[test]

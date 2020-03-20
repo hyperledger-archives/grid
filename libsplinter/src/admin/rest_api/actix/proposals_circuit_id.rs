@@ -81,13 +81,14 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::admin::{
         messages::{
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
             ProposalType, RouteType,
         },
-        service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
+        service::proposal_store::{ProposalFilter, ProposalIter, ProposalStoreError},
     };
     use crate::rest_api::{RestApiBuilder, RestApiServerError, RestApiShutdownHandle};
 
@@ -109,8 +110,13 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposal: ProposalResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposal, get_proposal().into());
+        let proposal: JsonValue = resp.json().expect("Failed to deserialize body");
+
+        assert_eq!(
+            proposal,
+            to_value(ProposalResponse::from(&get_proposal()))
+                .expect("failed to convert expected data")
+        );
     }
 
     #[test]
@@ -137,7 +143,10 @@ mod tests {
     struct MockProposalStore;
 
     impl ProposalStore for MockProposalStore {
-        fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
+        fn proposals(
+            &self,
+            _filters: Vec<ProposalFilter>,
+        ) -> Result<ProposalIter, ProposalStoreError> {
             unimplemented!()
         }
 

@@ -155,6 +155,7 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::circuit::{
         directory::CircuitDirectory, AuthorizationType, Circuit, DurabilityType, PersistenceType,
@@ -179,14 +180,28 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
+        let circuits: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            circuits.data,
-            vec![get_circuit_1().into(), get_circuit_2().into()]
+            circuits.get("data").expect("no data field in response"),
+            &to_value(vec![
+                CircuitResponse::from(&get_circuit_1()),
+                CircuitResponse::from(&get_circuit_2())
+            ])
+            .expect("failed to convert expected data"),
         );
         assert_eq!(
-            circuits.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/circuits?")
+            circuits.get("paging").expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                2,
+                "/admin/circuits?",
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -204,12 +219,26 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_1().into()]);
-        let link = format!("/admin/circuits?filter=node_1&");
+        let circuits: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            circuits.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            circuits.get("data").expect("no data field in response"),
+            &to_value(vec![CircuitResponse::from(&get_circuit_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            circuits.get("paging").expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                1,
+                &format!("/admin/circuits?filter=node_1&"),
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -227,11 +256,26 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_1().into()]);
+        let circuits: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            circuits.paging,
-            create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/circuits?")
+            circuits.get("data").expect("no data field in response"),
+            &to_value(vec![CircuitResponse::from(&get_circuit_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            circuits.get("paging").expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                1,
+                1,
+                0,
+                1,
+                2,
+                "/admin/circuits?",
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -249,11 +293,26 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let circuits: ListCircuitsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(circuits.data, vec![get_circuit_2().into()]);
+        let circuits: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            circuits.paging,
-            create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/circuits?")
+            circuits.get("data").expect("no data field in response"),
+            &to_value(vec![CircuitResponse::from(&get_circuit_2())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            circuits.get("paging").expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                1,
+                100,
+                0,
+                0,
+                0,
+                2,
+                "/admin/circuits?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 

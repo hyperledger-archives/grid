@@ -458,11 +458,19 @@ fn run() -> Result<(), CliError> {
                     )
                     .arg(
                         Arg::with_name("management_type")
-                            .short("m")
                             .long("management-type")
                             .long_help(
                                 "Filter the circuit proposals by the circuit \
                                  management type of the circuits",
+                            )
+                            .takes_value(true),
+                    )
+                    .arg(
+                        Arg::with_name("member")
+                            .long("member")
+                            .long_help(
+                                "Only show proposals whose circuits have the given node ID as \
+                                 a member",
                             )
                             .takes_value(true),
                     )

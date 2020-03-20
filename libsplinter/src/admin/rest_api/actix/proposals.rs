@@ -17,8 +17,7 @@ use actix_web::{error::BlockingError, web, Error, HttpRequest, HttpResponse};
 use futures::{future::IntoFuture, Future};
 use std::collections::HashMap;
 
-use crate::admin::messages::CircuitProposal;
-use crate::admin::service::proposal_store::ProposalStore;
+use crate::admin::service::proposal_store::{ProposalFilter, ProposalStore};
 use crate::protocol;
 use crate::rest_api::paging::{get_response_paging_info, DEFAULT_LIMIT, DEFAULT_OFFSET};
 use crate::rest_api::{ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
@@ -86,20 +85,26 @@ fn list_proposals<PS: ProposalStore + 'static>(
         None => DEFAULT_LIMIT,
     };
 
-    let mut link = req.uri().path().to_string();
+    let mut new_queries = vec![];
+    let management_type_filter = query.get("management_type").map(|management_type| {
+        new_queries.push(format!("management_type={}", management_type));
+        management_type.to_string()
+    });
+    let member_filter = query.get("member").map(|member| {
+        new_queries.push(format!("member={}", member));
+        member.to_string()
+    });
 
-    let filters = match query.get("filter") {
-        Some(value) => {
-            link.push_str(&format!("?filter={}&", value));
-            Some(value.to_string())
-        }
-        None => None,
-    };
+    let mut link = req.uri().path().to_string();
+    if !new_queries.is_empty() {
+        link.push_str(&format!("?{}&", new_queries.join("&")));
+    }
 
     Box::new(query_list_proposals(
         proposal_store,
         link,
-        filters,
+        management_type_filter,
+        member_filter,
         Some(offset),
         Some(limit),
     ))
@@ -108,43 +113,33 @@ fn list_proposals<PS: ProposalStore + 'static>(
 fn query_list_proposals<PS: ProposalStore + 'static>(
     proposal_store: web::Data<PS>,
     link: String,
-    filters: Option<String>,
+    management_type_filter: Option<String>,
+    member_filter: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     web::block(move || {
+        let mut filters = vec![];
+        if let Some(management_type) = management_type_filter {
+            filters.push(ProposalFilter::WithManagementType(management_type));
+        }
+        if let Some(member) = member_filter {
+            filters.push(ProposalFilter::WithMember(member));
+        }
+
         let proposals = proposal_store
-            .proposals()
+            .proposals(filters)
             .map_err(|err| ProposalListError::InternalError(err.to_string()))?;
         let offset_value = offset.unwrap_or(0);
-        let limit_value = limit.unwrap_or_else(|| proposals.total());
-        if proposals.total() != 0 {
-            if let Some(filter) = filters {
-                let filtered_proposals: Vec<CircuitProposal> = proposals
-                    .filter(|proposal| proposal.circuit.circuit_management_type == filter)
-                    .collect();
+        let total = proposals.total() as usize;
+        let limit_value = limit.unwrap_or(total);
 
-                let total_count = filtered_proposals.len();
+        let proposals = proposals
+            .skip(offset_value)
+            .take(limit_value)
+            .collect::<Vec<_>>();
 
-                let proposals_data = filtered_proposals
-                    .into_iter()
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect::<Vec<_>>();
-
-                Ok((proposals_data, link, limit, offset, total_count))
-            } else {
-                let total_count = proposals.total();
-                let proposals_data = proposals
-                    .skip(offset_value)
-                    .take(limit_value)
-                    .collect::<Vec<_>>();
-
-                Ok((proposals_data, link, limit, offset, total_count))
-            }
-        } else {
-            Ok((vec![], link, limit, offset, proposals.total()))
-        }
+        Ok((proposals, link, limit, offset, total))
     })
     .then(|res| match res {
         Ok((proposals, link, limit, offset, total_count)) => {
@@ -170,13 +165,14 @@ mod tests {
     use super::*;
 
     use reqwest::{blocking::Client, StatusCode, Url};
+    use serde_json::{to_value, Value as JsonValue};
 
     use crate::admin::{
         messages::{
             AuthorizationType, CircuitProposal, CreateCircuit, DurabilityType, PersistenceType,
-            ProposalType, RouteType,
+            ProposalType, RouteType, SplinterNode,
         },
-        service::{open_proposals::ProposalIter, proposal_store::ProposalStoreError},
+        service::proposal_store::{ProposalFilter, ProposalIter, ProposalStoreError},
     };
     use crate::rest_api::{
         paging::Paging, RestApiBuilder, RestApiServerError, RestApiShutdownHandle,
@@ -196,25 +192,44 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.data,
-            vec![get_proposal_1().into(), get_proposal_2().into()]
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_1()),
+                ProposalResponse::from(&get_proposal_2()),
+                ProposalResponse::from(&get_proposal_3()),
+            ])
+            .expect("failed to convert expected data"),
         );
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 2, "/admin/proposals?")
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
     #[test]
-    /// Tests a GET /admin/proposals request with filter returns the expected proposal.
-    fn test_list_proposals_with_filters_ok() {
+    /// Tests a GET /admin/proposals request with the `management_type` filter returns the expected
+    /// proposal.
+    fn test_list_proposals_with_management_type_ok() {
         let (_shutdown_handle, _join_handle, bind_url) =
             run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
 
         let url = Url::parse(&format!(
-            "http://{}/admin/proposals?filter=mgmt_type_1",
+            "http://{}/admin/proposals?management_type=mgmt_type_1",
             bind_url
         ))
         .expect("Failed to parse URL");
@@ -224,12 +239,117 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
-        let link = format!("/admin/proposals?filter=mgmt_type_1&");
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 100, 0, 0, 0, 1, &link)
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                1,
+                &format!("/admin/proposals?management_type=mgmt_type_1&")
+            ))
+            .expect("failed to convert expected paging")
+        )
+    }
+
+    #[test]
+    /// Tests a GET /admin/proposals request with the `member` filter returns the expected
+    /// proposals.
+    fn test_list_proposals_with_member_ok() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals?member=node_id",
+            bind_url
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
+        assert_eq!(
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_1()),
+                ProposalResponse::from(&get_proposal_3())
+            ])
+            .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                2,
+                &format!("/admin/proposals?member=node_id&")
+            ))
+            .expect("failed to convert expected paging")
+        )
+    }
+
+    #[test]
+    /// Tests a GET /admin/proposals request with both the `management_type` and `member` filters returns
+    /// the expected proposal.
+    fn test_list_proposals_with_management_type_and_member_ok() {
+        let (_shutdown_handle, _join_handle, bind_url) =
+            run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
+
+        let url = Url::parse(&format!(
+            "http://{}/admin/proposals?management_type=mgmt_type_2&member=node_id",
+            bind_url
+        ))
+        .expect("Failed to parse URL");
+        let req = Client::new()
+            .get(url)
+            .header("SplinterProtocolVersion", protocol::ADMIN_PROTOCOL_VERSION);
+        let resp = req.send().expect("Failed to perform request");
+
+        assert_eq!(resp.status(), StatusCode::OK);
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
+        assert_eq!(
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_3())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                100,
+                0,
+                0,
+                0,
+                1,
+                &format!("/admin/proposals?management_type=mgmt_type_2&member=node_id&")
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -247,16 +367,33 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_1().into()]);
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(0, 1, 1, 0, 1, 2, "/admin/proposals?")
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![ProposalResponse::from(&get_proposal_1())])
+                .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                0,
+                1,
+                1,
+                0,
+                2,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
     #[test]
-    /// Tests a GET /admin/proposals?offset=1 request returns the expected proposal.
+    /// Tests a GET /admin/proposals?offset=1 request returns the expected proposals.
     fn test_list_proposal_with_offset() {
         let (_shutdown_handle, _join_handle, bind_url) =
             run_rest_api_on_open_port(vec![make_list_proposals_resource(MockProposalStore)]);
@@ -269,11 +406,31 @@ mod tests {
         let resp = req.send().expect("Failed to perform request");
 
         assert_eq!(resp.status(), StatusCode::OK);
-        let proposals: ListProposalsResponse = resp.json().expect("Failed to deserialize body");
-        assert_eq!(proposals.data, vec![get_proposal_2().into()]);
+        let proposals: JsonValue = resp.json().expect("Failed to deserialize body");
+
         assert_eq!(
-            proposals.paging,
-            create_test_paging_response(1, 100, 0, 0, 0, 2, "/admin/proposals?")
+            proposals.get("data").expect("no data field in response"),
+            &to_value(vec![
+                ProposalResponse::from(&get_proposal_2()),
+                ProposalResponse::from(&get_proposal_3())
+            ])
+            .expect("failed to convert expected data"),
+        );
+
+        assert_eq!(
+            proposals
+                .get("paging")
+                .expect("no paging field in response"),
+            &to_value(create_test_paging_response(
+                1,
+                100,
+                0,
+                0,
+                0,
+                3,
+                "/admin/proposals?"
+            ))
+            .expect("failed to convert expected paging")
         )
     }
 
@@ -309,11 +466,23 @@ mod tests {
     struct MockProposalStore;
 
     impl ProposalStore for MockProposalStore {
-        fn proposals(&self) -> Result<ProposalIter, ProposalStoreError> {
-            Ok(ProposalIter::new(
-                Box::new(vec![get_proposal_1(), get_proposal_2()].into_iter()),
-                2,
-            ))
+        fn proposals(
+            &self,
+            filters: Vec<ProposalFilter>,
+        ) -> Result<ProposalIter, ProposalStoreError> {
+            let proposals = vec![get_proposal_1(), get_proposal_2(), get_proposal_3()];
+
+            let total = proposals
+                .iter()
+                .filter(|proposal| filters.iter().all(|filter| filter.matches(&proposal)))
+                .count();
+
+            let iter =
+                Box::new(proposals.into_iter().filter(move |proposal| {
+                    filters.iter().all(|filter| filter.matches(&proposal))
+                }));
+
+            Ok(ProposalIter::new(iter, total))
         }
 
         fn proposal(
@@ -332,7 +501,10 @@ mod tests {
             circuit: CreateCircuit {
                 circuit_id: "circuit1".into(),
                 roster: vec![],
-                members: vec![],
+                members: vec![SplinterNode {
+                    node_id: "node_id".into(),
+                    endpoint: "".into(),
+                }],
                 authorization_type: AuthorizationType::Trust,
                 persistence: PersistenceType::Any,
                 durability: DurabilityType::NoDurability,
@@ -363,6 +535,32 @@ mod tests {
                 circuit_management_type: "mgmt_type_2".into(),
                 application_metadata: vec![],
                 comments: "mock circuit 2".into(),
+            },
+            votes: vec![],
+            requester: vec![],
+            requester_node_id: "node_id".into(),
+        }
+    }
+
+    fn get_proposal_3() -> CircuitProposal {
+        CircuitProposal {
+            proposal_type: ProposalType::Create,
+            circuit_id: "circuit3".into(),
+            circuit_hash: "678910".into(),
+            circuit: CreateCircuit {
+                circuit_id: "circuit3".into(),
+                roster: vec![],
+                members: vec![SplinterNode {
+                    node_id: "node_id".into(),
+                    endpoint: "".into(),
+                }],
+                authorization_type: AuthorizationType::Trust,
+                persistence: PersistenceType::Any,
+                durability: DurabilityType::NoDurability,
+                routes: RouteType::Any,
+                circuit_management_type: "mgmt_type_2".into(),
+                application_metadata: vec![],
+                comments: "mock circuit 3".into(),
             },
             votes: vec![],
             requester: vec![],

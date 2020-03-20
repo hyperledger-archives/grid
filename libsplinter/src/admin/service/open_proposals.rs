@@ -73,7 +73,7 @@ impl OpenProposals {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> ProposalIter {
+    pub fn get_proposals(&self) -> BTreeMap<String, messages::CircuitProposal> {
         self.proposal_registry.get_proposals()
     }
 
@@ -137,54 +137,11 @@ impl ProposalRegistry {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> ProposalIter {
-        ProposalIter::new(
-            Box::new(
-                self.proposals
-                    .clone()
-                    .into_iter()
-                    .map(|(_, proposal)| proposal),
-            ),
-            self.proposals.len(),
-        )
+    pub fn get_proposals(&self) -> BTreeMap<String, messages::CircuitProposal> {
+        self.proposals.clone()
     }
 
     pub fn has_proposal(&self, circuit_id: &str) -> bool {
         self.proposals.contains_key(circuit_id)
-    }
-}
-
-#[cfg(feature = "proposal-read")]
-/// An iterator over CircuitProposals, with a well-known count of values.
-pub struct ProposalIter {
-    inner: Box<dyn Iterator<Item = messages::CircuitProposal>>,
-    size: usize,
-}
-
-#[cfg(feature = "proposal-read")]
-impl ProposalIter {
-    pub fn new(iter: Box<dyn Iterator<Item = messages::CircuitProposal>>, count: usize) -> Self {
-        Self {
-            inner: iter,
-            size: count,
-        }
-    }
-
-    #[cfg(feature = "proposal-read")]
-    pub fn total(&self) -> usize {
-        self.size
-    }
-}
-
-#[cfg(feature = "proposal-read")]
-impl Iterator for ProposalIter {
-    type Item = messages::CircuitProposal;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.size, Some(self.size))
     }
 }

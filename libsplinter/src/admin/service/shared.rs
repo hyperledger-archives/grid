@@ -57,8 +57,6 @@ use super::error::{AdminSharedError, MarshallingError};
 use super::mailbox::Mailbox;
 use super::messages;
 use super::open_proposals::OpenProposals;
-#[cfg(feature = "proposal-read")]
-use super::open_proposals::ProposalIter;
 use super::{admin_service_id, sha256, AdminServiceEventSubscriber, AdminSubscriberError, Events};
 
 const DEFAULT_STATE_DIR: &str = "/var/lib/splinter/";
@@ -898,7 +896,7 @@ impl AdminServiceShared {
     }
 
     #[cfg(feature = "proposal-read")]
-    pub fn get_proposals(&self) -> ProposalIter {
+    pub fn get_proposals(&self) -> BTreeMap<String, messages::CircuitProposal> {
         self.open_proposals.get_proposals()
     }
 
