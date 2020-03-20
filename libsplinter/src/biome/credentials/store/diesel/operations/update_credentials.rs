@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::UserCredentialsBuilder;
+use super::super::super::{UserCredentialsBuilder, UserCredentialsModel};
+use super::super::schema::user_credentials;
 use super::super::CredentialsStoreError;
 use super::CredentialsStoreOperations;
-use crate::biome::datastore::models::UserCredentialsModel;
-use crate::biome::datastore::schema::user_credentials;
 use diesel::{dsl::update, prelude::*, result::Error::NotFound};
 
 pub(in super::super) trait CredentialsStoreUpdateCredentialsOperation {
