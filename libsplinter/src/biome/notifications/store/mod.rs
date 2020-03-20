@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod diesel;
+//! Defines a basic representation of a notification.
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[cfg(feature = "diesel")]
+pub(in crate::biome) mod diesel;

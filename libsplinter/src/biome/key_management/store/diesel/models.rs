@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod diesel;
+use super::schema::*;
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "keys"]
+#[primary_key(public_key, user_id)]
+pub struct KeyModel {
+    pub public_key: String,
+    pub encrypted_private_key: String,
+    pub user_id: String,
+    pub display_name: String,
+}

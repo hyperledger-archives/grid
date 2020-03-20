@@ -12,7 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod diesel;
+use super::schema::*;
+use super::SplinterUser;
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
+#[table_name = "splinter_user"]
+#[primary_key(id)]
+pub struct UserModel {
+    pub id: String,
+}
+
+impl From<UserModel> for SplinterUser {
+    fn from(user: UserModel) -> Self {
+        SplinterUser { id: user.id }
+    }
+}
+
+impl Into<UserModel> for SplinterUser {
+    fn into(self) -> UserModel {
+        UserModel { id: self.id }
+    }
+}

@@ -12,7 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod diesel;
+use super::schema::*;
+use crate::biome::user::store::diesel::models::UserModel;
 
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug)]
+#[table_name = "user_credentials"]
+#[belongs_to(UserModel, foreign_key = "user_id")]
+pub struct UserCredentialsModel {
+    pub id: i64,
+    pub user_id: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Insertable, PartialEq, Debug)]
+#[table_name = "user_credentials"]
+pub struct NewUserCredentialsModel {
+    pub user_id: String,
+    pub username: String,
+    pub password: String,
+}

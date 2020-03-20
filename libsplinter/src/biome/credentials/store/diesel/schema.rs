@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod diesel;
-
-#[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+table! {
+    user_credentials {
+        id -> Int8,
+        user_id -> Text,
+        username -> Text,
+        password -> Text,
+    }
+}
