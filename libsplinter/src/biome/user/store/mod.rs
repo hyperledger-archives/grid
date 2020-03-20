@@ -56,7 +56,7 @@ impl From<UserModel> for SplinterUser {
 
 /// Defines methods for CRUD operations and fetching and listing users
 /// without defining a storage strategy
-pub trait UserStore<T> {
+pub trait UserStore<T>: Send + Sync {
     /// Adds a user to the underlying storage
     ///
     /// # Arguments
@@ -64,7 +64,7 @@ pub trait UserStore<T> {
     ///  * `user` - The user to be added
     ///
     ///
-    fn add_user(&self, user: T) -> Result<(), UserStoreError>;
+    fn add_user(&mut self, user: T) -> Result<(), UserStoreError>;
 
     /// Updates a user information in the underling storage
     ///
@@ -72,7 +72,7 @@ pub trait UserStore<T> {
     ///
     ///  * `user` - The user with the updated information
     ///
-    fn update_user(&self, updated_user: T) -> Result<(), UserStoreError>;
+    fn update_user(&mut self, updated_user: T) -> Result<(), UserStoreError>;
 
     /// Removes a user from the underlying storage
     ///
@@ -80,7 +80,7 @@ pub trait UserStore<T> {
     ///
     ///  * `id` - The unique id of the user to be removed
     ///
-    fn remove_user(&self, id: &str) -> Result<(), UserStoreError>;
+    fn remove_user(&mut self, id: &str) -> Result<(), UserStoreError>;
 
     /// Fetches a user from the underlying storage
     ///
@@ -93,4 +93,14 @@ pub trait UserStore<T> {
     /// List all users from the underlying storage
     ///
     fn list_users(&self) -> Result<Vec<T>, UserStoreError>;
+}
+
+pub trait CloneBoxUserStore<T>: UserStore<T> {
+    fn clone_box(&self) -> Box<dyn CloneBoxUserStore<T>>;
+}
+
+impl<T> Clone for Box<dyn CloneBoxUserStore<T>> {
+    fn clone(&self) -> Box<dyn CloneBoxUserStore<T>> {
+        self.clone_box()
+    }
 }

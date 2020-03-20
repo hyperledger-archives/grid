@@ -92,7 +92,7 @@ use crate::rest_api::sessions::AccessTokenIssuer;
 pub struct BiomeRestResourceManager {
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
     #[allow(dead_code)]
-    user_store: Arc<SplinterUserStore>,
+    user_store: SplinterUserStore,
     #[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
     key_store: Arc<PostgresKeyStore>,
     // Disable lint warning, for now this is only used if the biome-credentials feature is enabled
@@ -282,7 +282,7 @@ impl BiomeRestResourceManagerBuilder {
         });
 
         Ok(BiomeRestResourceManager {
-            user_store: Arc::new(user_store),
+            user_store,
             #[cfg(all(feature = "biome-key-management", feature = "json-web-tokens"))]
             key_store: Arc::new(key_store),
             rest_config: Arc::new(rest_config),
