@@ -22,8 +22,9 @@ use std::fmt;
 use std::io;
 use std::sync::mpsc::TryRecvError;
 
-use crate::mesh::Envelope;
 use crate::transport::{Connection, RecvError, SendError};
+
+use super::InternalEnvelope;
 
 /// A structure for holding onto many connections and receivers and assigning new connections
 /// unique ids
@@ -62,7 +63,7 @@ impl Pool {
     pub fn add(
         &mut self,
         connection: Box<dyn Connection>,
-        outgoing: mio_channel::Receiver<Envelope>,
+        outgoing: mio_channel::Receiver<InternalEnvelope>,
     ) -> Result<usize, io::Error> {
         let connection_token = self.next_token();
         let outgoing_token = self.next_token();
@@ -129,7 +130,7 @@ impl Pool {
     pub fn handle_event(
         &mut self,
         event: &Event,
-        incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        incoming_tx: &crossbeam_channel::Sender<InternalEnvelope>,
     ) {
         if let Err((id, err)) = self.try_handle_event(event, incoming_tx) {
             warn!(
@@ -151,7 +152,7 @@ impl Pool {
     fn try_handle_event(
         &self,
         event: &Event,
-        incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        incoming_tx: &crossbeam_channel::Sender<InternalEnvelope>,
     ) -> Result<(), (usize, TryEventError)> {
         if let Some(entry) = self.entry_by_token(event.token()) {
             entry
@@ -185,7 +186,7 @@ struct Entry {
     id: usize,
     connection: RefCell<Box<dyn Connection>>,
     connection_token: Token,
-    outgoing: mio_channel::Receiver<Envelope>,
+    outgoing: mio_channel::Receiver<InternalEnvelope>,
     outgoing_token: Token,
     cached: RefCell<Option<Vec<u8>>>,
     write_evented_guard: RefCell<bool>,
@@ -206,7 +207,7 @@ impl Entry {
         id: usize,
         connection: Box<dyn Connection>,
         connection_token: Token,
-        outgoing: mio_channel::Receiver<Envelope>,
+        outgoing: mio_channel::Receiver<InternalEnvelope>,
         outgoing_token: Token,
     ) -> Self {
         Entry {
@@ -232,14 +233,14 @@ impl Entry {
         self.outgoing_token
     }
 
-    fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<Envelope>) {
+    fn into_evented(self) -> (Box<dyn Connection>, mio_channel::Receiver<InternalEnvelope>) {
         (self.connection.into_inner(), self.outgoing)
     }
 
     fn try_event(
         &self,
         event: &Event,
-        incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        incoming_tx: &crossbeam_channel::Sender<InternalEnvelope>,
         poll: &Poll,
     ) -> Result<(), TryEventError> {
         if self.outgoing_wants_read(event) {
@@ -342,7 +343,7 @@ impl Entry {
 
     fn try_read_connection(
         &self,
-        incoming_tx: &crossbeam_channel::Sender<Envelope>,
+        incoming_tx: &crossbeam_channel::Sender<InternalEnvelope>,
     ) -> Result<(), TryEventError> {
         if !incoming_tx.is_full() {
             let mut connection = match self.connection.try_borrow_mut() {
@@ -353,14 +354,18 @@ impl Entry {
                 }
             };
             match connection.recv() {
-                Ok(payload) => match incoming_tx.try_send(Envelope::new(self.id, payload)) {
-                    Err(TrySendError::Full(_)) => {
-                        warn!("Dropped message due to full incoming queue");
-                        Ok(())
+                Ok(payload) => {
+                    match incoming_tx.try_send(InternalEnvelope::new(self.id, payload)) {
+                        Err(TrySendError::Full(_)) => {
+                            warn!("Dropped message due to full incoming queue");
+                            Ok(())
+                        }
+                        Err(TrySendError::Disconnected(_)) => {
+                            Err(TryEventError::IncomingDisconnected)
+                        }
+                        Ok(()) => Ok(()),
                     }
-                    Err(TrySendError::Disconnected(_)) => Err(TryEventError::IncomingDisconnected),
-                    Ok(()) => Ok(()),
-                },
+                }
                 Err(RecvError::WouldBlock) => Ok(()),
                 Err(RecvError::Disconnected) => Err(TryEventError::ConnectionDisconnected),
                 Err(RecvError::ProtocolError(err)) => Err(TryEventError::ProtocolError(err)),

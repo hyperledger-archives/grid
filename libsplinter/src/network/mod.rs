@@ -77,7 +77,7 @@ where
 }
 
 struct PeerMap {
-    peers: BiHashMap<String, usize>,
+    peers: BiHashMap<String, String>,
     redirects: HashMap<String, String>,
     endpoints: BiHashMap<String, String>,
 }
@@ -103,13 +103,13 @@ impl PeerMap {
     }
 
     /// Insert a new peer id for a given mesh id
-    fn insert(&mut self, peer_id: String, mesh_id: usize, endpoint: String) {
+    fn insert(&mut self, peer_id: String, mesh_id: String, endpoint: String) {
         self.peers.insert(peer_id.clone(), mesh_id);
         self.endpoints.insert(peer_id, endpoint);
     }
 
     /// Remove a peer id, its endpoint and all of its redirects
-    fn remove(&mut self, peer_id: &str) -> Option<usize> {
+    fn remove(&mut self, peer_id: &str) -> Option<String> {
         info!("Removing peer: {}", peer_id);
         let peer_id_key = peer_id.to_string();
         self.redirects
@@ -151,7 +151,7 @@ impl PeerMap {
     }
 
     /// Returns the mesh id for the given peer id, following redirects if necessary.
-    fn get_mesh_id(&self, peer_id: &str) -> Option<&usize> {
+    fn get_mesh_id(&self, peer_id: &str) -> Option<&String> {
         self.redirects
             .get(peer_id)
             .and_then(|target_peer_id| self.peers.get_by_key(target_peer_id))
@@ -159,8 +159,8 @@ impl PeerMap {
     }
 
     /// Returns the direct peer id for the given mesh_id
-    fn get_peer_id(&self, mesh_id: usize) -> Option<&String> {
-        self.peers.get_by_value(&mesh_id)
+    fn get_peer_id(&self, mesh_id: &str) -> Option<&String> {
+        self.peers.get_by_value(&mesh_id.to_string())
     }
 
     /// Returns the endpoint for the given peer id
@@ -265,7 +265,8 @@ impl Network {
     ) -> Result<String, ConnectionError> {
         let mut peers = rwlock_write_unwrap!(self.peers);
         let endpoint = connection.remote_endpoint();
-        let mesh_id = self.mesh.add(connection)?;
+        let mesh_id = format!("{}", Uuid::new_v4());
+        self.mesh.add(connection, mesh_id.clone())?;
         // Temp peer id until the connection has completed authorization
         let peer_id = format!("temp-{}", Uuid::new_v4());
         peers.insert(peer_id.clone(), mesh_id, endpoint);
@@ -274,7 +275,7 @@ impl Network {
 
     pub fn remove_connection(&self, peer_id: &str) -> Result<(), ConnectionError> {
         if let Some(mesh_id) = rwlock_write_unwrap!(self.peers).remove(peer_id) {
-            let mut connection = self.mesh.remove(mesh_id)?;
+            let mut connection = self.mesh.remove(&mesh_id)?;
             match connection.disconnect() {
                 Ok(_) => (),
                 Err(err) => warn!("Unable to disconnect from {}: {:?}", peer_id, err),
@@ -299,7 +300,8 @@ impl Network {
         // we already know the peers unique id
         let mut peers = rwlock_write_unwrap!(self.peers);
         let endpoint = connection.remote_endpoint();
-        let mesh_id = self.mesh.add(connection)?;
+        let mesh_id = format!("{}", Uuid::new_v4());
+        self.mesh.add(connection, mesh_id.clone())?;
         peers.insert(peer_id, mesh_id, endpoint);
         Ok(())
     }
@@ -310,7 +312,7 @@ impl Network {
 
     pub fn send(&self, peer_id: &str, msg: &[u8]) -> Result<(), SendError> {
         let mesh_id = match rwlock_read_unwrap!(self.peers).get_mesh_id(peer_id) {
-            Some(mesh_id) => *mesh_id,
+            Some(mesh_id) => mesh_id.to_string(),
             None => {
                 return Err(SendError::NoPeerError(peer_id.to_string()));
             }
@@ -382,6 +384,7 @@ pub enum RecvTimeoutError {
     NoPeerError(String),
     Timeout,
     Disconnected,
+    PoisonedLock,
 }
 
 impl From<MeshRecvTimeoutError> for RecvTimeoutError {
@@ -389,6 +392,7 @@ impl From<MeshRecvTimeoutError> for RecvTimeoutError {
         match recv_error {
             MeshRecvTimeoutError::Timeout => RecvTimeoutError::Timeout,
             MeshRecvTimeoutError::Disconnected => RecvTimeoutError::Disconnected,
+            MeshRecvTimeoutError::PoisonedLock => RecvTimeoutError::PoisonedLock,
         }
     }
 }

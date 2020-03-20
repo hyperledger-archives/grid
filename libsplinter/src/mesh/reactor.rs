@@ -27,7 +27,7 @@ use crate::mesh::{
     incoming::Incoming,
     outgoing::Outgoing,
     pool::Pool,
-    Envelope,
+    InternalEnvelope,
 };
 use crate::transport::Connection;
 
@@ -38,7 +38,7 @@ pub struct Reactor {
     pool: Pool,
     ctrl_rx: mio_channel::Receiver<ControlRequest>,
     ctrl_token: Token,
-    incoming_tx: crossbeam_channel::Sender<Envelope>,
+    incoming_tx: crossbeam_channel::Sender<InternalEnvelope>,
     outgoing_capacity: usize,
 }
 
@@ -50,7 +50,7 @@ enum Turn {
 impl Reactor {
     fn new(
         ctrl_rx: mio_channel::Receiver<ControlRequest>,
-        incoming_tx: crossbeam_channel::Sender<Envelope>,
+        incoming_tx: crossbeam_channel::Sender<InternalEnvelope>,
         outgoing_capacity: usize,
     ) -> Self {
         let mut pool = Pool::new();

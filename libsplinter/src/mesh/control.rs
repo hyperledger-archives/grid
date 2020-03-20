@@ -74,6 +74,7 @@ pub enum AddError {
     Io(io::Error),
     SenderDisconnected(Box<dyn Connection>),
     ReceiverDisconnected,
+    PoisonedLock,
 }
 
 impl Error for AddError {
@@ -82,6 +83,7 @@ impl Error for AddError {
             AddError::Io(err) => Some(err),
             AddError::SenderDisconnected(_) => None,
             AddError::ReceiverDisconnected => None,
+            AddError::PoisonedLock => None,
         }
     }
 }
@@ -96,6 +98,7 @@ impl fmt::Display for AddError {
             AddError::ReceiverDisconnected => {
                 write!(f, "unable to add connection, receiver disconnected")
             }
+            AddError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
     }
 }
@@ -108,6 +111,7 @@ impl fmt::Debug for AddError {
                 write!(f, "AddError::SenderDisconnected(Box<dyn Connection>)")
             }
             AddError::ReceiverDisconnected => write!(f, "AddError::ReceiverDisconnected"),
+            AddError::PoisonedLock => write!(f, "AddError::PoisonedLock"),
         }
     }
 }
@@ -139,6 +143,7 @@ pub enum RemoveError {
     NotFound,
     SenderDisconnected(usize),
     ReceiverDisconnected,
+    PoisonedLock,
 }
 
 impl Error for RemoveError {
@@ -148,6 +153,7 @@ impl Error for RemoveError {
             RemoveError::NotFound => None,
             RemoveError::SenderDisconnected(_) => None,
             RemoveError::ReceiverDisconnected => None,
+            RemoveError::PoisonedLock => None,
         }
     }
 }
@@ -165,6 +171,7 @@ impl fmt::Display for RemoveError {
             RemoveError::ReceiverDisconnected => {
                 write!(f, "unable to remove connection, receiver disconnected")
             }
+            RemoveError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
     }
 }

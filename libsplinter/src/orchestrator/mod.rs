@@ -24,6 +24,7 @@ use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender};
 use protobuf::Message;
+use uuid::Uuid;
 
 use crate::channel;
 use crate::mesh::{Envelope, Mesh, RecvTimeoutError as MeshRecvTimeoutError};
@@ -90,8 +91,8 @@ impl ServiceOrchestrator {
     ) -> Result<Self, NewOrchestratorError> {
         let services = Arc::new(Mutex::new(HashMap::new()));
         let mesh = Mesh::new(incoming_capacity, outgoing_capacity);
-        let mesh_id = mesh
-            .add(connection)
+        let mesh_id = format!("{}", Uuid::new_v4());
+        mesh.add(connection, mesh_id.to_string())
             .map_err(|err| NewOrchestratorError(Box::new(err)))?;
         let (network_sender, network_receiver) = crossbeam_channel::bounded(channel_capacity);
         let (inbound_sender, inbound_receiver) = crossbeam_channel::bounded(channel_capacity);
@@ -102,7 +103,7 @@ impl ServiceOrchestrator {
         // If running over inproc connection, this is the only authorization message required.
         let connect_request =
             create_connect_request().map_err(|err| NewOrchestratorError(Box::new(err)))?;
-        mesh.send(Envelope::new(mesh_id, connect_request))
+        mesh.send(Envelope::new(mesh_id.to_string(), connect_request))
             .map_err(|err| NewOrchestratorError(Box::new(err)))?;
 
         // Wait for the auth response.  Currently, this is on an inproc transport, so this will be
@@ -387,6 +388,10 @@ pub fn run_incoming_loop(
                 error!("Mesh Disconnected");
                 break;
             }
+            Err(MeshRecvTimeoutError::PoisonedLock) => {
+                error!("Mesh lock was poisoned");
+                break;
+            }
         };
 
         let msg: NetworkMessage = protobuf::parse_from_bytes(&message_bytes)
@@ -577,7 +582,7 @@ fn run_outgoing_loop(
     outgoing_mesh: Mesh,
     outgoing_running: Arc<AtomicBool>,
     outgoing_receiver: Receiver<Vec<u8>>,
-    mesh_id: usize,
+    mesh_id: String,
 ) -> Result<(), OrchestratorError> {
     while outgoing_running.load(Ordering::SeqCst) {
         let timeout = Duration::from_secs(TIMEOUT_SEC);
@@ -592,7 +597,7 @@ fn run_outgoing_loop(
 
         // Send message to splinter node
         outgoing_mesh
-            .send(Envelope::new(mesh_id, message_bytes))
+            .send(Envelope::new(mesh_id.to_string(), message_bytes))
             .map_err(|err| OrchestratorError::Internal(Box::new(err)))?;
     }
     Ok(())

@@ -25,6 +25,7 @@ pub enum PeerStatus {
 #[derive(Clone, PartialEq, Debug)]
 pub struct PeerMetadata {
     pub id: String,
+    pub connection_id: String,
     pub endpoints: Vec<String>,
     pub active_endpoint: String,
     pub status: PeerStatus,
@@ -60,12 +61,19 @@ impl PeerMap {
     }
 
     /// Insert a new peer id and endpoints
-    pub fn insert(&mut self, peer_id: String, endpoints: Vec<String>, active_endpoint: String) {
+    pub fn insert(
+        &mut self,
+        peer_id: String,
+        connection_id: String,
+        endpoints: Vec<String>,
+        active_endpoint: String,
+    ) {
         let peer_metadata = PeerMetadata {
             id: peer_id.clone(),
             endpoints: endpoints.clone(),
             active_endpoint,
             status: PeerStatus::Connected,
+            connection_id,
         };
 
         self.peers.insert(peer_id.clone(), peer_metadata);
@@ -177,12 +185,14 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id_1".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
 
         peer_map.insert(
             "next_peer".to_string(),
+            "connection_id_2".to_string(),
             vec!["endpoint1".to_string(), "endpoint2".to_string()],
             "next_endpoint1".to_string(),
         );
@@ -216,6 +226,7 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
@@ -225,6 +236,7 @@ pub mod tests {
             peer_metadata,
             Some(&PeerMetadata {
                 id: "test_peer".to_string(),
+                connection_id: "connection_id".to_string(),
                 endpoints: vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
                 active_endpoint: "test_endpoint2".to_string(),
                 status: PeerStatus::Connected
@@ -236,6 +248,7 @@ pub mod tests {
             peer_metadata,
             Some(&PeerMetadata {
                 id: "test_peer".to_string(),
+                connection_id: "connection_id".to_string(),
                 endpoints: vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
                 active_endpoint: "test_endpoint2".to_string(),
                 status: PeerStatus::Connected
@@ -253,6 +266,7 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
@@ -263,6 +277,7 @@ pub mod tests {
             peer_metadata,
             Some(&PeerMetadata {
                 id: "test_peer".to_string(),
+                connection_id: "connection_id".to_string(),
                 endpoints: vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
                 active_endpoint: "test_endpoint2".to_string(),
                 status: PeerStatus::Connected
@@ -284,6 +299,7 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
@@ -311,6 +327,7 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
@@ -335,6 +352,7 @@ pub mod tests {
         let mut peer_map = PeerMap::new();
         let no_peer_metadata = PeerMetadata {
             id: "test_peer".to_string(),
+            connection_id: "connection_id".to_string(),
             endpoints: vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             active_endpoint: "test_endpoint1".to_string(),
             status: PeerStatus::Connected,
@@ -346,6 +364,7 @@ pub mod tests {
 
         peer_map.insert(
             "test_peer".to_string(),
+            "connection_id".to_string(),
             vec!["test_endpoint1".to_string(), "test_endpoint2".to_string()],
             "test_endpoint2".to_string(),
         );
@@ -374,6 +393,7 @@ pub mod tests {
                     "test_endpoint2".to_string(),
                     "new_endpoint".to_string()
                 ],
+                connection_id: "connection_id".to_string(),
                 active_endpoint: "test_endpoint1".to_string(),
                 status: PeerStatus::Disconnected { retry_attempts: 5 },
             })

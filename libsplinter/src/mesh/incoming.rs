@@ -16,24 +16,24 @@ use crossbeam_channel;
 
 use std::time::Duration;
 
-use crate::mesh::Envelope;
+use super::InternalEnvelope;
 
 /// Handle for receiving envelopes from the mesh
 #[derive(Clone)]
 pub struct Incoming {
-    rx: crossbeam_channel::Receiver<Envelope>,
+    rx: crossbeam_channel::Receiver<InternalEnvelope>,
 }
 
 impl Incoming {
-    pub(super) fn new(rx: crossbeam_channel::Receiver<Envelope>) -> Self {
+    pub(super) fn new(rx: crossbeam_channel::Receiver<InternalEnvelope>) -> Self {
         Incoming { rx }
     }
 
-    pub fn recv(&self) -> Result<Envelope, RecvError> {
+    pub fn recv(&self) -> Result<InternalEnvelope, RecvError> {
         self.rx.recv().map_err(|_| RecvError {})
     }
 
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, RecvTimeoutError> {
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<InternalEnvelope, RecvTimeoutError> {
         Ok(self.rx.recv_timeout(timeout)?)
     }
 }
