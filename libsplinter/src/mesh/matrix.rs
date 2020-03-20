@@ -13,11 +13,11 @@
 // limitations under the License.
 
 use crate::matrix::{
-    MatrixAddError, MatrixLifeCycle, MatrixRemoveError, MatrixSendError, MatrixSender,
+    Envelope, MatrixAddError, MatrixLifeCycle, MatrixRemoveError, MatrixSendError, MatrixSender,
 };
 use crate::transport::Connection;
 
-use super::{Envelope, Mesh};
+use super::Mesh;
 
 #[derive(Clone)]
 pub struct MeshLifeCycle {

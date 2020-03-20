@@ -63,6 +63,8 @@ use std::io;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+#[cfg(feature = "matrix")]
+pub use crate::matrix::Envelope;
 pub use crate::mesh::control::{AddError, Control, RemoveError};
 pub use crate::mesh::incoming::Incoming;
 #[cfg(feature = "matrix")]
@@ -98,6 +100,7 @@ impl InternalEnvelope {
     }
 }
 
+#[cfg(not(feature = "matrix"))]
 /// Wrapper around payload to include connection id
 #[derive(Debug, Default, PartialEq)]
 pub struct Envelope {
@@ -105,6 +108,7 @@ pub struct Envelope {
     payload: Vec<u8>,
 }
 
+#[cfg(not(feature = "matrix"))]
 impl Envelope {
     pub fn new(id: String, payload: Vec<u8>) -> Self {
         Envelope { id, payload }
@@ -196,7 +200,7 @@ impl Mesh {
     /// `mesh.outgoing(envelope.id()).send(envelope.take_payload())`.
     pub fn send(&self, envelope: Envelope) -> Result<(), SendError> {
         let state = &self.state.read().map_err(|_| SendError::PoisonedLock)?;
-        let id = envelope.id.to_string();
+        let id = envelope.id().to_string();
         if let Some(mesh_id) = state.unique_ids.get_by_key(&id) {
             match state.outgoings.get(mesh_id) {
                 Some(ref outgoing) => match outgoing.send(envelope.take_payload()) {
@@ -223,10 +227,7 @@ impl Mesh {
             .cloned()
             .unwrap_or_default();
 
-        Ok(Envelope {
-            id,
-            payload: internal_envelope.take_payload(),
-        })
+        Ok(Envelope::new(id, internal_envelope.take_payload()))
     }
 
     /// Receive a new envelope from the mesh.
@@ -245,10 +246,7 @@ impl Mesh {
             .cloned()
             .unwrap_or_default();
 
-        Ok(Envelope {
-            id,
-            payload: internal_envelope.take_payload(),
-        })
+        Ok(Envelope::new(id, internal_envelope.take_payload()))
     }
 
     /// Create a new handle for sending to the existing connection with the given id.
@@ -306,10 +304,10 @@ impl std::fmt::Display for SendError {
             SendError::NotFound => write!(f, "requested connection cannot be found"),
             SendError::IoError(ref err) => write!(f, "io error processing message {}", err),
             SendError::Full(ref envelope) => {
-                write!(f, "connection {} send queue is full", envelope.id)
+                write!(f, "connection {} send queue is full", envelope.id())
             }
             SendError::Disconnected(ref envelope) => {
-                write!(f, "connection disconnected {}", envelope.id)
+                write!(f, "connection disconnected {}", envelope.id())
             }
             SendError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
