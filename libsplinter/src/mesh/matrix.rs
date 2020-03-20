@@ -36,7 +36,7 @@ impl MatrixLifeCycle for MeshLifeCycle {
     fn add(&self, connection: Box<dyn Connection>, id: String) -> Result<usize, MatrixAddError> {
         self.mesh.add(connection, id).map_err(|err| {
             MatrixAddError::new(
-                "Unable to add connection to Matrix.".to_string(),
+                "Unable to add connection to Matrix".to_string(),
                 Some(Box::new(err)),
             )
         })
@@ -45,7 +45,7 @@ impl MatrixLifeCycle for MeshLifeCycle {
     fn remove(&self, id: &str) -> Result<Box<dyn Connection>, MatrixRemoveError> {
         self.mesh.remove(id).map_err(|err| {
             MatrixRemoveError::new(
-                "Unable to remove connection from Matrix.".to_string(),
+                "Unable to remove connection from Matrix".to_string(),
                 Some(Box::new(err)),
             )
         })
@@ -68,7 +68,7 @@ impl MatrixSender for MeshMatrixSender {
         let envelope = Envelope::new(id, message);
         self.mesh.send(envelope).map_err(|err| {
             MatrixSendError::new(
-                "Unable to send message to connection.".to_string(),
+                "Unable to send message to connection".to_string(),
                 Some(Box::new(err)),
             )
         })
