@@ -38,13 +38,14 @@ impl Pacemaker {
         }
     }
 
-    pub fn start<M>(
+    pub fn start<M, F>(
         &mut self,
-        message: M,
         cm_sender: Sender<M>,
+        new_message: F,
     ) -> Result<(), ConnectionManagerError>
     where
-        M: Send + Clone + 'static,
+        M: Send + 'static,
+        F: Fn() -> M + Send + 'static,
     {
         if self.join_handle.is_some() {
             return Ok(());
@@ -61,7 +62,7 @@ impl Pacemaker {
 
                 while running_clone.load(Ordering::SeqCst) {
                     thread::sleep(Duration::from_secs(interval));
-                    if let Err(err) = cm_sender.send(message.clone()) {
+                    if let Err(err) = cm_sender.send(new_message()) {
                         error!(
                             "Connection manager has disconnected before 
                             shutting down heartbeat monitor {:?}",

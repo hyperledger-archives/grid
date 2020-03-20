@@ -555,6 +555,7 @@ fn handle_notifications(
                 }
             }
         }
+        ConnectionManagerNotification::InboundConnection { .. } => (),
     }
 }
 
