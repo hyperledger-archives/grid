@@ -446,17 +446,17 @@ pub struct CircuitListAction;
 
 impl Action for CircuitListAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
-        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-
-        let url = args
-            .value_of("url")
+        let url = arg_matches
+            .and_then(|args| args.value_of("url"))
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
             .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
 
-        let filter = args.value_of("member");
+        let filter = arg_matches.and_then(|args| args.value_of("member"));
 
-        let format = args.value_of("format").unwrap_or("human");
+        let format = arg_matches
+            .and_then(|args| args.value_of("format"))
+            .unwrap_or("human");
 
         list_circuits(&url, filter, format)
     }
@@ -576,19 +576,19 @@ pub struct CircuitProposalsAction;
 
 impl Action for CircuitProposalsAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
-        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-
-        let url = args
-            .value_of("url")
+        let url = arg_matches
+            .and_then(|args| args.value_of("url"))
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
             .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
 
-        let management_type_filter = args.value_of("management_type");
+        let management_type_filter = arg_matches.and_then(|args| args.value_of("management_type"));
 
-        let member_filter = args.value_of("member");
+        let member_filter = arg_matches.and_then(|args| args.value_of("member"));
 
-        let format = args.value_of("format").unwrap_or("human");
+        let format = arg_matches
+            .and_then(|args| args.value_of("format"))
+            .unwrap_or("human");
 
         list_proposals(&url, management_type_filter, member_filter, format)
     }
