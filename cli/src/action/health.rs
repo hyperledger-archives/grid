@@ -16,19 +16,19 @@ use clap::ArgMatches;
 use reqwest;
 use serde_json::Value;
 
-use super::Action;
-use crate::action::DEFAULT_ENDPOINT;
+use super::{Action, DEFAULT_ENDPOINT, SPLINTER_REST_API_URL_ENV};
+
 use crate::error::CliError;
 
 pub struct StatusAction;
 
 impl Action for StatusAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
-        let url = if let Some(args) = arg_matches {
-            args.value_of("url").unwrap_or(DEFAULT_ENDPOINT)
-        } else {
-            DEFAULT_ENDPOINT
-        };
+        let url = arg_matches
+            .and_then(|args| args.value_of("url"))
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
 
         let status: Value = reqwest::blocking::get(&format!("{}/health/status", url))
             .and_then(|res| res.json())

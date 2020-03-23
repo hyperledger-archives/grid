@@ -36,6 +36,8 @@ use super::error::CliError;
 
 #[cfg(any(feature = "health", feature = "circuit"))]
 const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:8085";
+#[cfg(any(feature = "health", feature = "circuit"))]
+const SPLINTER_REST_API_URL_ENV: &str = "SPLINTER_REST_API_URL";
 
 /// A CLI Command Action.
 ///
