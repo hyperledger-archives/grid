@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Provides support for user management in splinter applications
+//! The Biome submodule provides support for user management,
+//! user credential management, private key management, and user
+//! notifications.
 //!
-//! ## Features
+//! User Management: API for CRUD operations around managing users.
 //!
-//! * `biome-credentials`: API to register and authenticate a user using an username and password.
-//!   Not recommend for use in production.
-//! * `biome-key-management`: API to store and retrieve encrypted private keys.
-//! * `biome-notifications`: API to create and manage user notifications.
+//! Credential Management: API to register and authenticate a user using
+//! a username and password. Not recommend for use in production.
+//!
+//! Private Key Management: API to store and retrieve encrypted private keys.
+//!
+//! User Notifications: API to create and manage user notifications.
 
 #[cfg(feature = "biome-credentials")]
 pub mod credentials;
