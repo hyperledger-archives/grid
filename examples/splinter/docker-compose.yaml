@@ -175,11 +175,16 @@ services:
           echo 'waiting for key registry'; \
           sleep 1; \
         done && \
+        until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
         cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
         --registry-backend FILE \
         --registry-file /configs/nodes.yaml \
@@ -193,9 +198,45 @@ services:
         --client-key /etc/splinter/certs/private/client.key \
         --server-cert /etc/splinter/certs/server.crt \
         --server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
         --insecure
       "
 
+  splinter-db-alpha:
+    image: postgres
+    container_name: splinter-db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-alpha:
+    build:
+      context: ../../grid-ui
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+        REACT_APP_SPLINTER_URL: '/splinterd'
+        REACT_APP_SAPLING_URL: '/sapling-dev-server'
+        SPLINTER_URL: 'http://splinterd-alpha:8085'
+        SAPLING_URL: ' http://sapling-dev-server-alpha:80'
+    image: grid-ui-alpha
+    container_name: grid-ui-alpha
+    expose:
+      - 80
+    ports:
+      - '3030:80'
+
+  sapling-dev-server-alpha:
+    build:
+      context: ../../grid-ui
+      dockerfile: sapling-dev-server/Dockerfile
+    container_name: sapling-dev-server-alpha
+    expose:
+      - 80
 
 # ---== beta node ==---
 
@@ -270,11 +311,16 @@ services:
           echo 'waiting for key registry'; \
           sleep 1; \
         done && \
+        until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
         cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
         --registry-backend FILE \
         --registry-file /configs/nodes.yaml \
@@ -288,8 +334,45 @@ services:
         --client-key /etc/splinter/certs/private/client.key \
         --server-cert /etc/splinter/certs/server.crt \
         --server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-beta:5432/splinter \
         --insecure
       "
+
+  splinter-db-beta:
+    image: postgres
+    container_name: splinter-db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-beta:
+    build:
+      context: ../../grid-ui
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+        REACT_APP_SPLINTER_URL: '/splinterd'
+        REACT_APP_SAPLING_URL: '/sapling-dev-server'
+        SPLINTER_URL: 'http://splinterd-beta:8085'
+        SAPLING_URL: ' http://sapling-dev-server-beta:80'
+    image: grid-ui-beta
+    container_name: grid-ui-beta
+    expose:
+      - 80
+    ports:
+      - '3031:80'
+
+  sapling-dev-server-beta:
+    build:
+      context: ../../grid-ui
+      dockerfile: sapling-dev-server/Dockerfile
+    container_name: sapling-dev-server-beta
+    expose:
+      - 80
 
 # ---== gamma node ==---
 
@@ -357,11 +440,16 @@ services:
           echo 'waiting for key registry'; \
           sleep 1; \
         done && \
+        until PGPASSWORD=admin psql -h splinter-db-gamma -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
         cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
         splinterd -vv \
         --registry-backend FILE \
         --registry-file /configs/nodes.yaml \
@@ -375,5 +463,42 @@ services:
         --client-key /etc/splinter/certs/private/client.key \
         --server-cert /etc/splinter/certs/server.crt \
         --server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-gamma:5432/splinter \
         --insecure
       "
+
+  splinter-db-gamma:
+    image: postgres
+    container_name: splinter-db-gamma
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  grid-ui-gamma:
+    build:
+      context: ../../grid-ui
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+        REACT_APP_SPLINTER_URL: '/splinterd'
+        REACT_APP_SAPLING_URL: '/sapling-dev-server'
+        SPLINTER_URL: 'http://splinterd-gamma:8085'
+        SAPLING_URL: ' http://sapling-dev-server-gamma:80'
+    image: grid-ui-gamma
+    container_name: grid-ui-gamma
+    expose:
+      - 80
+    ports:
+      - '3032:80'
+
+  sapling-dev-server-gamma:
+    build:
+      context: ../../grid-ui
+      dockerfile: sapling-dev-server/Dockerfile
+    container_name: sapling-dev-server-gamma
+    expose:
+      - 80

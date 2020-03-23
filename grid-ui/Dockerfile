@@ -32,8 +32,20 @@ RUN tar c -z . -f ../grid_ui_v${REPO_VERSION}.tar.gz
 # prod stage
 FROM httpd:2.4 as prod-stage
 
+ARG SPLINTER_URL
+ARG SAPLING_URL
+
 COPY --from=build-stage /grid_ui/grid_ui_*.tar.gz /tmp
 RUN tar -xzvf /tmp/grid_ui_*.tar.gz -C /usr/local/apache2/htdocs/
 COPY /configs/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
+
+RUN echo "\
+  \n\
+  ProxyPass /splinterd $SPLINTER_URL\n\
+  ProxyPassReverse /splinterd $SPLINTER_URL\n\
+  ProxyPass /sapling-dev-server $SAPLING_URL\n\
+  ProxyPassReverse /sapling-dev-server $SAPLING_URL\n\
+  \n\
+  " >>/usr/local/apache2/conf/httpd.conf
 
 EXPOSE 80/tcp

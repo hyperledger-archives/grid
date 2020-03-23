@@ -217,6 +217,8 @@
           REPO_VERSION: ${REPO_VERSION}
           REACT_APP_SPLINTER_URL: '/splinterd'
           REACT_APP_SAPLING_URL: '/sapling-dev-server'
+          SPLINTER_URL: 'http://splinterd:8085'
+          SAPLING_URL: ' http://sapling-dev-server:80'
       image: grid-ui
       container_name: grid-ui
       expose:
