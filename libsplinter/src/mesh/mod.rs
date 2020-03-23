@@ -212,10 +212,8 @@ impl Mesh {
 
     /// Receive a new envelope from the mesh.
     pub fn recv(&self) -> Result<Envelope, RecvError> {
-        let internal_envelope = self
-            .incoming
-            .recv()
-            .map_err(|_| RecvError::InternalError("Cannot receive message".to_string()))?;
+        let internal_envelope = self.incoming.recv().map_err(|_| RecvError::Disconnected)?;
+
         let id = self
             .state
             .read()
@@ -332,7 +330,7 @@ impl SendError {
 
 #[derive(Debug)]
 pub enum RecvError {
-    InternalError(String),
+    Disconnected,
     PoisonedLock,
 }
 
@@ -341,7 +339,7 @@ impl Error for RecvError {}
 impl std::fmt::Display for RecvError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            RecvError::InternalError(msg) => write!(f, "Receive Error: {}", msg),
+            RecvError::Disconnected => write!(f, "Unable to receive: channel has disconnected"),
             RecvError::PoisonedLock => write!(f, "MeshState lock was poisoned"),
         }
     }
