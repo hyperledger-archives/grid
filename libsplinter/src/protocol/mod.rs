@@ -76,6 +76,8 @@ pub(crate) const BIOME_USER_PROTOCOL_MIN: u32 = 1;
     feature = "json-web-tokens"
 ))]
 pub(crate) const BIOME_LIST_USERS_PROTOCOL_MIN: u32 = 1;
+#[cfg(all(feature = "biome-credentials", feature = "rest-api"))]
+pub(crate) const BIOME_VERIFY_PROTOCOL_MIN: u32 = 1;
 
 #[cfg(all(
     feature = "biome-key-management",

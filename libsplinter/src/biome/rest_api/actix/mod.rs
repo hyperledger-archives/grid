@@ -25,3 +25,5 @@ pub(super) mod login;
 pub(super) mod register;
 #[cfg(all(feature = "biome-credentials", feature = "json-web-tokens"))]
 pub(super) mod user;
+#[cfg(all(feature = "biome-credentials", feature = "json-web-tokens"))]
+pub(super) mod verify;

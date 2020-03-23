@@ -80,6 +80,7 @@ use self::actix::register::make_register_route;
 use self::actix::{
     login::make_login_route,
     user::{make_list_route, make_user_routes},
+    verify::make_verify_route,
 };
 #[cfg(feature = "biome-credentials")]
 use super::credentials::store::diesel::SplinterCredentialsStore;
@@ -135,6 +136,11 @@ impl RestResourceProvider for BiomeRestResourceManager {
                     self.user_store.clone(),
                 ));
                 resources.push(make_list_route(credentials_store.clone()));
+                resources.push(make_verify_route(
+                    credentials_store.clone(),
+                    self.rest_config.clone(),
+                    self.token_secret_manager.clone(),
+                ));
             }
             None => {
                 debug!(
