@@ -31,6 +31,9 @@ pub struct GridSchemaSlice {
     pub description: String,
     pub owner: String,
     pub properties: Vec<GridPropertyDefinitionSlice>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl GridSchemaSlice {
@@ -43,6 +46,7 @@ impl GridSchemaSlice {
                 .iter()
                 .map(|prop| GridPropertyDefinitionSlice::from_definition(prop))
                 .collect(),
+            service_id: schema.service_id.clone(),
         }
     }
 }
@@ -57,6 +61,9 @@ pub struct GridPropertyDefinitionSlice {
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
     pub struct_properties: Vec<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl GridPropertyDefinitionSlice {
@@ -70,6 +77,7 @@ impl GridPropertyDefinitionSlice {
             number_exponent: definition.number_exponent,
             enum_options: definition.enum_options.clone(),
             struct_properties: definition.struct_properties.clone(),
+            service_id: definition.service_id.clone(),
         }
     }
 }

@@ -28,6 +28,9 @@ pub struct OrganizationSlice {
     pub name: String,
     pub address: String,
     pub metadata: Vec<JsonValue>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_id: Option<String>,
 }
 
 impl OrganizationSlice {
@@ -37,6 +40,7 @@ impl OrganizationSlice {
             name: organization.name.clone(),
             address: organization.address.clone(),
             metadata: organization.metadata.clone(),
+            service_id: organization.service_id.clone(),
         }
     }
 }

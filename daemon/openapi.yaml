@@ -675,6 +675,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - description
+        - owner
+        - properties
     PropertyDefinition:
       properties:
         name:
@@ -704,6 +712,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PropertyDefinition"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - data_type
+        - active
+        - description
+        - required
+        - number_exponent
+        - enum_options
+        - struct_properties
     DataTypeEnum:
       description: Data type of a PropertyDefinition
       type: string
@@ -735,6 +755,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Metadata"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - public_key
+        - org_id
+        - active
+        - roles
+        - metadata
     Organization:
       type: object
       properties:
@@ -751,6 +780,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Metadata"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - id
+        - name
+        - address
+        - metadata
     Metadata:
       type: object
       properties:
@@ -769,6 +806,12 @@ components:
         timestamp:
           type: integer
           example: 1557949075
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - agent_id
+        - timestamp
     LatLong:
       type: object
       properties:
@@ -811,6 +854,19 @@ components:
             $ref: "#/components/schemas/AssociatedAgent"
         final:
           type: boolean
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - record_id
+        - schema
+        - owner
+        - custodian
+        - properties
+        - proposals
+        - owner_updates
+        - custodian_updates
+        - final
     ReportedValue:
       type: object
       properties:
@@ -838,6 +894,19 @@ components:
             public_key:
               type: string
               example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+            service_id:
+              type: string
+              example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+          required:
+            - metadata
+            - public_key
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - timestamp
+        - value
+        - reporter
     Property:
       type: object
       properties:
@@ -862,6 +931,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ReportedValue"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - record_id
+        - data_type
+        - authorized_reporters
+        - value
+        - updates
     ProposalRoleEnum:
       type: string
       enum:
@@ -896,6 +975,16 @@ components:
         timestamp:
           type: integer
           example: 1557949075
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - receiving_agent
+        - issuing_agent
+        - role
+        - properties
+        - status
+        - timestamp
     StructPropertyValue:
       type: object
       properties:
@@ -955,6 +1044,18 @@ components:
               type: string
           lat_long_value:
             $ref: '#/components/schemas/LatLong'
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - name
+        - data_type
+        - boolean_value
+        - number_value
+        - string_value
+        - enum_value
+        - struct_values
+        - lat_long_value
     Product:
       type: object
       properties:
@@ -973,3 +1074,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductPropertyValue"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
+      required:
+        - product_id
+        - product_address
+        - product_namespace
+        - owner
+        - properties
