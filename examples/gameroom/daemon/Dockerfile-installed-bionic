@@ -78,6 +78,4 @@ RUN unzip -oj scar.zip \
  && rm scar.zip xo_*.scar \
  && mv xo-tp-rust.wasm /var/lib/gameroomd/xo-tp-rust.wasm
 
-USER gameroomd
-
 CMD ["gameroomd"]
