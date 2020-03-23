@@ -20,6 +20,7 @@ import { useServiceState } from '../state/service-context';
 import './ProductsTable.scss';
 import ProductCard from './ProductCard';
 import mockProducts from '../test/mock-products';
+import { getProperty } from '../data/property-parsing';
 
 function ProductsTable() {
   const [products, setProducts] = useState(mockProducts);
@@ -36,18 +37,14 @@ function ProductsTable() {
   }, [selectedService]);
 
   const productCards = products.map(product => {
-    const findProperty = name => {
-      const property = product.properties.find(p => p.name === name);
-      return property ? property.string_value : null;
-    };
-
     return (
       <ProductCard
-        key={`${findProperty('gtin')}_${product.service_id}`}
-        gtin={findProperty('gtin')}
-        name={findProperty('product_name')}
+        key={product.product_id}
+        productID={product.product_id}
+        gtin={getProperty('gtin', product.properties)}
+        name={getProperty('product_name', product.properties)}
         owner={product.owner}
-        imageURL={findProperty('image_url')}
+        imageURL={getProperty('image_url', product.properties)}
       />
     );
   });
