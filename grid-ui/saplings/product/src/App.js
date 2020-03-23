@@ -20,7 +20,8 @@ import {
   faCaretUp,
   faCaretDown,
   faCheck,
-  faPenSquare
+  faPenSquare,
+  faChevronLeft
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';

@@ -1,0 +1,118 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.product-info-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+
+  .product-image {
+    position: absolute;
+    align-self: center;
+    object-fit: contain;
+    height: 15rem;
+    width: 15rem;
+    border-radius: 50%;
+    top: 50%;
+    left: 44%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border: 5px solid var(--color-dark-grey);
+  }
+
+  .product-overview-container {
+    padding: 0rem 3rem 3rem 1rem;
+    padding-right: 8rem;
+    height: 100%;
+    width: 40%;
+    background-color: var(--color-dark-grey);
+
+    .back-link {
+      display: flex;
+      color: rgba(255, 255, 255, 0.7);
+      width: fit-content;
+      height: 3rem;
+      font-size: 1.25rem;
+      align-items: center;
+      text-decoration: none;
+
+      &:hover {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .back-link-text {
+        margin-left: 0.5rem;
+      }
+    }
+
+    .product-property {
+      margin-left: 2rem;
+
+      &:not(:last-child) {
+        margin-bottom: 1.5rem;
+      }
+    }
+  }
+
+  .product-properties-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 60%;
+    padding: 3rem;
+    padding-left: 8rem;
+
+    .product-properties-header {
+      margin-bottom: 2rem;
+
+      .title {
+        margin: 0;
+      }
+
+      hr {
+        border-top: 2px solid var(--color-dark-grey);
+        margin-left: 0;
+        margin-bottom: 1rem;
+        width: 12rem;
+      }
+    }
+
+    .product-properties-list {
+      display: flex;
+      flex-wrap: wrap;
+
+      .product-property {
+        min-width: 10rem;
+        margin-right: 4rem;
+
+        &:not(:last-child) {
+          margin-bottom: 1.5rem;
+        }
+      }
+    }
+
+    .full-info-button {
+      cursor: pointer;
+      margin-top: auto;
+      align-self: center;
+      width: 30rem;
+      height: 6rem;
+      border: 6px solid #f35f19;
+      border-radius: 4px;
+      font-size: 1.5rem;
+    }
+  }
+}
