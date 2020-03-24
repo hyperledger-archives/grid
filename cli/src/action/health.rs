@@ -16,7 +16,7 @@ use clap::ArgMatches;
 use reqwest;
 use serde_json::Value;
 
-use super::{Action, DEFAULT_ENDPOINT, SPLINTER_REST_API_URL_ENV};
+use super::{Action, DEFAULT_SPLINTER_REST_API_URL, SPLINTER_REST_API_URL_ENV};
 
 use crate::error::CliError;
 
@@ -28,7 +28,7 @@ impl Action for StatusAction {
             .and_then(|args| args.value_of("url"))
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
 
         let status: Value = reqwest::blocking::get(&format!("{}/health/status", url))
             .and_then(|res| res.json())

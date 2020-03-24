@@ -30,7 +30,7 @@ use crate::error::CliError;
 #[cfg(feature = "circuit-template")]
 use crate::template::CircuitTemplate;
 
-use super::{Action, DEFAULT_ENDPOINT, SPLINTER_REST_API_URL_ENV};
+use super::{Action, DEFAULT_SPLINTER_REST_API_URL, SPLINTER_REST_API_URL_ENV};
 
 use builder::CreateCircuitMessageBuilder;
 
@@ -43,7 +43,7 @@ impl Action for CircuitCreateAction {
             .value_of("url")
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let key = args.value_of("key").unwrap_or("./splinter.priv");
 
         let mut builder = CreateCircuitMessageBuilder::new();
@@ -391,7 +391,7 @@ impl Action for CircuitVoteAction {
             .value_of("url")
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let key = args.value_of("private_key_file").unwrap_or("splinter");
         let circuit_id = match args.value_of("circuit_id") {
             Some(circuit_id) => circuit_id,
@@ -450,7 +450,7 @@ impl Action for CircuitListAction {
             .and_then(|args| args.value_of("url"))
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
 
         let filter = arg_matches.and_then(|args| args.value_of("member"));
 
@@ -501,7 +501,7 @@ impl Action for CircuitShowAction {
             .value_of("url")
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let circuit_id = args
             .value_of("circuit")
             .ok_or_else(|| CliError::ActionError("Circuit name must be provided".to_string()))?;
@@ -580,7 +580,7 @@ impl Action for CircuitProposalsAction {
             .and_then(|args| args.value_of("url"))
             .map(ToOwned::to_owned)
             .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
 
         let management_type_filter = arg_matches.and_then(|args| args.value_of("management_type"));
 
