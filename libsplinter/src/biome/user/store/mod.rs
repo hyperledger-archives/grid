@@ -33,6 +33,7 @@ impl SplinterUser {
     ///
     /// * `user_id`: unique identifier for the user being created
     ///
+    #[cfg(feature = "rest-api")]
     pub fn new(user_id: &str) -> Self {
         SplinterUser {
             id: user_id.to_string(),
