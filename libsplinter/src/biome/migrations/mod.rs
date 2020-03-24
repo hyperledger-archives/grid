@@ -12,6 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Provides sql migration scripts and methods for executing
+//! migrations.
+//!
+//! ```ignore
+//!
+//! use biome::migrations::run_postgres_migrations;
+//! use diesel::{pg::PgConnection};
+//!
+//! let connection = PgConnection::establish(
+//!      "postgres://admin:admin@localhost:5432/splinterd").unwrap();
+//!
+//! run_postgres_migrations(&connection).unwrap();
+//!
+//! ```
+
 mod diesel;
 
 #[cfg(feature = "postgres")]
