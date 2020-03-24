@@ -69,7 +69,7 @@ jobs:
       if: type = cron
       script: docker-compose -f tests/test-splinter-cron.yaml up --abort-on-container-exit unit-test-splinter
 
-    - stage: Publish docker images
+    - stage: Publish artifacts
       language: generic
       before_deploy:
         - docker login -u splintercommunity -p $DOCKER_TOKEN
@@ -85,6 +85,11 @@ jobs:
             condition: $TRAVIS_EVENT_TYPE == cron
         - provider: script
           script: bash ci/publish-docker
+          on:
+            tags: true
+            all_branches: true
+        - provider: script
+          script: bash ci/publish-crates
           on:
             tags: true
             all_branches: true
