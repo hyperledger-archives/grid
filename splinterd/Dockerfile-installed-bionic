@@ -14,13 +14,9 @@
 
 # -------------=== splinterd docker build ===-------------
 
-FROM splintercommunity/splinter-dev:v1 as BUILDER
+FROM splintercommunity/splinter-dev:v2 as BUILDER
 
 ENV SPLINTER_FORCE_PANDOC=true
-
-RUN apt-get update \
- && apt-get install -y -q \
-    pandoc
 
 COPY cli /build/cli
 COPY libsplinter /build/libsplinter

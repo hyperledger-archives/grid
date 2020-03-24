@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM splintercommunity/splinter-dev:v1 as BUILDER
+FROM splintercommunity/splinter-dev:v2 as BUILDER
 
 COPY libsplinter /build/libsplinter
 COPY examples/private_xo /build/examples/private_xo
