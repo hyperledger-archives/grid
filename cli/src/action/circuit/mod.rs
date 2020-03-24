@@ -30,8 +30,8 @@ use crate::error::CliError;
 #[cfg(feature = "circuit-template")]
 use crate::template::CircuitTemplate;
 
-use super::Action;
-use crate::action::DEFAULT_ENDPOINT;
+use super::{Action, DEFAULT_SPLINTER_REST_API_URL, SPLINTER_REST_API_URL_ENV};
+
 use builder::CreateCircuitMessageBuilder;
 
 pub struct CircuitCreateAction;
@@ -39,7 +39,11 @@ pub struct CircuitCreateAction;
 impl Action for CircuitCreateAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
+        let url = args
+            .value_of("url")
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let key = args.value_of("key").unwrap_or("./splinter.priv");
 
         let mut builder = CreateCircuitMessageBuilder::new();
@@ -172,7 +176,7 @@ impl Action for CircuitCreateAction {
 
         let circuit_id = create_circuit.circuit_id.clone();
 
-        let client = api::SplinterRestClient::new(url);
+        let client = api::SplinterRestClient::new(&url);
         let requester_node = client.fetch_node_id()?;
         let private_key_hex = read_private_key(key)?;
 
@@ -383,7 +387,11 @@ pub struct CircuitVoteAction;
 impl Action for CircuitVoteAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
-        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
+        let url = args
+            .value_of("url")
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let key = args.value_of("private_key_file").unwrap_or("splinter");
         let circuit_id = match args.value_of("circuit_id") {
             Some(circuit_id) => circuit_id,
@@ -399,7 +407,7 @@ impl Action for CircuitVoteAction {
             }
         };
 
-        vote_on_circuit_proposal(url, key, circuit_id, vote)
+        vote_on_circuit_proposal(&url, key, circuit_id, vote)
     }
 }
 
@@ -438,15 +446,19 @@ pub struct CircuitListAction;
 
 impl Action for CircuitListAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
-        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+        let url = arg_matches
+            .and_then(|args| args.value_of("url"))
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
 
-        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
+        let filter = arg_matches.and_then(|args| args.value_of("member"));
 
-        let filter = args.value_of("member");
+        let format = arg_matches
+            .and_then(|args| args.value_of("format"))
+            .unwrap_or("human");
 
-        let format = args.value_of("format").unwrap_or("human");
-
-        list_circuits(url, filter, format)
+        list_circuits(&url, filter, format)
     }
 }
 
@@ -485,7 +497,11 @@ impl Action for CircuitShowAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
         let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
 
-        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
+        let url = args
+            .value_of("url")
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
         let circuit_id = args
             .value_of("circuit")
             .ok_or_else(|| CliError::ActionError("Circuit name must be provided".to_string()))?;
@@ -493,7 +509,7 @@ impl Action for CircuitShowAction {
         // A value should always be passed because a default is defined
         let format = args.value_of("format").unwrap_or("human");
 
-        show_circuit(url, circuit_id, format)
+        show_circuit(&url, circuit_id, format)
     }
 }
 
@@ -560,17 +576,21 @@ pub struct CircuitProposalsAction;
 
 impl Action for CircuitProposalsAction {
     fn run<'a>(&mut self, arg_matches: Option<&ArgMatches<'a>>) -> Result<(), CliError> {
-        let args = arg_matches.ok_or_else(|| CliError::RequiresArgs)?;
+        let url = arg_matches
+            .and_then(|args| args.value_of("url"))
+            .map(ToOwned::to_owned)
+            .or_else(|| std::env::var(SPLINTER_REST_API_URL_ENV).ok())
+            .unwrap_or_else(|| DEFAULT_SPLINTER_REST_API_URL.to_string());
 
-        let url = args.value_of("url").unwrap_or(DEFAULT_ENDPOINT);
+        let management_type_filter = arg_matches.and_then(|args| args.value_of("management_type"));
 
-        let management_type_filter = args.value_of("management_type");
+        let member_filter = arg_matches.and_then(|args| args.value_of("member"));
 
-        let member_filter = args.value_of("member");
+        let format = arg_matches
+            .and_then(|args| args.value_of("format"))
+            .unwrap_or("human");
 
-        let format = args.value_of("format").unwrap_or("human");
-
-        list_proposals(url, management_type_filter, member_filter, format)
+        list_proposals(&url, management_type_filter, member_filter, format)
     }
 }
 
