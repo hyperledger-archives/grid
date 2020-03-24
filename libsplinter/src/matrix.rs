@@ -14,8 +14,34 @@
 
 use std::error::Error;
 use std::fmt;
+use std::time::Duration;
 
 use crate::transport::Connection;
+
+/// Wrapper around payload to include connection id
+#[derive(Debug, Default, PartialEq)]
+pub struct Envelope {
+    id: String,
+    payload: Vec<u8>,
+}
+
+impl Envelope {
+    pub fn new(id: String, payload: Vec<u8>) -> Self {
+        Envelope { id, payload }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+
+    pub fn take_payload(self) -> Vec<u8> {
+        self.payload
+    }
+}
 
 /// MatrixLifeCycle trait abstracts out adding and removing connections to a
 /// connection handler without requiring knowledge about sending or receiving messges.
@@ -26,6 +52,11 @@ pub trait MatrixLifeCycle: Clone + Send {
 
 pub trait MatrixSender: Clone + Send {
     fn send(&self, id: String, message: Vec<u8>) -> Result<(), MatrixSendError>;
+}
+
+pub trait MatrixReceiver: Clone + Send {
+    fn recv(&self) -> Result<Envelope, MatrixRecvError>;
+    fn recv_timeout(&self, timeout: Duration) -> Result<Envelope, MatrixRecvTimeoutError>;
 }
 
 #[derive(Debug)]
@@ -120,6 +151,103 @@ impl fmt::Display for MatrixSendError {
             write!(f, "{}: {}", self.context, err)
         } else {
             f.write_str(&self.context)
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MatrixRecvError {
+    Disconnected,
+    InternalError {
+        context: String,
+        source: Option<Box<dyn Error + Send>>,
+    },
+}
+
+impl MatrixRecvError {
+    pub fn new_internal_error(context: String, source: Option<Box<dyn Error + Send>>) -> Self {
+        MatrixRecvError::InternalError { context, source }
+    }
+}
+
+impl Error for MatrixRecvError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            MatrixRecvError::Disconnected => None,
+            MatrixRecvError::InternalError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for MatrixRecvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MatrixRecvError::Disconnected => {
+                f.write_str("Unable to receive: channel has disconnected")
+            }
+            MatrixRecvError::InternalError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MatrixRecvTimeoutError {
+    Timeout,
+    Disconnected,
+    InternalError {
+        context: String,
+        source: Option<Box<dyn Error + Send>>,
+    },
+}
+
+impl MatrixRecvTimeoutError {
+    pub fn new_internal_error(context: String, source: Option<Box<dyn Error + Send>>) -> Self {
+        MatrixRecvTimeoutError::InternalError { context, source }
+    }
+}
+
+impl Error for MatrixRecvTimeoutError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            MatrixRecvTimeoutError::Timeout => None,
+            MatrixRecvTimeoutError::Disconnected => None,
+            MatrixRecvTimeoutError::InternalError { source, .. } => {
+                if let Some(ref err) = source {
+                    Some(&**err)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for MatrixRecvTimeoutError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            MatrixRecvTimeoutError::Timeout => f.write_str("Unable to receive: Timeout"),
+            MatrixRecvTimeoutError::Disconnected => {
+                f.write_str("Unable to receive: channel has disconnected")
+            }
+            MatrixRecvTimeoutError::InternalError { context, source } => {
+                if let Some(ref err) = source {
+                    write!(f, "{}: {}", context, err)
+                } else {
+                    f.write_str(&context)
+                }
+            }
         }
     }
 }
