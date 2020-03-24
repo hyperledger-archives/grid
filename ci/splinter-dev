@@ -27,6 +27,7 @@ RUN apt-get update \
     libssl-dev \
     libzmq3-dev \
     openssl \
+    pandoc \
     pkg-config \
     python \
     unzip \
