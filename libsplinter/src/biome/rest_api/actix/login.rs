@@ -22,10 +22,9 @@ use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGua
 use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
 };
+use crate::biome::rest_api::resources::credentials::UsernamePassword;
 use crate::biome::rest_api::BiomeRestConfig;
 use crate::rest_api::sessions::{AccessTokenIssuer, ClaimsBuilder, TokenIssuer};
-
-use super::super::resources::credentials::UsernamePassword;
 
 /// Defines a REST endpoint for login
 ///

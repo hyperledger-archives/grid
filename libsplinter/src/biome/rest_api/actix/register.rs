@@ -16,18 +16,16 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::actix_web::HttpResponse;
-use crate::futures::{Future, IntoFuture};
-use crate::protocol;
-use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
-
 use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
     UserCredentialsBuilder,
 };
+use crate::biome::rest_api::resources::credentials::{NewUser, UsernamePassword};
 use crate::biome::rest_api::BiomeRestConfig;
 use crate::biome::user::store::{diesel::SplinterUserStore, SplinterUser, UserStore};
-
-use super::super::resources::credentials::{NewUser, UsernamePassword};
+use crate::futures::{Future, IntoFuture};
+use crate::protocol;
+use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 /// Defines a REST endpoint to add a user and credentials to the database
 ///

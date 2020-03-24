@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::super::{UserCredentials, UserCredentialsModel};
-use super::super::schema::user_credentials;
-use super::super::CredentialsStoreError;
 use super::CredentialsStoreOperations;
+use crate::biome::credentials::store::diesel::schema::user_credentials;
+use crate::biome::credentials::store::error::CredentialsStoreError;
+use crate::biome::credentials::store::{UserCredentials, UserCredentialsModel};
 use diesel::{prelude::*, result::Error::NotFound};
 
-pub(in super::super) trait CredentialsStoreFetchCredentialByUsernameOperation {
+pub(in crate::biome::credentials) trait CredentialsStoreFetchCredentialByUsernameOperation {
     fn fetch_credential_by_username(
         &self,
         username: &str,

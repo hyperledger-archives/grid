@@ -14,23 +14,21 @@
 
 use std::sync::Arc;
 
+use super::authorize::authorize_user;
 use crate::actix_web::{web::Payload, Error, HttpRequest, HttpResponse};
-use crate::futures::{Future, IntoFuture};
-use crate::protocol;
-use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
-
 use crate::biome::credentials::store::{
     diesel::SplinterCredentialsStore, CredentialsStore, CredentialsStoreError,
 };
+use crate::biome::rest_api::resources::authorize::AuthorizationResult;
+use crate::biome::rest_api::resources::credentials::UsernamePassword;
 use crate::biome::rest_api::BiomeRestConfig;
 use crate::biome::user::store::{
     diesel::SplinterUserStore, SplinterUser, UserStore, UserStoreError,
 };
+use crate::futures::{Future, IntoFuture};
+use crate::protocol;
 use crate::rest_api::secrets::SecretManager;
-
-use super::super::resources::authorize::AuthorizationResult;
-use super::super::resources::credentials::UsernamePassword;
-use super::authorize::authorize_user;
+use crate::rest_api::{into_bytes, ErrorResponse, Method, ProtocolVersionRangeGuard, Resource};
 
 /// Defines a REST endpoint to list users from the db
 pub fn make_list_route(credentials_store: Arc<SplinterCredentialsStore>) -> Resource {

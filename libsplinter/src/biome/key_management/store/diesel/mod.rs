@@ -15,5 +15,5 @@
 pub(in crate::biome) mod models;
 mod operations;
 #[cfg(feature = "postgres")]
-pub(in super::super) mod postgres;
+pub(in crate::biome) mod postgres;
 mod schema;

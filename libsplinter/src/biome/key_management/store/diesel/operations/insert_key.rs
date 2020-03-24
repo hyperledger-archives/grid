@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::KeyModel;
-use super::super::schema::keys;
 use super::KeyStoreOperations;
+use crate::biome::key_management::store::diesel::models::KeyModel;
+use crate::biome::key_management::store::diesel::schema::keys;
 use crate::biome::key_management::{store::KeyStoreError, Key};
 
 use diesel::{
@@ -23,7 +23,7 @@ use diesel::{
     result::{DatabaseErrorKind, Error as QueryError},
 };
 
-pub(in super::super) trait KeyStoreInsertKeyOperation {
+pub(in crate::biome::key_management) trait KeyStoreInsertKeyOperation {
     fn insert_key(&self, key: Key) -> Result<(), KeyStoreError>;
 }
 

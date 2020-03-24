@@ -14,9 +14,9 @@
 
 use std::time::Duration;
 
-#[cfg(feature = "biome-credentials")]
-use super::super::credentials::store::PasswordEncryptionCost;
 use super::error::BiomeRestConfigBuilderError;
+#[cfg(feature = "biome-credentials")]
+use crate::biome::credentials::store::PasswordEncryptionCost;
 
 const DEFAULT_ISSUER: &str = "self-issued";
 const DEFAULT_DURATION: u64 = 5400; // in seconds = 90 minutes

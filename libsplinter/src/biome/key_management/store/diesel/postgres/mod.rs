@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::{KeyStore, KeyStoreError};
-use super::operations::fetch_key::KeyStoreFetchKeyOperation as _;
-use super::operations::insert_key::KeyStoreInsertKeyOperation as _;
-use super::operations::list_keys::KeyStoreListKeysOperation as _;
-use super::operations::list_keys::KeyStoreListKeysWithUserIDOperation as _;
-use super::operations::remove_key::KeyStoreRemoveKeyOperation as _;
-use super::operations::update_key::KeyStoreUpdateKeyOperation as _;
-use super::operations::KeyStoreOperations;
+use super::operations::{
+    fetch_key::KeyStoreFetchKeyOperation as _, insert_key::KeyStoreInsertKeyOperation as _,
+    list_keys::KeyStoreListKeysOperation as _, list_keys::KeyStoreListKeysWithUserIDOperation as _,
+    remove_key::KeyStoreRemoveKeyOperation as _, update_key::KeyStoreUpdateKeyOperation as _,
+    KeyStoreOperations,
+};
+use crate::biome::key_management::store::{KeyStore, KeyStoreError};
 
 use crate::biome::key_management::Key;
 use crate::database::ConnectionPool;

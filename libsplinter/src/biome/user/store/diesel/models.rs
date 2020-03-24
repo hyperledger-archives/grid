@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::schema::*;
-use super::SplinterUser;
+use crate::biome::user::store::diesel::schema::*;
+use crate::biome::user::store::diesel::SplinterUser;
 
 #[derive(Insertable, Queryable, Identifiable, PartialEq, Debug)]
 #[table_name = "splinter_user"]

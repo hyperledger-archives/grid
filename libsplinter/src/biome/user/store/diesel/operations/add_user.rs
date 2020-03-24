@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::super::models::UserModel;
-use super::super::schema::splinter_user;
-use super::super::UserStoreError;
 use super::UserStoreOperations;
+use crate::biome::user::store::diesel::models::UserModel;
+use crate::biome::user::store::diesel::schema::splinter_user;
+use crate::biome::user::store::error::UserStoreError;
+
 use diesel::{dsl::insert_into, prelude::*};
 
-pub(in super::super) trait UserStoreAddUserOperation {
+pub(in crate::biome::user) trait UserStoreAddUserOperation {
     fn add_user(&self, user_model: UserModel) -> Result<(), UserStoreError>;
 }
 
