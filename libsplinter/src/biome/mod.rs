@@ -36,6 +36,6 @@ pub mod key_management;
 #[cfg(feature = "biome-notifications")]
 pub mod notifications;
 
-#[cfg(feature = "rest-api")]
+#[cfg(all(feature = "rest-api", feature = "biome-rest-api"))]
 pub mod rest_api;
 mod user;
