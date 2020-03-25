@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::borrow::Borrow;
 use std::collections::hash_map::{Iter, Keys, Values};
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -87,19 +88,35 @@ where
         self.vk_hash_map.clear();
     }
 
-    pub fn get_by_key(&self, key: &K) -> Option<&V> {
+    pub fn get_by_key<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
         self.kv_hash_map.get(key)
     }
 
-    pub fn get_by_value(&self, value: &V) -> Option<&K> {
+    pub fn get_by_value<VQ: ?Sized>(&self, value: &VQ) -> Option<&K>
+    where
+        V: Borrow<VQ>,
+        VQ: Hash + Eq,
+    {
         self.vk_hash_map.get(value)
     }
 
-    pub fn contains_key(&self, key: &K) -> bool {
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
         self.kv_hash_map.contains_key(key)
     }
 
-    pub fn contains_value(&self, value: &V) -> bool {
+    pub fn contains_value<VQ: ?Sized>(&self, value: &VQ) -> bool
+    where
+        V: Borrow<VQ>,
+        VQ: Hash + Eq,
+    {
         self.vk_hash_map.contains_key(value)
     }
 
@@ -111,7 +128,11 @@ where
     }
 
     // If the key is in the map, the removed key and value is returned otherwise None
-    pub fn remove_by_key(&mut self, key: &K) -> Option<(K, V)> {
+    pub fn remove_by_key<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
         let value = self.kv_hash_map.remove(key);
         if let Some(value) = value {
             let key = self.vk_hash_map.remove(&value);
@@ -123,7 +144,11 @@ where
     }
 
     // If the value is in the map, the removed key and value is returned otherwise None
-    pub fn remove_by_value(&mut self, value: &V) -> Option<(K, V)> {
+    pub fn remove_by_value<VQ: ?Sized>(&mut self, value: &VQ) -> Option<(K, V)>
+    where
+        V: Borrow<VQ>,
+        VQ: Hash + Eq,
+    {
         let key = self.vk_hash_map.remove(value);
         if let Some(key) = key {
             let value = self.kv_hash_map.remove(&key);
@@ -253,10 +278,10 @@ pub mod tests {
         map.insert("TWO".to_string(), 2);
         map.insert("THREE".to_string(), 3);
 
-        assert_eq!(map.get_by_key(&"ONE".to_string()), Some(&1));
-        assert_eq!(map.get_by_key(&"TWO".to_string()), Some(&2));
-        assert_eq!(map.get_by_key(&"THREE".to_string()), Some(&3));
-        assert_eq!(map.get_by_key(&"FOUR".to_string()), None);
+        assert_eq!(map.get_by_key("ONE"), Some(&1));
+        assert_eq!(map.get_by_key("TWO"), Some(&2));
+        assert_eq!(map.get_by_key("THREE"), Some(&3));
+        assert_eq!(map.get_by_key("FOUR"), None);
 
         assert_eq!(map.get_by_value(&1), Some(&"ONE".to_string()));
         assert_eq!(map.get_by_value(&2), Some(&"TWO".to_string()));
@@ -269,10 +294,10 @@ pub mod tests {
         let mut map: BiHashMap<String, usize> = BiHashMap::new();
         map.insert("ONE".to_string(), 1);
 
-        assert!(map.contains_key(&"ONE".to_string()));
+        assert!(map.contains_key("ONE"));
         assert!(map.contains_value(&1));
 
-        assert!(!map.contains_key(&"TWO".to_string()));
+        assert!(!map.contains_key("TWO"));
         assert!(!map.contains_value(&2));
     }
 
@@ -283,10 +308,10 @@ pub mod tests {
         map.insert("TWO".to_string(), 2);
         map.insert("THREE".to_string(), 3);
 
-        let removed = map.remove_by_key(&"ONE".to_string());
+        let removed = map.remove_by_key("ONE");
         assert_eq!(removed, Some(("ONE".to_string(), 1)));
 
-        let removed = map.remove_by_key(&"ONE".to_string());
+        let removed = map.remove_by_key("ONE");
         assert_eq!(removed, None);
 
         let removed = map.remove_by_value(&2);
