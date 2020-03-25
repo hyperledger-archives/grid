@@ -205,7 +205,7 @@ impl Mesh {
             match state.outgoings.get(mesh_id) {
                 Some(ref outgoing) => match outgoing.send(envelope.take_payload()) {
                     Ok(()) => Ok(()),
-                    Err(err) => Err(SendError::from_outgoing_send_error(err, id.to_string())),
+                    Err(err) => Err(SendError::from_outgoing_send_error(err, id)),
                 },
                 None => Err(SendError::NotFound),
             }
