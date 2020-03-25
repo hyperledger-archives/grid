@@ -58,6 +58,7 @@ experimental = [
     "biome",
     "biome-credentials",
     "biome-key-management",
+    "biome-rest-api",
     "circuit-read",
     "health",
     "proposal-read",
@@ -69,6 +70,7 @@ experimental = [
 biome = ["splinter/biome", "database"]
 biome-credentials = ["splinter/biome-credentials", "json-web-tokens", "biome"]
 biome-key-management = ["splinter/biome-key-management", "json-web-tokens", "biome"]
+biome-rest-api = ["splinter/biome-rest-api"]
 circuit-read = ["splinter/circuit-read"]
 proposal-read = ["splinter/proposal-read"]
 config-default = []
