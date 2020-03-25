@@ -181,7 +181,7 @@ impl Mesh {
     /// Remove an existing connection from the mesh and return it.
     pub fn remove(&self, unique_id: &str) -> Result<Box<dyn Connection>, RemoveError> {
         let mut state = self.state.write().map_err(|_| RemoveError::PoisonedLock)?;
-        if let Some((_, mesh_id)) = state.unique_ids.remove_by_key(&unique_id.to_string()) {
+        if let Some((_, mesh_id)) = state.unique_ids.remove_by_key(unique_id) {
             let connection = self.ctrl.remove(mesh_id)?;
             // The outgoing channel needs to be removed after the control request completes, or else
             // the reactor will detect that the outgoing sender has dropped and clean it up

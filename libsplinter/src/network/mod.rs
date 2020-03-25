@@ -111,12 +111,11 @@ impl PeerMap {
     /// Remove a peer id, its endpoint and all of its redirects
     fn remove(&mut self, peer_id: &str) -> Option<String> {
         info!("Removing peer: {}", peer_id);
-        let peer_id_key = peer_id.to_string();
         self.redirects
             .retain(|_, target_peer_id| target_peer_id != peer_id);
-        self.endpoints.remove_by_key(&peer_id_key);
+        self.endpoints.remove_by_key(peer_id);
         self.peers
-            .remove_by_key(&peer_id_key)
+            .remove_by_key(peer_id)
             .map(|(_, mesh_id)| mesh_id)
     }
 
@@ -155,12 +154,12 @@ impl PeerMap {
         self.redirects
             .get(peer_id)
             .and_then(|target_peer_id| self.peers.get_by_key(target_peer_id))
-            .or_else(|| self.peers.get_by_key(&peer_id.to_string()))
+            .or_else(|| self.peers.get_by_key(peer_id))
     }
 
     /// Returns the direct peer id for the given mesh_id
     fn get_peer_id(&self, mesh_id: &str) -> Option<&String> {
-        self.peers.get_by_value(&mesh_id.to_string())
+        self.peers.get_by_value(mesh_id)
     }
 
     /// Returns the endpoint for the given peer id
@@ -169,13 +168,13 @@ impl PeerMap {
             .redirects
             .get(peer_id)
             .and_then(|target_peer_id| self.endpoints.get_by_key(target_peer_id))
-            .or_else(|| self.endpoints.get_by_key(&peer_id.to_string()));
+            .or_else(|| self.endpoints.get_by_key(peer_id));
 
         endpoint_opt.cloned()
     }
 
     fn get_peer_by_endpoint(&self, endpoint: &str) -> Option<String> {
-        self.endpoints.get_by_value(&endpoint.to_string()).cloned()
+        self.endpoints.get_by_value(endpoint).cloned()
     }
 }
 
