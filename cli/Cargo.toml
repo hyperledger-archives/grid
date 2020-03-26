@@ -51,6 +51,9 @@ default = []
 stable = ["default"]
 
 experimental = [
+    # The experimental feature extends stable:
+    "stable",
+    # The following features are experimental:
     "circuit",
     "circuit-template",
     "health",

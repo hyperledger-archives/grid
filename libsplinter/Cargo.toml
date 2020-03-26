@@ -86,6 +86,9 @@ stable = [
 ]
 
 experimental = [
+    # The experimental feature extends stable:
+    "stable",
+    # The following features are experimental:
     "biome",
     "biome-credentials",
     "biome-key-management",

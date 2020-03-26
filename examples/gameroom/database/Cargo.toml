@@ -34,4 +34,8 @@ default = []
 
 stable = ["default"]
 
-experimental = []
+experimental = [
+    # The experimental feature extends stable:
+    "stable",
+    # The following features are experimental:
+]
