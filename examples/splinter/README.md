@@ -74,10 +74,10 @@ circuit is created.
    root@splinterd-alpha:/# echo "<public key>" > gridd.pub
    ```
 
-4. Propose a new circuit with the definition `circuit create` CLI command.
+4. Propose a new circuit with the definition `circuit propose` CLI command.
 
    ```
-   root@splinterd-alpha:/# splinter circuit create \
+   root@splinterd-alpha:/# splinter circuit propose \
       --key /key_registry_shared/alpha.priv \
       --url http://splinterd-alpha:8085  \
       --node alpha-node-000::tls://splinterd-alpha:8044 \
