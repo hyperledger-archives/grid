@@ -22,16 +22,44 @@ export default [
     properties: [
       {
         name: 'product_name',
+        data_type: 'STRING',
         string_value: 'Canola Oil'
       },
       {
         name: 'gtin',
-        string_value: '00012345600012'
+        data_type: 'NUMBER',
+        number_value: '00012345600012'
       },
       {
         name: 'image_url',
+        data_type: 'STRING',
         string_value:
           'https://target.scene7.com/is/image/Target/GUEST_e8106dc8-b312-49d3-b9f5-ae4f01553452?fmt=webp&wid=1400&qlt=80'
+      },
+      {
+        name: 'brand_name',
+        data_type: 'STRING',
+        string_value: 'Market Pantry'
+      },
+      {
+        name: 'product_description',
+        data_type: 'STRING',
+        string_value: 'Market Pantry Canola Oil 48oz'
+      },
+      {
+        name: 'gpc',
+        data_type: 'NUMBER',
+        number_value: '30002914'
+      },
+      {
+        name: 'net_content',
+        data_type: 'STRING',
+        string_value: '48oz'
+      },
+      {
+        name: 'target_market',
+        data_type: 'NUMBER',
+        number_value: '840'
       }
     ]
   },
@@ -42,16 +70,44 @@ export default [
     properties: [
       {
         name: 'product_name',
+        data_type: 'STRING',
         string_value: 'Truvia 80 ct.'
       },
       {
         name: 'gtin',
-        string_value: '00012345600099'
+        data_type: 'NUMBER',
+        number_value: '00012345600099'
       },
       {
         name: 'image_url',
+        data_type: 'STRING',
         string_value:
           'https://target.scene7.com/is/image/Target/GUEST_b7a6e983-b391-40a5-ad89-2f906bce5743?fmt=webp&wid=1400&qlt=80'
+      },
+      {
+        name: 'brand_name',
+        data_type: 'STRING',
+        string_value: 'Truvia'
+      },
+      {
+        name: 'product_description',
+        data_type: 'STRING',
+        string_value: 'Truvia Sugar 80CT'
+      },
+      {
+        name: 'gpc',
+        data_type: 'NUMBER',
+        number_value: '30016951'
+      },
+      {
+        name: 'net_content',
+        data_type: 'STRING',
+        string_value: '80CT'
+      },
+      {
+        name: 'target_market',
+        data_type: 'NUMBER',
+        number_value: '840'
       }
     ]
   },
@@ -62,11 +118,13 @@ export default [
     properties: [
       {
         name: 'product_name',
+        data_type: 'STRING',
         string_value: 'Anonymous Product'
       },
       {
         name: 'gtin',
-        string_value: '00000000000001'
+        data_type: 'NUMBER',
+        number_value: '00000000000001'
       }
     ]
   }

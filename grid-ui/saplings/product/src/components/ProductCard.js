@@ -15,34 +15,38 @@
  */
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import ProductProperty from './ProductProperty';
 import './ProductCard.scss';
 
 function ProductCard(props) {
-  const { gtin, name, owner, imageURL } = props;
-
+  const { productID, gtin, name, owner, imageURL } = props;
   return (
     <div className="product-card">
       <button type="button" className="product-card-edit-button">
         <FontAwesomeIcon className="icon" icon="pen-square" />
       </button>
-      <div className="product-card-content">
-        <div className="product-card-properties">
-          <Property label="GTIN" value={gtin} />
-          <Property label="Product Name" value={name} />
-          <Property label="Owner" value={owner} />
+      <Link className="link" to={`/product/products/${productID}`}>
+        <div className="product-card-content">
+          <div className="product-card-properties">
+            <ProductProperty label="GTIN" value={gtin} />
+            <ProductProperty label="Product Name" value={name} />
+            <ProductProperty label="Owner" value={owner} />
+          </div>
+          {imageURL && (
+            <img className="product-card-image" src={imageURL} alt={name} />
+          )}
         </div>
-        {imageURL && (
-          <img className="product-card-image" src={imageURL} alt={name} />
-        )}
-      </div>
+      </Link>
     </div>
   );
 }
 
 ProductCard.propTypes = {
+  productID: PropTypes.string.isRequired,
   gtin: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   owner: PropTypes.string.isRequired,
@@ -51,22 +55,6 @@ ProductCard.propTypes = {
 
 ProductCard.defaultProps = {
   imageURL: null
-};
-
-function Property(props) {
-  const { label, value } = props;
-
-  return (
-    <div className="product-card-property">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-    </div>
-  );
-}
-
-Property.propTypes = {
-  label: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired
 };
 
 export default ProductCard;

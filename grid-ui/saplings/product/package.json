@@ -36,7 +36,8 @@
     "prop-types": "^15.7.2",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
-    "react-scripts": "3.4.0",
+    "react-router-dom": "^5.1.2",
+    "react-scripts": "^3.4.0",
     "rewire": "^4.0.1",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master"
   },

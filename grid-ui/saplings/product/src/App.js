@@ -15,27 +15,39 @@
  */
 
 import React from 'react';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
   faCaretUp,
   faCaretDown,
   faCheck,
-  faPenSquare
+  faPenSquare,
+  faChevronLeft
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';
 import FilterBar from './components/FilterBar';
 import ProductsTable from './components/ProductsTable';
+import ProductInfo from './components/ProductInfo';
 import './App.scss';
 
-library.add(faCaretUp, faCaretDown, faCheck, faPenSquare);
+library.add(faCaretUp, faCaretDown, faCheck, faPenSquare, faChevronLeft);
 
 function App() {
   return (
     <ServiceProvider>
       <div className="product-app">
         <FilterBar />
-        <ProductsTable />
+        <Router>
+          <Switch>
+            <Route exact path="/product">
+              <ProductsTable />
+            </Route>
+            <Route path="/product/products/:id">
+              <ProductInfo />
+            </Route>
+          </Switch>
+        </Router>
       </div>
     </ServiceProvider>
   );

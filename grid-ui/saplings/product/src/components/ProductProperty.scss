@@ -14,12 +14,45 @@
  * limitations under the License.
  */
 
-.product-app {
-  height: 100%;
+.product-property {
   display: flex;
   flex-direction: column;
-}
 
-.link {
-  text-decoration: none;
+  .label {
+    color: var(--color-grey);
+    font-weight: 300;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .value {
+    color: var(--color-dark-grey);
+    font-size: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.large {
+    .label {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .value {
+      font-size: 2.25rem;
+    }
+  }
+
+  &.light {
+    .label {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .value {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
 }

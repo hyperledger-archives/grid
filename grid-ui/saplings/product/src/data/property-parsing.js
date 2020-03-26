@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
-.product-app {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+export const getProperty = (name, propertyList) => {
+  const property = propertyList.find(p => p.name === name);
+  if (property === undefined) {
+    return null;
+  }
 
-.link {
-  text-decoration: none;
-}
+  switch (property.data_type) {
+    case 'STRING':
+      return property.string_value;
+    case 'NUMBER':
+      return property.number_value;
+    default:
+      throw Error(`unsupported property type: ${property.data_type}`);
+  }
+};
