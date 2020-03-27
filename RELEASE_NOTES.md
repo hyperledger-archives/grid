@@ -1,5 +1,84 @@
 # Release Notes
 
+## Changes in Splinter 0.3.14
+
+### Highlights
+
+* Service ID must now conform to a specific format (a 4-character base-62 string),
+  which is enforced by the `SplinterServiceBuilder::build` method when provided
+  and randomly generated if one is not.
+* Circuit ID must now conform to a specific format (an 11-character string composed
+  of two 5-character base-62 strings, joined with a `-`), which is enforced by the
+  `CreateCircuitBuilder::build` method when provided and randomly generated if one is not.
+
+### Deprecations
+
+* `splinter::transport::raw` has been deprecated in favor of `splinter::socket::tcp`
+* `splinter::transport::tls` has been deprecated in favor of `splinter::socket::tls`
+
+### libsplinter:
+* Reorganize the socket-based transports, raw (now renamed tcp) and TLS, under a
+  `transport::socket` module.
+* Rename `RawTransport` to `TcpTransport` to better reflect the underlying capability.
+  Also rename the `socket::raw` module to `socket::tcp`.
+* Add a `comments` field to the `Circuit` object to allow for human-readable comments.
+* Save a disconnected connection in a `HashMap` to be returned in case the connection
+  is removed again at a later time.
+* Separate circuit and proposal REST API responses from the internal structs so
+  the internal structures can change as needed without impacting the data exposed
+  via the REST API.
+* Add a `BiHashMap` to `Mesh` for a unique ID to the mesh ID.
+* Allow `BiHashMap` look-ups with elements that implement the `Borrow` trait.
+* Replace the `RecvError::InternalError` with a `Disconnected` error for accuracy.
+* Experimental feature “circuit-template” (new): Implement `CircuitTemplateManager`
+  with functionality to list and load available templates.
+* For all experimental Biome features:
+    - Remove Arc wrappings from Biome’s user store to allow mutable references of
+      the user store.
+    - Separate Biome models and schemas into their respective modules.
+    - Add a `/biome/verify` REST API endpoint to verify a user’s password.
+    - Update the Biome Rust API documentation to remove explicit references to
+      Rust features.
+    - Make the Biome user module private.
+    - Rename `biome::datastore` to `biome::migrations` and add module-level
+      documentation for biome migrations.
+    - Remove all uses of `super` imports in Biome.
+* Correct `json-web-tokens` feature guards.
+* Experimental feature “proposal-read”:
+    - Update the `ProposalStore::proposals` arguments to take a `ProposalFilter`
+      enum to allow the proposal store to filter returned proposals.
+    - Rename the `/admin/proposals` endpoint's `filter` query parameter to `management_type`.
+    - Add `member` filter query parameter to the `GET /admin/proposals` REST API endpoint.
+
+### CLI:
+* Experimental feature “circuit”:
+    - Update the `splinter circuit create` command to generate a service ID automatically.
+    - Add a `comments` argument to the `splinter circuit create` command to optionally
+      provide comment for the proposed circuit.
+    - Display comments in the output of the `splinter proposals` command.
+    - Update the `circuit-read` and `proposal-read` response deserializers to reflect
+      the REST API response objects, rather than the related internal structs.
+    - Add a `member` argument to the `splinter circuit proposals` command for
+      filtering proposals by the given member.
+    - Add `SPLINTER_REST_API_URL` environment variable to be used if `-U` or `--url`
+      is not specified.
+    - Remove the `required` specification from `splinter circuit list` and
+      `splinter circuit proposals` arguments that are not actually required.
+* Experimental feature “circuit-template” (new): Implement the experimental
+  `circuit-template` feature. This feature lets you use a template to create a
+   circuit with the new `template` subcommand for `splinter circuit create`.
+    - Add the `dry_run` flag to the `circuit create` command, which displays the
+      circuit definition without submitting the proposal.
+    - Add subcommands behind the `circuit-template` feature to display circuit templates:
+      `splinter circuit template list` and `splinter circuit template show`.
+
+### packaging:
+* Publish the Splinter package to crates.io when the repository is tagged.
+* Add pandoc to the `splinter-dev` image.
+* Update the version of `splinter-dev` to v2 and update Dockerfiles to use `splinter-dev:v2`.
+* Experimental feature "circuit-template" (new): Include a `scabbard` template with
+  the Splinter CLI and include the `gameroom` template with the gameroom daemon.
+
 ## Changes in Splinter 0.3.13
 
 ### Highlights
