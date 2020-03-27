@@ -38,9 +38,52 @@ const DEFAULT_HEARTBEAT_INTERVAL: u64 = 10;
 const INITIAL_RETRY_FREQUENCY: u64 = 10;
 const DEFAULT_MAXIMUM_RETRY_FREQUENCY: u64 = 300;
 
+pub type SubscriberId = usize;
+type Subscriber =
+    Box<dyn Fn(ConnectionManagerNotification) -> Result<(), Box<dyn std::error::Error>> + Send>;
+
+struct SubscriberMap {
+    subscribers: HashMap<SubscriberId, Subscriber>,
+    next_id: SubscriberId,
+}
+
+impl SubscriberMap {
+    fn new() -> Self {
+        Self {
+            subscribers: HashMap::new(),
+            next_id: 0,
+        }
+    }
+
+    fn broadcast(&mut self, notification: ConnectionManagerNotification) {
+        let mut failures = vec![];
+        for (id, callback) in self.subscribers.iter() {
+            if let Err(err) = (*callback)(notification.clone()) {
+                failures.push(*id);
+                debug!("Dropping subscriber ({}): {}", id, err);
+            }
+        }
+
+        for id in failures {
+            self.subscribers.remove(&id);
+        }
+    }
+
+    fn add_subscriber(&mut self, subscriber: Subscriber) -> SubscriberId {
+        let subscriber_id = self.next_id;
+        self.next_id += 1;
+        self.subscribers.insert(subscriber_id, subscriber);
+
+        subscriber_id
+    }
+
+    fn remove_subscriber(&mut self, subscriber_id: SubscriberId) {
+        self.subscribers.remove(&subscriber_id);
+    }
+}
+
 enum CmMessage {
     Shutdown,
-    Subscribe(Sender<ConnectionManagerNotification>),
     Request(CmRequest),
     SendHeartbeats,
 }
@@ -60,6 +103,14 @@ enum CmRequest {
     },
     AddInboundConnection {
         connection: Box<dyn Connection>,
+        sender: Sender<Result<(), ConnectionManagerError>>,
+    },
+    Subscribe {
+        sender: Sender<Result<SubscriberId, ConnectionManagerError>>,
+        callback: Subscriber,
+    },
+    Unsubscribe {
+        subscriber_id: SubscriberId,
         sender: Sender<Result<(), ConnectionManagerError>>,
     },
 }
@@ -116,13 +167,10 @@ where
         let join_handle = thread::Builder::new()
             .name("Connection Manager".into())
             .spawn(move || {
-                let mut subscribers = Vec::new();
+                let mut subscribers = SubscriberMap::new();
                 loop {
                     match recv.recv() {
                         Ok(CmMessage::Shutdown) => break,
-                        Ok(CmMessage::Subscribe(sender)) => {
-                            subscribers.push(sender);
-                        }
                         Ok(CmMessage::Request(req)) => {
                             handle_request(req, &mut state, &mut subscribers);
                         }
@@ -252,24 +300,78 @@ impl Connector {
         })?
     }
 
-    /// Subscribe to notfications for connection events
-    ///
-    /// # Returns
-    ///
-    /// Notifications are received via an iterator.  The iterator will block when using standard
-    /// `next`, but also provides a `try_next`
+    /// Create an iterator over ConnectionManagerNotification events.
     ///
     /// # Errors
     ///
     /// Return a ConnectionManagerError if the notification iterator cannot be created.
-    pub fn subscribe(&self) -> Result<NotificationIter, ConnectionManagerError> {
+    pub fn subscription_iter(&self) -> Result<NotificationIter, ConnectionManagerError> {
         let (send, recv) = channel();
-        match self.sender.send(CmMessage::Subscribe(send)) {
-            Ok(()) => Ok(NotificationIter { recv }),
-            Err(_) => Err(ConnectionManagerError::SendMessageError(
+
+        self.subscribe(send)?;
+
+        Ok(NotificationIter { recv })
+    }
+
+    /// Subscribe to notifications for connection events.
+    ///
+    /// ConnectionManagerNotification instances will be transformed via type `T`'s implementation
+    /// of `From<ConnectionManagerNotification>` and passed to the given sender.
+    ///
+    /// # Returns
+    ///
+    /// The subscriber id that can be used for unsubscribing the given sender.
+    ///
+    /// # Errors
+    ///
+    /// Return a ConnectionManagerError if the subscriber cannot be registered via the Connector
+    /// instance.
+    pub fn subscribe<T>(
+        &self,
+        subscriber: Sender<T>,
+    ) -> Result<SubscriberId, ConnectionManagerError>
+    where
+        T: From<ConnectionManagerNotification> + Send + 'static,
+    {
+        let (sender, recv) = channel();
+        self.sender
+            .send(CmMessage::Request(CmRequest::Subscribe {
+                sender,
+                callback: Box::new(move |notification| {
+                    subscriber.send(T::from(notification)).map_err(Box::from)
+                }),
+            }))
+            .map_err(|_| {
+                ConnectionManagerError::SendMessageError(
+                    "The connection manager is no longer running".into(),
+                )
+            })?;
+
+        recv.recv().map_err(|_| {
+            ConnectionManagerError::SendMessageError(
                 "The connection manager is no longer running".into(),
-            )),
-        }
+            )
+        })?
+    }
+
+    pub fn unsubscribe(&self, subscriber_id: SubscriberId) -> Result<(), ConnectionManagerError> {
+        let (sender, recv) = channel();
+        self.sender
+            .send(CmMessage::Request(CmRequest::Unsubscribe {
+                subscriber_id,
+                sender,
+            }))
+            .map_err(|_| {
+                ConnectionManagerError::SendMessageError(
+                    "The connection manager is no longer running".into(),
+                )
+            })?;
+
+        recv.recv().map_err(|_| {
+            ConnectionManagerError::SendMessageError(
+                "The connection manager is no longer running".into(),
+            )
+        })?
     }
 
     /// List the connections available to this Connector instance.
@@ -506,7 +608,7 @@ where
     fn reconnect(
         &mut self,
         endpoint: &str,
-        subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
+        subscribers: &mut SubscriberMap,
     ) -> Result<(), ConnectionManagerError> {
         let mut meta = if let Some(meta) = self.connections.get_mut(endpoint) {
             meta.clone()
@@ -554,12 +656,9 @@ where
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of success
-            notify_subscribers(
-                subscribers,
-                ConnectionManagerNotification::Connected {
-                    endpoint: endpoint.to_string(),
-                },
-            );
+            subscribers.broadcast(ConnectionManagerNotification::Connected {
+                endpoint: endpoint.to_string(),
+            });
         } else {
             let reconnection_attempts = match meta {
                 ConnectionMetadata::Outbound {
@@ -580,13 +679,10 @@ where
             self.connections.insert(endpoint.to_string(), meta);
 
             // Notify subscribers of reconnection failure
-            notify_subscribers(
-                subscribers,
-                ConnectionManagerNotification::ReconnectionFailed {
-                    endpoint: endpoint.to_string(),
-                    attempts: reconnection_attempts,
-                },
-            );
+            subscribers.broadcast(ConnectionManagerNotification::ReconnectionFailed {
+                endpoint: endpoint.to_string(),
+                attempts: reconnection_attempts,
+            });
         }
         Ok(())
     }
@@ -607,7 +703,7 @@ where
 fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
     req: CmRequest,
     state: &mut ConnectionState<T, U>,
-    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
+    subscribers: &mut SubscriberMap,
 ) {
     match req {
         CmRequest::RequestOutboundConnection {
@@ -648,13 +744,10 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
             let res = state
                 .add_inbound_connection(connection)
                 .and_then(|connection_id| {
-                    notify_subscribers(
-                        subscribers,
-                        ConnectionManagerNotification::InboundConnection {
-                            endpoint,
-                            connection_id,
-                        },
-                    );
+                    subscribers.broadcast(ConnectionManagerNotification::InboundConnection {
+                        endpoint,
+                        connection_id,
+                    });
                     Ok(())
                 });
 
@@ -662,19 +755,27 @@ fn handle_request<T: MatrixLifeCycle, U: MatrixSender>(
                 warn!("connector dropped before receiving result of add inbound callback");
             }
         }
+        CmRequest::Subscribe { sender, callback } => {
+            let subscriber_id = subscribers.add_subscriber(callback);
+            if sender.send(Ok(subscriber_id)).is_err() {
+                warn!("connector dropped before receiving result of remove connection");
+            }
+        }
+        CmRequest::Unsubscribe {
+            sender,
+            subscriber_id,
+        } => {
+            subscribers.remove_subscriber(subscriber_id);
+            if sender.send(Ok(())).is_err() {
+                warn!("connector dropped before receiving result of remove connection");
+            }
+        }
     };
-}
-
-fn notify_subscribers(
-    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
-    notification: ConnectionManagerNotification,
-) {
-    subscribers.retain(|sender| sender.send(notification.clone()).is_ok());
 }
 
 fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
     state: &mut ConnectionState<T, U>,
-    subscribers: &mut Vec<Sender<ConnectionManagerNotification>>,
+    subscribers: &mut SubscriberMap,
 ) {
     let heartbeat_message = match create_heartbeat() {
         Ok(h) => h,
@@ -706,12 +807,9 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
                             err
                         );
 
-                        notify_subscribers(
-                            subscribers,
-                            ConnectionManagerNotification::Disconnected {
-                                endpoint: endpoint.clone(),
-                            },
-                        );
+                        subscribers.broadcast(ConnectionManagerNotification::Disconnected {
+                            endpoint: endpoint.clone(),
+                        });
                         reconnections.push(endpoint.to_string());
                     }
                 }
@@ -729,12 +827,9 @@ fn send_heartbeats<T: MatrixLifeCycle, U: MatrixSender>(
 
                     if !inbound.disconnected {
                         inbound.disconnected = true;
-                        notify_subscribers(
-                            subscribers,
-                            ConnectionManagerNotification::Disconnected {
-                                endpoint: endpoint.clone(),
-                            },
-                        );
+                        subscribers.broadcast(ConnectionManagerNotification::Disconnected {
+                            endpoint: endpoint.clone(),
+                        });
                     }
                 }
                 inbound.disconnected = false;
@@ -1107,7 +1202,9 @@ pub mod tests {
             .request_connection(&endpoint, "test_id")
             .expect("Unable to request connection");
 
-        let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+        let mut subscriber = connector
+            .subscription_iter()
+            .expect("Cannot get subscriber");
 
         // receive reconnecting attempt
         let reconnecting_notification = subscriber
@@ -1166,7 +1263,9 @@ pub mod tests {
         });
         let connector = cm.start().expect("Unable to start ConnectionManager");
 
-        let mut subscriber = connector.subscribe().expect("Cannot get subscriber");
+        let mut subscriber = connector
+            .subscription_iter()
+            .expect("Cannot get subscriber");
 
         let connection = listener.accept().unwrap();
         connector
