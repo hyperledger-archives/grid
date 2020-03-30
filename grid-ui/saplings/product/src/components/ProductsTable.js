@@ -17,25 +17,32 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useServiceState } from '../state/service-context';
 
-import './ProductsTable.scss';
+import { useServiceState } from '../state/service-context';
 import ProductCard from './ProductCard';
-import mockProducts from '../test/mock-products';
 import { getProperty } from '../data/property-parsing';
+import { listProducts } from '../api/grid';
+import './ProductsTable.scss';
 
 function ProductsTable({ actions }) {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
   const { selectedService } = useServiceState();
 
   useEffect(() => {
-    if (selectedService === 'all') {
-      setProducts(mockProducts);
-    } else {
-      setProducts(
-        mockProducts.filter(product => product.service_id === selectedService)
-      );
-    }
+    const getProducts = async () => {
+      if (selectedService !== 'none') {
+        try {
+          const productList = await listProducts(selectedService);
+          setProducts(productList);
+        } catch (e) {
+          console.error(`Error listing products: ${e}`);
+        }
+      } else {
+        setProducts([]);
+      }
+    };
+
+    getProducts();
   }, [selectedService]);
 
   const productCards = products.map(product => {
