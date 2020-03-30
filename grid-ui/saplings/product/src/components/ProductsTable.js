@@ -47,6 +47,8 @@ function ProductsTable({ actions }) {
         name={getProperty('product_name', product.properties)}
         owner={product.owner}
         imageURL={getProperty('image_url', product.properties)}
+        editFn={actions.editProduct}
+        properties={product.properties}
       />
     );
   });
