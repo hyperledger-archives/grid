@@ -150,7 +150,7 @@ export function AddProductForm({ closeFn }) {
   const clearState = () => {
     setGtin(null);
     dispatchSelectedServices({ type: 'clear' });
-    dispatchErrors({type: 'add', payload: initialErrors});
+    dispatchErrors({ type: 'add', payload: initialErrors });
     setAttributes([]);
     setAttrState({
       type: '',
