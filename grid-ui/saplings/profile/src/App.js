@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import React from 'react';
+import './App.scss';
+import { Profile } from './Profile';
 
-window.$CANOPY.registerConfigSapling('profile', () => {
-  console.log('Registering Profile Sapling');
+function App() {
+  return <Profile />;
+}
 
-  if (window.location.pathname === '/profile') {
-    window.$CANOPY.registerApp(function(domNode) {
-      console.log('Rendering Profile JS App');
-      domNode.innerHTML = `<h1>Profile<h1>`;
-    });
-  }
-});
+export default App;

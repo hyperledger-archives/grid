@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+const rewire = require('rewire');
 
-window.$CANOPY.registerConfigSapling('profile', () => {
-  console.log('Registering Profile Sapling');
+const defaults = rewire('react-scripts/scripts/build.js');
+const config = defaults.__get__('config');
 
-  if (window.location.pathname === '/profile') {
-    window.$CANOPY.registerApp(function(domNode) {
-      console.log('Rendering Profile JS App');
-      domNode.innerHTML = `<h1>Profile<h1>`;
-    });
+config.optimization.splitChunks = {
+  cacheGroups: {
+    default: false
   }
-});
+};
+
+config.optimization.runtimeChunk = false;
+
+// JS
+config.output.filename = 'static/js/profile.js';
+// CSS. "5" is MiniCssPlugin
+config.plugins[5].options.moduleFilename = () => 'static/css/profile.css';

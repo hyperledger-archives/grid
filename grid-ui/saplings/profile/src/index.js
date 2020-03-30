@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css';
+import { registerApp, registerConfigSapling } from 'splinter-saplingjs';
+import App from './App';
 
-window.$CANOPY.registerConfigSapling('profile', () => {
-  console.log('Registering Profile Sapling');
-
+registerConfigSapling('profile', () => {
   if (window.location.pathname === '/profile') {
-    window.$CANOPY.registerApp(function(domNode) {
-      console.log('Rendering Profile JS App');
-      domNode.innerHTML = `<h1>Profile<h1>`;
+    registerApp(domNode => {
+      ReactDOM.render(<App />, domNode);
     });
   }
 });

@@ -14,13 +14,27 @@
  * limitations under the License.
  */
 
-window.$CANOPY.registerConfigSapling('profile', () => {
-  console.log('Registering Profile Sapling');
+.wrapper {
+  width: 50vw;
 
-  if (window.location.pathname === '/profile') {
-    window.$CANOPY.registerApp(function(domNode) {
-      console.log('Rendering Profile JS App');
-      domNode.innerHTML = `<h1>Profile<h1>`;
-    });
+  .error-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+
+    .error {
+      width: 80%;
+      color: var(--color-failure);
+      word-wrap: break-word;
+    }
+
+    .actions {
+      width: 80%;
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+    }
   }
-});
+}

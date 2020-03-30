@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-window.$CANOPY.registerConfigSapling('profile', () => {
-  console.log('Registering Profile Sapling');
+import { useState, useEffect } from 'react';
 
-  if (window.location.pathname === '/profile') {
-    window.$CANOPY.registerApp(function(domNode) {
-      console.log('Rendering Profile JS App');
-      domNode.innerHTML = `<h1>Profile<h1>`;
-    });
-  }
-});
+export function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}

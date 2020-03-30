@@ -18,7 +18,6 @@ contracts/track_and_trace/src/messages/
 **/.pnp.js
 **/package-lock.json
 **/npm-debug.log
-**/yarn.lock
 
 # testing
 **/coverage
@@ -35,6 +34,10 @@ tests/sawtooth_sc_test/protobuf/
 /docs/build/
 /docs/source/_autogen/
 /docs/source/cli/output/
+
+grid-ui/sapling-dev-server/product
+grid-ui/sapling-dev-server/register-login.js
+grid-ui/sapling-dev-server/profile
 
 # misc
 .DS_Store

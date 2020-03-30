@@ -12,36 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Dockerfile for running unit tests and lint on the Grid UI
+FROM node:lts-alpine
 
-FROM node:lts-alpine as build-stage
+WORKDIR /grid-ui/saplings/profile
 
-RUN apk update && apk add git
+COPY package*.json ./
 
-RUN npm config set unsafe-perm true
+RUN apk add git
+
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
 
 COPY . .
-
-RUN cd /saplings/register-login && \
-  npm config set unsafe-perm true && \
-  npm install && \
-  yarn deploy
-
-RUN cd /saplings/product && \
-  npm install && \
-  yarn deploy
-
-RUN cd /saplings/profile && \
-  npm install && \
-  yarn deploy
-
-FROM httpd:2.4 as prod-stage
-
-RUN echo "\
-  \n\
-  Header set Access-Control-Allow-Origin "*"\n\
-  \n\
-  " >>/usr/local/apache2/conf/httpd.conf
-
-COPY --from=build-stage /sapling-dev-server/ /usr/local/apache2/htdocs/
-
-EXPOSE 80/tcp
