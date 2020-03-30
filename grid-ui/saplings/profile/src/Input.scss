@@ -13,54 +13,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-.grid-input {
-  position: relative;
-  padding: 1rem 0 0;
-  margin-top: 0.5rem;
-  width: 100%;
-
-  label {
-    position: absolute;
-    top: 0;
-    display: block;
-    transition: 0.2s;
-    font-size: 0.7rem;
-  }
-
-  input {
-    height: calc(2rem + 2px);
+#profile {
+  .grid-input {
+    position: relative;
+    padding: 1rem 0 0;
+    margin-top: 0.5rem;
     width: 100%;
-    border: 1px solid #333333;
-    padding: 0.5rem;
-    background: transparent;
-    outline: none;
-    transition: border-color 0.2s;
-    font-size: 1rem;
 
-    &::placeholder {
-      color: transparent;
+    label {
+      position: absolute;
+      top: 0;
+      display: block;
+      transition: 0.2s;
+      font-size: 0.7rem;
     }
 
-    &:placeholder-shown {
-      border-color: #555555;
+    input {
+      height: calc(2rem + 2px);
+      width: 100%;
+      border: 1px solid #333333;
+      padding: 0.5rem;
+      background: transparent;
+      outline: none;
+      transition: border-color 0.2s;
+      font-size: 1rem;
 
-      & ~ label {
-        cursor: text;
-        top: 1.5rem;
-        padding-left: 0.5rem;
-        font-size: 1rem;
+      &::placeholder {
+        color: transparent;
       }
-    }
 
-    &:focus {
-      border-color: var(--color-primary);
+      &:placeholder-shown {
+        border-color: #555555;
 
-      ~ label {
-        font-size: 0.7rem;
-        font-weight: bold;
-        top: 0;
-        padding-left: 0;
+        & ~ label {
+          cursor: text;
+          top: 1.5rem;
+          padding-left: 0.5rem;
+          font-size: 1rem;
+        }
+      }
+
+      &:focus {
+        border-color: var(--color-primary);
+
+        ~ label {
+          font-size: 0.7rem;
+          font-weight: bold;
+          top: 0;
+          padding-left: 0;
+        }
       }
     }
   }

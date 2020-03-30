@@ -13,92 +13,93 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#profile {
+  .multiStepForm {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 
-.multiStepForm {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+    > h2 {
+      display: inline-block;
+      width: 100%;
+      margin: 1rem 0;
+    }
 
-  > h2 {
-    display: inline-block;
-    width: 100%;
-    margin: 1rem 0;
-  }
+    .stepCounter {
+      height: calc(1.5rem + 2px);
+      width: 80%;
 
-  .stepCounter {
-    height: calc(1.5rem + 2px);
-    width: 80%;
+      .steps {
+        position: relative;
+        top: 0;
+        display: flex;
+        flex: 1 1 100%;
+        justify-content: space-between;
 
-    .steps {
-      position: relative;
-      top: 0;
+        .step {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 1.5rem;
+          height: 1.5rem;
+          background: #ffffff;
+          border: 1px solid #555;
+          color: #555;
+          transition: all 0.3s;
+
+          &.active {
+            border: var(--color-primary);
+            background: var(--color-primary);
+            color: #333333;
+            font-weight: bold;
+          }
+
+          &.entered {
+            border-color: var(--color-primary);
+          }
+        }
+      }
+
+      .progressTracker {
+        width: 100%;
+        height: 1.5px;
+        background: #555555;
+        position: relative;
+        top: 50%;
+
+        &:after {
+          display: block;
+          content: '';
+          width: var(--form-progress);
+          height: 3px;
+          transform: translateY(-50%);
+          background: var(--color-primary);
+          transition: width 1s;
+        }
+      }
+    }
+
+    form {
       display: flex;
-      flex: 1 1 100%;
-      justify-content: space-between;
+      flex-direction: column;
+      width: 90%;
 
       .step {
         display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 1.5rem;
-        height: 1.5rem;
-        background: #ffffff;
-        border: 1px solid #555;
-        color: #555;
-        transition: all 0.3s;
-
-        &.active {
-          border: var(--color-primary);
-          background: var(--color-primary);
-          color: #333333;
-          font-weight: bold;
-        }
-
-        &.entered {
-          border-color: var(--color-primary);
-        }
+        flex-direction: row;
+        flex-wrap: wrap;
       }
     }
 
-    .progressTracker {
-      width: 100%;
-      height: 1.5px;
-      background: #555555;
-      position: relative;
-      top: 50%;
-
-      &:after {
-        display: block;
-        content: '';
-        width: var(--form-progress);
-        height: 3px;
-        transform: translateY(-50%);
-        background: var(--color-primary);
-        transition: width 1s;
-      }
-    }
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    width: 90%;
-
-    .step {
+    .actions {
       display: flex;
       flex-direction: row;
-      flex-wrap: wrap;
-    }
-  }
+      justify-content: center;
 
-  .actions {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-
-    > * {
-      margin: 0 0.5rem;
+      > * {
+        margin: 0 0.5rem;
+      }
     }
   }
 }
