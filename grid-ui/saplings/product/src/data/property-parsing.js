@@ -20,10 +20,10 @@ export const getProperty = (name, propertyList) => {
     return null;
   }
 
-  switch (property.data_type) {
-    case 'STRING':
+  switch (property.data_type.toLowerCase()) {
+    case 'string':
       return property.string_value;
-    case 'NUMBER':
+    case 'number':
       return property.number_value;
     default:
       throw Error(`unsupported property type: ${property.data_type}`);
