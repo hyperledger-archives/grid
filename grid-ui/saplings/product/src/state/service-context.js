@@ -17,8 +17,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import mockServices from '../test/mock-services';
-
 const ServiceStateContext = React.createContext();
 const ServiceDispatchContext = React.createContext();
 
@@ -27,8 +25,11 @@ const serviceReducer = (state, action) => {
     case 'select': {
       return { ...state, selectedService: action.payload.serviceID };
     }
-    case 'selectAll': {
-      return { ...state, selectedService: 'all' };
+    case 'selectNone': {
+      return { ...state, selectedService: 'none' };
+    }
+    case 'setServices': {
+      return { ...state, services: action.payload.services };
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
@@ -36,7 +37,10 @@ const serviceReducer = (state, action) => {
 };
 
 function ServiceProvider({ children }) {
-  const [state, dispatch] = React.useReducer(serviceReducer, mockServices);
+  const [state, dispatch] = React.useReducer(serviceReducer, {
+    selectedService: 'none',
+    services: []
+  });
 
   return (
     <ServiceStateContext.Provider value={state}>
