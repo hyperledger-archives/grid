@@ -26,71 +26,73 @@
   }
 }
 
-.loader {
-  display: block;
-  width: 6rem;
-  height: 30px;
-  position: relative;
-  margin: auto;
-  top: 50%;
-  transform: translateY(-50%);
+#profile {
+  .loader {
+    display: block;
+    width: 6rem;
+    height: 30px;
+    position: relative;
+    margin: auto;
+    top: 50%;
+    transform: translateY(-50%);
 
-  .dots {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-
-    > .dot {
-      width: 1.5rem;
-      height: 1.5rem;
-      background: #333333;
-      border-radius: 50%;
-      animation-duration: 0.9s;
-      animation-name: bounce;
-      animation-iteration-count: infinite;
-    }
-
-    :nth-child(2) {
-      animation-delay: 0.3s;
-    }
-
-    :last-child {
-      animation-delay: 0.6s;
-    }
-  }
-
-  &.complete {
     .dots {
-      display: none;
-    }
-  }
-
-  .state {
-    width: 0;
-    height: 0;
-    display: none;
-    border-radius: 50%;
-    transition: all 0.3s;
-  }
-
-  &.complete {
-    .state {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 4rem;
-      height: 4rem;
-      margin: auto;
-      font-size: 2rem;
+      flex-direction: row;
+      justify-content: space-between;
 
-      &.success {
-        border: 3px solid var(--color-success);
-        color: var(--color-success);
+      > .dot {
+        width: 1.5rem;
+        height: 1.5rem;
+        background: #333333;
+        border-radius: 50%;
+        animation-duration: 0.9s;
+        animation-name: bounce;
+        animation-iteration-count: infinite;
       }
 
-      &.failure {
-        border: 3px solid var(--color-failure);
-        color: var(--color-failure);
+      :nth-child(2) {
+        animation-delay: 0.3s;
+      }
+
+      :last-child {
+        animation-delay: 0.6s;
+      }
+    }
+
+    &.complete {
+      .dots {
+        display: none;
+      }
+    }
+
+    .state {
+      width: 0;
+      height: 0;
+      display: none;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    &.complete {
+      .state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        margin: auto;
+        font-size: 2rem;
+
+        &.success {
+          border: 3px solid var(--color-success);
+          color: var(--color-success);
+        }
+
+        &.failure {
+          border: 3px solid var(--color-failure);
+          color: var(--color-failure);
+        }
       }
     }
   }

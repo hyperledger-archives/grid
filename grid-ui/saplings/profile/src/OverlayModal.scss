@@ -13,55 +13,56 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-.overlay-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  visibility: hidden;
-  z-index: -1;
-  width: 0;
-  height: 0;
-  background: rgba(85, 85, 85, 0.8);
-  transition: all 0.2s;
-  overflow-y: auto;
-
-  .close {
-    display: none;
-    width: 1.5rem;
-    height: 1.5rem;
-    position: relative;
-    top: 0.5rem;
-    left: calc(100% - 2rem);
-    color: #ffffff;
-  }
-
-  .content {
-    display: none;
-    width: fit-content;
-    height: fit-content;
-    max-width: 60%;
-    max-height: 60%;
-    min-width: 40%;
-    position: relative;
-    top: 40%;
-    transform: translateY(-50%);
-    margin: auto;
-    background: #ffffff;
-    padding: 1rem;
-    border-radius: 0.25rem;
+#profile {
+  .overlay-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    z-index: -1;
+    width: 0;
+    height: 0;
+    background: rgba(85, 85, 85, 0.8);
+    transition: all 0.2s;
     overflow-y: auto;
-  }
 
-  &.open {
-    visibility: visible;
-    width: 100vw;
-    height: 100vh;
-    z-index: 100;
+    .close {
+      display: none;
+      width: 1.5rem;
+      height: 1.5rem;
+      position: relative;
+      top: 0.5rem;
+      left: calc(100% - 2rem);
+      color: #ffffff;
+    }
 
-    .close,
     .content {
-      display: block;
+      display: none;
+      width: fit-content;
+      height: fit-content;
+      max-width: 60%;
+      max-height: 60%;
+      min-width: 40%;
+      position: relative;
+      top: 40%;
+      transform: translateY(-50%);
+      margin: auto;
+      background: #ffffff;
+      padding: 1rem;
+      border-radius: 0.25rem;
+      overflow-y: auto;
+    }
+
+    &.open {
+      visibility: visible;
+      width: 100vw;
+      height: 100vh;
+      z-index: 100;
+
+      .close,
+      .content {
+        display: block;
+      }
     }
   }
 }

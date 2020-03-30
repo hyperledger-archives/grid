@@ -13,28 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#profile {
+  .wrapper {
+    width: 50vw;
 
-.wrapper {
-  width: 50vw;
-
-  .error-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-
-    .error {
-      width: 80%;
-      color: var(--color-failure);
-      word-wrap: break-word;
-    }
-
-    .actions {
-      width: 80%;
+    .error-wrapper {
       display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+
+      .error {
+        width: 80%;
+        color: var(--color-failure);
+        word-wrap: break-word;
+      }
+
+      .actions {
+        width: 80%;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+      }
     }
   }
 }

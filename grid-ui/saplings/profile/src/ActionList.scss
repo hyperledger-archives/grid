@@ -14,78 +14,80 @@
  * limitations under the License.
  */
 
-.action-list {
-  width: fit-content;
-
-  .action-button {
-    transition: all 0.2s;
+#profile {
+  .action-list {
     width: fit-content;
-    display: flex;
-    border-color: #ffffff !important;
-    color: #ffffff !important;
 
-    .hamburger {
+    .action-button {
+      transition: all 0.2s;
+      width: fit-content;
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      width: 14px;
-      height: 14px;
-      margin-left: 0.5rem;
-      align-self: center;
-
-      div {
-        height: 3px;
-        background: #ffffff;
-        transition: all 0.2s;
-      }
-      .top {
-        width: 10px;
-      }
-
-      .middle {
-        width: 6px;
-      }
-
-      .bottom {
-        width: 14px;
-      }
-    }
-
-    &:hover,
-    &.open {
-      background: #ffffff !important;
-      color: #333333 !important;
+      border-color: #ffffff !important;
+      color: #ffffff !important;
 
       .hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 14px;
+        height: 14px;
+        margin-left: 0.5rem;
+        align-self: center;
+
         div {
-          background: #333333;
+          height: 3px;
+          background: #ffffff;
+          transition: all 0.2s;
+        }
+        .top {
+          width: 10px;
+        }
+
+        .middle {
+          width: 6px;
+        }
+
+        .bottom {
           width: 14px;
         }
       }
-    }
-  }
 
-  .actions {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    transform: translateY(-2rem);
-    visibility: hidden;
-    opacity: 0;
-    transition: visibility 0.2s, opacity 0.2s, transform 0.2s;
+      &:hover,
+      &.open {
+        background: #ffffff !important;
+        color: #333333 !important;
 
-    &.open {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-      transition: visibility 0, opacity 0.2s, transform 0.2s;
+        .hamburger {
+          div {
+            background: #333333;
+            width: 14px;
+          }
+        }
+      }
     }
 
-    > * {
-      border-color: #ffffff !important;
+    .actions {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transform: translateY(-2rem);
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0.2s, opacity 0.2s, transform 0.2s;
 
-      &:hover {
+      &.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        transition: visibility 0, opacity 0.2s, transform 0.2s;
+      }
+
+      > * {
         border-color: #ffffff !important;
+
+        &:hover {
+          border-color: #ffffff !important;
+        }
       }
     }
   }
