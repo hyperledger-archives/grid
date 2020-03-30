@@ -33,6 +33,7 @@ import FilterBar from './components/FilterBar';
 import ProductsTable from './components/ProductsTable';
 import ProductInfo from './components/ProductInfo';
 import { AddProductForm } from './components/AddProductForm';
+import { EditProductForm } from './components/EditProductForm';
 import './App.scss';
 
 library.add(
@@ -47,16 +48,42 @@ library.add(
 );
 
 function App() {
-  const [activeForm, setActiveForm] = useState(null);
+  const initialFormState = {
+    formName: '',
+    params: {}
+  };
+  const [activeForm, setActiveForm] = useState(initialFormState);
 
   function addProduct() {
-    setActiveForm('add-product');
+    setActiveForm({
+      formName: 'add-product',
+      params: {}
+    });
   }
 
-  function openForm(formName) {
-    switch (formName) {
+  function editProduct(properties) {
+    setActiveForm({
+      formName: 'edit-product',
+      params: {
+        properties
+      }
+    });
+  }
+
+  function openForm(form) {
+    const adata = { ...form.params } || {};
+    switch (form.formName) {
       case 'add-product':
-        return <AddProductForm closeFn={() => setActiveForm(null)} />;
+        return (
+          <AddProductForm closeFn={() => setActiveForm(initialFormState)} />
+        );
+      case 'edit-product':
+        return (
+          <EditProductForm
+            closeFn={() => setActiveForm(initialFormState)}
+            properties={adata.properties}
+          />
+        );
       default:
     }
     return null;
@@ -69,7 +96,7 @@ function App() {
         <Router>
           <Switch>
             <Route exact path="/product">
-              <ProductsTable actions={{ addProduct }} />
+              <ProductsTable actions={{ addProduct, editProduct }} />
             </Route>
             <Route path="/product/products/:id">
               <ProductInfo />
