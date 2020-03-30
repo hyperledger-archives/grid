@@ -36,7 +36,7 @@ library.add(faCaretUp, faCaretDown, faCheck, faPenSquare, faChevronLeft);
 function App() {
   return (
     <ServiceProvider>
-      <div className="product-app">
+      <div id="product-sapling" className="product-app">
         <FilterBar />
         <Router>
           <Switch>
