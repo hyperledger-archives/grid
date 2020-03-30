@@ -50,11 +50,9 @@ function ProductInfo() {
 
   return (
     <div className="product-info-container">
-      {imageURL && (
-        <img src={imageURL} alt={product.id} className="product-image" />
-      )}
+      {imageURL && <img src={imageURL} alt="" className="product-image" />}
       <ProductOverview
-        gtin={getProperty('gtin', product.properties) || 'Unknown'}
+        gtin={product.product_id || 'Unknown'}
         productName={
           getProperty('product_name', product.properties) || 'Unknown'
         }

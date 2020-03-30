@@ -23,13 +23,13 @@ import ProductProperty from './ProductProperty';
 import './ProductCard.scss';
 
 function ProductCard(props) {
-  const { productID, gtin, name, owner, imageURL } = props;
+  const { gtin, name, owner, imageURL } = props;
   return (
     <div className="product-card">
       <button type="button" className="product-card-edit-button">
         <FontAwesomeIcon className="icon" icon="pen-square" />
       </button>
-      <Link className="link" to={`/product/products/${productID}`}>
+      <Link className="link" to={`/product/products/${gtin}`}>
         <div className="product-card-content">
           <div className="product-card-properties">
             <ProductProperty label="GTIN" value={gtin} />
@@ -46,7 +46,6 @@ function ProductCard(props) {
 }
 
 ProductCard.propTypes = {
-  productID: PropTypes.string.isRequired,
   gtin: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   owner: PropTypes.string.isRequired,
