@@ -24,7 +24,6 @@ import './ProductCard.scss';
 
 function ProductCard(props) {
   const {
-    productID,
     gtin,
     name,
     owner,
@@ -50,7 +49,7 @@ function ProductCard(props) {
       >
         <FontAwesomeIcon className="icon" icon="pen-square" />
       </button>
-      <Link className="link" to={`/product/products/${productID}`}>
+      <Link className="link" to={`/product/products/${gtin}`}>
         <div className="product-card-content">
           <div className="product-card-properties">
             <ProductProperty label="GTIN" value={gtin} />
@@ -67,7 +66,6 @@ function ProductCard(props) {
 }
 
 ProductCard.propTypes = {
-  productID: PropTypes.string.isRequired,
   gtin: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   owner: PropTypes.string.isRequired,
