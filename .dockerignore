@@ -12,40 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-/libsplinter/target
-/libsplinter/Cargo.lock
-
-/splinterd/target
-/splinterd/Cargo.lock
-
-/client/target
-/client/Cargo.lock
-
-/cli/target
-/cli/Cargo.lock
-
-/examples/private_xo/target
-/examples/private_xo/Cargo.lock
-
-/examples/private_counter/service/target
-/examples/private_counter/service/Cargo.lock
-
-/examples/private_counter/cli/target
-/examples/private_counter/cli/Cargo.lock
-
-/examples/private_xo/target
-/examples/private_xo/Cargo.lock
-
-/examples/gameroom/database/target
-/examples/gameroom/database/Cargo.lock
-
-/examples/gameroom/daemon/target
-/examples/gameroom/daemon/Cargo.lock
-
-/examples/gameroom/gameroom-app/node_modules
-/examples/gameroom/gameroom-app/dist
-/examples/gameroom/gameroom-app/package-lock.json
-
 # Canopy
 **/node_modules
 **/.pnp
@@ -54,6 +20,3 @@
 /canopy/**/coverage
 /canopy/**/build
 /canopy**/dist
-
-/target
-/Cargo.lock

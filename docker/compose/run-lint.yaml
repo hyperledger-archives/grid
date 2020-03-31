@@ -16,49 +16,6 @@ version: "3.7"
 
 services:
 
-  lint-splinter:
-    build:
-      context: ../
-      dockerfile: ./lint
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: lint-splinter:${ISOLATION_ID}
-    volumes:
-      - ../../:/project/splinter
-    command: run_lint_rust
-
-  clippy-splinter:
-    build:
-      context: ../
-      dockerfile: ./lint
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: clippy-splinter:${ISOLATION_ID}
-    volumes:
-      - ../../:/project/splinter
-    entrypoint: |
-      bash -c "
-         echo \"Running clippy on default features...\" && \
-         cargo clippy -- -D warnings && \
-         echo \"Running clippy on experimental features...\" && \
-         (cd libsplinter && cargo clippy --features experimental -- -D warnings) && \
-         (cd splinterd && cargo clippy --features experimental -- -D warnings) && \
-         (cd cli && cargo clippy --features experimental -- -D warnings)
-      "
-
-  lint-gameroom-client:
-    build:
-      context: ../../examples/gameroom/gameroom-app
-      dockerfile: ../../../docker/lint-client
-    image: lint-gameroom-client:${ISOLATION_ID}
-    volumes:
-      - ../../:/project/splinter/examples/gameroom/gameroom-app
-    command: npm run lint
-
   lint-canopy-app:
     build:
       context: ../../canopy/app

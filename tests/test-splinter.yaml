@@ -17,46 +17,6 @@ version: "3.7"
 
 services:
 
-  unit-test-splinter:
-    build:
-      context: ../
-      dockerfile: tests/Dockerfile
-    image: test-splinter:${ISOLATION_ID}
-    volumes:
-      - ../:/project/splinter
-    command: |
-        bash -c "
-            echo \"Running default feature tests...\" && \
-            cargo test && \
-            echo \"Running stable feature tests...\" && \
-            (cd cli && cargo test --features stable) &&
-            (cd client && cargo test --features stable) &&
-            (cd examples/gameroom/cli && cargo test --features stable) &&
-            (cd examples/gameroom/daemon && cargo test --features stable) &&
-            (cd examples/gameroom/database && cargo test --features stable) &&
-            (cd examples/private_counter/cli && cargo test --features stable) &&
-            (cd examples/private_counter/service && cargo test --features stable) &&
-            (cd examples/private_xo && cargo test --features stable) &&
-            (cd libsplinter && cargo test --features stable) &&
-            (cd services/health && cargo test --features stable) &&
-            (cd services/scabbard && cargo test --features stable) &&
-            (cd splinterd && cargo test --features stable) &&
-            echo \"Running experimental feature tests...\" && \
-            (cd cli && cargo test --features experimental) &&
-            (cd client && cargo test --features experimental) &&
-            (cd examples/gameroom/cli && cargo test --features experimental) &&
-            (cd examples/gameroom/daemon && cargo test --features experimental) &&
-            (cd examples/gameroom/database && cargo test --features experimental) &&
-            (cd examples/private_counter/cli && cargo test --features experimental) &&
-            (cd examples/private_counter/service && cargo test --features experimental) &&
-            (cd examples/private_xo && cargo test --features experimental) &&
-            (cd libsplinter && cargo test --features experimental) &&
-            (cd services/health && cargo test --features experimental) &&
-            (cd services/scabbard && cargo test --features experimental) &&
-            (cd splinterd && cargo test --features experimental)
-        "
-    stop_signal: SIGKILL
-
   unit-test-canopy-app:
     build:
       context: ../canopy/app

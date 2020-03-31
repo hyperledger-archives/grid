@@ -18,8 +18,6 @@ services:
 env:
   global:
     - ISOLATION_ID=$TRAVIS_BUILD_ID
-    - NAMESPACE="splintercommunity/"
-    - VERSION=AUTO_STRICT
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
@@ -32,64 +30,7 @@ addons:
       - docker-ce
 
 jobs:
-  include:
-    - stage: Lint Gameroom Client
-      script:
-        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-gameroom-client
-
-    - stage: Run Lint/Clippy on Splinter
-      script:
-        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-splinter
-    - stage: Run Lint/Clippy on Splinter
-      script:
-        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit clippy-splinter
-
     - stage: Lint/Unit Test Canopy
       script:
         - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-canopy-app
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-canopy-app
-
-    - stage: Run Splinter/Gameroom Unit Tests
-      before_script:
-        - set -e
-      script:
-        - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-splinter
-    - stage: Run Splinter/Gameroom Unit Tests
-      before_script:
-        - set -e
-      script:
-        - docker-compose -f examples/gameroom/tests/docker-compose.yaml up --abort-on-container-exit
-    - stage: Run Splinter/Gameroom Unit Tests
-      before_script:
-        - set -e
-      script:
-        - docker-compose -f examples/gameroom/tests/cypress/docker-compose.yaml up --abort-on-container-exit
-
-    - stage: Cron only
-      if: type = cron
-      script: docker-compose -f tests/test-splinter-cron.yaml up --abort-on-container-exit unit-test-splinter
-
-    - stage: Publish artifacts
-      language: generic
-      before_deploy:
-        - docker login -u splintercommunity -p $DOCKER_TOKEN
-      deploy:
-        - provider: script
-          script: bash ci/publish-docker master
-          on:
-            branch: master
-        - provider: script
-          script: bash ci/publish-docker experimental
-          on:
-            branch: master
-            condition: $TRAVIS_EVENT_TYPE == cron
-        - provider: script
-          script: bash ci/publish-docker
-          on:
-            tags: true
-            all_branches: true
-        - provider: script
-          script: bash ci/publish-crates
-          on:
-            tags: true
-            all_branches: true

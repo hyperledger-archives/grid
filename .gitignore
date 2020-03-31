@@ -12,46 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-/libsplinter/target
-/libsplinter/Cargo.lock
-
-/splinterd/target
-/splinterd/Cargo.lock
-
-/messaging/src/protos
-/messaging/target
-/messaging/Cargo.lock
-
-/client/target
-/client/Cargo.lock
-
-/cli/target
-/cli/Cargo.lock
-/cli/packaging/man/*.1
-
-/examples/private_xo/target
-/examples/private_xo/Cargo.lock
-/examples/private_xo/demo_state/keys.yaml
-/examples/private_xo/demo_state/circuit_proposals.yaml
-
-/examples/private_counter/service/target
-/examples/private_counter/service/Cargo.lock
-/examples/private_counter/demo_state/keys.yaml
-/examples/private_counter/demo_state/circuit_proposals.yaml
-
-/examples/gameroom/database/target
-/examples/gameroom/database/Cargo.lock
-
-/examples/gameroom/daemon/target
-/examples/gameroom/daemon/Cargo.lock
-
-/examples/gameroom/gameroom-app/src/compiled_protos.json
-
-/tests/Cargo.lock
-/tests/target
-
-/target
-/Cargo.lock
 
 ## Canopy
 # deps
