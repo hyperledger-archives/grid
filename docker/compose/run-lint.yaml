@@ -18,6 +18,6 @@ services:
 
   lint-canopy-app:
     build:
-      context: ../../canopy/app
+      context: ../../app
     image: canopy-app:${ISOLATION_ID}
     command: yarn lint

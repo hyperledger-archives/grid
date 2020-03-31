@@ -17,6 +17,6 @@
 **/.pnp
 **/.pnp.js
 **/yarn.lock
-/canopy/**/coverage
-/canopy/**/build
-/canopy**/dist
+**/coverage
+**/build
+**/dist

@@ -19,7 +19,7 @@ services:
 
   unit-test-canopy-app:
     build:
-      context: ../canopy/app
+      context: ../app
     environment:
       - CI=true
     image: canopy-app:${ISOLATION_ID}
