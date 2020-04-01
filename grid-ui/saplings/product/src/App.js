@@ -24,7 +24,8 @@ import {
   faPenSquare,
   faChevronLeft,
   faPlus,
-  faTimes
+  faTimes,
+  faTrashAlt
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';
@@ -33,6 +34,7 @@ import ProductsTable from './components/ProductsTable';
 import ProductInfo from './components/ProductInfo';
 import { AddProductForm } from './components/AddProductForm';
 import { EditProductForm } from './components/EditProductForm';
+import { DeleteProductForm } from './components/DeleteProductForm';
 import './App.scss';
 
 library.add(
@@ -42,7 +44,8 @@ library.add(
   faPenSquare,
   faChevronLeft,
   faPlus,
-  faTimes
+  faTimes,
+  faTrashAlt
 );
 
 function App() {
@@ -68,6 +71,15 @@ function App() {
     });
   }
 
+  function deleteProduct(gtin) {
+    setActiveForm({
+      formName: 'delete-product',
+      params: {
+        gtin
+      }
+    });
+  }
+
   function openForm(form) {
     const adata = { ...form.params } || {};
     switch (form.formName) {
@@ -82,6 +94,13 @@ function App() {
             properties={adata.properties}
           />
         );
+      case 'delete-product':
+        return (
+          <DeleteProductForm
+            closeFn={() => setActiveForm(initialFormState)}
+            gtin={adata.gtin}
+          />
+        );
       default:
     }
     return null;
@@ -94,7 +113,9 @@ function App() {
         <Router>
           <Switch>
             <Route exact path="/product">
-              <ProductsTable actions={{ addProduct, editProduct }} />
+              <ProductsTable
+                actions={{ addProduct, editProduct, deleteProduct }}
+              />
             </Route>
             <Route path="/product/products/:id">
               <ProductInfo />

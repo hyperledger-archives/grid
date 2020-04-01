@@ -48,6 +48,7 @@ function ProductsTable({ actions }) {
         owner={product.owner}
         imageURL={getProperty('image_url', product.properties)}
         editFn={actions.editProduct}
+        deleteFn={actions.deleteProduct}
         properties={product.properties}
       />
     );
