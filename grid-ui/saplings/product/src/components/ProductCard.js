@@ -23,10 +23,17 @@ import ProductProperty from './ProductProperty';
 import './ProductCard.scss';
 
 function ProductCard(props) {
-  const { gtin, name, service, owner, imageURL, editFn, properties } = props;
+  const { gtin, name, service, owner, imageURL, editFn, deleteFn, properties } = props;
 
   return (
     <div className="product-card">
+      <button
+        type="button"
+        className="product-card-delete-button"
+        onClick={() => deleteFn(gtin)}
+      >
+        <FontAwesomeIcon className="icon" icon="trash-alt" />
+      </button>
       <button
         type="button"
         className="product-card-edit-button"
@@ -57,6 +64,7 @@ ProductCard.propTypes = {
   service: PropTypes.string.isRequired,
   imageURL: PropTypes.string,
   editFn: PropTypes.func.isRequired,
+  deleteFn: PropTypes.func.isRequired,
   properties: PropTypes.array.isRequired
 };
 
