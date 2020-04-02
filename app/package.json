@@ -1,8 +1,7 @@
 {
-  "name": "app",
+  "name": "splinter-ui",
   "license": "Apache-2.0",
   "author": "Cargill Incorporated",
-  "proxy": "http://0.0.0.0:8080",
   "scripts": {
     "start:saplings": "http-server ./saplings -p 8675 --cors",
     "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:8675 REACT_APP_SPLINTER_URL=http://localhost:3000  react-scripts start",
@@ -26,21 +25,16 @@
     ]
   },
   "dependencies": {
-    "@babel/parser": "^7.7.2",
     "@fortawesome/fontawesome-svg-core": "^1.2.25",
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
     "@fortawesome/react-fontawesome": "^0.1.7",
-    "babel-plugin-macros": "^2.6.1",
-    "splinter-canopyjs": "github:cargill/splinter-canopyjs#master",
-    "classnames": "^2.2.6",
-    "es6-promisify": "^6.0.2",
-    "http-proxy-cli": "^2.1.0",
-    "js-yaml": "^3.13.1",
-    "node-sass": "^4.12.0",
-    "prop-types": "^15.7.2",
-    "react": "^16.10.2",
-    "react-dom": "^16.10.2",
-    "react-scripts": "3.2.0"
+    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/react": "^9.3.2",
+    "@testing-library/user-event": "^7.1.2",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "react-scripts": "^3.4.0",
+    "splinter-canopyjs": "github:cargill/splinter-canopyjs#master"
   },
   "devDependencies": {
     "eslint": "^6.6.0",
@@ -51,8 +45,9 @@
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.14.3",
     "eslint-plugin-react-hooks": "^1.7.0",
-    "http-server": "^0.11.1",
-    "lint-staged": "^9.4.2",
+    "http-server": "^0.12.1",
+    "node-sass": "^4.13.1",
+    "nodemon": "^2.0.2",
     "npm-run-all": "^4.1.5",
     "prettier": "^1.18.2"
   }
