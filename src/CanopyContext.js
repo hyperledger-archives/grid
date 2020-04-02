@@ -38,7 +38,12 @@ const fetchConfigSaplings = async saplingURL => {
   return configSaplingsResponse;
 };
 
-export function CanopyProvider({ saplingURL, splinterURL, children }) {
+export function CanopyProvider({
+  saplingURL,
+  splinterURL,
+  appConfig,
+  children
+}) {
   const [userSaplings, setUserSaplings] = useState([]);
   const [configSaplings, setConfigSaplings] = useState({});
 
@@ -57,7 +62,8 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
       canopyConfig: {
         splinterURL,
         saplingURL
-      }
+      },
+      appConfig
     };
   };
 
@@ -110,15 +116,22 @@ export function CanopyProvider({ saplingURL, splinterURL, children }) {
   }, [saplingURL]);
 
   return (
-    <CanopyContext.Provider value={{ configSaplings, userSaplings, user, keys }}>
+    <CanopyContext.Provider
+      value={{ configSaplings, userSaplings, user, keys }}
+    >
       {children}
     </CanopyContext.Provider>
   );
 }
 
+CanopyProvider.defaultProps = {
+  appConfig: {}
+};
+
 CanopyProvider.propTypes = {
   saplingURL: PropTypes.string.isRequired,
   splinterURL: PropTypes.string.isRequired,
+  appConfig: PropTypes.object,
   children: PropTypes.node.isRequired
 };
 
