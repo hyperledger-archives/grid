@@ -12,15 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM node:lts-alpine
+# build stage
+FROM node:lts-alpine as build-stage
 
-WORKDIR /app
-
-COPY package*.json ./
-
-RUN apk add git
-
-# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
+WORKDIR /splinter_ui
+COPY splinter-ui/package*.json ./
 RUN npm config set unsafe-perm true && npm install
+COPY splinter-ui .
+ARG REACT_APP_SPLINTER_URL
+ENV REACT_APP_SPLINTER_URL $REACT_APP_SPLINTER_URL
+ARG REACT_APP_SAPLING_URL
+ENV REACT_APP_SAPLING_URL $REACT_APP_SAPLING_URL
+RUN yarn build
+WORKDIR /splinter_ui/build
+ARG REPO_VERSION
+RUN tar c -z . -f ../splinter_ui_v${REPO_VERSION}.tar.gz
 
-COPY . .
+# prod stage
+FROM httpd:2.4 as prod-stage
+
+ARG SPLINTER_URL
+ARG SAPLING_URL
+
+COPY --from=build-stage /splinter_ui/splinter_ui_*.tar.gz /tmp
+RUN tar -xzvf /tmp/splinter_ui_*.tar.gz -C /usr/local/apache2/htdocs/
+COPY /configs/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
+
+RUN echo "\
+  \n\
+  ProxyPass /splinterd $SPLINTER_URL\n\
+  ProxyPassReverse /splinterd $SPLINTER_URL\n\
+  ProxyPass /sapling-dev-server $SAPLING_URL\n\
+  ProxyPassReverse /sapling-dev-server $SAPLING_URL\n\
+  \n\
+  " >>/usr/local/apache2/conf/httpd.conf
+
+EXPOSE 80/tcp
