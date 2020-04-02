@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
- @import './theme/index.scss';
-
-.app {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  color: var(--text-primary);
-
-  .view {
-    flex: 0 1 100%;
-    height: 100vh;
-    overflow-y: scroll;
-    overflow-x: none;
-  }
-}
+@import './colors.scss';
+@import './sizes.scss';
+@import './timings.scss';
+@import './typography.scss';

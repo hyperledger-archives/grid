@@ -14,18 +14,6 @@
  * limitations under the License.
  */
 
- @import './theme/index.scss';
-
-.app {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  color: var(--text-primary);
-
-  .view {
-    flex: 0 1 100%;
-    height: 100vh;
-    overflow-y: scroll;
-    overflow-x: none;
-  }
-}
+$transitionDuration-s: 0.2s;
+$transitionDuration-m: 0.3s;
+$transitionDuration-l: 0.5s;
