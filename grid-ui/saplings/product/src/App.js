@@ -24,7 +24,8 @@ import {
   faPenSquare,
   faChevronLeft,
   faPlus,
-  faTimes
+  faTimes,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';
@@ -34,7 +35,16 @@ import ProductInfo from './components/ProductInfo';
 import { AddProductForm } from './components/AddProductForm';
 import './App.scss';
 
-library.add(faCaretUp, faCaretDown, faCheck, faPenSquare, faChevronLeft, faPlus, faTimes);
+library.add(
+  faCaretUp,
+  faCaretDown,
+  faCheck,
+  faPenSquare,
+  faChevronLeft,
+  faPlus,
+  faTimes,
+  faSpinner
+);
 
 function App() {
   const [activeForm, setActiveForm] = useState(null);
