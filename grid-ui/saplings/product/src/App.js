@@ -25,7 +25,8 @@ import {
   faChevronLeft,
   faPlus,
   faTimes,
-  faTrashAlt
+  faTrashAlt,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';
@@ -45,7 +46,8 @@ library.add(
   faChevronLeft,
   faPlus,
   faTimes,
-  faTrashAlt
+  faTrashAlt,
+  faSpinner
 );
 
 function App() {
