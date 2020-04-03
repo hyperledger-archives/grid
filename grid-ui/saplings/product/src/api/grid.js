@@ -14,32 +14,28 @@
  * limitations under the License.
  */
 
-export default {
-  selectedService: 'all',
-  services: [
-    {
-      id: 0,
-      serviceID: 'cargill-target0'
-    },
-    {
-      id: 1,
-      serviceID: 'cargill-target1'
-    },
-    {
-      id: 2,
-      serviceID: 'cargill-target2'
-    },
-    {
-      id: 3,
-      serviceID: 'cargill-target3'
-    },
-    {
-      id: 4,
-      serviceID: 'cargill-target4'
-    },
-    {
-      id: 5,
-      serviceID: 'cargill-target5'
-    }
-  ]
+import { getSharedConfig } from 'splinter-saplingjs';
+
+import { get } from './requests';
+
+const { gridURL } = getSharedConfig().appConfig;
+
+export const listProducts = async serviceID => {
+  const result = await get(`${gridURL}/product?service_id=${serviceID}`);
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
+};
+
+export const fetchProduct = async (serviceID, productID) => {
+  const result = await get(
+    `${gridURL}/product/${productID}?service_id=${serviceID}`
+  );
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
 };

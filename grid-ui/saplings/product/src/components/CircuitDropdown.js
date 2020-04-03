@@ -19,13 +19,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useServiceState, useServiceDispatch } from '../state/service-context';
 import useOnClickOutside from '../hooks/on-click-outside';
+import { listScabbardServices } from '../api/splinter';
 import './CircuitDropdown.scss';
 
 const CircuitDropdown = () => {
   const { services, selectedService } = useServiceState();
   const serviceDispatch = useServiceDispatch();
   const [listOpen, setListOpen] = useState(false);
-  const [headerText, setHeaderText] = useState('All services');
+  const [headerText, setHeaderText] = useState();
 
   const caretUp = <FontAwesomeIcon icon="caret-up" />;
   const caretDown = <FontAwesomeIcon icon="caret-down" />;
@@ -40,23 +41,23 @@ const CircuitDropdown = () => {
     });
   };
 
-  const handleSelectAll = () => {
+  const handleSelectNone = () => {
     setListOpen(false);
     serviceDispatch({
-      type: 'selectAll'
+      type: 'selectNone'
     });
   };
 
-  const listItems = services.map(item => (
+  const listItems = services.map(serviceID => (
     <div
       className="dd-list-item"
       role="button"
       tabIndex="0"
-      onClick={() => handleSelect(item.serviceID)}
-      onKeyPress={() => handleSelect(item.serviceID)}
+      onClick={() => handleSelect(serviceID)}
+      onKeyPress={() => handleSelect(serviceID)}
     >
-      {item.serviceID}
-      {item.serviceID === selectedService && <FontAwesomeIcon icon="check" />}
+      {serviceID}
+      {serviceID === selectedService && <FontAwesomeIcon icon="check" />}
     </div>
   ));
 
@@ -64,12 +65,30 @@ const CircuitDropdown = () => {
   useOnClickOutside(ref, () => setListOpen(false));
 
   useEffect(() => {
-    if (selectedService === 'all') {
-      setHeaderText('All services');
+    if (selectedService === 'none') {
+      setHeaderText('Select a service');
     } else {
       setHeaderText(selectedService);
     }
   }, [selectedService]);
+
+  useEffect(() => {
+    const getServices = async () => {
+      try {
+        const servicesList = await listScabbardServices();
+        serviceDispatch({
+          type: 'setServices',
+          payload: {
+            services: servicesList
+          }
+        });
+      } catch (e) {
+        console.error(`Error listing services: ${e}`);
+      }
+    };
+
+    getServices();
+  }, [serviceDispatch]);
 
   return (
     <div className="dd-wrapper" ref={ref}>
@@ -89,11 +108,11 @@ const CircuitDropdown = () => {
             className="dd-list-item"
             role="button"
             tabIndex="0"
-            onClick={handleSelectAll}
-            onKeyPress={handleSelectAll}
+            onClick={handleSelectNone}
+            onKeyPress={handleSelectNone}
           >
-            All services
-            {selectedService === 'all' && <FontAwesomeIcon icon="check" />}
+            Select a service
+            {selectedService === 'none' && <FontAwesomeIcon icon="check" />}
           </div>
           {listItems}
         </ul>

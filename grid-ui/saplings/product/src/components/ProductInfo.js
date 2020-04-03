@@ -19,31 +19,40 @@ import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import { useServiceState } from '../state/service-context';
 import { getProperty } from '../data/property-parsing';
-import mockProducts from '../test/mock-products';
 import ProductProperty from './ProductProperty';
+import { fetchProduct } from '../api/grid';
 import './ProductInfo.scss';
 
 function ProductInfo() {
   const { id } = useParams();
   const [product, setProduct] = useState({ properties: [] });
+  const { selectedService } = useServiceState();
 
   useEffect(() => {
-    const result = mockProducts.find(p => p.product_id === id);
-    if (result) {
-      setProduct(result);
-    }
-  }, [id]);
+    const getProduct = async () => {
+      if (selectedService !== 'none') {
+        try {
+          const productResponse = await fetchProduct(selectedService, id);
+          setProduct(productResponse);
+        } catch (e) {
+          console.error(`Error fetching product: ${e}`);
+          setProduct({ properties: [] });
+        }
+      }
+    };
+
+    getProduct();
+  }, [selectedService, id]);
 
   const imageURL = getProperty('image_url', product.properties);
 
   return (
     <div className="product-info-container">
-      {imageURL && (
-        <img src={imageURL} alt={product.id} className="product-image" />
-      )}
+      {imageURL && <img src={imageURL} alt="" className="product-image" />}
       <ProductOverview
-        gtin={getProperty('gtin', product.properties) || 'Unknown'}
+        gtin={product.product_id || 'Unknown'}
         productName={
           getProperty('product_name', product.properties) || 'Unknown'
         }

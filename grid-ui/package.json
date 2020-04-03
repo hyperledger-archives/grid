@@ -2,6 +2,7 @@
   "name": "grid-ui",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://0.0.0.0:8080",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.25",
     "@fortawesome/free-solid-svg-icons": "^5.11.2",
@@ -16,7 +17,7 @@
   },
   "scripts": {
     "start:saplings": "http-server . -p 3030 --cors",
-    "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:3030/sapling-dev-server REACT_APP_SPLINTER_URL=http://0.0.0.0:8085  react-scripts start",
+    "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:3030/sapling-dev-server REACT_APP_SPLINTER_URL=http://0.0.0.0:8085 REACT_APP_GRID_URL=http://localhost:3000 react-scripts start",
     "start": "run-p start:saplings start:react",
     "build": "react-scripts build",
     "test": "react-scripts test",
