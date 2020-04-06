@@ -6,5 +6,13 @@
     ],
     "styleFiles": [],
     "workerFiles": []
-  }
+  },
+  {
+   "namespace": "login",
+   "runtimeFiles": [
+     "localhost:3030/sapling-dev-server/register-login.js"
+   ],
+   "styleFiles": [],
+   "workerFiles": []
+ }
 ]
