@@ -27,6 +27,7 @@
     overflow: hidden;
     background: var(--background-color-light);
     min-width: 250px;
+    max-width: fit-content;
 
     .header {
       grid-area: header;
