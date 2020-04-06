@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "displayName": "Circuits",
+    "namespace": "circuits",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/circuits/js/circuits.js"
+    ],
+    "styleFiles": [
+      "localhost:3030/sapling-dev-server/circuits/css/circuits.css"
+    ],
+    "workerFiles": [],
+    "icon": "http://localhost:3030/sapling-dev-server/circuits/images/circuits_logo.svg"
+  }
+]

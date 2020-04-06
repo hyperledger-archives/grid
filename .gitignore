@@ -29,6 +29,8 @@
 /canopy**/dist
 /canopy**/lib
 
+/sapling-dev-server/circuits
+
 # misc
 .DS_Store
 **/.env.local
