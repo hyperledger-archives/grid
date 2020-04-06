@@ -51,7 +51,7 @@ export function Profile() {
           const { splinterURL } = getSharedConfig().canopyConfig;
           const userKeys = await http(
             'GET',
-            `${splinterURL}/biome/users/${user.userId}/keys`,
+            `${splinterURL}/biome/keys`,
             {},
             request => {
               request.setRequestHeader('Authorization', `Bearer ${user.token}`);
