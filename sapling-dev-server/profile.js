@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-window.$CANOPY.registerApp(function(domNode) {
-  console.log('Rendering Vanilla JS App');
-  domNode.innerHTML = `<h1>Hello World from a vanilla JS Canopy App<h1>`;
+window.$CANOPY.registerConfigSapling('profile', () => {
+  console.log('Registering Profile Sapling');
+
+  if (window.location.pathname === '/profile') {
+    window.$CANOPY.registerApp(function (domNode) {
+      console.log('Rendering Profile JS App');
+      domNode.innerHTML = `<h1>Profile<h1>`;
+    });
+  }
 });

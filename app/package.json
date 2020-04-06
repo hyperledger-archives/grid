@@ -3,8 +3,8 @@
   "license": "Apache-2.0",
   "author": "Cargill Incorporated",
   "scripts": {
-    "start:saplings": "http-server ./saplings -p 8675 --cors",
-    "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:8675 REACT_APP_SPLINTER_URL=http://localhost:3000  react-scripts start",
+    "start:saplings": "http-server .. -p 3030 --cors",
+    "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:3030/sapling-dev-server REACT_APP_SPLINTER_URL=http://0.0.0.0:8085  react-scripts start",
     "start": "run-p start:saplings start:react",
     "build": "react-scripts build",
     "test": "react-scripts test",

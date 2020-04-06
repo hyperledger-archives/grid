@@ -1,0 +1,10 @@
+[
+  {
+    "namespace": "profile",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/profile.js"
+    ],
+    "styleFiles": [],
+    "workerFiles": []
+  }
+]
