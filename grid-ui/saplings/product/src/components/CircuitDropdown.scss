@@ -32,6 +32,11 @@
     justify-content: space-between;
     line-height: calc(2rem-2px);
     padding: 0 1rem;
+
+    &.disabled {
+      color: #777777;
+      border: 1px solid #777777;
+    }
   }
 
   .dd-list {
