@@ -66,7 +66,7 @@ export function AddKeyForm({ successFn }) {
       const { splinterURL } = getSharedConfig().canopyConfig;
       await http(
         'POST',
-        `${splinterURL}/biome/users/${canopyUser.userId}/keys`,
+        `${splinterURL}/biome/keys`,
         body,
         request => {
           request.setRequestHeader(
