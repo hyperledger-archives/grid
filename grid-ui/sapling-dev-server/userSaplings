@@ -9,6 +9,6 @@
       "localhost:3030/sapling-dev-server/product/css/product.css"
     ],
     "workerFiles": [],
-    "icon": "https://via.placeholder.com/48/333333/FFFFFF?text=P"
+    "icon": "http://localhost:3030/sapling-dev-server/product/product_logo.svg"
   }
 ]
