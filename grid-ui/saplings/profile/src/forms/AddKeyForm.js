@@ -78,9 +78,13 @@ export function AddKeyForm({ successFn }) {
       reset();
       successFn(JSON.parse(body));
     } catch (err) {
-      const e = JSON.parse(err);
+      try {
+        const e = JSON.parse(err);
+        setError(e.message);
+      } catch {
+        setError(err.toString());
+      }
       setLoadingState('failure');
-      setError(e.message);
     }
   }
 

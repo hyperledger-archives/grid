@@ -30,11 +30,10 @@
   .loader {
     display: block;
     width: 6rem;
-    height: 30px;
+    height: fit-content;
     position: relative;
     margin: auto;
     top: 50%;
-    transform: translateY(-50%);
 
     .dots {
       display: flex;
