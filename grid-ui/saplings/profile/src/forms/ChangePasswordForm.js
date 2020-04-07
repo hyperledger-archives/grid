@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import crypto from 'crypto';
 import { sha256 } from 'js-sha256';
-import { getSharedConfig } from 'splinter-saplingjs';
+import { decryptKey, encryptKey, getSharedConfig } from 'splinter-saplingjs';
 import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { http } from '../http';
 import { Loader } from '../Loader';
 import { useDebounce } from '../useDebounce';
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ keys }) {
   const [state, setState] = useState({
     password: null,
     newPassword: null,
@@ -55,6 +57,13 @@ export function ChangePasswordForm() {
   const submitChangePassword = async () => {
     setLoading(true);
 
+    const existingKeySecret = sessionStorage.getItem('KEY_SECRET')
+      ? sessionStorage.getItem('KEY_SECRET')
+      : crypto
+          .createHash('sha256')
+          .update(state.password)
+          .digest('hex');
+
     const { displayName, token, userId } = JSON.parse(
       window.sessionStorage.getItem('CANOPY_USER')
     );
@@ -69,10 +78,36 @@ export function ChangePasswordForm() {
       .update(debouncedNewPassword)
       .hex();
 
+    const newKeys = keys.map(key => {
+      const { display_name, public_key, encrypted_private_key } = key;
+      try {
+        const newKeySecret = crypto
+          .createHash('sha256')
+          .update(debouncedNewPassword)
+          .digest('hex');
+
+        let privateKey = decryptKey(encrypted_private_key, existingKeySecret);
+        privateKey = JSON.parse(encryptKey(privateKey, newKeySecret));
+
+        const newKey = {
+          display_name,
+          encrypted_private_key: privateKey,
+          public_key
+        };
+
+        return newKey;
+      } catch (err) {
+        setError(`Unable to decrypt key. Error: ${err.message}`);
+        setLoadingState(false);
+      }
+      return null;
+    });
+
     const body = JSON.stringify({
       username: displayName,
       hashed_password: hashedPassword,
-      new_password: newHashedPassword
+      new_password: newHashedPassword,
+      new_key_pairs: newKeys
     });
 
     try {
@@ -87,14 +122,18 @@ export function ChangePasswordForm() {
       );
       setLoadingState('success');
       setState({
-        password: null,
-        newPassword: null,
-        confirmPassword: null
+        password: '',
+        newPassword: '',
+        confirmPassword: ''
       });
     } catch (err) {
       const e = JSON.parse(err);
       setLoadingState('failure');
-      setError(e.message);
+      setError(
+        e.message
+          ? e.message
+          : 'Oops something went wrong. Please contact a system administrator'
+      );
     }
   };
 
@@ -166,3 +205,11 @@ export function ChangePasswordForm() {
     </div>
   );
 }
+
+ChangePasswordForm.propTypes = {
+  keys: PropTypes.array
+};
+
+ChangePasswordForm.defaultProps = {
+  keys: []
+};

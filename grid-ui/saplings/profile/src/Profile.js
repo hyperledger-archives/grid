@@ -90,7 +90,7 @@ export function Profile() {
       const { splinterURL } = getSharedConfig().canopyConfig;
       const userKeys = await http(
         'GET',
-        `${splinterURL}/biome/users/${user.userId}/keys`,
+        `${splinterURL}/biome/keys`,
         {},
         request => {
           request.setRequestHeader('Authorization', `Bearer ${user.token}`);
@@ -117,7 +117,7 @@ export function Profile() {
           <UpdateKeyForm userKey={params.key} closeFn={updateKeyCallback} />
         );
       case 'update-password':
-        return <ChangePasswordForm />;
+        return <ChangePasswordForm keys={keys} />;
       case 'enter-password':
         return (
           <EnterPasswordForm
@@ -145,10 +145,7 @@ export function Profile() {
     const keySecret = sessionStorage.getItem('KEY_SECRET');
     if (keySecret) {
       try {
-        const privateKey = decryptKey(
-          JSON.parse(encrypted_private_key),
-          keySecret
-        );
+        const privateKey = decryptKey(encrypted_private_key, keySecret);
         setStateKeys({
           publicKey: public_key,
           privateKey

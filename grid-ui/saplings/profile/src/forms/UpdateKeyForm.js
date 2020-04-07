@@ -38,17 +38,9 @@ export function UpdateKeyForm({ userKey, closeFn }) {
 
     try {
       const { splinterURL } = getSharedConfig().canopyConfig;
-      await http(
-        'PATCH',
-        `${splinterURL}/biome/users/${canopyUser.userId}/keys`,
-        body,
-        request => {
-          request.setRequestHeader(
-            'Authorization',
-            `Bearer ${canopyUser.token}`
-          );
-        }
-      );
+      await http('PATCH', `${splinterURL}/biome/keys`, body, request => {
+        request.setRequestHeader('Authorization', `Bearer ${canopyUser.token}`);
+      });
       closeFn();
     } catch (err) {
       const { message } = JSON.parse(err);
