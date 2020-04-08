@@ -20,6 +20,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useServiceState } from '../state/service-context';
 import ProductCard from './ProductCard';
+import NotFound from './NotFound';
+import Loading from './Loading';
 import { getProperty } from '../data/property-parsing';
 import { listProducts } from '../api/grid';
 import './ProductsTable.scss';
@@ -27,10 +29,12 @@ import './ProductsTable.scss';
 function ProductsTable({ actions }) {
   const [products, setProducts] = useState([]);
   const { selectedService } = useServiceState();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const getProducts = async () => {
       if (selectedService !== 'none') {
+        setLoading(true);
         try {
           const productList = await listProducts(selectedService);
           setProducts(productList);
@@ -40,6 +44,7 @@ function ProductsTable({ actions }) {
       } else {
         setProducts([]);
       }
+      setLoading(false);
     };
 
     getProducts();
@@ -57,13 +62,23 @@ function ProductsTable({ actions }) {
     );
   });
 
+  const getContent = () => {
+    if (loading) {
+      return <Loading />;
+    }
+    if (products.length === 0) {
+      return <NotFound message="No Products" />;
+    }
+    return <div className="products-table">{productCards}</div>;
+  };
+
   return (
     <div className="products-table-container">
       <div className="products-table-header">
         <h5 className="title">Products</h5>
         <hr />
       </div>
-      <div className="products-table">{productCards}</div>
+      {getContent()}
       <button
         className="fab add-product"
         type="button"

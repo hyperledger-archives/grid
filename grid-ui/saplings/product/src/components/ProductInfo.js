@@ -23,24 +23,34 @@ import { useServiceState } from '../state/service-context';
 import { getProperty } from '../data/property-parsing';
 import ProductProperty from './ProductProperty';
 import { fetchProduct } from '../api/grid';
+import NotFound from './NotFound';
+import Loading from './Loading';
 import './ProductInfo.scss';
 
 function ProductInfo() {
   const { id } = useParams();
   const [product, setProduct] = useState({ properties: [] });
   const { selectedService } = useServiceState();
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState('');
 
   useEffect(() => {
     const getProduct = async () => {
-      if (selectedService !== 'none') {
+      if (selectedService === 'none') {
+        setNotFound('Select a service');
+      } else {
+        setLoading(true);
         try {
           const productResponse = await fetchProduct(selectedService, id);
           setProduct(productResponse);
+          setNotFound('');
         } catch (e) {
           console.error(`Error fetching product: ${e}`);
+          setNotFound('Product not found on this service');
           setProduct({ properties: [] });
         }
       }
+      setLoading(false);
     };
 
     getProduct();
@@ -48,19 +58,29 @@ function ProductInfo() {
 
   const imageURL = getProperty('image_url', product.properties);
 
-  return (
-    <div className="product-info-container">
-      {imageURL && <img src={imageURL} alt="" className="product-image" />}
-      <ProductOverview
-        gtin={product.product_id || 'Unknown'}
-        productName={
-          getProperty('product_name', product.properties) || 'Unknown'
-        }
-        owner={product.owner || 'Unknown'}
-      />
-      <ProductProperties propertiesList={product.properties} />
-    </div>
-  );
+  const getContent = () => {
+    if (loading) {
+      return <Loading />;
+    }
+    if (notFound) {
+      return <NotFound message={notFound} />;
+    }
+    return (
+      <>
+        {imageURL && <img src={imageURL} alt="" className="product-image" />}
+        <ProductOverview
+          gtin={product.product_id || 'Unknown'}
+          productName={
+            getProperty('product_name', product.properties) || 'Unknown'
+          }
+          owner={product.owner || 'Unknown'}
+        />
+        <ProductProperties propertiesList={product.properties} />
+      </>
+    );
+  };
+
+  return <div className="product-info-container">{getContent()}</div>;
 }
 
 function ProductOverview(props) {

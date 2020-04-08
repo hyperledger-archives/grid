@@ -31,6 +31,12 @@ const CircuitDropdown = () => {
   const caretUp = <FontAwesomeIcon icon="caret-up" />;
   const caretDown = <FontAwesomeIcon icon="caret-down" />;
 
+  const toggleDropdown = () => {
+    if (listOpen || services.length > 0) {
+      setListOpen(!listOpen);
+    }
+  };
+
   const handleSelect = serviceID => {
     setListOpen(false);
     serviceDispatch({
@@ -65,12 +71,16 @@ const CircuitDropdown = () => {
   useOnClickOutside(ref, () => setListOpen(false));
 
   useEffect(() => {
-    if (selectedService === 'none') {
-      setHeaderText('Select a service');
+    if (services.length > 0) {
+      if (selectedService === 'none') {
+        setHeaderText('Select a service');
+      } else {
+        setHeaderText(selectedService);
+      }
     } else {
-      setHeaderText(selectedService);
+      setHeaderText('No services available');
     }
-  }, [selectedService]);
+  }, [selectedService, services]);
 
   useEffect(() => {
     const getServices = async () => {
@@ -93,11 +103,11 @@ const CircuitDropdown = () => {
   return (
     <div className="dd-wrapper" ref={ref}>
       <div
-        className="dd-header"
+        className={`dd-header ${services.length === 0 && 'disabled'}`}
         role="button"
         tabIndex="0"
-        onClick={() => setListOpen(!listOpen)}
-        onKeyPress={() => setListOpen(!listOpen)}
+        onClick={() => toggleDropdown(!listOpen)}
+        onKeyPress={() => toggleDropdown(!listOpen)}
       >
         <div className="dd-header-text">{headerText}</div>
         {listOpen ? caretUp : caretDown}
@@ -111,7 +121,7 @@ const CircuitDropdown = () => {
             onClick={handleSelectNone}
             onKeyPress={handleSelectNone}
           >
-            Select a service
+            None
             {selectedService === 'none' && <FontAwesomeIcon icon="check" />}
           </div>
           {listItems}
