@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: "3.7"
+FROM node:lts-alpine
 
-services:
+WORKDIR /app
 
-  lint-canopy-app:
-    build:
-      context: ../..
-      dockerfile: docker/test-app
-    image: canopy-app:${ISOLATION_ID}
-    command: yarn lint
+COPY app/package*.json ./
+
+RUN apk add git
+
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
+
+COPY app .
