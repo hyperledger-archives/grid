@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,36 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# -----------------------------------------------------------------------------
 
-
-## Canopy
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
-**/package-lock.json
-
-#testing
-**/coverage
-
-# production
-**/build
-/canopy**/dist
-/canopy**/lib
-
-/sapling-dev-server/circuits
-
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# editor
-**/.vscode
+- identity: 'alpha-node-000'
+  endpoint: 'tls://splinterd-alpha:8044'
+  display_name: 'Alpha - Node 0'
+  metadata:
+    organization: 'Alpha'
+- identity: 'beta-node-000'
+  endpoint: 'tls://splinterd-beta:8044'
+  display_name: 'Beta - Node 0'
+  metadata:
+    organization: 'Beta'

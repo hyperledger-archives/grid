@@ -17,9 +17,9 @@ FROM node:lts-alpine as build-stage
 
 RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
 WORKDIR /splinter_ui
-COPY splinter-ui/package*.json ./
+COPY app/package*.json ./
 RUN npm config set unsafe-perm true && npm install
-COPY splinter-ui .
+COPY app .
 ARG REACT_APP_SPLINTER_URL
 ENV REACT_APP_SPLINTER_URL $REACT_APP_SPLINTER_URL
 ARG REACT_APP_SAPLING_URL

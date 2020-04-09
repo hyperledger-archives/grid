@@ -1,0 +1,209 @@
+# Copyright 2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+
+version: '3.6'
+
+volumes:
+  contracts:
+  key-registry:
+
+services:
+
+  # ---== alpha node ==---
+
+  splinterd-alpha:
+    image: splintercommunity/splinterd:experimental
+    container_name: splinterd-alpha
+    hostname: splinterd-alpha
+    expose:
+      - 8044
+    ports:
+      - "8044:8044"
+      - "8085:8085"
+    volumes:
+      - key-registry:/key_registry_shared
+      - ./configs:/configs
+    entrypoint: |
+      bash -c "
+        while [ ! -f /key_registry_shared/keys.yaml ]; do \
+          echo 'waiting for key registry'; \
+          sleep 1; \
+        done && \
+        until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
+        splinterd -vv \
+        --registry-backend FILE \
+        --registry-file /configs/nodes.yaml \
+        --bind 0.0.0.0:8085 \
+        --network-endpoint 0.0.0.0:8044 \
+        --node-id alpha-node-000 \
+        --service-endpoint 0.0.0.0:8043 \
+        --storage yaml \
+        --transport tls \
+        --client-cert /etc/splinter/certs/client.crt \
+        --client-key /etc/splinter/certs/private/client.key \
+        --server-cert /etc/splinter/certs/server.crt \
+        --server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
+        --insecure
+      "
+  splinter-db-alpha:
+    image: postgres
+    container_name: splinter-db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  sapling-dev-server-alpha:
+    build:
+      context: ..
+      dockerfile: sapling-dev-server/Dockerfile
+    container_name: sapling-dev-server-alpha
+    expose:
+      - 80
+    ports:
+      - '3032:80'
+
+  splinter-ui-alpha:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+        REACT_APP_SPLINTER_URL: '/splinterd'
+        REACT_APP_SAPLING_URL: '/sapling-dev-server'
+        SPLINTER_URL: 'http://splinterd-alpha:8085'
+        SAPLING_URL: ' http://sapling-dev-server-alpha:80'
+    image: splinter-ui
+    container_name: splinter-ui-alpha
+    expose:
+      - 80
+    ports:
+      - '3030:80'
+
+# ---== beta node ==---
+
+  splinterd-beta:
+    image: splintercommunity/splinterd:experimental
+    container_name: splinterd-beta
+    hostname: splinterd-beta
+    expose:
+      - 8044
+    ports:
+      - "8045:8044"
+    volumes:
+      - key-registry:/key_registry_shared
+      - ./configs:/configs
+    entrypoint: |
+      bash -c "
+        while [ ! -f /key_registry_shared/keys.yaml ]; do \
+          echo 'waiting for key registry'; \
+          sleep 1; \
+        done && \
+        until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
+        splinterd -vv \
+        --registry-backend FILE \
+        --registry-file /configs/nodes.yaml \
+        --bind 0.0.0.0:8085 \
+        --network-endpoint 0.0.0.0:8044 \
+        --node-id beta-node-000 \
+        --service-endpoint 0.0.0.0:8043 \
+        --storage yaml \
+        --transport tls \
+        --client-cert /etc/splinter/certs/client.crt \
+        --client-key /etc/splinter/certs/private/client.key \
+        --server-cert /etc/splinter/certs/server.crt \
+        --server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-beta:5432/splinter \
+        --insecure
+      "
+  splinter-db-beta:
+    image: postgres
+    container_name: splinter-db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  sapling-dev-server-beta:
+    build:
+      context: ..
+      dockerfile: sapling-dev-server/Dockerfile
+    container_name: sapling-dev-server-beta
+    expose:
+      - 80
+    ports:
+      - '3033:80'
+
+  splinter-ui-beta:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+        REACT_APP_SPLINTER_URL: '/splinterd'
+        REACT_APP_SAPLING_URL: '/sapling-dev-server'
+        SPLINTER_URL: 'http://splinterd-beta:8085'
+        SAPLING_URL: ' http://sapling-dev-server-beta:80'
+    image: splinter-ui
+    container_name: splinter-ui-beta
+    expose:
+      - 80
+    ports:
+      - '3031:80'
+
+# ---== shared services ==---
+
+  generate-key-registry:
+    image: splintercommunity/splinter-cli:master
+    volumes:
+      - key-registry:/key_registry
+      - ./configs:/input
+    command: |
+      bash -c "
+        if [ ! -f /key_registry/keys.yaml ]
+        then
+          splinter admin keyregistry \
+            -i /input/key_registry_spec.yaml \
+            -d /key_registry \
+            --force
+        fi
+      "

@@ -21,6 +21,10 @@ RUN npm config set unsafe-perm true
 
 COPY . .
 
+RUN cd /saplings/circuits && \
+  npm install && \
+  npm run deploy
+
 FROM httpd:2.4 as prod-stage
 
 RUN echo "\
