@@ -15,7 +15,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "npm run build",
     "lint": "eslint src/",
-    "build": "NODE_ENV=production rollup -c && yarn rollup:clean",
+    "build": "NODE_ENV=production rollup -c && npm run rollup:clean",
     "rollup:clean": "cd build/themes; each '*/index.js' -- rm index.js"
   },
   "peerDependencies": {
