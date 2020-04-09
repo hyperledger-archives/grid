@@ -14,10 +14,8 @@
 
 FROM node:lts-alpine
 
-WORKDIR /canopyjs
-
-COPY package*.json ./
-
-RUN yarn install
+WORKDIR /splinter-canopyjs
 
 COPY . .
+
+RUN npm install
