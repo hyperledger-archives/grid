@@ -15,18 +15,22 @@
  */
 
 import React from 'react';
-import ProposeCircuitButton from './ProposeCircuitButton';
-import './MainHeader.scss';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import './ProposeCircuitButton.scss';
 
-const MainHeader = () => {
+const ProposeCircuitButton = () => {
+  const plusSign = (
+    <span className="add-sign">
+      <FontAwesomeIcon icon="plus" />
+    </span>
+  );
+
   return (
-    <div className="main-header">
-      <div>
-        <h4 className="circuits-title">Circuits</h4>
-      </div>
-      <ProposeCircuitButton />
-    </div>
+    <button type="button" className="propose-circuit-btn">
+      {plusSign}
+      <span className="btn-text">Propose New Circuit</span>
+    </button>
   );
 };
 
-export default MainHeader;
+export default ProposeCircuitButton;
