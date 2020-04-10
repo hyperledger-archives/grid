@@ -30,6 +30,8 @@
 /canopy**/lib
 
 /sapling-dev-server/circuits
+/sapling-dev-server/register-login.js
+/sapling-dev-server/profile
 
 # misc
 .DS_Store
