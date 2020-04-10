@@ -99,7 +99,7 @@ services:
         REACT_APP_SAPLING_URL: '/sapling-dev-server'
         SPLINTER_URL: 'http://splinterd-alpha:8085'
         SAPLING_URL: ' http://sapling-dev-server-alpha:80'
-    image: splinter-ui
+    image: splinter-ui-alpha
     container_name: splinter-ui-alpha
     expose:
       - 80
@@ -183,7 +183,7 @@ services:
         REACT_APP_SAPLING_URL: '/sapling-dev-server'
         SPLINTER_URL: 'http://splinterd-beta:8085'
         SAPLING_URL: ' http://sapling-dev-server-beta:80'
-    image: splinter-ui
+    image: splinter-ui-beta
     container_name: splinter-ui-beta
     expose:
       - 80
