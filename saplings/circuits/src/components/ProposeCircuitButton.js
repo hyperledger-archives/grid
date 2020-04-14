@@ -15,20 +15,22 @@
  */
 
 import React from 'react';
-import './App.css';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { library } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import './ProposeCircuitButton.scss';
 
-import MainHeader from './components/MainHeader';
-
-library.add(faPlus);
-
-function App() {
-  return (
-    <div className="circuits-app">
-      <MainHeader />
-    </div>
+const ProposeCircuitButton = () => {
+  const plusSign = (
+    <span className="add-sign">
+      <FontAwesomeIcon icon="plus" />
+    </span>
   );
-}
 
-export default App;
+  return (
+    <button type="button" className="propose-circuit-btn">
+      {plusSign}
+      <span className="btn-text">Propose New Circuit</span>
+    </button>
+  );
+};
+
+export default ProposeCircuitButton;

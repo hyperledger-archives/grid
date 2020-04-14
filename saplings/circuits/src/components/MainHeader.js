@@ -15,20 +15,18 @@
  */
 
 import React from 'react';
-import './App.css';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { library } from '@fortawesome/fontawesome-svg-core';
+import ProposeCircuitButton from './ProposeCircuitButton';
+import './MainHeader.scss';
 
-import MainHeader from './components/MainHeader';
-
-library.add(faPlus);
-
-function App() {
+const MainHeader = () => {
   return (
-    <div className="circuits-app">
-      <MainHeader />
+    <div className="main-header">
+      <div>
+        <h4 className="circuits-title">Circuits</h4>
+      </div>
+      <ProposeCircuitButton />
     </div>
   );
-}
+};
 
-export default App;
+export default MainHeader;

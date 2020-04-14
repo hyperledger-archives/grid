@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-import React from 'react';
-import './App.css';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { library } from '@fortawesome/fontawesome-svg-core';
+.main-header {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 3rem;
 
-import MainHeader from './components/MainHeader';
-
-library.add(faPlus);
-
-function App() {
-  return (
-    <div className="circuits-app">
-      <MainHeader />
-    </div>
-  );
+  .circuits-title {
+    color: var(--color-grey);
+    font-weight: 100;
+    margin: 0 1rem 0 0;
+  }
 }
-
-export default App;
