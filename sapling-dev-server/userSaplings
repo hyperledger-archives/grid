@@ -3,10 +3,10 @@
     "displayName": "Circuits",
     "namespace": "circuits",
     "runtimeFiles": [
-      "localhost:3030/sapling-dev-server/circuits/js/circuits.js"
+      "localhost:3030/sapling-dev-server/circuits/static/js/circuits.js"
     ],
     "styleFiles": [
-      "localhost:3030/sapling-dev-server/circuits/css/circuits.css"
+      "localhost:3030/sapling-dev-server/circuits/static/css/circuits.css"
     ],
     "workerFiles": [],
     "icon": "http://localhost:3030/sapling-dev-server/circuits/images/circuits_logo.svg"
