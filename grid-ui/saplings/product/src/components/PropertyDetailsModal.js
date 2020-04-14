@@ -19,6 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import PropTypes from 'prop-types';
 
 import { getPropertyValue, formatPropertyName } from '../data/property-parsing';
+import { getCountryByISO } from '../data/iso';
 import './PropertyDetailsModal.scss';
 
 function PropertyDetailsModal(props) {
@@ -39,6 +40,10 @@ function PropertyDetailsModal(props) {
               let value;
               try {
                 value = getPropertyValue(property);
+                if (property.name === 'target_market') {
+                  const country = getCountryByISO(value);
+                  value = `${value} (${country})`;
+                }
               } catch (e) {
                 console.error(e);
                 value = 'unknown';

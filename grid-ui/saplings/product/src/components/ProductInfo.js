@@ -21,6 +21,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useServiceState } from '../state/service-context';
 import { getProperty } from '../data/property-parsing';
+import { getCountryByISO } from '../data/iso';
 import ProductProperty from './ProductProperty';
 import { fetchProduct } from '../api/grid';
 import NotFound from './NotFound';
@@ -148,7 +149,15 @@ function ProductProperties(props) {
   ];
 
   const productProperties = primaryProperties.map(property => {
-    const propertyValue = getProperty(property.name, propertiesList);
+    let propertyValue = getProperty(property.name, propertiesList);
+
+    if (property.name === 'target_market') {
+      try {
+        propertyValue = getCountryByISO(propertyValue);
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
     if (propertyValue) {
       return (
