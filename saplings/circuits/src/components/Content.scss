@@ -26,6 +26,18 @@
     flex-direction: row;
     justify-content: space-between;
 
+    .filterTable {
+      border: none;
+      border-bottom: 1px solid var(--color-grey);
+      padding: 1rem 0 0.5rem 2rem;
+      background-image: url('../images/search_icon.svg');
+      background-position: 5px 15px;
+      background-repeat: no-repeat;
+      background-size: 1rem;
+      font-size: 1rem;
+      width: 15rem;
+    }
+
     .circuit-stats {
       display: flex;
       flex-direction: row;
@@ -59,6 +71,11 @@
   .main-content {
     .midContent {
       flex-direction: column;
+
+       .filterTable {
+         margin-top: 1rem;
+         width: auto;
+       }
 
       .circuit-stats {
         .stat {

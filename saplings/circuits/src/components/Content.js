@@ -42,6 +42,43 @@ const circuitsReducer = (state, action) => {
       throw new Error(`unhandled action type: ${action.type}`);
   }
 };
+
+const filterCircuits = (circuits, filterBy) => {
+  if (filterBy.filterTerm.length === 0) {
+    return circuits;
+  }
+  const filteredCircuits = circuits.filter(circuit => {
+    if (circuit.id.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
+      return true;
+    }
+    if (
+      circuit.managementType.toLowerCase().indexOf(filterBy.filterTerm) > -1
+    ) {
+      return true;
+    }
+    if (circuit.comments.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
+      return true;
+    }
+    if (
+      circuit.members.filter(
+        member => member.toLowerCase().indexOf(filterBy.filterTerm) > -1
+      ).length > 0
+    ) {
+      return true;
+    }
+    if (
+      circuit.roster.filter(
+        service => service.service_type.indexOf(filterBy.filterTerm) > -1
+      ).length > 0
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  return filteredCircuits;
+};
+
 const Content = () => {
   const circuits = processCircuits(mockCircuits.concat(mockProposals));
 
@@ -73,6 +110,20 @@ const Content = () => {
             {actionRequired > 1 ? 'Actions required' : 'Action required'}
           </div>
         </div>
+        <input
+          className="filterTable"
+          type="text"
+          placeholder="Filter"
+          onKeyUp={event => {
+            circuitsDispatch({
+              type: 'filter',
+              filterCircuits,
+              filter: {
+                filterTerm: event.target.value.toLowerCase()
+              }
+            });
+          }}
+        />
       </div>
     </div>
   );

@@ -1,0 +1,20 @@
+<!--
+Copyright 2018-2020 Cargill Incorporated
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<svg width="25" height="26" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="1.93595" height="17.8379" transform="matrix(0.715643 0.698466 -0.707407 0.706806 12.6187 11.4875)" fill="#555555"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M17.3296 15.6156C21.5659 15.6156 25.0001 12.1199 25.0001 7.80781C25.0001 3.49567 21.5659 0 17.3296 0C13.0934 0 9.65918 3.49567 9.65918 7.80781C9.65918 12.1199 13.0934 15.6156 17.3296 15.6156ZM17.3296 13.013C20.1538 13.013 22.4433 10.6826 22.4433 7.80781C22.4433 4.93305 20.1538 2.6026 17.3296 2.6026C14.5055 2.6026 12.216 4.93305 12.216 7.80781C12.216 10.6826 14.5055 13.013 17.3296 13.013Z" fill="#555555"/>
+</svg>
