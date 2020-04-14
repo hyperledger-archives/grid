@@ -56,7 +56,7 @@ function ProductsTable({ actions }) {
         key={product.product_id}
         gtin={product.product_id}
         name={getProperty('product_name', product.properties)}
-        owner={product.owner}
+        owner={product.orgName}
         imageURL={getProperty('image_url', product.properties)}
         editFn={actions.editProduct}
         properties={product.properties}
