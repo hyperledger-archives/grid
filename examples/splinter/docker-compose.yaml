@@ -187,8 +187,7 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
-        --registry-backend FILE \
-        --registry-file /configs/nodes.yaml \
+        --registries file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoint 0.0.0.0:8044 \
         --node-id alpha-node-000 \
@@ -325,8 +324,7 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
-        --registry-backend FILE \
-        --registry-file /configs/nodes.yaml \
+        --registries file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoint 0.0.0.0:8044 \
         --node-id beta-node-000 \
@@ -456,8 +454,7 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
         splinterd -vv \
-        --registry-backend FILE \
-        --registry-file /configs/nodes.yaml \
+        --registries file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoint 0.0.0.0:8044 \
         --node-id gamma-node-000 \
