@@ -125,6 +125,32 @@ const Content = () => {
           }}
         />
       </div>
+      <div>
+        <table>
+          <tr>
+            <th>Circuit ID</th>
+            <th>Service count</th>
+            <th>Management Type</th>
+          </tr>
+          {circuitState.filteredCircuits.map(circuit => {
+            return (
+              <tr>
+                <td>{circuit.id}</td>
+                <td>
+                  {
+                    new Set(
+                      circuit.roster.map(service => {
+                        return service.service_type;
+                      })
+                    ).size
+                  }
+                </td>
+                <td>{circuit.managementType}</td>
+              </tr>
+            );
+          })}
+        </table>
+      </div>
     </div>
   );
 };
