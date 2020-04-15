@@ -62,8 +62,8 @@ export function Input({
             <option value="" default>
               (none)
             </option>
-            <option value="true">True</option>
-            <option value="false">False</option>
+            <option value>True</option>
+            <option value={false}>False</option>
           </select>
           <label htmlFor={id}>{label}</label>
         </>
