@@ -15,6 +15,7 @@
  */
 import React, { useCallback, useEffect, useReducer, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useToasts } from 'react-toast-notifications';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import _ from 'lodash';
 import papa from 'papaparse';
@@ -22,6 +23,8 @@ import { useServiceState } from '../state/service-context';
 import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { Chips, Chip } from './Chips';
 import { MultiSelect } from './MultiSelect';
+import Loading from './Loading';
+import { addProduct } from '../api/transactions';
 
 import './forms.scss';
 
@@ -47,18 +50,18 @@ export function AddProductForm({ closeFn }) {
   ];
   const { services } = useServiceState();
   const [errors, dispatchErrors] = useReducer(reducer, initialErrors);
+  const [orgId, setOrgId] = useState(null);
   const [gtin, setGtin] = useState(null);
   const [selectedServices, dispatchSelectedServices] = useReducer(reducer, []);
-  const [imgFile, setImgFile] = useState(null);
-  const [imgPreview, setImgPreview] = useState(null);
   const [fileLabel, setFileLabel] = useState('Upload master data file');
-  const [imgLabel, setImgLabel] = useState('Upload product image');
   const [attributes, setAttributes] = useState([]);
   const [attrState, setAttrState] = useState({
     type: '',
     name: '',
     value: ''
   });
+  const [loading, setLoading] = useState(false);
+  const { addToast } = useToasts();
 
   useEffect(() => {
     const errorMessage = 'Services: please select at least one service';
@@ -93,21 +96,6 @@ export function AddProductForm({ closeFn }) {
     });
   };
 
-  const handleImgUpload = e => {
-    e.preventDefault();
-    const file = e.target.files[0];
-    setImgLabel(file.name);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImgFile(file);
-      setImgPreview(reader.result);
-    };
-
-    reader.readAsDataURL(file);
-    return imgFile;
-  };
-
   const handleServiceChange = useCallback(
     newServices => {
       dispatchSelectedServices({ type: 'set', payload: [...newServices] });
@@ -137,6 +125,11 @@ export function AddProductForm({ closeFn }) {
     });
   };
 
+  const handleOrganizationChange = e => {
+    const { value } = e.target;
+    setOrgId(value);
+  };
+
   const createAttrData = attribute => {
     return (
       <div className="attribute-data">
@@ -149,6 +142,7 @@ export function AddProductForm({ closeFn }) {
 
   const clearState = () => {
     setGtin(null);
+    setOrgId('');
     dispatchSelectedServices({ type: 'clear' });
     dispatchErrors({ type: 'add', payload: initialErrors });
     setAttributes([]);
@@ -157,20 +151,35 @@ export function AddProductForm({ closeFn }) {
       name: '',
       value: ''
     });
-    setImgFile(null);
-    setImgPreview(null);
     setFileLabel('Upload master data file');
-    setImgLabel('Upload product image');
   };
 
-  const submitFn = () => {
+  const submitCallback = () => {
+    addToast('Submitted successfully', { appearance: 'success' });
+    setLoading(false);
+    closeFn();
+  };
+
+  const submitFn = async () => {
+    const keys = JSON.parse(sessionStorage.getItem('CANOPY_KEYS'));
+    await addProduct(
+      {
+        productId: gtin,
+        orgName: orgId,
+        properties: attributes,
+        services: selectedServices
+      },
+      keys,
+      submitCallback
+    );
     clearState();
+    setLoading(true);
   };
 
   const makeListItems = () => {
     return services.map(service => ({
-      label: service.serviceID,
-      value: service.id
+      label: service,
+      value: service
     }));
   };
 
@@ -178,148 +187,138 @@ export function AddProductForm({ closeFn }) {
     <div className="modalForm">
       <FontAwesomeIcon icon="times" className="close" onClick={closeFn} />
       <div className="content">
-        <MultiStepForm
-          formName="Add Product"
-          handleSubmit={submitFn}
-          disabled={!!errors.length}
-        >
-          <Step step={1} label="Specify product">
-            <StepInput
-              type="text"
-              label="GTIN"
-              name="gtin"
-              value={gtin}
-              pattern={gtinValidator}
-              onChange={handleGtinChange}
-            />
-            <div className="divider" />
-            <h6>Select service(s)</h6>
-            <MultiSelect
-              listItems={makeListItems()}
-              placeholder="No services selected"
-              onChange={handleServiceChange}
-              value={selectedServices}
-            />
-          </Step>
-          <Step step={2} label="Add master data">
-            <StepInput
-              type="file"
-              accept="text/csv"
-              id="add-master-data-file"
-              label={fileLabel}
-              onChange={handleFileUpload}
-            />
-            <div className="divider" />
-            <h6>Add attributes</h6>
-            <div className="form-group">
-              <StepInput
-                type="select"
-                label="Attribute type"
-                name="type"
-                value={attrState.type}
-                onChange={handleAttrChange}
-              >
-                <option value="">(none)</option>
-                <option value="text" default>
-                  Text
-                </option>
-                <option value="number">Number</option>
-                <option value="boolean">Boolean</option>
-              </StepInput>
-            </div>
-            <div className="form-group">
+        {loading && <Loading />}
+        {!loading && (
+          <MultiStepForm
+            formName="Add Product"
+            handleSubmit={submitFn}
+            disabled={!!errors.length}
+          >
+            <Step step={1} label="Specify product">
               <StepInput
                 type="text"
-                label="Attribute name"
-                name="name"
-                value={attrState.name}
-                onChange={handleAttrChange}
+                label="GTIN"
+                name="gtin"
+                value={gtin}
+                pattern={gtinValidator}
+                onChange={handleGtinChange}
+              />
+              <div className="divider" />
+              <h6>Select service(s)</h6>
+              <MultiSelect
+                listItems={makeListItems()}
+                placeholder="No services selected"
+                onChange={handleServiceChange}
+                value={selectedServices}
               />
               <StepInput
-                type={attrState.type}
-                label="Attribute value"
-                name="value"
-                value={attrState.value}
-                onChange={handleAttrChange}
+                type="text"
+                label="Organization ID"
+                name="orgId"
+                value={orgId}
+                onChange={handleOrganizationChange}
               />
-              <button
-                className="confirm"
-                type="button"
-                onClick={addAttribute}
-                disabled={
-                  !(attrState.type && attrState.name && attrState.value)
-                }
-              >
-                Add
-              </button>
-            </div>
-            <Chips>
-              {attributes.map(attribute => {
-                const data = createAttrData(attribute);
-                return (
-                  <Chip
-                    label={attribute.name}
-                    data={data}
-                    removeFn={() => removeAttr(attribute)}
-                    deleteable
-                  />
-                );
-              })}
-            </Chips>
-          </Step>
-          <Step step={3} label="Add attachments">
-            <h6>Add additional info</h6>
-            <StepInput
-              type="file"
-              accept="image/png, image/jpeg"
-              id="add-master-data-file"
-              label={imgLabel}
-              onChange={handleImgUpload}
-            />
-            {imgPreview && (
-              <div className="preview-container">
-                <img className="img-preview" src={imgPreview} alt="preview" />
+            </Step>
+            <Step step={2} label="Add master data">
+              <StepInput
+                type="file"
+                accept="text/csv"
+                id="add-master-data-file"
+                label={fileLabel}
+                onChange={handleFileUpload}
+              />
+              <div className="divider" />
+              <h6>Add attributes</h6>
+              <div className="form-group">
+                <StepInput
+                  type="select"
+                  label="Attribute type"
+                  name="type"
+                  value={attrState.type}
+                  onChange={handleAttrChange}
+                >
+                  <option value="">(none)</option>
+                  <option value="STRING" default>
+                    Text
+                  </option>
+                  <option value="NUMBER">Number</option>
+                  <option value="BOOLEAN">Boolean</option>
+                </StepInput>
               </div>
-            )}
-          </Step>
-          <Step step={4} label="Review and submit">
-            {!!errors.length && (
-              <div className="error-messages">
-                {errors.map(error => (
-                  <span>{error}</span>
-                ))}
+              <div className="form-group">
+                <StepInput
+                  type="text"
+                  label="Attribute name"
+                  name="name"
+                  value={attrState.name}
+                  onChange={handleAttrChange}
+                />
+                <StepInput
+                  type={attrState.type.toLowerCase()}
+                  label="Attribute value"
+                  name="value"
+                  value={attrState.value}
+                  onChange={handleAttrChange}
+                />
+                <button
+                  className="confirm"
+                  type="button"
+                  onClick={addAttribute}
+                  disabled={
+                    !(attrState.type && attrState.name && attrState.value)
+                  }
+                >
+                  Add
+                </button>
               </div>
-            )}
-            <h6>Review new product</h6>
-            <span>
-              GTIN: <b>{gtin}</b>
-            </span>
-            {imgPreview && (
-              <div className="preview-container">
-                <img className="img-preview" src={imgPreview} alt="preview" />
-              </div>
-            )}
-            <h6>Selected services</h6>
-            <Chips>
-              {selectedServices.length > 0 &&
-                selectedServices.map(service => {
-                  const data = services.filter(s => s.id === service);
-
-                  return data.length && <Chip label={data[0].serviceID} />;
-                })}
-              {!selectedServices.length && <span>No services selected</span>}
-            </Chips>
-            <h6>Attributes</h6>
-            <Chips>
-              {attributes.length > 0 &&
-                attributes.map(attribute => {
+              <Chips>
+                {attributes.map(attribute => {
                   const data = createAttrData(attribute);
-                  return <Chip label={attribute.name} data={data} />;
+                  return (
+                    <Chip
+                      label={attribute.name}
+                      data={data}
+                      removeFn={() => removeAttr(attribute)}
+                      deleteable
+                    />
+                  );
                 })}
-              {!attributes.length && <span>No attributes entered</span>}
-            </Chips>
-          </Step>
-        </MultiStepForm>
+              </Chips>
+            </Step>
+            <Step step={3} label="Review and submit">
+              {!!errors.length && (
+                <div className="error-messages">
+                  {errors.map(error => (
+                    <span>{error}</span>
+                  ))}
+                </div>
+              )}
+              <h6>Review new product</h6>
+              <span>
+                GTIN: <b>{gtin}</b>
+              </span>
+              <h6>Selected services</h6>
+              <Chips>
+                {selectedServices.length > 0 &&
+                  selectedServices.map(service => {
+                    const data = services.filter(s => s === service);
+
+                    return data.length && <Chip label={data[0]} />;
+                  })}
+                {!selectedServices.length && <span>No services selected</span>}
+              </Chips>
+              <h6>Attributes</h6>
+              <Chips>
+                {attributes.length > 0 &&
+                  attributes.map(attribute => {
+                    const data = createAttrData(attribute);
+                    return <Chip label={attribute.name} data={data} />;
+                  })}
+                {!attributes.length && <span>No attributes entered</span>}
+              </Chips>
+            </Step>
+          </MultiStepForm>
+        )}
       </div>
     </div>
   );
