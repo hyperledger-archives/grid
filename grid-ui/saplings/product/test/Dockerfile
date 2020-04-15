@@ -17,11 +17,17 @@ FROM node:lts-alpine
 
 WORKDIR /grid-ui/saplings/product
 
-COPY package*.json ./
+COPY ./grid-ui/saplings/product/package*.json /grid-ui/saplings/product
 
 RUN apk add git
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
 
-COPY . .
+COPY ./grid-ui/saplings/product /grid-ui/saplings/product
+
+COPY ./sdk/protos /grid-ui/saplings/product/protos
+
+RUN cd /grid-ui/saplings/product && \
+  npm install && \
+  npm run generate-proto-files ./protos

@@ -228,8 +228,8 @@
 
     sapling-dev-server:
       build:
-        context: ..
-        dockerfile: sapling-dev-server/Dockerfile
+        context: ../..
+        dockerfile: grid-ui/sapling-dev-server/Dockerfile
       container_name: sapling-dev-server
       expose:
         - 80
