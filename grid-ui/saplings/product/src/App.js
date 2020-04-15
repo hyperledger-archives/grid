@@ -28,6 +28,7 @@ import {
   faTrashAlt,
   faSpinner
 } from '@fortawesome/free-solid-svg-icons';
+import { ToastProvider } from 'react-toast-notifications';
 
 import { ServiceProvider } from './state/service-context';
 import FilterBar from './components/FilterBar';
@@ -110,22 +111,22 @@ function App() {
 
   return (
     <ServiceProvider>
-      <div id="product-sapling" className="product-app">
-        <FilterBar />
-        <Router>
-          <Switch>
-            <Route exact path="/product">
-              <ProductsTable
-                actions={{ addProduct, editProduct, deleteProduct }}
-              />
-            </Route>
-            <Route path="/product/products/:id">
-              <ProductInfo />
-            </Route>
-          </Switch>
-        </Router>
-        {activeForm && openForm(activeForm)}
-      </div>
+      <ToastProvider>
+        <div id="product-sapling" className="product-app">
+          <FilterBar />
+          <Router>
+            <Switch>
+              <Route exact path="/product">
+                <ProductsTable actions={{ addProduct, editProduct, deleteProduct }} />
+              </Route>
+              <Route path="/product/products/:id">
+                <ProductInfo />
+              </Route>
+            </Switch>
+          </Router>
+          {activeForm && openForm(activeForm)}
+        </div>
+      </ToastProvider>
     </ServiceProvider>
   );
 }
