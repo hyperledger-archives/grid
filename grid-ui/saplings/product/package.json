@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "add-to-canopy": "mkdir -p ../../sapling-dev-server/product && cp -r ./build/static/* ../../sapling-dev-server/product && cp product_logo.svg ../../sapling-dev-server/product",
     "deploy": "npm run build && npm run add-to-canopy",
-    "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy"
+    "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy",
+    "generate-proto-files": "node scripts/compile_protobuf.js > src/compiled_protos.json"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -39,6 +40,7 @@
     "lodash": "^4.17.15",
     "papaparse": "^5.1.1",
     "prop-types": "^15.7.2",
+    "protobufjs": "^6.8.9",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
     "react-router-dom": "^5.1.2",
