@@ -33,6 +33,7 @@
       outline: none;
       transition: border-color 0.2s;
       font-size: 1rem;
+      position: relative;
 
       .multi-select-header-text {
         flex-basis: 0 1 100%;
@@ -47,6 +48,9 @@
       border-top-width: 0;
       padding: 0;
       margin: 0 0 0 1px;
+      position: absolute;
+      background: #ffffff;
+      z-index: 10;
 
       .multi-select-option {
         width: 100%;
