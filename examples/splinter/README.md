@@ -80,8 +80,8 @@ circuit is created.
    root@splinterd-alpha:/# splinter circuit propose \
       --key /key_registry_shared/alpha.priv \
       --url http://splinterd-alpha:8085  \
-      --node alpha-node-000::tls://splinterd-alpha:8044 \
-      --node beta-node-000::tls://splinterd-beta:8044 \
+      --node alpha-node-000::tcps://splinterd-alpha:8044 \
+      --node beta-node-000::tcps://splinterd-beta:8044 \
       --service gsAA::alpha-node-000 \
       --service gsBB::beta-node-000 \
       --service-type *::scabbard \
@@ -113,7 +113,7 @@ circuit is created.
    Proposal to create: 01234-ABCDE
       Management Type: grid
 
-      alpha-node-000 (tls://splinterd-alpha:8044)
+      alpha-node-000 (tcps://splinterd-alpha:8044)
           Vote: ACCEPT (implied as requester):
               <alpha-public-key>
           Service (scabbard): gsAA
@@ -122,7 +122,7 @@ circuit is created.
               peer_services:
                   gsBB
 
-      beta-node-000 (tls://splinterd-beta:8044)
+      beta-node-000 (tcps://splinterd-beta:8044)
           Vote: PENDING
           Service (scabbard): gsBB
               admin_keys:
@@ -161,7 +161,7 @@ circuit is created.
    Proposal to create: 01234-ABCDE
       Management Type: grid
 
-      alpha-node-000 (tls://splinterd-alpha:8044)
+      alpha-node-000 (tcps://splinterd-alpha:8044)
           Vote: ACCEPT (implied as requester):
               <alpha-public-key>
           Service (scabbard): gsAA
@@ -170,7 +170,7 @@ circuit is created.
               peer_services:
                   gsBB
 
-      beta-node-000 (tls://splinterd-beta:8044)
+      beta-node-000 (tcps://splinterd-beta:8044)
           Vote: PENDING
           Service (scabbard): gsBB
               admin_keys:

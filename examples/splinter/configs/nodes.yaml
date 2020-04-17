@@ -14,17 +14,17 @@
 # -----------------------------------------------------------------------------
 
 - identity: 'alpha-node-000'
-  endpoint: 'tls://splinterd-alpha:8044'
+  endpoint: 'tcps://splinterd-alpha:8044'
   display_name: 'Alpha - Node 0'
   metadata:
     organization: 'Alpha'
 - identity: 'beta-node-000'
-  endpoint: 'tls://splinterd-beta:8044'
+  endpoint: 'tcps://splinterd-beta:8044'
   display_name: 'Beta - Node 0'
   metadata:
     organization: 'Beta'
 - identity: 'gamma-node-000'
-  endpoint: 'tls://splinterd-gamma:8044'
+  endpoint: 'tcps://splinterd-gamma:8044'
   display_name: 'Gamma - Node 0'
   metadata:
     organization: 'Gamma'
