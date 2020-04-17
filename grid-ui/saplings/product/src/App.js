@@ -65,11 +65,14 @@ function App() {
     });
   }
 
-  function editProduct(properties) {
+  function editProduct(productID, owner, service, properties) {
     setActiveForm({
       formName: 'edit-product',
       params: {
-        properties
+        properties,
+        owner,
+        productID,
+        service
       }
     });
   }
@@ -95,6 +98,9 @@ function App() {
           <EditProductForm
             closeFn={() => setActiveForm(initialFormState)}
             properties={adata.properties}
+            owner={adata.owner}
+            productID={adata.productID}
+            service={adata.service}
           />
         );
       case 'delete-product':

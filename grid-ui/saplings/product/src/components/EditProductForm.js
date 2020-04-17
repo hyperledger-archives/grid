@@ -16,27 +16,43 @@
 
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { useToasts } from 'react-toast-notifications';
 import _ from 'lodash';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { Chips, Chip } from './Chips';
 import { getProperty } from '../data/property-parsing';
+import { editProduct } from '../api/transactions';
 
 import './forms.scss';
 
-export function EditProductForm({ closeFn, properties }) {
+export function EditProductForm({
+  closeFn,
+  properties,
+  service,
+  owner,
+  productID
+}) {
   const [attributes, setAttributes] = useState(
-    properties.filter(property => property.name !== 'image_url')
+    properties.map(property => {
+      return {
+        name: property.name,
+        type: property.data_type.toUpperCase(),
+        value: getProperty(property.name, properties)
+      };
+    })
   );
   const [attrState, setAttrState] = useState({
     type: '',
     name: '',
     value: ''
   });
-  const [imgFile, setImgFile] = useState(null);
   const [imgLabel, setImgLabel] = useState('Upload product image');
-  const [imgPreview, setImgPreview] = useState(null);
+  const [imgPreview, setImgPreview] = useState(
+    getProperty('image_url', properties)
+  );
+  const { addToast } = useToasts();
 
   useEffect(() => {
     const imageProp = properties.filter(
@@ -66,25 +82,11 @@ export function EditProductForm({ closeFn, properties }) {
   };
 
   const createAttrData = attribute => {
-    let data = {
-      name: '',
-      value: '',
-      type: ''
-    };
-    if (getProperty(attribute.name, properties)) {
-      data = {
-        name: attribute.name,
-        type: attribute.data_type,
-        value: getProperty(attribute.name, properties)
-      };
-    } else {
-      data = attribute;
-    }
     return (
       <div className="attribute-data">
-        <span className="name">{data.name}</span>
-        <span className="type">{data.type}</span>
-        <span className="value">{data.value}</span>
+        <span className="name">{attribute.name}</span>
+        <span className="type">{attribute.type}</span>
+        <span className="value">{attribute.value.toString()}</span>
       </div>
     );
   };
@@ -100,12 +102,18 @@ export function EditProductForm({ closeFn, properties }) {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImgFile(file);
       setImgPreview(reader.result);
+      setAttributes([
+        ...attributes.filter(attr => attr.name !== 'image_url'),
+        {
+          name: 'image_url',
+          type: 'STRING',
+          value: reader.result
+        }
+      ]);
     };
 
-    reader.readAsDataURL(file);
-    return imgFile;
+    return reader.readAsDataURL(file);
   };
 
   const clearState = () => {
@@ -115,13 +123,28 @@ export function EditProductForm({ closeFn, properties }) {
       name: '',
       value: ''
     });
-    setImgFile(null);
     setImgPreview(null);
     setImgLabel('Upload product image');
   };
 
-  const submitFn = () => {
+  const submitCallback = () => {
+    addToast('Submitted successfully', { appearance: 'success' });
     clearState();
+    closeFn();
+  };
+
+  const submitFn = () => {
+    const keys = JSON.parse(sessionStorage.getItem('CANOPY_KEYS'));
+    editProduct(
+      {
+        productId: productID,
+        orgName: owner,
+        properties: attributes,
+        services: [service]
+      },
+      keys,
+      submitCallback
+    );
   };
 
   return (
@@ -140,11 +163,11 @@ export function EditProductForm({ closeFn, properties }) {
                 onChange={handleAttrChange}
               >
                 <option value="">(none)</option>
-                <option value="text" default>
+                <option value="STRING" default>
                   Text
                 </option>
-                <option value="number">Number</option>
-                <option value="boolean">Boolean</option>
+                <option value="NUMBER">Number</option>
+                <option value="BOOLEAN">Boolean</option>
               </StepInput>
             </div>
             <div className="form-group">
@@ -174,17 +197,19 @@ export function EditProductForm({ closeFn, properties }) {
               </button>
             </div>
             <Chips>
-              {attributes.map(attribute => {
-                const data = createAttrData(attribute);
-                return (
-                  <Chip
-                    label={attribute.name}
-                    data={data}
-                    removeFn={() => removeAttr(attribute)}
-                    deleteable
-                  />
-                );
-              })}
+              {attributes
+                .filter(attr => attr.name !== 'image_url')
+                .map(attribute => {
+                  const data = createAttrData(attribute);
+                  return (
+                    <Chip
+                      label={attribute.name}
+                      data={data}
+                      removeFn={() => removeAttr(attribute)}
+                      deleteable
+                    />
+                  );
+                })}
             </Chips>
           </Step>
           <Step step={2} label="Edit attachments">
@@ -212,10 +237,12 @@ export function EditProductForm({ closeFn, properties }) {
             <h6>Attributes</h6>
             <Chips>
               {attributes.length > 0 &&
-                attributes.map(attribute => {
-                  const data = createAttrData(attribute);
-                  return <Chip label={attribute.name} data={data} />;
-                })}
+                attributes
+                  .filter(attr => attr.name !== 'image_url')
+                  .map(attribute => {
+                    const data = createAttrData(attribute);
+                    return <Chip label={attribute.name} data={data} />;
+                  })}
               {!attributes.length && <span>No attributes entered</span>}
             </Chips>
           </Step>
@@ -227,6 +254,9 @@ export function EditProductForm({ closeFn, properties }) {
 
 EditProductForm.propTypes = {
   closeFn: PropTypes.func.isRequired,
+  service: PropTypes.string.isRequired,
+  owner: PropTypes.string.isRequired,
+  productID: PropTypes.string.isRequired,
   properties: PropTypes.array
 };
 
