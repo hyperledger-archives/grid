@@ -54,7 +54,9 @@ export function AddKeyForm({ successFn }) {
       .createHash('sha256')
       .update(state.password)
       .digest('hex');
-    const encryptedPrivateKey = encryptKey(state.privateKey, keySecret);
+    const encryptedPrivateKey = JSON.parse(
+      encryptKey(state.privateKey, keySecret)
+    );
     const body = JSON.stringify({
       display_name: state.name,
       encrypted_private_key: encryptedPrivateKey,
@@ -64,23 +66,19 @@ export function AddKeyForm({ successFn }) {
 
     try {
       const { splinterURL } = getSharedConfig().canopyConfig;
-      await http(
-        'POST',
-        `${splinterURL}/biome/users/${canopyUser.userId}/keys`,
-        body,
-        request => {
-          request.setRequestHeader(
-            'Authorization',
-            `Bearer ${canopyUser.token}`
-          );
-        }
-      );
+      await http('POST', `${splinterURL}/biome/keys`, body, request => {
+        request.setRequestHeader('Authorization', `Bearer ${canopyUser.token}`);
+      });
       reset();
       successFn(JSON.parse(body));
     } catch (err) {
-      const e = JSON.parse(err);
+      try {
+        const e = JSON.parse(err);
+        setError(e.message);
+      } catch {
+        setError(err.toString());
+      }
       setLoadingState('failure');
-      setError(e.message);
     }
   }
 
