@@ -25,6 +25,8 @@ export const getPropertyValue = property => {
       return property.string_value;
     case 'number':
       return property.number_value;
+    case 'boolean':
+      return property.boolean_value;
     default:
       throw Error(`unsupported property type: ${property.data_type}`);
   }
