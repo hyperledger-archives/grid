@@ -23,14 +23,14 @@ import ProductProperty from './ProductProperty';
 import './ProductCard.scss';
 
 function ProductCard(props) {
-  const { gtin, name, owner, imageURL, editFn, properties } = props;
+  const { gtin, name, service, owner, imageURL, editFn, properties } = props;
 
   return (
     <div className="product-card">
       <button
         type="button"
         className="product-card-edit-button"
-        onClick={() => editFn(properties)}
+        onClick={() => editFn(gtin, owner, service, properties)}
       >
         <FontAwesomeIcon className="icon" icon="pen-square" />
       </button>
@@ -54,6 +54,7 @@ ProductCard.propTypes = {
   gtin: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   owner: PropTypes.string.isRequired,
+  service: PropTypes.string.isRequired,
   imageURL: PropTypes.string,
   editFn: PropTypes.func.isRequired,
   properties: PropTypes.array.isRequired

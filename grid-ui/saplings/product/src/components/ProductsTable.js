@@ -55,6 +55,7 @@ function ProductsTable({ actions }) {
       <ProductCard
         key={product.product_id}
         gtin={product.product_id}
+        service={selectedService}
         name={getProperty('product_name', product.properties)}
         owner={product.owner}
         imageURL={getProperty('image_url', product.properties)}
