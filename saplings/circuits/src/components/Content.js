@@ -18,6 +18,8 @@ import React from 'react';
 import { useLocalNodeState } from '../state/localNode';
 import { useCircuitsState } from '../state/circuits';
 
+import CircuitsTable from './circuitsTable/Table';
+
 import './Content.scss';
 
 const Content = () => {
@@ -61,36 +63,10 @@ const Content = () => {
           }}
         />
       </div>
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th>Circuit ID</th>
-              <th>Service count</th>
-              <th>Management Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {circuitState.filteredCircuits.map(circuit => {
-              return (
-                <tr key={circuit.id}>
-                  <td>{circuit.id}</td>
-                  <td>
-                    {
-                      new Set(
-                        circuit.roster.map(service => {
-                          return service.service_type;
-                        })
-                      ).size
-                    }
-                  </td>
-                  <td>{circuit.managementType}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <CircuitsTable
+        circuits={circuitState.filteredCircuits}
+        dispatch={circuitsDispatch}
+      />
     </div>
   );
 };
