@@ -30,7 +30,7 @@ function ProductCard(props) {
       <button
         type="button"
         className="product-card-delete-button"
-        onClick={() => deleteFn(gtin)}
+        onClick={() => deleteFn(gtin, owner, service)}
       >
         <FontAwesomeIcon className="icon" icon="trash-alt" />
       </button>

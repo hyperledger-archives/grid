@@ -19,11 +19,12 @@ import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { SimpleForm } from './SimpleForm';
 import { Input } from './Input';
+import { deleteProduct } from '../api/transactions';
 
 import './DeleteProductForm.scss';
 import './forms.scss';
 
-export function DeleteProductForm({ closeFn, gtin }) {
+export function DeleteProductForm({ closeFn, service, owner, productID }) {
   const [confirmGtin, setConfirmGtin] = useState('');
   const [valid, setValid] = useState(false);
   const [errors, setErrors] = useState([]);
@@ -34,7 +35,7 @@ export function DeleteProductForm({ closeFn, gtin }) {
     const { value, validity } = e.target;
     setConfirmGtin(value);
     setValid(value === '' && validity.valid ? false : validity.valid);
-    setErrors(value === gtin ? [] : ['GTIN values do not match']);
+    setErrors(value === productID ? [] : ['GTIN values do not match']);
   };
 
   const reset = () => {
@@ -43,9 +44,22 @@ export function DeleteProductForm({ closeFn, gtin }) {
     setErrors([]);
   };
 
-  const submit = () => {
+  const submitCallback = () => {
     reset();
     closeFn();
+  };
+
+  const submit = () => {
+    const keys = JSON.parse(sessionStorage.getItem('CANOPY_KEYS'));
+    deleteProduct(
+      {
+        productId: productID,
+        orgName: owner,
+        services: [service]
+      },
+      keys,
+      submitCallback
+    );
   };
 
   return (
@@ -60,7 +74,7 @@ export function DeleteProductForm({ closeFn, gtin }) {
           <div id="delete-warning">
             <span>Are you sure you want to delete product:</span>
             <span id="gtin-label">
-              GTIN: <span id="gtin">{gtin}</span>
+              GTIN: <span id="gtin">{productID}</span>
             </span>
             <span>
               You cannot undo this action. Please re-enter the GTIN below to
@@ -90,5 +104,7 @@ export function DeleteProductForm({ closeFn, gtin }) {
 
 DeleteProductForm.propTypes = {
   closeFn: PropTypes.func.isRequired,
-  gtin: PropTypes.string.isRequired
+  productID: PropTypes.string.isRequired,
+  owner: PropTypes.string.isRequired,
+  service: PropTypes.string.isRequired
 };
