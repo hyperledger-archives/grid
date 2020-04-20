@@ -29,11 +29,10 @@ have not been thoroughly tested or documented.
 
 Due to the rapid and ongoing development of Splinter and its experimental
 features, the images in this example can become stale very quickly. If you have
-used this procedure before, run the following commands to ensure that your
+used this procedure before, run the following command to ensure that your
 images are up to date:
 
 ```
-$ docker pull hyperledger/grid-dev
 $ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-registry db-alpha scabbard-cli-alpha splinterd-alpha
 ```
 
@@ -41,9 +40,13 @@ $ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-regi
 
 1. Clone the [Hyperledger Grid repository](https://github.com/hyperledger/grid)
    ([https://github.com/hyperledger/grid](https://github.com/hyperledger/grid)).
-2. Navigate to the grid root directory and start the Grid Docker containers.
+2. Navigate to the grid root directory and build the Grid Docker containers.
 
-   `$ docker-compose -f examples/splinter/docker-compose.yaml up --build`
+   `$ docker-compose -f examples/splinter/docker-compose.yaml build --pull`
+
+3. Start the Grid Docker containers.
+
+   `$ docker-compose -f examples/splinter/docker-compose.yaml up`
 
    This docker-compose file creates a network with two nodes (alpha and beta)
    that includes the Pike, Schema, and Product smart contracts.
