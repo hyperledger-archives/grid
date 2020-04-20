@@ -17,12 +17,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Circuit } from '../../data/processCircuits';
+import TableHeader from './TableHeader';
+
 import './CircuitsTable.scss';
 
 const CircuitsTable = ({ circuits, dispatch }) => {
   return (
     <div className="table-container">
       <table className="circuits-table">
+        <TableHeader dispatch={dispatch} circuits={circuits} />
       </table>
     </div>
   );

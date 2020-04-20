@@ -55,13 +55,76 @@ const filterCircuits = (circuits, filterBy) => {
   return filteredCircuits;
 };
 
+const sortCircuits = (circuits, action) => {
+  const order = action.ascendingOrder ? -1 : 1;
+  switch (action.sortBy) {
+    case 'comments': {
+      const sorted = circuits.sort((circuitA, circuitB) => {
+        if (circuitA.comments === 'N/A' && circuitB.comments !== 'N/A') {
+          return 1; // 'N/A should always be at the bottom'
+        }
+        if (circuitA.comments !== 'N/A' && circuitB.comments === 'N/A') {
+          return -1; // 'N/A should always be at the bottom'
+        }
+        if (circuitA.comments < circuitB.comments) {
+          return order;
+        }
+        if (circuitA.comments > circuitB.comments) {
+          return -order;
+        }
+        return 0;
+      });
+
+      return sorted;
+    }
+    case 'circuitID': {
+      const sorted = circuits.sort((circuitA, circuitB) => {
+        if (circuitA.id < circuitB.id) {
+          return order;
+        }
+        if (circuitA.id > circuitB.id) {
+          return -order;
+        }
+        return 0;
+      });
+
+      return sorted;
+    }
+    case 'serviceCount': {
+      const sorted = circuits.sort((circuitA, circuitB) => {
+        if (circuitA.roster.length < circuitB.roster.length) {
+          return order;
+        }
+        if (circuitA.roster.length > circuitB.roster.length) {
+          return -order;
+        }
+        return 0;
+      });
+
+      return sorted;
+    }
+    case 'managementType': {
+      const sorted = circuits.sort((circuitA, circuitB) => {
+        if (circuitA.managementType < circuitB.managementType) {
+          return order;
+        }
+        if (circuitA.managementType > circuitB.managementType) {
+          return -order;
+        }
+        return 0;
+      });
+
+      return sorted;
+    }
+    default:
+      return circuits;
+  }
+};
+
 const circuitsReducer = (state, action) => {
   switch (action.type) {
     case 'sort': {
-      const sortedCircuits = action.sortCircuits(
-        state.filteredCircuits,
-        action.sort
-      );
+      const sortedCircuits = sortCircuits(state.filteredCircuits, action.sort);
       return { ...state, filteredCircuits: sortedCircuits };
     }
     case 'filter': {
