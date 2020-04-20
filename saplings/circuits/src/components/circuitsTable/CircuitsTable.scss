@@ -132,5 +132,35 @@
     .text-grey {
       color: var(--color-light-grey)
     }
+
+    .table-row {
+      td, .proposal-status {
+        font-size: 0.8rem;
+        vertical-align: middle;
+      }
+
+      .proposal-status {
+        display: flex;
+        flex-direction: column;
+
+        .status {
+          margin-top: 0.5rem;
+          font-size: inherit;
+
+          .status-icon {
+            margin-left: 0.5rem;
+          }
+        }
+      }
+
+      .circuit-comment {
+          overflow: hidden;
+          max-width: 13rem;
+          max-height: 5rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 5; /* number of lines to show */
+          -webkit-box-orient: vertical;
+      }
+    }
   }
 }

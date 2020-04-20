@@ -17,6 +17,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Circuit } from '../../data/processCircuits';
+import TableRow from './TableRow';
 import TableHeader from './TableHeader';
 
 import './CircuitsTable.scss';
@@ -26,6 +27,9 @@ const CircuitsTable = ({ circuits, dispatch }) => {
     <div className="table-container">
       <table className="circuits-table">
         <TableHeader dispatch={dispatch} circuits={circuits} />
+        {circuits.map(item => {
+          return <TableRow circuit={item} />;
+        })}
       </table>
     </div>
   );
