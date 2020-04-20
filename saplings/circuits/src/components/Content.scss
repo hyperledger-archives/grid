@@ -1,0 +1,91 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.main-content {
+  color: var(--color-dark-grey);
+  display: flex;
+  flex-direction: column;
+  margin: 2.5rem 3rem 0 3rem;
+  max-height: 75%;
+
+  .midContent {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    .filterTable {
+      border: none;
+      border-bottom: 1px solid var(--color-grey);
+      padding: 1rem 0 0.5rem 2rem;
+      background-image: url('../images/search_icon.svg');
+      background-position: 5px 15px;
+      background-repeat: no-repeat;
+      background-size: 1rem;
+      font-size: 1rem;
+      width: 15rem;
+    }
+
+    .circuit-stats {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+
+      .stat {
+        display: flex;
+        margin-right: 2rem;
+        flex-direction: row;
+        justify-content: space-between;;
+        align-items: center;
+
+        .stat-count {
+          font-size: 2rem;
+          margin-right: 0.5rem;
+        }
+
+        .circuits-count {
+          color: var(--color-secondary);
+        }
+
+        .action-required-count {
+          color: var(--color-attention);
+        }
+      }
+    }
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .main-content {
+    .midContent {
+      flex-direction: column;
+
+       .filterTable {
+         margin-top: 1rem;
+         width: auto;
+       }
+
+      .circuit-stats {
+        .stat {
+          margin-right: 1rem;
+
+          .stat-count {
+            font-size: 1rem;
+          }
+        }
+      }
+    }
+  }
+}

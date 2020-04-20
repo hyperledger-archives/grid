@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-.main-header {
-  align-items: center;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  margin: 2rem 3rem 0rem 3rem;
+import { getSharedConfig } from 'splinter-saplingjs';
+import { get } from './requests';
 
-  .circuits-title {
-    color: var(--color-grey);
-    font-weight: 100;
-    margin: 0 1rem 0 0;
+const { splinterURL } = getSharedConfig().canopyConfig;
+
+export const getNodeID = async () => {
+  const result = await get(`${splinterURL}/status`);
+
+  if (result.ok) {
+    return result.json.node_id;
   }
-}
+  throw Error(result.data);
+};
