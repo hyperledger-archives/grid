@@ -55,7 +55,7 @@ const Content = () => {
           placeholder="Filter"
           onKeyUp={event => {
             circuitsDispatch({
-              type: 'filter',
+              type: 'filterByTerm',
               filter: {
                 filterTerm: event.target.value.toLowerCase()
               }

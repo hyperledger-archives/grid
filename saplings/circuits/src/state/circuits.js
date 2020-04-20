@@ -19,7 +19,7 @@ import mockCircuits from '../mockData/mockCircuits';
 import mockProposals from '../mockData/mockProposals';
 import { processCircuits } from '../data/processCircuits';
 
-const filterCircuits = (circuits, filterBy) => {
+const filterCircuitsByTerm = (circuits, filterBy) => {
   if (filterBy.filterTerm.length === 0) {
     return circuits;
   }
@@ -121,15 +121,64 @@ const sortCircuits = (circuits, action) => {
   }
 };
 
+const filterCircuitsByStatus = (circuits, filterBy) => {
+  const filteredCircuits = circuits.filter(circuit => {
+    let include = false;
+    if (filterBy.awaitingApproval) {
+      include = include || circuit.awaitingApproval();
+    }
+    if (filterBy.actionRequired) {
+      include = include || circuit.actionRequired(filterBy.nodeID);
+    }
+    if (!filterBy.awaitingApproval && !filterBy.actionRequired) {
+      include = true;
+    }
+    return include;
+  });
+  return filteredCircuits;
+};
+
 const circuitsReducer = (state, action) => {
   switch (action.type) {
     case 'sort': {
       const sortedCircuits = sortCircuits(state.filteredCircuits, action.sort);
       return { ...state, filteredCircuits: sortedCircuits };
     }
-    case 'filter': {
-      const filteredCircuits = filterCircuits(state.circuits, action.filter);
-      return { ...state, filteredCircuits };
+    case 'filterByTerm': {
+      const filteredByTerm = filterCircuitsByTerm(
+        state.circuits,
+        action.filter
+      );
+      let filteredCircuits = filteredByTerm;
+      if (state.filteredByStatus.length > 0) {
+        filteredCircuits = filteredByTerm.filter(
+          circuit => state.filteredByStatus.indexOf(circuit) > -1
+        );
+      }
+      return {
+        ...state,
+        filteredByTerm,
+        filteredCircuits
+      };
+    }
+    case 'filterByStatus': {
+      const filteredByStatus = filterCircuitsByStatus(
+        state.circuits,
+        action.filter
+      );
+
+      let filteredCircuits = filteredByStatus;
+      if (state.filteredByTerm.length > 0) {
+        filteredCircuits = filteredByStatus.filter(
+          circuit => state.filteredByTerm.indexOf(circuit) > -1
+        );
+      }
+
+      return {
+        ...state,
+        filteredByStatus,
+        filteredCircuits
+      };
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
@@ -141,6 +190,8 @@ function useCircuitsState() {
 
   const [circuitState, circuitsDispatch] = useReducer(circuitsReducer, {
     circuits,
+    filteredByTerm: [],
+    filteredByStatus: [],
     filteredCircuits: circuits
   });
   return [circuitState, circuitsDispatch];

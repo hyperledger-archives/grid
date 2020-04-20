@@ -31,7 +31,7 @@
     .table-header th {
       color: var(--color-grey);
       font-weight: 100;
-      font-size: 10pt;
+      font-size: 0.8rem;
       text-align: left;
       cursor: pointer;
       padding-bottom: 1rem;
@@ -43,9 +43,88 @@
 
       .caret {
         margin-left: 0.3rem;
-        font-size: 8pt;
+        font-size: 0.5rem;
       }
     }
+
+    .status-dropdown {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      padding: 0;
+
+      button {
+        background-color: transparent;
+        border: none;
+        color: inherit;
+        font-weight: inherit;
+        font-size: inherit;
+        letter-spacing: inherit;
+        width: 100%;
+        height: 100%;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      button:focus {
+        outline: none
+      }
+
+      .filterStatus {
+        margin-top: 1rem;
+        display: none;
+        position: absolute;
+        z-index: 1;
+        background-color: var(--background-color-white);
+        width: 12rem;
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+        left: auto;
+        right: 0;
+
+        .status-icon {
+          font-size: 0.8rem;
+          margin-right: 0.5rem;
+        }
+        .hidden {
+          visibility: hidden;
+        }
+        .apply-filter-btn {
+          text-align: center;
+          color: var(--color-secondary);
+          border: 1px solid var(--color-secondary-light);
+          padding: 0.3rem;
+        }
+      }
+
+      .filterStatus.show {
+        display: block;
+      }
+
+      .statusOptions {
+        display: flex;
+        flex-direction: column;
+
+        .filterOption {
+          padding: 0.5rem;
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+        }
+
+        .filterOption:hover {
+          background-color: var(--color-light-grey);
+        }
+      }
+    }
+
+    .action-required {
+      color: var(--color-attention);
+    }
+
+    .awaiting-approval {
+      color: var(--color-secondary)
+    }
+
     .text-highlight {
       color: var(--color-secondary)
     }

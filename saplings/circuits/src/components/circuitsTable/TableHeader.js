@@ -14,13 +14,51 @@
  * limitations under the License.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import { useLocalNodeState } from '../../state/localNode';
 import { Circuit } from '../../data/processCircuits';
 
+const filtersReducer = (state, action) => {
+  switch (action.type) {
+    case 'show': {
+      // reset any filter options that were not applied
+      const stageActionRequired = state.actionRequired;
+      const stageAwaitingApproval = state.awaitingApproval;
+      return {
+        ...state,
+        show: !state.show,
+        stageActionRequired,
+        stageAwaitingApproval
+      };
+    }
+    case 'stage': {
+      const { stageActionRequired, stageAwaitingApproval } = action;
+      return { ...state, stageActionRequired, stageAwaitingApproval };
+    }
+    case 'apply': {
+      const actionRequired = state.stageActionRequired;
+      const awaitingApproval = state.stageAwaitingApproval;
+
+      action.dispatch({
+        type: 'filterByStatus',
+        filter: {
+          awaitingApproval,
+          actionRequired,
+          nodeID: action.nodeID
+        }
+      });
+      return { ...state, actionRequired, awaitingApproval, show: false };
+    }
+    default:
+      throw new Error(`unhandled action type: ${action.type}`);
+  }
+};
+
 const TableHeader = ({ dispatch, circuits }) => {
+  const nodeID = useLocalNodeState();
   const [sortedBy, setSortedBy] = useState({
     ascendingOrder: false,
     field: ''
@@ -54,6 +92,35 @@ const TableHeader = ({ dispatch, circuits }) => {
       <FontAwesomeIcon icon="sort" />
     </span>
   );
+
+  const filterSymbol = selected => {
+    return (
+      <span className={selected ? 'caret text-highlight' : 'caret'}>
+        <FontAwesomeIcon icon="filter" />
+      </span>
+    );
+  };
+
+  const exclamationCircle = (
+    <span className="status-icon action-required">
+      <FontAwesomeIcon icon="exclamation-circle" />
+    </span>
+  );
+
+  const businessTime = (
+    <span className="status-icon awaiting-approval">
+      <FontAwesomeIcon icon="business-time" />
+    </span>
+  );
+
+  const checkMark = hidden => {
+    return (
+      <span className={hidden ? 'status-icon hidden' : 'status-icon'}>
+        <FontAwesomeIcon icon="check" />
+      </span>
+    );
+  };
+
   const sortSymbol = fieldType => {
     if (sortedBy.field !== fieldType) {
       return sortableSymbol;
@@ -63,12 +130,67 @@ const TableHeader = ({ dispatch, circuits }) => {
     }
     return caretDown;
   };
+
+  const [filterSettings, setFilterSettings] = useReducer(filtersReducer, {
+    show: false,
+    actionRequired: false,
+    awaitingApproval: false,
+    stageActionRequired: false,
+    stageAwaitingApproval: false
+  });
+
+  const filterOptions = (
+    <div className={filterSettings.show ? 'filterStatus show' : 'filterStatus'}>
+      <div className="statusOptions">
+        <button
+          className="filterOption"
+          type="button"
+          onClick={() => {
+            setFilterSettings({
+              type: 'stage',
+              stageActionRequired: !filterSettings.stageActionRequired,
+              stageAwaitingApproval: filterSettings.stageAwaitingApproval
+            });
+          }}
+        >
+          {exclamationCircle}
+          Action required
+          {checkMark(!filterSettings.stageActionRequired)}
+        </button>
+        <button
+          className="filterOption"
+          type="button"
+          onClick={() => {
+            setFilterSettings({
+              type: 'stage',
+              stageActionRequired: filterSettings.stageActionRequired,
+              stageAwaitingApproval: !filterSettings.stageAwaitingApproval
+            });
+          }}
+        >
+          {businessTime}
+          Awaiting approval
+          {checkMark(!filterSettings.stageAwaitingApproval)}
+        </button>
+        <button
+          type="button"
+          className="apply-filter-btn"
+          onClick={() => {
+            setFilterSettings({
+              type: 'apply',
+              dispatch,
+              nodeID
+            });
+          }}
+        >
+          Apply filter
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <tr className="table-header">
-      <th onClick={() => sortCircuitsBy('comments', !sortedBy.ascendingOrder)}>
-        Comments
-        {sortSymbol('comments')}
-      </th>
       <th onClick={() => sortCircuitsBy('circuitID', !sortedBy.ascendingOrder)}>
         Circuit ID
         {sortSymbol('circuitID')}
@@ -86,6 +208,28 @@ const TableHeader = ({ dispatch, circuits }) => {
       >
         Management Type
         {sortSymbol('managementType')}
+      </th>
+      <th onClick={() => sortCircuitsBy('comments', !sortedBy.ascendingOrder)}>
+        Comments
+        {sortSymbol('comments')}
+      </th>
+      <th>
+        <div className="status-dropdown">
+          <button
+            type="button"
+            onClick={() => {
+              setFilterSettings({
+                type: 'show'
+              });
+            }}
+          >
+            Status
+            {filterSymbol(
+              filterSettings.actionRequired || filterSettings.awaitingApproval
+            )}
+          </button>
+          {filterOptions}
+        </div>
       </th>
     </tr>
   );
