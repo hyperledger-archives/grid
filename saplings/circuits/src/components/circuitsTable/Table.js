@@ -23,10 +23,18 @@ import TableHeader from './TableHeader';
 import './CircuitsTable.scss';
 
 const CircuitsTable = ({ circuits, dispatch }) => {
+  const noCircuits = (
+    <tr>
+      <td colSpan="5" className="no-circuits-msg">
+        No circuits found
+      </td>
+    </tr>
+  );
   return (
     <div className="table-container">
       <table className="circuits-table">
         <TableHeader dispatch={dispatch} circuits={circuits} />
+        {circuits.length === 0 ? noCircuits : ''}
         {circuits.map(item => {
           return <TableRow circuit={item} />;
         })}
