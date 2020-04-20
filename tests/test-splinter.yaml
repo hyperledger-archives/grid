@@ -25,3 +25,12 @@ services:
       - CI=true
     image: canopy-app:${ISOLATION_ID}
     command: yarn test
+
+  unit-test-circuits-sapling:
+    build:
+      context: ../saplings/circuits
+      dockerfile: ./test/Dockerfile
+    environment:
+      - CI=true
+    image: circuits-sapling:${ISOLATION_ID}
+    command: npm run test
