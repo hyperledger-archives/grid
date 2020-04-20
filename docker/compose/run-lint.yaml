@@ -22,3 +22,10 @@ services:
       dockerfile: docker/test-app
     image: canopy-app:${ISOLATION_ID}
     command: yarn lint
+
+  lint-circuits-sapling:
+    build:
+      context: ../../saplings/circuits
+      dockerfile: ./test/Dockerfile
+    image: circuit-sapling:${ISOLATION_ID}
+    command: npm run lint

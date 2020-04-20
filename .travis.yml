@@ -37,3 +37,4 @@ jobs:
     - stage: Lint/Unit Test Circuits Sapling
       script:
         - docker-compose -f tests/test-splinter.yaml up --abort-on-container-exit unit-test-circuits-sapling
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-circuits-sapling
