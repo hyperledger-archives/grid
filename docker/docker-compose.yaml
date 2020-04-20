@@ -54,11 +54,10 @@ services:
         splinterd -vv \
         --registry file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
-        --network-endpoint 0.0.0.0:8044 \
+        --network-endpoint tcps://0.0.0.0:8044 \
         --node-id alpha-node-000 \
-        --service-endpoint 0.0.0.0:8043 \
+        --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --transport tls \
         --client-cert /etc/splinter/certs/client.crt \
         --client-key /etc/splinter/certs/private/client.key \
         --server-cert /etc/splinter/certs/server.crt \
@@ -137,11 +136,10 @@ services:
         splinterd -vv \
         --registry file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
-        --network-endpoint 0.0.0.0:8044 \
+        --network-endpoint tcps://0.0.0.0:8044 \
         --node-id beta-node-000 \
-        --service-endpoint 0.0.0.0:8043 \
+        --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --transport tls \
         --client-cert /etc/splinter/certs/client.crt \
         --client-key /etc/splinter/certs/private/client.key \
         --server-cert /etc/splinter/certs/server.crt \
