@@ -77,11 +77,13 @@ function App() {
     });
   }
 
-  function deleteProduct(gtin) {
+  function deleteProduct(productID, owner, service) {
     setActiveForm({
       formName: 'delete-product',
       params: {
-        gtin
+        productID,
+        owner,
+        service
       }
     });
   }
@@ -107,7 +109,9 @@ function App() {
         return (
           <DeleteProductForm
             closeFn={() => setActiveForm(initialFormState)}
-            gtin={adata.gtin}
+            owner={adata.owner}
+            productID={adata.productID}
+            service={adata.service}
           />
         );
       default:
@@ -123,7 +127,9 @@ function App() {
           <Router>
             <Switch>
               <Route exact path="/product">
-                <ProductsTable actions={{ addProduct, editProduct, deleteProduct }} />
+                <ProductsTable
+                  actions={{ addProduct, editProduct, deleteProduct }}
+                />
               </Route>
               <Route path="/product/products/:id">
                 <ProductInfo />
