@@ -296,7 +296,7 @@ table! {
         id -> Int8,
         circuit_id -> Text,
         node_id -> Text,
-        endpoint -> Text,
+        endpoints -> Array<Text>,
         status -> Text,
         created_time -> Timestamp,
         updated_time -> Timestamp,
