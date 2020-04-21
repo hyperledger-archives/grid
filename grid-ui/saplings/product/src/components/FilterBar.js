@@ -14,15 +14,31 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import CircuitDropdown from './CircuitDropdown';
+import SearchModal from './SearchModal';
 import './FilterBar.scss';
 
 function FilterBar() {
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  const showSearchModal = () => {
+    setSearchModalOpen(true);
+  };
+
+  const hideSearchModal = () => {
+    setSearchModalOpen(false);
+  };
+
   return (
     <div className="filter-bar">
+      {searchModalOpen && <SearchModal closeFn={hideSearchModal} />}
       <CircuitDropdown />
+      <button className="search-button" type="button" onClick={showSearchModal}>
+        <FontAwesomeIcon icon="search" />
+      </button>
     </div>
   );
 }

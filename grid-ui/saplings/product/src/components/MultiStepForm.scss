@@ -193,17 +193,5 @@
     h6 {
       margin: 1rem 0;
     }
-
-    button {
-      height: 38px;
-      width: fit-content;
-      border: 1px solid inset var(--color-grey);
-
-      &.confirm,
-      &.submit {
-        background: var(--color-secondary);
-        border: none;
-      }
-    }
   }
 }
