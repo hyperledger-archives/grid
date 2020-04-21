@@ -25,10 +25,12 @@ import {
   faChevronLeft,
   faPlus,
   faTimes,
-  faSpinner
+  faSpinner,
+  faSearch
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ServiceProvider } from './state/service-context';
+import { ProductProvider } from './state/product-context';
 import FilterBar from './components/FilterBar';
 import ProductsTable from './components/ProductsTable';
 import ProductInfo from './components/ProductInfo';
@@ -44,7 +46,8 @@ library.add(
   faChevronLeft,
   faPlus,
   faTimes,
-  faSpinner
+  faSpinner,
+  faSearch
 );
 
 function App() {
@@ -91,20 +94,22 @@ function App() {
 
   return (
     <ServiceProvider>
-      <div id="product-sapling" className="product-app">
-        <FilterBar />
-        <Router>
-          <Switch>
-            <Route exact path="/product">
-              <ProductsTable actions={{ addProduct, editProduct }} />
-            </Route>
-            <Route path="/product/products/:id">
-              <ProductInfo />
-            </Route>
-          </Switch>
-        </Router>
-        {activeForm && openForm(activeForm)}
-      </div>
+      <ProductProvider>
+        <div id="product-sapling" className="product-app">
+          <FilterBar />
+          <Router>
+            <Switch>
+              <Route exact path="/product">
+                <ProductsTable actions={{ addProduct, editProduct }} />
+              </Route>
+              <Route path="/product/products/:id">
+                <ProductInfo />
+              </Route>
+            </Switch>
+          </Router>
+          {activeForm && openForm(activeForm)}
+        </div>
+      </ProductProvider>
     </ServiceProvider>
   );
 }

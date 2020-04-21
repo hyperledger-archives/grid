@@ -19,6 +19,7 @@ import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useServiceState } from '../state/service-context';
+import { useProductState, useProductDispatch } from '../state/product-context';
 import ProductCard from './ProductCard';
 import NotFound from './NotFound';
 import Loading from './Loading';
@@ -27,7 +28,8 @@ import { listProducts } from '../api/grid';
 import './ProductsTable.scss';
 
 function ProductsTable({ actions }) {
-  const [products, setProducts] = useState([]);
+  const { products } = useProductState();
+  const productDispatch = useProductDispatch();
   const { selectedService } = useServiceState();
   const [loading, setLoading] = useState(false);
 
@@ -37,18 +39,28 @@ function ProductsTable({ actions }) {
         setLoading(true);
         try {
           const productList = await listProducts(selectedService);
-          setProducts(productList);
+          productDispatch({
+            type: 'set',
+            payload: {
+              products: productList
+            }
+          });
         } catch (e) {
           console.error(`Error listing products: ${e}`);
         }
       } else {
-        setProducts([]);
+        productDispatch({
+          type: 'set',
+          payload: {
+            products: []
+          }
+        });
       }
       setLoading(false);
     };
 
     getProducts();
-  }, [selectedService]);
+  }, [selectedService, productDispatch]);
 
   const productCards = products.map(product => {
     return (
