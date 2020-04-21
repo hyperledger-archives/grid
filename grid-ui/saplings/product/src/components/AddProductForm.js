@@ -24,6 +24,7 @@ import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { Chips, Chip } from './Chips';
 import { MultiSelect } from './MultiSelect';
 import Loading from './Loading';
+import { getProperty } from '../data/property-parsing';
 import { addProduct } from '../api/transactions';
 
 import './forms.scss';
@@ -60,6 +61,8 @@ export function AddProductForm({ closeFn }) {
     name: '',
     value: ''
   });
+  const [imgLabel, setImgLabel] = useState('Upload product image');
+  const [imgPreview, setImgPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const { addToast } = useToasts();
 
@@ -94,6 +97,27 @@ export function AddProductForm({ closeFn }) {
       header: true,
       skipEmptyLines: true
     });
+  };
+
+  const handleImgUpload = e => {
+    e.preventDefault();
+    const file = e.target.files[0];
+    setImgLabel(file.name);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImgPreview(reader.result);
+      setAttributes([
+        ...attributes.filter(attr => attr.name !== 'image_url'),
+        {
+          name: 'image_url',
+          type: 'STRING',
+          value: reader.result
+        }
+      ]);
+    };
+
+    return reader.readAsDataURL(file);
   };
 
   const handleServiceChange = useCallback(
@@ -272,20 +296,38 @@ export function AddProductForm({ closeFn }) {
                 </button>
               </div>
               <Chips>
-                {attributes.map(attribute => {
-                  const data = createAttrData(attribute);
-                  return (
-                    <Chip
-                      label={attribute.name}
-                      data={data}
-                      removeFn={() => removeAttr(attribute)}
-                      deleteable
-                    />
-                  );
-                })}
+                {attributes
+                  .filter(attr => attr.name !== 'image_url')
+                  .map(attribute => {
+                    const data = createAttrData(attribute);
+                    return (
+                      <Chip
+                        label={attribute.name}
+                        data={data}
+                        removeFn={() => removeAttr(attribute)}
+                        deleteable
+                      />
+                    );
+                  })
+                }
               </Chips>
             </Step>
-            <Step step={3} label="Review and submit">
+            <Step step={3} label="Add attachments">
+              <h6>Add additional info</h6>
+              <StepInput
+                type="file"
+                accept="image/png, image/jpeg"
+                id="add-master-data-file"
+                label={imgLabel}
+                onChange={handleImgUpload}
+              />
+              {imgPreview && (
+                <div className="preview-container">
+                  <img className="img-preview" src={imgPreview} alt="preview" />
+                </div>
+              )}
+            </Step>
+            <Step step={4} label="Review and submit">
               {!!errors.length && (
                 <div className="error-messages">
                   {errors.map(error => (
@@ -297,6 +339,11 @@ export function AddProductForm({ closeFn }) {
               <span>
                 GTIN: <b>{gtin}</b>
               </span>
+              {imgPreview && (
+                <div className="preview-container">
+                  <img className="img-preview" src={imgPreview} alt="preview" />
+                </div>
+              )}
               <h6>Selected services</h6>
               <Chips>
                 {selectedServices.length > 0 &&
@@ -310,10 +357,13 @@ export function AddProductForm({ closeFn }) {
               <h6>Attributes</h6>
               <Chips>
                 {attributes.length > 0 &&
-                  attributes.map(attribute => {
-                    const data = createAttrData(attribute);
-                    return <Chip label={attribute.name} data={data} />;
-                  })}
+                  attributes
+                    .filter(attr => attr.name !== 'image_url')
+                    .map(attribute => {
+                      const data = createAttrData(attribute);
+                      return <Chip label={attribute.name} data={data} />;
+                    })
+                }
                 {!attributes.length && <span>No attributes entered</span>}
               </Chips>
             </Step>
