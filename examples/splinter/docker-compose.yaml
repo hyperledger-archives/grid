@@ -233,8 +233,8 @@ services:
 
   sapling-dev-server-alpha:
     build:
-      context: ../../grid-ui
-      dockerfile: sapling-dev-server/Dockerfile
+      context: ../..
+      dockerfile: grid-ui/sapling-dev-server/Dockerfile
     container_name: sapling-dev-server-alpha
     expose:
       - 80
@@ -369,8 +369,8 @@ services:
 
   sapling-dev-server-beta:
     build:
-      context: ../../grid-ui
-      dockerfile: sapling-dev-server/Dockerfile
+      context: ../..
+      dockerfile: grid-ui/sapling-dev-server/Dockerfile
     container_name: sapling-dev-server-beta
     expose:
       - 80
@@ -498,8 +498,8 @@ services:
 
   sapling-dev-server-gamma:
     build:
-      context: ../../grid-ui
-      dockerfile: sapling-dev-server/Dockerfile
+      context: ../..
+      dockerfile: grid-ui/sapling-dev-server/Dockerfile
     container_name: sapling-dev-server-gamma
     expose:
       - 80

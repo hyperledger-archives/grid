@@ -14,3 +14,4 @@
 
 saplings/*
 build/*
+src/compiled_protos.json

@@ -19,18 +19,23 @@ RUN apk update && apk add git
 
 RUN npm config set unsafe-perm true
 
-COPY . .
+WORKDIR /saplings
 
-RUN cd /saplings/register-login && \
+COPY ./grid-ui /saplings
+
+COPY ./sdk/protos /saplings/protos
+
+RUN cd ./saplings/register-login && \
   npm config set unsafe-perm true && \
   npm install && \
   yarn deploy
 
-RUN cd /saplings/product && \
+RUN cd ./saplings/product && \
   npm install && \
+  npm run generate-proto-files ../../protos && \
   yarn deploy
 
-RUN cd /saplings/profile && \
+RUN cd ./saplings/profile && \
   npm install && \
   yarn deploy
 
@@ -42,6 +47,6 @@ RUN echo "\
   \n\
   " >>/usr/local/apache2/conf/httpd.conf
 
-COPY --from=build-stage /sapling-dev-server/ /usr/local/apache2/htdocs/
+COPY --from=build-stage /saplings/sapling-dev-server/ /usr/local/apache2/htdocs/
 
 EXPOSE 80/tcp

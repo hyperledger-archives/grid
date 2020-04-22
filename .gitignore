@@ -38,6 +38,7 @@ tests/sawtooth_sc_test/protobuf/
 grid-ui/sapling-dev-server/product
 grid-ui/sapling-dev-server/register-login.js
 grid-ui/sapling-dev-server/profile
+grid-ui/saplings/product/src/compiled_protos.json
 
 # misc
 .DS_Store
