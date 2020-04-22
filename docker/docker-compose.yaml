@@ -58,13 +58,13 @@ services:
         --node-id alpha-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --client-cert /etc/splinter/certs/client.crt \
-        --client-key /etc/splinter/certs/private/client.key \
-        --server-cert /etc/splinter/certs/server.crt \
-        --server-key /etc/splinter/certs/private/server.key \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
         --enable-biome \
         --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
-        --insecure
+        --tls-insecure
       "
   splinter-db-alpha:
     image: postgres
@@ -142,13 +142,13 @@ services:
         --node-id beta-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --client-cert /etc/splinter/certs/client.crt \
-        --client-key /etc/splinter/certs/private/client.key \
-        --server-cert /etc/splinter/certs/server.crt \
-        --server-key /etc/splinter/certs/private/server.key \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
         --enable-biome \
         --database postgres://admin:admin@splinter-db-beta:5432/splinter \
-        --insecure
+        --tls-insecure
       "
   splinter-db-beta:
     image: postgres
