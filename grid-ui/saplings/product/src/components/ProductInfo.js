@@ -25,6 +25,7 @@ import ProductProperty from './ProductProperty';
 import { fetchProduct } from '../api/grid';
 import NotFound from './NotFound';
 import Loading from './Loading';
+import PropertyDetailsModal from './PropertyDetailsModal';
 import './ProductInfo.scss';
 
 function ProductInfo() {
@@ -33,6 +34,15 @@ function ProductInfo() {
   const { selectedService } = useServiceState();
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const openModal = () => {
+    setModalOpen(true);
+  };
 
   useEffect(() => {
     const getProduct = async () => {
@@ -75,12 +85,25 @@ function ProductInfo() {
           }
           owner={product.owner || 'Unknown'}
         />
-        <ProductProperties propertiesList={product.properties} />
+        <ProductProperties
+          propertiesList={product.properties}
+          openModal={openModal}
+        />
       </>
     );
   };
 
-  return <div className="product-info-container">{getContent()}</div>;
+  return (
+    <div className="product-info-container">
+      {modalOpen && (
+        <PropertyDetailsModal
+          closeFn={closeModal}
+          propertiesList={product.properties}
+        />
+      )}
+      {getContent()}
+    </div>
+  );
 }
 
 function ProductOverview(props) {
@@ -110,7 +133,7 @@ ProductOverview.propTypes = {
 };
 
 function ProductProperties(props) {
-  const { propertiesList } = props;
+  const { propertiesList, openModal } = props;
 
   const primaryProperties = [
     { name: 'brand_name', data_type: 'STRING', label: 'Brand Name' },
@@ -146,7 +169,7 @@ function ProductProperties(props) {
         <hr />
       </div>
       <div className="product-properties-list">{productProperties}</div>
-      <button type="button" className="full-info-button">
+      <button type="button" className="full-info-button" onClick={openModal}>
         VIEW FULL PRODUCT INFO
       </button>
     </div>
@@ -154,7 +177,8 @@ function ProductProperties(props) {
 }
 
 ProductProperties.propTypes = {
-  propertiesList: PropTypes.arrayOf(PropTypes.object).isRequired
+  propertiesList: PropTypes.arrayOf(PropTypes.object).isRequired,
+  openModal: PropTypes.func.isRequired
 };
 
 export default ProductInfo;

@@ -23,13 +23,31 @@ const ServiceDispatchContext = React.createContext();
 const serviceReducer = (state, action) => {
   switch (action.type) {
     case 'select': {
-      return { ...state, selectedService: action.payload.serviceID };
+      const updatedState = {
+        ...state,
+        selectedService: action.payload.serviceID
+      };
+      window.sessionStorage.setItem(
+        'SERVICE_STATE',
+        JSON.stringify(updatedState)
+      );
+      return updatedState;
     }
     case 'selectNone': {
-      return { ...state, selectedService: 'none' };
+      const updatedState = { ...state, selectedService: 'none' };
+      window.sessionStorage.setItem(
+        'SERVICE_STATE',
+        JSON.stringify(updatedState)
+      );
+      return updatedState;
     }
     case 'setServices': {
-      return { ...state, services: action.payload.services };
+      const updatedState = { ...state, services: action.payload.services };
+      window.sessionStorage.setItem(
+        'SERVICE_STATE',
+        JSON.stringify(updatedState)
+      );
+      return updatedState;
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
@@ -37,10 +55,15 @@ const serviceReducer = (state, action) => {
 };
 
 function ServiceProvider({ children }) {
-  const [state, dispatch] = React.useReducer(serviceReducer, {
+  const sessionState = window.sessionStorage.getItem('SERVICE_STATE');
+  const defaultState = {
     selectedService: 'none',
     services: []
-  });
+  };
+  const [state, dispatch] = React.useReducer(
+    serviceReducer,
+    sessionState ? JSON.parse(sessionState) : defaultState
+  );
 
   return (
     <ServiceStateContext.Provider value={state}>
