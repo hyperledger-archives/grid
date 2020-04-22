@@ -156,9 +156,9 @@ services:
         --node-id splinter-node \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --client-cert /etc/splinter/certs/client.crt \
-        --client-key /etc/splinter/certs/private/client.key \
-        --server-cert /etc/splinter/certs/server.crt \
-        --server-key /etc/splinter/certs/private/server.key \
-        --insecure
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --tls-insecure
       "
