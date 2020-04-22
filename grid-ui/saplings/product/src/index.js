@@ -22,5 +22,7 @@ import './index.css';
 import App from './App';
 
 registerApp(domNode => {
-  ReactDOM.render(<App />, domNode);
+  if (/\/product*/.exec(window.location.pathname)) {
+    ReactDOM.render(<App />, domNode);
+  }
 });
