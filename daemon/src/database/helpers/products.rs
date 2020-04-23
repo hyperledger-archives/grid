@@ -29,7 +29,12 @@ use diesel::{
 
 pub fn insert_products(conn: &PgConnection, products: &[NewProduct]) -> QueryResult<()> {
     for prod in products {
-        update_prod_end_commit_num(conn, &prod.product_id, prod.start_commit_num)?;
+        update_prod_end_commit_num(
+            conn,
+            &prod.product_id,
+            prod.service_id.as_deref(),
+            prod.start_commit_num,
+        )?;
     }
 
     insert_into(product::table)
@@ -43,7 +48,12 @@ pub fn insert_product_property_values(
     property_values: &[NewProductPropertyValue],
 ) -> QueryResult<()> {
     for value in property_values {
-        update_prod_property_values(conn, &value.product_id, value.start_commit_num)?;
+        update_prod_property_values(
+            conn,
+            &value.product_id,
+            value.service_id.as_deref(),
+            value.start_commit_num,
+        )?;
     }
 
     insert_into(product_property_value::table)
@@ -87,33 +97,65 @@ pub fn delete_product_property_values(
 fn update_prod_end_commit_num(
     conn: &PgConnection,
     product_id: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(product::table)
-        .filter(
-            product::product_id
-                .eq(product_id)
-                .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(product::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(product::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                product::product_id
+                    .eq(product_id)
+                    .and(product::end_commit_num.eq(MAX_COMMIT_NUM))
+                    .and(product::service_id.eq(service_id)),
+            )
+            .set(product::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                product::product_id
+                    .eq(product_id)
+                    .and(product::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(product::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 fn update_prod_property_values(
     conn: &PgConnection,
     product_id: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(product_property_value::table)
-        .filter(
-            product_property_value::product_id
-                .eq(product_id)
-                .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(product_property_value::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(product_property_value::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                product_property_value::product_id
+                    .eq(product_id)
+                    .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM))
+                    .and(product_property_value::service_id.eq(service_id)),
+            )
+            .set(product_property_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                product_property_value::product_id
+                    .eq(product_id)
+                    .and(product_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(product_property_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn list_products(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Product>> {

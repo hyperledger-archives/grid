@@ -123,7 +123,8 @@ pub struct NewProduct {
     pub service_id: Option<String>,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Identifiable, Debug)]
+#[table_name = "product"]
 pub struct Product {
     ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
@@ -162,7 +163,8 @@ pub struct NewProductPropertyValue {
 }
 
 #[allow(dead_code)]
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Identifiable, Debug)]
+#[table_name = "product_property_value"]
 pub struct ProductPropertyValue {
     ///  This is the product id for the slowly-changing-dimensions table.
     pub id: i64,
