@@ -149,16 +149,15 @@ services:
         cp -a /splinter_shared/. /etc/splinter/certs && \
         mv /etc/splinter/nodes.yaml.example /etc/splinter/nodes.yaml && \
         splinterd -vv \
-        --registry-backend FILE \
-        --registry-file /etc/splinter/nodes.yaml \
+        --registry file:///etc/splinter/nodes.yaml\
         --bind 0.0.0.0:8085 \
         --network-endpoint tcps://0.0.0.0:8044 \
         --node-id splinter-node \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
-        --client-cert /etc/splinter/certs/client.crt \
-        --client-key /etc/splinter/certs/private/client.key \
-        --server-cert /etc/splinter/certs/server.crt \
-        --server-key /etc/splinter/certs/private/server.key \
-        --insecure
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --tls-insecure
       "
