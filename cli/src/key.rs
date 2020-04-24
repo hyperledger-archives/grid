@@ -14,7 +14,6 @@
 
 //! Contains functions which assist with signing key management
 
-use dirs;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
