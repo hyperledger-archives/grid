@@ -20,7 +20,6 @@ use std::time::Instant;
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
-use protobuf;
 use protobuf::Message;
 
 use sabre_sdk::protocol::payload::ExecuteContractActionBuilder;

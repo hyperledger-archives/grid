@@ -20,7 +20,6 @@ use actix_web::{
     error::{Error as ActixError, ResponseError},
     HttpResponse,
 };
-use diesel;
 use futures::future::{Future, TryFutureExt};
 use std::error::Error;
 
