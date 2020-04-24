@@ -29,7 +29,12 @@ use diesel::{
 
 pub fn insert_agents(conn: &PgConnection, agents: &[NewAgent]) -> QueryResult<()> {
     for agent in agents {
-        update_agent_end_commit_num(conn, &agent.public_key, agent.start_commit_num)?;
+        update_agent_end_commit_num(
+            conn,
+            &agent.public_key,
+            agent.service_id.as_deref(),
+            agent.start_commit_num,
+        )?;
     }
 
     insert_into(agent::table)
@@ -41,17 +46,33 @@ pub fn insert_agents(conn: &PgConnection, agents: &[NewAgent]) -> QueryResult<()
 fn update_agent_end_commit_num(
     conn: &PgConnection,
     public_key: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(agent::table)
-        .filter(
-            agent::public_key
-                .eq(public_key)
-                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(agent::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(agent::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                agent::public_key
+                    .eq(public_key)
+                    .and(agent::service_id.eq(service_id))
+                    .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(agent::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                agent::public_key
+                    .eq(public_key)
+                    .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(agent::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn get_agents(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Agent>> {
