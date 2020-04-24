@@ -41,6 +41,7 @@ pub fn insert_associated_agents(
         update_associated_agent_end_commit_num(
             conn,
             &agent.record_id,
+            agent.service_id.as_deref(),
             &agent.role,
             &agent.agent_id,
             agent.start_commit_num,
@@ -56,21 +57,39 @@ pub fn insert_associated_agents(
 pub fn update_associated_agent_end_commit_num(
     conn: &PgConnection,
     record_id: &str,
+    service_id: Option<&str>,
     role: &str,
     agent_id: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(associated_agent::table)
-        .filter(
-            associated_agent::record_id
-                .eq(record_id)
-                .and(associated_agent::role.eq(role))
-                .and(associated_agent::agent_id.eq(agent_id))
-                .and(associated_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(associated_agent::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(associated_agent::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                associated_agent::record_id
+                    .eq(record_id)
+                    .and(associated_agent::role.eq(role))
+                    .and(associated_agent::agent_id.eq(agent_id))
+                    .and(associated_agent::service_id.eq(service_id))
+                    .and(associated_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(associated_agent::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                associated_agent::record_id
+                    .eq(record_id)
+                    .and(associated_agent::role.eq(role))
+                    .and(associated_agent::agent_id.eq(agent_id))
+                    .and(associated_agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(associated_agent::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn list_associated_agents(
@@ -100,6 +119,7 @@ pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> Que
         update_property_end_commit_num(
             conn,
             &property.name,
+            property.service_id.as_deref(),
             &property.record_id,
             property.start_commit_num,
         )?;
@@ -114,19 +134,36 @@ pub fn insert_properties(conn: &PgConnection, properties: &[NewProperty]) -> Que
 pub fn update_property_end_commit_num(
     conn: &PgConnection,
     name: &str,
+    service_id: Option<&str>,
     record_id: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(property::table)
-        .filter(
-            property::name
-                .eq(name)
-                .and(property::record_id.eq(record_id))
-                .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(property::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(property::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                property::name
+                    .eq(name)
+                    .and(property::record_id.eq(record_id))
+                    .and(property::service_id.eq(service_id))
+                    .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(property::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                property::name
+                    .eq(name)
+                    .and(property::record_id.eq(record_id))
+                    .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(property::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn insert_proposals(conn: &PgConnection, proposals: &[NewProposal]) -> QueryResult<()> {
@@ -134,6 +171,7 @@ pub fn insert_proposals(conn: &PgConnection, proposals: &[NewProposal]) -> Query
         update_proposal_end_commit_num(
             conn,
             &proposal.record_id,
+            proposal.service_id.as_deref(),
             &proposal.receiving_agent,
             &proposal.role,
             proposal.start_commit_num,
@@ -149,21 +187,39 @@ pub fn insert_proposals(conn: &PgConnection, proposals: &[NewProposal]) -> Query
 pub fn update_proposal_end_commit_num(
     conn: &PgConnection,
     record_id: &str,
+    service_id: Option<&str>,
     receiving_agent: &str,
     role: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(proposal::table)
-        .filter(
-            proposal::record_id
-                .eq(record_id)
-                .and(proposal::receiving_agent.eq(receiving_agent))
-                .and(proposal::role.eq(role))
-                .and(proposal::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(proposal::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(proposal::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                proposal::record_id
+                    .eq(record_id)
+                    .and(proposal::receiving_agent.eq(receiving_agent))
+                    .and(proposal::service_id.eq(service_id))
+                    .and(proposal::role.eq(role))
+                    .and(proposal::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(proposal::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                proposal::record_id
+                    .eq(record_id)
+                    .and(proposal::receiving_agent.eq(receiving_agent))
+                    .and(proposal::role.eq(role))
+                    .and(proposal::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(proposal::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn list_proposals(
@@ -191,7 +247,12 @@ pub fn list_proposals(
 
 pub fn insert_records(conn: &PgConnection, records: &[NewRecord]) -> QueryResult<()> {
     for record in records {
-        update_record_end_commit_num(conn, &record.record_id, record.start_commit_num)?;
+        update_record_end_commit_num(
+            conn,
+            &record.record_id,
+            record.service_id.as_deref(),
+            record.start_commit_num,
+        )?;
     }
 
     insert_into(record::table)
@@ -203,17 +264,33 @@ pub fn insert_records(conn: &PgConnection, records: &[NewRecord]) -> QueryResult
 pub fn update_record_end_commit_num(
     conn: &PgConnection,
     record_id: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(record::table)
-        .filter(
-            record::record_id
-                .eq(record_id)
-                .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(record::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(record::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                record::record_id
+                    .eq(record_id)
+                    .and(record::service_id.eq(service_id))
+                    .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(record::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                record::record_id
+                    .eq(record_id)
+                    .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(record::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn fetch_record(conn: &PgConnection, record_id: &str) -> QueryResult<Option<Record>> {
@@ -248,6 +325,7 @@ pub fn insert_reported_values(conn: &PgConnection, values: &[NewReportedValue]) 
         update_reported_value_end_commit_num(
             conn,
             &value.property_name,
+            value.service_id.as_deref(),
             &value.record_id,
             value.start_commit_num,
         )?;
@@ -262,19 +340,36 @@ pub fn insert_reported_values(conn: &PgConnection, values: &[NewReportedValue]) 
 pub fn update_reported_value_end_commit_num(
     conn: &PgConnection,
     property_name: &str,
+    service_id: Option<&str>,
     record_id: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(reported_value::table)
-        .filter(
-            reported_value::record_id
-                .eq(record_id)
-                .and(reported_value::property_name.eq(property_name))
-                .and(reported_value::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(reported_value::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(reported_value::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                reported_value::record_id
+                    .eq(record_id)
+                    .and(reported_value::service_id.eq(service_id))
+                    .and(reported_value::property_name.eq(property_name))
+                    .and(reported_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(reported_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                reported_value::record_id
+                    .eq(record_id)
+                    .and(reported_value::property_name.eq(property_name))
+                    .and(reported_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(reported_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn insert_reporters(conn: &PgConnection, reporters: &[NewReporter]) -> QueryResult<()> {
@@ -282,6 +377,7 @@ pub fn insert_reporters(conn: &PgConnection, reporters: &[NewReporter]) -> Query
         update_reporter_end_commit_num(
             conn,
             &reporter.property_name,
+            reporter.service_id.as_deref(),
             &reporter.record_id,
             &reporter.public_key,
             reporter.start_commit_num,
@@ -297,21 +393,39 @@ pub fn insert_reporters(conn: &PgConnection, reporters: &[NewReporter]) -> Query
 pub fn update_reporter_end_commit_num(
     conn: &PgConnection,
     property_name: &str,
+    service_id: Option<&str>,
     record_id: &str,
     public_key: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(reporter::table)
-        .filter(
-            reporter::record_id
-                .eq(record_id)
-                .and(reporter::property_name.eq(property_name))
-                .and(reporter::public_key.eq(public_key))
-                .and(reporter::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(reporter::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(reporter::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                reporter::record_id
+                    .eq(record_id)
+                    .and(reporter::property_name.eq(property_name))
+                    .and(reporter::service_id.eq(service_id))
+                    .and(reporter::public_key.eq(public_key))
+                    .and(reporter::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(reporter::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                reporter::record_id
+                    .eq(record_id)
+                    .and(reporter::property_name.eq(property_name))
+                    .and(reporter::public_key.eq(public_key))
+                    .and(reporter::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(reporter::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn fetch_property_with_data_type(
