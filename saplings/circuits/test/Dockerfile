@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: "3.7"
+# Dockerfile for running unit tests and lint on the circuits sapling
+FROM node:lts-alpine
 
-services:
+WORKDIR /saplings/circuits
 
-  lint-canopy-app:
-    build:
-      context: ../..
-      dockerfile: docker/test-app
-    image: canopy-app:${ISOLATION_ID}
-    command: npm run lint
+COPY package*.json ./
 
-  lint-circuits-sapling:
-    build:
-      context: ../../saplings/circuits
-      dockerfile: ./test/Dockerfile
-    image: circuit-sapling:${ISOLATION_ID}
-    command: npm run lint
+RUN apk add git
+
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
+
+COPY . .
