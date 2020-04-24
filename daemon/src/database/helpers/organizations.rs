@@ -32,7 +32,12 @@ pub fn insert_organizations(
     organizations: &[NewOrganization],
 ) -> QueryResult<()> {
     for org in organizations {
-        update_org_end_commit_num(conn, &org.org_id, org.start_commit_num)?;
+        update_org_end_commit_num(
+            conn,
+            &org.org_id,
+            org.service_id.as_deref(),
+            org.start_commit_num,
+        )?;
     }
 
     insert_into(organization::table)
@@ -44,17 +49,33 @@ pub fn insert_organizations(
 fn update_org_end_commit_num(
     conn: &PgConnection,
     org_id: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(organization::table)
-        .filter(
-            organization::org_id
-                .eq(org_id)
-                .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(organization::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(organization::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                organization::org_id
+                    .eq(org_id)
+                    .and(organization::service_id.eq(service_id))
+                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(organization::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                organization::org_id
+                    .eq(org_id)
+                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(organization::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn list_organizations(
