@@ -21,15 +21,9 @@ RUN npm config set unsafe-perm true
 
 COPY . .
 
-# Hack to add register-login and profiles saplings until there's a distribution
-# strategy for saplings
-RUN git clone https://github.com/hyperledger/grid
-RUN cp -r grid/grid-ui/saplings/register-login /saplings
-RUN cp -r grid/grid-ui/saplings/profile /saplings
-
 ARG PUBLIC_URL_PARTIAL
-
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
+
 RUN cd /saplings/register-login && \
   npm install && \
   npm run deploy
