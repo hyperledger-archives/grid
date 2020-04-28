@@ -29,3 +29,17 @@ services:
       dockerfile: ./test/Dockerfile
     image: circuit-sapling:${ISOLATION_ID}
     command: npm run lint
+
+  lint-profile-sapling:
+    build:
+      context: ../../saplings/profile
+      dockerfile: ./test/Dockerfile
+    image: profile-sapling:${ISOLATION_ID}
+    command: npm run lint
+
+  lint-register-login-sapling:
+    build:
+      context: ../../saplings/register-login
+      dockerfile: ./test/Dockerfile
+    image: register-login-sapling:${ISOLATION_ID}
+    command: npm run lint

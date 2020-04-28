@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Dockerfile for running unit tests and lint on the profile sapling
+# Dockerfile for running unit tests and lint on the register-login sapling
 FROM node:lts-alpine
 
-WORKDIR /saplings/profile
+WORKDIR /saplings/register-login
 
 COPY package*.json ./
 
