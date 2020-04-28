@@ -85,6 +85,64 @@ function buildSchemaAddress(name) {
   return `${ProductNamespace}01${hash}`;
 }
 
+export async function editProduct(data, keys, callbackFn) {
+  const privateKey = Secp256k1PrivateKey.fromHex(keys.privateKey);
+  const signer = new Secp256k1Signer(privateKey);
+
+  const dataTypes = {
+    STRING: 'stringValue',
+    BOOLEAN: 'booleanValue',
+    NUMBER: 'numberValue'
+  };
+
+  const propertiesList = data.properties.map(property => {
+    const value = parseValue(property.value, property.type);
+    return protos.PropertyValue.create({
+      name: property.name,
+      dataType: protos.PropertyDefinition.DataType[property.type],
+      [dataTypes[property.type.toUpperCase()]]: value
+    });
+  });
+
+  const product = protos.ProductUpdateAction.create({
+    productType: protos.Product.ProductType.GS1,
+    productId: data.productId,
+    owner: data.orgName,
+    properties: propertiesList
+  });
+
+  const payloadBytes = protos.ProductPayload.encode({
+    action: protos.ProductPayload.Action.PRODUCT_UPDATE,
+    timestamp: Date.now(),
+    productUpdate: product
+  }).finish();
+
+  const txn = new SabreTransactionBuilder({
+    name: 'grid_product',
+    version: ProductVersion,
+    prefix: ProductNamespace
+  })
+    .withBatcherPublicKey(signer.getPublicKey())
+    .withFamilyName('grid_product')
+    .withFamilyVersion(ProductVersion)
+    .withInputs([
+      buildProductAddress(data.productId, 'gs1'),
+      buildOrganizationAddess(data.orgName),
+      buildAgentAddress(keys.publicKey),
+      buildSchemaAddress('product')
+    ])
+    .withOutputs([buildProductAddress(data.productId, 'gs1')])
+    .withPayload(payloadBytes)
+    .build(signer);
+
+  const batch = new BatchBuilder().withTransactions([txn]).build(signer);
+
+  data.services.forEach(async service => {
+    await submitBatchList(`${gridURL}/batches?service_id=${service}`, batch);
+  });
+  callbackFn();
+}
+
 export async function addProduct(data, keys, callbackFn) {
   const privateKey = Secp256k1PrivateKey.fromHex(keys.privateKey);
   const signer = new Secp256k1Signer(privateKey);
