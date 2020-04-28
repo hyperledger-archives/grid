@@ -52,9 +52,9 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
-        --registry file:///configs/nodes.yaml \
+        --registries file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
-        --network-endpoint tcps://0.0.0.0:8044 \
+        --network-endpoints tcps://0.0.0.0:8044 \
         --node-id alpha-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
@@ -136,9 +136,9 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
-        --registry file:///configs/nodes.yaml \
+        --registries file:///configs/nodes.yaml \
         --bind 0.0.0.0:8085 \
-        --network-endpoint tcps://0.0.0.0:8044 \
+        --network-endpoints tcps://0.0.0.0:8044 \
         --node-id beta-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
