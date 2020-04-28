@@ -1,0 +1,8 @@
+{
+  "short_name": "Profile Sapling",
+  "name": "Canopy Profile Sapling",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
