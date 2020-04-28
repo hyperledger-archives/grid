@@ -29,7 +29,12 @@ use diesel::{
 
 pub fn insert_grid_schemas(conn: &PgConnection, schemas: &[NewGridSchema]) -> QueryResult<()> {
     for schema in schemas {
-        update_grid_schema_end_commit_num(conn, &schema.name, schema.start_commit_num)?;
+        update_grid_schema_end_commit_num(
+            conn,
+            &schema.name,
+            schema.service_id.as_deref(),
+            schema.start_commit_num,
+        )?;
     }
 
     insert_into(grid_schema::table)
@@ -46,6 +51,7 @@ pub fn insert_grid_property_definitions(
         update_definition_end_commit_num(
             conn,
             &definition.name,
+            definition.service_id.as_deref(),
             &definition.schema_name,
             definition.start_commit_num,
         )?;
@@ -60,35 +66,68 @@ pub fn insert_grid_property_definitions(
 pub fn update_grid_schema_end_commit_num(
     conn: &PgConnection,
     name: &str,
+    service_id: Option<&str>,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(grid_schema::table)
-        .filter(
-            grid_schema::name
-                .eq(name)
-                .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(grid_schema::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(grid_schema::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                grid_schema::name
+                    .eq(name)
+                    .and(grid_schema::service_id.eq(service_id))
+                    .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(grid_schema::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                grid_schema::name
+                    .eq(name)
+                    .and(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(grid_schema::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn update_definition_end_commit_num(
     conn: &PgConnection,
     name: &str,
+    service_id: Option<&str>,
     schema_name: &str,
     current_commit_num: i64,
 ) -> QueryResult<()> {
-    update(grid_property_definition::table)
-        .filter(
-            grid_property_definition::schema_name
-                .eq(schema_name)
-                .and(grid_property_definition::name.eq(name))
-                .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
-        )
-        .set(grid_property_definition::end_commit_num.eq(current_commit_num))
-        .execute(conn)
-        .map(|_| ())
+    let update = update(grid_property_definition::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(
+                grid_property_definition::schema_name
+                    .eq(schema_name)
+                    .and(grid_property_definition::name.eq(name))
+                    .and(grid_property_definition::service_id.eq(service_id))
+                    .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(grid_property_definition::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                grid_property_definition::schema_name
+                    .eq(schema_name)
+                    .and(grid_property_definition::name.eq(name))
+                    .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .set(grid_property_definition::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
 }
 
 pub fn list_grid_schemas(
