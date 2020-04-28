@@ -17,7 +17,7 @@
 
 use sabre_sdk::protocol::payload::{ActionBuildError, SabrePayloadBuildError};
 use sawtooth_sdk::signing::Error as SigningError;
-use splinter::{events, service::scabbard::client::Error as ScabbardError};
+use splinter::{events, service::scabbard::client::ScabbardClientError};
 use std::error::Error;
 use std::fmt;
 
@@ -151,8 +151,8 @@ impl From<SigningError> for AppAuthHandlerError {
     }
 }
 
-impl From<ScabbardError> for AppAuthHandlerError {
-    fn from(err: ScabbardError) -> Self {
+impl From<ScabbardClientError> for AppAuthHandlerError {
+    fn from(err: ScabbardClientError) -> Self {
         AppAuthHandlerError::ScabbardError(err.to_string())
     }
 }
