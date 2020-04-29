@@ -27,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "node ./scripts/build.js",
+    "package": "rm -rf package && mkdir package && cp -r ./build/static/** package && tar -jcvf profile_$npm_config_sapling_version.sapling package",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "add-to-canopy": "mkdir -p ../../sapling-dev-server/profile && cp -r ./build/static/** ../../sapling-dev-server/profile",
