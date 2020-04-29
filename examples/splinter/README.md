@@ -33,7 +33,7 @@ used this procedure before, run the following command to ensure that your
 images are up to date:
 
 ```
-$ docker-compose -f examples/splinter/docker-compose.yaml pull generate-key-registry db-alpha scabbard-cli-alpha splinterd-alpha
+$ docker-compose -f examples/splinter/docker-compose.yaml pull generate-registry db-alpha scabbard-cli-alpha splinterd-alpha
 ```
 
 ## Set Up and Run Grid
@@ -81,7 +81,7 @@ circuit is created.
 
    ```
    root@splinterd-alpha:/# splinter circuit propose \
-      --key /key_registry_shared/alpha.priv \
+      --key /registry/alpha.priv \
       --url http://splinterd-alpha:8085  \
       --node alpha-node-000::tcps://splinterd-alpha:8044 \
       --node beta-node-000::tcps://splinterd-beta:8044 \
@@ -184,7 +184,7 @@ circuit is created.
 
 9. Then vote to accept the proposal.
 
-   `root@splinterd-beta:/# splinter circuit vote --key /key_registry_shared/beta.priv --url http://splinterd-beta:8085 $CIRCUIT_ID --accept`
+   `root@splinterd-beta:/# splinter circuit vote --key /registry/beta.priv --url http://splinterd-beta:8085 $CIRCUIT_ID --accept`
 
 10. Run the following command on each node to verify that the new circuit has
     been created. The circuit information should be the same on both nodes.

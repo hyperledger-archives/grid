@@ -16,7 +16,7 @@ version: '3.6'
 
 volumes:
   contracts-shared:
-  key-registry:
+  registry:
   gridd-alpha:
   gridd-beta:
   gridd-gamma:
@@ -85,22 +85,62 @@ services:
         cp /tmp/grid-track-and-trace*.scar /usr/share/scar
       "
 
-  generate-key-registry:
+  generate-registry:
     image: splintercommunity/splinter-cli:master
     volumes:
-      - key-registry:/key_registry
-      - ./configs:/input
+      - registry:/registry
     command: |
       bash -c "
-        if [ ! -f /key_registry/keys.yaml ]
+        if [ ! -f /registry/nodes.yaml ]
         then
-          splinter admin keyregistry \
-            -i /input/key_registry_spec.yaml \
-            -d /key_registry \
-            --force
+          # generate keys
+          splinter admin keygen alpha -d /registry
+          splinter admin keygen beta -d /registry
+          splinter admin keygen gamma -d /registry
+          # check if splinterd-alpha is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # check if splinterd-beta is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # check if splinterd-gamma is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-gamma:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # build the registry
+          splinter registry build \
+            http://splinterd-alpha:8085 \
+            --file /registry/nodes.yaml \
+            --key-file /registry/alice.pub \
+            --metadata organization='Alpha'
+          splinter registry build \
+            http://splinterd-node-bubba:8085 \
+            --file /registry/nodes.yaml \
+            --key-file /registry/bob.pub \
+            --metadata organization='Beta'
+          splinter registry build \
+            http://splinterd-node-gamma:8085 \
+            --file /registry/nodes.yaml \
+            --key-file /registry/grace.pub \
+            --metadata organization='Gamma'
         fi
       "
 
+  registry-server:
+    image: httpd:2.4
+    container_name: registry-server
+    restart: always
+    expose:
+      - 80
+    ports:
+        - "8099:80"
+    volumes:
+      - registry:/usr/local/apache2/htdocs
 
 # ---== alpha node ==---
 
@@ -163,33 +203,29 @@ services:
     hostname: splinterd-alpha
     expose:
       - 8044
+      - 8085
     ports:
       - "8044:8044"
       - "8085:8085"
     volumes:
       - contracts-shared:/usr/share/scar
-      - key-registry:/key_registry_shared
-      - ./configs:/configs
+      - registry:/registry
     entrypoint: |
       bash -c "
-        while [ ! -f /key_registry_shared/keys.yaml ]; do \
-          echo 'waiting for key registry'; \
-          sleep 1; \
-        done && \
         until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
         done
-        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
-        --registries file:///configs/nodes.yaml \
+        --registries http://registry-server:80/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
@@ -300,32 +336,28 @@ services:
     hostname: splinterd-beta
     expose:
       - 8044
+      - 8085
     ports:
       - "8045:8044"
     volumes:
       - contracts-shared:/usr/share/scar
-      - key-registry:/key_registry_shared
-      - ./configs:/configs
+      - registry:/registry
     entrypoint: |
       bash -c "
-        while [ ! -f /key_registry_shared/keys.yaml ]; do \
-          echo 'waiting for key registry'; \
-          sleep 1; \
-        done && \
         until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
         done
-        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
-        --registries file:///configs/nodes.yaml \
+        --registries http://registry-server:80/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
@@ -429,32 +461,28 @@ services:
     hostname: splinterd-gamma
     expose:
       - 8044
+      - 8085
     ports:
       - "8046:8044"
     volumes:
       - contracts-shared:/usr/share/scar
-      - key-registry:/key_registry_shared
-      - ./configs:/configs
+      - registry:/registry
     entrypoint: |
       bash -c "
-        while [ ! -f /key_registry_shared/keys.yaml ]; do \
-          echo 'waiting for key registry'; \
-          sleep 1; \
-        done && \
         until PGPASSWORD=admin psql -h splinter-db-gamma -U admin -d splinter -c '\q'; do
           >&2 echo \"Database is unavailable - sleeping\"
           sleep 1
         done
-        cp /key_registry_shared/keys.yaml /var/lib/splinter && \
         if [ ! -f /etc/splinter/certs/private/server.key ]
         then
           splinter-cli cert generate --force
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
         splinterd -vv \
-        --registries file:///configs/nodes.yaml \
+        --registries http://registry-server:80/nodes.yaml \
         --bind 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoint tcps://splinterd-gamma:8044 \
         --node-id gamma-node-000 \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
