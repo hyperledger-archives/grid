@@ -149,9 +149,9 @@ services:
         cp -a /splinter_shared/. /etc/splinter/certs && \
         mv /etc/splinter/nodes.yaml.example /etc/splinter/nodes.yaml && \
         splinterd -vv \
-        --registry file:///etc/splinter/nodes.yaml\
+        --registries file:///etc/splinter/nodes.yaml\
         --bind 0.0.0.0:8085 \
-        --network-endpoint tcps://0.0.0.0:8044 \
+        --network-endpoints tcps://0.0.0.0:8044 \
         --node-id splinter-node \
         --service-endpoint tcp://0.0.0.0:8043 \
         --storage yaml \
