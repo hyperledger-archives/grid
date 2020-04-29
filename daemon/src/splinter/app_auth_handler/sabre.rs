@@ -16,6 +16,7 @@
  */
 
 use std::convert::TryInto;
+use std::time::Duration;
 
 use sabre_sdk::protocol::payload::{
     CreateContractActionBuilder, CreateContractRegistryActionBuilder,
@@ -139,7 +140,7 @@ pub fn setup_grid(
         .submit(
             &ServiceId::new(circuit_id, service_id),
             vec![batch],
-            Some(SCABBARD_SUBMISSION_WAIT_SECS),
+            Some(Duration::from_secs(SCABBARD_SUBMISSION_WAIT_SECS)),
         )
         .map_err(|err| AppAuthHandlerError::BatchSubmitError(err.to_string()))?;
 
