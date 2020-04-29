@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Canopy
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
-**/coverage
-**/build
-**/dist
-**/package-lock.json
+# Dockerfile for running unit tests and lint on the profile sapling
+FROM node:lts-alpine
+
+WORKDIR /saplings/profile
+
+COPY package*.json ./
+
+RUN apk add git
+
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
+
+COPY . .

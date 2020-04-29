@@ -1,0 +1,63 @@
+{
+  "name": "profile",
+  "version": "0.0.0-alpha",
+  "license": "Apache-2.0",
+  "author": "Cargill Incorporated",
+  "private": true,
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-regular-svg-icons": "^5.11.2",
+    "@fortawesome/free-solid-svg-icons": "^5.12.0",
+    "@fortawesome/react-fontawesome": "^0.1.8",
+    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/react": "^9.3.2",
+    "@testing-library/user-event": "^7.1.2",
+    "classnames": "^2.2.6",
+    "js-sha256": "^0.9.0",
+    "node-sass": "^4.13.0",
+    "prop-types": "^15.7.2",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "react-scripts": "^3.4.0",
+    "rewire": "^4.0.1",
+    "sjcl": "^1.0.8",
+    "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
+    "transact-sdk-javascript": "github:hyperledger/transact-sdk-javascript#master"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "node ./scripts/build.js",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "add-to-canopy": "mkdir -p ../../sapling-dev-server/profile && cp -r ./build/static/** ../../sapling-dev-server/profile",
+    "deploy": "npm run build && npm run add-to-canopy",
+    "lint": "eslint .",
+    "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "eslint": "^6.6.0",
+    "eslint-config-airbnb": "18.0.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-prettier": "^3.1.1",
+    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-react-hooks": "^1.7.0",
+    "nodemon": "^2.0.2"
+  }
+}

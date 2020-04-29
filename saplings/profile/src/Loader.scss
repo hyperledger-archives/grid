@@ -1,0 +1,98 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@keyframes bounce {
+  45% {
+    transform: translateY(-1rem);
+  }
+  95% {
+    transform: translateY(0.2rem);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+#profile {
+  .loader {
+    display: block;
+    width: 6rem;
+    height: fit-content;
+    position: relative;
+    margin: auto;
+    top: 50%;
+
+    .dots {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+
+      > .dot {
+        width: 1.5rem;
+        height: 1.5rem;
+        background: #333333;
+        border-radius: 50%;
+        animation-duration: 0.9s;
+        animation-name: bounce;
+        animation-iteration-count: infinite;
+      }
+
+      :nth-child(2) {
+        animation-delay: 0.3s;
+      }
+
+      :last-child {
+        animation-delay: 0.6s;
+      }
+    }
+
+    &.complete {
+      .dots {
+        display: none;
+      }
+    }
+
+    .state {
+      width: 0;
+      height: 0;
+      display: none;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    &.complete {
+      .state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        margin: auto;
+        font-size: 2rem;
+
+        &.success {
+          border: 3px solid var(--color-success);
+          color: var(--color-success);
+        }
+
+        &.failure {
+          border: 3px solid var(--color-failure);
+          color: var(--color-failure);
+        }
+      }
+    }
+  }
+}

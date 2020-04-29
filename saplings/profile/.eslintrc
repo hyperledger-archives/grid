@@ -1,0 +1,33 @@
+{
+  "env": {
+    "es6": true,
+    "jest": true,
+    "browser": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
+  "extends": [
+    "airbnb",
+    "prettier",
+    "prettier/react"
+  ],
+  "rules": {
+    "react/jsx-filename-extension": 0,
+    "react/prefer-stateless-function": 0,
+    "react/button-has-type": 0,
+    "react/forbid-prop-types": 0,
+    "import/prefer-default-export": 0,
+    "camelcase": 0,
+    "no-underscore-dangle": 0
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "paths": [
+          "src"
+        ]
+      }
+    }
+  }
+}

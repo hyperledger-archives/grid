@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Canopy
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
-**/coverage
-**/build
-**/dist
-**/package-lock.json
+saplings/*
+build/*
+sapling-dev-server/*
+scripts/build.js
