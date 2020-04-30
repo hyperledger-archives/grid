@@ -16,7 +16,6 @@
 
   volumes:
     contracts:
-    key-registry:
     gridd:
 
   services:
@@ -79,22 +78,6 @@
       entrypoint: |
         bash -c "
           cp /tmp/grid-track-and-trace*.scar /usr/share/scar
-        "
-
-    generate-key-registry:
-      image: splintercommunity/splinter-cli:master
-      volumes:
-        - key-registry:/key_registry
-        - ../../examples/splinter/configs:/input
-      command: |
-        bash -c "
-          if [ ! -f /key_registry/keys.yaml ]
-          then
-            splinter admin keyregistry \
-              -i /input/key_registry_spec.yaml \
-              -d /key_registry \
-              --force
-          fi
         "
 
     grid-db:
@@ -163,26 +146,18 @@
         - "8085:8085"
       volumes:
         - contracts:/usr/share/scar
-        - key-registry:/key_registry
-        - ./configs:/configs
       entrypoint: |
         bash -c "
-          while [ ! -f /key_registry/keys.yaml ]; do \
-            echo 'waiting for key registry'; \
-            sleep 1; \
-          done && \
           until PGPASSWORD=admin psql -h splinter-db -U admin -d splinter -c '\q'; do
             >&2 echo \"Database is unavailable - sleeping\"
             sleep 1
           done
-          cp /key_registry/keys.yaml /var/lib/splinter && \
           if [ ! -f /etc/splinter/certs/private/server.key ]
           then
             splinter-cli cert generate --force
           fi && \
           splinter database migrate -C postgres://admin:admin@splinter-db:5432/splinter && \
           splinterd -vv \
-          --registries file:///configs/nodes.yaml \
           --bind 0.0.0.0:8085 \
           --network-endpoints tcps://0.0.0.0:8044 \
           --node-id alpha-node-000 \
