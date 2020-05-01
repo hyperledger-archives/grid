@@ -34,6 +34,16 @@ interface FormEventHandler {
   (this: HTMLFormElement, event: Event): void;
 }
 
+interface Canopy {
+  redirectedFrom: string;
+}
+
+declare global {
+  interface Window {
+    $CANOPY: Canopy;
+  }
+}
+
 registerConfigSapling('login', () => {
   let shouldRender = false;
   const canopyURL = new URL(window.location.href);
@@ -145,7 +155,9 @@ registerConfigSapling('login', () => {
               userId: response.data.user_id,
               displayName: user.displayName
             });
-            window.location.href = canopyURL.href;
+            const redirectedFrom = window.$CANOPY.redirectedFrom || '/';
+            window.$CANOPY.redirectedFrom = undefined;
+            window.location.href = redirectedFrom;
           } catch (err) {
             switch (err.response.status) {
               case 400:
