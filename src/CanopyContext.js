@@ -16,6 +16,7 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { createBrowserHistory } from 'history';
 
 import { get } from './request';
 import {
@@ -25,6 +26,7 @@ import {
 } from './loadSaplings';
 
 export const CanopyContext = createContext({});
+const history = createBrowserHistory();
 
 const fetchUserSaplings = async saplingURL => {
   const response = await get(`${saplingURL}/userSaplings`);
@@ -108,11 +110,17 @@ export function CanopyProvider({
   }, []);
 
   useEffect(() => {
-    fetchUserSaplings(saplingURL).then(saplings => {
-      mountSaplingStyles(saplings);
-      mountCurrentSapling(saplings);
-      setUserSaplings(saplings);
-    });
+    if (sessionUser) {
+      fetchUserSaplings(saplingURL).then(saplings => {
+        mountSaplingStyles(saplings);
+        mountCurrentSapling(saplings);
+        setUserSaplings(saplings);
+      });
+    } else {
+      window.$CANOPY.hideCanopy();
+      window.$CANOPY.redirectedFrom = window.location.href;
+      history.push('/login');
+    }
   }, [saplingURL]);
 
   return (
