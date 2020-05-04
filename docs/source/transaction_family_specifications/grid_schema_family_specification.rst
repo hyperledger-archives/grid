@@ -502,7 +502,7 @@ platforms.
 
 The header for the transactions includes the following:
 
-- ``family_name``: ``"grid_schema"``
+- ``family_name``: ``"grid-schema"``
 - ``family_version``: ``"1.0"``
 - ``namespaces``: ``[ "621dee" ]``
 

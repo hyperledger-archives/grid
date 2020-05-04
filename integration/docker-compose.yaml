@@ -58,11 +58,11 @@ services:
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        sabre cr --create grid_schema --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre cr --create grid-schema --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/schema.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create 621dee01 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm 621dee01 grid_schema --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d grid_schema --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee01 grid-schema --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm cad11d grid-schema --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= grid schema contract is loaded =========---------'
         tail -f /dev/null
       "
