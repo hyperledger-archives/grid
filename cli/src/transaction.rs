@@ -44,7 +44,7 @@ const GRID_SCHEMA_FAMILY_NAME: &str = "grid_schema";
 const GRID_SCHEMA_FAMILY_VERSION: &str = "1.0";
 
 pub const GRID_PRODUCT_NAMESPACE: &str = "621dee02";
-const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
+const GRID_PRODUCT_FAMILY_NAME: &str = "grid-product";
 const GRID_PRODUCT_FAMILY_VERSION: &str = "1.0";
 
 const SABRE_FAMILY_NAME: &str = "sabre";

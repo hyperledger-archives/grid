@@ -403,7 +403,7 @@ circuits.
    ```
    root@scabbard-cli-beta:/# scabbard contract list -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::gsBB
    NAME        VERSIONS OWNERS
-   grid_product 1.0      <gridd-alpha public key>
+   grid-product 1.0      <gridd-alpha public key>
    pike         0.1      <gridd-alpha public key>
    sawtooth-xo  1.0      <gridd-alpha public key>
    ```

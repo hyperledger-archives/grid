@@ -118,12 +118,12 @@ export async function editProduct(data, keys, callbackFn) {
   }).finish();
 
   const txn = new SabreTransactionBuilder({
-    name: 'grid_product',
+    name: 'grid-product',
     version: ProductVersion,
     prefix: ProductNamespace
   })
     .withBatcherPublicKey(signer.getPublicKey())
-    .withFamilyName('grid_product')
+    .withFamilyName('grid-product')
     .withFamilyVersion(ProductVersion)
     .withInputs([
       buildProductAddress(data.productId, 'gs1'),
@@ -176,12 +176,12 @@ export async function addProduct(data, keys, callbackFn) {
   }).finish();
 
   const txn = new SabreTransactionBuilder({
-    name: 'grid_product',
+    name: 'grid-product',
     version: ProductVersion,
     prefix: ProductNamespace
   })
     .withBatcherPublicKey(signer.getPublicKey())
-    .withFamilyName('grid_product')
+    .withFamilyName('grid-product')
     .withFamilyVersion(ProductVersion)
     .withInputs([
       buildProductAddress(data.productId, 'gs1'),

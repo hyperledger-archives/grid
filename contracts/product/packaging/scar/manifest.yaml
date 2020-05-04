@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: grid_product
+name: grid-product
 version: '1.0'
 inputs:
   - '621dee01'
