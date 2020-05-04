@@ -27,6 +27,7 @@ import {
   faBusinessTime,
   faCheck
 } from '@fortawesome/free-solid-svg-icons';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { library } from '@fortawesome/fontawesome-svg-core';
 
 import MainHeader from './components/MainHeader';
@@ -49,8 +50,17 @@ function App() {
   return (
     <div className="circuits-app">
       <LocalNodeProvider>
-        <MainHeader />
-        <Content />
+        <Router>
+          <Switch>
+            <Route exact path="/circuits">
+              <MainHeader />
+              <Content />
+            </Route>
+            <Route path="/circuits/propose">
+              <h5>Propose Circuit</h5>
+            </Route>
+          </Switch>
+        </Router>
       </LocalNodeProvider>
     </div>
   );
