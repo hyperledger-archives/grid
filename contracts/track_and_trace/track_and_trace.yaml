@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: grid_track_and_trace
+name: grid-track-and-trace
 version: '1.0'
 wasm: /tmp/grid-track-and-trace-tp.wasm
 inputs:

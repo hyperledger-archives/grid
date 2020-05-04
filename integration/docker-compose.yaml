@@ -33,12 +33,12 @@ services:
     entrypoint: |
       bash -c "
         while true; do curl -s http://grid-sawtooth-rest-api:8008/state | grep -q head; if [ $$? -eq 0 ]; then break; fi; sleep 0.5; done;
-        sabre cr --create grid_track_and_trace --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre cr --create grid-track-and-trace --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre upload --filename /tmp/track_and_trace.yaml --key /grid-shared/my_key --url http://grid-sawtooth-rest-api:8008 --wait 30
         sabre ns --create a43b46 --key /grid-shared/my_key --owner $$(cat /grid-shared/my_key.pub) --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm a43b46 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm 621dee01 grid_track_and_trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
-        sabre perm cad11d grid_track_and_trace --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm a43b46 grid-track-and-trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm 621dee01 grid-track-and-trace --key /grid-shared/my_key --read --write --url http://grid-sawtooth-rest-api:8008 --wait 30
+        sabre perm cad11d grid-track-and-trace --key /grid-shared/my_key --read --url http://grid-sawtooth-rest-api:8008 --wait 30
         echo '---------========= track and trace contract is loaded =========---------'
         tail -f /dev/null
       "

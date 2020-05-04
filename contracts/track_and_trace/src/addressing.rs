@@ -15,7 +15,7 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
-const FAMILY_NAME: &str = "grid_track_and_trace";
+const FAMILY_NAME: &str = "grid-track-and-trace";
 const PROPERTY: &str = "ea";
 const PROPOSAL: &str = "aa";
 const RECORD: &str = "ec";
