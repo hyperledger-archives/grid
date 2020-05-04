@@ -351,7 +351,7 @@ circuits.
 4. Create the contract registry for the new smart contract.
 
    ```
-   root@scabbard-cli-alpha:/# scabbard cr create sawtooth_xo \
+   root@scabbard-cli-alpha:/# scabbard cr create sawtooth-xo \
    --owner $(cat /root/.splinter/keys/gridd.pub) \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
@@ -381,7 +381,7 @@ circuits.
 7. Grant the appropriate contract namespace permissions.
 
    ```
-   root@scabbard-cli-alpha:/# scabbard perm 5b7349 sawtooth_xo --read --write \
+   root@scabbard-cli-alpha:/# scabbard perm 5b7349 sawtooth-xo --read --write \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
    --service-id $CIRCUIT_ID::gsAA
@@ -405,14 +405,14 @@ circuits.
    NAME        VERSIONS OWNERS
    grid_product 1.0      <gridd-alpha public key>
    pike         0.1      <gridd-alpha public key>
-   sawtooth_xo  1.0      <gridd-alpha public key>
+   sawtooth-xo  1.0      <gridd-alpha public key>
    ```
 
 10. Display the xo smart contract.
 
    ```
-   root@scabbard-cli-beta:/# scabbard contract show sawtooth_xo:1.0 -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::gsBB
-   sawtooth_xo 1.0
+   root@scabbard-cli-beta:/# scabbard contract show sawtooth-xo:1.0 -U 'http://splinterd-beta:8085' --service-id $CIRCUIT_ID::gsBB
+   sawtooth-xo 1.0
      inputs:
      - 5b7349
      outputs:
