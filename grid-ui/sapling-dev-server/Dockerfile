@@ -25,7 +25,10 @@ COPY ./grid-ui /saplings
 
 COPY ./sdk/protos /saplings/protos
 
-RUN cd ./saplings/register-login && \
+RUN git clone https://github.com/Cargill/splinter-ui
+
+RUN cp -r splinter-ui/saplings/register-login /saplings && \
+  cd ./saplings/register-login && \
   npm config set unsafe-perm true && \
   npm install && \
   yarn deploy
@@ -35,7 +38,8 @@ RUN cd ./saplings/product && \
   npm run generate-proto-files ../../protos && \
   yarn deploy
 
-RUN cd ./saplings/profile && \
+RUN cp -r splinter-ui/saplings/profile /saplings && \
+  cd ./saplings/profile && \
   npm install && \
   yarn deploy
 
