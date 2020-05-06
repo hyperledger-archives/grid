@@ -19,8 +19,7 @@ import {
   getUser,
   registerApp,
   setUser,
-  getSharedConfig,
-  hideCanopy
+  getSharedConfig
 } from 'splinter-saplingjs';
 import { createBrowserHistory } from 'history';
 import axios from 'axios';
@@ -58,8 +57,6 @@ registerConfigSapling('login', () => {
   }
 
   if (shouldRender) {
-    hideCanopy();
-
     registerApp(domNode => {
       const div = domNode as HTMLDivElement;
       div.innerHTML = html;
