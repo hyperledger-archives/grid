@@ -149,7 +149,7 @@ services:
         cp -a /splinter_shared/. /etc/splinter/certs && \
         mv /etc/splinter/nodes.yaml.example /etc/splinter/nodes.yaml && \
         splinterd -vv \
-        --bind 0.0.0.0:8085 \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --node-id splinter-node \
         --service-endpoint tcp://0.0.0.0:8043 \
