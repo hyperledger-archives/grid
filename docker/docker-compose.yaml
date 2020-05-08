@@ -46,7 +46,7 @@ services:
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --bind 0.0.0.0:8085 \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoints tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
@@ -124,7 +124,7 @@ services:
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
         --registries http://registry-server:80/registry.yaml \
-        --bind 0.0.0.0:8085 \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoints tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
