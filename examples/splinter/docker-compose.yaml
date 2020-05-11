@@ -91,7 +91,7 @@ services:
       - registry:/registry
     command: |
       bash -c "
-        if [ ! -f /registry/nodes.yaml ]
+        if [ ! -f /registry/registry.yaml ]
         then
           # generate keys
           splinter admin keygen alpha -d /registry
@@ -115,17 +115,17 @@ services:
           # build the registry
           splinter registry build \
             http://splinterd-alpha:8085 \
-            --file /registry/nodes.yaml \
+            --file /registry/registry.yaml \
             --key-file /registry/alpha.pub \
             --metadata organization='Alpha'
           splinter registry build \
             http://splinterd-beta:8085 \
-            --file /registry/nodes.yaml \
+            --file /registry/registry.yaml \
             --key-file /registry/beta.pub \
             --metadata organization='Beta'
           splinter registry build \
             http://splinterd-gamma:8085 \
-            --file /registry/nodes.yaml \
+            --file /registry/registry.yaml \
             --key-file /registry/gamma.pub \
             --metadata organization='Gamma'
         fi
@@ -222,8 +222,8 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
-        --registries http://registry-server:80/nodes.yaml \
-        --bind 0.0.0.0:8085 \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
@@ -354,8 +354,8 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
-        --registries http://registry-server:80/nodes.yaml \
-        --bind 0.0.0.0:8085 \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
@@ -479,8 +479,8 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-gamma:5432/splinter && \
         splinterd -vv \
-        --registries http://registry-server:80/nodes.yaml \
-        --bind 0.0.0.0:8085 \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoint tcps://splinterd-gamma:8044 \
         --node-id gamma-node-000 \

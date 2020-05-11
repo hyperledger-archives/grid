@@ -158,7 +158,7 @@
           fi && \
           splinter database migrate -C postgres://admin:admin@splinter-db:5432/splinter && \
           splinterd -vv \
-          --bind 0.0.0.0:8085 \
+          --rest-api-endpoint 0.0.0.0:8085 \
           --network-endpoints tcps://0.0.0.0:8044 \
           --node-id alpha-node-000 \
           --service-endpoint tcp://0.0.0.0:8043 \
