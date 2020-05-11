@@ -17,7 +17,8 @@
 
 use sabre_sdk::protocol::payload::{ActionBuildError, SabrePayloadBuildError};
 use sawtooth_sdk::signing::Error as SigningError;
-use splinter::{events, service::scabbard::client::ScabbardClientError};
+use scabbard::client::ScabbardClientError;
+use splinter::events;
 use std::error::Error;
 use std::fmt;
 
