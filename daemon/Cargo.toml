@@ -46,7 +46,7 @@ protobuf = "2"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
 sabre-sdk = { version = "0.5", optional = true }
 sawtooth-sdk = { version = "0.4", features = ["transact-compat"] }
-scabbard = { git = "https://github.com/Cargill/splinter", optional = true, features = ["client", "events"] }
+scabbard = { version = "0.3", optional = true, features = ["client", "events"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 transact = { version = "0.2", optional = true }
