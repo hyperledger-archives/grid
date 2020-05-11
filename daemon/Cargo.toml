@@ -54,7 +54,7 @@ url = "2.1"
 uuid = { version = "0.6", features = ["v4"] }
 
 [dependencies.splinter]
-git = "https://github.com/Cargill/splinter"
+version = "0.3"
 optional = true
 features = [ "events" ]
 
