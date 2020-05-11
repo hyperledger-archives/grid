@@ -45,8 +45,8 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
         splinterd -vv \
-        --registries http://registry-server:80/nodes.yaml \
-        --bind 0.0.0.0:8085 \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoints tcps://splinterd-alpha:8044 \
         --node-id alpha-node-000 \
@@ -123,8 +123,8 @@ services:
         fi && \
         splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
         splinterd -vv \
-        --registries http://registry-server:80/nodes.yaml \
-        --bind 0.0.0.0:8085 \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
         --network-endpoints tcps://0.0.0.0:8044 \
         --advertised-endpoints tcps://splinterd-beta:8044 \
         --node-id beta-node-000 \
@@ -186,7 +186,7 @@ services:
       - registry:/registry
     command: |
       bash -c "
-        if [ ! -f /registry/nodes.yaml ]
+        if [ ! -f /registry/registry.yaml ]
         then
           # generate keys
           splinter admin keygen alice -d /registry
@@ -204,12 +204,12 @@ services:
           # build the registry
           splinter registry build \
             http://splinterd-alpha:8085 \
-            --file /registry/nodes.yaml \
+            --file /registry/registry.yaml \
             --key-file /registry/alice.pub \
             --metadata organization='Alpha'
           splinter registry build \
             http://splinterd-beta:8085 \
-            --file /registry/nodes.yaml \
+            --file /registry/registry.yaml \
             --key-file /registry/bob.pub \
             --metadata organization='Beta'
         fi
