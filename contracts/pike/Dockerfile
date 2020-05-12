@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v1 as grid-pike-builder
+FROM hyperledger/grid-dev:v2 as grid-pike-builder
 
+# Copy over Cargo.toml files
+COPY Cargo.toml /build/Cargo.toml
+COPY cli/Cargo.toml /build/cli/Cargo.toml
+COPY daemon/Cargo.toml /build/daemon/Cargo.toml
+COPY sdk/Cargo.toml /build/sdk/Cargo.toml
+
+COPY contracts/pike/Cargo.toml /build/contracts/pike/Cargo.toml
+COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
+COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
+COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
+
+# Copy over build files
 COPY contracts/pike /build/contracts/pike
 COPY sdk/ /build/sdk/
 
-# Do a release build to cache dependencies
 WORKDIR /build/contracts/pike
 
 # Build the contract

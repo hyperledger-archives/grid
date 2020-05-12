@@ -86,3 +86,7 @@ RUN rm -f \
     target/release/deps/grid* \
     target/wasm32-unknown-unknown/release/grid* \
     target/wasm32-unknown-unknown/release/deps/grid*
+
+# Clean up leftover files
+RUN find . -name 'Cargo.toml' -exec \
+    sh -c 'x="{}"; rm "$x" ' \;

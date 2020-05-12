@@ -26,7 +26,7 @@ use sawtooth_sdk::signing::{
     create_context, secp256k1::Secp256k1PrivateKey, transact::TransactSigner,
     Signer as SawtoothSigner,
 };
-use splinter::service::scabbard::client::{ScabbardClient, ServiceId};
+use scabbard::client::{ScabbardClient, ServiceId};
 use transact::{
     contract::archive::{default_scar_path, SmartContractArchive},
     protocol::{batch::BatchBuilder, transaction::Transaction},

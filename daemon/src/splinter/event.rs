@@ -18,8 +18,8 @@
 use std::cell::RefCell;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
 
+use scabbard::service::{StateChange as ScabbardStateChange, StateChangeEvent};
 use splinter::events::{Igniter, WebSocketClient, WebSocketError, WsResponse};
-use splinter::service::scabbard::{StateChange as ScabbardStateChange, StateChangeEvent};
 
 use crate::event::{
     CommitEvent, EventConnection, EventConnectionUnsubscriber, EventIoError, StateChange,
