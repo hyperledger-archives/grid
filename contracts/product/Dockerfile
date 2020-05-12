@@ -30,7 +30,6 @@ COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo
 COPY contracts/product /build/contracts/product
 COPY sdk/ /build/sdk/
 
-# Do a release build to cache dependencies
 WORKDIR /build/contracts/product
 
 # Build the contract
