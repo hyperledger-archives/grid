@@ -14,6 +14,7 @@
   "scripts": {
     "test": "jest",
     "build": "webpack",
+    "package": "rm -rf package && mkdir package && cp -r ./dist/* package && tar -jcvf register-login_$npm_config_sapling_version.sapling package",
     "add-to-canopy": "cp ./dist/* ../../sapling-dev-server/",
     "deploy": "npm run build && npm run add-to-canopy",
     "format": "prettier --write \"**/*.+(ts|*rc|json|js)\"",

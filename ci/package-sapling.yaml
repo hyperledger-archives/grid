@@ -1,0 +1,74 @@
+# Copyright 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "3.7"
+
+services:
+
+  circuits:
+    image: package-sapling
+    build:
+      context: ../
+      dockerfile: ci/package-sapling.dockerfile
+    volumes:
+      - ../:/project
+      - ../build/:/build
+    environment:
+      - npm_config_sapling_version=${npm_config_sapling_version}
+    command: |
+      sh -c "
+        cd saplings/circuits
+        npm install
+        npm run build
+        npm run package
+        mv *.sapling /build
+      "
+
+  profile:
+    image: package-sapling
+    build:
+      context: ../
+      dockerfile: ci/package-sapling.dockerfile
+    volumes:
+      - ../:/project
+      - ../build/:/build
+    environment:
+      - npm_config_sapling_version=${npm_config_sapling_version}
+    command: |
+      sh -c "
+        cd saplings/profile
+        npm install
+        npm run build
+        npm run package
+        mv *.sapling /build
+      "
+
+  register-login:
+    image: package-sapling
+    build:
+      context: ../
+      dockerfile: ci/package-sapling.dockerfile
+    volumes:
+      - ../:/project
+      - ../build/:/build
+    environment:
+      - npm_config_sapling_version=${npm_config_sapling_version}
+    command: |
+      sh -c "
+        cd saplings/register-login
+        npm install
+        npm run build
+        npm run package
+        mv *.sapling /build
+      "

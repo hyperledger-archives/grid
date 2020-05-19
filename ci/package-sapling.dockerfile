@@ -1,4 +1,4 @@
-# Copyright 2018 Cargill Incorporated
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,41 +13,11 @@
 # limitations under the License.
 
 
-## Canopy
-# deps
-**/node_modules
-**/.pnp
-**/.pnp.js
-**/yarn.lock
-**/package-lock.json
+FROM node:lts-alpine as build-stage
 
-#testing
-**/coverage
+RUN apk update \
+ && apk add git
 
-# production
-**/build
-**/dist
-/canopy**/dist
-/canopy**/lib
+RUN npm config set unsafe-perm true
 
-/sapling-dev-server/circuits
-/sapling-dev-server/register-login.js
-/sapling-dev-server/profile
-
-# misc
-.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
-# packaging
-saplings/**/package
-**/*.sapling
-
-# editor
-**/.vscode
+WORKDIR /project
