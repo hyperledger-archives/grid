@@ -28,6 +28,7 @@ addons:
   apt:
     packages:
       - docker-ce
+  artifacts: true
 
 jobs:
     - stage: Lint/Unit Test Canopy
@@ -44,3 +45,12 @@ jobs:
     - stage: Lint Register-Login Sapling
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-register-login-sapling
+
+    - stage: Publish saplings
+      language: generic
+      before_deploy: curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
+      deploy:
+        - provider: script
+          script: bash ci/publish_saplings
+          on:
+            branch: master
