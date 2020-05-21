@@ -19,8 +19,7 @@ import {
   getUser,
   registerApp,
   setUser,
-  getSharedConfig,
-  hideCanopy
+  getSharedConfig
 } from 'splinter-saplingjs';
 import { createBrowserHistory } from 'history';
 import axios from 'axios';
@@ -32,6 +31,16 @@ const history = createBrowserHistory();
 
 interface FormEventHandler {
   (this: HTMLFormElement, event: Event): void;
+}
+
+interface Canopy {
+  redirectedFrom: string;
+}
+
+declare global {
+  interface Window {
+    $CANOPY: Canopy;
+  }
 }
 
 registerConfigSapling('login', () => {
@@ -48,8 +57,6 @@ registerConfigSapling('login', () => {
   }
 
   if (shouldRender) {
-    hideCanopy();
-
     registerApp(domNode => {
       const div = domNode as HTMLDivElement;
       div.innerHTML = html;
@@ -145,7 +152,9 @@ registerConfigSapling('login', () => {
               userId: response.data.user_id,
               displayName: user.displayName
             });
-            window.location.href = canopyURL.href;
+            const redirectedFrom = window.$CANOPY.redirectedFrom || '/';
+            window.$CANOPY.redirectedFrom = undefined;
+            window.location.href = redirectedFrom;
           } catch (err) {
             switch (err.response.status) {
               case 400:
