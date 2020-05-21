@@ -204,6 +204,8 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         config.endpoint().clone(),
     )?;
 
+    let reactor_shutdown_signaler = reactor.shutdown_signaler();
+
     let ctrlc_triggered = AtomicBool::new(false);
     ctrlc::set_handler(move || {
         if ctrlc_triggered.load(Ordering::SeqCst) {
@@ -212,6 +214,13 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         }
 
         ctrlc_triggered.store(true, Ordering::SeqCst);
+
+        if let Err(err) = reactor_shutdown_signaler.signal_shutdown() {
+            error!(
+                "Unable to signal shutdown to splinter event reactor: {}",
+                err
+            );
+        }
 
         rest_api_shutdown_handle.shutdown();
     })
@@ -224,8 +233,8 @@ fn run_splinter(config: GridConfig, connection_pool: ConnectionPool) -> Result<(
         })
         .and_then(|res| res.map_err(DaemonError::from))?;
 
-    if let Err(err) = reactor.shutdown() {
-        error!("unable to shutdown splinter event reactor: {}", err)
+    if let Err(err) = reactor.wait_for_shutdown() {
+        error!("Unable to shutdown splinter event reactor: {}", err);
     }
 
     Ok(())
