@@ -128,14 +128,14 @@
           "
 
     scabbard-cli:
-      image: splintercommunity/scabbard-cli:experimental
+      image: splintercommunity/scabbard-cli:0.4-experimental
       container_name: scabbard-cli
       hostname: scabbard-cli
       volumes:
         - gridd:/root/.splinter/keys
 
     splinterd:
-      image: splintercommunity/splinterd:experimental
+      image: splintercommunity/splinterd:0.4-experimental
       container_name: splinterd
       hostname: splinterd
       expose:
