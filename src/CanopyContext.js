@@ -71,7 +71,9 @@ export function CanopyProvider({
 
   window.$CANOPY.hideCanopy = () => {
     const sideNavElement = document.getElementById('root');
-    sideNavElement.classList.add('display-none');
+    if (sideNavElement) {
+      sideNavElement.classList.add('display-none');
+    }
   };
 
   window.$CANOPY.setUser = canopyUser => {
