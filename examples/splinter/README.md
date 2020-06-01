@@ -352,7 +352,7 @@ circuits.
 
    ```
    root@scabbard-cli-alpha:/# scabbard cr create sawtooth_xo \
-   --owner $(cat /root/.splinter/keys/gridd.pub) \
+   --owners $(cat /root/.splinter/keys/gridd.pub) \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
    --service-id $CIRCUIT_ID::gsAA
@@ -372,7 +372,7 @@ circuits.
 
    ```
    root@scabbard-cli-alpha:/# scabbard ns create 5b7349 \
-   --owner $(cat /root/.splinter/keys/gridd.pub) \
+   --owners $(cat /root/.splinter/keys/gridd.pub) \
    -k gridd \
    -U 'http://splinterd-alpha:8085' \
    --service-id $CIRCUIT_ID::gsAA
