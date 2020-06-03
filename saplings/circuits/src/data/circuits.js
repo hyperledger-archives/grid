@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import Paging from './paging';
+
 function Circuit(data) {
   if (data.proposal_type) {
     this.id = data.circuit_id;
@@ -48,6 +50,13 @@ function Circuit(data) {
   }
 }
 
+function ListCircuitsResponse(data) {
+  this.data = data.data.map(item => {
+    return new Circuit(item);
+  });
+  this.paging = new Paging(data);
+}
+
 function awaitingApproval() {
   if (this.status === 'Pending') {
     return true;
@@ -70,10 +79,4 @@ function actionRequired(nodeID) {
 Circuit.prototype.awaitingApproval = awaitingApproval;
 Circuit.prototype.actionRequired = actionRequired;
 
-const processCircuits = circuits => {
-  return circuits.map(item => {
-    return new Circuit(item);
-  });
-};
-
-export { processCircuits, Circuit };
+export { Circuit, ListCircuitsResponse };
