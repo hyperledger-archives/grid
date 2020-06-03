@@ -86,7 +86,7 @@ services:
       "
 
   generate-registry:
-    image: splintercommunity/splinter-cli:0.4-dev
+    image: splintercommunity/splinter-cli:0.4
     volumes:
       - registry:/registry
     command: |
@@ -191,14 +191,14 @@ services:
         "
 
   scabbard-cli-alpha:
-    image: splintercommunity/scabbard-cli:0.4-experimental
+    image: splintercommunity/scabbard-cli:0.4
     container_name: scabbard-cli-alpha
     hostname: scabbard-cli-alpha
     volumes:
       - gridd-alpha:/root/.splinter/keys
 
   splinterd-alpha:
-    image: splintercommunity/splinterd:0.4-experimental
+    image: splintercommunity/splinterd:0.4
     container_name: splinterd-alpha
     hostname: splinterd-alpha
     expose:
@@ -324,14 +324,14 @@ services:
         "
 
   scabbard-cli-beta:
-    image: splintercommunity/scabbard-cli:0.4-experimental
+    image: splintercommunity/scabbard-cli:0.4
     container_name: scabbard-cli-beta
     hostname: scabbard-cli-beta
     volumes:
       - gridd-beta:/root/.splinter/keys
 
   splinterd-beta:
-    image: splintercommunity/splinterd:0.4-experimental
+    image: splintercommunity/splinterd:0.4
     container_name: splinterd-beta
     hostname: splinterd-beta
     expose:
@@ -456,7 +456,7 @@ services:
         "
 
   splinterd-gamma:
-    image: splintercommunity/splinterd:0.4-experimental
+    image: splintercommunity/splinterd:0.4
     container_name: splinterd-gamma
     hostname: splinterd-gamma
     expose:
