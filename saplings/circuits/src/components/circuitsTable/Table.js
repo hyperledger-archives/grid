@@ -16,7 +16,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Circuit } from '../../data/processCircuits';
+import { Circuit } from '../../data/circuits';
 import TableRow from './TableRow';
 import TableHeader from './TableHeader';
 

@@ -17,7 +17,7 @@
 import { useReducer } from 'react';
 import mockCircuits from '../mockData/mockCircuits';
 import mockProposals from '../mockData/mockProposals';
-import { processCircuits } from '../data/processCircuits';
+import { processCircuits } from '../data/circuits';
 
 const filterCircuitsByTerm = (circuits, filterBy) => {
   if (filterBy.filterTerm.length === 0) {
