@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { useReducer } from 'react';
-import mockCircuits from '../mockData/mockCircuits';
-import mockProposals from '../mockData/mockProposals';
-import { processCircuits } from '../data/circuits';
+import { useReducer, useEffect } from 'react';
+import { listProposals, listCircuits } from '../api/splinter';
+
+import { ListCircuitsResponse } from '../data/circuits';
 
 const filterCircuitsByTerm = (circuits, filterBy) => {
   if (filterBy.filterTerm.length === 0) {
@@ -140,6 +140,10 @@ const filterCircuitsByStatus = (circuits, filterBy) => {
 
 const circuitsReducer = (state, action) => {
   switch (action.type) {
+    case 'set': {
+      const { circuits } = action;
+      return { ...state, isSet: true, filteredCircuits: circuits, circuits };
+    }
     case 'sort': {
       const sortedCircuits = sortCircuits(state.filteredCircuits, action.sort);
       return { ...state, filteredCircuits: sortedCircuits };
@@ -186,14 +190,36 @@ const circuitsReducer = (state, action) => {
 };
 
 function useCircuitsState() {
-  const circuits = processCircuits(mockCircuits.concat(mockProposals));
-
   const [circuitState, circuitsDispatch] = useReducer(circuitsReducer, {
-    circuits,
+    isSet: false,
+    circuits: [],
     filteredByTerm: [],
     filteredByStatus: [],
-    filteredCircuits: circuits
+    filteredCircuits: []
   });
+
+  useEffect(() => {
+    const getCircuits = async () => {
+      if (!circuitState.isSet) {
+        try {
+          const apiCircuits = await listCircuits();
+          const apiProposals = await listProposals();
+
+          const circuits = new ListCircuitsResponse(apiCircuits);
+          const proposals = new ListCircuitsResponse(apiProposals);
+
+          circuitsDispatch({
+            type: 'set',
+            circuits: circuits.data.concat(proposals.data)
+          });
+        } catch (e) {
+          throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
+        }
+      }
+    };
+    getCircuits();
+  }, [circuitState]);
+
   return [circuitState, circuitsDispatch];
 }
 
