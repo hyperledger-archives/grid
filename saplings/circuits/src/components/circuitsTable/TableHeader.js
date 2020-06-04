@@ -19,7 +19,7 @@ import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useLocalNodeState } from '../../state/localNode';
-import { Circuit } from '../../data/processCircuits';
+import { Circuit } from '../../data/circuits';
 
 const filtersReducer = (state, action) => {
   switch (action.type) {

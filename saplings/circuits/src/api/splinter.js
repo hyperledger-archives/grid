@@ -27,3 +27,21 @@ export const getNodeID = async () => {
   }
   throw Error(result.data);
 };
+
+export const listProposals = async () => {
+  const result = await get(`${splinterURL}/admin/proposals`);
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
+};
+
+export const listCircuits = async () => {
+  const result = await get(`${splinterURL}/admin/circuits`);
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
+};
