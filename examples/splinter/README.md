@@ -24,13 +24,9 @@ This environment includes the Pike, Product, and Schema smart contracts.
 
 ## Important Notes
 
-The example `docker-compose.yaml` file uses experimental Splinter features that
-have not been thoroughly tested or documented.
-
-Due to the rapid and ongoing development of Splinter and its experimental
-features, the images in this example can become stale very quickly. If you have
-used this procedure before, run the following command to ensure that your
-images are up to date:
+Due to ongoing development of Splinter the images in this example can become
+stale. If you have used this procedure before, run the following command to
+ensure that your images are up to date:
 
 ```
 $ docker-compose -f examples/splinter/docker-compose.yaml pull generate-registry db-alpha scabbard-cli-alpha splinterd-alpha
