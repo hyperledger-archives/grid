@@ -242,8 +242,7 @@ impl FromNative<PropertyDefinition> for protos::schema_state::PropertyDefinition
             .set_data_type(property_definition.data_type().clone().into_proto()?);
         proto_property_definition.set_required(*property_definition.required());
         proto_property_definition.set_description(property_definition.description().to_string());
-        proto_property_definition
-            .set_number_exponent(*property_definition.number_exponent());
+        proto_property_definition.set_number_exponent(*property_definition.number_exponent());
         proto_property_definition.set_enum_options(RepeatedField::from_vec(
             property_definition.enum_options().to_vec(),
         ));

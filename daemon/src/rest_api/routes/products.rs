@@ -131,7 +131,7 @@ impl Handler<ListProducts> for DbExecutor {
         .into_iter()
         .fold(HashMap::new(), |mut acc, product_property| {
             acc.entry(product_property.product_id.to_string())
-                .or_insert_with(|| vec![])
+                .or_insert_with(Vec::new)
                 .push(product_property);
             acc
         });
@@ -144,7 +144,7 @@ impl Handler<ListProducts> for DbExecutor {
                         product,
                         product_properties
                             .remove(&product.product_id)
-                            .unwrap_or_else(|| vec![]),
+                            .unwrap_or_else(Vec::new),
                     )
                 })
                 .collect();
