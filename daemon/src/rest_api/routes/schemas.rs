@@ -101,7 +101,7 @@ impl Handler<ListGridSchemas> for DbExecutor {
         .into_iter()
         .fold(HashMap::new(), |mut acc, definition| {
             acc.entry(definition.schema_name.to_string())
-                .or_insert_with(|| vec![])
+                .or_insert_with(Vec::new)
                 .push(definition);
             acc
         });
@@ -112,7 +112,7 @@ impl Handler<ListGridSchemas> for DbExecutor {
                 .map(|schema| {
                     GridSchemaSlice::from_schema(
                         schema,
-                        properties.remove(&schema.name).unwrap_or_else(|| vec![]),
+                        properties.remove(&schema.name).unwrap_or_else(Vec::new),
                     )
                 })
                 .collect();

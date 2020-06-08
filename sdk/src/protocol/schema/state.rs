@@ -100,8 +100,8 @@ impl FromProto<protos::schema_state::LatLong> for LatLong {
 impl FromNative<LatLong> for protos::schema_state::LatLong {
     fn from_native(lat_long: LatLong) -> Result<Self, ProtoConversionError> {
         let mut proto_lat_long = protos::schema_state::LatLong::new();
-        proto_lat_long.set_latitude(lat_long.latitude().clone());
-        proto_lat_long.set_longitude(lat_long.longitude().clone());
+        proto_lat_long.set_latitude(*lat_long.latitude());
+        proto_lat_long.set_longitude(*lat_long.longitude());
         Ok(proto_lat_long)
     }
 }
@@ -240,10 +240,9 @@ impl FromNative<PropertyDefinition> for protos::schema_state::PropertyDefinition
         proto_property_definition.set_name(property_definition.name().to_string());
         proto_property_definition
             .set_data_type(property_definition.data_type().clone().into_proto()?);
-        proto_property_definition.set_required(property_definition.required().clone());
+        proto_property_definition.set_required(*property_definition.required());
         proto_property_definition.set_description(property_definition.description().to_string());
-        proto_property_definition
-            .set_number_exponent(property_definition.number_exponent().clone());
+        proto_property_definition.set_number_exponent(*property_definition.number_exponent());
         proto_property_definition.set_enum_options(RepeatedField::from_vec(
             property_definition.enum_options().to_vec(),
         ));
@@ -819,10 +818,10 @@ impl FromNative<PropertyValue> for protos::schema_state::PropertyValue {
         proto_property_value.set_name(property_value.name().to_string());
         proto_property_value.set_data_type(property_value.data_type().clone().into_proto()?);
         proto_property_value.set_bytes_value(property_value.bytes_value().to_vec());
-        proto_property_value.set_boolean_value(property_value.boolean_value().clone());
-        proto_property_value.set_number_value(property_value.number_value().clone());
+        proto_property_value.set_boolean_value(*property_value.boolean_value());
+        proto_property_value.set_number_value(*property_value.number_value());
         proto_property_value.set_string_value(property_value.string_value().to_string());
-        proto_property_value.set_enum_value(property_value.enum_value().clone());
+        proto_property_value.set_enum_value(*property_value.enum_value());
         proto_property_value.set_struct_values(RepeatedField::from_vec(
             property_value
                 .struct_values()
