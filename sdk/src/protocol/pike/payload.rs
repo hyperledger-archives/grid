@@ -129,7 +129,7 @@ impl FromNative<CreateAgentAction> for protos::pike_payload::CreateAgentAction {
 
         proto_create_agent.set_org_id(create_agent.org_id().to_string());
         proto_create_agent.set_public_key(create_agent.public_key().to_string());
-        proto_create_agent.set_active(create_agent.active().clone());
+        proto_create_agent.set_active(*create_agent.active());
         proto_create_agent.set_org_id(create_agent.org_id().to_string());
         proto_create_agent.set_roles(RepeatedField::from_vec(create_agent.roles().to_vec()));
         proto_create_agent.set_metadata(RepeatedField::from_vec(
@@ -320,7 +320,7 @@ impl FromNative<UpdateAgentAction> for protos::pike_payload::UpdateAgentAction {
 
         proto_update_agent.set_org_id(update_agent.org_id().to_string());
         proto_update_agent.set_public_key(update_agent.public_key().to_string());
-        proto_update_agent.set_active(update_agent.active().clone());
+        proto_update_agent.set_active(*update_agent.active());
         proto_update_agent.set_org_id(update_agent.org_id().to_string());
         proto_update_agent.set_roles(RepeatedField::from_vec(update_agent.roles().to_vec()));
         proto_update_agent.set_metadata(RepeatedField::from_vec(

@@ -205,7 +205,7 @@ impl FromNative<Agent> for protos::pike_state::Agent {
 
         agent_proto.set_org_id(agent.org_id().to_string());
         agent_proto.set_public_key(agent.public_key().to_string());
-        agent_proto.set_active(agent.active().clone());
+        agent_proto.set_active(*agent.active());
         agent_proto.set_org_id(agent.org_id().to_string());
         agent_proto.set_roles(RepeatedField::from_vec(agent.roles().to_vec()));
         agent_proto.set_metadata(RepeatedField::from_vec(
