@@ -16,8 +16,6 @@ FROM node:lts-alpine
 
 WORKDIR /saplingjs
 
-COPY package*.json ./
-
-RUN yarn install
-
 COPY . .
+
+RUN npm install
