@@ -1,0 +1,123 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.node-card {
+  padding: 1rem;
+  width: 100%;
+
+  .not-visible {
+    visibility: hidden;
+  }
+
+  .col-span-4 {
+    grid-column-start: 1;
+    grid-column-end: 4;
+  }
+
+  .node-description {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+
+    .field-wrapper {
+      display: flex;
+      flex-direction: column;
+
+      .field-header {
+        font-size: 0.7rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .field-value {
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
+    }
+
+    .endpoints {
+      overflow-y: scroll;
+      height: 4rem;
+    }
+
+    .node-labels {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .node-local {
+        border-radius: 1rem;
+        color: var(--color-primary);
+        text-align: center;
+        font-size: 0.8rem;
+        border: 1px solid var(--color-primary-light);
+        margin-left: 0.5rem;
+        padding: 0.2rem 0;
+        width: 80%;
+        float: right;
+      }
+
+      .select-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 1.5rem;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        min-height: 1.5rem;
+        transition: all 0.3s;
+        outline: none;
+        margin-top: 0.5rem;
+        border: none;
+        background-color: var(--color-light-grey);
+
+        &.selected {
+          background-color: var(--color-primary-light);
+        }
+
+        .check-mark {
+          color: var(--color-text-light-on-dark);
+        }
+
+        &:enabled  {
+          cursor: pointer;
+        }
+      }
+    }
+
+    .metadata {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      width: 100%;
+
+      .metadata-chip {
+        border: 1px solid var(--color-light-grey);
+        width: fit-content;
+        border-radius: 0.2rem;
+        padding: 0.5rem;
+        margin-right: 0.3rem;
+        white-space: nowrap;
+        font-size: 0.8rem;
+        color: var(--color-grey);
+        border-left: 0.3rem solid var(--color-light-grey);
+
+       &::first-letter {
+         text-transform:capitalize;
+       }
+      }
+    }
+  }
+}
