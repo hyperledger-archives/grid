@@ -1,0 +1,60 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin: 1rem;
+
+  .chip {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--color-light-grey);
+    border-radius: calc(1rem + 2px);
+    padding: 0.5rem;
+    margin: 0 0.5rem 0.5rem 0;
+
+    .node-name {
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    .node-local {
+      color: var(--color-grey);
+      text-align: center;
+      font-size: 0.6rem;
+      margin-left: 0.5rem;
+    }
+
+    .delete {
+      width: 0.6rem;
+      height: 0.6rem;
+      margin-left: 0.5rem;
+      color: var(--color-grey);
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+}
+
+.hide {
+  display: none;
+}
