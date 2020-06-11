@@ -16,6 +16,7 @@
 
 import { getSharedConfig } from 'splinter-saplingjs';
 import { get } from './requests';
+import { NodeRegistryResponse } from '../data/nodeRegistry';
 
 const { splinterURL } = getSharedConfig().canopyConfig;
 
@@ -42,6 +43,16 @@ export const listCircuits = async () => {
 
   if (result.ok) {
     return result.json;
+  }
+  throw Error(result.data);
+};
+
+export const getNodeRegistry = async () => {
+  const result = await get(`${splinterURL}/registry/nodes`);
+
+  if (result.ok) {
+    const response = new NodeRegistryResponse(result.json);
+    return response.data;
   }
   throw Error(result.data);
 };
