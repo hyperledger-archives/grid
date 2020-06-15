@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-import React, { useEffect, useReducer } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { MultiStepForm, Step } from './MultiStepForm';
 import { useNodeRegistryState } from '../../state/nodeRegistry';
 import { useLocalNodeState } from '../../state/localNode';
 
 import NodeCard from '../NodeCard';
+import { OverlayModal } from '../OverlayModal';
 
 import { Chips } from '../Chips';
 
@@ -165,6 +167,7 @@ const nodesReducer = (state, action) => {
 export function ProposeCircuitForm() {
   const allNodes = useNodeRegistryState();
   const localNodeID = useLocalNodeState();
+  const [modalActive, setModalActive] = useState(false);
   const [localNode] = allNodes.filter(node => node.identity === localNodeID);
   const [nodesState, nodesDispatcher] = useReducer(nodesReducer, {
     selectedNodes: [],
@@ -291,9 +294,21 @@ export function ProposeCircuitForm() {
                   </li>
                 );
               })}
+              <button
+                className="new-node-button"
+                type="button"
+                onClick={() => {
+                  setModalActive(true);
+                }}
+              >
+                <FontAwesomeIcon icon="plus" />
+              </button>
+              <div className="button-label">Add new node to registry</div>
             </ul>
           </div>
         </div>
+        <OverlayModal open={modalActive}>
+        </OverlayModal>
       </Step>
       <Step step={2} label="Add services">
         <input type="text" placeholder="test" />
