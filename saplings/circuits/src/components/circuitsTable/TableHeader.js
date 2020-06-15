@@ -63,17 +63,17 @@ const TableHeader = ({ dispatch, circuits }) => {
     ascendingOrder: false,
     field: ''
   });
+
   const sortCircuitsBy = (sortBy, order) => {
     setSortedBy({ ascendingOrder: order, field: sortBy });
-    dispatch({
-      type: 'sort',
-      sort: { sortBy, ascendingOrder: order }
-    });
   };
 
   useEffect(() => {
-    sortCircuitsBy(sortedBy.field, sortedBy.ascendingOrder);
-  }, [circuits]);
+    dispatch({
+      type: 'sort',
+      sort: { field: sortedBy.field, ascendingOrder: sortedBy.ascendingOrder }
+    });
+  }, [circuits, dispatch, sortedBy]);
 
   const caretDown = (
     <span className="caret">
