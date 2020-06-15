@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.+(js|jsx|json|css|scss|md)\"",
     "lint": "eslint ."
   },
+  "proxy": "http://localhost:3030",
   "browserslist": {
     "production": [
       ">0.2%",

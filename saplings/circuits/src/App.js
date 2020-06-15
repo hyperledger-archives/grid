@@ -25,13 +25,16 @@ import {
   faSort,
   faExclamationCircle,
   faBusinessTime,
-  faCheck
+  faCheck,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { library } from '@fortawesome/fontawesome-svg-core';
 
 import MainHeader from './components/MainHeader';
 import { LocalNodeProvider } from './state/localNode';
 import Content from './components/Content';
+import { ProposeCircuitForm } from './components/forms/ProposeCircuitForm';
 
 library.add(
   faPlus,
@@ -42,15 +45,25 @@ library.add(
   faSort,
   faExclamationCircle,
   faBusinessTime,
-  faCheck
+  faCheck,
+  faTimes
 );
 
 function App() {
   return (
     <div className="circuits-app">
       <LocalNodeProvider>
-        <MainHeader />
-        <Content />
+        <Router>
+          <Switch>
+            <Route exact path="/circuits">
+              <MainHeader />
+              <Content />
+            </Route>
+            <Route path="/circuits/propose">
+              <ProposeCircuitForm />
+            </Route>
+          </Switch>
+        </Router>
       </LocalNodeProvider>
     </div>
   );

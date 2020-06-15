@@ -1,0 +1,287 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.multi-step-form {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+
+  .form-header {
+    background: #333333;
+    height: 100%;
+    color: #ffffff;
+    min-width: 15rem;
+
+
+    > h5 {
+      display: inline-block;
+      width: 100%;
+      font-size: 1.5rem;
+      text-align: center;
+      margin: 2rem 0;
+    }
+
+    .info {
+      height: 60%;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      border-radius: 5px 0 0 5px;
+
+      .step-counter {
+        width: 100%;
+        height: 100%;
+        display: flex;
+
+        .completion-percentage {
+          display: none;
+          color: var(--color-primary);
+          text-align: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .progress-tracker {
+          height: 100%;
+          width: 1.5px;
+          background: #555555;
+          margin-left: 0.75rem;
+
+          &:after {
+            display: block;
+            content: '';
+            height: var(--form-progress);
+            width: 3px;
+            background: var(--color-primary);
+            transition: height 1s;
+          }
+        }
+
+        .steps {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          margin-left: -0.8rem;
+
+
+          .step {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            max-height: 1.5rem;
+
+            .step-box {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              width: 1.5rem;
+              min-width: 1.5rem;
+              height: 1.5rem;
+              min-height: 1.5rem;
+              border: 1px solid #555;
+              background-color: #333333;
+              color: #555;
+              transition: all 0.3s;
+            }
+
+            .step-label {
+              padding-left: 0.5rem;
+              font-weight: 300;
+              font-style: italic;
+              color: rgba(255, 255, 255, 0.6);
+            }
+
+            &.active {
+              .stepBox {
+                border: 1px solid var(--color-primary);
+              }
+
+              .step-label {
+                color: var(--color-primary);
+              }
+            }
+
+            &.entered {
+              .step-box {
+                border-color: var(--color-primary);
+                background: var(--color-primary);
+                color: #ffffff;
+              }
+
+              .step-label {
+                font-weight: 400;
+                font-style: normal;
+                color: #ffffff;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .form-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 0 1 100%;
+    align-items: center;
+    justify-content: space-between;
+
+    form {
+      display: flex;
+      flex-direction: column;
+      flex: 0 1 100%;
+      width: 100%;
+      padding: 5%;
+      height: 80%;
+      min-height: 0;
+
+      .step {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+    }
+
+    .actions {
+      display: flex;
+      width: 90%;
+      height: 20%;
+      flex-direction: row;
+      justify-content: flex-end;
+      margin-top: 2.5rem;
+
+      > * {
+        margin: 0 0.5rem;
+      }
+    }
+  }
+
+  h6 {
+    margin: 1rem 0;
+  }
+
+  button {
+    height: 2.5rem;
+    border-radius: 5%;
+    width: fit-content;
+    border: 1px solid inset var(--color-grey);
+    cursor: pointer;
+
+    &.confirm,
+    &.submit {
+      background: var(--color-primary);
+      border: none;
+      color: var(--color-text-on-dark);
+
+      &:disabled {
+        background-color: var(--color-light-grey);
+        cursor: default;
+      }
+    }
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .multi-step-form {
+    flex-direction: column;
+    align-items: center;
+
+    .form-wrapper {
+      height: 80%;
+      flex: unset;
+      width: 100%;
+
+      .form {
+        padding: 2% 0 2% 2%;
+      }
+    }
+
+    .form-header {
+      display: flex;
+      flex-direction: column;
+      padding-top: 1rem !important;
+      width: 100%;
+      height: 20%;
+
+      > h5{
+        margin: 0 0 0.5rem;
+      }
+
+      .info {
+        flex-direction: row;
+        padding-top: 0.3rem;
+        overflow-y: hidden;
+
+        .step-counter {
+          display: inline;
+
+          .completion-percentage {
+            display: block !important;
+          }
+
+          .progress-tracker {
+            transform: none;
+            height: 0.1rem;
+            width: 90%;
+
+            &:after {
+              height: 0.3rem;
+              width: var(--form-progress);
+              transition: width 1s;
+              transform: none;
+            }
+          }
+
+          .steps {
+            width: 100%;
+            transform: none;
+            margin-left: 0;
+
+            .step {
+              min-height: 2rem;
+              display: inline;
+
+              .step-label {
+                display: block;
+                padding: 0;
+              }
+               &:not(.active) {
+                display: none;
+              }
+
+              &.active {
+                .step-label {
+                  width: 100% !important;
+                  text-align: center;
+                  max-width: none !important;
+                  margin-top: 0.5rem;
+                }
+                .step-box {
+                  display: none;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
