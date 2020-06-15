@@ -22,6 +22,9 @@ The central component provided by CanopyJS is a React context provider called
 `CanopyProvider`. This context provider should wrap the top level component of
 a Canopy application.
 
+See [splinter.dev](https://www.splinter.dev/) for Splinter documentation,
+release notes, and community information.
+
 ## Features
 
 - Provides functionality for loading saplings into the Canopy application
