@@ -41,6 +41,7 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-router-dom": "^5.1.2",
+    "react-toast-notifications": "^2.4.0",
     "react-scripts": "3.4.1",
     "rewire": "^4.0.1",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master"
