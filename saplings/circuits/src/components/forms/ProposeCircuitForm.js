@@ -22,6 +22,7 @@ import { useLocalNodeState } from '../../state/localNode';
 
 import NodeCard from '../NodeCard';
 import { OverlayModal } from '../OverlayModal';
+import { NewNodeForm } from './NewNodeForm';
 
 import { Chips } from '../Chips';
 
@@ -146,6 +147,17 @@ const nodesReducer = (state, action) => {
         error = minNodeCountError;
       }
       return { ...state, selectedNodes, filteredNodes, error };
+    }
+    case 'addNode': {
+      const { node } = action;
+      state.availableNodes.push(node);
+      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
+      const filteredNodes = {
+        nodes,
+        filteredBy: state.filteredNodes.filteredBy
+      };
+
+      return { ...state, filteredNodes };
     }
     case 'set': {
       const { nodes } = action;
@@ -308,6 +320,19 @@ export function ProposeCircuitForm() {
           </div>
         </div>
         <OverlayModal open={modalActive}>
+          <NewNodeForm
+            closeFn={() => setModalActive(false)}
+            successCallback={node => {
+              nodesDispatcher({
+                type: 'addNode',
+                node
+              });
+              nodesDispatcher({
+                type: 'toggleSelect',
+                node
+              });
+            }}
+          />
         </OverlayModal>
       </Step>
       <Step step={2} label="Add services">
