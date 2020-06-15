@@ -14,5 +14,8 @@ limitations under the License. -->
 
 # SaplingJS
 
-SaplingJS is a library for building Saplings. Saplings are UI plugins for Canopy
-applications.
+SaplingJS is a library for building saplings, which are UI plugins for Canopy
+applications. Saplings are designed to work with Splinter.
+
+See [splinter.dev](https://www.splinter.dev/) for Splinter documentation,
+release notes, and community information.
