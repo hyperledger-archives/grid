@@ -38,6 +38,7 @@ import MainHeader from './components/MainHeader';
 import { LocalNodeProvider } from './state/localNode';
 import Content from './components/Content';
 import { ProposeCircuitForm } from './components/forms/ProposeCircuitForm';
+import CircuitDetails from './components/circuitDetails/CircuitDetails';
 
 library.add(
   faPlus,
@@ -67,6 +68,9 @@ function App() {
               </Route>
               <Route path="/circuits/propose">
                 <ProposeCircuitForm />
+              </Route>
+              <Route path="/circuits/:circuitId">
+                <CircuitDetails />
               </Route>
             </Switch>
           </Router>

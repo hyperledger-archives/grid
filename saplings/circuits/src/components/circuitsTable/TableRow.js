@@ -17,6 +17,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useHistory } from 'react-router-dom';
 
 import { useLocalNodeState } from '../../state/localNode';
 import { Circuit } from '../../data/circuits';
@@ -47,8 +48,15 @@ const proposalStatus = (circuit, nodeID) => {
 
 const TableRow = ({ circuit }) => {
   const nodeID = useLocalNodeState();
+  const history = useHistory();
+
   return (
-    <tr className="table-row">
+    <tr
+      className="table-row"
+      onClick={() => {
+        history.push(`/circuits/${circuit.id}`);
+      }}
+    >
       <td className="text-highlight">{circuit.id}</td>
       <td>
         {

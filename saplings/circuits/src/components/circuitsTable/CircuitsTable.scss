@@ -142,6 +142,11 @@
     }
 
     .table-row {
+      cursor: pointer;
+
+      a {
+          text-decoration: none
+      }
       td, .proposal-status {
         font-size: 0.8rem;
         vertical-align: middle;
