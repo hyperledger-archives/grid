@@ -42,7 +42,7 @@ export function get(url) {
       });
     };
 
-    request.onError = () => {
+    request.onerror = () => {
       resolve(errorResponse());
     };
 
