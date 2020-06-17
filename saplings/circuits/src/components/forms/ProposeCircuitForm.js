@@ -307,7 +307,7 @@ export function ProposeCircuitForm() {
                 );
               })}
               <button
-                className="new-node-button"
+                className="form-button new-node-button"
                 type="button"
                 onClick={() => {
                   setModalActive(true);

@@ -96,15 +96,15 @@ export function MultiStepForm({
         </form>
         <div className="actions">
           {step > 1 && (
-            <button type="button" onClick={previous}>
+            <button className="form-button" type="button" onClick={previous}>
               Previous
             </button>
           )}
           {step < children.length && (
             <button
               type="button"
-              className="confirm"
               disabled={disabled}
+              className="form-button confirm"
               onClick={next}
             >
               Next
@@ -114,7 +114,7 @@ export function MultiStepForm({
             <button
               type="button"
               onClick={submit}
-              className="submit"
+              className="form-button submit"
               disabled={disabled || error}
             >
               Submit
