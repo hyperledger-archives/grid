@@ -34,7 +34,8 @@ export function MultiStepForm({
   style,
   disabled,
   error,
-  children
+  children,
+  isStepValidFn
 }) {
   const [step, setStep] = useState(1);
 
@@ -103,8 +104,8 @@ export function MultiStepForm({
           {step < children.length && (
             <button
               type="button"
-              disabled={disabled}
               className="form-button confirm"
+              disabled={!isStepValidFn(step)}
               onClick={next}
             >
               Next
@@ -144,7 +145,8 @@ MultiStepForm.propTypes = {
   style: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
   disabled: PropTypes.bool,
   error: PropTypes.bool,
-  children: PropTypes.node
+  children: PropTypes.node,
+  isStepValidFn: PropTypes.func
 };
 
 MultiStepForm.defaultProps = {
@@ -152,5 +154,8 @@ MultiStepForm.defaultProps = {
   style: undefined,
   disabled: false,
   error: false,
-  children: undefined
+  children: undefined,
+  isStepValidFn: () => {
+    return true;
+  }
 };

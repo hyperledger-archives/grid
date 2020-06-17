@@ -214,11 +214,20 @@ export function ProposeCircuitForm() {
     }
   }, [localNode]);
 
+  const stepValidationFn = stemNumber => {
+    switch (stemNumber) {
+      case 1:
+        return nodesAreValid();
+      default:
+        return true;
+    }
+  };
+
   return (
     <MultiStepForm
       formName="Propose Circuit"
       handleSubmit={() => {}}
-      disabled={!nodesAreValid()}
+      isStepValidFn={stepNumber => stepValidationFn(stepNumber)}
     >
       <Step step={1} label="Add nodes">
         <div className="step-header">
