@@ -28,7 +28,10 @@ import {
   faCheck,
   faTimes,
   faPlusCircle,
-  faMinusCircle
+  faMinusCircle,
+  faPen,
+  faTrash,
+  faSyncAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -51,7 +54,10 @@ library.add(
   faCheck,
   faTimes,
   faPlusCircle,
-  faMinusCircle
+  faMinusCircle,
+  faPen,
+  faTrash,
+  faSyncAlt
 );
 
 function App() {
