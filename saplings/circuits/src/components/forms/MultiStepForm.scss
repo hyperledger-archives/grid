@@ -144,7 +144,7 @@
     align-items: center;
     justify-content: space-between;
 
-    form {
+    .steps-form {
       display: flex;
       flex-direction: column;
       flex: 0 1 100%;
@@ -209,7 +209,7 @@
       flex: unset;
       width: 100%;
 
-      .form {
+      .steps-form {
         padding: 2% 0 2% 2%;
       }
     }

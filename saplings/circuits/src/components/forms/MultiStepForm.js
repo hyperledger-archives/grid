@@ -89,7 +89,7 @@ export function MultiStepForm({
         </div>
       </div>
       <div className="form-wrapper">
-        <form className="form">
+        <form className="steps-form">
           {children.map(child =>
             React.cloneElement(child, { currentStep: step })
           )}

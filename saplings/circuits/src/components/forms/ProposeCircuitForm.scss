@@ -105,25 +105,6 @@
         flex-direction: row;
         align-items: baseline;
       }
-
-      .new-node-button {
-        border-style: solid;
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-        display: flex;
-        justify-content: space-around;
-        width: 8rem;
-        cursor: pointer;
-        outline: none;
-        display: flex;
-        align-items: center;
-        background-color: transparent;
-
-        &:hover {
-          border-width: 2px;
-          font-weight: bold;
-        }
-      }
     }
 
     .search-nodes-input {
@@ -165,23 +146,67 @@
           margin: 0.5rem;
         }
       }
+
+      .new-node-button {
+        position: fixed;
+      	width: 2rem;
+      	height: 2rem;
+      	bottom: 8rem;
+      	right: 3rem;
+      	background-color: var(--color-secondary);
+      	color: var(--color-text-on-dark);
+      	border-radius: 2rem;;
+      	text-align: center;
+        border: none;
+        outline: none;
+      	box-shadow: 2px 2px 3px #999;
+      }
+
+      .button-label {
+        position:fixed;
+        bottom: 6rem;
+        right: 1rem;
+        border-radius: 0.3rem;
+        display: table;
+        background-color: var(--color-grey);
+        font-size: 0.7rem;
+        padding: 0.5rem;
+        color: var(--color-text-on-dark);
+      }
+
+      .new-node-button + .button-label {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s, opacity 0.5s ease;
+      }
+
+      .new-node-button:hover + .button-label {
+        visibility: visible;
+        opacity: 1;
+      }
     }
   }
 }
 
 @media only screen and (max-width: 600px) {
-  .available-nodes {
-    .available-nodes-header {
-      flex-direction: column !important;
-      height: 25% !important;
+  .node-registry-wrapper {
+    .available-nodes {
+      .available-nodes-header {
+        flex-direction: column;
+        height: 25%;
 
-      .search-nodes-input {
-        margin-left: 0 !important;
-       }
-    }
+        .search-nodes-input {
+          margin-left: 0;
+         }
+      }
 
-    ul {
-      height: 75%;
+      ul {
+        height: 75%;
+
+        .new-node-button {
+          right: 1rem;
+        }
+      }
     }
   }
 }
