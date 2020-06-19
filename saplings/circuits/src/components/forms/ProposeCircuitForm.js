@@ -381,7 +381,7 @@ export function ProposeCircuitForm() {
 
     const services = servicesState.services.map(service => {
       return protos.SplinterService.create({
-        serviceId: service.serviceID,
+        serviceId: service.serviceId,
         serviceType: service.serviceType,
         allowedNodes: service.allowedNodes,
         arguments: Object.entries(service.arguments).map(([key, value]) => {
@@ -468,7 +468,7 @@ export function ProposeCircuitForm() {
     servicesState.services.forEach(service => {
       servicesAreValid =
         service.serviceType.length > 0 &&
-        service.serviceID.length > 0 &&
+        service.serviceId.length > 0 &&
         service.allowedNodes.length > 0;
     });
     if (servicesAreValid) {

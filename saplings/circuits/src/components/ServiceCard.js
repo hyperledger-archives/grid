@@ -23,10 +23,10 @@ import { PlusButton, MinusButton } from './PlusMinusButton';
 
 import './ServiceCard.scss';
 
-const isValidID = serviceID => {
-  if (serviceID.length === 4) {
+const isValidID = serviceId => {
+  if (serviceId.length === 4) {
     const regex = /^[a-zA-Z0-9]+$/i;
-    if (serviceID.match(regex)) {
+    if (serviceId.match(regex)) {
       return true;
     }
     return false;
@@ -53,19 +53,19 @@ const serviceReducer = (state, action) => {
       return { ...state, service, errors };
     }
     case 'set-service-id': {
-      const { serviceID } = action;
+      const { serviceId } = action;
       const { errors, service } = state;
-      if (serviceID.length === 0) {
-        errors.serviceID = 'Service ID cannot be empty';
-      } else if (!isValidID(serviceID)) {
-        errors.serviceID =
+      if (serviceId.length === 0) {
+        errors.serviceId = 'Service ID cannot be empty';
+      } else if (!isValidID(serviceId)) {
+        errors.serviceId =
           'Invalid service ID. It must be 4 characters long and contain only ASCII alphanumeric characters.';
       } else {
-        errors.serviceID = '';
+        errors.serviceId = '';
       }
-      service.serviceID = serviceID;
+      service.serviceId = serviceId;
 
-      return { ...state, serviceID, errors };
+      return { ...state, serviceId, errors };
     }
     case 'set-allowed-nodes': {
       const { allowedNodes } = action;
@@ -205,7 +205,7 @@ const ServiceCard = ({
     service: { ...service },
     errors: {
       serviceType: '',
-      serviceID: '',
+      serviceId: '',
       allowedNodes: '',
       serviceArguments: ''
     }
@@ -232,9 +232,9 @@ const ServiceCard = ({
       serviceState.errors.serviceType.length === 0 &&
       serviceState.service.serviceType.length !== 0;
 
-    const serviceIDIsValid =
-      serviceState.errors.serviceID.length === 0 &&
-      serviceState.service.serviceID.length !== 0;
+    const serviceIdIsValid =
+      serviceState.errors.serviceId.length === 0 &&
+      serviceState.service.serviceId.length !== 0;
 
     const allowedNodesIsValid =
       serviceState.errors.allowedNodes.length === 0 &&
@@ -245,7 +245,7 @@ const ServiceCard = ({
 
     if (
       serviceTypeIsValid &&
-      serviceIDIsValid &&
+      serviceIdIsValid &&
       allowedNodesIsValid &&
       serviceArgumentsIsValid
     ) {
@@ -501,11 +501,11 @@ const ServiceCard = ({
             <div className="flex-input">
               <input
                 className="service-input service-id-input"
-                value={serviceState.service.serviceID}
+                value={serviceState.service.serviceId}
                 onChange={e => {
                   serviceDispatcher({
                     type: 'set-service-id',
-                    serviceID: e.target.value
+                    serviceId: e.target.value
                   });
                 }}
                 maxLength="4"
@@ -519,7 +519,7 @@ const ServiceCard = ({
                     const id = generateServiceID();
                     serviceDispatcher({
                       type: 'set-service-id',
-                      serviceID: id
+                      serviceId: id
                     });
                   }}
                   title="Generate service ID"
@@ -528,7 +528,7 @@ const ServiceCard = ({
                 </button>
               )}
             </div>
-            <div className="form-error">{serviceState.errors.serviceID}</div>
+            <div className="form-error">{serviceState.errors.serviceId}</div>
           </div>
         </div>
         <div className="service-field">

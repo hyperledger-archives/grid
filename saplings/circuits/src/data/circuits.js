@@ -16,17 +16,19 @@
 
 import Paging from './paging';
 
-function Service(data) {
-  if (data) {
-    this.serviceID = data.service_id;
-    this.serviceType = data.serviceType;
-    this.allowedNodes = data.allowed_nodes;
-    this.arguments = data.arguments;
-  } else {
-    this.serviceID = '';
-    this.serviceType = '';
-    this.allowedNodes = [];
-    this.arguments = {};
+class Service {
+  constructor(jsonSource) {
+    if (jsonSource) {
+      this.serviceId = jsonSource.service_id;
+      this.serviceType = jsonSource.service_type;
+      this.allowedNodes = jsonSource.allowed_nodes;
+      this.arguments = jsonSource.arguments;
+    } else {
+      this.serviceId = '';
+      this.serviceType = '';
+      this.allowedNodes = [];
+      this.arguments = {};
+    }
   }
 }
 
@@ -37,9 +39,7 @@ function Circuit(data) {
     this.members = data.circuit.members.map(member => {
       return member.node_id;
     });
-    this.roster = data.circuit.roster.map(service => {
-      return new Service(service);
-    });
+    this.roster = data.circuit.roster.map(s => new Service(s));
     this.managementType = data.circuit.management_type;
     this.applicationMetadata = data.circuit.application_metadata;
     this.comments = data.circuit.comments;
@@ -53,7 +53,7 @@ function Circuit(data) {
     this.id = data.id;
     this.status = 'Active';
     this.members = data.members;
-    this.roster = data.roster;
+    this.roster = data.roster.map(s => new Service(s));
     this.managementType = data.management_type;
     this.applicationMetadata = data.application_metadata;
     this.comments = 'N/A';
