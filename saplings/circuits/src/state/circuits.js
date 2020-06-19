@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-import { useReducer, useEffect } from 'react';
-import { listProposals, listCircuits } from '../api/splinter';
+import { useReducer, useEffect, useState } from 'react';
+import {
+  listProposals,
+  getProposal,
+  listCircuits,
+  getCircuit
+} from '../api/splinter';
 
-import { ListCircuitsResponse } from '../data/circuits';
+import { Circuit, ListCircuitsResponse } from '../data/circuits';
 
 const filterCircuitsByTerm = (circuits, filterBy) => {
   if (filterBy.filterTerm.length === 0) {
@@ -223,4 +228,33 @@ function useCircuitsState() {
   return [circuitState, circuitsDispatch];
 }
 
-export { useCircuitsState };
+function useCircuitState(circuitId) {
+  const [stateCircuitId, setCircuitId] = useState(circuitId);
+  const [circuit, setCircuit] = useState(null);
+
+  useEffect(() => {
+    const loadCircuit = async () => {
+      if (stateCircuitId) {
+        let apiCircuit = null;
+        try {
+          apiCircuit = await getCircuit(stateCircuitId);
+        } catch (circuitError) {
+          try {
+            apiCircuit = await getProposal(stateCircuitId);
+          } catch (proposalError) {
+            throw Error(
+              `Unable to fetch ${stateCircuitId} from the splinter daemon`
+            );
+          }
+        }
+
+        setCircuit(new Circuit(apiCircuit));
+      }
+    };
+    loadCircuit();
+  }, [stateCircuitId]);
+
+  return [circuit, setCircuitId];
+}
+
+export { useCircuitsState, useCircuitState };

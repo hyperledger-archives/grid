@@ -74,22 +74,19 @@ function ListCircuitsResponse(data) {
 }
 
 function awaitingApproval() {
-  if (this.status === 'Pending') {
-    return true;
-  }
-  return false;
+  return this.status === 'Pending';
 }
 
-function actionRequired(nodeID) {
-  const nodeHasVoted =
-    this.proposal.votes.filter(vote => {
-      return vote.voter_node_id === nodeID;
-    }).length > 0;
-
-  if (this.awaitingApproval() && !nodeHasVoted) {
-    return true;
+function actionRequired(nodeId) {
+  if (!this.awaitingApproval()) {
+    return false;
   }
-  return false;
+
+  if (this.proposal.requesterNodeID === nodeId) {
+    return false;
+  }
+
+  return !this.proposal.votes.find(vote => vote.voter_node_id === nodeId);
 }
 
 Circuit.prototype.awaitingApproval = awaitingApproval;

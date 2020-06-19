@@ -38,8 +38,26 @@ export const listProposals = async () => {
   throw Error(result.data);
 };
 
+export const getProposal = async circuitId => {
+  const result = await get(`${splinterURL}/admin/proposals/${circuitId}`);
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
+};
+
 export const listCircuits = async () => {
   const result = await get(`${splinterURL}/admin/circuits`);
+
+  if (result.ok) {
+    return result.json;
+  }
+  throw Error(result.data);
+};
+
+export const getCircuit = async circuitId => {
+  const result = await get(`${splinterURL}/admin/circuits/${circuitId}`);
 
   if (result.ok) {
     return result.json;
