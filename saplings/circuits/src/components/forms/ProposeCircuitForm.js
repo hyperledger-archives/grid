@@ -286,6 +286,18 @@ const metadataReducer = (state, action) => {
       }
       return { ...newState };
     }
+    case 'set-metadata': {
+      const { metadata } = action;
+      const newState = state;
+      newState.metadata = metadata;
+      if (metadata.length !== 0 && !isValidMetadata(state.encoding, metadata)) {
+        newState.error = `Metadata value is not valid ${state.encoding}`;
+      } else {
+        newState.error = '';
+      }
+
+      return { ...newState };
+    }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
   }
@@ -626,6 +638,20 @@ export function ProposeCircuitForm() {
               <option value="yaml">YAML</option>
               <option value="base64">Base 64</option>
             </select>
+          </div>
+          <div className="input-wrapper textarea-wrapper">
+            <div className="label">Metadata</div>
+            <textarea
+              value={metadataState.metadata}
+              className="form-input metadata-textarea form-textarea"
+              onChange={e => {
+                metadataDispatcher({
+                  type: 'set-metadata',
+                  metadata: e.target.value
+                });
+              }}
+            />
+            <div className="form-error">{metadataState.error}</div>
           </div>
         </div>
       </Step>

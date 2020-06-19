@@ -245,6 +245,15 @@
   }
 }
 
+.metatada-wrapper {
+  margin-top: 2rem;
+
+  .metadata-textarea {
+    height: 100%;
+    resize: none;
+  }
+}
+
 @media only screen and (max-width: 600px) {
   .step-header {
     height: 15%;
