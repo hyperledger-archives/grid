@@ -241,6 +241,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
           <input
             type="text"
             name="endpoint"
+            className="form-input"
             value={currentValue}
             onChange={e => {
               const input = e.target.value;
@@ -282,6 +283,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
         <div className="input-wrapper">
           <input
             type="text"
+            className="form-input"
             name="endpoint"
             value={currentValue}
             onChange={e => {
@@ -323,7 +325,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
       return (
         <div className="input-wrapper">
           <input
-            className="metadata-input"
+            className="metadata-input form-input"
             type="text"
             name="key"
             value={key}
@@ -338,7 +340,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
             }}
           />
           <input
-            className="metadata-input"
+            className="metadata-input form-input"
             type="text"
             name="value"
             value={value}
@@ -429,6 +431,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
             <div className="label">Node ID</div>
             <input
               type="text"
+              className="form-input"
               value={nodeIDState.nodeID}
               onChange={e => {
                 setNodeID(() => {
@@ -452,6 +455,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
             <div className="label">Display Name</div>
             <input
               type="text"
+              className="form-input"
               value={displayNameState.displayName}
               onChange={e => {
                 setDisplayName(() => {

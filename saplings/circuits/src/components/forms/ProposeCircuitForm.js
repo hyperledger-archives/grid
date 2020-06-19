@@ -300,7 +300,7 @@ export function ProposeCircuitForm() {
             Select the nodes that are part of the circuit
           </div>
         </div>
-        <div className="node-registry-wrapper">
+        <div className="propose-form-wrapper node-registry-wrapper">
           <div className="selected-nodes-wrapper">
             <div className="selected-nodes-header">
               <div className="title">Selected nodes</div>
@@ -413,7 +413,7 @@ export function ProposeCircuitForm() {
           <div className="step-title">Add services</div>
           <div className="help-text">Add services for the circuit</div>
         </div>
-        <div className="services-wrapper">
+        <div className="propose-form-wrapper services-wrapper">
           <div className="form-error">{servicesState.error}</div>
           {servicesState.services.map((service, index) => {
             return (
