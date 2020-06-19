@@ -16,6 +16,7 @@
 
 import React, { useState, useEffect, useReducer } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import yaml from 'js-yaml';
 import { MultiStepForm, Step } from './MultiStepForm';
 import { useNodeRegistryState } from '../../state/nodeRegistry';
 import { useLocalNodeState } from '../../state/localNode';
@@ -239,6 +240,57 @@ const detailsReducer = (state, action) => {
   }
 };
 
+const isValidMetadata = (encoding, input) => {
+  switch (encoding) {
+    case 'json': {
+      try {
+        JSON.parse(input);
+      } catch (e) {
+        return false;
+      }
+      return true;
+    }
+    case 'yaml': {
+      try {
+        yaml.safeLoad(input);
+      } catch (e) {
+        return false;
+      }
+      return true;
+    }
+    case 'base64': {
+      const regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+      if (input.match(regex)) {
+        return true;
+      }
+      return false;
+    }
+    default:
+      throw new Error(`invalid encoding type: ${encoding}`);
+  }
+};
+
+const metadataReducer = (state, action) => {
+  switch (action.type) {
+    case 'set-encoding': {
+      const { encoding } = action;
+      const newState = state;
+      newState.encoding = encoding;
+      if (
+        state.metadata.length !== 0 &&
+        !isValidMetadata(encoding, state.metadata)
+      ) {
+        newState.error = `Metadata value is not valid ${state.encoding}`;
+      } else {
+        newState.error = '';
+      }
+      return { ...newState };
+    }
+    default:
+      throw new Error(`unhandled action type: ${action.type}`);
+  }
+};
+
 export function ProposeCircuitForm() {
   const allNodes = useNodeRegistryState();
   const localNodeID = useLocalNodeState();
@@ -268,6 +320,12 @@ export function ProposeCircuitForm() {
     }
   });
 
+  const [metadataState, metadataDispatcher] = useReducer(metadataReducer, {
+    encoding: 'json',
+    metadata: '',
+    error: ''
+  });
+
   const [serviceFormComplete, setServiceFormComplete] = useState(false);
 
   const nodesAreValid = () => {
@@ -279,6 +337,10 @@ export function ProposeCircuitForm() {
       detailsState.errors.managementType.length === 0 &&
       detailsState.managementType.length > 0
     );
+  };
+
+  const metadataIsValid = () => {
+    return metadataState.error.length === 0;
   };
 
   useEffect(() => {
@@ -323,6 +385,8 @@ export function ProposeCircuitForm() {
         return serviceFormComplete;
       case 3:
         return detailsAreValid();
+      case 4:
+        return metadataIsValid();
       default:
         return true;
     }
@@ -536,7 +600,34 @@ export function ProposeCircuitForm() {
         </div>
       </Step>
       <Step step={4} label="Add metadata">
-        <input type="text" placeholder="test" />
+        <div className="step-header">
+          <div className="step-title">Add metadata</div>
+          <div className="help-text">
+            Add metatada for the circuit. This data will be serialized before
+            being included in the circuit proposal. The metadata is opaque to
+            the splinter daemon, and it is only consumed by client applications
+            for the circuit.
+          </div>
+        </div>
+        <div className="propose-form-wrapper metatada-wrapper">
+          <div className="input-wrapper">
+            <div className="label">Encoding</div>
+            <select
+              className="form-input"
+              value={metadataState.encoding}
+              onChange={e => {
+                metadataDispatcher({
+                  type: 'set-encoding',
+                  encoding: e.target.value
+                });
+              }}
+            >
+              <option value="json">JSON</option>
+              <option value="yaml">YAML</option>
+              <option value="base64">Base 64</option>
+            </select>
+          </div>
+        </div>
       </Step>
       <Step step={5} label="Review and submit">
         <input type="text" placeholder="test" />
