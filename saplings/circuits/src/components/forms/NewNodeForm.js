@@ -15,66 +15,13 @@
  */
 
 import React, { useState, useEffect, useReducer } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useToasts } from 'react-toast-notifications';
 import PropTypes from 'prop-types';
 import { postNode } from '../../api/splinter';
 import { Node } from '../../data/nodeRegistry';
+import { PlusButton, MinusButton } from '../PlusMinusButton';
 
 import './NewNodeForm.scss';
-
-const PlusButton = ({ actionFn, display }) => {
-  if (!display) {
-    return '';
-  }
-
-  const plusSign = (
-    <span className="sign plus">
-      <FontAwesomeIcon icon="plus-circle" />
-    </span>
-  );
-
-  return (
-    <button type="button" className="plus-button" onClick={actionFn}>
-      {plusSign}
-    </button>
-  );
-};
-
-PlusButton.propTypes = {
-  actionFn: PropTypes.func.isRequired,
-  display: PropTypes.bool
-};
-
-PlusButton.defaultProps = {
-  display: false
-};
-
-const MinusButton = ({ actionFn, display }) => {
-  if (!display) {
-    return '';
-  }
-  const minusSign = (
-    <span className="sign minus">
-      <FontAwesomeIcon icon="minus-circle" />
-    </span>
-  );
-
-  return (
-    <button className="minus-button" type="button" onClick={actionFn}>
-      {minusSign}
-    </button>
-  );
-};
-
-MinusButton.propTypes = {
-  actionFn: PropTypes.func.isRequired,
-  display: PropTypes.bool
-};
-
-MinusButton.defaultProps = {
-  display: false
-};
 
 const endpointsReducer = (state, action) => {
   switch (action.type) {
@@ -540,7 +487,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
         <div className="form-btn-wrapper">
           <button
             type="button"
-            className="form-btn cancel"
+            className="form-button form-btn cancel"
             onClick={() => {
               clearState();
               closeFn();
@@ -551,7 +498,7 @@ export function NewNodeForm({ closeFn, successCallback }) {
           <button
             type="button"
             disabled={!formComplete}
-            className="form-btn submit"
+            className="form-button form-btn submit"
             onClick={submitNode}
           >
             Submit
