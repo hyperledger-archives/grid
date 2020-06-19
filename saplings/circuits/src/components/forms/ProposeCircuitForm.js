@@ -215,6 +215,24 @@ const servicesReducer = (state, action) => {
   }
 };
 
+const detailsReducer = (state, action) => {
+  switch (action.type) {
+    case 'set-management-type': {
+      const { managementType } = action;
+      const newState = state;
+      newState.managementType = managementType;
+      if (managementType.length === 0) {
+        newState.errors.managementType = 'Management type cannot be empty';
+      } else {
+        newState.errors.managementType = '';
+      }
+      return { ...newState };
+    }
+    default:
+      throw new Error(`unhandled action type: ${action.type}`);
+  }
+};
+
 export function ProposeCircuitForm() {
   const allNodes = useNodeRegistryState();
   const localNodeID = useLocalNodeState();
@@ -236,10 +254,25 @@ export function ProposeCircuitForm() {
     error: ''
   });
 
+  const [detailsState, detailsDispatcher] = useReducer(detailsReducer, {
+    managementType: '',
+    comments: '',
+    errors: {
+      managementType: ''
+    }
+  });
+
   const [serviceFormComplete, setServiceFormComplete] = useState(false);
 
   const nodesAreValid = () => {
     return nodesState.selectedNodes.length >= 2;
+  };
+
+  const detailsAreValid = () => {
+    return (
+      detailsState.errors.managementType.length === 0 &&
+      detailsState.managementType.length > 0
+    );
   };
 
   useEffect(() => {
@@ -282,6 +315,8 @@ export function ProposeCircuitForm() {
         return nodesAreValid();
       case 2:
         return serviceFormComplete;
+      case 3:
+        return detailsAreValid();
       default:
         return true;
     }
@@ -457,7 +492,29 @@ export function ProposeCircuitForm() {
         </div>
       </Step>
       <Step step={3} label="Add circuit details">
-        <input type="text" placeholder="test" />
+        <div className="step-header">
+          <div className="step-title">Add circuit details</div>
+          <div className="help-text">Add information about the circuit</div>
+        </div>
+        <div className="propose-form-wrapper circuit-details-wrapper">
+          <div className="input-wrapper">
+            <div className="label">Management type</div>
+            <input
+              type="text"
+              className="form-input"
+              value={detailsState.managementType}
+              onChange={e => {
+                detailsDispatcher({
+                  type: 'set-management-type',
+                  managementType: e.target.value
+                });
+              }}
+            />
+            <div className="form-error">
+              {detailsState.errors.managementType}
+            </div>
+          </div>
+        </div>
       </Step>
       <Step step={4} label="Add metadata">
         <input type="text" placeholder="test" />
