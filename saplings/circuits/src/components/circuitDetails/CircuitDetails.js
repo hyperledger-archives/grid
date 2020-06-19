@@ -31,6 +31,7 @@ import React from 'react';
 import { Circuit } from '../../data/circuits';
 import { useCircuitState } from '../../state/circuits';
 import { getNodeRegistry } from '../../api/splinter';
+import ServiceDetails from './ServiceDetails';
 
 const CircuitDetails = () => {
   const { circuitId } = useParams();
@@ -96,15 +97,18 @@ const CircuitDetails = () => {
   );
 };
 
+const contains = (list, val) => !!list.find(v => v === val);
+
 const NodesTable = ({ circuit, nodes }) => {
   const [fullNodes, setNodes] = React.useState(null);
+  const [toggledRow, setToggledRow] = React.useState(null);
 
   React.useEffect(() => {
     const fetchNodes = async () => {
       try {
         const apiNodes = await getNodeRegistry();
-        const filteredNodes = apiNodes.filter(
-          node => !!nodes.find(id => id === node.identity)
+        const filteredNodes = apiNodes.filter(node =>
+          contains(nodes, node.identity)
         );
         setNodes(filteredNodes);
       } catch (e) {
@@ -128,7 +132,7 @@ const NodesTable = ({ circuit, nodes }) => {
   ];
 
   if (fullNodes.length > 0) {
-    rows = fullNodes.map(node => {
+    rows = fullNodes.map((node, idx) => {
       let endpoints = 'N/A';
       if (node.endpoints.length > 0) {
         endpoints = node.endpoints.reduce((acc, endpoint) => {
@@ -139,8 +143,33 @@ const NodesTable = ({ circuit, nodes }) => {
           return acc;
         }, []);
       }
-      return (
-        <tr className="table-row">
+
+      let detailsRow = '';
+      if (toggledRow === idx) {
+        detailsRow = (
+          <tr className="service-details-row">
+            <td colSpan="5">
+              <ServiceDetails
+                services={circuit.roster.filter(service =>
+                  contains(service.allowedNodes, node.identity)
+                )}
+              />
+            </td>
+          </tr>
+        );
+      }
+
+      return [
+        <tr
+          className="table-row"
+          onClick={() => {
+            if (toggledRow === idx) {
+              setToggledRow(null);
+            } else {
+              setToggledRow(idx);
+            }
+          }}
+        >
           <td>{node.identity}</td>
           <td>{node.displayName}</td>
           <td>
@@ -150,8 +179,9 @@ const NodesTable = ({ circuit, nodes }) => {
           <td>
             <NodeStatus circuit={circuit} nodeId={node.identity} />
           </td>
-        </tr>
-      );
+        </tr>,
+        detailsRow
+      ];
     });
   }
 
