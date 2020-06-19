@@ -188,6 +188,29 @@
   }
 }
 
+.services-wrapper {
+  margin-top: 1rem;
+  height: 85%;
+  overflow-y: auto;
+}
+
+.add-service-btn-wrapper {
+  height: 5%;
+  text-align: center;
+  padding-top: 0.5rem;
+
+  .add-service-button {
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-primary);
+    border-radius: 2rem;
+    background-color: transparent;
+    text-align: center;
+    border: 1px solid var(--color-primary);
+    outline: none;
+  }
+}
+
 @media only screen and (max-width: 600px) {
   .node-registry-wrapper {
     .available-nodes {

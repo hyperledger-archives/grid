@@ -23,6 +23,8 @@ import { useLocalNodeState } from '../../state/localNode';
 import NodeCard from '../NodeCard';
 import { OverlayModal } from '../OverlayModal';
 import { NewNodeForm } from './NewNodeForm';
+import ServiceCard from '../ServiceCard';
+import { Service } from '../../data/circuits';
 
 import { Chips } from '../Chips';
 
@@ -176,6 +178,43 @@ const nodesReducer = (state, action) => {
   }
 };
 
+const servicesReducer = (state, action) => {
+  const minServiceCountError =
+    'At least one service must be added to the circuit.';
+
+  switch (action.type) {
+    case 'edit': {
+      const updatedService = action.service;
+
+      const { services } = state;
+      services[action.serviceIndex] = updatedService;
+
+      return { ...state, services };
+    }
+    case 'delete': {
+      const { services } = state;
+      let { error } = state;
+
+      if (action.serviceIndex > -1) {
+        services.splice(action.serviceIndex, 1);
+      }
+
+      if (services.length === 0) {
+        error = minServiceCountError;
+      }
+      return { ...state, services, error };
+    }
+    case 'add-empty-service': {
+      const service = new Service();
+      state.services.push(service);
+      const error = '';
+      return { ...state, error };
+    }
+    default:
+      throw new Error(`unhandled action type: ${action.type}`);
+  }
+};
+
 export function ProposeCircuitForm() {
   const allNodes = useNodeRegistryState();
   const localNodeID = useLocalNodeState();
@@ -191,6 +230,13 @@ export function ProposeCircuitForm() {
     },
     error: ''
   });
+
+  const [servicesState, servicesDispatcher] = useReducer(servicesReducer, {
+    services: [new Service()],
+    error: ''
+  });
+
+  const [serviceFormComplete, setServiceFormComplete] = useState(false);
 
   const nodesAreValid = () => {
     return nodesState.selectedNodes.length >= 2;
@@ -214,10 +260,28 @@ export function ProposeCircuitForm() {
     }
   }, [localNode]);
 
+  useEffect(() => {
+    let servicesAreValid = false;
+
+    servicesState.services.forEach(service => {
+      servicesAreValid =
+        service.serviceType.length > 0 &&
+        service.serviceID.length > 0 &&
+        service.allowedNodes.length > 0;
+    });
+    if (servicesAreValid) {
+      setServiceFormComplete(true);
+    } else {
+      setServiceFormComplete(false);
+    }
+  }, [servicesState]);
+
   const stepValidationFn = stemNumber => {
     switch (stemNumber) {
       case 1:
         return nodesAreValid();
+      case 2:
+        return serviceFormComplete;
       default:
         return true;
     }
@@ -345,7 +409,52 @@ export function ProposeCircuitForm() {
         </OverlayModal>
       </Step>
       <Step step={2} label="Add services">
-        <input type="text" placeholder="test" />
+        <div className="step-header">
+          <div className="step-title">Add services</div>
+          <div className="help-text">Add services for the circuit</div>
+        </div>
+        <div className="services-wrapper">
+          <div className="form-error">{servicesState.error}</div>
+          {servicesState.services.map((service, index) => {
+            return (
+              <ServiceCard
+                service={service}
+                isEditable
+                enterEditMode
+                applyServiceChanges={updatedService => {
+                  servicesDispatcher({
+                    type: 'edit',
+                    service: updatedService,
+                    serviceIndex: index
+                  });
+                }}
+                deleteService={() => {
+                  servicesDispatcher({
+                    type: 'delete',
+                    serviceIndex: index
+                  });
+                }}
+                isDeletable={servicesState.services.length > 1}
+                nodes={nodesState.selectedNodes}
+                localNodeID={localNodeID}
+              />
+            );
+          })}
+        </div>
+        <div className="add-service-btn-wrapper">
+          <button
+            className="form-button add-service-button"
+            type="button"
+            onClick={() => {
+              servicesDispatcher({
+                type: 'add-empty-service'
+              });
+            }}
+            title="Add new service"
+          >
+            <FontAwesomeIcon icon="plus" />
+          </button>
+        </div>
       </Step>
       <Step step={3} label="Add circuit details">
         <input type="text" placeholder="test" />
