@@ -16,13 +16,37 @@
 
 import Paging from './paging';
 
+/**
+ * Convert the arguments value of either a proposal or a circuit to an object
+ * containing the values parsed from JSON, if applicable.
+ */
+const argsToObject = coll => {
+  let kvPairs = [];
+  if (Array.isArray(coll)) {
+    kvPairs = coll;
+  } else if (typeof coll === 'object') {
+    kvPairs = Object.entries(coll);
+  } else {
+    throw new Error(`Unsupported argument type: ${typeof coll}`);
+  }
+
+  return kvPairs.reduce((acc, [k, encodedVal]) => {
+    try {
+      acc[k] = JSON.parse(encodedVal);
+    } catch (e) {
+      acc[k] = encodedVal;
+    }
+    return acc;
+  }, {});
+};
+
 class Service {
   constructor(jsonSource) {
     if (jsonSource) {
       this.serviceId = jsonSource.service_id;
       this.serviceType = jsonSource.service_type;
       this.allowedNodes = jsonSource.allowed_nodes;
-      this.arguments = jsonSource.arguments;
+      this.arguments = argsToObject(jsonSource.arguments);
     } else {
       this.serviceId = '';
       this.serviceType = '';
