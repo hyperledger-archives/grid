@@ -228,6 +228,12 @@ const detailsReducer = (state, action) => {
       }
       return { ...newState };
     }
+    case 'set-comments': {
+      const { comments } = action;
+      const newState = state;
+      newState.comments = comments;
+      return { ...newState };
+    }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
   }
@@ -513,6 +519,19 @@ export function ProposeCircuitForm() {
             <div className="form-error">
               {detailsState.errors.managementType}
             </div>
+          </div>
+          <div className="input-wrapper textarea-wrapper">
+            <div className="label">Comments</div>
+            <textarea
+              value={detailsState.comments}
+              className="form-input form-textarea"
+              onChange={e => {
+                detailsDispatcher({
+                  type: 'set-comments',
+                  comments: e.target.value
+                });
+              }}
+            />
           </div>
         </div>
       </Step>
