@@ -17,6 +17,9 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import yaml from 'js-yaml';
+import { useToasts } from 'react-toast-notifications';
+import { useHistory } from 'react-router-dom';
+
 import { MultiStepForm, Step } from './MultiStepForm';
 import { useNodeRegistryState } from '../../state/nodeRegistry';
 import { useLocalNodeState } from '../../state/localNode';
@@ -27,11 +30,19 @@ import ProposalReview from '../ProposalReview';
 import { OverlayModal } from '../OverlayModal';
 import { NewNodeForm } from './NewNodeForm';
 import ServiceCard from '../ServiceCard';
-import { Service } from '../../data/circuits';
-
+import { Service, generateID } from '../../data/circuits';
+import protos from '../../protobuf';
+import { makeSignedPayload } from '../../api/payload';
+import { postCircuitManagementPayload } from '../../api/splinter';
 import { Chips } from '../Chips';
 
 import './ProposeCircuitForm.scss';
+
+const generateCircuitID = () => {
+  const firstPart = generateID(5);
+  const secondPart = generateID(5);
+  return `${firstPart}-${secondPart}`;
+};
 
 const filterNodes = (state, input) => {
   const lowerInput = input.toLowerCase();
@@ -307,6 +318,9 @@ const metadataReducer = (state, action) => {
 
 export function ProposeCircuitForm() {
   const allNodes = useNodeRegistryState();
+  const { addToast } = useToasts();
+  const history = useHistory();
+
   const localNodeID = useLocalNodeState();
   const [modalActive, setModalActive] = useState(false);
   const [localNode] = allNodes.filter(node => node.identity === localNodeID);
@@ -355,6 +369,79 @@ export function ProposeCircuitForm() {
 
   const metadataIsValid = () => {
     return metadataState.error.length === 0;
+  };
+
+  const handleSubmit = async () => {
+    const nodes = nodesState.selectedNodes.map(node => {
+      return protos.SplinterNode.create({
+        nodeId: node.identity,
+        endpoints: node.endpoints
+      });
+    });
+
+    const services = servicesState.services.map(service => {
+      return protos.SplinterService.create({
+        serviceId: service.serviceID,
+        serviceType: service.serviceType,
+        allowedNodes: service.allowedNodes,
+        arguments: Object.entries(service.arguments).map(([key, value]) => {
+          return protos.SplinterService.Argument.create({
+            key,
+            value
+          });
+        })
+      });
+    });
+    const circuitId = generateCircuitID();
+
+    let metadata = null;
+    if (metadataState.encoding === 'base64') {
+      metadata = Buffer.from(metadataState.metadata, 'base64');
+    } else {
+      metadata = Buffer.from(metadataState.metadata, 'utf8');
+    }
+
+    const circuit = protos.Circuit.create({
+      circuitId,
+      roster: services,
+      members: nodes,
+      authorizationType: protos.Circuit.AuthorizationType.TRUST_AUTHORIZATION,
+      persistence: protos.Circuit.PersistenceType.ANY_PERSISTENCE,
+      durability: protos.Circuit.DurabilityType.NO_DURABILITY,
+      routes: protos.Circuit.RouteType.ANY_ROUTE,
+      circuitManagementType: detailsState.managementType,
+      applicationMetadata: metadata,
+      comments: detailsState.comments
+    });
+    const circuitCreateRequest = protos.CircuitCreateRequest.create({
+      circuit
+    });
+
+    const { privateKey } = window.$CANOPY.getKeys();
+
+    try {
+      const payload = makeSignedPayload(
+        localNodeID,
+        privateKey,
+        circuitCreateRequest,
+        'proposeCircuit'
+      );
+      try {
+        await postCircuitManagementPayload(payload);
+        addToast('Circuit proposal submitted successfully', {
+          appearance: 'success'
+        });
+        history.push(`/circuits`);
+      } catch (e) {
+        addToast(`The splinter daemon responded with an error: ${e}`, {
+          appearance: 'error'
+        });
+      }
+    } catch (e) {
+      addToast(`Failed to build the circuit management payload: ${e}`, {
+        appearance: 'error'
+      });
+    }
   };
 
   useEffect(() => {
@@ -409,7 +496,7 @@ export function ProposeCircuitForm() {
   return (
     <MultiStepForm
       formName="Propose Circuit"
-      handleSubmit={() => {}}
+      handleSubmit={handleSubmit}
       isStepValidFn={stepNumber => stepValidationFn(stepNumber)}
     >
       <Step step={1} label="Add nodes">
