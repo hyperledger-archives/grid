@@ -17,7 +17,7 @@
 import React, { useState, useReducer, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Service } from '../data/circuits';
+import { Service, generateID } from '../data/circuits';
 import { Node } from '../data/nodeRegistry';
 import { PlusButton, MinusButton } from './PlusMinusButton';
 
@@ -35,20 +35,7 @@ const isValidID = serviceID => {
 };
 
 const generateServiceID = () => {
-  const idLenght = 4;
-  let id = '';
-  for (let i = 0; i < idLenght; i += 1) {
-    const capitalize = Math.random() >= 0.5;
-    let idChar = Math.random()
-      .toString(36)
-      .substring(2, 3);
-    if (capitalize) {
-      idChar = idChar.toUpperCase();
-    }
-    id += idChar;
-  }
-
-  return id;
+  return generateID(4);
 };
 
 const serviceReducer = (state, action) => {
