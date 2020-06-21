@@ -215,6 +215,11 @@
 .services-wrapper {
   height: 85%;
   overflow-y: auto;
+
+  .service-card-wrapper {
+    height: 60%;
+    margin-top: 0.5rem;
+  }
 }
 
 .add-service-btn-wrapper {
@@ -236,7 +241,7 @@
 
 .textarea-wrapper {
   height: 70%;
-  
+
   .form-textarea {
     max-height: 70%;
     resize: vertical;

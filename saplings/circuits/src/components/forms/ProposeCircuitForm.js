@@ -534,27 +534,29 @@ export function ProposeCircuitForm() {
           <div className="form-error">{servicesState.error}</div>
           {servicesState.services.map((service, index) => {
             return (
-              <ServiceCard
-                service={service}
-                isEditable
-                enterEditMode
-                applyServiceChanges={updatedService => {
-                  servicesDispatcher({
-                    type: 'edit',
-                    service: updatedService,
-                    serviceIndex: index
-                  });
-                }}
-                deleteService={() => {
-                  servicesDispatcher({
-                    type: 'delete',
-                    serviceIndex: index
-                  });
-                }}
-                isDeletable={servicesState.services.length > 1}
-                nodes={nodesState.selectedNodes}
-                localNodeID={localNodeID}
-              />
+              <div className="service-card-wrapper">
+                <ServiceCard
+                  service={service}
+                  isEditable
+                  enterEditMode
+                  applyServiceChanges={updatedService => {
+                    servicesDispatcher({
+                      type: 'edit',
+                      service: updatedService,
+                      serviceIndex: index
+                    });
+                  }}
+                  deleteService={() => {
+                    servicesDispatcher({
+                      type: 'delete',
+                      serviceIndex: index
+                    });
+                  }}
+                  isDeletable={servicesState.services.length > 1}
+                  nodes={nodesState.selectedNodes}
+                  localNodeID={localNodeID}
+                />
+              </div>
             );
           })}
         </div>
