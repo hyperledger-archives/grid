@@ -33,10 +33,15 @@
   .add-sign {
     font-size: 2rem;
   }
-}
 
-.propose-circuit-btn:hover {
-  background: var(--color-primary-dark);
+  &:hover:not(.disabled) {
+    background: var(--color-primary-dark);
+  }
+
+  &.disabled {
+    background: var(--color-light-grey);
+    cursor: default;
+  }
 }
 
 @media only screen and (max-width: 600px) {
