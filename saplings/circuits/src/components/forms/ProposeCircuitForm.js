@@ -22,6 +22,8 @@ import { useNodeRegistryState } from '../../state/nodeRegistry';
 import { useLocalNodeState } from '../../state/localNode';
 
 import NodeCard from '../NodeCard';
+import ProposalReview from '../ProposalReview';
+
 import { OverlayModal } from '../OverlayModal';
 import { NewNodeForm } from './NewNodeForm';
 import ServiceCard from '../ServiceCard';
@@ -658,7 +660,24 @@ export function ProposeCircuitForm() {
         </div>
       </Step>
       <Step step={5} label="Review and submit">
-        <input type="text" placeholder="test" />
+        <div className="step-header">
+          <div className="step-title">Review and submit</div>
+          <div className="help-text">
+            Review the circuit information carefully before submiting.
+          </div>
+        </div>
+        <div className="propose-form-wrapper review-wrapper">
+          <ProposalReview
+            members={nodesState.selectedNodes}
+            services={servicesState.services}
+            managementType={detailsState.managementType}
+            comments={detailsState.comments}
+            metadata={{
+              encoding: metadataState.encoding,
+              metadata: metadataState.metadata
+            }}
+          />
+        </div>
       </Step>
     </MultiStepForm>
   );
