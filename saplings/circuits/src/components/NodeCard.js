@@ -20,7 +20,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import './NodeCard.scss';
 
-const NodeCard = ({ node, dispatcher, isLocal, isSelected }) => {
+const NodeCard = ({ node, dispatcher, isLocal, isSelected, isSelectable }) => {
   return (
     <div className="node-card">
       <div className="node-description">
@@ -42,16 +42,18 @@ const NodeCard = ({ node, dispatcher, isLocal, isSelected }) => {
         </div>
         <div className="node-labels">
           <div className={isLocal ? 'node-local' : 'not-visible'}>Local</div>
-          <button
-            type="button"
-            className={isSelected ? 'select-box selected' : 'select-box'}
-            onClick={() => dispatcher(node)}
-            disabled={isLocal}
-          >
-            {isSelected && (
-              <FontAwesomeIcon icon="check" className="check-mark" />
-            )}
-          </button>
+          {isSelectable && (
+            <button
+              type="button"
+              className={isSelected ? 'select-box selected' : 'select-box'}
+              onClick={() => dispatcher(node)}
+              disabled={isLocal}
+            >
+              {isSelected && (
+                <FontAwesomeIcon icon="check" className="check-mark" />
+              )}
+            </button>
+          )}
         </div>
         <div className="metadata col-span-4">
           {Object.entries(node.metadata).map(([key, value]) => (
@@ -65,14 +67,17 @@ const NodeCard = ({ node, dispatcher, isLocal, isSelected }) => {
 
 NodeCard.propTypes = {
   node: PropTypes.instanceOf(Node).isRequired,
-  dispatcher: PropTypes.func.isRequired,
+  dispatcher: PropTypes.func,
   isLocal: PropTypes.bool,
-  isSelected: PropTypes.bool
+  isSelected: PropTypes.bool,
+  isSelectable: PropTypes.bool
 };
 
 NodeCard.defaultProps = {
+  dispatcher: () => {},
   isLocal: false,
-  isSelected: false
+  isSelected: false,
+  isSelectable: true
 };
 
 export default NodeCard;
