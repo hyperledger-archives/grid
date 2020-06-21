@@ -50,8 +50,9 @@ export function MultiStepForm({
   };
 
   const submit = () => {
-    handleSubmit();
-    setStep(1);
+    new Promise(handleSubmit).then(() => {
+      setStep(1);
+    });
   };
 
   return (
