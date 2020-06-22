@@ -71,8 +71,13 @@ const ProposalReview = ({
       </div>
       <div class-name="metadata-container">
         <div className="title">Metadata</div>
-        <div className="label">Encoding</div>
-        <div className="field-value">{metadata.encoding}</div>
+        {metadata.encoding && (
+          <div>
+            <div className="label">Encoding</div>
+            <div className="field-value">{metadata.encoding}</div>
+          </div>
+        )}
+
         <div className="label">Value</div>
         <div className="field-value">{metadata.metadata}</div>
       </div>
