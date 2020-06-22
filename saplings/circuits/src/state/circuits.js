@@ -173,7 +173,6 @@ const circuitsReducer = (state, action) => {
       const { circuits } = action;
       const intermediateState = {
         ...state,
-        isSet: true,
         circuits
       };
       return applyStateFns(intermediateState);
@@ -218,7 +217,6 @@ const circuitsReducer = (state, action) => {
 
 function useCircuitsState() {
   const [circuitState, circuitsDispatch] = useReducer(circuitsReducer, {
-    isSet: false,
     circuits: [],
     termFilterFn: null,
     statusFilterFn: null,
