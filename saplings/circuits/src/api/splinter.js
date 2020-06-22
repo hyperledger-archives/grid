@@ -91,3 +91,15 @@ export const postNode = async node => {
   }
   throw Error(result.json.message);
 };
+
+export const postCircuitManagementPayload = async payload => {
+  const setHeader = request => {
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+  };
+
+  const result = await post(`${splinterURL}/admin/submit`, payload, setHeader);
+
+  if (!result.ok) {
+    throw Error(result.json.message);
+  }
+};

@@ -26,8 +26,15 @@ const ProposeCircuitButton = () => {
     </span>
   );
 
+  const userHasKeys = window.$CANOPY.getKeys();
+
   return (
-    <Link className="propose-circuit-btn" to="/circuits/propose">
+    <Link
+      className={
+        userHasKeys ? 'propose-circuit-btn' : 'propose-circuit-btn disabled'
+      }
+      to={userHasKeys ? '/circuits/propose' : '/circuits'}
+    >
       {plusSign}
       <span className="btn-text">Propose New Circuit</span>
     </Link>

@@ -25,3 +25,6 @@ RUN apk add git
 RUN npm config set unsafe-perm true && npm install
 
 COPY . .
+
+RUN npm install && \
+  npm run generate-proto-files ./protos

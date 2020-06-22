@@ -92,4 +92,20 @@ function actionRequired(nodeId) {
 Circuit.prototype.awaitingApproval = awaitingApproval;
 Circuit.prototype.actionRequired = actionRequired;
 
-export { Circuit, ListCircuitsResponse, Service };
+const generateID = length => {
+  let id = '';
+  for (let i = 0; i < length; i += 1) {
+    const capitalize = Math.random() >= 0.5;
+    let idChar = Math.random()
+      .toString(36)
+      .substring(2, 3);
+    if (capitalize) {
+      idChar = idChar.toUpperCase();
+    }
+    id += idChar;
+  }
+
+  return id;
+};
+
+export { Circuit, ListCircuitsResponse, Service, generateID };

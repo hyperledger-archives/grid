@@ -50,8 +50,9 @@ export function MultiStepForm({
   };
 
   const submit = () => {
-    handleSubmit();
-    setStep(1);
+    new Promise(handleSubmit).then(() => {
+      setStep(1);
+    });
   };
 
   return (
@@ -82,7 +83,23 @@ export function MultiStepForm({
                   <div className="step-box">
                     {i < step - 1 && <FontAwesomeIcon icon="check" />}
                   </div>
-                  <span className="step-label">{s.props.label}</span>
+                  <span
+                    role="button"
+                    tabIndex="0"
+                    className="step-label"
+                    onClick={() => {
+                      if (i < step - 1) {
+                        setStep(i + 1);
+                      }
+                    }}
+                    onKeyUp={() => {
+                      if (i < step - 1) {
+                        setStep(i + 1);
+                      }
+                    }}
+                  >
+                    {s.props.label}
+                  </span>
                 </div>
               ))}
             </div>

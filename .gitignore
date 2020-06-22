@@ -34,6 +34,8 @@
 /sapling-dev-server/register-login.js
 /sapling-dev-server/profile
 
+/saplings/circuits/src/compiled_protos.json
+
 # misc
 .DS_Store
 **/.env.local
