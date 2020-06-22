@@ -255,7 +255,14 @@ function useCircuitState(circuitId) {
         setCircuit(new Circuit(apiCircuit));
       }
     };
+    const intervalId = setInterval(() => loadCircuit(), 10000);
+
+    // call it initially.
     loadCircuit();
+
+    return function cleanup() {
+      clearInterval(intervalId);
+    };
   }, [stateCircuitId]);
 
   return [circuit, setCircuitId];
