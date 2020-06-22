@@ -21,20 +21,18 @@ import { getNodeID } from '../api/splinter';
 const LocalNodeContext = React.createContext();
 
 function LocalNodeProvider({ children }) {
-  const [nodeState, setNodeID] = useState({ isSet: false, nodeID: 'unknown' });
+  const [nodeState, setNodeID] = useState({ nodeID: 'unknown' });
   useEffect(() => {
     const getNode = async () => {
-      if (!nodeState.isSet) {
-        try {
-          const node = await getNodeID();
-          setNodeID({ isSet: true, nodeID: node });
-        } catch (e) {
-          throw Error(`Error fetching node information: ${e}`);
-        }
+      try {
+        const node = await getNodeID();
+        setNodeID({ nodeID: node });
+      } catch (e) {
+        throw Error(`Error fetching node information: ${e}`);
       }
     };
     getNode();
-  });
+  }, []);
 
   return (
     <LocalNodeContext.Provider value={nodeState.nodeID}>
