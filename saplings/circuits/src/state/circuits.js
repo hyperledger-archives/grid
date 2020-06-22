@@ -24,47 +24,46 @@ import {
 
 import { Circuit, ListCircuitsResponse } from '../data/circuits';
 
-const filterCircuitsByTerm = (circuits, filterBy) => {
-  if (filterBy.filterTerm.length === 0) {
-    return circuits;
+const filterCircuitsByTerm = filterBy => {
+  if (filterBy.filterTerm.length > 0) {
+    return circuit => {
+      if (circuit.id.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
+        return true;
+      }
+      if (
+        circuit.managementType.toLowerCase().indexOf(filterBy.filterTerm) > -1
+      ) {
+        return true;
+      }
+      if (circuit.comments.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
+        return true;
+      }
+      if (
+        circuit.members.filter(
+          member => member.toLowerCase().indexOf(filterBy.filterTerm) > -1
+        ).length > 0
+      ) {
+        return true;
+      }
+      if (
+        circuit.roster.filter(
+          service => service.serviceType.indexOf(filterBy.filterTerm) > -1
+        ).length > 0
+      ) {
+        return true;
+      }
+      return false;
+    };
   }
-  const filteredCircuits = circuits.filter(circuit => {
-    if (circuit.id.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
-      return true;
-    }
-    if (
-      circuit.managementType.toLowerCase().indexOf(filterBy.filterTerm) > -1
-    ) {
-      return true;
-    }
-    if (circuit.comments.toLowerCase().indexOf(filterBy.filterTerm) > -1) {
-      return true;
-    }
-    if (
-      circuit.members.filter(
-        member => member.toLowerCase().indexOf(filterBy.filterTerm) > -1
-      ).length > 0
-    ) {
-      return true;
-    }
-    if (
-      circuit.roster.filter(
-        service => service.serviceType.indexOf(filterBy.filterTerm) > -1
-      ).length > 0
-    ) {
-      return true;
-    }
-    return false;
-  });
 
-  return filteredCircuits;
+  return null;
 };
 
-const sortCircuits = (circuits, { field, ascendingOrder }) => {
+const sortCircuits = ({ field, ascendingOrder }) => {
   const order = ascendingOrder ? -1 : 1;
   switch (field) {
     case 'comments': {
-      const sorted = circuits.sort((circuitA, circuitB) => {
+      return (circuitA, circuitB) => {
         if (circuitA.comments === 'N/A' && circuitB.comments !== 'N/A') {
           return 1; // 'N/A should always be at the bottom'
         }
@@ -78,12 +77,10 @@ const sortCircuits = (circuits, { field, ascendingOrder }) => {
           return -order;
         }
         return 0;
-      });
-
-      return sorted;
+      };
     }
     case 'circuitID': {
-      const sorted = circuits.sort((circuitA, circuitB) => {
+      return (circuitA, circuitB) => {
         if (circuitA.id < circuitB.id) {
           return order;
         }
@@ -91,12 +88,10 @@ const sortCircuits = (circuits, { field, ascendingOrder }) => {
           return -order;
         }
         return 0;
-      });
-
-      return sorted;
+      };
     }
     case 'serviceCount': {
-      const sorted = circuits.sort((circuitA, circuitB) => {
+      return (circuitA, circuitB) => {
         if (
           circuitA.numUniqueServiceTypes() < circuitB.numUniqueServiceTypes()
         ) {
@@ -108,12 +103,10 @@ const sortCircuits = (circuits, { field, ascendingOrder }) => {
           return -order;
         }
         return 0;
-      });
-
-      return sorted;
+      };
     }
     case 'managementType': {
-      const sorted = circuits.sort((circuitA, circuitB) => {
+      return (circuitA, circuitB) => {
         if (circuitA.managementType < circuitB.managementType) {
           return order;
         }
@@ -121,17 +114,15 @@ const sortCircuits = (circuits, { field, ascendingOrder }) => {
           return -order;
         }
         return 0;
-      });
-
-      return sorted;
+      };
     }
     default:
-      return circuits;
+      return null;
   }
 };
 
-const filterCircuitsByStatus = (circuits, filterBy) => {
-  const filteredCircuits = circuits.filter(circuit => {
+const filterCircuitsByStatus = filterBy => {
+  return circuit => {
     let include = false;
     if (filterBy.awaitingApproval) {
       include = include || circuit.awaitingApproval();
@@ -143,55 +134,80 @@ const filterCircuitsByStatus = (circuits, filterBy) => {
       include = true;
     }
     return include;
+  };
+};
+
+const applyStateFns = intermediateState => {
+  const {
+    circuitSortFn,
+    termFilterFn,
+    statusFilterFn,
+    circuits
+  } = intermediateState;
+
+  let filteredCircuits = circuits.filter(circuit => {
+    if (termFilterFn && !termFilterFn(circuit)) {
+      return false;
+    }
+    if (statusFilterFn && !statusFilterFn(circuit)) {
+      return false;
+    }
+    return true;
   });
-  return filteredCircuits;
+
+  if (circuitSortFn) {
+    filteredCircuits = filteredCircuits.sort(circuitSortFn);
+  }
+
+  return {
+    ...intermediateState,
+    filteredCircuits
+  };
 };
 
 const circuitsReducer = (state, action) => {
   switch (action.type) {
     case 'set': {
       const { circuits } = action;
-      return { ...state, isSet: true, filteredCircuits: circuits, circuits };
+      const intermediateState = {
+        ...state,
+        isSet: true,
+        circuits
+      };
+      return applyStateFns(intermediateState);
     }
     case 'sort': {
-      const sortedCircuits = sortCircuits(state.filteredCircuits, action.sort);
-      return { ...state, filteredCircuits: sortedCircuits };
+      const circuitSortFn = sortCircuits(action.sort);
+      if (circuitSortFn) {
+        return {
+          ...state,
+          circuitSortFn,
+          filteredCircuits: state.filteredCircuits.sort(circuitSortFn)
+        };
+      }
+
+      return {
+        ...state,
+        circuitSortFn
+      };
     }
     case 'filterByTerm': {
-      const filteredByTerm = filterCircuitsByTerm(
-        state.circuits,
-        action.filter
-      );
-      let filteredCircuits = filteredByTerm;
-      if (state.filteredByStatus.length > 0) {
-        filteredCircuits = filteredByTerm.filter(
-          circuit => state.filteredByStatus.indexOf(circuit) > -1
-        );
-      }
-      return {
+      const termFilterFn = filterCircuitsByTerm(action.filter);
+      const intermediateState = {
         ...state,
-        filteredByTerm,
-        filteredCircuits
+        termFilterFn
       };
+
+      return applyStateFns(intermediateState);
     }
     case 'filterByStatus': {
-      const filteredByStatus = filterCircuitsByStatus(
-        state.circuits,
-        action.filter
-      );
-
-      let filteredCircuits = filteredByStatus;
-      if (state.filteredByTerm.length > 0) {
-        filteredCircuits = filteredByStatus.filter(
-          circuit => state.filteredByTerm.indexOf(circuit) > -1
-        );
-      }
-
-      return {
+      const statusFilterFn = filterCircuitsByStatus(action.filter);
+      const intermediateState = {
         ...state,
-        filteredByStatus,
-        filteredCircuits
+        statusFilterFn
       };
+
+      return applyStateFns(intermediateState);
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
@@ -202,8 +218,8 @@ function useCircuitsState() {
   const [circuitState, circuitsDispatch] = useReducer(circuitsReducer, {
     isSet: false,
     circuits: [],
-    filteredByTerm: [],
-    filteredByStatus: [],
+    termFilterFn: null,
+    statusFilterFn: null,
     filteredCircuits: []
   });
 
