@@ -32,11 +32,17 @@ import { Circuit } from '../../data/circuits';
 import { useCircuitState } from '../../state/circuits';
 import { getNodeRegistry } from '../../api/splinter';
 import ServiceDetails from './ServiceDetails';
+import VoteButton from './VoteButton';
+import { useLocalNodeState } from '../../state/localNode';
+import { OverlayModal } from '../OverlayModal';
+import VoteOnProposalForm from '../forms/VoteOnProposalForm';
 import { Node } from '../../data/nodeRegistry';
 
 const CircuitDetails = () => {
   const { circuitId } = useParams();
   const [circuit] = useCircuitState(circuitId);
+  const localNodeID = useLocalNodeState();
+  const [modalActive, setModalActive] = React.useState(false);
   const [nodes, setNodes] = React.useState(null);
 
   React.useEffect(() => {
@@ -81,14 +87,23 @@ const CircuitDetails = () => {
             </Link>
           </div>
           {requiresAction}
-          <div className="circuit-title">
-            <h4>{`Circuit ${circuitId}`}</h4>
-            <div className="managementType">
-              {circuit.managementType}
-              <span>
-                <FontAwesomeIcon icon={faQuestionCircle} />
-              </span>
+          <div className="mid-header-wrapper">
+            <div className="circuit-title">
+              <h4>{`Circuit ${circuitId}`}</h4>
+              <div className="managementType">
+                {circuit.managementType}
+                <span>
+                  <FontAwesomeIcon icon={faQuestionCircle} />
+                </span>
+              </div>
             </div>
+            {circuit.actionRequired(localNodeID) && (
+              <VoteButton
+                onClickFn={() => {
+                  setModalActive(true);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -112,6 +127,15 @@ const CircuitDetails = () => {
 
         <NodesTable circuit={circuit} nodes={nodes} />
       </div>
+      <OverlayModal open={modalActive}>
+        <VoteOnProposalForm
+          proposal={circuit}
+          nodes={nodes}
+          closeFn={() => {
+            setModalActive(false);
+          }}
+        />
+      </OverlayModal>
     </div>
   );
 };

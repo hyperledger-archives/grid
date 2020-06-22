@@ -17,6 +17,7 @@
 .circuit-header {
   display: flex;
   flex-direction: column;
+  width: 100%;
 
   .back-button {
     flex: 1;
@@ -42,6 +43,12 @@
     span {
       margin-left: .25rem;
     }
+  }
+
+  .mid-header-wrapper {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
   }
 
   .circuit-title {
