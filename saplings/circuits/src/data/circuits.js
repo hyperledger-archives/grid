@@ -16,17 +16,43 @@
 
 import Paging from './paging';
 
-function Service(data) {
-  if (data) {
-    this.serviceID = data.service_id;
-    this.serviceType = data.serviceType;
-    this.allowedNodes = data.allowed_nodes;
-    this.arguments = data.arguments;
+/**
+ * Convert the arguments value of either a proposal or a circuit to an object
+ * containing the values parsed from JSON, if applicable.
+ */
+const argsToObject = coll => {
+  let kvPairs = [];
+  if (Array.isArray(coll)) {
+    kvPairs = coll;
+  } else if (typeof coll === 'object') {
+    kvPairs = Object.entries(coll);
   } else {
-    this.serviceID = '';
-    this.serviceType = '';
-    this.allowedNodes = [];
-    this.arguments = {};
+    throw new Error(`Unsupported argument type: ${typeof coll}`);
+  }
+
+  return kvPairs.reduce((acc, [k, encodedVal]) => {
+    try {
+      acc[k] = JSON.parse(encodedVal);
+    } catch (e) {
+      acc[k] = encodedVal;
+    }
+    return acc;
+  }, {});
+};
+
+class Service {
+  constructor(jsonSource) {
+    if (jsonSource) {
+      this.serviceId = jsonSource.service_id;
+      this.serviceType = jsonSource.service_type;
+      this.allowedNodes = jsonSource.allowed_nodes;
+      this.arguments = argsToObject(jsonSource.arguments);
+    } else {
+      this.serviceId = '';
+      this.serviceType = '';
+      this.allowedNodes = [];
+      this.arguments = {};
+    }
   }
 }
 
@@ -37,9 +63,7 @@ function Circuit(data) {
     this.members = data.circuit.members.map(member => {
       return member.node_id;
     });
-    this.roster = data.circuit.roster.map(service => {
-      return new Service(service);
-    });
+    this.roster = data.circuit.roster.map(s => new Service(s));
     this.managementType = data.circuit.management_type;
     this.applicationMetadata = data.circuit.application_metadata;
     this.comments = data.circuit.comments;
@@ -53,7 +77,7 @@ function Circuit(data) {
     this.id = data.id;
     this.status = 'Active';
     this.members = data.members;
-    this.roster = data.roster;
+    this.roster = data.roster.map(s => new Service(s));
     this.managementType = data.management_type;
     this.applicationMetadata = data.application_metadata;
     this.comments = 'N/A';
