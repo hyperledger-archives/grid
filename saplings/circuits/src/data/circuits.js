@@ -71,7 +71,8 @@ function Circuit(data) {
       votes: data.votes,
       requester: data.requester,
       requesterNodeID: data.requester_node_id,
-      proposalType: data.proposal_type
+      proposalType: data.proposal_type,
+      circuitHash: data.circuit_hash
     };
   } else {
     this.id = data.id;
@@ -85,7 +86,8 @@ function Circuit(data) {
       votes: [],
       requester: '',
       requesterNodeID: '',
-      proposalType: ''
+      proposalType: '',
+      circuitHash: ''
     };
   }
 }

@@ -32,10 +32,35 @@ import { Circuit } from '../../data/circuits';
 import { useCircuitState } from '../../state/circuits';
 import { getNodeRegistry } from '../../api/splinter';
 import ServiceDetails from './ServiceDetails';
+import VoteButton from './VoteButton';
+import { useLocalNodeState } from '../../state/localNode';
+import { OverlayModal } from '../OverlayModal';
+import VoteOnProposalForm from '../forms/VoteOnProposalForm';
+import { Node } from '../../data/nodeRegistry';
 
 const CircuitDetails = () => {
   const { circuitId } = useParams();
   const [circuit] = useCircuitState(circuitId);
+  const localNodeID = useLocalNodeState();
+  const [modalActive, setModalActive] = React.useState(false);
+  const [nodes, setNodes] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchNodes = async () => {
+      try {
+        const apiNodes = await getNodeRegistry();
+        const filteredNodes = apiNodes.filter(
+          node => !!circuit.members.find(id => id === node.identity)
+        );
+        setNodes(filteredNodes);
+      } catch (e) {
+        throw Error(`Unable to fetch nodes from the node registry: ${e}`);
+      }
+    };
+    if (circuit) {
+      fetchNodes();
+    }
+  }, [circuit]);
 
   if (!circuit) {
     return <div />;
@@ -62,14 +87,23 @@ const CircuitDetails = () => {
             </Link>
           </div>
           {requiresAction}
-          <div className="circuit-title">
-            <h4>{`Circuit ${circuitId}`}</h4>
-            <div className="managementType">
-              {circuit.managementType}
-              <span>
-                <FontAwesomeIcon icon={faQuestionCircle} />
-              </span>
+          <div className="mid-header-wrapper">
+            <div className="circuit-title">
+              <h4>{`Circuit ${circuitId}`}</h4>
+              <div className="managementType">
+                {circuit.managementType}
+                <span>
+                  <FontAwesomeIcon icon={faQuestionCircle} />
+                </span>
+              </div>
             </div>
+            {circuit.actionRequired(localNodeID) && (
+              <VoteButton
+                onClickFn={() => {
+                  setModalActive(true);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -91,8 +125,17 @@ const CircuitDetails = () => {
           </div>
         </div>
 
-        <NodesTable circuit={circuit} nodes={circuit.members} />
+        <NodesTable circuit={circuit} nodes={nodes} />
       </div>
+      <OverlayModal open={modalActive}>
+        <VoteOnProposalForm
+          proposal={circuit}
+          nodes={nodes}
+          closeFn={() => {
+            setModalActive(false);
+          }}
+        />
+      </OverlayModal>
     </div>
   );
 };
@@ -100,26 +143,9 @@ const CircuitDetails = () => {
 const contains = (list, val) => !!list.find(v => v === val);
 
 const NodesTable = ({ circuit, nodes }) => {
-  const [fullNodes, setNodes] = React.useState(null);
   const [toggledRow, setToggledRow] = React.useState(null);
 
-  React.useEffect(() => {
-    const fetchNodes = async () => {
-      try {
-        const apiNodes = await getNodeRegistry();
-        const filteredNodes = apiNodes.filter(node =>
-          contains(nodes, node.identity)
-        );
-        setNodes(filteredNodes);
-      } catch (e) {
-        throw Error(`Unable to fetch nodes from the node registry: ${e}`);
-      }
-    };
-
-    fetchNodes();
-  }, [nodes]);
-
-  if (fullNodes === null) {
+  if (nodes === null) {
     return <div />;
   }
 
@@ -131,8 +157,8 @@ const NodesTable = ({ circuit, nodes }) => {
     </tr>
   ];
 
-  if (fullNodes.length > 0) {
-    rows = fullNodes.map((node, idx) => {
+  if (nodes.length > 0) {
+    rows = nodes.map((node, idx) => {
       let endpoints = 'N/A';
       if (node.endpoints.length > 0) {
         endpoints = node.endpoints.reduce((acc, endpoint) => {
@@ -203,7 +229,7 @@ const NodesTable = ({ circuit, nodes }) => {
 
 NodesTable.propTypes = {
   circuit: PropTypes.arrayOf(Circuit).isRequired,
-  nodes: PropTypes.arrayOf(Object).isRequired
+  nodes: PropTypes.arrayOf(Node).isRequired
 };
 
 const NodeStatus = ({ circuit, nodeId }) => {

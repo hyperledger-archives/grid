@@ -40,6 +40,12 @@ export const makeSignedPayload = (
         protos.CircuitManagementPayload.Action.CIRCUIT_CREATE_REQUEST;
       break;
     }
+    case 'voteCircuitProposal': {
+      actionBytes = protos.CircuitProposalVote.encode(action).finish();
+      payload.circuitProposalVote = action;
+      actionEnum = protos.CircuitManagementPayload.Action.CIRCUIT_PROPOSAL_VOTE;
+      break;
+    }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
   }
