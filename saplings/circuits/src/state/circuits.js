@@ -49,7 +49,7 @@ const filterCircuitsByTerm = (circuits, filterBy) => {
     }
     if (
       circuit.roster.filter(
-        service => service.service_type.indexOf(filterBy.filterTerm) > -1
+        service => service.serviceType.indexOf(filterBy.filterTerm) > -1
       ).length > 0
     ) {
       return true;
@@ -60,9 +60,9 @@ const filterCircuitsByTerm = (circuits, filterBy) => {
   return filteredCircuits;
 };
 
-const sortCircuits = (circuits, action) => {
-  const order = action.ascendingOrder ? -1 : 1;
-  switch (action.sortBy) {
+const sortCircuits = (circuits, { field, ascendingOrder }) => {
+  const order = ascendingOrder ? -1 : 1;
+  switch (field) {
     case 'comments': {
       const sorted = circuits.sort((circuitA, circuitB) => {
         if (circuitA.comments === 'N/A' && circuitB.comments !== 'N/A') {
@@ -97,10 +97,14 @@ const sortCircuits = (circuits, action) => {
     }
     case 'serviceCount': {
       const sorted = circuits.sort((circuitA, circuitB) => {
-        if (circuitA.roster.length < circuitB.roster.length) {
+        if (
+          circuitA.numUniqueServiceTypes() < circuitB.numUniqueServiceTypes()
+        ) {
           return order;
         }
-        if (circuitA.roster.length > circuitB.roster.length) {
+        if (
+          circuitA.numUniqueServiceTypes() > circuitB.numUniqueServiceTypes()
+        ) {
           return -order;
         }
         return 0;

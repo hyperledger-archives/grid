@@ -115,8 +115,13 @@ function actionRequired(nodeId) {
   return !this.proposal.votes.find(vote => vote.voter_node_id === nodeId);
 }
 
+function numUniqueServiceTypes() {
+  return new Set(this.roster.map(service => service.serviceType)).size;
+}
+
 Circuit.prototype.awaitingApproval = awaitingApproval;
 Circuit.prototype.actionRequired = actionRequired;
+Circuit.prototype.numUniqueServiceTypes = numUniqueServiceTypes;
 
 const generateID = length => {
   let id = '';
