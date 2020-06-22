@@ -24,6 +24,8 @@ import {
 
 import { Circuit, ListCircuitsResponse } from '../data/circuits';
 
+const REFREST_INTERVAL = 10000; // ten seconds;
+
 const filterCircuitsByTerm = filterBy => {
   if (filterBy.filterTerm.length > 0) {
     return circuit => {
@@ -225,25 +227,27 @@ function useCircuitsState() {
 
   useEffect(() => {
     const getCircuits = async () => {
-      if (!circuitState.isSet) {
-        try {
-          const apiCircuits = await listCircuits();
-          const apiProposals = await listProposals();
+      try {
+        const apiCircuits = await listCircuits();
+        const apiProposals = await listProposals();
 
-          const circuits = new ListCircuitsResponse(apiCircuits);
-          const proposals = new ListCircuitsResponse(apiProposals);
+        const circuits = new ListCircuitsResponse(apiCircuits);
+        const proposals = new ListCircuitsResponse(apiProposals);
 
-          circuitsDispatch({
-            type: 'set',
-            circuits: circuits.data.concat(proposals.data)
-          });
-        } catch (e) {
-          throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
-        }
+        circuitsDispatch({
+          type: 'set',
+          circuits: circuits.data.concat(proposals.data)
+        });
+      } catch (e) {
+        throw Error(`Error fetching circuits from the splinter daemon: ${e}`);
       }
     };
+    const intervalId = setInterval(() => getCircuits(), REFREST_INTERVAL);
     getCircuits();
-  }, [circuitState]);
+    return function cleanup() {
+      clearInterval(intervalId);
+    };
+  }, []);
 
   return [circuitState, circuitsDispatch];
 }
@@ -271,7 +275,7 @@ function useCircuitState(circuitId) {
         setCircuit(new Circuit(apiCircuit));
       }
     };
-    const intervalId = setInterval(() => loadCircuit(), 10000);
+    const intervalId = setInterval(() => loadCircuit(), REFREST_INTERVAL);
 
     // call it initially.
     loadCircuit();
