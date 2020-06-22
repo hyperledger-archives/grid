@@ -59,6 +59,22 @@ const filterCircuitsByTerm = filterBy => {
   return null;
 };
 
+const filterCircuitsByStatus = filterBy => {
+  return circuit => {
+    let include = false;
+    if (filterBy.awaitingApproval) {
+      include = include || circuit.awaitingApproval();
+    }
+    if (filterBy.actionRequired) {
+      include = include || circuit.actionRequired(filterBy.nodeID);
+    }
+    if (!filterBy.awaitingApproval && !filterBy.actionRequired) {
+      include = true;
+    }
+    return include;
+  };
+};
+
 const sortCircuits = ({ field, ascendingOrder }) => {
   const order = ascendingOrder ? -1 : 1;
   switch (field) {
@@ -119,22 +135,6 @@ const sortCircuits = ({ field, ascendingOrder }) => {
     default:
       return null;
   }
-};
-
-const filterCircuitsByStatus = filterBy => {
-  return circuit => {
-    let include = false;
-    if (filterBy.awaitingApproval) {
-      include = include || circuit.awaitingApproval();
-    }
-    if (filterBy.actionRequired) {
-      include = include || circuit.actionRequired(filterBy.nodeID);
-    }
-    if (!filterBy.awaitingApproval && !filterBy.actionRequired) {
-      include = true;
-    }
-    return include;
-  };
 };
 
 const applyStateFns = intermediateState => {
