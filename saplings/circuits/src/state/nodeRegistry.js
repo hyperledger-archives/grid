@@ -18,21 +18,19 @@ import { useState, useEffect } from 'react';
 import { getNodeRegistry } from '../api/splinter';
 
 function useNodeRegistryState() {
-  const [nodesState, setNodes] = useState({ isSet: false, nodes: [] });
+  const [nodesState, setNodes] = useState({ nodes: [] });
 
   useEffect(() => {
     const getNodes = async () => {
-      if (!nodesState.isSet) {
-        try {
-          const nodes = await getNodeRegistry();
-          setNodes({ isSet: true, nodes });
-        } catch (e) {
-          throw Error(`Error fetching information from node registry: ${e}`);
-        }
+      try {
+        const nodes = await getNodeRegistry();
+        setNodes({ nodes });
+      } catch (e) {
+        throw Error(`Error fetching information from node registry: ${e}`);
       }
     };
     getNodes();
-  }, [nodesState]);
+  }, []);
 
   return nodesState.nodes;
 }

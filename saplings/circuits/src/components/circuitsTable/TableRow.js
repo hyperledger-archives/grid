@@ -58,15 +58,7 @@ const TableRow = ({ circuit }) => {
       }}
     >
       <td className="text-highlight">{circuit.id}</td>
-      <td>
-        {
-          new Set(
-            circuit.roster.map(service => {
-              return service.service_type;
-            })
-          ).size
-        }
-      </td>
+      <td>{circuit.numUniqueServiceTypes()}</td>
       <td>{circuit.managementType}</td>
       <td className={circuit.comments === 'N/A' ? 'text-grey' : ''}>
         <div className="circuit-comment">{circuit.comments}</div>
