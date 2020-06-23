@@ -22,7 +22,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faQuestionCircle,
   faArrowLeft,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faCaretDown,
+  faCaretRight
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
@@ -182,6 +184,7 @@ const NodesTable = ({ circuit, nodes }) => {
         }, []);
       }
 
+      let toggledIcon = <FontAwesomeIcon icon={faCaretRight} />;
       let detailsRow = '';
       if (toggledRow === idx) {
         detailsRow = (
@@ -195,6 +198,7 @@ const NodesTable = ({ circuit, nodes }) => {
             </td>
           </tr>
         );
+        toggledIcon = <FontAwesomeIcon icon={faCaretDown} />;
       }
 
       return [
@@ -208,7 +212,10 @@ const NodesTable = ({ circuit, nodes }) => {
             }
           }}
         >
-          <td>{node.identity}</td>
+          <td>
+            <span className="toggle">{toggledIcon}</span>
+            {node.identity}
+          </td>
           <td>{node.displayName}</td>
           <td>
             {node.metadata.company || node.metadata.organization || 'N/A'}
