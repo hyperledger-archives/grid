@@ -149,6 +149,18 @@ const NodesTable = ({ circuit, nodes }) => {
     return <div />;
   }
 
+  nodes.sort((nodeA, nodeB) => {
+    const nodeIdA = nodeA.identity.toLowerCase();
+    const nodeIdB = nodeB.identity.toLowerCase();
+    if (nodeIdA < nodeIdB) {
+      return -1;
+    }
+    if (nodeIdA > nodeIdB) {
+      return 1;
+    }
+    return 0;
+  });
+
   let rows = [
     <tr>
       <td colSpan="5" className="no-nodes-msg">
