@@ -22,7 +22,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faQuestionCircle,
   faArrowLeft,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faCaretDown,
+  faCaretRight
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
@@ -149,6 +151,18 @@ const NodesTable = ({ circuit, nodes }) => {
     return <div />;
   }
 
+  nodes.sort((nodeA, nodeB) => {
+    const nodeIdA = nodeA.identity.toLowerCase();
+    const nodeIdB = nodeB.identity.toLowerCase();
+    if (nodeIdA < nodeIdB) {
+      return -1;
+    }
+    if (nodeIdA > nodeIdB) {
+      return 1;
+    }
+    return 0;
+  });
+
   let rows = [
     <tr>
       <td colSpan="5" className="no-nodes-msg">
@@ -170,6 +184,7 @@ const NodesTable = ({ circuit, nodes }) => {
         }, []);
       }
 
+      let toggledIcon = <FontAwesomeIcon icon={faCaretRight} />;
       let detailsRow = '';
       if (toggledRow === idx) {
         detailsRow = (
@@ -183,6 +198,7 @@ const NodesTable = ({ circuit, nodes }) => {
             </td>
           </tr>
         );
+        toggledIcon = <FontAwesomeIcon icon={faCaretDown} />;
       }
 
       return [
@@ -196,7 +212,10 @@ const NodesTable = ({ circuit, nodes }) => {
             }
           }}
         >
-          <td>{node.identity}</td>
+          <td>
+            <span className="toggle">{toggledIcon}</span>
+            {node.identity}
+          </td>
           <td>{node.displayName}</td>
           <td>
             {node.metadata.company || node.metadata.organization || 'N/A'}
