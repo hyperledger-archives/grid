@@ -702,14 +702,14 @@ export function ProposeCircuitForm() {
           </div>
         </div>
       </Step>
-      <Step step={4} label="Add metadata">
+      <Step step={4} label="Add application metadata">
         <div className="step-header">
-          <div className="step-title">Add metadata</div>
+          <div className="step-title">Add application metadata</div>
           <div className="help-text">
-            Add metatada for the circuit. This data will be serialized before
-            being included in the circuit proposal. The metadata is opaque to
-            the splinter daemon, and it is only consumed by client applications
-            for the circuit.
+            Add application metatada for the circuit. This data will be
+            serialized before being included in the circuit proposal. The
+            metadata is opaque to the splinter daemon, and it is only consumed
+            by client applications for the circuit.
           </div>
         </div>
         <div className="propose-form-wrapper metatada-wrapper">
