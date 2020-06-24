@@ -40,6 +40,19 @@ import { OverlayModal } from '../OverlayModal';
 import VoteOnProposalForm from '../forms/VoteOnProposalForm';
 import { Node } from '../../data/nodeRegistry';
 
+const Label = ({ labelClass, children }) => {
+  return <div className={`label ${labelClass}`}>{children}</div>;
+};
+
+Label.propTypes = {
+  labelClass: PropTypes.string.isRequired,
+  children: PropTypes.node
+};
+
+Label.defaultProps = {
+  children: undefined
+};
+
 const CircuitDetails = () => {
   const { circuitId } = useParams();
   const [circuit] = useCircuitState(circuitId);
@@ -238,7 +251,7 @@ const NodesTable = ({ circuit, nodes }) => {
           <th>Alias</th>
           <th>Company</th>
           <th>Endpoints</th>
-          <th>Status</th>
+          <th>&nbsp;</th>
         </tr>
         {rows}
       </table>
@@ -252,11 +265,34 @@ NodesTable.propTypes = {
 };
 
 const NodeStatus = ({ circuit, nodeId }) => {
-  if (circuit.actionRequired(nodeId)) {
-    return <span className="status awaiting-approval">Awaiting approval</span>;
+  const localNodeID = useLocalNodeState();
+  let localLabel = '';
+  if (localNodeID === nodeId) {
+    localLabel = <Label labelClass="local">Local</Label>;
   }
 
-  return '';
+  let pendingVoteLabel = '';
+  if (circuit.actionRequired(nodeId)) {
+    pendingVoteLabel = <Label labelClass="pending-vote">Pending Vote</Label>;
+  }
+
+  let requesterLabel = '';
+  if (circuit.proposal.requesterNodeID === nodeId) {
+    requesterLabel = <Label labelClass="requester">Requester</Label>;
+  }
+
+  return (
+    <div className="labels">
+      {localLabel}
+      {pendingVoteLabel}
+      {requesterLabel}
+    </div>
+  );
+};
+
+NodeStatus.propTypes = {
+  circuit: PropTypes.instanceOf(Circuit).isRequired,
+  nodeId: PropTypes.string.isRequired
 };
 
 export default CircuitDetails;
