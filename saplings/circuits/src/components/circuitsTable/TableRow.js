@@ -21,6 +21,7 @@ import { useHistory } from 'react-router-dom';
 
 import { useLocalNodeState } from '../../state/localNode';
 import { Circuit } from '../../data/circuits';
+import { useNodeRegistryState } from '../../state/nodeRegistry';
 
 const proposalStatus = (circuit, nodeID) => {
   const exclamation = (
@@ -51,6 +52,9 @@ const TableRow = ({ circuit }) => {
   const history = useHistory();
   const maxCountShow = 3;
 
+  const nodes = useNodeRegistryState().filter(
+    node => !!circuit.members.find(id => id === node.identity)
+  );
 
   const serviceTypeCount = () => {
     const servicesCount = Object.entries(circuit.listServiceTypesCount());
@@ -65,6 +69,18 @@ const TableRow = ({ circuit }) => {
     });
   };
 
+  const members = () => {
+    return nodes.map((node, index) => {
+      if (index < maxCountShow) {
+        return `${node.displayName} \n`;
+      }
+      if (index === maxCountShow) {
+        return `and ${nodes.length - maxCountShow} more...`;
+      }
+      return '';
+    });
+  };
+
   return (
     <tr
       className="table-row"
@@ -73,6 +89,7 @@ const TableRow = ({ circuit }) => {
       }}
     >
       <td className="text-highlight">{circuit.id}</td>
+      <td>{members()}</td>
       <td>{serviceTypeCount()}</td>
       <td>{circuit.managementType}</td>
       <td className={circuit.comments === 'N/A' ? 'text-grey' : ''}>

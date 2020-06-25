@@ -196,6 +196,12 @@ const TableHeader = ({ dispatch, circuits }) => {
         {sortSymbol('circuitID')}
       </th>
       <th
+        onClick={() => sortCircuitsBy('memberCount', !sortedBy.ascendingOrder)}
+      >
+        Members
+        {sortSymbol('memberCount')}
+      </th>
+      <th
         onClick={() => sortCircuitsBy('serviceCount', !sortedBy.ascendingOrder)}
       >
         Services type
