@@ -119,9 +119,22 @@ function numUniqueServiceTypes() {
   return new Set(this.roster.map(service => service.serviceType)).size;
 }
 
+function listServiceTypesCount() {
+  const count = {};
+  this.roster.forEach(service => {
+    if (count[service.serviceType]) {
+      count[service.serviceType] += 1;
+    } else {
+      count[service.serviceType] = 1;
+    }
+  });
+  return count;
+}
+
 Circuit.prototype.awaitingApproval = awaitingApproval;
 Circuit.prototype.actionRequired = actionRequired;
 Circuit.prototype.numUniqueServiceTypes = numUniqueServiceTypes;
+Circuit.prototype.listServiceTypesCount = listServiceTypesCount;
 
 const generateID = length => {
   let id = '';

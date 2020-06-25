@@ -198,7 +198,7 @@ const TableHeader = ({ dispatch, circuits }) => {
       <th
         onClick={() => sortCircuitsBy('serviceCount', !sortedBy.ascendingOrder)}
       >
-        Service count
+        Services type
         {sortSymbol('serviceCount')}
       </th>
       <th

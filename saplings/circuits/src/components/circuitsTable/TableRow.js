@@ -49,6 +49,21 @@ const proposalStatus = (circuit, nodeID) => {
 const TableRow = ({ circuit }) => {
   const nodeID = useLocalNodeState();
   const history = useHistory();
+  const maxCountShow = 3;
+
+
+  const serviceTypeCount = () => {
+    const servicesCount = Object.entries(circuit.listServiceTypesCount());
+    return servicesCount.map(([serviceType, count], index) => {
+      if (index < maxCountShow) {
+        return `${serviceType} (${count}) \n`;
+      }
+      if (index === maxCountShow) {
+        return `and ${servicesCount.length - maxCountShow} more...`;
+      }
+      return '';
+    });
+  };
 
   return (
     <tr
@@ -58,7 +73,7 @@ const TableRow = ({ circuit }) => {
       }}
     >
       <td className="text-highlight">{circuit.id}</td>
-      <td>{circuit.numUniqueServiceTypes()}</td>
+      <td>{serviceTypeCount()}</td>
       <td>{circuit.managementType}</td>
       <td className={circuit.comments === 'N/A' ? 'text-grey' : ''}>
         <div className="circuit-comment">{circuit.comments}</div>
