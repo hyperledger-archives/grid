@@ -134,6 +134,17 @@ const sortCircuits = ({ field, ascendingOrder }) => {
         return 0;
       };
     }
+    case 'memberCount': {
+      return (circuitA, circuitB) => {
+        if (circuitA.members.length < circuitB.members.length) {
+          return order;
+        }
+        if (circuitA.members.length > circuitB.members.length) {
+          return -order;
+        }
+        return 0;
+      };
+    }
     default:
       return null;
   }
