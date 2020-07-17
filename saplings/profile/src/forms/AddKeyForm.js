@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import proptypes from 'prop-types';
 import { encryptKey, getSharedConfig } from 'splinter-saplingjs';
-import { Secp256k1Context } from 'transact-sdk-javascript';
+import { Secp256k1Context, Secp256k1PrivateKey } from 'transact-sdk-javascript';
 import crypto from 'crypto';
 import { MultiStepForm, Step, StepInput } from './MultiStepForm';
 import { Loader } from '../Loader';
@@ -49,6 +49,24 @@ export function AddKeyForm({ successFn }) {
 
   async function submitAddKey() {
     setLoading(true);
+
+    // Validate the public and private keys are related:
+    const context = new Secp256k1Context();
+    try {
+      const privateKey = Secp256k1PrivateKey.fromHex(state.privateKey);
+      const publicKey = context.getPublicKey(privateKey).asHex().toLowerCase();
+      const submittedPublicKey = state.publicKey.trim().toLowerCase();
+      if (publicKey !== submittedPublicKey) {
+        setError("The private key provided is not valid for the given public key.");
+        setLoadingState('failure');
+        return;
+      }
+    } catch (err) {
+        setError("The private key provided is not a valid key.");
+        setLoadingState('failure');
+        return;
+    }
+
     const canopyUser = JSON.parse(window.sessionStorage.getItem('CANOPY_USER'));
     const keySecret = crypto
       .createHash('sha256')
