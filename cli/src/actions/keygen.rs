@@ -62,10 +62,10 @@ pub fn generate_keys(
                 .ok_or_else(|| {
                     CliError::UserError(String::from("Unable to determine home directory"))
                 })
-                .and_then(|mut p| {
+                .map(|mut p| {
                     p.push(".grid");
                     p.push("keys");
-                    Ok(p)
+                    p
                 })?;
             if !key_path.exists() {
                 fs::create_dir_all(key_path.clone())?;
