@@ -188,6 +188,9 @@ impl<Conn: EventConnection + 'static> EventProcessor<Conn> {
                 loop {
                     match connection.recv() {
                         Ok(commit_event) => handle_message(commit_event, &event_handlers)?,
+                        Err(EventIoError::InvalidMessage(msg)) => {
+                            warn!("{}; ignoring...", msg);
+                        }
                         Err(err) => {
                             error!("Failed to receive events; aborting: {}", err);
                             break;
