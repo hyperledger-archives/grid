@@ -30,6 +30,7 @@ use sawtooth_sdk::{
             Event as SawtoothEvent, EventFilter, EventFilter_FilterType,
             EventList as SawtoothEventList, EventSubscription,
         },
+        network::PingResponse as SawtoothPingResponse,
         transaction_receipt::{
             StateChange as SawtoothStateChange, StateChangeList,
             StateChange_Type as SawtoothStateChange_Type,
@@ -99,13 +100,41 @@ impl EventConnection for SawtoothConnection {
     }
 
     fn recv(&self) -> Result<CommitEvent, EventIoError> {
-        match self.get_receiver().recv() {
-            Ok(Ok(msg)) => extract_event(msg),
-            Ok(Err(ReceiveError::DisconnectedError)) => Err(EventIoError::ConnectionError(
-                format!("{} has disconnected", self.name()),
-            )),
-            Ok(Err(err)) => Err(EventIoError::ConnectionError(err.to_string())),
-            Err(err) => Err(EventIoError::ConnectionError(err.to_string())),
+        loop {
+            match self.get_receiver().recv() {
+                Ok(Ok(msg)) if msg.get_message_type() == Message_MessageType::CLIENT_EVENTS => {
+                    break extract_event(msg)
+                }
+                Ok(Ok(msg)) if msg.get_message_type() == Message_MessageType::PING_REQUEST => {
+                    self.get_sender().send(
+                        Message_MessageType::PING_RESPONSE,
+                        msg.get_correlation_id(),
+                        &SawtoothPingResponse::new()
+                            .write_to_bytes()
+                            .map_err(|err| {
+                                EventIoError::ConnectionError(format!(
+                                    "Failed to serialize subscription request: {}",
+                                    err
+                                ))
+                            })?,
+                    )?;
+                    trace!("Received ping request and sent reply");
+                }
+                Ok(Ok(msg)) => {
+                    break Err(EventIoError::InvalidMessage(format!(
+                        "Received unexpected message: {:?}",
+                        msg.get_message_type()
+                    )));
+                }
+                Ok(Err(ReceiveError::DisconnectedError)) => {
+                    break Err(EventIoError::ConnectionError(format!(
+                        "{} has disconnected",
+                        self.name()
+                    )))
+                }
+                Ok(Err(err)) => break Err(EventIoError::ConnectionError(err.to_string())),
+                Err(err) => break Err(EventIoError::ConnectionError(err.to_string())),
+            }
         }
     }
 
@@ -212,13 +241,6 @@ fn make_event_filter(namespace: &str) -> EventSubscription {
 }
 
 fn extract_event(msg: Message) -> Result<CommitEvent, EventIoError> {
-    if msg.get_message_type() != Message_MessageType::CLIENT_EVENTS {
-        return Err(EventIoError::InvalidMessage(format!(
-            "Received unexpected message: {:?}",
-            msg.get_message_type()
-        )));
-    }
-
     let sawtooth_events = protobuf::parse_from_bytes::<SawtoothEventList>(msg.get_content())
         .map_err(|err| {
             EventIoError::InvalidMessage(format!("Unable to parse event list: {}", err))
