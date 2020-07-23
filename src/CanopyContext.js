@@ -21,7 +21,7 @@ import { createBrowserHistory } from 'history';
 import { get } from './request';
 import {
   mountCurrentSapling,
-  mountSaplingStyles,
+  mountConfigSaplingStyles,
   mountConfigSaplings
 } from './loadSaplings';
 
@@ -98,7 +98,7 @@ export function CanopyProvider({
 
     fetchConfigSaplings(saplingURL).then(saplings => {
       mountConfigSaplings(saplings);
-      mountSaplingStyles(saplings);
+      mountConfigSaplingStyles(saplings);
     });
   }, [saplingURL]);
 
@@ -114,7 +114,6 @@ export function CanopyProvider({
   useEffect(() => {
     if (sessionUser) {
       fetchUserSaplings(saplingURL).then(saplings => {
-        mountSaplingStyles(saplings);
         mountCurrentSapling(saplings);
         setUserSaplings(saplings);
       });

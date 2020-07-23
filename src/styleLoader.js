@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
-function styleLoader(styleUrl) {
+function unloadStylesByClassName(elementClassName) {
+  const stylesheetLinks = document.getElementsByClassName(elementClassName);
+  Array.from(stylesheetLinks).map(element => element.remove());
+}
+
+function styleLoader(styleUrl, isUserSaplingStyle) {
   const url = new URL(styleUrl);
   return new Promise((resolve, reject) => {
     const head = document.querySelector('head');
     const link = document.createElement('link');
+    if (isUserSaplingStyle) {
+      link.className = 'user-sapling-stylesheet';
+    }
     link.href = url;
     link.rel = 'stylesheet';
     link.onload = resolve;
@@ -27,4 +35,4 @@ function styleLoader(styleUrl) {
   });
 }
 
-export default styleLoader;
+export { unloadStylesByClassName, styleLoader };
