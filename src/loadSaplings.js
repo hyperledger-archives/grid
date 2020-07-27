@@ -15,7 +15,7 @@
  */
 
 import promiseLoader from './promiseLoader';
-import styleLoader from './styleLoader';
+import { styleLoader, unloadStylesByClassName } from './styleLoader';
 
 export async function mountCurrentSapling(userSaplingsResponse) {
   // Saplings will be guaranteed to to have a collision-free namespace that
@@ -37,18 +37,25 @@ export async function mountCurrentSapling(userSaplingsResponse) {
   );
 
   if (currentSaplingManifest) {
+    unloadStylesByClassName('user-sapling-stylesheet');
+    await Promise.all(
+      currentSaplingManifest.styleFiles.map(styleFile =>
+        styleLoader(`http://${styleFile}`, 'user-sapling-stylesheet')
+      )
+    );
     await Promise.all(
       currentSaplingManifest.runtimeFiles.map(saplingFile =>
         promiseLoader(`http://${saplingFile}`)
       )
     );
+
     return true;
   }
 
   return false;
 }
 
-export async function mountSaplingStyles(saplingResponse) {
+export async function mountConfigSaplingStyles(saplingResponse) {
   const saplingStyleFiles = saplingResponse
     .map(sapling => sapling.styleFiles)
     .flatMap(style => style)
@@ -59,7 +66,9 @@ export async function mountSaplingStyles(saplingResponse) {
   }
 
   await Promise.all(
-    saplingStyleFiles.map(styleFile => styleLoader(`http://${styleFile}`))
+    saplingStyleFiles.map(styleFile =>
+      styleLoader(`http://${styleFile}`, 'config-sapling-stylesheet')
+    )
   );
   return true;
 }
