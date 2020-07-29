@@ -58,7 +58,7 @@ const CircuitDetails = () => {
   const [circuit] = useCircuitState(circuitId);
   const localNodeID = useLocalNodeState();
   const [modalActive, setModalActive] = React.useState(false);
-  const [nodes, setNodes] = React.useState(null);
+  const [nodes, setNodes] = React.useState([]);
 
   React.useEffect(() => {
     const fetchNodes = async () => {
