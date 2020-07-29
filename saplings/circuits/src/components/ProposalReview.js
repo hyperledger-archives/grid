@@ -43,7 +43,7 @@ const ProposalReview = ({
           {members.map(node => {
             const local = node.identity === localNodeID;
             return (
-              <div className="member-node">
+              <div key={`member-${node.identity}`} className="member-node">
                 <NodeCard node={node} isLocal={local} isSelectable={false} />
               </div>
             );
@@ -55,7 +55,10 @@ const ProposalReview = ({
         <div className="services content-container">
           {services.map(service => {
             return (
-              <div className="service">
+              <div
+                key={`proposal-service-${service.serviceId}`}
+                className="service"
+              >
                 <ServiceCard service={service} isEditable={false} />
               </div>
             );

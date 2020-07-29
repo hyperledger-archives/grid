@@ -177,7 +177,7 @@ const NodesTable = ({ circuit, nodes }) => {
   });
 
   let rows = [
-    <tr>
+    <tr key="no-nodes">
       <td colSpan="5" className="no-nodes-msg">
         No Nodes found for this circuit
       </td>
@@ -185,7 +185,7 @@ const NodesTable = ({ circuit, nodes }) => {
   ];
 
   if (nodes.length > 0) {
-    rows = nodes.map((node, idx) => {
+    rows = nodes.flatMap((node, idx) => {
       let endpoints = 'N/A';
       if (node.endpoints.length > 0) {
         endpoints = node.endpoints.reduce((acc, endpoint) => {
@@ -198,24 +198,12 @@ const NodesTable = ({ circuit, nodes }) => {
       }
 
       let toggledIcon = <FontAwesomeIcon icon={faCaretRight} />;
-      let detailsRow = '';
       if (toggledRow === idx) {
-        detailsRow = (
-          <tr className="service-details-row">
-            <td colSpan="5">
-              <ServiceDetails
-                services={circuit.roster.filter(service =>
-                  contains(service.allowedNodes, node.identity)
-                )}
-              />
-            </td>
-          </tr>
-        );
         toggledIcon = <FontAwesomeIcon icon={faCaretDown} />;
       }
-
-      return [
+      const rowsForNode = [
         <tr
+          key={node.identity}
           className="table-row"
           onClick={() => {
             if (toggledRow === idx) {
@@ -237,9 +225,23 @@ const NodesTable = ({ circuit, nodes }) => {
           <td>
             <NodeStatus circuit={circuit} nodeId={node.identity} />
           </td>
-        </tr>,
-        detailsRow
+        </tr>
       ];
+      if (toggledRow === idx) {
+        rowsForNode.push(
+          <tr key={`service-${node.identity}`} className="service-details-row">
+            <td colSpan="5">
+              <ServiceDetails
+                services={circuit.roster.filter(service =>
+                  contains(service.allowedNodes, node.identity)
+                )}
+              />
+            </td>
+          </tr>
+        );
+      }
+
+      return rowsForNode;
     });
   }
 
