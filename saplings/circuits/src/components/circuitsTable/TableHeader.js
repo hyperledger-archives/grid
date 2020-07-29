@@ -190,54 +190,64 @@ const TableHeader = ({ dispatch, circuits }) => {
   );
 
   return (
-    <tr className="table-header">
-      <th onClick={() => sortCircuitsBy('circuitID', !sortedBy.ascendingOrder)}>
-        Circuit ID
-        {sortSymbol('circuitID')}
-      </th>
-      <th
-        onClick={() => sortCircuitsBy('memberCount', !sortedBy.ascendingOrder)}
-      >
-        Members
-        {sortSymbol('memberCount')}
-      </th>
-      <th
-        onClick={() => sortCircuitsBy('serviceCount', !sortedBy.ascendingOrder)}
-      >
-        Services type
-        {sortSymbol('serviceCount')}
-      </th>
-      <th
-        onClick={() => {
-          sortCircuitsBy('managementType', !sortedBy.ascendingOrder);
-        }}
-      >
-        Management Type
-        {sortSymbol('managementType')}
-      </th>
-      <th onClick={() => sortCircuitsBy('comments', !sortedBy.ascendingOrder)}>
-        Comments
-        {sortSymbol('comments')}
-      </th>
-      <th>
-        <div className="status-dropdown">
-          <button
-            type="button"
-            onClick={() => {
-              setFilterSettings({
-                type: 'show'
-              });
-            }}
-          >
-            Status
-            {filterSymbol(
-              filterSettings.actionRequired || filterSettings.awaitingApproval
-            )}
-          </button>
-          {filterOptions}
-        </div>
-      </th>
-    </tr>
+    <thead>
+      <tr className="table-header">
+        <th
+          onClick={() => sortCircuitsBy('circuitID', !sortedBy.ascendingOrder)}
+        >
+          Circuit ID
+          {sortSymbol('circuitID')}
+        </th>
+        <th
+          onClick={() => {
+            sortCircuitsBy('memberCount', !sortedBy.ascendingOrder);
+          }}
+        >
+          Members
+          {sortSymbol('memberCount')}
+        </th>
+        <th
+          onClick={() => {
+            sortCircuitsBy('serviceCount', !sortedBy.ascendingOrder);
+          }}
+        >
+          Services type
+          {sortSymbol('serviceCount')}
+        </th>
+        <th
+          onClick={() => {
+            sortCircuitsBy('managementType', !sortedBy.ascendingOrder);
+          }}
+        >
+          Management Type
+          {sortSymbol('managementType')}
+        </th>
+        <th
+          onClick={() => sortCircuitsBy('comments', !sortedBy.ascendingOrder)}
+        >
+          Comments
+          {sortSymbol('comments')}
+        </th>
+        <th>
+          <div className="status-dropdown">
+            <button
+              type="button"
+              onClick={() => {
+                setFilterSettings({
+                  type: 'show'
+                });
+              }}
+            >
+              Status
+              {filterSymbol(
+                filterSettings.actionRequired || filterSettings.awaitingApproval
+              )}
+            </button>
+            {filterOptions}
+          </div>
+        </th>
+      </tr>
+    </thead>
   );
 };
 
