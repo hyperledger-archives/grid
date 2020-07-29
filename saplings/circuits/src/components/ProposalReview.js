@@ -72,7 +72,7 @@ const ProposalReview = ({
         <div className="label">Comments</div>
         <div className="field-value">{comments}</div>
       </div>
-      <div class-name="metadata-container">
+      <div className="metadata-container">
         <div className="title">Application metadata</div>
         {metadata.encoding && (
           <div>
