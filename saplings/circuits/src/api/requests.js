@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+/**
+ * Returns the parsed JSON, if possible, `null` otherwise.
+ */
+function safeJSON(stringValue) {
+  try {
+    return JSON.parse(stringValue);
+  } catch (e) {
+    return null;
+  }
+}
+
 function errorResponse(request, message) {
   return {
     ok: false,
@@ -21,7 +32,7 @@ function errorResponse(request, message) {
     statusText: request.statusText,
     headers: request.getAllResponseHeaders(),
     data: message || request.responseText,
-    json: JSON.parse(message || request.responseText)
+    json: safeJSON(message) || safeJSON(request.responseText)
   };
 }
 
@@ -38,7 +49,7 @@ export function get(url) {
         statusText: request.statusText,
         headers: request.getAllResponseHeaders(),
         data: request.responseText,
-        json: JSON.parse(request.responseText)
+        json: safeJSON(request.responseText)
       });
     };
 
@@ -70,7 +81,7 @@ export function post(url, node, headerFn) {
         statusText: request.statusText,
         headers: request.getAllResponseHeaders(),
         data: request.responseText,
-        json: JSON.parse(request.responseText || '{}')
+        json: safeJSON(request.responseText || '{}')
       });
     };
 
