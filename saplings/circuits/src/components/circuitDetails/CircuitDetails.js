@@ -246,24 +246,26 @@ const NodesTable = ({ circuit, nodes }) => {
   }
 
   return (
-    <div className="table-container">
+    <div className="nodes-content">
       <table className="nodes-table">
-        <tr className="table-header">
-          <th>ID</th>
-          <th>Alias</th>
-          <th>Company</th>
-          <th>Endpoints</th>
-          <th>&nbsp;</th>
-        </tr>
-        {rows}
+        <thead>
+          <tr className="table-header">
+            <th>ID</th>
+            <th>Alias</th>
+            <th>Company</th>
+            <th>Endpoints</th>
+            <th>&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
       </table>
     </div>
   );
 };
 
 NodesTable.propTypes = {
-  circuit: PropTypes.arrayOf(Circuit).isRequired,
-  nodes: PropTypes.arrayOf(Node).isRequired
+  circuit: PropTypes.instanceOf(Circuit).isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired
 };
 
 const NodeStatus = ({ circuit, nodeId }) => {

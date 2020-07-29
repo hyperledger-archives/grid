@@ -48,7 +48,7 @@ const CircuitsTable = ({ circuits, dispatch }) => {
 };
 
 CircuitsTable.propTypes = {
-  circuits: PropTypes.arrayOf(Circuit).isRequired,
+  circuits: PropTypes.arrayOf(PropTypes.instanceOf(Circuit)).isRequired,
   dispatch: PropTypes.func.isRequired
 };
 

@@ -89,11 +89,14 @@ const ProposalReview = ({
 };
 
 ProposalReview.propTypes = {
-  members: PropTypes.arrayOf(Node).isRequired,
-  services: PropTypes.arrayOf(Service).isRequired,
+  members: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
+  services: PropTypes.arrayOf(PropTypes.instanceOf(Service)).isRequired,
   comments: PropTypes.string.isRequired,
   managementType: PropTypes.string.isRequired,
-  metadata: PropTypes.instanceOf(Object).isRequired
+  metadata: PropTypes.shape({
+    metadata: PropTypes.string,
+    encoding: PropTypes.string
+  }).isRequired
 };
 
 ProposalReview.defaultProps = {};

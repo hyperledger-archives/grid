@@ -131,7 +131,7 @@ const VoteOnProposalForm = ({ proposal, nodes, closeFn }) => {
 
 VoteOnProposalForm.propTypes = {
   proposal: PropTypes.instanceOf(Circuit).isRequired,
-  nodes: PropTypes.arrayOf(Node).isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
   closeFn: PropTypes.func.isRequired
 };
 

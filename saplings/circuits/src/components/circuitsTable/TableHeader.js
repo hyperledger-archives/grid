@@ -243,7 +243,7 @@ const TableHeader = ({ dispatch, circuits }) => {
 
 TableHeader.propTypes = {
   dispatch: PropTypes.func.isRequired,
-  circuits: PropTypes.arrayOf(Circuit).isRequired
+  circuits: PropTypes.arrayOf(PropTypes.instanceOf(Circuit)).isRequired
 };
 
 export default TableHeader;

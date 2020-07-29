@@ -561,7 +561,7 @@ ServiceCard.propTypes = {
   enterEditMode: PropTypes.bool,
   isEditable: PropTypes.bool,
   isDeletable: PropTypes.bool,
-  nodes: PropTypes.arrayOf(Node),
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)),
   localNodeID: PropTypes.string
 };
 
