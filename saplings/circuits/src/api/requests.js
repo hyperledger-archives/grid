@@ -54,7 +54,7 @@ export function get(url) {
     };
 
     request.onerror = () => {
-      resolve(errorResponse());
+      resolve(errorResponse(request));
     };
 
     request.ontimeout = () => {
@@ -86,7 +86,7 @@ export function post(url, node, headerFn) {
     };
 
     request.onerror = () => {
-      resolve(errorResponse());
+      resolve(errorResponse(request));
     };
 
     request.ontimeout = () => {
