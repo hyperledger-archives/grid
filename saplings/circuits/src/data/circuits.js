@@ -63,6 +63,9 @@ function Service(jsonSource) {
 }
 
 function Circuit(data) {
+  if (!(this instanceof Circuit)) {
+    return new Circuit(data);
+  }
   if (data.proposal_type) {
     this.id = data.circuit_id;
     this.status = 'Pending';
