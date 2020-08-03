@@ -71,9 +71,25 @@
   }
 }
 
-.table-container {
+.detail-content {
+  display: flex;
+  flex-direction: row;
+
+  .main-content {
+    flex: 2;
+    margin: 3rem 1.5rem 0;
+  }
+
+  .circuit-details {
+    flex: 1;
+    margin: 3rem 1.5rem 0 1.5rem;
+    overflow: auto;
+    height: 100%;
+  }
+}
+
+.nodes-content {
   overflow:auto;
-  margin-top: 3rem;
 
   .nodes-table {
     width: 100%;
