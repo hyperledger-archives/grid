@@ -40,19 +40,25 @@ const argsToObject = coll => {
   }, {});
 };
 
-class Service {
-  constructor(jsonSource) {
-    if (jsonSource) {
-      this.serviceId = jsonSource.service_id;
-      this.serviceType = jsonSource.service_type;
-      this.allowedNodes = jsonSource.allowed_nodes;
-      this.arguments = argsToObject(jsonSource.arguments);
-    } else {
-      this.serviceId = '';
-      this.serviceType = '';
-      this.allowedNodes = [];
-      this.arguments = {};
     }
+  }
+};
+
+function Service(jsonSource) {
+  if (!(this instanceof Service)) {
+    return new Service(jsonSource);
+  }
+
+  if (jsonSource) {
+    this.serviceId = jsonSource.service_id;
+    this.serviceType = jsonSource.service_type;
+    this.allowedNodes = jsonSource.allowed_nodes;
+    this.arguments = argsToObject(jsonSource.arguments);
+  } else {
+    this.serviceId = '';
+    this.serviceType = '';
+    this.allowedNodes = [];
+    this.arguments = {};
   }
 }
 
