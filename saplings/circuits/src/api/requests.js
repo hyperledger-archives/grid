@@ -25,74 +25,52 @@ function safeJSON(stringValue) {
   }
 }
 
-function errorResponse(request, message) {
+function response(request, ok, overrideResponseText) {
   return {
-    ok: false,
+    ok,
     status: request.status,
     statusText: request.statusText,
     headers: request.getAllResponseHeaders(),
-    data: message || request.responseText,
-    json: safeJSON(message) || safeJSON(request.responseText)
+    data: overrideResponseText || request.responseText,
+    json: overrideResponseText
+      ? safeJSON(overrideResponseText)
+      : safeJSON(request.responseText)
   };
 }
 
-export function get(url) {
-  return new Promise(resolve => {
+function httpRequest(method, url, data, headerFn) {
+  return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open('GET', url, true);
-    request.timeout = 5000;
-
-    request.onload = () => {
-      return resolve({
-        ok: request.status >= 200 && request.status < 300,
-        status: request.status,
-        statusText: request.statusText,
-        headers: request.getAllResponseHeaders(),
-        data: request.responseText,
-        json: safeJSON(request.responseText)
-      });
-    };
-
-    request.onerror = () => {
-      resolve(errorResponse(request));
-    };
-
-    request.ontimeout = () => {
-      resolve(errorResponse(request, 'Request took longer than expected.'));
-    };
-
-    request.send();
-  });
-}
-
-export function post(url, node, headerFn) {
-  return new Promise(resolve => {
-    const request = new XMLHttpRequest();
-    request.open('POST', url, true);
+    request.open(method, url, true);
     if (headerFn) {
       headerFn(request);
     }
     request.timeout = 5000;
 
     request.onload = () => {
-      return resolve({
-        ok: request.status >= 200 && request.status < 300,
-        status: request.status,
-        statusText: request.statusText,
-        headers: request.getAllResponseHeaders(),
-        data: request.responseText,
-        json: safeJSON(request.responseText || '{}')
-      });
+      if (request.status >= 200 && request.status < 300) {
+        resolve(response(request, true));
+      } else {
+        reject(response(request, false));
+      }
     };
 
     request.onerror = () => {
-      resolve(errorResponse(request));
+      reject(response(request, false));
     };
 
     request.ontimeout = () => {
-      resolve(errorResponse(request, 'Request took longer than expected.'));
+      reject(response(request, false, 'Request took longer than expected.'));
     };
 
-    request.send(node);
+    request.send(data);
   });
+}
+
+export function get(url) {
+  return httpRequest('GET', url);
+}
+
+export function post(url, data, headerFn) {
+  return httpRequest('POST', url, data, headerFn);
 }
