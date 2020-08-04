@@ -58,7 +58,7 @@ const CircuitDetails = () => {
   const [circuit] = useCircuitState(circuitId);
   const localNodeID = useLocalNodeState();
   const [modalActive, setModalActive] = React.useState(false);
-  const [nodes, setNodes] = React.useState(null);
+  const [nodes, setNodes] = React.useState([]);
 
   React.useEffect(() => {
     const fetchNodes = async () => {
@@ -177,7 +177,7 @@ const NodesTable = ({ circuit, nodes }) => {
   });
 
   let rows = [
-    <tr>
+    <tr key="no-nodes">
       <td colSpan="5" className="no-nodes-msg">
         No Nodes found for this circuit
       </td>
@@ -185,7 +185,7 @@ const NodesTable = ({ circuit, nodes }) => {
   ];
 
   if (nodes.length > 0) {
-    rows = nodes.map((node, idx) => {
+    rows = nodes.flatMap((node, idx) => {
       let endpoints = 'N/A';
       if (node.endpoints.length > 0) {
         endpoints = node.endpoints.reduce((acc, endpoint) => {
@@ -198,24 +198,12 @@ const NodesTable = ({ circuit, nodes }) => {
       }
 
       let toggledIcon = <FontAwesomeIcon icon={faCaretRight} />;
-      let detailsRow = '';
       if (toggledRow === idx) {
-        detailsRow = (
-          <tr className="service-details-row">
-            <td colSpan="5">
-              <ServiceDetails
-                services={circuit.roster.filter(service =>
-                  contains(service.allowedNodes, node.identity)
-                )}
-              />
-            </td>
-          </tr>
-        );
         toggledIcon = <FontAwesomeIcon icon={faCaretDown} />;
       }
-
-      return [
+      const rowsForNode = [
         <tr
+          key={node.identity}
           className="table-row"
           onClick={() => {
             if (toggledRow === idx) {
@@ -237,31 +225,47 @@ const NodesTable = ({ circuit, nodes }) => {
           <td>
             <NodeStatus circuit={circuit} nodeId={node.identity} />
           </td>
-        </tr>,
-        detailsRow
+        </tr>
       ];
+      if (toggledRow === idx) {
+        rowsForNode.push(
+          <tr key={`service-${node.identity}`} className="service-details-row">
+            <td colSpan="5">
+              <ServiceDetails
+                services={circuit.roster.filter(service =>
+                  contains(service.allowedNodes, node.identity)
+                )}
+              />
+            </td>
+          </tr>
+        );
+      }
+
+      return rowsForNode;
     });
   }
 
   return (
-    <div className="table-container">
+    <div className="nodes-content">
       <table className="nodes-table">
-        <tr className="table-header">
-          <th>ID</th>
-          <th>Alias</th>
-          <th>Company</th>
-          <th>Endpoints</th>
-          <th>&nbsp;</th>
-        </tr>
-        {rows}
+        <thead>
+          <tr className="table-header">
+            <th>ID</th>
+            <th>Alias</th>
+            <th>Company</th>
+            <th>Endpoints</th>
+            <th>&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
       </table>
     </div>
   );
 };
 
 NodesTable.propTypes = {
-  circuit: PropTypes.arrayOf(Circuit).isRequired,
-  nodes: PropTypes.arrayOf(Node).isRequired
+  circuit: PropTypes.instanceOf(Circuit).isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired
 };
 
 const NodeStatus = ({ circuit, nodeId }) => {

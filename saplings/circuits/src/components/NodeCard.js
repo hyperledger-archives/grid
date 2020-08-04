@@ -37,7 +37,11 @@ const NodeCard = ({ node, dispatcher, isLocal, isSelected, isSelectable }) => {
           <div className="field-header">Endpoints</div>
           <div className="endpoints">
             {node.endpoints.map(endpoint => {
-              return <div className="field-value">{endpoint}</div>;
+              return (
+                <div key={endpoint} className="field-value">
+                  {endpoint}
+                </div>
+              );
             })}
           </div>
         </div>
@@ -58,7 +62,7 @@ const NodeCard = ({ node, dispatcher, isLocal, isSelected, isSelectable }) => {
         </div>
         <div className="metadata col-span-4">
           {Object.entries(node.metadata).map(([key, value]) => (
-            <div className="metadata-chip">{`${key}: ${value}`}</div>
+            <div key={key} className="metadata-chip">{`${key}: ${value}`}</div>
           ))}
         </div>
       </div>

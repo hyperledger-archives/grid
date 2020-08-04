@@ -374,6 +374,7 @@ const ServiceCard = ({
             node.identity === serviceState.service.allowedNodes[0];
           return (
             <button
+              key={`btn-${node.identity}`}
               type="button"
               className="allowed-nodes-item service-input"
               onClick={() => {
@@ -413,7 +414,10 @@ const ServiceCard = ({
 
     return argumentsState.arguments.map((arg, i) => {
       return (
-        <div className="arguments-input-wrapper flex-input">
+        <div
+          key={`args-${arg.key}`}
+          className="arguments-input-wrapper flex-input"
+        >
           <input
             className="service-input arguments-input"
             value={arg.key}
@@ -557,7 +561,7 @@ ServiceCard.propTypes = {
   enterEditMode: PropTypes.bool,
   isEditable: PropTypes.bool,
   isDeletable: PropTypes.bool,
-  nodes: PropTypes.arrayOf(Node),
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)),
   localNodeID: PropTypes.string
 };
 

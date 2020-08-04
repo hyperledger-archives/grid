@@ -79,7 +79,7 @@ const ServiceDetails = ({ services }) => {
 };
 
 ServiceDetails.propTypes = {
-  services: PropTypes.arrayOf(Service).isRequired
+  services: PropTypes.arrayOf(PropTypes.instanceOf(Service)).isRequired
 };
 
 export default ServiceDetails;

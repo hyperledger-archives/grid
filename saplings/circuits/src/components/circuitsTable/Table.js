@@ -23,28 +23,32 @@ import TableHeader from './TableHeader';
 import './CircuitsTable.scss';
 
 const CircuitsTable = ({ circuits, dispatch }) => {
-  const noCircuits = (
-    <tr>
+  let rows = (
+    <tr key="empty">
       <td colSpan="5" className="no-circuits-msg">
         No circuits found
       </td>
     </tr>
   );
+
+  if (circuits.length > 0) {
+    rows = circuits.map(item => {
+      return <TableRow key={item.id} circuit={item} />;
+    });
+  }
+
   return (
     <div className="table-container">
       <table className="circuits-table">
         <TableHeader dispatch={dispatch} circuits={circuits} />
-        {circuits.length === 0 ? noCircuits : ''}
-        {circuits.map(item => {
-          return <TableRow circuit={item} />;
-        })}
+        <tbody>{rows}</tbody>
       </table>
     </div>
   );
 };
 
 CircuitsTable.propTypes = {
-  circuits: PropTypes.arrayOf(Circuit).isRequired,
+  circuits: PropTypes.arrayOf(PropTypes.instanceOf(Circuit)).isRequired,
   dispatch: PropTypes.func.isRequired
 };
 

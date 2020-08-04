@@ -43,7 +43,7 @@ const ProposalReview = ({
           {members.map(node => {
             const local = node.identity === localNodeID;
             return (
-              <div className="member-node">
+              <div key={`member-${node.identity}`} className="member-node">
                 <NodeCard node={node} isLocal={local} isSelectable={false} />
               </div>
             );
@@ -55,7 +55,10 @@ const ProposalReview = ({
         <div className="services content-container">
           {services.map(service => {
             return (
-              <div className="service">
+              <div
+                key={`proposal-service-${service.serviceId}`}
+                className="service"
+              >
                 <ServiceCard service={service} isEditable={false} />
               </div>
             );
@@ -69,7 +72,7 @@ const ProposalReview = ({
         <div className="label">Comments</div>
         <div className="field-value">{comments}</div>
       </div>
-      <div class-name="metadata-container">
+      <div className="metadata-container">
         <div className="title">Application metadata</div>
         {metadata.encoding && (
           <div>
@@ -86,11 +89,14 @@ const ProposalReview = ({
 };
 
 ProposalReview.propTypes = {
-  members: PropTypes.arrayOf(Node).isRequired,
-  services: PropTypes.arrayOf(Service).isRequired,
+  members: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
+  services: PropTypes.arrayOf(PropTypes.instanceOf(Service)).isRequired,
   comments: PropTypes.string.isRequired,
   managementType: PropTypes.string.isRequired,
-  metadata: PropTypes.instanceOf(Object).isRequired
+  metadata: PropTypes.shape({
+    metadata: PropTypes.string,
+    encoding: PropTypes.string
+  }).isRequired
 };
 
 ProposalReview.defaultProps = {};

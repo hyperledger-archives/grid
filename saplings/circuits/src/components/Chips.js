@@ -52,7 +52,7 @@ function Chip({ node, isLocal, removeFn, deleteable }) {
 }
 
 Chips.propTypes = {
-  nodes: PropTypes.arrayOf(Node).isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
   localNodeID: PropTypes.string,
   removeFn: PropTypes.func
 };
