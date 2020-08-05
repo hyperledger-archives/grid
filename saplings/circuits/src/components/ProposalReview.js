@@ -17,8 +17,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import ServiceCard from 'App/components/forms/propose_circuit/service';
 import NodeCard from './NodeCard';
-import ServiceCard from './ServiceCard';
 
 import { useLocalNodeState } from '../state/localNode';
 

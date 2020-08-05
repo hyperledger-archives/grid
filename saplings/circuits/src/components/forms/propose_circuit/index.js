@@ -20,23 +20,25 @@ import yaml from 'js-yaml';
 import { useToasts } from 'react-toast-notifications';
 import { useHistory } from 'react-router-dom';
 
-import { MultiStepForm, Step } from './MultiStepForm';
-import { useNodeRegistryState } from '../../state/nodeRegistry';
-import { useLocalNodeState } from '../../state/localNode';
+import { MultiStepForm, Step } from 'App/components/forms/MultiStepForm';
+import { useNodeRegistryState } from 'App/state/nodeRegistry';
+import { useLocalNodeState } from 'App/state/localNode';
 
-import NodeCard from '../NodeCard';
-import ProposalReview from '../ProposalReview';
+import NodeCard from 'App/components/NodeCard';
+import ProposalReview from 'App/components/ProposalReview';
 
-import { OverlayModal } from '../OverlayModal';
-import { NewNodeForm } from './NewNodeForm';
-import ServiceCard from '../ServiceCard';
-import { Service, generateID } from '../../data/circuits';
-import protos from '../../protobuf';
-import { makeSignedPayload } from '../../api/payload';
-import { postCircuitManagementPayload } from '../../api/splinter';
-import { Chips } from '../Chips';
+import { OverlayModal } from 'App/components/OverlayModal';
+import { NewNodeForm } from 'App/components/forms/NewNodeForm';
 
-import './ProposeCircuitForm.scss';
+import { Service, generateID } from 'App/data/circuits';
+import protos from 'App/protobuf';
+import { makeSignedPayload } from 'App/api/payload';
+import { postCircuitManagementPayload } from 'App/api/splinter';
+import { Chips } from 'App/components/Chips';
+
+import ServiceCard from './service';
+
+import './index.scss';
 
 const generateCircuitID = () => {
   const firstPart = generateID(5);

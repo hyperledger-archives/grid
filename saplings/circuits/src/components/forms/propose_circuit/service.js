@@ -17,11 +17,11 @@
 import React, { useState, useReducer, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Service, generateID } from '../data/circuits';
-import { Node } from '../data/nodeRegistry';
-import { PlusButton, MinusButton } from './PlusMinusButton';
+import { Service, generateID } from 'App/data/circuits';
+import { Node } from 'App/data/nodeRegistry';
+import { PlusButton, MinusButton } from 'App/components/PlusMinusButton';
 
-import './ServiceCard.scss';
+import './service.scss';
 
 const isValidID = serviceId => {
   if (serviceId.length === 4) {
