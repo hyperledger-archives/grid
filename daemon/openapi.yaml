@@ -1047,15 +1047,15 @@ components:
         service_id:
           type: string
           example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-      required:
-        - name
-        - data_type
-        - boolean_value
-        - number_value
-        - string_value
-        - enum_value
-        - struct_values
-        - lat_long_value
+        required:
+          - name
+          - data_type
+          - boolean_value
+          - number_value
+          - string_value
+          - enum_value
+          - struct_values
+          - lat_long_value
     Product:
       type: object
       properties:
