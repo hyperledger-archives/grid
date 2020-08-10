@@ -415,7 +415,7 @@ const ServiceCard = ({
     return argumentsState.arguments.map((arg, i) => {
       return (
         <div
-          key={`args-${arg.key}`}
+          key={`args-${arg.index}`}
           className="arguments-input-wrapper flex-input"
         >
           <input
