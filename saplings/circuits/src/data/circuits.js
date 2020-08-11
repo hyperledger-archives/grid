@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import yaml from 'js-yaml';
+
 import Paging from './paging';
 
 /**
@@ -40,23 +42,44 @@ const argsToObject = coll => {
   }, {});
 };
 
-class Service {
-  constructor(jsonSource) {
-    if (jsonSource) {
-      this.serviceId = jsonSource.service_id;
-      this.serviceType = jsonSource.service_type;
-      this.allowedNodes = jsonSource.allowed_nodes;
-      this.arguments = argsToObject(jsonSource.arguments);
-    } else {
-      this.serviceId = '';
-      this.serviceType = '';
-      this.allowedNodes = [];
-      this.arguments = {};
+const metadataFromJson = encoded => {
+  let asString = encoded;
+  try {
+    const unencoded = Buffer.from(encoded, 'hex');
+    asString = unencoded.toString();
+    return JSON.parse(asString);
+  } catch (jsonException) {
+    // try yaml
+    try {
+      return yaml.safeLoad(asString);
+    } catch (yamlException) {
+      return encoded;
     }
+  }
+};
+
+function Service(jsonSource) {
+  if (!(this instanceof Service)) {
+    return new Service(jsonSource);
+  }
+
+  if (jsonSource) {
+    this.serviceId = jsonSource.service_id;
+    this.serviceType = jsonSource.service_type;
+    this.allowedNodes = jsonSource.allowed_nodes;
+    this.arguments = argsToObject(jsonSource.arguments);
+  } else {
+    this.serviceId = '';
+    this.serviceType = '';
+    this.allowedNodes = [];
+    this.arguments = {};
   }
 }
 
 function Circuit(data) {
+  if (!(this instanceof Circuit)) {
+    return new Circuit(data);
+  }
   if (data.proposal_type) {
     this.id = data.circuit_id;
     this.status = 'Pending';
@@ -65,7 +88,10 @@ function Circuit(data) {
     });
     this.roster = data.circuit.roster.map(s => new Service(s));
     this.managementType = data.circuit.management_type;
-    this.applicationMetadata = data.circuit.application_metadata;
+    this.applicationMetadata = metadataFromJson(
+      data.circuit.application_metadata
+    );
+    this.encodedApplicationData = data.circuit.application_metadata;
     this.comments = data.circuit.comments;
     this.proposal = {
       votes: data.votes,
@@ -80,7 +106,8 @@ function Circuit(data) {
     this.members = data.members;
     this.roster = data.roster.map(s => new Service(s));
     this.managementType = data.management_type;
-    this.applicationMetadata = data.application_metadata;
+    this.applicationMetadata = metadataFromJson(data.application_metadata);
+    this.encodedApplicationData = data.application_metadata;
     this.comments = 'N/A';
     this.proposal = {
       votes: [],

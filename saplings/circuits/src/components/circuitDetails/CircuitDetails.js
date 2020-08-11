@@ -34,6 +34,7 @@ import { Circuit } from '../../data/circuits';
 import { useCircuitState } from '../../state/circuits';
 import { getNodeRegistry } from '../../api/splinter';
 import ServiceDetails from './ServiceDetails';
+import CircuitMetaData from './CircuitMetaData';
 import VoteButton from './VoteButton';
 import { useLocalNodeState } from '../../state/localNode';
 import { OverlayModal } from '../OverlayModal';
@@ -122,25 +123,28 @@ const CircuitDetails = () => {
           </div>
         </div>
       </div>
-      <div className="main-content">
-        <div className="midContent">
-          <div className="circuit-stats">
-            <div className="stat total-circuits">
-              <span className="stat-count circuits-count">
-                {circuit.members.length}
-              </span>
-              Nodes
-            </div>
-            <div className="stat action-required">
-              <span className="stat-count action-required-count">
-                {circuit.roster.length}
-              </span>
-              Services
+      <div className="detail-content">
+        <div className="main-content">
+          <div className="midContent">
+            <div className="circuit-stats">
+              <div className="stat total-circuits">
+                <span className="stat-count circuits-count">
+                  {circuit.members.length}
+                </span>
+                Nodes
+              </div>
+              <div className="stat action-required">
+                <span className="stat-count action-required-count">
+                  {circuit.roster.length}
+                </span>
+                Services
+              </div>
             </div>
           </div>
-        </div>
 
-        <NodesTable circuit={circuit} nodes={nodes} />
+          <NodesTable circuit={circuit} nodes={nodes} />
+        </div>
+        <CircuitMetaData circuit={circuit} />
       </div>
       <OverlayModal open={modalActive}>
         <VoteOnProposalForm

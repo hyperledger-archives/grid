@@ -15,6 +15,10 @@
  */
 
 function Node(data) {
+  if (!(this instanceof Node)) {
+    return new Node(data);
+  }
+
   this.identity = data.identity;
   this.endpoints = data.endpoints;
   this.displayName = data.display_name;

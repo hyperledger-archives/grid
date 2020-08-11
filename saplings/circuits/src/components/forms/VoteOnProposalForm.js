@@ -96,7 +96,7 @@ const VoteOnProposalForm = ({ proposal, nodes, closeFn }) => {
           members={nodes}
           services={proposal.roster}
           comments={proposal.comments}
-          metadata={{ metadata: proposal.applicationMetadata }}
+          metadata={{ metadata: proposal.encodedApplicationMetadata }}
           managementType={proposal.managementType}
         />
       </div>
