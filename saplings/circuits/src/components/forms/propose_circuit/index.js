@@ -572,7 +572,7 @@ export function ProposeCircuitForm() {
                     return node.identity === selectedNode.identity;
                   }).length > 0;
                 return (
-                  <li className="node-item">
+                  <li key={node.identity} className="node-item">
                     <NodeCard
                       node={node}
                       dispatcher={targetNode => {
