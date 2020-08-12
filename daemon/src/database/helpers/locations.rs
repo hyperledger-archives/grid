@@ -43,6 +43,25 @@ pub fn insert_locations(conn: &PgConnection, locations: &[NewLocation]) -> Query
         .map(|_| ())
 }
 
+pub fn insert_location_property_values(
+    conn: &PgConnection,
+    property_values: &[NewLocationPropertyValue],
+) -> QueryResult<()> {
+    for value in property_values {
+        update_location_property_values (
+            conn,
+            &value.location_id,
+            value.service_id.as_deref(),
+            value.start_commit_num,
+        )?;
+    }
+
+    insert_into(location_property_value::table)
+        .values(property_values)
+        .execute(conn)
+        .map(|_| ())
+}
+
 pub fn delete_location(
     conn: &PgConnection,
     address: &str,
@@ -55,6 +74,22 @@ pub fn delete_location(
                 .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
         )
         .set(location::end_commit_num.eq(current_commit_num))
+        .execute(conn)
+        .map(|_| ())
+}
+
+pub fn delete_location_property_values(
+    conn: &PgConnection,
+    address: &str,
+    current_commit_num: i64,
+) -> QueryResult<()> {
+    update(location_property_value::table)
+        .filter(
+            location_property_value::location_address
+                .eq(address)
+                .and(location_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+        )
+        .set(location_property_value::end_commit_num.eq(current_commit_num))
         .execute(conn)
         .map(|_| ())
 }
@@ -91,6 +126,37 @@ fn update_loc_end_commit_num(
     }
 }
 
+fn update_location_property_values(
+    conn: &PgConnection,
+    location_id: &str,
+    service_id: Option<&str>,
+    current_commit_num: i64,
+) -> QueryResult<()> {
+    let update = update(location_property_value::table);
+
+    if let Some(service_id) = service_id {
+        update
+            .filter(location_property_value::location_id
+                .eq(location_id)
+                .and(location_property_value::end_commit_num.eq(MAX_COMMIT_NUM))
+                .and(location_property_value::service_id.eq(service_id))
+            )
+            .set(location_property_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    } else {
+        update
+            .filter(
+                location_property_value::location_id
+                    .eq(location_id)
+                    .and(location_property_value::end_commit_num.eq(MAX_COMMIT_NUM))
+            )
+            .set(location_property_value::end_commit_num.eq(current_commit_num))
+            .execute(conn)
+            .map(|_| ())
+    }
+}
+
 pub fn list_locations(conn: &PgConnection, service_id: Option<&str>) -> QueryResult<Vec<Location>> {
     let mut query = location::table
         .into_boxed()
@@ -103,6 +169,23 @@ pub fn list_locations(conn: &PgConnection, service_id: Option<&str>) -> QueryRes
         query = query.filter(location::service_id.is_null());
     }
     query.load::<Location>(conn)
+}
+
+pub fn list_location_property_values(
+    conn: &PgConnection,
+    service_id: Option<&str>,
+) -> QueryResult<Vec<LocationPropertyValue>> {
+    let mut query = location_property_value::table
+        .into_boxed()
+        .select(location_property_value::all_columns)
+        .filter(location_property_value::end_commit_num.eq(MAX_COMMIT_NUM));
+
+    if let Some(service_id) = service_id {
+        query = query.filter(location_property_value::service_id.eq(service_id));
+    } else {
+        query = query.filter(location_property_value::service_id.is_null());
+    }
+    query.load::<LocationPropertyValue>(conn)
 }
 
 pub fn fetch_location(
@@ -129,4 +212,26 @@ pub fn fetch_location(
         .first(conn)
         .map(Some)
         .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+}
+
+pub fn fetch_location_property_values(
+    conn: &PgConnection,
+    location_id: &str,
+    service_id: Option<&str>,
+) -> QueryResult<Vec<LocationPropertyValue>> {
+    let mut query = location_property_value::table
+        .into_boxed()
+        .select(location_property_value::all_columns)
+        .filter(
+            location_property_value::location_id
+                .eq(location_id)
+                .and(location_property_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+        );
+
+    if let Some(service_id) = service_id {
+        query = query.filter(location_property_value::service_id.eq(service_id));
+    } else {
+        query = query.filter(location_property_value::service_id.is_null());
+    }
+    query.load::<LocationPropertyValue>(conn)
 }
