@@ -26,8 +26,9 @@ use std::time::SystemTime;
 
 use super::schema::{
     agent, associated_agent, commit, grid_circuit, grid_circuit_member, grid_circuit_proposal,
-    grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, organization,
-    product, product_property_value, property, proposal, record, reported_value, reporter,
+    grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, location,
+    organization, product, product_property_value, property, proposal, record, reported_value,
+    reporter,
 };
 
 #[derive(Insertable, Queryable)]
@@ -74,6 +75,38 @@ pub struct Agent {
     pub active: bool,
     pub roles: Vec<String>,
     pub metadata: JsonValue,
+    pub service_id: Option<String>,
+}
+
+#[derive(Insertable, Debug)]
+#[table_name = "location"]
+pub struct NewLocation {
+    pub location_id: String,
+    pub location_address: String,
+    pub location_namespace: String,
+    pub owner: String,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
+    pub service_id: Option<String>,
+}
+
+#[derive(Queryable, Identifiable, Debug)]
+#[table_name = "location"]
+pub struct Location {
+    ///  This is the record id for the slowly-changing-dimensions table.
+    pub id: i64,
+    pub location_id: String,
+    pub location_address: String,
+    pub location_namespace: String,
+    pub owner: String,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
     pub service_id: Option<String>,
 }
 

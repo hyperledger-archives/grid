@@ -92,6 +92,19 @@ table! {
 }
 
 table! {
+    location (id) {
+        id -> Int8,
+        location_id -> Varchar,
+        location_address -> Varchar,
+        location_namespace -> Text,
+        owner -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
     organization (id) {
         id -> Int8,
         org_id -> Varchar,
