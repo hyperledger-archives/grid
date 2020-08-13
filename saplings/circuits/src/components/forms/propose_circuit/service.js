@@ -14,565 +14,443 @@
  * limitations under the License.
  */
 
-import React, { useState, useReducer, useEffect } from 'react';
+import React, { useState, useReducer } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faEdit,
+  faTrash,
+  faSync,
+  faPlusCircle,
+  faMinusCircle
+} from '@fortawesome/free-solid-svg-icons';
+import {
+  Button,
+  InputRow,
+  ListBoxSelect,
+  TextField
+} from 'App/components/forms/controls';
+import { useLocalNodeState } from 'App/state/localNode';
 import { Service, generateID } from 'App/data/circuits';
 import { Node } from 'App/data/nodeRegistry';
-import { PlusButton, MinusButton } from 'App/components/PlusMinusButton';
 
 import './service.scss';
 
-const isValidID = serviceId => {
-  if (serviceId.length === 4) {
-    const regex = /^[a-zA-Z0-9]+$/i;
-    if (serviceId.match(regex)) {
-      return true;
-    }
-    return false;
+const NodeDisplay = ({ node }) => {
+  const localNodeID = useLocalNodeState();
+
+  if (!node) {
+    return <div className="node-display" />;
   }
-  return false;
-};
 
-const generateServiceID = () => {
-  return generateID(4);
-};
-
-const serviceReducer = (state, action) => {
-  switch (action.type) {
-    case 'set-service-type': {
-      const { serviceType } = action;
-      const { errors, service } = state;
-      if (serviceType.length === 0) {
-        errors.serviceType = 'Service type cannot be empty';
-      } else {
-        errors.serviceType = '';
-      }
-      service.serviceType = serviceType;
-
-      return { ...state, service, errors };
-    }
-    case 'set-service-id': {
-      const { serviceId } = action;
-      const { errors, service } = state;
-      if (serviceId.length === 0) {
-        errors.serviceId = 'Service ID cannot be empty';
-      } else if (!isValidID(serviceId)) {
-        errors.serviceId =
-          'Invalid service ID. It must be 4 characters long and contain only ASCII alphanumeric characters.';
-      } else {
-        errors.serviceId = '';
-      }
-      service.serviceId = serviceId;
-
-      return { ...state, serviceId, errors };
-    }
-    case 'set-allowed-nodes': {
-      const { allowedNodes } = action;
-      const { errors, service } = state;
-      if (allowedNodes.length === 0) {
-        errors.allowedNodes = 'Allowed nodes cannot be empty';
-      } else {
-        errors.allowedNodes = '';
-      }
-
-      service.allowedNodes = allowedNodes;
-
-      return { ...state, service, errors };
-    }
-    case 'check-allowed-nodes': {
-      const { errors } = state;
-      if (state.service.allowedNodes.length === 0) {
-        errors.allowedNodes = 'Allowed nodes cannot be empty';
-      } else {
-        errors.allowedNodes = '';
-      }
-
-      return { ...state, errors };
-    }
-    case 'set-arguments': {
-      const args = action.arguments;
-      const { errors, service } = state;
-      if (args.length === 0) {
-        errors.arguments = 'Service arguments cannot be empty';
-      } else {
-        errors.arguments = '';
-      }
-
-      service.arguments = args;
-
-      return { ...state, service, errors };
-    }
-    case 'set-service': {
-      const { service } = action;
-      return { ...state, service };
-    }
-    default:
-      throw new Error(`unhandled action type: ${action.type}`);
-  }
-};
-
-const argumentsReducer = (state, action) => {
-  switch (action.type) {
-    case 'add-field': {
-      state.arguments.push({
-        key: '',
-        value: ''
-      });
-      return { ...state };
-    }
-    case 'remove-field': {
-      const { index } = action;
-      state.arguments.splice(index, 1);
-      return { ...state };
-    }
-    case 'set-field-key': {
-      const newState = state;
-      const { key, index } = action;
-      newState.arguments[index].key = key;
-      if (key.length !== 0) {
-        delete newState.errors[index];
-      }
-
-      if (key.length === 0 && newState.arguments[index].value.length !== 0) {
-        const error = 'Key cannot be empty';
-        newState.errors[index] = error;
-      }
-
-      return { ...newState };
-    }
-    case 'set-field-value': {
-      const newState = state;
-      const { value, index } = action;
-      newState.arguments[index].value = value;
-      if (newState.arguments[index].key.length === 0 && value.length !== 0) {
-        const error = 'Key cannot be empty';
-        newState.errors[index] = error;
-      } else {
-        delete newState.errors[index];
-      }
-      return { ...newState };
-    }
-    case 'reset-arguments': {
-      const args = Object.entries(action.arguments).map(([key, value]) => {
-        return {
-          key,
-          value
-        };
-      });
-      return { ...state, arguments: args };
-    }
-    case 'filter-empty': {
-      const filteredArgs = state.arguments.filter(arg => {
-        if (arg.key.length > 0) {
-          return true;
-        }
-        return false;
-      });
-
-      return { ...state, arguments: filteredArgs };
-    }
-    case 'clear': {
-      return {
-        arguments: [
-          {
-            key: '',
-            value: ''
-          }
-        ],
-        errors: {}
-      };
-    }
-    default:
-      throw new Error(`unhandled action type: ${action.type}`);
-  }
-};
-
-const ServiceCard = ({
-  service,
-  applyServiceChanges,
-  deleteService,
-  isEditable,
-  enterEditMode,
-  isDeletable,
-  nodes,
-  localNodeID
-}) => {
-  const [editMode, setEditMode] = useState(enterEditMode);
-  const [deleteOnDismiss, setDeleteOnDismiss] = useState(true);
-  const [formComplete, setFormComplete] = useState(false);
-  const [serviceState, serviceDispatcher] = useReducer(serviceReducer, {
-    service: { ...service },
-    errors: {
-      serviceType: '',
-      serviceId: '',
-      allowedNodes: '',
-      serviceArguments: ''
-    }
-  });
-  const [showAllowedNodes, setShowAllowedNodes] = useState(false);
-  const [argumentsState, argumentsDispatcher] = useReducer(argumentsReducer, {
-    arguments: Object.entries(serviceState.service.arguments).map(
-      ([key, value]) => {
-        return {
-          key,
-          value
-        };
-      }
-    ),
-    errors: {}
-  });
-
-  useEffect(() => {
-    serviceDispatcher({ type: 'set-service', service: { ...service } });
-  }, [service]);
-
-  useEffect(() => {
-    const serviceTypeIsValid =
-      serviceState.errors.serviceType.length === 0 &&
-      serviceState.service.serviceType.length !== 0;
-
-    const serviceIdIsValid =
-      serviceState.errors.serviceId.length === 0 &&
-      serviceState.service.serviceId.length !== 0;
-
-    const allowedNodesIsValid =
-      serviceState.errors.allowedNodes.length === 0 &&
-      serviceState.service.allowedNodes.length !== 0;
-
-    const serviceArgumentsIsValid =
-      Object.keys(argumentsState.errors).length === 0;
-
-    if (
-      serviceTypeIsValid &&
-      serviceIdIsValid &&
-      allowedNodesIsValid &&
-      serviceArgumentsIsValid
-    ) {
-      setFormComplete(true);
-    } else {
-      setFormComplete(false);
-    }
-  }, [serviceState, argumentsState]);
-
-  const caretDown = (
-    <span className="icon-btn caret">
-      <FontAwesomeIcon icon="caret-down" />
-    </span>
-  );
-
-  const caretUp = (
-    <span className="icon-btn caret">
-      <FontAwesomeIcon icon="caret-up" />
-    </span>
-  );
-
-  const editButton = (
-    <button
-      className="icon-btn"
-      type="button"
-      title="Edit service"
-      onClick={() => {
-        setEditMode(true);
-        setDeleteOnDismiss(false);
-      }}
-    >
-      <FontAwesomeIcon icon="pen" />
-    </button>
-  );
-
-  const deleteButton = (
-    <button
-      className="icon-btn"
-      title="Delete service"
-      type="button"
-      disabled={!isDeletable}
-      onClick={() => {
-        deleteService();
-      }}
-    >
-      <FontAwesomeIcon icon="trash" />
-    </button>
-  );
-
-  const confirmButton = (
-    <button
-      className="icon-btn color-confirm"
-      type="button"
-      onClick={async () => {
-        setEditMode(false);
-        const args = {};
-        argumentsState.arguments.forEach(arg => {
-          if (arg.key.length > 0) {
-            args[arg.key] = arg.value;
-          }
-        });
-        serviceDispatcher({ type: 'set-arguments', arguments: args });
-        argumentsDispatcher({ type: 'filter-empty' });
-        applyServiceChanges({ ...serviceState.service, arguments: args });
-      }}
-      title="Submit changes"
-      disabled={!formComplete}
-    >
-      <FontAwesomeIcon icon="check" />
-    </button>
-  );
-
-  const dismissButton = (
-    <button
-      className="icon-btn color-danger"
-      type="button"
-      title="Dismiss changes"
-      disabled={!isDeletable && deleteOnDismiss}
-      onClick={() => {
-        if (deleteOnDismiss) {
-          deleteService();
-        } else {
-          serviceDispatcher({ type: 'set-service', service: { ...service } });
-          argumentsDispatcher({
-            type: 'reset-arguments',
-            arguments: { ...service.arguments }
-          });
-          setEditMode(false);
-        }
-      }}
-    >
-      <FontAwesomeIcon icon="times" />
-    </button>
-  );
-
-  const allowedNodes = (
-    <input
-      className="service-input"
-      value={serviceState.service.allowedNodes}
-      disabled
-    />
-  );
-
-  const allowedNodeEditMode = (
-    <div>
-      <button
-        type="button"
-        className="allowed-nodes-dropdown service-input"
-        onClick={() => {
-          if (showAllowedNodes) {
-            serviceDispatcher({ type: 'check-allowed-nodes' });
-          }
-          setShowAllowedNodes(!showAllowedNodes);
-        }}
-      >
-        {serviceState.service.allowedNodes}
-        {showAllowedNodes ? caretUp : caretDown}
-      </button>
-      <ul
-        className={
-          showAllowedNodes ? 'allowed-nodes-list show' : 'allowed-nodes-list'
-        }
-      >
-        {nodes.map(node => {
-          const selected =
-            node.identity === serviceState.service.allowedNodes[0];
-          return (
-            <button
-              key={`btn-${node.identity}`}
-              type="button"
-              className="allowed-nodes-item service-input"
-              onClick={() => {
-                setShowAllowedNodes(false);
-                serviceDispatcher({
-                  type: 'set-allowed-nodes',
-                  allowedNodes: [node.identity]
-                });
-              }}
-            >
-              <div className="field-wrapper">
-                <div className="field-header">Name</div>
-                <div className="field-value">{node.displayName}</div>
-              </div>
-              <div className="field-wrapper">
-                <div className="field-header">ID</div>
-                <div className="field-value">{node.identity}</div>
-                {localNodeID === node.identity && (
-                  <div className="field-value">(Local)</div>
-                )}
-              </div>
-              <FontAwesomeIcon
-                icon="check"
-                className={selected ? 'check-mark' : 'check-mark not-visible'}
-              />
-            </button>
-          );
-        })}
-      </ul>
+  return (
+    <div className="node-display">
+      <div className="field-wrapper">
+        <div className="field-header">Name</div>
+        <div className="field-value">{node.displayName}</div>
+      </div>
+      <div className="field-wrapper">
+        <div className="field-header">ID</div>
+        <div className="field-value">
+          {`${node.identity}${localNodeID === node.identity ? ' (Local)' : ''}`}
+        </div>
+      </div>
     </div>
   );
+};
 
-  const serviceArguments = () => {
-    if (argumentsState.arguments.length === 0 && editMode) {
-      argumentsDispatcher({ type: 'add-field' });
-    }
+NodeDisplay.propTypes = {
+  node: PropTypes.instanceOf(Node).isRequired
+};
 
-    return argumentsState.arguments.map((arg, i) => {
+export const ServiceTable = ({
+  services,
+  nodes,
+  isEdit,
+  onServiceEdit,
+  onServiceDelete
+}) => {
+  let tableBody;
+  if (services.length === 0) {
+    tableBody = (
+      <tr>
+        <td className="no-services" colSpan="5">
+          <center>At least one service must be defined for a circuit.</center>
+        </td>
+      </tr>
+    );
+  } else {
+    const controls = service => {
+      if (isEdit) {
+        return (
+          <td className="edit-controls">
+            <div>
+              <Button
+                title={`Edit service ${service.serviceId}`}
+                onClick={() => onServiceEdit(service.serviceId)}
+                label={<FontAwesomeIcon icon={faEdit} />}
+              />
+              <Button
+                title={`Delete service ${service.serviceId}`}
+                onClick={() => onServiceDelete(service.serviceId)}
+                label={<FontAwesomeIcon icon={faTrash} />}
+              />
+            </div>
+          </td>
+        );
+      }
+
+      return null;
+    };
+
+    tableBody = services.map(service => {
+      const node = nodes.find(n => n.identity === service.allowedNodes[0]);
       return (
-        <div
-          key={`args-${arg.index}`}
-          className="arguments-input-wrapper flex-input"
-        >
-          <input
-            className="service-input arguments-input"
-            value={arg.key}
-            placeholder="Key"
-            disabled={!editMode}
-            onChange={e => {
-              const input = e.target.value;
-              argumentsDispatcher({
-                type: 'set-field-key',
-                key: input,
-                index: i
-              });
-            }}
-          />
-          <input
-            className="service-input arguments-input"
-            value={arg.value}
-            placeholder="Value"
-            disabled={!editMode}
-            onChange={e => {
-              const input = e.target.value;
-              argumentsDispatcher({
-                type: 'set-field-value',
-                value: input,
-                index: i
-              });
-            }}
-          />
-          {editMode && (
-            <PlusButton
-              actionFn={() => {
-                argumentsDispatcher({
-                  type: 'add-field'
-                });
-              }}
-              display
-            />
-          )}
-          {editMode && (
-            <MinusButton
-              actionFn={() => {
-                argumentsDispatcher({
-                  type: 'remove-field',
-                  index: i
-                });
-              }}
-              display={argumentsState.arguments.length > 1}
-            />
-          )}
-          <div className="form-error">{argumentsState.errors[i]}</div>
-        </div>
+        <tr key={service.serviceId}>
+          <td>{service.serviceType}</td>
+          <td>{service.serviceId}</td>
+          <td>
+            <NodeDisplay node={node} />
+          </td>
+          <td className="arguments">
+            {Object.entries(service.arguments).map(([key, value]) => {
+              return (
+                <React.Fragment key={key}>
+                  {`${key}: ${value}`}
+                  <br />
+                </React.Fragment>
+              );
+            })}
+          </td>
+          {controls(service)}
+        </tr>
       );
     });
+  }
+
+  return (
+    <table className="service-table">
+      <thead className="table">
+        <tr>
+          <th>Service Type</th>
+          <th>Service ID</th>
+          <th>Node</th>
+          <th className="arguments">Arguments</th>
+          {isEdit ? <th className="controls">&nbsp;</th> : null}
+        </tr>
+      </thead>
+      <tbody>{tableBody}</tbody>
+    </table>
+  );
+};
+
+ServiceTable.propTypes = {
+  services: PropTypes.arrayOf(PropTypes.instanceOf(Service)).isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
+  isEdit: PropTypes.bool,
+  onServiceEdit: PropTypes.func,
+  onServiceDelete: PropTypes.func
+};
+
+ServiceTable.defaultProps = {
+  isEdit: false,
+  onServiceEdit: () => null,
+  onServiceDelete: () => null
+};
+
+const formValueReducer = (state, [action, ...values]) => {
+  if (action === 'reset') {
+    return { 'service-args': [{}] };
+  }
+
+  if (action === 'init') {
+    const [service] = values;
+    if (service && !state.edit) {
+      const serviceArgs = Object.entries(service.arguments).map(
+        ([key, value]) => ({
+          key,
+          value
+        })
+      );
+      serviceArgs.push({});
+
+      return {
+        edit: true,
+        'service-node': service.allowedNodes[0],
+        'service-id': service.serviceId,
+        'service-type': service.serviceType,
+        'service-args': serviceArgs
+      };
+    }
+    return state;
+  }
+
+  if (action === 'service-arg-add') {
+    const serviceArgs = state['service-args'];
+    serviceArgs.push({});
+    return { ...state, 'service-args': serviceArgs };
+  }
+
+  if (action === 'service-arg-remove') {
+    const [idx] = values;
+    const serviceArgs = state['service-args'];
+    serviceArgs.splice(idx, 1);
+    return { ...state, 'service-args': serviceArgs };
+  }
+
+  if (action === 'service-arg-set') {
+    const [idx, prop, value] = values;
+    const serviceArgs = state['service-args'];
+    const currentValue = serviceArgs[idx] || {};
+    serviceArgs[idx] = { ...currentValue, [prop]: value };
+    return { ...state, 'service-args': serviceArgs };
+  }
+
+  if (action) {
+    // field set from a regular input
+    const [value] = values;
+    return { ...state, [action]: value };
+  }
+
+  // no action supplied.
+  return state;
+};
+
+export const ServiceForm = ({ nodes, onComplete, onCancel, service }) => {
+  const [values, valueDispatch] = useReducer(formValueReducer, {
+    'service-args': [{}]
+  });
+  const [errors, setErrors] = useState({});
+  const [dirty, setDirty] = useState({});
+
+  if (service && !values.edit) {
+    valueDispatch(['init', service]);
+  }
+
+  const isComplete = () => {
+    if (!values['service-type'] || values['service-type'].trim().length < 1) {
+      return false;
+    }
+    if (!values['service-id'] || values['service-id'].trim().length < 1) {
+      return false;
+    }
+
+    return !!values['service-node'];
+  };
+
+  const validators = {
+    'service-id': val => {
+      if (!val || val.length !== 4) {
+        return 'Invalid service ID: It must be 4 characters long';
+      }
+
+      const regex = /^[a-zA-Z0-9]+$/i;
+      if (!val.match(regex)) {
+        return 'Invalid service ID. It must contain only ASCII alphanumeric characters.';
+      }
+      return null;
+    },
+    'service-type': val => {
+      if (!val || val.length === 0) {
+        return 'Service type cannot be empty';
+      }
+      return null;
+    }
+  };
+
+  const onBlur = evt => {
+    evt.preventDefault();
+    const { target } = evt;
+    const { name, value } = target;
+
+    if (dirty[name] && validators[name]) {
+      const fn = validators[name] || (() => null);
+      setErrors({ ...errors, [name]: fn(value) });
+    }
+  };
+
+  const onChange = evt => {
+    evt.preventDefault();
+    const { target } = evt;
+    const { name, value } = target;
+    const fn = validators[name] || (() => null);
+    if (!fn(value)) {
+      setErrors({ ...errors, [name]: null });
+    }
+    setDirty({ ...dirty, [name]: true });
+    valueDispatch([name, value]);
+  };
+
+  const doReset = () => {
+    valueDispatch(['reset']);
+    setErrors({});
+    setDirty({});
+  };
+
+  const onSubmit = evt => {
+    evt.preventDefault();
+
+    if (isComplete()) {
+      const result = new Service();
+      result.serviceId = values['service-id'];
+      result.serviceType = values['service-type'];
+      result.allowedNodes = values['service-node']
+        ? [values['service-node']]
+        : [];
+      result.arguments = values['service-args']
+        .filter(({ key }) => !!key)
+        .reduce((acc, { key, value }) => ({ ...acc, [key]: value || '' }), {});
+
+      // return the new result and the old
+      onComplete(result, service);
+      doReset();
+    }
+  };
+
+  const doCancel = evt => {
+    evt.preventDefault();
+    doReset();
+    onCancel();
+  };
+
+  const basicInput = (name, label, ...more) => (
+    <TextField
+      name={name}
+      label={label}
+      error={errors[name]}
+      value={values[name]}
+      onChange={onChange}
+      onBlur={onBlur}
+    >
+      {more}
+    </TextField>
+  );
+
+  const serviceArg = (idx, prop) => {
+    const arg = values['service-args'][idx];
+    if (arg) {
+      return arg[prop] || '';
+    }
+    return '';
+  };
+
+  const serviceArgHandler = (idx, prop) => evt => {
+    evt.preventDefault();
+    valueDispatch(['service-arg-set', idx, prop, evt.target.value]);
+  };
+
+  const plusOrMinus = (pred, idx) => {
+    if (pred) {
+      return (
+        <Button
+          label={<FontAwesomeIcon icon={faMinusCircle} />}
+          className="icon-button"
+          onClick={() => valueDispatch(['service-arg-remove', idx])}
+        />
+      );
+    }
+
+    return (
+      <Button
+        label={<FontAwesomeIcon icon={faPlusCircle} />}
+        className="icon-button"
+        onClick={() => valueDispatch(['service-arg-add'])}
+      />
+    );
+  };
+
+  const serviceArgRow = idx => {
+    const key = serviceArg(idx, 'key');
+    return (
+      <InputRow className="service-args" key={idx}>
+        <TextField
+          name="arg-key"
+          label="Key"
+          value={key}
+          onChange={serviceArgHandler(idx, 'key')}
+        />
+        <TextField
+          name="arg-value"
+          label="Value"
+          value={serviceArg(idx, 'value')}
+          onChange={serviceArgHandler(idx, 'value')}
+        />
+        {plusOrMinus(
+          idx < values['service-args'].length - 1,
+          idx,
+          key.length > 0
+        )}
+      </InputRow>
+    );
+  };
+
+  const generateId = () => {
+    setErrors({ ...errors, 'service-id': null });
+    valueDispatch(['service-id', generateID(4)]);
   };
 
   return (
-    <div className="service-card">
-      <div className="service-header bg-color-grey">
-        {isEditable && !editMode && editButton}
-        {isEditable && !editMode && deleteButton}
-        {isEditable && editMode && confirmButton}
-        {isEditable && editMode && dismissButton}
-      </div>
-      <div className="service-fields">
-        <div className="service-field">
-          <div className="field-name">Service type</div>
-          <div className="field-input">
-            <input
-              className="service-input"
-              value={serviceState.service.serviceType}
-              onChange={e => {
-                serviceDispatcher({
-                  type: 'set-service-type',
-                  serviceType: e.target.value
-                });
-              }}
-              disabled={!editMode}
+    <div className="form service-form">
+      <span className="service-form-header">Add Service</span>
+      <div className="form-content">
+        <InputRow>
+          {basicInput('service-type', 'Service Type')}
+          {basicInput(
+            'service-id',
+            'Service ID',
+            <Button
+              label={<FontAwesomeIcon icon={faSync} />}
+              className="icon-button"
+              onClick={generateId}
             />
-            <div className="form-error">{serviceState.errors.serviceType}</div>
-          </div>
-        </div>
-        <div className="service-field bg-color-grey">
-          <div className="field-name">Service ID</div>
-          <div className="field-input">
-            <div className="flex-input">
-              <input
-                className="service-input service-id-input"
-                value={serviceState.service.serviceId}
-                onChange={e => {
-                  serviceDispatcher({
-                    type: 'set-service-id',
-                    serviceId: e.target.value
-                  });
-                }}
-                maxLength="4"
-                disabled={!editMode}
-              />
-              {editMode && (
-                <button
-                  className="icon-btn"
-                  type="button"
-                  onClick={() => {
-                    const id = generateServiceID();
-                    serviceDispatcher({
-                      type: 'set-service-id',
-                      serviceId: id
-                    });
-                  }}
-                  title="Generate service ID"
-                >
-                  <FontAwesomeIcon icon="sync-alt" />
-                </button>
-              )}
-            </div>
-            <div className="form-error">{serviceState.errors.serviceId}</div>
-          </div>
-        </div>
-        <div className="service-field">
-          <div className="field-name">Allowed node</div>
-          <div className="field-input">
-            {!editMode && allowedNodes}
-            {editMode && allowedNodeEditMode}
-            <div className="form-error">{serviceState.errors.allowedNodes}</div>
-          </div>
-        </div>
-        <div className="service-field bg-color-grey">
-          <div className="field-name">Service arguments</div>
-          <div className="field-input service-arguments">
-            {serviceArguments()}
-          </div>
+          )}
+        </InputRow>
+        <InputRow>
+          <ListBoxSelect
+            name="service-node"
+            label="Node"
+            onChange={onChange}
+            value={values['service-node']}
+            options={[
+              {
+                value: '',
+                content: <div className="no-node-selected">Select a node</div>
+              },
+              ...nodes.map(node => ({
+                value: node.identity,
+                content: <NodeDisplay node={node} />
+              }))
+            ]}
+          />
+        </InputRow>
+
+        <span className="service-args-header">
+          Service Arguments (Optional)
+        </span>
+        {values['service-args'].map((_, idx) => serviceArgRow(idx))}
+
+        <div className="button-group">
+          <Button label="Cancel" className="form-button" onClick={doCancel} />
+          <Button
+            label={!values.edit ? 'Add' : 'Update'}
+            className="form-button confirm"
+            onClick={onSubmit}
+            disabled={!isComplete()}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-ServiceCard.propTypes = {
-  service: PropTypes.instanceOf(Service).isRequired,
-  applyServiceChanges: PropTypes.func,
-  deleteService: PropTypes.func,
-  enterEditMode: PropTypes.bool,
-  isEditable: PropTypes.bool,
-  isDeletable: PropTypes.bool,
-  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)),
-  localNodeID: PropTypes.string
+ServiceForm.propTypes = {
+  onComplete: PropTypes.func.isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.instanceOf(Node)).isRequired,
+  service: PropTypes.instanceOf(Service),
+  onCancel: PropTypes.func
 };
 
-ServiceCard.defaultProps = {
-  applyServiceChanges: undefined,
-  deleteService: undefined,
-  enterEditMode: false,
-  isEditable: false,
-  isDeletable: true,
-  nodes: [],
-  localNodeID: ''
+ServiceForm.defaultProps = {
+  service: null,
+  onCancel: () => null
 };
-
-export default ServiceCard;

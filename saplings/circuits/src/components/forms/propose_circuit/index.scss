@@ -216,9 +216,9 @@
   height: 85%;
   overflow-y: auto;
 
-  .service-card-wrapper {
-    height: 60%;
-    margin-top: 0.5rem;
+  .service-controls {
+    display: flex;
+    flex-direction: row-reverse;
   }
 }
 

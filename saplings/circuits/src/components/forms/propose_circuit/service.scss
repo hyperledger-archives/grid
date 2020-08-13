@@ -14,198 +14,115 @@
  * limitations under the License.
  */
 
- .service-card {
-   display: flex;
-   flex-direction: column;
-   border: 1px solid var(--color-light-grey);
-   border-radius: 0.3rem;
-   width: 100%;
-   height: 100%;
-   margin-bottom: 0.5rem;
-   position: relative;
+.node-display {
+  display: flex;
+  padding: 0.25rem;
 
-   .not-visible {
-     visibility: hidden;
-   }
+  .field-wrapper {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin-left: 1rem;
 
-   .form-error {
-     font-size: 0.7rem;
-     color: var(--color-attention);
-     margin-top: 0.3rem;
-   }
+    .field-header {
+      font-size: 0.7rem;
+      margin-bottom: 0.2rem;
+    }
 
-   .icon-btn {
-     border: none;
-     outline: none;
-     font-size: 0.8rem;
-     color: var(--color-grey);
-     padding: 0;
-     margin-left: 0.8rem;
-     height: fit-content;
-     cursor: pointer;
-
-     &.color-danger {
-       color: var(--color-attention);
-     }
-
-     &.color-confirm {
-       color: #2CB5A5;
-     }
-
-     &:disabled {
-       color: var(--color-light-grey);
-     }
-   }
-
-   .bg-color-grey {
-     background-color: var(--color-lighter-grey);
-   }
-
-   .service-header {
-     display: flex;
-     flex-direction: row;
-     justify-content: flex-end;
-     padding: 0.5rem 0.8rem;
-     height: 15%;
-   }
-
-   .service-fields {
-     width: 100%;
-     font-size: 0.8rem;
-     height: 85%;
-
-     .service-field {
-       width: 100%;
-       display: flex;
-       flex-direction: row;
-       height: 25%;
-
-       .field-name {
-         width: 35%;
-         border-right: 1px solid var(--color-light-grey);
-         padding: 0.6rem 0.8rem;
-       }
-
-       .field-input {
-         width: 65%;
-         padding: 0.6rem 0.8rem;
-         overflow-y: auto;
-
-         .flex-input {
-           display: flex;
-           flex-direction: row;
-         }
-
-         .service-input {
-           background-color: transparent;
-           border: none;
-           outline: none;
-           width: 100%;
-           font-size: inherit;
-           border-bottom: 1px solid var(--color-light-grey);
-
-           &:disabled {
-             border-bottom: none;
-           }
-
-           &.arguments-input {
-             width: 40%;
-             margin-right: 0.3rem;
-           }
-
-           &.service-id-input {
-             width: 90%;
-           }
-
-         }
-         .arguments-input-wrapper {
-           .minus-button, .plus-button {
-             visibility: hidden;
-           }
-           &:hover {
-             .minus-button, .plus-button {
-                visibility: visible;
-             }
-           }
-         }
-       }
-     }
-
-     .allowed-nodes-dropdown {
-        letter-spacing: normal;
-        text-align: left;
-        color: var(--color-grey);
-        padding: 0;
-        position: relative;
-        display: inline-block;
-
-        .caret {
-          float: right;
-        }
-      }
-
-      .allowed-nodes-list {
-        position: absolute;
-        z-index: 1;
-        background-color: var(--background-color-white);
-        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
-        max-height: 30%;
-        overflow-y: auto;
-        padding: 0;
-        margin-top: 0;
-        display: none;
-
-        &.show {
-          display: block;
-        }
-
-        .allowed-nodes-item {
-          display: grid;
-          grid-template-columns: 1fr 1fr auto;
-          grid-gap: 0.5rem;
-          padding: 0.3rem 0.5rem;
-          cursor: pointer;
-
-          &:hover {
-            background-color: var(--color-light-grey);
-          }
-
-          .field-wrapper {
-            display: flex;
-            flex-direction: column;
-            text-align: left;
-
-            .field-header {
-              font-size: 0.7rem;
-              margin-bottom: 0.2rem;
-            }
-
-            .field-value {
-              font-size: 0.8rem;
-              font-weight: bold;
-            }
-          }
-
-          .check-mark {
-            align-self: center;
-          }
-        }
-      }
-   }
- }
-
- @media only screen and (max-width: 600px) {
-  .service-card {
-    .service-fields {
-      .service-field {
-        .field-input {
-          .arguments-input-wrapper {
-            .minus-button, .plus-button {
-              visibility: visible;
-            }
-          }
-        }
-      }
+    .field-value {
+      font-size: 0.8rem;
+      font-weight: bold;
     }
   }
- }
+}
+
+.service-table {
+  border-collapse: collapse;
+  width: 100%;
+
+  thead {
+    // border-bottom: 1px solid var(--color-light-grey);
+  }
+
+  th {
+    color: var(--color-grey);
+    font-weight: 100;
+    font-size: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+    padding-bottom: 1rem;
+    background-color: var(--background-color-white);
+    box-shadow: 0 4px 4px -4px rgba(0, 0, 0, 0.25);
+  }
+
+  th, td {
+    border-bottom: 1px solid var(--color-light-grey);
+    padding: 2rem 2rem 2rem 0;
+    max-width: 13rem;
+    white-space: pre;
+  }
+
+  td.no-services {
+    width: 100%;
+    min-height: 20%;
+    text-align: center;
+    color: var(--color-light-grey);
+    font-size: 2rem;
+  }
+
+  .no-services {
+    align: center;
+  }
+
+  .edit-controls div {
+    button {
+      background: none;
+      border: none;
+    }
+  }
+}
+
+.service-form {
+  height: 100%;
+  width: 100%;
+  overflow: scroll;
+
+  .service-form-header {
+    font-size: 2rem;
+    color: var(--color-primary);
+  }
+
+  .form-content {
+    height: 80%;
+    padding: 4rem;
+  }
+
+  .button-group {
+    display: flex;
+    width: 90%;
+    height: 20%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 2.5rem;
+  }
+
+  .button-group button {
+    margin-right: 0.25rem;
+    margin-left: 0.25rem;
+  }
+
+  .icon-button {
+    background: none;
+    border: none;
+  }
+
+  .no-node-selected {
+    padding: 0.25rem;
+  }
+
+  .service-args {
+    .icon-button {
+      margin-top: 0.75rem;
+    }
+  }
+}
