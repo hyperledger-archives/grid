@@ -41,6 +41,7 @@
     "prop-types": "^15.7.2",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-dropdown": "^1.7.0",
     "react-router-dom": "^5.1.2",
     "react-toast-notifications": "^2.4.0",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
