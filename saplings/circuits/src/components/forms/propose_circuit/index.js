@@ -518,9 +518,9 @@ export function ProposeCircuitForm() {
       handleSubmit={handleSubmit}
       isStepValidFn={stepNumber => stepValidationFn(stepNumber)}
     >
-      <Step step={1} label="Add nodes">
+      <Step step={1} label="Select nodes">
         <div className="step-header">
-          <div className="step-title">Add nodes</div>
+          <div className="step-title">Select nodes</div>
           <div className="help-text">
             Select the nodes that are part of the circuit
           </div>
