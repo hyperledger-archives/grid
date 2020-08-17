@@ -71,34 +71,20 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: splinter
 
-  sapling-dev-server-alpha:
-    build:
-      context: ..
-      dockerfile: sapling-dev-server/Dockerfile
-      args:
-        PUBLIC_URL_PARTIAL: '/sapling-dev-server'
-    container_name: sapling-dev-server-alpha
-    expose:
-      - 80
-    ports:
-      - '3032:80'
-
   splinter-ui-alpha:
     build:
       context: ..
-      dockerfile: app/Dockerfile
+      dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
-        REACT_APP_SPLINTER_URL: '/splinterd'
-        REACT_APP_SAPLING_URL: '/sapling-dev-server'
-        SPLINTER_URL: 'http://splinterd-alpha:8085'
-        SAPLING_URL: ' http://sapling-dev-server-alpha:80'
-    image: splinter-ui-alpha
+    image: splinter-ui
     container_name: splinter-ui-alpha
     expose:
       - 80
     ports:
       - '3030:80'
+    environment:
+      SPLINTER_URL: 'http://splinterd-alpha:8085'
 
 # ---== beta node ==---
 
@@ -149,34 +135,20 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: splinter
 
-  sapling-dev-server-beta:
-    build:
-      context: ..
-      dockerfile: sapling-dev-server/Dockerfile
-      args:
-        PUBLIC_URL_PARTIAL: '/sapling-dev-server'
-    container_name: sapling-dev-server-beta
-    expose:
-      - 80
-    ports:
-      - '3033:80'
-
   splinter-ui-beta:
     build:
       context: ..
-      dockerfile: app/Dockerfile
+      dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
-        REACT_APP_SPLINTER_URL: '/splinterd'
-        REACT_APP_SAPLING_URL: '/sapling-dev-server'
-        SPLINTER_URL: 'http://splinterd-beta:8085'
-        SAPLING_URL: ' http://sapling-dev-server-beta:80'
-    image: splinter-ui-beta
+    image: splinter-ui
     container_name: splinter-ui-beta
     expose:
       - 80
     ports:
       - '3031:80'
+    environment:
+      SPLINTER_URL: 'http://splinterd-beta:8085'
 
 # ---== shared services ==---
 
