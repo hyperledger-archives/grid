@@ -17,7 +17,8 @@
     "import/resolver": {
       "node": {
         "paths": ["src"]
-      }
+      },
+      "webpack": "./webpack.config.js"
     }
   }
 }

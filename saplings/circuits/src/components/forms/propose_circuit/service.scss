@@ -1,0 +1,128 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.node-display {
+  display: flex;
+  padding: 0.25rem;
+
+  .field-wrapper {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin-left: 1rem;
+
+    .field-header {
+      font-size: 0.7rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .field-value {
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+  }
+}
+
+.service-table {
+  border-collapse: collapse;
+  width: 100%;
+
+  thead {
+    // border-bottom: 1px solid var(--color-light-grey);
+  }
+
+  th {
+    color: var(--color-grey);
+    font-weight: 100;
+    font-size: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+    padding-bottom: 1rem;
+    background-color: var(--background-color-white);
+    box-shadow: 0 4px 4px -4px rgba(0, 0, 0, 0.25);
+  }
+
+  th, td {
+    border-bottom: 1px solid var(--color-light-grey);
+    padding: 2rem 2rem 2rem 0;
+    max-width: 13rem;
+    white-space: pre;
+  }
+
+  td.no-services {
+    width: 100%;
+    min-height: 20%;
+    text-align: center;
+    color: var(--color-light-grey);
+    font-size: 2rem;
+  }
+
+  .no-services {
+    align: center;
+  }
+
+  .edit-controls div {
+    button {
+      background: none;
+      border: none;
+    }
+  }
+}
+
+.service-form {
+  height: 100%;
+  width: 100%;
+  overflow: scroll;
+
+  .service-form-header {
+    font-size: 2rem;
+    color: var(--color-primary);
+  }
+
+  .form-content {
+    height: 80%;
+    padding: 4rem;
+  }
+
+  .button-group {
+    display: flex;
+    width: 90%;
+    height: 20%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 2.5rem;
+  }
+
+  .button-group button {
+    margin-right: 0.25rem;
+    margin-left: 0.25rem;
+  }
+
+  .icon-button {
+    background: none;
+    border: none;
+  }
+
+  .no-node-selected {
+    padding: 0.25rem;
+  }
+
+  .service-args {
+    .icon-button {
+      margin-top: 0.75rem;
+    }
+  }
+}

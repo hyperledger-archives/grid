@@ -40,7 +40,7 @@ import { ToastProvider } from 'react-toast-notifications';
 import MainHeader from './components/MainHeader';
 import { LocalNodeProvider } from './state/localNode';
 import Content from './components/Content';
-import { ProposeCircuitForm } from './components/forms/ProposeCircuitForm';
+import { ProposeCircuitForm } from './components/forms/propose_circuit';
 import CircuitDetails from './components/circuitDetails/CircuitDetails';
 
 library.add(

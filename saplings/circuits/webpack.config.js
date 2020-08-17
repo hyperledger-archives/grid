@@ -27,6 +27,11 @@ module.exports = (env, argv) => {
       filename: 'circuits.js',
       path: path.resolve(__dirname, 'build/static/js')
     },
+    resolve: {
+      alias: {
+        App: path.resolve(__dirname, 'src')
+      }
+    },
     module: {
       rules: [
         // jsx, etc

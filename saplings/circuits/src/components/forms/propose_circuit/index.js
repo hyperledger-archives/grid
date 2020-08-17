@@ -20,23 +20,25 @@ import yaml from 'js-yaml';
 import { useToasts } from 'react-toast-notifications';
 import { useHistory } from 'react-router-dom';
 
-import { MultiStepForm, Step } from './MultiStepForm';
-import { useNodeRegistryState } from '../../state/nodeRegistry';
-import { useLocalNodeState } from '../../state/localNode';
+import { MultiStepForm, Step } from 'App/components/forms/MultiStepForm';
+import { useNodeRegistryState } from 'App/state/nodeRegistry';
+import { useLocalNodeState } from 'App/state/localNode';
 
-import NodeCard from '../NodeCard';
-import ProposalReview from '../ProposalReview';
+import NodeCard from 'App/components/NodeCard';
+import ProposalReview from 'App/components/ProposalReview';
 
-import { OverlayModal } from '../OverlayModal';
-import { NewNodeForm } from './NewNodeForm';
-import ServiceCard from '../ServiceCard';
-import { Service, generateID } from '../../data/circuits';
-import protos from '../../protobuf';
-import { makeSignedPayload } from '../../api/payload';
-import { postCircuitManagementPayload } from '../../api/splinter';
-import { Chips } from '../Chips';
+import { OverlayModal } from 'App/components/OverlayModal';
+import { NewNodeForm } from 'App/components/forms/NewNodeForm';
 
-import './ProposeCircuitForm.scss';
+import { generateID } from 'App/data/circuits';
+import protos from 'App/protobuf';
+import { makeSignedPayload } from 'App/api/payload';
+import { postCircuitManagementPayload } from 'App/api/splinter';
+import { Chips } from 'App/components/Chips';
+
+import { ServiceTable, ServiceForm } from './service';
+
+import './index.scss';
 
 const generateCircuitID = () => {
   const firstPart = generateID(5);
@@ -192,37 +194,54 @@ const nodesReducer = (state, action) => {
   }
 };
 
-const servicesReducer = (state, action) => {
-  const minServiceCountError =
-    'At least one service must be added to the circuit.';
-
-  switch (action.type) {
-    case 'edit': {
-      const updatedService = action.service;
-
+const servicesReducer = (state, [action, ...args]) => {
+  switch (action) {
+    case 'save': {
+      const [service, oldService] = args;
       const { services } = state;
-      services[action.serviceIndex] = updatedService;
+
+      if (oldService) {
+        const serviceIndex = services.findIndex(
+          svc => oldService.serviceId === svc.serviceId
+        );
+
+        if (serviceIndex > -1) {
+          services[serviceIndex] = service;
+        }
+      } else {
+        services.push(service);
+      }
+
+      return { ...state, services, editService: null };
+    }
+    case 'delete': {
+      const [serviceId] = args;
+      const { services } = state;
+
+      const serviceIndex = services.findIndex(
+        service => service.serviceId === serviceId
+      );
+      if (serviceIndex > -1) {
+        services.splice(serviceIndex, 1);
+      }
 
       return { ...state, services };
     }
-    case 'delete': {
-      const { services } = state;
-      let { error } = state;
+    case 'edit': {
+      const [serviceId] = args;
 
-      if (action.serviceIndex > -1) {
-        services.splice(action.serviceIndex, 1);
+      const serviceIndex = state.services.findIndex(
+        service => service.serviceId === serviceId
+      );
+      let editService = null;
+      if (serviceIndex > -1) {
+        editService = state.services[serviceIndex];
       }
 
-      if (services.length === 0) {
-        error = minServiceCountError;
-      }
-      return { ...state, services, error };
+      return { ...state, editService };
     }
-    case 'add-empty-service': {
-      const service = new Service();
-      state.services.push(service);
-      const error = '';
-      return { ...state, error };
+    case 'cancel-edit': {
+      return { ...state, editService: null };
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
@@ -336,8 +355,8 @@ export function ProposeCircuitForm() {
   });
 
   const [servicesState, servicesDispatcher] = useReducer(servicesReducer, {
-    services: [new Service()],
-    error: ''
+    services: [],
+    editService: null
   });
 
   const [detailsState, detailsDispatcher] = useReducer(detailsReducer, {
@@ -570,7 +589,7 @@ export function ProposeCircuitForm() {
                     return node.identity === selectedNode.identity;
                   }).length > 0;
                 return (
-                  <li className="node-item">
+                  <li key={node.identity} className="node-item">
                     <NodeCard
                       node={node}
                       dispatcher={targetNode => {
@@ -620,49 +639,39 @@ export function ProposeCircuitForm() {
           <div className="help-text">Add services for the circuit</div>
         </div>
         <div className="propose-form-wrapper services-wrapper">
-          <div className="form-error">{servicesState.error}</div>
-          {servicesState.services.map((service, index) => {
-            return (
-              <div className="service-card-wrapper">
-                <ServiceCard
-                  service={service}
-                  isEditable
-                  enterEditMode
-                  applyServiceChanges={updatedService => {
-                    servicesDispatcher({
-                      type: 'edit',
-                      service: updatedService,
-                      serviceIndex: index
-                    });
-                  }}
-                  deleteService={() => {
-                    servicesDispatcher({
-                      type: 'delete',
-                      serviceIndex: index
-                    });
-                  }}
-                  isDeletable={servicesState.services.length > 1}
-                  nodes={nodesState.selectedNodes}
-                  localNodeID={localNodeID}
-                />
-              </div>
-            );
-          })}
-        </div>
-        <div className="add-service-btn-wrapper">
-          <button
-            className="form-button add-service-button"
-            type="button"
-            onClick={() => {
-              servicesDispatcher({
-                type: 'add-empty-service'
-              });
+          <div className="service-controls">
+            <button
+              className="form-button confirm"
+              type="button"
+              onClick={() => setModalActive(true)}
+            >
+              Add Service
+            </button>
+          </div>
+          <ServiceTable
+            services={servicesState.services}
+            nodes={nodesState.selectedNodes}
+            onServiceEdit={serviceId => servicesDispatcher(['edit', serviceId])}
+            onServiceDelete={serviceId => {
+              servicesDispatcher(['delete', serviceId]);
             }}
-            title="Add new service"
-          >
-            <FontAwesomeIcon icon="plus" />
-          </button>
+            isEdit
+          />
         </div>
+        <OverlayModal open={modalActive || servicesState.editService !== null}>
+          <ServiceForm
+            service={servicesState.editService}
+            nodes={nodesState.selectedNodes}
+            onComplete={(service, oldService) => {
+              servicesDispatcher(['save', service, oldService]);
+              setModalActive(false);
+            }}
+            onCancel={() => {
+              servicesDispatcher(['cancel-edit']);
+              setModalActive(false);
+            }}
+          />
+        </OverlayModal>
       </Step>
       <Step step={3} label="Add circuit details">
         <div className="step-header">

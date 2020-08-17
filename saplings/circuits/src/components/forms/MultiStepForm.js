@@ -74,6 +74,7 @@ export function MultiStepForm({
             <div className="steps">
               {children.map((s, i) => (
                 <div
+                  key={`child-${s.props.step}`}
                   className={classnames(
                     'step',
                     i === step - 1 && 'active',

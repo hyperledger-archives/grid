@@ -17,8 +17,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import { ServiceTable } from 'App/components/forms/propose_circuit/service';
 import NodeCard from './NodeCard';
-import ServiceCard from './ServiceCard';
 
 import { useLocalNodeState } from '../state/localNode';
 
@@ -52,17 +52,8 @@ const ProposalReview = ({
       </div>
       <div class-name="services-container">
         <div className="title">Services</div>
-        <div className="services content-container">
-          {services.map(service => {
-            return (
-              <div
-                key={`proposal-service-${service.serviceId}`}
-                className="service"
-              >
-                <ServiceCard service={service} isEditable={false} />
-              </div>
-            );
-          })}
+        <div className="services">
+          <ServiceTable services={services} nodes={members} />
         </div>
       </div>
       <div className="details-container">

@@ -28,6 +28,7 @@ export function Chips({ nodes, localNodeID, removeFn }) {
         const isLocal = node.identity === localNodeID;
         return (
           <Chip
+            key={node.identity}
             node={node}
             isLocal={isLocal}
             removeFn={() => removeFn(node)}

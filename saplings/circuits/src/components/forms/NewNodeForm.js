@@ -236,8 +236,9 @@ export function NewNodeForm({ closeFn, successCallback }) {
     return endpointState.endpoints.map((endpoint, i) => {
       const currentValue = endpoint;
 
+      const elKey = `endpoint-${i}`;
       return (
-        <div className="input-wrapper">
+        <div key={elKey} className="input-wrapper">
           <input
             type="text"
             name="endpoint"
@@ -279,8 +280,9 @@ export function NewNodeForm({ closeFn, successCallback }) {
     return keysState.keys.map((key, i) => {
       const currentValue = key;
 
+      const elKey = `key-${i}`;
       return (
-        <div className="input-wrapper">
+        <div key={elKey} className="input-wrapper">
           <input
             type="text"
             className="form-input"
@@ -322,8 +324,9 @@ export function NewNodeForm({ closeFn, successCallback }) {
     return metadataState.metadata.map((metada, i) => {
       const { key, value } = metada;
 
+      const elKey = `metadata-${i}`;
       return (
-        <div className="input-wrapper">
+        <div key={elKey} className="input-wrapper">
           <input
             className="metadata-input form-input"
             type="text"

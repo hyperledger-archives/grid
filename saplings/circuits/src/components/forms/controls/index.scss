@@ -1,0 +1,86 @@
+/**
+ * Copyright 2018-2020 Cargill Incorporated
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+.label {
+  font-size: 0.8rem;
+  color: var(--color-grey);
+  margin-top: 1rem;
+}
+
+.input-wrapper {
+  .form-input {
+    border: none;
+    outline: none;
+    color: var(--color-grey);
+    border-bottom: 1px solid var(--color-grey);
+    padding-bottom: 0.5rem;
+    font-size: 0.8rem;
+    margin: 0.5rem 0.5rem 0 0;
+    width: 90%;
+  }
+
+  .form-error {
+    font-size: 0.8rem;
+    color: var(--color-attention);
+    min-height: 0.9rem;
+  }
+}
+
+.input-control {
+  padding: 0.5rem;
+  margin: 0 0.5rem;
+
+  .input-fields {
+    display: flex;
+  }
+
+  .text-field-wrapper {
+    display:flex;
+    flex-direction:row;
+    border:1px solid var(--color-grey);
+    width: 100%;
+
+    input {
+      flex-grow: 2;
+      border: none;
+
+      font-size: 1.25rem;
+      font-size: 1.25rem;
+      font-weight: 300;
+      padding: 0 1.25rem;
+    }
+
+    button {
+    }
+  }
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+
+  .input-control {
+     flex-grow: 1;
+  }
+}
+
+// customization for react-dropdown
+.listbox-dropdown {
+  width: 100%;
+
+  .listbox-dropdown-control {
+    border: 1px solid var(--color-grey);
+  }
+}
