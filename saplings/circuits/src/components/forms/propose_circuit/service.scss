@@ -41,7 +41,7 @@
   width: 100%;
 
   thead {
-    // border-bottom: 1px solid var(--color-light-grey);
+    border-bottom: 2px solid var(--color-grey);
   }
 
   th {
@@ -49,25 +49,26 @@
     font-weight: 100;
     font-size: 0.8rem;
     text-align: left;
-    cursor: pointer;
-    padding-bottom: 1rem;
     background-color: var(--background-color-white);
-    box-shadow: 0 4px 4px -4px rgba(0, 0, 0, 0.25);
+    padding: 0 0 0.5rem 0;
   }
 
   th, td {
     border-bottom: 1px solid var(--color-light-grey);
-    padding: 2rem 2rem 2rem 0;
     max-width: 13rem;
     white-space: pre;
+  }
+
+  td {
+    padding: 1rem 0;
   }
 
   td.no-services {
     width: 100%;
     min-height: 20%;
     text-align: center;
-    color: var(--color-light-grey);
-    font-size: 2rem;
+    color: var(--color-grey);
+    font-size: 1.25rem;
   }
 
   .no-services {
