@@ -16,14 +16,42 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Node } from '../data/nodeRegistry';
 
 import './NodeCard.scss';
 
 const NodeCard = ({ node, dispatcher, isLocal, isSelected, isSelectable }) => {
+  const allowSelection = isSelectable && !isLocal && !isSelected;
+  let localLabel = null;
+  if (isLocal) {
+    localLabel = <div className="node-local">Local</div>;
+  }
+  let handler = () => {};
+  if (allowSelection) {
+    handler = () => dispatcher(node);
+  }
+
+  let metadataRow = null;
+  const metadata = Object.entries(node.metadata);
+  if (metadata.length > 0) {
+    metadataRow = (
+      <div className="metadata col-span-4">
+        {metadata.map(([key, value]) => (
+          <div key={key} className="metadata-chip">{`${key}: ${value}`}</div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="node-card">
+    <div
+      className={`node-card${allowSelection ? ' selectable' : ''}`}
+      role="checkbox"
+      aria-checked={isSelected}
+      onClick={handler}
+      onKeyUp={() => {}}
+      tabIndex="0"
+    >
       <div className="node-description">
         <div className="field-wrapper">
           <div className="field-header">Name</div>
@@ -45,26 +73,8 @@ const NodeCard = ({ node, dispatcher, isLocal, isSelected, isSelectable }) => {
             })}
           </div>
         </div>
-        <div className="node-labels">
-          <div className={isLocal ? 'node-local' : 'not-visible'}>Local</div>
-          {isSelectable && (
-            <button
-              type="button"
-              className={isSelected ? 'select-box selected' : 'select-box'}
-              onClick={() => dispatcher(node)}
-              disabled={isLocal}
-            >
-              {isSelected && (
-                <FontAwesomeIcon icon="check" className="check-mark" />
-              )}
-            </button>
-          )}
-        </div>
-        <div className="metadata col-span-4">
-          {Object.entries(node.metadata).map(([key, value]) => (
-            <div key={key} className="metadata-chip">{`${key}: ${value}`}</div>
-          ))}
-        </div>
+        <div className="node-labels">{localLabel}</div>
+        {metadataRow}
       </div>
     </div>
   );

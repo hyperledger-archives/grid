@@ -189,7 +189,6 @@
     &.confirm,
     &.submit {
       background: var(--color-primary);
-      border: none;
       color: var(--color-text-on-dark);
 
       &:disabled {
