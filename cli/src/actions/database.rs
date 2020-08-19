@@ -16,14 +16,13 @@ use crate::error::CliError;
 
 use diesel::{connection::Connection as _, pg::PgConnection};
 
-embed_migrations!("../daemon/migrations");
+use grid_sdk::grid_db::migrations::run_postgres_migrations;
 
 pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
     let connection = PgConnection::establish(database_url)
         .map_err(|err| CliError::DatabaseError(err.to_string()))?;
 
-    embedded_migrations::run(&connection)
-        .map_err(|err| CliError::DatabaseError(err.to_string()))?;
+    run_postgres_migrations(&connection).map_err(|err| CliError::DatabaseError(err.to_string()))?;
 
     info!("Successfully applied migrations");
 

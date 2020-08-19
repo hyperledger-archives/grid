@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2018-2020 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Required due to a bug in rust-protobuf: https://github.com/stepancheg/rust-protobuf/issues/331
-#![allow(renamed_and_removed_lints)]
+//! Provides sql migration scripts and methods for executing
+//! migrations.
+//!
+//! ```ignore
+//! use grid_db::migrations::run_postgres_migrations;
+//! use diesel::{pg::PgConnection};
+//!
+//! let connection = PgConnection::establish(
+//!      "postgres://admin:admin@localhost:5432/splinterd").unwrap();
+//!
+//! run_postgres_migrations(&connection).unwrap();
+//!
+//! ```
 
-#[macro_use]
-extern crate cfg_if;
-#[macro_use]
 #[cfg(feature = "diesel")]
-extern crate diesel;
-#[macro_use]
-#[cfg(feature = "diesel")]
-extern crate diesel_migrations;
+mod diesel;
 
-#[cfg(feature = "grid_db")]
-pub mod grid_db;
-#[macro_use]
-extern crate log;
-pub mod permissions;
-pub mod protocol;
-pub mod protos;
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
