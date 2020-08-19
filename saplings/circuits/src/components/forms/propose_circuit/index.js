@@ -516,6 +516,7 @@ export function ProposeCircuitForm() {
     <MultiStepForm
       formName="Propose Circuit"
       handleSubmit={handleSubmit}
+      handleCancel={() => history.push(`/circuits`)}
       isStepValidFn={stepNumber => stepValidationFn(stepNumber)}
     >
       <Step step={1} label="Add nodes">

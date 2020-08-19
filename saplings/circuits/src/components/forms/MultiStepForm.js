@@ -31,6 +31,7 @@ export function Step({ step, currentStep, children }) {
 export function MultiStepForm({
   formName,
   handleSubmit,
+  handleCancel,
   style,
   disabled,
   error,
@@ -114,11 +115,13 @@ export function MultiStepForm({
           )}
         </form>
         <div className="actions">
-          {step > 1 && (
-            <button className="form-button" type="button" onClick={previous}>
-              Previous
-            </button>
-          )}
+          <button
+            className="form-button"
+            type="button"
+            onClick={step > 1 ? previous : handleCancel}
+          >
+            {step > 1 ? 'Previous' : 'Cancel'}
+          </button>
           {step < children.length && (
             <button
               type="button"
@@ -160,6 +163,7 @@ Step.defaultProps = {
 MultiStepForm.propTypes = {
   formName: PropTypes.string,
   handleSubmit: PropTypes.func.isRequired,
+  handleCancel: PropTypes.func.isRequired,
   style: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
   disabled: PropTypes.bool,
   error: PropTypes.bool,
