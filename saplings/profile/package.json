@@ -14,26 +14,22 @@
     "@testing-library/user-event": "^7.1.2",
     "classnames": "^2.2.6",
     "js-sha256": "^0.9.0",
-    "node-sass": "^4.13.0",
     "prop-types": "^15.7.2",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "react-scripts": "^3.4.0",
-    "rewire": "^4.0.1",
     "sjcl": "^1.0.8",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master",
     "transact-sdk-javascript": "github:hyperledger/transact-sdk-javascript#master"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "node ./scripts/build.js",
+    "build": "webpack",
+    "bundle": "webpack --mode=development",
     "package": "rm -rf package && mkdir package && cp -r ./build/static/** package && tar -jcvf profile_$npm_config_sapling_version.sapling package",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
     "add-to-canopy": "mkdir -p ../../sapling-dev-server/profile && cp -r ./build/static/** ../../sapling-dev-server/profile",
     "deploy": "npm run build && npm run add-to-canopy",
+    "deploy-local": "npm run bundle && npm run add-to-canopy",
     "lint": "eslint .",
-    "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy"
+    "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy-local"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -51,6 +47,11 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-react": "^7.10.4",
+    "babel-loader": "^8.1.0",
+    "css-loader": "^4.2.1",
     "eslint": "^6.6.0",
     "eslint-config-airbnb": "18.0.1",
     "eslint-config-prettier": "^6.4.0",
@@ -59,6 +60,17 @@
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.14.3",
     "eslint-plugin-react-hooks": "^1.7.0",
-    "nodemon": "^2.0.2"
+    "mini-css-extract-plugin": "^0.10.0",
+    "mini-svg-data-uri": "^1.2.3",
+    "node-sass": "^4.14.1",
+    "nodemon": "^2.0.2",
+    "resolve-url-loader": "^3.1.1",
+    "sass": "^1.26.10",
+    "sass-loader": "^9.0.3",
+    "style-loader": "^1.2.1",
+    "svg-inline-loader": "^0.8.2",
+    "url-loader": "^4.1.0",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
   }
 }
