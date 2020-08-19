@@ -26,12 +26,12 @@ use splinter::{
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
 };
 
-use crate::database::ConnectionPool;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 use crate::splinter::{
     app_auth_handler::{error::AppAuthHandlerError, node::get_node_id, sabre::setup_grid},
     event::ScabbardEventConnectionFactory,
 };
+use grid_sdk::database::ConnectionPool;
 
 /// default value if the client should attempt to reconnet if ws connection is lost
 const RECONNECT: bool = true;

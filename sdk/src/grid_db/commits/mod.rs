@@ -12,13 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
+pub mod store;
 
-pub mod commits;
-
-pub mod migrations;
-
-#[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
+pub const MAX_COMMIT_NUM: i64 = i64::MAX;

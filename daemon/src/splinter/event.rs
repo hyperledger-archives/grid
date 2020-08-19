@@ -21,9 +21,8 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
 use scabbard::service::{StateChange as ScabbardStateChange, StateChangeEvent};
 use splinter::events::{Igniter, WebSocketClient, WebSocketError, WsResponse};
 
-use crate::event::{
-    CommitEvent, EventConnection, EventConnectionUnsubscriber, EventIoError, StateChange,
-};
+use crate::event::{EventConnection, EventConnectionUnsubscriber};
+use grid_sdk::grid_db::commits::store::{CommitEvent, EventIoError, StateChange};
 
 #[derive(Debug)]
 pub struct ScabbardEventConnectionError(pub String);

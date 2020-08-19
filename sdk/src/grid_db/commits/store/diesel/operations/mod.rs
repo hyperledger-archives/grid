@@ -12,13 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
-
-pub mod commits;
-
-pub mod migrations;
+pub(super) mod add_commit;
+pub(super) mod create_db_commit_from_commit_event;
+pub(super) mod get_commit_by_commit_num;
+pub(super) mod get_current_commit_id;
+pub(super) mod get_next_commit_num;
+pub(super) mod resolve_fork;
 
 #[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
+pub(super) struct CommitStoreOperations<'a, C> {
+    conn: &'a C,
+}
+
+#[cfg(feature = "diesel")]
+impl<'a, C> CommitStoreOperations<'a, C>
+where
+    C: diesel::Connection,
+{
+    pub fn new(conn: &'a C) -> Self {
+        CommitStoreOperations { conn }
+    }
+}

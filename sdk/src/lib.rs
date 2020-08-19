@@ -15,6 +15,9 @@
 // Required due to a bug in rust-protobuf: https://github.com/stepancheg/rust-protobuf/issues/331
 #![allow(renamed_and_removed_lints)]
 
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate cfg_if;
 #[macro_use]
@@ -24,6 +27,8 @@ extern crate diesel;
 #[cfg(feature = "diesel")]
 extern crate diesel_migrations;
 
+#[cfg(feature = "diesel")]
+pub mod database;
 #[cfg(feature = "grid_db")]
 pub mod grid_db;
 #[macro_use]

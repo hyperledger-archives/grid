@@ -22,8 +22,8 @@ use splinter::events;
 use std::error::Error;
 use std::fmt;
 
-use crate::event::EventIoError;
 use crate::splinter::{app_auth_handler::node::GetNodeError, event::ScabbardEventConnectionError};
+use grid_sdk::grid_db::commits::store::EventIoError;
 use transact::{
     contract::archive::Error as ContractArchiveError,
     protocol::{batch::BatchBuildError, transaction::TransactionBuildError},

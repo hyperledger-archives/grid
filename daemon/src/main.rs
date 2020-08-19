@@ -47,7 +47,6 @@ use ::splinter::events::Reactor;
 use flexi_logger::{LogSpecBuilder, Logger};
 
 use crate::config::{GridConfig, GridConfigBuilder};
-use crate::database::{error::DatabaseError, helpers as db, ConnectionPool};
 use crate::error::DaemonError;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 #[cfg(feature = "sawtooth-support")]
@@ -57,6 +56,10 @@ use crate::splinter::{
     app_auth_handler, batch_submitter::SplinterBatchSubmitter,
     event::ScabbardEventConnectionFactory, key::load_scabbard_admin_key,
 };
+use grid_sdk::database::ConnectionPool;
+use grid_sdk::database::DatabaseError;
+use grid_sdk::grid_db::commits::store::diesel::DieselCommitStore;
+use grid_sdk::grid_db::commits::store::CommitStore;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -92,7 +95,7 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    let connection_pool = database::create_connection_pool(config.database_url())?;
+    let connection_pool = ConnectionPool::new_pg(config.database_url())?;
 
     if config.endpoint().is_sawtooth() {
         run_sawtooth(config, connection_pool)?;
@@ -110,8 +113,14 @@ fn run() -> Result<(), DaemonError> {
 #[cfg(feature = "sawtooth-support")]
 fn run_sawtooth(config: GridConfig, connection_pool: ConnectionPool) -> Result<(), DaemonError> {
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
+    let commit_store = DieselCommitStore::new(connection_pool.clone());
     let current_commit =
-        db::get_current_commit_id(&*connection_pool.get()?).map_err(DatabaseError::from)?;
+        commit_store
+            .get_current_commit_id()
+            .map_err(|err| DatabaseError::ConnectionError {
+                context: "Could not get current commit ID".to_string(),
+                source: Box::new(err),
+            })?;
 
     let batch_submitter = Box::new(SawtoothBatchSubmitter::new(
         sawtooth_connection.get_sender(),

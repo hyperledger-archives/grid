@@ -21,80 +21,11 @@ mod error;
 use std::cell::RefCell;
 use std::thread;
 
-pub use self::error::{EventError, EventIoError, EventProcessorError};
+pub use self::error::EventProcessorError;
 
-const PIKE_NAMESPACE: &str = "cad11d";
-const PIKE_AGENT: &str = "cad11d00";
-const PIKE_ORG: &str = "cad11d01";
-
-const GRID_NAMESPACE: &str = "621dee";
-const GRID_SCHEMA: &str = "621dee01";
-const GRID_PRODUCT: &str = "621dee02";
-
-const TRACK_AND_TRACE_NAMESPACE: &str = "a43b46";
-const TRACK_AND_TRACE_PROPERTY: &str = "a43b46ea";
-const TRACK_AND_TRACE_PROPOSAL: &str = "a43b46aa";
-const TRACK_AND_TRACE_RECORD: &str = "a43b46ec";
-
-const ALL_GRID_NAMESPACES: &[&str] = &[PIKE_NAMESPACE, GRID_NAMESPACE, TRACK_AND_TRACE_NAMESPACE];
-
-const SABRE_NAMESPACE: &str = "00ec";
-
-const IGNORED_NAMESPACES: &[&str] = &[SABRE_NAMESPACE];
-
-/// A notification that some source has committed a set of changes to state
-pub struct CommitEvent {
-    /// An identifier for specifying where the event came from
-    pub service_id: Option<String>,
-    /// An identifier that is unique among events from the source
-    pub id: String,
-    /// May be used to provide ordering of commits from the source. If `None`, ordering is not
-    /// explicitly provided, so it must be inferred from the order in which events are received.
-    pub height: Option<u64>,
-    /// All state changes that are included in the commit
-    pub state_changes: Vec<StateChange>,
-}
-
-impl std::fmt::Display for CommitEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("(")?;
-        f.write_str(&self.id)?;
-        f.write_str(", ")?;
-        if self.service_id.is_some() {
-            write!(f, "{}, ", self.service_id.as_ref().unwrap())?;
-        }
-        if self.height.is_some() {
-            write!(f, "height: {}, ", self.height.as_ref().unwrap())?;
-        }
-
-        write!(f, "#changes: {})", self.state_changes.len())
-    }
-}
-
-/// A change that has been applied to state, represented in terms of a key/value pair
-#[derive(Eq, PartialEq)]
-pub enum StateChange {
-    Set { key: String, value: Vec<u8> },
-    Delete { key: String },
-}
-
-impl StateChange {
-    pub fn key_has_prefix(&self, prefix: &str) -> bool {
-        let key = match self {
-            Self::Set { key, .. } => key,
-            Self::Delete { key, .. } => key,
-        };
-        key.get(0..prefix.len())
-            .map(|key_prefix| key_prefix == prefix)
-            .unwrap_or(false)
-    }
-
-    pub fn is_grid_state_change(&self) -> bool {
-        ALL_GRID_NAMESPACES
-            .iter()
-            .any(|namespace| self.key_has_prefix(namespace))
-    }
-}
+use grid_sdk::grid_db::commits::store::{
+    CommitEvent, EventError, EventIoError, ALL_GRID_NAMESPACES,
+};
 
 pub trait EventHandler: Send {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError>;

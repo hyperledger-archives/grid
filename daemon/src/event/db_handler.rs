@@ -15,11 +15,17 @@
  * -----------------------------------------------------------------------------
  */
 
-use std::convert::TryInto;
-
-use diesel::prelude::*;
-use diesel::result::Error;
+use ::diesel::pg::PgConnection;
+use ::diesel::result::QueryResult;
+use grid_sdk::database::ConnectionPool;
 use grid_sdk::{
+    grid_db::commits::store::diesel::DieselCommitStore,
+    grid_db::commits::store::CommitStore,
+    grid_db::commits::store::{
+        CommitEvent, CommitStoreError, StateChange, GRID_PRODUCT, GRID_SCHEMA, IGNORED_NAMESPACES,
+        PIKE_AGENT, PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
+        TRACK_AND_TRACE_RECORD,
+    },
     protocol::{
         pike::state::{AgentList, OrganizationList},
         product::state::ProductList,
@@ -37,26 +43,26 @@ use std::i64;
 use crate::database::{
     helpers as db,
     models::{
-        LatLongValue, NewAgent, NewAssociatedAgent, NewCommit, NewGridPropertyDefinition,
-        NewGridSchema, NewOrganization, NewProduct, NewProductPropertyValue, NewProperty,
-        NewProposal, NewRecord, NewReportedValue, NewReporter,
+        LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
+        NewOrganization, NewProduct, NewProductPropertyValue, NewProperty, NewProposal, NewRecord,
+        NewReportedValue, NewReporter,
     },
-    ConnectionPool,
 };
 
-use super::{
-    CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA,
-    IGNORED_NAMESPACES, PIKE_AGENT, PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
-    TRACK_AND_TRACE_RECORD,
-};
+use super::{EventError, EventHandler};
 
 pub struct DatabaseEventHandler {
     connection_pool: ConnectionPool,
+    commit_store: Box<dyn CommitStore>,
 }
 
 impl DatabaseEventHandler {
     pub fn new(connection_pool: ConnectionPool) -> Self {
-        Self { connection_pool }
+        let commit_store = Box::new(DieselCommitStore::new(connection_pool.clone()));
+        Self {
+            connection_pool,
+            commit_store,
+        }
     }
 }
 
@@ -69,7 +75,17 @@ impl EventHandler for DatabaseEventHandler {
             .get()
             .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
 
-        let commit = create_db_commit_from_commit_event(event, &conn)?;
+        let commit = if let Some(commit) = self
+            .commit_store
+            .create_db_commit_from_commit_event(event)
+            .map_err(|err| EventError(format!("{}", err)))?
+        {
+            commit
+        } else {
+            return Err(EventError(
+                "Commit could not be constructed from event data".to_string(),
+            ));
+        };
         let db_ops = create_db_operations_from_state_changes(
             &event.state_changes,
             commit.commit_num,
@@ -79,15 +95,18 @@ impl EventHandler for DatabaseEventHandler {
         trace!("The following operations will be performed: {:#?}", db_ops);
 
         conn.build_transaction()
-            .run::<_, Error, _>(|| {
-                match db::get_commit_by_commit_num(&conn, commit.commit_num) {
+            .run::<_, CommitStoreError, _>(|| {
+                match self
+                    .commit_store
+                    .get_commit_by_commit_num(commit.commit_num)
+                {
                     Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
-                        db::resolve_fork(&conn, commit.commit_num)?;
+                        self.commit_store.resolve_fork(commit.commit_num)?;
                         info!(
                             "Fork detected. Replaced {} at height {}, with commit {}.",
                             &b.commit_id, &b.commit_num, &commit.commit_id
                         );
-                        db::insert_commit(&conn, &commit)?;
+                        self.commit_store.add_commit(&commit)?;
                     }
                     Ok(Some(_)) => {
                         info!(
@@ -97,48 +116,22 @@ impl EventHandler for DatabaseEventHandler {
                     }
                     Ok(None) => {
                         info!("Received new commit {}", commit.commit_id);
-                        db::insert_commit(&conn, &commit)?;
+                        self.commit_store.add_commit(&commit)?;
                     }
                     Err(err) => {
                         return Err(err);
                     }
                 }
 
-                db_ops.iter().try_for_each(|op| op.execute(&conn))
+                db_ops
+                    .iter()
+                    .try_for_each(|op| op.execute(&conn))
+                    .map_err(|err| CommitStoreError::OperationError {
+                        context: "failed DB operation".to_string(),
+                        source: Box::new(err),
+                    })
             })
             .map_err(|err| EventError(format!("Database transaction failed {}", err)))
-    }
-}
-
-fn create_db_commit_from_commit_event(
-    event: &CommitEvent,
-    conn: &PgConnection,
-) -> Result<NewCommit, EventError> {
-    let commit_id = event.id.clone();
-    let commit_num = commit_event_height_to_commit_num(event.height, conn)?;
-    let service_id = event.service_id.clone();
-    Ok(NewCommit {
-        commit_id,
-        commit_num,
-        service_id,
-    })
-}
-
-// If height is `Some`, convert to i64; if height is `None`, get next commit_num from the database.
-fn commit_event_height_to_commit_num(
-    height: Option<u64>,
-    conn: &PgConnection,
-) -> Result<i64, EventError> {
-    match height {
-        Some(height_u64) => height_u64
-            .try_into()
-            .map_err(|err| EventError(format!("failed to convert event height to i64: {}", err))),
-        None => db::get_next_commit_num(conn).map_err(|err| {
-            EventError(format!(
-                "failed to get next commit_num from database: {}",
-                err
-            ))
-        }),
     }
 }
 

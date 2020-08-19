@@ -15,7 +15,7 @@
  * -----------------------------------------------------------------------------
  */
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use protobuf::Message as _;
@@ -31,25 +31,21 @@ use sawtooth_sdk::{
             EventList as SawtoothEventList, EventSubscription,
         },
         network::PingResponse as SawtoothPingResponse,
-        transaction_receipt::{
-            StateChange as SawtoothStateChange, StateChangeList,
-            StateChange_Type as SawtoothStateChange_Type,
-        },
+        transaction_receipt::{StateChange as SawtoothStateChange, StateChangeList},
         validator::{Message, Message_MessageType},
     },
     messaging::{
-        stream::{MessageSender, ReceiveError, SendError},
+        stream::{MessageSender, ReceiveError},
         zmq_stream::ZmqMessageSender,
     },
 };
 
-use crate::event::{
-    CommitEvent, EventConnection, EventConnectionUnsubscriber, EventIoError, StateChange,
-};
+use crate::event::{EventConnection, EventConnectionUnsubscriber};
+use grid_sdk::grid_db::commits::store::NULL_BLOCK_ID;
+use grid_sdk::grid_db::commits::store::{CommitEvent, EventIoError, StateChange};
 
 use super::connection::SawtoothConnection;
 
-const NULL_BLOCK_ID: &str = "0000000000000000";
 const BLOCK_COMMIT_EVENT_TYPE: &str = "sawtooth/block-commit";
 const STATE_CHANGE_EVENT_TYPE: &str = "sawtooth/state-delta";
 const BLOCK_ID_ATTR: &str = "block_id";
@@ -248,23 +244,19 @@ fn extract_event(msg: Message) -> Result<CommitEvent, EventIoError> {
         .take_events()
         .to_vec();
 
-    CommitEvent::try_from(sawtooth_events.as_slice())
+    sawtooth_event_to_commit_event(sawtooth_events.as_slice())
 }
 
-impl TryFrom<&[SawtoothEvent]> for CommitEvent {
-    type Error = EventIoError;
+fn sawtooth_event_to_commit_event(events: &[SawtoothEvent]) -> Result<CommitEvent, EventIoError> {
+    let (id, height) = get_id_and_height(events)?;
+    let state_changes = get_state_changes(events)?;
 
-    fn try_from(events: &[SawtoothEvent]) -> Result<Self, Self::Error> {
-        let (id, height) = get_id_and_height(events)?;
-        let state_changes = get_state_changes(events)?;
-
-        Ok(CommitEvent {
-            service_id: None, // sawtooth is identified by the null service_id
-            id,
-            height,
-            state_changes,
-        })
-    }
+    Ok(CommitEvent {
+        service_id: None,
+        id,
+        height,
+        state_changes,
+    })
 }
 
 fn get_id_and_height(events: &[SawtoothEvent]) -> Result<(String, Option<u64>), EventIoError> {
@@ -339,23 +331,6 @@ fn sawtooth_state_changes_into_native_state_changes(
         .collect()
 }
 
-impl TryInto<StateChange> for SawtoothStateChange {
-    type Error = EventIoError;
-
-    fn try_into(self) -> Result<StateChange, Self::Error> {
-        match self.field_type {
-            SawtoothStateChange_Type::TYPE_UNSET => Err(EventIoError::InvalidMessage(
-                "state change type unset".into(),
-            )),
-            SawtoothStateChange_Type::SET => Ok(StateChange::Set {
-                key: self.address,
-                value: self.value,
-            }),
-            SawtoothStateChange_Type::DELETE => Ok(StateChange::Delete { key: self.address }),
-        }
-    }
-}
-
 fn correlation_id() -> String {
     let start = SystemTime::now();
     let since_the_epoch = start
@@ -365,23 +340,12 @@ fn correlation_id() -> String {
     since_the_epoch.as_millis().to_string()
 }
 
-impl From<ReceiveError> for EventIoError {
-    fn from(err: ReceiveError) -> Self {
-        EventIoError::ConnectionError(format!("Unable to receive message: {}", &err))
-    }
-}
-
-impl From<SendError> for EventIoError {
-    fn from(err: SendError) -> Self {
-        EventIoError::ConnectionError(format!("Unable to send message: {}", &err))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use sawtooth_sdk::messages::events::Event_Attribute;
+    use sawtooth_sdk::messages::transaction_receipt::StateChange_Type as SawtoothStateChange_Type;
 
     const PIKE_NAMESPACE: &str = "cad11d";
     const GRID_NAMESPACE: &str = "621dee";
@@ -407,7 +371,7 @@ mod tests {
             create_state_change_event(&non_grid_state_changes[..]),
         ];
 
-        let commit_event = CommitEvent::try_from(sawtooth_events.as_slice())
+        let commit_event = sawtooth_event_to_commit_event(sawtooth_events.as_slice())
             .expect("Failed to convert sawtooth events to a CommitEvent");
 
         assert!(&commit_event.service_id.is_none());

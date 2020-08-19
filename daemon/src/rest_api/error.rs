@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::DatabaseError;
+use grid_sdk::database::DatabaseError;
 
 use actix::MailboxError;
 use actix_web::error::{PayloadError, UrlGenerationError};

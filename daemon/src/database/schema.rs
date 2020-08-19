@@ -45,24 +45,6 @@ table! {
 }
 
 table! {
-    commit (id) {
-        id -> Int8,
-        commit_id -> Varchar,
-        commit_num -> Int8,
-        service_id -> Nullable<Text>,
-    }
-}
-
-table! {
-    chain_record (id) {
-        id -> Int8,
-        start_commit_num -> Int8,
-        end_commit_num -> Int8,
-        service_id -> Nullable<Text>,
-    }
-}
-
-table! {
     grid_property_definition (id) {
         id -> Int8,
         start_commit_num -> Int8,
@@ -317,8 +299,6 @@ table! {
 allow_tables_to_appear_in_same_query!(
     agent,
     associated_agent,
-    commit,
-    chain_record,
     grid_property_definition,
     grid_schema,
     organization,

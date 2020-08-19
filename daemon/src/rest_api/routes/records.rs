@@ -18,8 +18,9 @@ use crate::database::{
         AssociatedAgent, LatLongValue, Property, Proposal, Record,
         ReportedValueReporterToAgentMetadata,
     },
-    ConnectionPool,
 };
+
+use grid_sdk::database::ConnectionPool;
 
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,

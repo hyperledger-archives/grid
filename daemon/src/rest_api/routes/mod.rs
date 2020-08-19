@@ -26,7 +26,7 @@ pub use products::*;
 pub use records::*;
 pub use schemas::*;
 
-use crate::database::ConnectionPool;
+use grid_sdk::database::ConnectionPool;
 
 use actix::{Actor, SyncContext};
 

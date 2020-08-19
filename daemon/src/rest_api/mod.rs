@@ -19,7 +19,6 @@ use std::sync::mpsc;
 use std::thread;
 
 use crate::config::Endpoint;
-use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
 use crate::rest_api::routes::DbExecutor;
 use crate::rest_api::routes::{
@@ -36,6 +35,7 @@ use actix_web::{
 };
 use futures::executor::block_on;
 use futures::future;
+use grid_sdk::database::ConnectionPool;
 use serde::{Deserialize, Serialize};
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
