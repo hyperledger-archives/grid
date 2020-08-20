@@ -15,11 +15,11 @@
 FROM hyperledger/grid-dev:v3 as grid-cli-builder
 
 # Copy over Cargo.toml files
-COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
 
+COPY contracts/location/Cargo.toml /build/contracts/location/Cargo.toml
 COPY contracts/pike/Cargo.toml /build/contracts/pike/Cargo.toml
 COPY contracts/product/Cargo.toml /build/contracts/product/Cargo.toml
 COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
@@ -43,7 +43,7 @@ FROM hyperledger/sawtooth-sabre-cli
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
-COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
+COPY --from=grid-cli-builder /build/cli/target/debian/grid-cli_*.deb /tmp
 
 RUN apt-get update \
  && dpkg --unpack /tmp/grid-cli*.deb \
