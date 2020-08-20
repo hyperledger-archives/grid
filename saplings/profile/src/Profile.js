@@ -26,7 +26,7 @@ import {
   setKeys as setSigningKeys
 } from 'splinter-saplingjs';
 import { ActionList } from './ActionList';
-import { KeyCard } from './KeyCard';
+import KeyTable from './KeyTable';
 import { ChangePasswordForm } from './forms/ChangePasswordForm';
 import { AddKeyForm } from './forms/AddKeyForm';
 import { UpdateKeyForm } from './forms/UpdateKeyForm';
@@ -202,17 +202,6 @@ export function Profile() {
       <section className="user-keys">
         <h3 id="keys-label">Keys</h3>
         <div className="key-list">
-          {keys.length === 0 && <span>No keys added yet</span>}
-          {keys.length > 0 &&
-            keys.map(key => (
-              <KeyCard
-                key={key.public_key}
-                userKey={key}
-                isActive={stateKeys && key.public_key === stateKeys.publicKey}
-                setActiveFn={() => activateKey(key)}
-                editFn={() => openModalForm('update-key', { key })}
-              />
-            ))}
         </div>
         <button
           className="fab add-key"
@@ -224,6 +213,12 @@ export function Profile() {
         >
           <FontAwesomeIcon icon={faPlus} className="icon" />
         </button>
+        <KeyTable
+          keys={keys}
+          activeKey={stateKeys && stateKeys.publicKey}
+          onActivate={key => activateKey(key)}
+          onEdit={key => openModalForm('update-key', { key })}
+        />
       </section>
       <OverlayModal open={modalActive} closeFn={() => setModalActive(false)}>
         {formView(form)}
