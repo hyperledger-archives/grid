@@ -16,8 +16,6 @@
 
 import React, { useEffect, useState } from 'react';
 import proptypes from 'prop-types';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   decryptKey,
   getKeys,
@@ -200,19 +198,21 @@ export function Profile() {
         </ActionList>
       </section>
       <section className="user-keys">
-        <h3 id="keys-label">Keys</h3>
-        <div className="key-list">
+        <div className='keys-header'>
+          <h3 id="keys-label">Keys</h3>
+          <div className='keys-actions'>
+            <button
+              className="add-key"
+              onClick={() =>
+                openModalForm('add-key', {
+                  successFn: value => addKeyCallback(value)
+                })
+              }
+            >
+              New Signing Key
+            </button>
+          </div>
         </div>
-        <button
-          className="fab add-key"
-          onClick={() =>
-            openModalForm('add-key', {
-              successFn: value => addKeyCallback(value)
-            })
-          }
-        >
-          <FontAwesomeIcon icon={faPlus} className="icon" />
-        </button>
         <KeyTable
           keys={keys}
           activeKey={stateKeys && stateKeys.publicKey}
