@@ -105,6 +105,21 @@ services:
         cp /tmp/grid-track-and-trace*.scar /usr/share/scar
       "
 
+  location-contract-builder:
+    image: location-contract-builder
+    container_name: location-contract-builder
+    build:
+      context: .
+      dockerfile: contracts/location/Dockerfile
+      args:
+        - REPO_VERSION=${REPO_VERSION}
+    volumes:
+      - contracts-shared:/usr/share/scar
+    entrypoint: |
+      bash -c "
+        cp /tmp/grid-location*.scar /usr/share/scar
+      "
+
   db:
     image: postgres
     container_name: db
