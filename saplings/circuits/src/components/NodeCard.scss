@@ -18,10 +18,6 @@
   padding: 1rem;
   width: 100%;
 
-  .not-visible {
-    visibility: hidden;
-  }
-
   .col-span-4 {
     grid-column-start: 1;
     grid-column-end: 4;
@@ -36,19 +32,14 @@
       flex-direction: column;
 
       .field-header {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         margin-bottom: 0.3rem;
       }
 
       .field-value {
-        font-size: 0.8rem;
+        font-size: 1rem;
         font-weight: bold;
       }
-    }
-
-    .endpoints {
-      overflow-y: scroll;
-      height: 4rem;
     }
 
     .node-labels {
@@ -104,15 +95,14 @@
       width: 100%;
 
       .metadata-chip {
-        border: 1px solid var(--color-light-grey);
+        border: 1px solid var(--color-grey);
         width: fit-content;
         border-radius: 0.2rem;
         padding: 0.5rem;
         margin-right: 0.3rem;
         white-space: nowrap;
         font-size: 0.8rem;
-        color: var(--color-grey);
-        border-left: 0.3rem solid var(--color-light-grey);
+        border-left: 0.3rem solid var(--color-grey);
 
        &::first-letter {
          text-transform:capitalize;
@@ -120,4 +110,11 @@
       }
     }
   }
+}
+
+.node-card.selectable {
+  cursor: pointer;
+}
+.node-card.selectable:hover {
+  background-color: var(--color-light-grey);
 }

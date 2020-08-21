@@ -114,9 +114,8 @@
       font-size: 0.8rem;
       text-align: left;
       cursor: pointer;
-      padding-bottom: 1rem;
+      padding: 0.5rem 0;
       background-color: var(--background-color-white);
-      box-shadow: 0 4px 4px -4px rgba(0,0,0,.25);
       position: -webkit-sticky;
       position: sticky;
       top:0;
@@ -130,7 +129,7 @@
         cursor: pointer;
         font-size: 1rem;
         vertical-align: middle;
-        padding: 1rem 1rem 1rem 0;
+        padding: 1rem 0;
       }
 
       .toggle {

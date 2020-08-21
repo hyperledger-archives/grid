@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React, { useState, useReducer } from 'react';
+import React, { useEffect, useState, useReducer } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -165,7 +165,7 @@ const formValueReducer = (state, [action, ...values]) => {
 
   if (action === 'init') {
     const [service] = values;
-    if (service && !state.edit) {
+    if (service) {
       const serviceArgs = Object.entries(service.arguments).map(
         ([key, value]) => ({
           key,
@@ -175,7 +175,6 @@ const formValueReducer = (state, [action, ...values]) => {
       serviceArgs.push({});
 
       return {
-        edit: true,
         'service-node': service.allowedNodes[0],
         'service-id': service.serviceId,
         'service-type': service.serviceType,
@@ -223,9 +222,11 @@ export const ServiceForm = ({ nodes, onComplete, onCancel, service }) => {
   const [errors, setErrors] = useState({});
   const [dirty, setDirty] = useState({});
 
-  if (service && !values.edit) {
-    valueDispatch(['init', service]);
-  }
+  useEffect(() => {
+    if (service) {
+      valueDispatch(['init', service]);
+    }
+  }, [service]);
 
   const isComplete = () => {
     if (!values['service-type'] || values['service-type'].trim().length < 1) {

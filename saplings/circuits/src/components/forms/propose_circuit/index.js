@@ -35,6 +35,7 @@ import protos from 'App/protobuf';
 import { makeSignedPayload } from 'App/api/payload';
 import { postCircuitManagementPayload } from 'App/api/splinter';
 import { Chips } from 'App/components/Chips';
+import { Button } from 'App/components/forms/controls';
 
 import { ServiceTable, ServiceForm } from './service';
 
@@ -46,19 +47,21 @@ const generateCircuitID = () => {
   return `${firstPart}-${secondPart}`;
 };
 
-const filterNodes = (state, input) => {
-  const lowerInput = input.toLowerCase();
-  const filteredNodes = state.availableNodes.filter(node => {
+const filterNodes = state => {
+  const { filteredBy } = state.filteredNodes;
+  const lowerInput = filteredBy.toLowerCase();
+
+  let selectionFilter = node =>
+    !!state.selectedNodes.find(
+      selectedNode => node.identity === selectedNode.identity
+    );
+
+  if (!state.showSelectedOnly) {
+    const selectedFilter = selectionFilter;
+    selectionFilter = node => !selectedFilter(node);
+  }
+  const nodes = state.availableNodes.filter(selectionFilter).filter(node => {
     if (node.identity.toLowerCase().indexOf(lowerInput) > -1) {
-      if (state.showSelectedOnly) {
-        const isSelected =
-          state.selectedNodes.filter(
-            selectedNode => node.identity === selectedNode.identity
-          ).length > 0;
-        if (!isSelected) {
-          return false;
-        }
-      }
       return true;
     }
     if (node.displayName.toLowerCase().indexOf(lowerInput) > -1) {
@@ -67,86 +70,77 @@ const filterNodes = (state, input) => {
     return false;
   });
 
-  return filteredNodes;
+  // Sort the nodes by identity, leaving the localNode at the top.
+  nodes.sort((nodeA, nodeB) => {
+    if (nodeA.identity === state.localNodeId) {
+      return -1;
+    }
+    if (nodeB.identity === state.localNodeId) {
+      return 1;
+    }
+    return nodeA.identity.localeCompare(nodeB.identity);
+  });
+
+  return { nodes, filteredBy };
 };
 
 const nodesReducer = (state, action) => {
   const minNodeCountError =
     'At least two nodes must be part of a circuit. Please select a node.';
 
+  let intermediateState = state;
   switch (action.type) {
-    case 'filter': {
-      const nodes = filterNodes(state, action.input);
-      const filteredNodes = {
+    case 'init': {
+      const { localNode, nodes } = action;
+      intermediateState = {
+        selectedNodes: [localNode],
+        localNodeId: localNode.identity,
         nodes,
-        filteredBy: action.input
+        availableNodes: nodes,
+        filteredNodes: {
+          nodes: [],
+          filteredBy: ''
+        }
       };
-      return { ...state, filteredNodes };
+      break;
     }
-    case 'addLocalNode': {
-      const localNode = action.node;
-      state.selectedNodes.push(localNode);
-      state.filteredNodes.nodes.sort((node1, node2) => {
-        if (node1.identity === localNode.identity) {
-          return -1;
+    case 'filter': {
+      intermediateState = {
+        ...state,
+        filteredNodes: {
+          nodes: [],
+          filteredBy: action.input
         }
-        if (node2.identity === localNode.identity) {
-          return 1;
-        }
-        return 0;
-      });
-      return { ...state };
+      };
+      break;
     }
     case 'showSelectedOnly': {
-      const newState = state;
-      newState.showSelectedOnly = true;
-      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
-      const filteredNodes = {
-        nodes,
-        filteredBy: state.filteredNodes.filteredBy
+      intermediateState = {
+        ...state,
+        showSelectedOnly: true
       };
-      return { ...newState, filteredNodes };
+      break;
     }
     case 'showAllNodes': {
-      const newState = state;
-      newState.showSelectedOnly = false;
-      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
-      const filteredNodes = {
-        nodes,
-        filteredBy: state.filteredNodes.filteredBy
+      intermediateState = {
+        ...state,
+        showSelectedOnly: false
       };
-      return { ...newState, filteredNodes };
+      break;
     }
     case 'toggleSelect': {
       const { node } = action;
-      let alreadySelected = false;
 
-      const selectedNodes = state.selectedNodes.filter(selectedNode => {
-        if (node.identity === selectedNode.identity) {
-          alreadySelected = true;
-          return false;
-        }
-        return true;
-      });
+      const { selectedNodes } = state;
+      const alreadySelected = selectedNodes.find(
+        selectedNode => node.identity === selectedNode.identity
+      );
 
       if (!alreadySelected) {
         selectedNodes.push(node);
       }
-
-      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
-      const filteredNodes = {
-        nodes,
-        filteredBy: state.filteredNodes.filteredBy
-      };
-
-      let { error } = state;
-      if (selectedNodes.length >= 2) {
-        error = '';
-      } else {
-        error = minNodeCountError;
-      }
-
-      return { ...state, selectedNodes, filteredNodes, error };
+      intermediateState = { ...state, selectedNodes };
+      break;
     }
     case 'removeSelect': {
       const { node } = action;
@@ -154,44 +148,33 @@ const nodesReducer = (state, action) => {
         item => item.identity !== node.identity
       );
 
-      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
-      const filteredNodes = {
-        nodes,
-        filteredBy: state.filteredNodes.filteredBy
-      };
-
-      let error = '';
-      if (selectedNodes.length < 2) {
-        error = minNodeCountError;
-      }
-      return { ...state, selectedNodes, filteredNodes, error };
+      intermediateState = { ...state, selectedNodes };
+      break;
     }
     case 'addNode': {
       const { node } = action;
-      state.availableNodes.push(node);
-      const nodes = filterNodes(state, state.filteredNodes.filteredBy);
-      const filteredNodes = {
-        nodes,
-        filteredBy: state.filteredNodes.filteredBy
-      };
+      const { availableNodes } = state;
+      availableNodes.push(node);
 
-      return { ...state, filteredNodes };
-    }
-    case 'set': {
-      const { nodes } = action;
-      return {
-        ...state,
-        nodes,
-        availableNodes: nodes,
-        filteredNodes: {
-          nodes,
-          filteredBy: ''
-        }
-      };
+      intermediateState = { ...state, availableNodes };
+      break;
     }
     default:
       throw new Error(`unhandled action type: ${action.type}`);
   }
+
+  let { error } = state;
+  if (intermediateState.selectedNodes.length >= 2) {
+    error = '';
+  } else {
+    error = minNodeCountError;
+  }
+
+  return {
+    ...intermediateState,
+    error,
+    filteredNodes: filterNodes(intermediateState)
+  };
 };
 
 const servicesReducer = (state, [action, ...args]) => {
@@ -342,7 +325,7 @@ export function ProposeCircuitForm() {
 
   const localNodeID = useLocalNodeState();
   const [modalActive, setModalActive] = useState(false);
-  const [localNode] = allNodes.filter(node => node.identity === localNodeID);
+  const localNode = allNodes.find(node => node.identity === localNodeID);
   const [nodesState, nodesDispatcher] = useReducer(nodesReducer, {
     selectedNodes: [],
     availableNodes: [],
@@ -464,22 +447,14 @@ export function ProposeCircuitForm() {
   };
 
   useEffect(() => {
-    if (allNodes) {
+    if (localNode && allNodes) {
       nodesDispatcher({
-        type: 'set',
+        type: 'init',
+        localNode,
         nodes: allNodes
       });
     }
-  }, [allNodes]);
-
-  useEffect(() => {
-    if (localNode) {
-      nodesDispatcher({
-        type: 'addLocalNode',
-        node: localNode
-      });
-    }
-  }, [localNode]);
+  }, [localNode, allNodes]);
 
   useEffect(() => {
     let servicesAreValid = false;
@@ -512,6 +487,55 @@ export function ProposeCircuitForm() {
     }
   };
 
+  const {
+    showSelectedOnly,
+    selectedNodes,
+    filteredNodes,
+    availableNodes
+  } = nodesState;
+  const remainingNodeCount = availableNodes.length - selectedNodes.length;
+
+  let nodeCards;
+  if (filteredNodes.nodes.length > 0) {
+    nodeCards = filteredNodes.nodes.map(node => {
+      const local = node.identity === localNodeID;
+      const selected = !!selectedNodes.find(selectedNode => {
+        return node.identity === selectedNode.identity;
+      });
+      return (
+        <li key={node.identity} className="node-item">
+          <NodeCard
+            node={node}
+            dispatcher={targetNode => {
+              nodesDispatcher({
+                type: 'toggleSelect',
+                node: targetNode
+              });
+            }}
+            isLocal={local}
+            isSelected={selected}
+          />
+        </li>
+      );
+    });
+  } else if (!showSelectedOnly && remainingNodeCount === 0) {
+    nodeCards = (
+      <li className="no-nodes">
+        All available nodes have been selected for this circuit.
+      </li>
+    );
+  } else if (showSelectedOnly && selectedNodes.length === 0) {
+    nodeCards = (
+      <li className="no-nodes">
+        At least two nodes must be selected for this circuit.
+      </li>
+    );
+  } else {
+    nodeCards = (
+      <li className="no-nodes">No nodes match your search criteria.</li>
+    );
+  }
+
   return (
     <MultiStepForm
       formName="Propose Circuit"
@@ -519,9 +543,9 @@ export function ProposeCircuitForm() {
       handleCancel={() => history.push(`/circuits`)}
       isStepValidFn={stepNumber => stepValidationFn(stepNumber)}
     >
-      <Step step={1} label="Add nodes">
+      <Step step={1} label="Select nodes">
         <div className="step-header">
-          <div className="step-title">Add nodes</div>
+          <div className="step-title">Select nodes</div>
           <div className="help-text">
             Select the nodes that are part of the circuit
           </div>
@@ -534,7 +558,7 @@ export function ProposeCircuitForm() {
             <div className="form-error">{nodesState.error}</div>
             <div className="selected-nodes">
               <Chips
-                nodes={nodesState.selectedNodes}
+                nodes={selectedNodes}
                 localNodeID={localNodeID}
                 removeFn={node => {
                   nodesDispatcher({ type: 'removeSelect', node });
@@ -546,29 +570,25 @@ export function ProposeCircuitForm() {
             <div className="available-nodes-header">
               <div className="select-filter">
                 Show:
-                <button
-                  type="button"
+                <Button
                   className={
                     nodesState.showSelectedOnly
                       ? 'no-style-btn'
                       : 'no-style-btn selected'
                   }
                   onClick={() => nodesDispatcher({ type: 'showAllNodes' })}
-                >
-                  {`All nodes (${nodesState.availableNodes.length})`}
-                </button>
+                  label={`Available nodes (${remainingNodeCount})`}
+                />
                 <span className="filter-separator">|</span>
-                <button
-                  type="button"
+                <Button
                   className={
                     nodesState.showSelectedOnly
                       ? 'no-style-btn selected'
                       : 'no-style-btn'
                   }
                   onClick={() => nodesDispatcher({ type: 'showSelectedOnly' })}
-                >
-                  {`Selected nodes (${nodesState.selectedNodes.length})`}
-                </button>
+                  label={`Selected nodes (${selectedNodes.length})`}
+                />
               </div>
               <input
                 type="text"
@@ -583,37 +603,14 @@ export function ProposeCircuitForm() {
               />
             </div>
             <ul>
-              {nodesState.filteredNodes.nodes.map(node => {
-                const local = node.identity === localNodeID;
-                const selected =
-                  nodesState.selectedNodes.filter(selectedNode => {
-                    return node.identity === selectedNode.identity;
-                  }).length > 0;
-                return (
-                  <li key={node.identity} className="node-item">
-                    <NodeCard
-                      node={node}
-                      dispatcher={targetNode => {
-                        nodesDispatcher({
-                          type: 'toggleSelect',
-                          node: targetNode
-                        });
-                      }}
-                      isLocal={local}
-                      isSelected={selected}
-                    />
-                  </li>
-                );
-              })}
-              <button
+              {nodeCards}
+              <Button
                 className="form-button new-node-button"
-                type="button"
                 onClick={() => {
                   setModalActive(true);
                 }}
-              >
-                <FontAwesomeIcon icon="plus" />
-              </button>
+                label={<FontAwesomeIcon icon="plus" />}
+              />
               <div className="button-label">Add new node to registry</div>
             </ul>
           </div>
@@ -641,13 +638,11 @@ export function ProposeCircuitForm() {
         </div>
         <div className="propose-form-wrapper services-wrapper">
           <div className="service-controls">
-            <button
+            <Button
               className="form-button confirm"
-              type="button"
               onClick={() => setModalActive(true)}
-            >
-              Add Service
-            </button>
+              label="Add Service"
+            />
           </div>
           <ServiceTable
             services={servicesState.services}
