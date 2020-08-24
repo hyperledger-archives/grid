@@ -56,7 +56,9 @@
 @media only screen and (max-width: 600px) {
   .overlay-modal {
     .content {
-      max-width: 80%;
+      width: 96%;
+      height: 96%;
+      top: 2%;
     }
   }
 }

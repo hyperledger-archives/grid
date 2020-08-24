@@ -86,7 +86,7 @@
 .service-form {
   height: 100%;
   width: 100%;
-  overflow: scroll;
+  overflow-y: scroll;
 
   .service-form-header {
     font-size: 2rem;
@@ -125,5 +125,11 @@
     .icon-button {
       margin-top: 0.75rem;
     }
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .service-form .form-content {
+    padding: 0.5rem;
   }
 }
