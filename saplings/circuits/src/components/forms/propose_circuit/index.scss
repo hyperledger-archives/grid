@@ -223,6 +223,8 @@
   .service-controls {
     display: flex;
     flex-direction: row-reverse;
+    // accounts for the box-shadow.
+    padding-right: 2px;
   }
 }
 
@@ -238,7 +240,7 @@
     border-radius: 2rem;
     background-color: transparent;
     text-align: center;
-    border: 1px solid var(--color-primary);
+    border: 1px solid var(--color-primary-dark);
     outline: none;
   }
 }
