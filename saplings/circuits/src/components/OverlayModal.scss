@@ -27,9 +27,9 @@
 
   .content {
     display: none;
-    width: auto;
     width: 70%;
-    height: 80%;
+    height: max-content;
+    max-height: 80%;
     position: relative;
     top: 10%;
     margin: auto;
