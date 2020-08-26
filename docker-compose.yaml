@@ -73,7 +73,7 @@ services:
 
   splinter-ui-alpha:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
@@ -137,7 +137,7 @@ services:
 
   splinter-ui-beta:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
