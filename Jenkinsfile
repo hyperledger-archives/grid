@@ -146,13 +146,6 @@ pipeline {
             }
         }
 
-        stage ("Build documentation") {
-            steps {
-                sh 'docker build . -f docs/grid-build-docs -t grid-build-docs:$ISOLATION_ID'
-                sh 'docker run --rm -v $(pwd):/project/grid grid-build-docs:$ISOLATION_ID'
-            }
-        }
-
         stage("Build artifacts") {
             steps {
                 sh 'mkdir -p build/debs'
@@ -166,7 +159,7 @@ pipeline {
             sh 'docker-compose -f docker/compose/grid_tests.yaml down'
         }
         success {
-            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb, docs/build/html/**, docs/build/latex/*.pdf'
+            archiveArtifacts '*.tgz, *.zip, build/debs/*.deb'
         }
         aborted {
             error "Aborted, exiting now"
