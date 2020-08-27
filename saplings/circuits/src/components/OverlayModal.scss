@@ -23,14 +23,13 @@
   width: 0;
   height: 0;
   background: rgba(30, 30, 30, 0.8);
-  transition: all 0.2s;
   overflow-y: auto;
 
   .content {
     display: none;
-    width: auto;
     width: 70%;
-    height: 80%;
+    height: max-content;
+    max-height: 80%;
     position: relative;
     top: 10%;
     margin: auto;
@@ -57,7 +56,9 @@
 @media only screen and (max-width: 600px) {
   .overlay-modal {
     .content {
-      max-width: 80%;
+      width: 96%;
+      height: 96%;
+      top: 2%;
     }
   }
 }

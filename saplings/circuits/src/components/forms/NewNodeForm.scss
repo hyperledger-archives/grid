@@ -15,7 +15,8 @@
  */
 
 .new-node-form-wrapper {
-  height: 100%;
+  height: 80vh;
+  overflow-y: scroll;
 
   .node-form-header {
     height: 15%;
@@ -94,6 +95,8 @@
 
 @media only screen and (max-width: 600px) {
   .new-node-form-wrapper {
+    height: 100%;
+
     .node-form-header {
       height: 20%;
     }

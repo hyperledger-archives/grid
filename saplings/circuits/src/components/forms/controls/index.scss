@@ -59,16 +59,14 @@
       font-size: 1.25rem;
       font-size: 1.25rem;
       font-weight: 300;
-      padding: 0 1.25rem;
-    }
-
-    button {
+      padding: 0.25rem 1.25rem;
     }
   }
 }
 
 .input-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
 
   .input-control {
@@ -82,5 +80,11 @@
 
   .listbox-dropdown-control {
     border: 1px solid var(--color-grey);
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .input-control .text-field-wrapper input {
+    padding: 0.25rem 0.5rem;
   }
 }

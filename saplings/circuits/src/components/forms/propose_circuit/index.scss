@@ -69,6 +69,19 @@
     padding-bottom: 0.5rem;
   }
 
+  .node-controls {
+    display: flex;
+    flex-direction: row-reverse;
+    // accounts for the box-shadow.
+    padding-right: 2px;
+
+    .form-button {
+      background: var(--color-primary);
+      border: 1px solid var(--color-primary-dark);
+      color: var(--color-text-on-dark);
+    }
+  }
+
   .selected-nodes-wrapper {
 
     .selected-nodes-header {
@@ -174,44 +187,6 @@
           margin: 0.5rem;
         }
       }
-
-      .new-node-button {
-        position: fixed;
-      	width: 2rem;
-      	height: 2rem;
-      	bottom: 8rem;
-      	right: 3rem;
-      	background-color: var(--color-secondary);
-      	color: var(--color-text-on-dark);
-      	border-radius: 2rem;;
-      	text-align: center;
-        border: none;
-        outline: none;
-      	box-shadow: 2px 2px 3px #999;
-      }
-
-      .button-label {
-        position:fixed;
-        bottom: 6rem;
-        right: 1rem;
-        border-radius: 0.3rem;
-        display: table;
-        background-color: var(--color-grey);
-        font-size: 0.7rem;
-        padding: 0.5rem;
-        color: var(--color-text-on-dark);
-      }
-
-      .new-node-button + .button-label {
-        visibility: hidden;
-        opacity: 0;
-        transition: visibility 0s, opacity 0.5s ease;
-      }
-
-      .new-node-button:hover + .button-label {
-        visibility: visible;
-        opacity: 1;
-      }
     }
   }
 }
@@ -223,6 +198,8 @@
   .service-controls {
     display: flex;
     flex-direction: row-reverse;
+    // accounts for the box-shadow.
+    padding-right: 2px;
   }
 }
 
@@ -238,7 +215,7 @@
     border-radius: 2rem;
     background-color: transparent;
     text-align: center;
-    border: 1px solid var(--color-primary);
+    border: 1px solid var(--color-primary-dark);
     outline: none;
   }
 }

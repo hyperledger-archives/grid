@@ -15,7 +15,6 @@
  */
 
 import React, { useState, useEffect, useReducer } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import yaml from 'js-yaml';
 import { useToasts } from 'react-toast-notifications';
 import { useHistory } from 'react-router-dom';
@@ -556,6 +555,15 @@ export function ProposeCircuitForm() {
               <div className="title">Selected nodes</div>
             </div>
             <div className="form-error">{nodesState.error}</div>
+            <div className="node-controls">
+              <Button
+                className="form-button"
+                onClick={() => {
+                  setModalActive(true);
+                }}
+                label="Add node"
+              />
+            </div>
             <div className="selected-nodes">
               <Chips
                 nodes={selectedNodes}
@@ -602,17 +610,7 @@ export function ProposeCircuitForm() {
                 }}
               />
             </div>
-            <ul>
-              {nodeCards}
-              <Button
-                className="form-button new-node-button"
-                onClick={() => {
-                  setModalActive(true);
-                }}
-                label={<FontAwesomeIcon icon="plus" />}
-              />
-              <div className="button-label">Add new node to registry</div>
-            </ul>
+            <ul>{nodeCards}</ul>
           </div>
         </div>
         <OverlayModal open={modalActive}>
