@@ -17,7 +17,16 @@
 
 #[macro_use]
 extern crate cfg_if;
+#[macro_use]
+#[cfg(feature = "diesel")]
+extern crate diesel;
+#[macro_use]
+#[cfg(feature = "diesel")]
+extern crate diesel_migrations;
 
+#[cfg(feature = "diesel")]
+pub mod database;
+pub mod grid_db;
 pub mod permissions;
 pub mod protocol;
 pub mod protos;

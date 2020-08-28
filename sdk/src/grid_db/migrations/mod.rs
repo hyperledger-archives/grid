@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2018-2020 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::error::CliError;
+//! Provides sql migration scripts and methods for executing
+//! migrations.
+//!
+//! ```ignore
+//! use grid_db::migrations::run_postgres_migrations;
+//! use diesel::{pg::PgConnection};
+//!
+//! let connection = PgConnection::establish(
+//!      "postgres://admin:admin@localhost:5432/splinterd").unwrap();
+//!
+//! run_postgres_migrations(&connection).unwrap();
+//!
+//! ```
 
-use diesel::{connection::Connection as _, pg::PgConnection};
+#[cfg(feature = "diesel")]
+mod diesel;
 
-use grid_sdk::grid_db::migrations::run_postgres_migrations;
-
-pub fn run_migrations(database_url: &str) -> Result<(), CliError> {
-    let connection = PgConnection::establish(database_url)
-        .map_err(|err| CliError::DatabaseError(err.to_string()))?;
-
-    run_postgres_migrations(&connection).map_err(|err| CliError::DatabaseError(err.to_string()))?;
-
-    info!("Successfully applied migrations");
-
-    Ok(())
-}
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
