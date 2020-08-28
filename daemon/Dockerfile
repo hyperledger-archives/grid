@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v2 as gridd-builder
+FROM hyperledger/grid-dev:v3 as gridd-builder
 
 # Copy over Cargo.toml files
 COPY Cargo.toml /build/Cargo.toml
@@ -56,6 +56,8 @@ COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 RUN apt-get update \
  && apt-get install -y -q \
     postgresql-client \
+&& apt-get install -y -q \
+    libsqlite3-dev \
  && dpkg --unpack /tmp/grid*.deb \
  && apt-get -f -y install
 

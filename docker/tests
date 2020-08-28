@@ -24,6 +24,7 @@ RUN apt-get update \
         libpq-dev \
         libssl-dev \
         libsasl2-dev \
+        libsqlite3-dev \
         libzmq3-dev \
         openssl \
         pkg-config \
