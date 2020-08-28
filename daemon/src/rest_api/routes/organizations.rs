@@ -53,7 +53,8 @@ impl Message for ListOrganizations {
     type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
 }
 
-impl Handler<ListOrganizations> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<ListOrganizations> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListOrganizations, _: &mut SyncContext<Self>) -> Self::Result {
@@ -66,8 +67,9 @@ impl Handler<ListOrganizations> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn list_organizations(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -89,7 +91,8 @@ impl Message for FetchOrganization {
     type Result = Result<OrganizationSlice, RestApiResponseError>;
 }
 
-impl Handler<FetchOrganization> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchOrganization> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<OrganizationSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchOrganization, _: &mut SyncContext<Self>) -> Self::Result {
@@ -111,8 +114,9 @@ impl Handler<FetchOrganization> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_organization(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     organization_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

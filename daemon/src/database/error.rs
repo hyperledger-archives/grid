@@ -19,8 +19,29 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
+pub struct ConnectionError {
+    pub context: String,
+    pub source: Box<dyn Error>,
+}
+
+impl Error for ConnectionError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&*self.source)
+    }
+}
+
+impl fmt::Display for ConnectionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unable to connect to database: {}", self.context)
+    }
+}
+
+#[derive(Debug)]
 pub enum DatabaseError {
-    ConnectionError(Box<dyn Error>),
+    ConnectionError {
+        context: String,
+        source: Box<dyn Error>,
+    },
     MigrationError(Box<dyn Error>),
     QueryError(Box<dyn Error>),
 }
@@ -28,7 +49,7 @@ pub enum DatabaseError {
 impl Error for DatabaseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            DatabaseError::ConnectionError(e) => Some(&**e),
+            DatabaseError::ConnectionError { source, .. } => Some(&**source),
             DatabaseError::MigrationError(e) => Some(&**e),
             DatabaseError::QueryError(e) => Some(&**e),
         }
@@ -38,7 +59,9 @@ impl Error for DatabaseError {
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DatabaseError::ConnectionError(e) => write!(f, "Unable to connect to database: {}", e),
+            DatabaseError::ConnectionError { context, source } => {
+                write!(f, "Unable to connect to database: {}: {}", context, source)
+            }
             DatabaseError::MigrationError(e) => write!(f, "Unable to migrate database: {}", e),
             DatabaseError::QueryError(e) => write!(f, "Database query failed: {}", e),
         }
@@ -47,7 +70,10 @@ impl fmt::Display for DatabaseError {
 
 impl From<diesel::ConnectionError> for DatabaseError {
     fn from(err: diesel::ConnectionError) -> Self {
-        DatabaseError::ConnectionError(Box::new(err))
+        DatabaseError::ConnectionError {
+            context: "{}".to_string(),
+            source: Box::new(err),
+        }
     }
 }
 

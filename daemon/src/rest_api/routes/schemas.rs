@@ -90,7 +90,8 @@ impl Message for ListGridSchemas {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 }
 
-impl Handler<ListGridSchemas> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<ListGridSchemas> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
@@ -120,8 +121,9 @@ impl Handler<ListGridSchemas> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn list_grid_schemas(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -143,7 +145,8 @@ impl Message for FetchGridSchema {
     type Result = Result<GridSchemaSlice, RestApiResponseError>;
 }
 
-impl Handler<FetchGridSchema> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchGridSchema> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<GridSchemaSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchGridSchema, _: &mut SyncContext<Self>) -> Self::Result {
@@ -170,8 +173,9 @@ impl Handler<FetchGridSchema> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_grid_schema(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     schema_name: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

@@ -120,7 +120,8 @@ impl Message for ListProducts {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
 }
 
-impl Handler<ListProducts> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<ListProducts> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
@@ -152,8 +153,9 @@ impl Handler<ListProducts> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn list_products(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -175,7 +177,8 @@ impl Message for FetchProduct {
     type Result = Result<ProductSlice, RestApiResponseError>;
 }
 
-impl Handler<FetchProduct> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchProduct> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<ProductSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchProduct, _: &mut SyncContext<Self>) -> Self::Result {
@@ -203,8 +206,9 @@ impl Handler<FetchProduct> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_product(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     product_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
