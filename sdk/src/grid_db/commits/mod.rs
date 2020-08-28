@@ -1,4 +1,4 @@
-// Copyright 2019 Cargill Incorporated
+// Copyright 2018-2020 Cargill Incorporated
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Required due to a bug in rust-protobuf: https://github.com/stepancheg/rust-protobuf/issues/331
-#![allow(renamed_and_removed_lints)]
-
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate cfg_if;
-#[macro_use]
-#[cfg(feature = "diesel")]
-extern crate diesel;
-#[macro_use]
-#[cfg(feature = "diesel")]
-extern crate diesel_migrations;
-
-#[cfg(feature = "diesel")]
-pub mod database;
-pub mod grid_db;
-#[macro_use]
-extern crate log;
-pub mod permissions;
-pub mod protocol;
-pub mod protos;
 pub mod store;
+
+pub const MAX_COMMIT_NUM: i64 = i64::MAX;

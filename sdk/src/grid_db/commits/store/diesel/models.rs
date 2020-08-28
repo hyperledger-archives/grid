@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
+use crate::grid_db::commits::store::diesel::schema::*;
 
-pub mod commits;
+#[derive(Insertable, PartialEq, Queryable)]
+#[table_name = "commit"]
+pub struct NewCommitModel {
+    pub commit_id: String,
+    pub commit_num: i64,
+    pub service_id: Option<String>,
+}
 
-pub mod migrations;
-
-#[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
-pub use commits::store::CommitStore;
+#[derive(Queryable, PartialEq, Identifiable, Debug)]
+#[table_name = "commit"]
+pub struct CommitModel {
+    pub id: i64,
+    pub commit_id: String,
+    pub commit_num: i64,
+    pub service_id: Option<String>,
+}

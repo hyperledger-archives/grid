@@ -12,14 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
+table! {
+    commit (id) {
+        id -> Int8,
+        commit_id -> Text,
+        commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
 
-pub mod commits;
-
-pub mod migrations;
-
-#[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
-pub use commits::store::CommitStore;
+table! {
+    chain_record (id) {
+        id -> Int8,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}

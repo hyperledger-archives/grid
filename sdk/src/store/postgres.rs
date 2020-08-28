@@ -12,14 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
+use diesel::{
+    pg::PgConnection,
+    r2d2::{ConnectionManager, Pool},
+};
 
-pub mod commits;
+use super::StoreFactory;
 
-pub mod migrations;
+/// A `StoryFactory` backed by a PostgreSQL database.
+pub struct PgStoreFactory {
+    pool: Pool<ConnectionManager<PgConnection>>,
+}
 
-#[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
-pub use commits::store::CommitStore;
+impl PgStoreFactory {
+    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self { pool }
+    }
+}
+
+impl StoreFactory for PgStoreFactory {
+    fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore> {
+        Box::new(crate::grid_db::DieselCommitStore::new(self.pool.clone()))
+    }
+}
