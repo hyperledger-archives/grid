@@ -64,3 +64,40 @@ impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
         }))
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> CommitStoreCreateDbCommitFromCommitEventOperation
+    for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn create_db_commit_from_commit_event(
+        &self,
+        event: &CommitEvent,
+    ) -> Result<Option<Commit>, CommitEventError> {
+        let commit_id = event.id.clone();
+        let commit_num = match event.height {
+            Some(height_u64) => height_u64.try_into().map_err(|err| {
+                CommitEventError::ConnectionError(format!(
+                    "failed to convert event height to i64: {}",
+                    err
+                ))
+            })?,
+            None => commit::table
+                .select(max(commit::commit_num))
+                .first(self.conn)
+                .map(|option: Option<i64>| match option {
+                    Some(num) => num + 1,
+                    None => 0,
+                })
+                .map_err(|err| CommitEventError::OperationError {
+                    context: "Failed to get next commit num".to_string(),
+                    source: Some(Box::new(err)),
+                })?,
+        };
+        let service_id = event.service_id.clone();
+        Ok(Some(Commit {
+            commit_id,
+            commit_num,
+            service_id,
+        }))
+    }
+}

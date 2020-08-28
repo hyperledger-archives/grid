@@ -44,3 +44,24 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> CommitStoreGetCommitByCommitNumOperation
+    for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn get_commit_by_commit_num(
+        &self,
+        commit_num: i64,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        commit::table
+            .select(commit::all_columns)
+            .filter(commit::commit_num.eq(&commit_num))
+            .first::<CommitModel>(self.conn)
+            .map(|commit| Some(Commit::from(commit)))
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+            .map_err(|err| CommitStoreError::OperationError {
+                context: "Failed to fetch commit".to_string(),
+                source: Some(Box::new(err)),
+            })
+    }
+}

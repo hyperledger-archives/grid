@@ -14,6 +14,8 @@
 
 #[cfg(feature = "postgres")]
 pub mod postgres;
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
 
 use std::str::FromStr;
 
@@ -44,6 +46,22 @@ pub fn create_store_factory(
             })?;
             Ok(Box::new(postgres::PgStoreFactory::new(pool)))
         }
+        #[cfg(feature = "sqlite")]
+        ConnectionUri::Sqlite(conn_str) => {
+            let connection_manager =
+                ConnectionManager::<diesel::sqlite::SqliteConnection>::new(conn_str);
+            let mut pool_builder = Pool::builder();
+            // A new database is created for each connection to the in-memory SQLite
+            // implementation; to ensure that the resulting stores will operate on the same
+            // database, only one connection is allowed.
+            if conn_str == ":memory:" {
+                pool_builder = pool_builder.max_size(1);
+            }
+            let pool = pool_builder.build(connection_manager).map_err(|err| {
+                StoreFactoryCreationError(format!("Failed to build connection pool: {}", err))
+            })?;
+            Ok(Box::new(sqlite::SqliteStoreFactory::new(pool)))
+        }
     }
 }
 
@@ -64,6 +82,8 @@ impl std::fmt::Display for StoreFactoryCreationError {
 pub enum ConnectionUri {
     #[cfg(feature = "postgres")]
     Postgres(String),
+    #[cfg(feature = "sqlite")]
+    Sqlite(String),
 }
 
 impl FromStr for ConnectionUri {
@@ -73,6 +93,8 @@ impl FromStr for ConnectionUri {
         match s {
             #[cfg(feature = "postgres")]
             _ if s.starts_with("postgres://") => Ok(ConnectionUri::Postgres(s.into())),
+            #[cfg(feature = "sqlite")]
+            _ => Ok(ConnectionUri::Sqlite(s.into())),
             #[cfg(not(feature = "sqlite"))]
             _ => Err(ParseConnectionUriError(format!(
                 "No compatible connection type: {}",

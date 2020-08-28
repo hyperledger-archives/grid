@@ -40,3 +40,23 @@ impl<'a> CommitStoreGetNextCommitNumOperation
         Ok(commit_num)
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> CommitStoreGetNextCommitNumOperation
+    for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+        let commit_num = commit::table
+            .select(max(commit::commit_num))
+            .first(self.conn)
+            .map(|option: Option<i64>| match option {
+                Some(num) => num + 1,
+                None => 0,
+            })
+            .map_err(|err| CommitStoreError::OperationError {
+                context: "Failed to get next commit num".to_string(),
+                source: Some(Box::new(err)),
+            })?;
+        Ok(commit_num)
+    }
+}

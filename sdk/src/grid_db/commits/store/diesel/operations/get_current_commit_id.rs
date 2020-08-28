@@ -41,3 +41,22 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> CommitStoreGetCurrentCommitIdOperation
+    for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+        commit::table
+            .select(commit::all_columns)
+            .order_by(commit::commit_num.desc())
+            .limit(1)
+            .first::<CommitModel>(self.conn)
+            .map(|commit| Some(commit.commit_id))
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+            .map_err(|err| CommitStoreError::OperationError {
+                context: "Failed to fetch current commit ID".to_string(),
+                source: Some(Box::new(err)),
+            })
+    }
+}

@@ -118,6 +118,75 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
+    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .add_commit(commit.into())
+    }
+
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .resolve_fork(commit_num)
+    }
+
+    fn get_commit_by_commit_num(
+        &self,
+        commit_num: i64,
+    ) -> Result<Option<Commit>, CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .get_commit_by_commit_num(commit_num)
+    }
+
+    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .get_current_commit_id()
+    }
+
+    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .get_next_commit_num()
+    }
+
+    fn create_db_commit_from_commit_event(
+        &self,
+        event: &CommitEvent,
+    ) -> Result<Option<Commit>, CommitEventError> {
+        CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .create_db_commit_from_commit_event(event)
+    }
+}
+
 impl From<CommitModel> for Commit {
     fn from(commit: CommitModel) -> Self {
         Self {
