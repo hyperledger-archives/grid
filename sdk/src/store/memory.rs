@@ -12,15 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The grid_db submodule provides support for managing organizations,
-//! agents, commits, schemas, locations, products, and Track and Trace
-//! data.
+use crate::grid_db::{CommitStore, MemoryCommitStore};
 
-pub mod commits;
+use super::StoreFactory;
 
-pub mod migrations;
+/// A `StoryFactory` backed by memory.
+#[derive(Default)]
+pub struct MemoryStoreFactory {
+    grid_commit_store: MemoryCommitStore,
+}
 
-#[cfg(feature = "diesel")]
-pub use commits::store::diesel::DieselCommitStore;
-pub use commits::store::memory::MemoryCommitStore;
-pub use commits::store::CommitStore;
+impl MemoryStoreFactory {
+    pub fn new() -> Self {
+        let grid_commit_store = MemoryCommitStore::new();
+
+        Self { grid_commit_store }
+    }
+}
+
+impl StoreFactory for MemoryStoreFactory {
+    fn get_grid_commit_store(&self) -> Box<dyn CommitStore> {
+        Box::new(self.grid_commit_store.clone())
+    }
+}

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod memory;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 #[cfg(feature = "sqlite")]
@@ -38,6 +39,7 @@ pub fn create_store_factory(
     connection_uri: &ConnectionUri,
 ) -> Result<Box<dyn StoreFactory>, StoreFactoryCreationError> {
     match connection_uri {
+        ConnectionUri::Memory => Ok(Box::new(memory::MemoryStoreFactory::new())),
         #[cfg(feature = "postgres")]
         ConnectionUri::Postgres(url) => {
             let connection_manager = ConnectionManager::<diesel::pg::PgConnection>::new(url);
@@ -80,6 +82,7 @@ impl std::fmt::Display for StoreFactoryCreationError {
 /// The possible connection types and identifiers for a `StoreFactory`
 #[derive(Clone)]
 pub enum ConnectionUri {
+    Memory,
     #[cfg(feature = "postgres")]
     Postgres(String),
     #[cfg(feature = "sqlite")]
@@ -91,6 +94,7 @@ impl FromStr for ConnectionUri {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "memory" => Ok(ConnectionUri::Memory),
             #[cfg(feature = "postgres")]
             _ if s.starts_with("postgres://") => Ok(ConnectionUri::Postgres(s.into())),
             #[cfg(feature = "sqlite")]
