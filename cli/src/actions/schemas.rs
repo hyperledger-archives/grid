@@ -47,7 +47,7 @@ pub struct GridPropertyDefinitionSlice {
     pub description: String,
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
-    pub struct_properties: Vec<String>,
+    pub struct_properties: Vec<GridPropertyDefinitionSlice>,
 }
 
 pub fn display_schema(schema: &GridSchemaSlice) {
@@ -69,7 +69,7 @@ pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionS
             def.description,
             def.number_exponent,
             def.enum_options,
-            def.struct_properties,
+            display_schema_property_definitions(&def.struct_properties),
         );
     });
 }

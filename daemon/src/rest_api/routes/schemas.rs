@@ -19,6 +19,7 @@ use crate::rest_api::{
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
 use grid_sdk::grid_db::schemas::store::{PropertyDefinition, Schema};
+use diesel::pg::PgConnection;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,18 +33,14 @@ pub struct GridSchemaSlice {
     pub service_id: Option<String>,
 }
 
-impl From<Schema> for GridSchemaSlice {
-    fn from(schema: Schema) -> Self {
+impl GridSchemaSlice {
+    pub fn from_schema(schema: &GridSchema, properties: Vec<GridPropertyDefinitionSlice>) -> Self {
         Self {
             name: schema.name.clone(),
             description: schema.description.clone(),
             owner: schema.owner.clone(),
-            properties: schema
-                .properties
-                .into_iter()
-                .map(GridPropertyDefinitionSlice::from)
-                .collect(),
-            service_id: schema.service_id,
+            properties,
+            service_id: schema.service_id.clone(),
         }
     }
 }
@@ -63,8 +60,8 @@ pub struct GridPropertyDefinitionSlice {
     pub service_id: Option<String>,
 }
 
-impl From<PropertyDefinition> for GridPropertyDefinitionSlice {
-    fn from(definition: PropertyDefinition) -> Self {
+impl GridPropertyDefinitionSlice {
+    pub fn from_definition(definition: &GridPropertyDefinition) -> Self {
         Self {
             name: definition.name.clone(),
             schema_name: definition.schema_name.clone(),
@@ -73,12 +70,25 @@ impl From<PropertyDefinition> for GridPropertyDefinitionSlice {
             description: definition.description.clone(),
             number_exponent: definition.number_exponent,
             enum_options: definition.enum_options.clone(),
-            struct_properties: definition
-                .struct_properties
-                .into_iter()
-                .map(GridPropertyDefinitionSlice::from)
-                .collect(),
-            service_id: definition.service_id,
+            struct_properties: vec![],
+            service_id: definition.service_id.clone(),
+        }
+    }
+
+    pub fn from_slices(
+        definition: &GridPropertyDefinition,
+        slices: Vec<GridPropertyDefinitionSlice>,
+    ) -> Self {
+        Self {
+            name: definition.name.clone(),
+            schema_name: definition.schema_name.clone(),
+            data_type: definition.data_type.clone(),
+            required: definition.required,
+            description: definition.description.clone(),
+            number_exponent: definition.number_exponent,
+            enum_options: definition.enum_options.clone(),
+            struct_properties: slices,
+            service_id: definition.service_id.clone(),
         }
     }
 }
@@ -95,12 +105,32 @@ impl Handler<ListGridSchemas> for DbExecutor {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
-        Ok(self
-            .schema_store
-            .list_schemas(msg.service_id.as_deref())?
+        let conn = &*self.connection_pool.get()?;
+        let mut properties = db::list_grid_property_definitions(conn, msg.service_id.as_deref())?
             .into_iter()
-            .map(GridSchemaSlice::from)
-            .collect())
+            .fold(HashMap::new(), |mut acc, definition| {
+                acc.entry(definition.schema_name.to_string())
+                    .or_insert_with(Vec::new)
+                    .push(definition);
+                acc
+            });
+
+        let fetched_schemas =
+            db::list_grid_schemas(&*self.connection_pool.get()?, msg.service_id.as_deref())?
+                .iter()
+                .map(|schema| {
+                    let properties = properties.remove(&schema.name).unwrap_or_else(Vec::new);
+                    let definitions = make_definition_slices(
+                        conn,
+                        &schema.name,
+                        &properties,
+                        msg.service_id.as_deref(),
+                    )?;
+                    Ok(GridSchemaSlice::from_schema(schema, definitions))
+                })
+                .collect::<Result<Vec<GridSchemaSlice>, RestApiResponseError>>()?;
+
+        Ok(fetched_schemas)
     }
 }
 
@@ -131,16 +161,34 @@ impl Handler<FetchGridSchema> for DbExecutor {
     type Result = Result<GridSchemaSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchGridSchema, _: &mut SyncContext<Self>) -> Self::Result {
-        match self
-            .schema_store
-            .fetch_schema(&msg.name, msg.service_id.as_deref())?
-        {
-            Some(schema) => Ok(GridSchemaSlice::from(schema)),
-            None => Err(RestApiResponseError::NotFoundError(format!(
-                "Could not find schema with name: {}",
-                msg.name
-            ))),
-        }
+        let properties = db::list_grid_property_definitions_with_schema_name(
+            &*self.connection_pool.get()?,
+            &msg.name,
+            msg.service_id.as_deref(),
+        )?;
+
+        let definitions = make_definition_slices(
+            &*self.connection_pool.get()?,
+            &msg.name,
+            &properties,
+            msg.service_id.as_deref(),
+        )?;
+
+        let fetched_schema = match db::fetch_grid_schema(
+            &*self.connection_pool.get()?,
+            &msg.name,
+            msg.service_id.as_deref(),
+        )? {
+            Some(schema) => GridSchemaSlice::from_schema(&schema, definitions),
+            None => {
+                return Err(RestApiResponseError::NotFoundError(format!(
+                    "Could not find schema with name: {}",
+                    msg.name
+                )));
+            }
+        };
+
+        Ok(fetched_schema)
     }
 }
 
@@ -158,4 +206,44 @@ pub async fn fetch_grid_schema(
         })
         .await?
         .map(|schema| HttpResponse::Ok().json(schema))
+}
+
+fn make_definition_slices(
+    conn: &PgConnection,
+    schema_name: &str,
+    definitions: &[GridPropertyDefinition],
+    service_id: Option<&str>,
+) -> Result<Vec<GridPropertyDefinitionSlice>, RestApiResponseError> {
+    let mut slices = Vec::new();
+
+    for def in definitions {
+        make_definition_slices_aux(conn, schema_name, &def.name, service_id, &mut slices)?;
+    }
+
+    Ok(slices)
+}
+
+fn make_definition_slices_aux(
+    conn: &PgConnection,
+    schema_name: &str,
+    name: &str,
+    service_id: Option<&str>,
+    slices: &mut Vec<GridPropertyDefinitionSlice>,
+) -> Result<(), RestApiResponseError> {
+    let definition = db::get_property_definition_by_name(conn, schema_name, name, service_id)?;
+
+    if definition.struct_properties.is_empty() {
+        slices.push(GridPropertyDefinitionSlice::from_definition(&definition));
+    } else {
+        let mut sub_slices = Vec::new();
+        for def_name in definition.struct_properties.clone() {
+            make_definition_slices_aux(conn, schema_name, &def_name, service_id, &mut sub_slices)?;
+        }
+
+        slices.push(GridPropertyDefinitionSlice::from_slices(
+            &definition,
+            sub_slices,
+        ));
+    }
+    Ok(())
 }
