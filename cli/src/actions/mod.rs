@@ -20,6 +20,7 @@ pub mod admin;
 pub mod agents;
 pub mod database;
 pub mod keygen;
+pub mod locations;
 pub mod organizations;
 pub mod products;
 pub mod schemas;
