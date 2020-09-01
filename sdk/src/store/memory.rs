@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::grid_db::{CommitStore, MemoryCommitStore};
+use crate::grid_db::{CommitStore, MemoryCommitStore, MemoryOrganizationStore, OrganizationStore};
 
 use super::StoreFactory;
 
@@ -20,18 +20,27 @@ use super::StoreFactory;
 #[derive(Default)]
 pub struct MemoryStoreFactory {
     grid_commit_store: MemoryCommitStore,
+    grid_organization_store: MemoryOrganizationStore,
 }
 
 impl MemoryStoreFactory {
     pub fn new() -> Self {
         let grid_commit_store = MemoryCommitStore::new();
+        let grid_organization_store = MemoryOrganizationStore::new();
 
-        Self { grid_commit_store }
+        Self {
+            grid_commit_store,
+            grid_organization_store,
+        }
     }
 }
 
 impl StoreFactory for MemoryStoreFactory {
     fn get_grid_commit_store(&self) -> Box<dyn CommitStore> {
         Box::new(self.grid_commit_store.clone())
+    }
+
+    fn get_grid_organization_store(&self) -> Box<dyn OrganizationStore> {
+        Box::new(self.grid_organization_store.clone())
     }
 }

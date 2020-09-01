@@ -28,4 +28,5 @@ pub use commits::store::CommitStore;
 
 #[cfg(feature = "diesel")]
 pub use organizations::store::diesel::DieselOrganizationStore;
+pub use organizations::store::memory::MemoryOrganizationStore;
 pub use organizations::store::OrganizationStore;
