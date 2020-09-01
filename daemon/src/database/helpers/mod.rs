@@ -22,6 +22,7 @@ use super::schema;
 
 mod agents;
 mod grid_schemas;
+mod locations;
 mod organizations;
 mod products;
 mod track_and_trace;
@@ -30,6 +31,7 @@ pub const MAX_COMMIT_NUM: i64 = i64::MAX;
 
 pub use agents::*;
 pub use grid_schemas::*;
+pub use locations::*;
 pub use organizations::*;
 pub use products::*;
 pub use track_and_trace::*;
