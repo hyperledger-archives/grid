@@ -34,4 +34,10 @@ impl StoreFactory for PgStoreFactory {
     fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore> {
         Box::new(crate::grid_db::DieselCommitStore::new(self.pool.clone()))
     }
+
+    fn get_grid_organization_store(&self) -> Box<dyn crate::grid_db::OrganizationStore> {
+        Box::new(crate::grid_db::DieselOrganizationStore::new(
+            self.pool.clone(),
+        ))
+    }
 }
