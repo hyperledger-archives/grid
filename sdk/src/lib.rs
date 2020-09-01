@@ -30,6 +30,7 @@ extern crate diesel_migrations;
 #[cfg(feature = "diesel")]
 pub mod database;
 pub mod grid_db;
+pub mod hex;
 #[macro_use]
 extern crate log;
 pub mod permissions;
