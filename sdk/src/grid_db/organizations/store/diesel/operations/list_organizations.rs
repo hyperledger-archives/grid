@@ -54,3 +54,32 @@ impl<'a> OrganizationStoreListOrganizationsOperation
         Ok(orgs)
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> OrganizationStoreListOrganizationsOperation
+    for OrganizationStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn list_organizations(
+        &self,
+        service_id: Option<String>,
+    ) -> Result<Vec<Organization>, StoreError> {
+        let orgs = organization::table
+            .select(organization::all_columns)
+            .filter(organization::service_id.eq(service_id))
+            .load::<OrganizationModel>(self.conn)
+            .map(Some)
+            .map_err(|err| StoreError::OperationError {
+                context: "Failed to fetch organizations".to_string(),
+                source: Some(Box::new(err)),
+            })?
+            .ok_or_else(|| {
+                StoreError::NotFoundError(
+                    "Could not get all organizations from storage".to_string(),
+                )
+            })?
+            .into_iter()
+            .map(Organization::from)
+            .collect();
+        Ok(orgs)
+    }
+}
