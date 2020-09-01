@@ -89,14 +89,27 @@ pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliE
 }
 
 pub fn do_show_schema(url: &str, name: &str, service_id: Option<String>) -> Result<(), CliError> {
+    let schema = get_schema(url, name, service_id.as_deref())?;
+    display_schema(&schema);
+    Ok(())
+}
+
+pub fn get_schema(
+    url: &str,
+    namespace: &str,
+    service_id: Option<&str>,
+) -> Result<GridSchemaSlice, CliError> {
     let client = Client::new();
-    let mut final_url = format!("{}/schema/{}", url, name);
+    let mut final_url = format!("{}/schema/{}", url, namespace);
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let schema = client.get(&final_url).send()?.json::<GridSchemaSlice>()?;
-    display_schema(&schema);
-    Ok(())
+
+    client
+        .get(&final_url)
+        .send()?
+        .json::<GridSchemaSlice>()
+        .map_err(CliError::from)
 }
 
 pub fn do_create_schemas(
