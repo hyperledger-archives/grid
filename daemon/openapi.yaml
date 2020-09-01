@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# -----------------------------------------------------------------------------
 
 openapi: 3.0.0
 info:
@@ -62,7 +61,8 @@ paths:
     get:
       tags:
         - Sawtooth Validator
-      summary: Fetches the committed statuses for a set of batches from the Sawtooth
+      summary:
+        Fetches the committed statuses for a set of batches from the Sawtooth
         Validator
       description: |
         Fetches an array of objects with a status and id for each batch
@@ -386,43 +386,43 @@ paths:
         "503":
           $ref: "#/components/responses/503ServiceUnavailable"
   "/record/{record_id}/property/{property_name}":
-      get:
-        tags:
-          - Track and Trace
-        summary: Fetch a particular property
-        description: |
-          Fetches a single property with the given record ID and property name.
-        operationId: fetch_property
-        parameters:
-          - name: record_id
-            in: path
-            description: ID of the record to fetch a property from.
-            required: true
-            schema:
-              type: string
-          - name: property_name
-            in: path
-            description: Name of the property to fetch.
-            required: true
-            schema:
-              type: string
-        responses:
-          "200":
-            description: Successful operation
-            content:
-              application/json:
-                schema:
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/Property"
-          "400":
-            $ref: "#/components/responses/400BadRequest"
-          "404":
-            $ref: "#/components/responses/404NotFound"
-          "500":
-            $ref: "#/components/responses/500ServerError"
-          "503":
-            $ref: "#/components/responses/503ServiceUnavailable"
+    get:
+      tags:
+        - Track and Trace
+      summary: Fetch a particular property
+      description: |
+        Fetches a single property with the given record ID and property name.
+      operationId: fetch_property
+      parameters:
+        - name: record_id
+          in: path
+          description: ID of the record to fetch a property from.
+          required: true
+          schema:
+            type: string
+        - name: property_name
+          in: path
+          description: Name of the property to fetch.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Property"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
   /product:
     get:
       tags:
@@ -881,16 +881,16 @@ components:
               format: int64
             - type: integer
               format: int32
-            - $ref: '#/components/schemas/StructValue'
-            - $ref: '#/components/schemas/LatLong'
-            - $ref: '#/components/schemas/BytesValue'
+            - $ref: "#/components/schemas/StructValue"
+            - $ref: "#/components/schemas/LatLong"
+            - $ref: "#/components/schemas/BytesValue"
           example: "AQIDBA=="
         reporter:
           type: object
           properties:
             metadata:
               type: object
-              example: {agent_name: "Smith"}
+              example: { agent_name: "Smith" }
             public_key:
               type: string
               example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
@@ -926,7 +926,7 @@ components:
               - 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
               - 0364edd42bd9b2dea1315e2da820b569665f96e36c44b267ceeac488cfdc03bf61
         value:
-            $ref: "#/components/schemas/ReportedValue"
+          $ref: "#/components/schemas/ReportedValue"
         updates:
           type: array
           items:
@@ -1001,14 +1001,14 @@ components:
               format: int64
             - type: integer
               format: int32
-            - $ref: '#/components/schemas/StructValue'
-            - $ref: '#/components/schemas/LatLong'
-            - $ref: '#/components/schemas/BytesValue'
+            - $ref: "#/components/schemas/StructValue"
+            - $ref: "#/components/schemas/LatLong"
+            - $ref: "#/components/schemas/BytesValue"
           example: "AQIDBA=="
     StructValue:
       type: array
       items:
-        $ref: '#/components/schemas/StructPropertyValue'
+        $ref: "#/components/schemas/StructPropertyValue"
     BytesValue:
       type: string
       format: byte
@@ -1020,42 +1020,42 @@ components:
         - UNSET_NAMESPACE
         - GS1
     ProductPropertyValue:
-        type: object
-        properties:
-          name:
+      type: object
+      properties:
+        name:
+          type: string
+          example: location
+        data_type:
+          type: string
+          example: boolean
+        boolean_value:
+          type: boolean
+        number_value:
+          type: integer
+          format: int64
+        string_value:
+          type: string
+        enum_value:
+          type: integer
+          format: int32
+        struct_values:
+          type: array
+          items:
             type: string
-            example: location
-          data_type:
-            type: string
-            example: boolean
-          boolean_value:
-            type: boolean
-          number_value:
-            type: integer
-            format: int64
-          string_value:
-            type: string
-          enum_value:
-            type: integer
-            format: int32
-          struct_values:
-            type: array
-            items:
-              type: string
-          lat_long_value:
-            $ref: '#/components/schemas/LatLong'
+        lat_long_value:
+          $ref: "#/components/schemas/LatLong"
         service_id:
           type: string
           example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
-        required:
-          - name
-          - data_type
-          - boolean_value
-          - number_value
-          - string_value
-          - enum_value
-          - struct_values
-          - lat_long_value
+      required:
+        - name
+        - data_type
+        - boolean_value
+        - number_value
+        - string_value
+        - enum_value
+        - struct_values
+        - lat_long_value
     Product:
       type: object
       properties:
