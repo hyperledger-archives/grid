@@ -20,8 +20,6 @@ pub mod helpers;
 pub mod models;
 pub mod schema;
 
-embed_migrations!("./migrations");
-
 use std::ops::Deref;
 
 use diesel::{
@@ -29,16 +27,8 @@ use diesel::{
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 
-pub use super::database::error::DatabaseError;
-
-pub fn create_connection_pool(database_url: &str) -> Result<ConnectionPool, DatabaseError> {
-    let connection_manager = ConnectionManager::<PgConnection>::new(database_url);
-    Ok(ConnectionPool {
-        pool: Pool::builder()
-            .build(connection_manager)
-            .map_err(|err| DatabaseError::ConnectionError(Box::new(err)))?,
-    })
-}
+// pub use super::database::error::DatabaseError;
+pub use super::database::error::{ConnectionError, DatabaseError};
 
 pub struct Connection(PooledConnection<ConnectionManager<PgConnection>>);
 
@@ -50,16 +40,36 @@ impl Deref for Connection {
     }
 }
 
-#[derive(Clone)]
-pub struct ConnectionPool {
-    pool: Pool<ConnectionManager<PgConnection>>,
+pub struct ConnectionPool<C: diesel::Connection + 'static> {
+    pub pool: Pool<ConnectionManager<C>>,
 }
 
-impl ConnectionPool {
-    pub fn get(&self) -> Result<Connection, DatabaseError> {
+impl<C: diesel::Connection> ConnectionPool<C> {
+    pub fn new(database_url: &str) -> Result<Self, DatabaseError> {
+        Ok(ConnectionPool {
+            pool: Pool::new(ConnectionManager::<C>::new(database_url)).map_err(|err| {
+                DatabaseError::ConnectionError {
+                    context: "Failed to build connection pool".to_string(),
+                    source: Box::new(err),
+                }
+            })?,
+        })
+    }
+
+    pub fn get(&self) -> Result<PooledConnection<ConnectionManager<C>>, DatabaseError> {
         self.pool
             .get()
-            .map(Connection)
-            .map_err(|err| DatabaseError::ConnectionError(Box::new(err)))
+            .map_err(|err| DatabaseError::ConnectionError {
+                context: "Failed to get Connection from connection pool".to_string(),
+                source: Box::new(err),
+            })
+    }
+}
+
+impl<C: diesel::Connection> Clone for ConnectionPool<C> {
+    fn clone(&self) -> Self {
+        Self {
+            pool: self.pool.clone(),
+        }
     }
 }

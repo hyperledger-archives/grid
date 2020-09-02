@@ -30,16 +30,16 @@ use crate::database::ConnectionPool;
 
 use actix::{Actor, SyncContext};
 
-pub struct DbExecutor {
-    connection_pool: ConnectionPool,
+pub struct DbExecutor<C: diesel::Connection + 'static> {
+    connection_pool: ConnectionPool<C>,
 }
 
-impl Actor for DbExecutor {
+impl<C: diesel::Connection> Actor for DbExecutor<C> {
     type Context = SyncContext<Self>;
 }
 
-impl DbExecutor {
-    pub fn new(connection_pool: ConnectionPool) -> DbExecutor {
+impl<C: diesel::Connection> DbExecutor<C> {
+    pub fn new(connection_pool: ConnectionPool<C>) -> DbExecutor<C> {
         DbExecutor { connection_pool }
     }
 }

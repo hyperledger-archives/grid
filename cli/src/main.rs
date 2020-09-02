@@ -16,9 +16,8 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate diesel_migrations;
 extern crate diesel;
+extern crate diesel_migrations;
 
 mod actions;
 mod error;

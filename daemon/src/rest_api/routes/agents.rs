@@ -55,7 +55,8 @@ impl Message for ListAgents {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 }
 
-impl Handler<ListAgents> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<ListAgents> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
@@ -69,8 +70,9 @@ impl Handler<ListAgents> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn list_agents(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -92,7 +94,8 @@ impl Message for FetchAgent {
     type Result = Result<AgentSlice, RestApiResponseError>;
 }
 
-impl Handler<FetchAgent> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchAgent> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<AgentSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
@@ -114,8 +117,9 @@ impl Handler<FetchAgent> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_agent(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     public_key: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

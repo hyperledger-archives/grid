@@ -36,11 +36,11 @@ base64 = "0.10"
 byteorder = "1"
 clap = "2"
 ctrlc = "3.0"
-diesel = { version = "1.0.0", features = ["postgres", "r2d2", "serde_json"] }
+diesel = { version = "1.0.0", features = ["r2d2", "serde_json"] }
 diesel_migrations = "1.4"
 flexi_logger = "0.14"
 futures = "0.3"
-grid-sdk = { path = "../sdk" }
+grid-sdk = { path = "../sdk", features = ["database"] }
 log = "0.4"
 protobuf = "2"
 reqwest = { version = "0.10.1", optional = true, features = ["json", "blocking"] }
@@ -59,14 +59,21 @@ optional = true
 features = [ "events" ]
 
 [features]
-default = ["sawtooth-support"]
+default = ["postgres", "sawtooth-support"]
 
-stable = ["sawtooth-support"]
+stable = [
+    "sawtooth-support",
+]
 
-experimental = ["splinter-support"]
+experimental = [
+    "stable",
+    "splinter-support",
+]
 
+postgres = []
 sawtooth-support = []
 splinter-support = ["scabbard", "splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
+sqlite = []
 test-api = []
 
 [package.metadata.deb]

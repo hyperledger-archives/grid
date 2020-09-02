@@ -40,16 +40,16 @@ use serde::{Deserialize, Serialize};
 
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 
-#[derive(Clone)]
-pub struct AppState {
+pub struct AppState<C: diesel::Connection + 'static> {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
-    database_connection: Addr<DbExecutor>,
+    database_connection: Addr<DbExecutor<C>>,
 }
 
-impl AppState {
+#[cfg(feature = "postgres")]
+impl AppState<diesel::pg::PgConnection> {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
-        connection_pool: ConnectionPool,
+        connection_pool: ConnectionPool<diesel::pg::PgConnection>,
     ) -> Self {
         let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
             DbExecutor::new(connection_pool.clone())
@@ -58,6 +58,16 @@ impl AppState {
         AppState {
             batch_submitter,
             database_connection,
+        }
+    }
+}
+
+#[cfg(feature = "postgres")]
+impl Clone for AppState<diesel::pg::PgConnection> {
+    fn clone(&self) -> Self {
+        Self {
+            batch_submitter: self.batch_submitter.clone(),
+            database_connection: self.database_connection.clone(),
         }
     }
 }
@@ -114,7 +124,7 @@ impl RestApiShutdownHandle {
 
 pub fn run(
     bind_url: &str,
-    database_connection: ConnectionPool,
+    database_connection: ConnectionPool<diesel::pg::PgConnection>,
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     endpoint: Endpoint,
 ) -> Result<

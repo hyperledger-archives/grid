@@ -24,7 +24,10 @@ use crate::splinter::app_auth_handler::error::AppAuthHandlerError;
 
 #[derive(Debug)]
 pub enum DaemonError {
-    DatabaseError(Box<dyn Error>),
+    DatabaseError {
+        context: String,
+        source: Box<dyn Error>,
+    },
     LoggingInitializationError(Box<flexi_logger::FlexiLoggerError>),
     ConfigurationError(Box<ConfigurationError>),
     EventProcessorError(Box<EventProcessorError>),
@@ -39,7 +42,7 @@ pub enum DaemonError {
 impl Error for DaemonError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            DaemonError::DatabaseError(err) => Some(&**err),
+            DaemonError::DatabaseError { source, .. } => Some(&**source),
             DaemonError::LoggingInitializationError(err) => Some(err),
             DaemonError::ConfigurationError(err) => Some(err),
             DaemonError::EventProcessorError(err) => Some(err),
@@ -56,7 +59,9 @@ impl Error for DaemonError {
 impl fmt::Display for DaemonError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DaemonError::DatabaseError(e) => write!(f, "Database Error: {}", e),
+            DaemonError::DatabaseError { context, source } => {
+                write!(f, "Database Error: {}: {}", context, source)
+            }
             DaemonError::LoggingInitializationError(e) => {
                 write!(f, "Logging initialization error: {}", e)
             }
@@ -117,7 +122,10 @@ impl From<EventProcessorError> for DaemonError {
 
 impl From<DatabaseError> for DaemonError {
     fn from(err: DatabaseError) -> Self {
-        DaemonError::DatabaseError(Box::new(err))
+        DaemonError::DatabaseError {
+            context: "There was an issue connecting to the database".to_string(),
+            source: Box::new(err),
+        }
     }
 }
 

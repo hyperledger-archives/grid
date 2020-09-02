@@ -21,6 +21,10 @@ mod error;
 use std::cell::RefCell;
 use std::thread;
 
+use grid_sdk::grid_db::commits::store::{
+    CommitEvent as DbCommitEvent, StateChange as DbStateChange,
+};
+
 pub use self::error::{EventError, EventIoError, EventProcessorError};
 
 const PIKE_NAMESPACE: &str = "cad11d";
@@ -43,6 +47,7 @@ const SABRE_NAMESPACE: &str = "00ec";
 const IGNORED_NAMESPACES: &[&str] = &[SABRE_NAMESPACE];
 
 /// A notification that some source has committed a set of changes to state
+#[derive(Clone)]
 pub struct CommitEvent {
     /// An identifier for specifying where the event came from
     pub service_id: Option<String>,
@@ -71,8 +76,39 @@ impl std::fmt::Display for CommitEvent {
     }
 }
 
+impl From<DbCommitEvent> for CommitEvent {
+    fn from(event: DbCommitEvent) -> Self {
+        Self {
+            service_id: event.service_id,
+            id: event.id,
+            height: event.height,
+            state_changes: event
+                .state_changes
+                .into_iter()
+                .map(StateChange::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<&CommitEvent> for DbCommitEvent {
+    fn from(event: &CommitEvent) -> Self {
+        Self {
+            service_id: event.service_id.clone(),
+            id: event.id.to_string(),
+            height: event.height,
+            state_changes: event
+                .state_changes
+                .clone()
+                .into_iter()
+                .map(DbStateChange::from)
+                .collect(),
+        }
+    }
+}
+
 /// A change that has been applied to state, represented in terms of a key/value pair
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum StateChange {
     Set { key: String, value: Vec<u8> },
     Delete { key: String },
@@ -93,6 +129,24 @@ impl StateChange {
         ALL_GRID_NAMESPACES
             .iter()
             .any(|namespace| self.key_has_prefix(namespace))
+    }
+}
+
+impl From<DbStateChange> for StateChange {
+    fn from(event: DbStateChange) -> StateChange {
+        match event {
+            DbStateChange::Set { key: k, value: v } => StateChange::Set { key: k, value: v },
+            DbStateChange::Delete { key: k } => StateChange::Delete { key: k },
+        }
+    }
+}
+
+impl From<StateChange> for DbStateChange {
+    fn from(event: StateChange) -> DbStateChange {
+        match event {
+            StateChange::Set { key: k, value: v } => DbStateChange::Set { key: k, value: v },
+            StateChange::Delete { key: k } => DbStateChange::Delete { key: k },
+        }
     }
 }
 

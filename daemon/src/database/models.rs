@@ -25,26 +25,10 @@ use std::io::Write;
 use std::time::SystemTime;
 
 use super::schema::{
-    agent, associated_agent, commit, grid_circuit, grid_circuit_member, grid_circuit_proposal,
+    agent, associated_agent, grid_circuit, grid_circuit_member, grid_circuit_proposal,
     grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, organization,
     product, product_property_value, property, proposal, record, reported_value, reporter,
 };
-
-#[derive(Insertable, Queryable)]
-#[table_name = "commit"]
-pub struct NewCommit {
-    pub commit_id: String,
-    pub commit_num: i64,
-    pub service_id: Option<String>,
-}
-
-#[derive(Queryable, Debug)]
-pub struct Commit {
-    pub id: i64,
-    pub commit_id: String,
-    pub commit_num: i64,
-    pub service_id: Option<String>,
-}
 
 #[derive(Insertable, Debug)]
 #[table_name = "agent"]

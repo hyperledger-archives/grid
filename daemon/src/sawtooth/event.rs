@@ -248,7 +248,7 @@ fn extract_event(msg: Message) -> Result<CommitEvent, EventIoError> {
         .take_events()
         .to_vec();
 
-    CommitEvent::try_from(sawtooth_events.as_slice())
+    sawtooth_event_to_commit_event(sawtooth_events.as_slice())
 }
 
 impl TryFrom<&[SawtoothEvent]> for CommitEvent {
@@ -265,6 +265,18 @@ impl TryFrom<&[SawtoothEvent]> for CommitEvent {
             state_changes,
         })
     }
+}
+
+fn sawtooth_event_to_commit_event(events: &[SawtoothEvent]) -> Result<CommitEvent, EventIoError> {
+    let (id, height) = get_id_and_height(events)?;
+    let state_changes = get_state_changes(events)?;
+
+    Ok(CommitEvent {
+        service_id: None,
+        id,
+        height,
+        state_changes,
+    })
 }
 
 fn get_id_and_height(events: &[SawtoothEvent]) -> Result<(String, Option<u64>), EventIoError> {

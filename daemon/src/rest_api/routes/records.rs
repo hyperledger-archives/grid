@@ -18,8 +18,9 @@ use crate::database::{
         AssociatedAgent, LatLongValue, Property, Proposal, Record,
         ReportedValueReporterToAgentMetadata,
     },
-    ConnectionPool,
 };
+
+use crate::database::ConnectionPool;
 
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
@@ -144,7 +145,8 @@ impl Message for ListRecords {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
 }
 
-impl Handler<ListRecords> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<ListRecords> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
@@ -203,8 +205,9 @@ impl Handler<ListRecords> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn list_records(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -226,7 +229,8 @@ impl Message for FetchRecord {
     type Result = Result<RecordSlice, RestApiResponseError>;
 }
 
-impl Handler<FetchRecord> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchRecord> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<RecordSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchRecord, _: &mut SyncContext<Self>) -> Self::Result {
@@ -272,8 +276,9 @@ impl Handler<FetchRecord> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_record(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     record_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
@@ -500,8 +505,9 @@ impl Message for FetchRecordProperty {
     type Result = Result<PropertySlice, RestApiResponseError>;
 }
 
+#[cfg(feature = "postgres")]
 pub async fn fetch_record_property(
-    state: web::Data<AppState>,
+    state: web::Data<AppState<diesel::pg::PgConnection>>,
     params: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
@@ -517,7 +523,8 @@ pub async fn fetch_record_property(
         .map(|record| HttpResponse::Ok().json(record))
 }
 
-impl Handler<FetchRecordProperty> for DbExecutor {
+#[cfg(feature = "postgres")]
+impl Handler<FetchRecordProperty> for DbExecutor<diesel::pg::PgConnection> {
     type Result = Result<PropertySlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchRecordProperty, _: &mut SyncContext<Self>) -> Self::Result {
@@ -538,8 +545,9 @@ impl Handler<FetchRecordProperty> for DbExecutor {
     }
 }
 
+#[cfg(feature = "postgres")]
 fn parse_property_slice(
-    conn: &ConnectionPool,
+    conn: &ConnectionPool<diesel::pg::PgConnection>,
     property: &Property,
     data_type: &Option<String>,
 ) -> Result<PropertySlice, RestApiResponseError> {
@@ -591,8 +599,9 @@ fn parse_property_slice(
     Ok(property_info)
 }
 
+#[cfg(feature = "postgres")]
 fn parse_reported_values(
-    conn: &ConnectionPool,
+    conn: &ConnectionPool<diesel::pg::PgConnection>,
     reported_value: &ReportedValueReporterToAgentMetadata,
 ) -> Result<PropertyValueSlice, RestApiResponseError> {
     let struct_values = if reported_value.data_type == "Struct" {
@@ -615,8 +624,9 @@ fn parse_reported_values(
     PropertyValueSlice::from_model(&reported_value, struct_values)
 }
 
+#[cfg(feature = "postgres")]
 fn parse_struct_values(
-    conn: &ConnectionPool,
+    conn: &ConnectionPool<diesel::pg::PgConnection>,
     property_name: &str,
     record_id: &str,
     reported_value_end_commit_num: i64,

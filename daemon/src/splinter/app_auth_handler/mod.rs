@@ -56,10 +56,11 @@ impl ParseBytes<AdminEvent> for AdminEvent {
     }
 }
 
+#[cfg(feature = "postgres")]
 pub fn run(
     splinterd_url: String,
     event_connection_factory: ScabbardEventConnectionFactory,
-    connection_pool: ConnectionPool,
+    connection_pool: ConnectionPool<diesel::pg::PgConnection>,
     igniter: Igniter,
     scabbard_admin_key: String,
 ) -> Result<(), AppAuthHandlerError> {
@@ -105,10 +106,11 @@ pub fn run(
     igniter.start_ws(&ws).map_err(AppAuthHandlerError::from)
 }
 
+#[cfg(feature = "postgres")]
 fn process_admin_event(
     event: AdminEvent,
     event_connection_factory: &ScabbardEventConnectionFactory,
-    connection_pool: &ConnectionPool,
+    connection_pool: &ConnectionPool<diesel::pg::PgConnection>,
     node_id: &str,
     scabbard_admin_key: &str,
     splinterd_url: &str,
