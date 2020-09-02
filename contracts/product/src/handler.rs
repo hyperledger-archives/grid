@@ -145,8 +145,8 @@ impl ProductTransactionHandler {
 
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
         (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
-        let gs1_company_prefix_vec = org.metadata().to_vec();
-        let gs1_company_prefix_kv = match gs1_company_prefix_vec
+        let metadata = org.metadata().to_vec();
+        let gs1_company_prefix_kv = match metadata
             .iter()
             .find(|kv| kv.key() == "gs1_company_prefixes")
         {
