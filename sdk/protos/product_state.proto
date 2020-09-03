@@ -17,7 +17,7 @@ syntax = "proto3";
 import "schema_state.proto";
 
 message Product {
-  enum ProductType {
+  enum ProductNamespace {
       UNSET_TYPE = 0;
       GS1 = 1;
   }
@@ -25,8 +25,8 @@ message Product {
   // product_id for products (gtin)
   string product_id = 1;
 
-  // What type of product is this (GS1)
-  ProductType product_type = 2;
+  // What namespace of product is this (GS1)
+  ProductNamespace product_namespace = 2;
 
   // Who owns this product (pike organization id)
   string owner = 3;

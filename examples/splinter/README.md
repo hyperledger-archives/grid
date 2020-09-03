@@ -277,7 +277,7 @@ steps 3 through 10.
 
    ```
    root@gridd-alpha:/# cat > product.yaml
-   - product_type: "GS1"
+   - product_namespace: "GS1"
      product_id: "723382885088"
      owner: "314156"
      properties:

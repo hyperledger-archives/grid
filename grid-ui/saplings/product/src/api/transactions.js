@@ -46,9 +46,9 @@ const parseValue = (stringValue, conversionType) => {
   }
 };
 
-function buildProductAddress(productId, productType) {
+function buildProductAddress(productId, productNamespace) {
   let prefix;
-  switch (productType) {
+  switch (productNamespace) {
     case 'gs1':
       prefix = productTypeNamespaces.GS1;
       break;
@@ -105,7 +105,7 @@ export async function editProduct(data, keys, callbackFn) {
   });
 
   const product = protos.ProductUpdateAction.create({
-    productType: protos.Product.ProductType.GS1,
+    productNamespace: protos.Product.ProductNamespace.GS1,
     productId: data.productId,
     owner: data.orgName,
     properties: propertiesList
@@ -163,7 +163,7 @@ export async function addProduct(data, keys, callbackFn) {
   });
 
   const product = protos.ProductCreateAction.create({
-    productType: protos.Product.ProductType.GS1,
+    productNamespace: protos.Product.ProductNamespace.GS1,
     productId: data.productId,
     owner: data.orgName,
     properties: propertiesList

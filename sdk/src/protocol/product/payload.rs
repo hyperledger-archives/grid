@@ -19,7 +19,7 @@ use std::error::Error as StdError;
 
 use super::errors::BuilderError;
 
-use crate::protocol::{product::state::ProductType, schema::state::PropertyValue};
+use crate::protocol::{product::state::ProductNamespace, schema::state::PropertyValue};
 use crate::protos;
 use crate::protos::{product_payload, product_payload::ProductPayload_Action};
 use crate::protos::{
@@ -189,15 +189,15 @@ impl ProductPayloadBuilder {
 /// Native implementation for ProductCreateAction
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductCreateAction {
-    product_type: ProductType,
+    product_namespace: ProductNamespace,
     product_id: String,
     owner: String,
     properties: Vec<PropertyValue>,
 }
 
 impl ProductCreateAction {
-    pub fn product_type(&self) -> &ProductType {
-        &self.product_type
+    pub fn product_namespace(&self) -> &ProductNamespace {
+        &self.product_namespace
     }
 
     pub fn product_id(&self) -> &str {
@@ -218,7 +218,7 @@ impl FromProto<product_payload::ProductCreateAction> for ProductCreateAction {
         proto: product_payload::ProductCreateAction,
     ) -> Result<Self, ProtoConversionError> {
         Ok(ProductCreateAction {
-            product_type: ProductType::from_proto(proto.get_product_type())?,
+            product_namespace: ProductNamespace::from_proto(proto.get_product_namespace())?,
             product_id: proto.get_product_id().to_string(),
             owner: proto.get_owner().to_string(),
             properties: proto
@@ -234,7 +234,7 @@ impl FromProto<product_payload::ProductCreateAction> for ProductCreateAction {
 impl FromNative<ProductCreateAction> for product_payload::ProductCreateAction {
     fn from_native(native: ProductCreateAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::product_payload::ProductCreateAction::new();
-        proto.set_product_type(native.product_type().clone().into_proto()?);
+        proto.set_product_namespace(native.product_namespace().clone().into_proto()?);
         proto.set_product_id(native.product_id().to_string());
         proto.set_owner(native.owner().to_string());
         proto.set_properties(RepeatedField::from_vec(
@@ -279,7 +279,7 @@ impl IntoNative<ProductCreateAction> for protos::product_payload::ProductCreateA
 
 #[derive(Default, Debug)]
 pub struct ProductCreateActionBuilder {
-    product_type: Option<ProductType>,
+    product_namespace: Option<ProductNamespace>,
     product_id: Option<String>,
     owner: Option<String>,
     properties: Option<Vec<PropertyValue>>,
@@ -289,8 +289,8 @@ impl ProductCreateActionBuilder {
     pub fn new() -> Self {
         ProductCreateActionBuilder::default()
     }
-    pub fn with_product_type(mut self, value: ProductType) -> Self {
-        self.product_type = Some(value);
+    pub fn with_product_namespace(mut self, value: ProductNamespace) -> Self {
+        self.product_namespace = Some(value);
         self
     }
     pub fn with_product_id(mut self, value: String) -> Self {
@@ -306,8 +306,8 @@ impl ProductCreateActionBuilder {
         self
     }
     pub fn build(self) -> Result<ProductCreateAction, BuilderError> {
-        let product_type = self.product_type.ok_or_else(|| {
-            BuilderError::MissingField("'product_type' field is required".to_string())
+        let product_namespace = self.product_namespace.ok_or_else(|| {
+            BuilderError::MissingField("'product_namespace' field is required".to_string())
         })?;
         let product_id = self
             .product_id
@@ -319,7 +319,7 @@ impl ProductCreateActionBuilder {
             .properties
             .ok_or_else(|| BuilderError::MissingField("'properties' field is required".into()))?;
         Ok(ProductCreateAction {
-            product_type,
+            product_namespace,
             product_id,
             owner,
             properties,
@@ -329,15 +329,15 @@ impl ProductCreateActionBuilder {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductUpdateAction {
-    product_type: ProductType,
+    product_namespace: ProductNamespace,
     product_id: String,
     properties: Vec<PropertyValue>,
 }
 
 /// Native implementation for ProductUpdateAction
 impl ProductUpdateAction {
-    pub fn product_type(&self) -> &ProductType {
-        &self.product_type
+    pub fn product_namespace(&self) -> &ProductNamespace {
+        &self.product_namespace
     }
 
     pub fn product_id(&self) -> &str {
@@ -354,7 +354,7 @@ impl FromProto<protos::product_payload::ProductUpdateAction> for ProductUpdateAc
         proto: protos::product_payload::ProductUpdateAction,
     ) -> Result<Self, ProtoConversionError> {
         Ok(ProductUpdateAction {
-            product_type: ProductType::from_proto(proto.get_product_type())?,
+            product_namespace: ProductNamespace::from_proto(proto.get_product_namespace())?,
             product_id: proto.get_product_id().to_string(),
             properties: proto
                 .get_properties()
@@ -369,7 +369,7 @@ impl FromProto<protos::product_payload::ProductUpdateAction> for ProductUpdateAc
 impl FromNative<ProductUpdateAction> for protos::product_payload::ProductUpdateAction {
     fn from_native(native: ProductUpdateAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::product_payload::ProductUpdateAction::new();
-        proto.set_product_type(native.product_type().clone().into_proto()?);
+        proto.set_product_namespace(native.product_namespace().clone().into_proto()?);
         proto.set_product_id(native.product_id().to_string());
         proto.set_properties(RepeatedField::from_vec(
             native
@@ -415,7 +415,7 @@ impl IntoNative<ProductUpdateAction> for protos::product_payload::ProductUpdateA
 /// Builder used to create a ProductUpdateAction
 #[derive(Default, Clone)]
 pub struct ProductUpdateActionBuilder {
-    product_type: Option<ProductType>,
+    product_namespace: Option<ProductNamespace>,
     product_id: Option<String>,
     properties: Vec<PropertyValue>,
 }
@@ -425,8 +425,8 @@ impl ProductUpdateActionBuilder {
         ProductUpdateActionBuilder::default()
     }
 
-    pub fn with_product_type(mut self, product_type: ProductType) -> Self {
-        self.product_type = Some(product_type);
+    pub fn with_product_namespace(mut self, product_namespace: ProductNamespace) -> Self {
+        self.product_namespace = Some(product_namespace);
         self
     }
 
@@ -441,8 +441,8 @@ impl ProductUpdateActionBuilder {
     }
 
     pub fn build(self) -> Result<ProductUpdateAction, BuilderError> {
-        let product_type = self.product_type.ok_or_else(|| {
-            BuilderError::MissingField("'product_type' field is required".to_string())
+        let product_namespace = self.product_namespace.ok_or_else(|| {
+            BuilderError::MissingField("'product_namespace' field is required".to_string())
         })?;
 
         let product_id = self.product_id.ok_or_else(|| {
@@ -460,7 +460,7 @@ impl ProductUpdateActionBuilder {
         };
 
         Ok(ProductUpdateAction {
-            product_type,
+            product_namespace,
             product_id,
             properties,
         })
@@ -469,14 +469,14 @@ impl ProductUpdateActionBuilder {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ProductDeleteAction {
-    product_type: ProductType,
+    product_namespace: ProductNamespace,
     product_id: String,
 }
 
 /// Native implementation for ProductDeleteAction
 impl ProductDeleteAction {
-    pub fn product_type(&self) -> &ProductType {
-        &self.product_type
+    pub fn product_namespace(&self) -> &ProductNamespace {
+        &self.product_namespace
     }
 
     pub fn product_id(&self) -> &str {
@@ -489,7 +489,7 @@ impl FromProto<protos::product_payload::ProductDeleteAction> for ProductDeleteAc
         proto: protos::product_payload::ProductDeleteAction,
     ) -> Result<Self, ProtoConversionError> {
         Ok(ProductDeleteAction {
-            product_type: ProductType::from_proto(proto.get_product_type())?,
+            product_namespace: ProductNamespace::from_proto(proto.get_product_namespace())?,
             product_id: proto.get_product_id().to_string(),
         })
     }
@@ -498,7 +498,7 @@ impl FromProto<protos::product_payload::ProductDeleteAction> for ProductDeleteAc
 impl FromNative<ProductDeleteAction> for protos::product_payload::ProductDeleteAction {
     fn from_native(native: ProductDeleteAction) -> Result<Self, ProtoConversionError> {
         let mut proto = protos::product_payload::ProductDeleteAction::new();
-        proto.set_product_type(native.product_type().clone().into_proto()?);
+        proto.set_product_namespace(native.product_namespace().clone().into_proto()?);
         proto.set_product_id(native.product_id().to_string());
         Ok(proto)
     }
@@ -534,7 +534,7 @@ impl IntoNative<ProductDeleteAction> for protos::product_payload::ProductDeleteA
 /// Builder used to create a ProductDeleteAction
 #[derive(Default, Clone)]
 pub struct ProductDeleteActionBuilder {
-    product_type: Option<ProductType>,
+    product_namespace: Option<ProductNamespace>,
     product_id: Option<String>,
 }
 
@@ -543,8 +543,8 @@ impl ProductDeleteActionBuilder {
         ProductDeleteActionBuilder::default()
     }
 
-    pub fn with_product_type(mut self, product_type: ProductType) -> Self {
-        self.product_type = Some(product_type);
+    pub fn with_product_namespace(mut self, product_namespace: ProductNamespace) -> Self {
+        self.product_namespace = Some(product_namespace);
         self
     }
 
@@ -554,8 +554,8 @@ impl ProductDeleteActionBuilder {
     }
 
     pub fn build(self) -> Result<ProductDeleteAction, BuilderError> {
-        let product_type = self.product_type.ok_or_else(|| {
-            BuilderError::MissingField("'product_type' field is required".to_string())
+        let product_namespace = self.product_namespace.ok_or_else(|| {
+            BuilderError::MissingField("'product_namespace' field is required".to_string())
         })?;
 
         let product_id = self.product_id.ok_or_else(|| {
@@ -563,7 +563,7 @@ impl ProductDeleteActionBuilder {
         })?;
 
         Ok(ProductDeleteAction {
-            product_type,
+            product_namespace,
             product_id,
         })
     }
@@ -580,7 +580,7 @@ mod tests {
     fn test_product_create_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -588,7 +588,7 @@ mod tests {
 
         assert_eq!(action.product_id(), "688955434684");
         assert_eq!(action.owner(), "Target");
-        assert_eq!(*action.product_type(), ProductType::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
         assert_eq!(action.properties()[0].name(), "description");
         assert_eq!(*action.properties()[0].data_type(), DataType::String);
         assert_eq!(
@@ -605,7 +605,7 @@ mod tests {
     fn test_product_create_into_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -619,13 +619,13 @@ mod tests {
     fn test_product_update_builder() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_properties())
             .build()
             .unwrap();
 
         assert_eq!(action.product_id(), "688955434684");
-        assert_eq!(*action.product_type(), ProductType::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
         assert_eq!(action.properties()[0].name(), "description");
         assert_eq!(*action.properties()[0].data_type(), DataType::String);
         assert_eq!(
@@ -642,7 +642,7 @@ mod tests {
     fn test_product_update_into_bytes() {
         let action = ProductUpdateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_properties())
             .build()
             .unwrap();
@@ -655,12 +655,12 @@ mod tests {
     fn test_product_delete_builder() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .build()
             .unwrap();
 
         assert_eq!(action.product_id(), "688955434684");
-        assert_eq!(*action.product_type(), ProductType::GS1);
+        assert_eq!(*action.product_namespace(), ProductNamespace::GS1);
     }
 
     #[test]
@@ -668,7 +668,7 @@ mod tests {
     fn test_product_delete_into_bytes() {
         let action = ProductDeleteActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .build()
             .unwrap();
 
@@ -680,7 +680,7 @@ mod tests {
     fn test_product_payload_builder() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
@@ -701,7 +701,7 @@ mod tests {
     fn test_product_payload_bytes() {
         let action = ProductCreateActionBuilder::new()
             .with_product_id("688955434684".into()) // GTIN-12
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_owner("Target".into())
             .with_properties(make_properties())
             .build()
