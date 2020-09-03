@@ -104,14 +104,6 @@ impl ProductTransactionHandler {
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_create_product")?;
 
-        // Check that the agent has an organization associated with it
-        if agent.org_id().is_empty() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent does not have an associated organization: {}",
-                signer
-            )));
-        }
-
         // Check if product exists in state
         if state.get_product(product_id)?.is_some() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -142,6 +134,15 @@ impl ProductTransactionHandler {
                 )));
             }
         };
+
+        // Check that the agent belongs to organization
+        if agent.org_id() != org.org_id() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signing Agent {} is not associated with organization {}",
+                signer,
+                org.org_id()
+            )));
+        }
 
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
         (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
@@ -208,14 +209,6 @@ impl ProductTransactionHandler {
 
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_update_product")?;
-
-        // Check that the agent has an organization associated with it
-        if agent.org_id().is_empty() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent does not have an associated organization: {}",
-                signer
-            )));
-        }
 
         // Check if the product type is a GS1 product
         if product_type != &ProductType::GS1 {
