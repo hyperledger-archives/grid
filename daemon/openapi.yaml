@@ -214,6 +214,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /location:
+    get:
+      tags:
+        - Location
+      operationId: list_locations
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+  /location/{location_id}:
+    get:
+      tags:
+        - Location
+      summary: Fetch a specific location
+      description: Fetches a single location with the given location ID
+      operationId: fetch_location
+      parameters:
+        - name: location_id
+          in: path
+          description: ID of the location to fetch.
+          required: true
+          schema:
+            type: string
+        - name: service_id
+          in: query
+          description: |
+            The ID of the service the payload should be sent to; required if
+            running on Splinter.
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+        "500":
+          $ref: "#/components/responses/500ServerError"
+        "503":
+          $ref: "#/components/responses/503ServiceUnavailable"
+
   /organization:
     get:
       tags:
@@ -1013,13 +1075,12 @@ components:
       type: string
       format: byte
       example: "AQIDBA=="
-    ProductNamespaceEnum:
-      description: Namespace of a product
+    NamepaceEnum:
       type: string
       enum:
         - UNSET_NAMESPACE
         - GS1
-    ProductPropertyValue:
+    PropertyValue:
       type: object
       properties:
         name:
@@ -1066,14 +1127,14 @@ components:
           type: string
           example: 621dee0201000000000000000000000000000000000000000000000012276598822000
         product_namespace:
-          $ref: "#/components/schemas/ProductNamespaceEnum"
+          $ref: "#/components/schemas/NamepaceEnum"
         owner:
           type: string
           example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
         properties:
           type: array
           items:
-            $ref: "#/components/schemas/ProductPropertyValue"
+            $ref: "#/components/schemas/PropertyValue"
         service_id:
           type: string
           example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
@@ -1083,3 +1144,21 @@ components:
         - product_namespace
         - owner
         - properties
+    Location:
+      type: object
+      properties:
+        location_id:
+          type: string
+          example: 0099474000005
+        location_namespace:
+          $ref: "#/components/schemas/NamepaceEnum"
+        owner:
+          type: string
+          example: 02cd3181dbd7d1539f470436ce222c53ab5e514f67809dc0095895e6cdfba97612
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyValue"
+        service_id:
+          type: string
+          example: 01234567-0123-0123-0123-012345678901::grid-scabbard-a
