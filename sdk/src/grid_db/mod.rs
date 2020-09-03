@@ -18,6 +18,7 @@
 
 pub mod commits;
 
+pub mod error;
 pub mod migrations;
 
 #[cfg(feature = "diesel")]
