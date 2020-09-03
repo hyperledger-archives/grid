@@ -25,6 +25,7 @@ cfg_if! {
 use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::pike::state::{Organization, OrganizationList};
 use grid_sdk::protocol::product::state::{Product, ProductList, ProductListBuilder};
+use grid_sdk::protocol::schema::state::{Schema, SchemaList};
 use grid_sdk::protos::{FromBytes, IntoBytes};
 
 use crate::addressing::*;
@@ -213,6 +214,33 @@ impl<'a> ProductState<'a> {
                 for org in orgs.organizations() {
                     if org.org_id() == id {
                         return Ok(Some(org.clone()));
+                    }
+                }
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn get_schema(&self, name: &str) -> Result<Option<Schema>, ApplyError> {
+        let address = compute_schema_address(name);
+        let d = self.context.get_state_entry(&address)?;
+        match d {
+            Some(packed) => {
+                let schemas = match SchemaList::from_bytes(packed.as_slice()) {
+                    Ok(schemas) => schemas,
+                    Err(err) => {
+                        return Err(ApplyError::InvalidTransaction(format!(
+                            "Cannot deserialize schema list: {:?}",
+                            err,
+                        )));
+                    }
+                };
+
+                // find the schema with the correct name
+                for schema in schemas.schemas() {
+                    if schema.name() == name {
+                        return Ok(Some(schema.clone()));
                     }
                 }
                 Ok(None)

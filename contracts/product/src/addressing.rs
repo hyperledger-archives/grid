@@ -47,3 +47,10 @@ pub fn compute_org_address(identifier: &str) -> String {
 
     String::from(PIKE_NAMESPACE) + PIKE_ORG_NAMESPACE + &sha.result_str()[..62]
 }
+
+pub fn compute_schema_address(name: &str) -> String {
+    let mut sha = Sha512::new();
+    sha.input(name.as_bytes());
+
+    String::from(GRID_NAMESPACE) + "01" + &sha.result_str()[..62].to_string()
+}

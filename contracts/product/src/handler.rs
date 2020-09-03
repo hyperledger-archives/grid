@@ -170,6 +170,46 @@ impl ProductTransactionHandler {
             }
         }
 
+        if payload.product_namespace() == &ProductNamespace::GS1 {
+            // Check if gs1 schema exists
+            let schema = if let Some(schema) = state.get_schema("gs1_product")? {
+                schema
+            } else {
+                return Err(ApplyError::InvalidTransaction(
+                    "gs1_product schema has not been defined".into(),
+                ));
+            };
+
+            // Check if properties in product are all a part of the gs1 schema
+            for property in payload.properties() {
+                if schema
+                    .properties()
+                    .iter()
+                    .all(|p| p.name() != property.name())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "{} is not a property that is defined by the gs1 schema",
+                        property.name()
+                    )));
+                }
+            }
+
+            // Check if property has all required fields
+            for property in schema.properties().iter().filter(|p| *p.required()) {
+                if !payload
+                    .properties()
+                    .iter()
+                    .any(|p| p.name() == property.name() && p.data_type() == property.data_type())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Missing required field '{}' of type '{:?}'",
+                        property.name(),
+                        property.data_type()
+                    )));
+                }
+            }
+        }
+
         let new_product = ProductBuilder::new()
             .with_product_id(product_id.to_string())
             .with_owner(owner.to_string())
@@ -237,6 +277,46 @@ impl ProductTransactionHandler {
         // Check if product product_id is a valid gtin
         if let Err(e) = validate_gtin(product_id) {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
+        }
+
+        if payload.product_type() == &ProductType::GS1 {
+            // Check if gs1 schema exists
+            let schema = if let Some(schema) = state.get_schema("gs1_product")? {
+                schema
+            } else {
+                return Err(ApplyError::InvalidTransaction(
+                    "gs1_product schema has not been defined".into(),
+                ));
+            };
+
+            // Check if properties in product are all a part of the gs1 schema
+            for property in payload.properties() {
+                if schema
+                    .properties()
+                    .iter()
+                    .all(|p| p.name() != property.name())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "{} is not a property that is defined by the gs1 schema",
+                        property.name()
+                    )));
+                }
+            }
+
+            // Check if property has all required fields
+            for property in schema.properties().iter().filter(|p| *p.required()) {
+                if !payload
+                    .properties()
+                    .iter()
+                    .any(|p| p.name() == property.name() && p.data_type() == property.data_type())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Missing required field '{}' of type '{:?}'",
+                        property.name(),
+                        property.data_type()
+                    )));
+                }
+            }
         }
 
         // Handle updating the product
@@ -396,7 +476,12 @@ mod tests {
     use grid_sdk::protocol::product::state::{
         Product, ProductBuilder, ProductListBuilder, ProductType,
     };
-    use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
+    use grid_sdk::protocol::schema::state::{
+        DataType, PropertyDefinitionBuilder, SchemaBuilder, SchemaListBuilder,
+    };
+    use grid_sdk::protocol::schema::state::{
+        DataType as SchemaDataType, PropertyValue, PropertyValueBuilder,
+    };
     use grid_sdk::protos::IntoBytes;
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
@@ -549,7 +634,7 @@ mod tests {
                 .build()
                 .unwrap();
             let product_bytes = product_list.into_bytes().unwrap();
-            let product_address = make_product_address(prod_id);
+            let product_address = compute_gs1_product_address(prod_id);
             self.set_state_entry(product_address, product_bytes)
                 .unwrap();
         }
@@ -561,12 +646,49 @@ mod tests {
                 .unwrap();
             let product_list_bytes = product_list.into_bytes().unwrap();
             let product_list_bytes_copy = product_list_bytes.clone();
-            let product_1_address = make_product_address(PRODUCT_ID);
-            let product_2_address = make_product_address(PRODUCT_2_ID);
+            let product_1_address = compute_gs1_product_address(PRODUCT_ID);
+            let product_2_address = compute_gs1_product_address(PRODUCT_2_ID);
             self.set_state_entries(vec![
                 (product_1_address, product_list_bytes),
                 (product_2_address, product_list_bytes_copy),
             ])
+            .unwrap();
+        }
+
+        fn add_gs1_schema(&self) {
+            let properties = vec![
+                PropertyDefinitionBuilder::new()
+                    .with_name("price".into())
+                    .with_data_type(SchemaDataType::Number)
+                    .with_number_exponent(1)
+                    .with_required(true)
+                    .build()
+                    .unwrap(),
+                PropertyDefinitionBuilder::new()
+                    .with_name("description".into())
+                    .with_data_type(SchemaDataType::String)
+                    .with_required(true)
+                    .build()
+                    .unwrap(),
+            ];
+
+            let schema = SchemaBuilder::new()
+                .with_name("gs1_product".into())
+                .with_description("GS1 product".into())
+                .with_owner(AGENT_ORG_ID.to_string())
+                .with_properties(properties)
+                .build()
+                .unwrap();
+
+            let schema_list = SchemaListBuilder::new()
+                .with_schemas(vec![schema])
+                .build()
+                .unwrap();
+
+            self.set_state_entries(vec![(
+                compute_schema_address("gs1_product"),
+                schema_list.into_bytes().unwrap(),
+            )])
             .unwrap();
         }
     }
@@ -577,6 +699,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -745,6 +868,7 @@ mod tests {
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
         transaction_context.add_product(PRODUCT_ID);
+        transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
