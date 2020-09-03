@@ -39,7 +39,7 @@ impl<'a> ProductState<'a> {
     }
 
     pub fn get_product(&self, product_id: &str) -> Result<Option<Product>, ApplyError> {
-        let address = make_product_address(product_id); //product id = gtin
+        let address = compute_gs1_product_address(product_id); //product id = gtin
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -64,7 +64,7 @@ impl<'a> ProductState<'a> {
     }
 
     pub fn set_product(&self, product_id: &str, product: Product) -> Result<(), ApplyError> {
-        let address = make_product_address(product_id);
+        let address = compute_gs1_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
         let mut products = match d {
             Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
@@ -116,7 +116,7 @@ impl<'a> ProductState<'a> {
 
     // Currently product_id = gtin
     pub fn remove_product(&self, product_id: &str) -> Result<(), ApplyError> {
-        let address = make_product_address(product_id);
+        let address = compute_gs1_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
         let products = match d {
             Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
