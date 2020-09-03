@@ -17,11 +17,9 @@ use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
 
 use super::CommitStore;
-use crate::grid_db::commits::store::{
-    error::{CommitEventError, CommitStoreError},
-    ChainRecord, Commit, CommitEvent,
-};
+use crate::grid_db::commits::store::{error::CommitEventError, ChainRecord, Commit, CommitEvent};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
+use crate::grid_db::error::StoreError;
 
 ///Implementation of CommitStore that stores Commits in memory. Useful for when
 ///persistence isn't necessary.
@@ -41,33 +39,30 @@ impl MemoryCommitStore {
 }
 
 impl CommitStore for MemoryCommitStore {
-    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
-        let mut inner_commit =
-            self.inner_commit
-                .lock()
-                .map_err(|_| CommitStoreError::StorageError {
-                    context: "Cannot access commits: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+    fn add_commit(&self, commit: Commit) -> Result<(), StoreError> {
+        let mut inner_commit = self
+            .inner_commit
+            .lock()
+            .map_err(|_| StoreError::StorageError {
+                context: "Cannot access commits: mutex lock poisoned".to_string(),
+                source: None,
+            })?;
         inner_commit.insert(commit.commit_id.clone(), commit);
         Ok(())
     }
 
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
-        let mut inner_commit =
-            self.inner_commit
-                .lock()
-                .map_err(|_| CommitStoreError::StorageError {
-                    context: "Cannot access commits: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
-        let mut inner_cr = self
-            .inner_cr
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
+        let mut inner_commit = self
+            .inner_commit
             .lock()
-            .map_err(|_| CommitStoreError::StorageError {
-                context: "Cannot access chain_records: mutex lock poisoned".to_string(),
+            .map_err(|_| StoreError::StorageError {
+                context: "Cannot access commits: mutex lock poisoned".to_string(),
                 source: None,
             })?;
+        let mut inner_cr = self.inner_cr.lock().map_err(|_| StoreError::StorageError {
+            context: "Cannot access chain_records: mutex lock poisoned".to_string(),
+            source: None,
+        })?;
 
         inner_cr.retain(|_, v| v.start_commit_num.lt(&commit_num));
 
@@ -82,53 +77,48 @@ impl CommitStore for MemoryCommitStore {
         Ok(())
     }
 
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
-        let inner_commit =
-            self.inner_commit
-                .lock()
-                .map_err(|_| CommitStoreError::StorageError {
-                    context: "Cannot access commits: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
+        let inner_commit = self
+            .inner_commit
+            .lock()
+            .map_err(|_| StoreError::StorageError {
+                context: "Cannot access commits: mutex lock poisoned".to_string(),
+                source: None,
+            })?;
         if let Some(commit) = inner_commit.get(&commit_num.to_string()) {
             Ok(Some(commit.clone()))
         } else {
-            Err(CommitStoreError::NotFoundError(format!(
+            Err(StoreError::NotFoundError(format!(
                 "Commit with commit_num {} not found.",
                 commit_num
             )))
         }
     }
 
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
-        let inner_commit =
-            self.inner_commit
-                .lock()
-                .map_err(|_| CommitStoreError::StorageError {
-                    context: "Cannot access commits: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
+        let inner_commit = self
+            .inner_commit
+            .lock()
+            .map_err(|_| StoreError::StorageError {
+                context: "Cannot access commits: mutex lock poisoned".to_string(),
+                source: None,
+            })?;
 
         if let Some(commit) = inner_commit.values().max_by_key(|v| v.commit_num) {
             Ok(Some(commit.commit_id.clone()))
         } else {
-            Err(CommitStoreError::NotFoundError(
-                "Commit not found".to_string(),
-            ))
+            Err(StoreError::NotFoundError("Commit not found".to_string()))
         }
     }
 
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
-        let inner_commit =
-            self.inner_commit
-                .lock()
-                .map_err(|_| CommitStoreError::StorageError {
-                    context: "Cannot access commits: mutex lock poisoned".to_string(),
-                    source: None,
-                })?;
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
+        let inner_commit = self
+            .inner_commit
+            .lock()
+            .map_err(|_| StoreError::StorageError {
+                context: "Cannot access commits: mutex lock poisoned".to_string(),
+                source: None,
+            })?;
 
         if let Some(commit) = inner_commit.values().max_by_key(|v| v.commit_num) {
             Ok(commit.commit_num + 1)

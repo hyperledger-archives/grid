@@ -18,9 +18,10 @@ pub(in crate::grid_db) mod schema;
 
 use diesel::r2d2::{ConnectionManager, Pool};
 
-use super::{Commit, CommitEvent, CommitEventError, CommitStore, CommitStoreError};
+use super::{Commit, CommitEvent, CommitEventError, CommitStore};
 use crate::database::DatabaseError;
 use crate::grid_db::commits::store::diesel::models::{CommitModel, NewCommitModel};
+use crate::grid_db::error::StoreError;
 use operations::add_commit::CommitStoreAddCommitOperation as _;
 use operations::create_db_commit_from_commit_event::CommitStoreCreateDbCommitFromCommitEventOperation as _;
 use operations::get_commit_by_commit_num::CommitStoreGetCommitByCommitNumOperation as _;
@@ -51,7 +52,7 @@ impl<C: diesel::Connection> DieselCommitStore<C> {
 
 #[cfg(feature = "postgres")]
 impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
-    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+    fn add_commit(&self, commit: Commit) -> Result<(), StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -61,7 +62,7 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         .add_commit(commit.into())
     }
 
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -71,10 +72,7 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         .resolve_fork(commit_num)
     }
 
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -84,7 +82,7 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         .get_commit_by_commit_num(commit_num)
     }
 
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -94,7 +92,7 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
         .get_current_commit_id()
     }
 
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -120,7 +118,7 @@ impl CommitStore for DieselCommitStore<diesel::pg::PgConnection> {
 
 #[cfg(feature = "sqlite")]
 impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
-    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+    fn add_commit(&self, commit: Commit) -> Result<(), StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -130,7 +128,7 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         .add_commit(commit.into())
     }
 
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -140,10 +138,7 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         .resolve_fork(commit_num)
     }
 
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -153,7 +148,7 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         .get_commit_by_commit_num(commit_num)
     }
 
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -163,7 +158,7 @@ impl CommitStore for DieselCommitStore<diesel::sqlite::SqliteConnection> {
         .get_current_commit_id()
     }
 
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
         CommitStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),

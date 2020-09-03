@@ -13,32 +13,27 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::grid_db::commits::store::diesel::{
-    models::CommitModel, schema::commit, Commit, CommitStoreError,
-};
+use crate::grid_db::commits::store::diesel::{models::CommitModel, schema::commit, Commit};
+use crate::grid_db::error::StoreError;
 
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::grid_db::commits) trait CommitStoreGetCommitByCommitNumOperation {
-    fn get_commit_by_commit_num(&self, commit_num: i64)
-        -> Result<Option<Commit>, CommitStoreError>;
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreGetCommitByCommitNumOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
         commit::table
             .select(commit::all_columns)
             .filter(commit::commit_num.eq(&commit_num))
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to fetch commit".to_string(),
                 source: Some(Box::new(err)),
             })
@@ -49,17 +44,14 @@ impl<'a> CommitStoreGetCommitByCommitNumOperation
 impl<'a> CommitStoreGetCommitByCommitNumOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
         commit::table
             .select(commit::all_columns)
             .filter(commit::commit_num.eq(&commit_num))
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(Commit::from(commit)))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to fetch commit".to_string(),
                 source: Some(Box::new(err)),
             })

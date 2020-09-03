@@ -13,29 +13,30 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::grid_db::commits::store::diesel::{schema::commit, CommitStoreError};
+use crate::grid_db::commits::store::diesel::schema::commit;
+use crate::grid_db::error::StoreError;
 
 use crate::grid_db::commits::store::diesel::models::{CommitModel, NewCommitModel};
 use diesel::{dsl::insert_into, prelude::*, result::Error::NotFound};
 
 pub(in crate::grid_db::commits) trait CommitStoreAddCommitOperation {
-    fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError>;
+    fn add_commit(&self, commit: NewCommitModel) -> Result<(), StoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg::PgConnection> {
-    fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
+    fn add_commit(&self, commit: NewCommitModel) -> Result<(), StoreError> {
         let duplicate_commit = commit::table
             .filter(commit::commit_id.eq(&commit.commit_id))
             .first::<CommitModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::QueryError {
+            .map_err(|err| StoreError::QueryError {
                 context: "Failed check for existing commit".to_string(),
                 source: Box::new(err),
             })?;
         if duplicate_commit.is_some() {
-            return Err(CommitStoreError::DuplicateError {
+            return Err(StoreError::DuplicateError {
                 context: "Commit already exists".to_string(),
                 source: None,
             });
@@ -45,7 +46,7 @@ impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg:
             .values(commit)
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to add commit".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -57,18 +58,18 @@ impl<'a> CommitStoreAddCommitOperation for CommitStoreOperations<'a, diesel::pg:
 impl<'a> CommitStoreAddCommitOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn add_commit(&self, commit: NewCommitModel) -> Result<(), CommitStoreError> {
+    fn add_commit(&self, commit: NewCommitModel) -> Result<(), StoreError> {
         let duplicate_commit = commit::table
             .filter(commit::commit_id.eq(&commit.commit_id))
             .first::<CommitModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::QueryError {
+            .map_err(|err| StoreError::QueryError {
                 context: "Failed check for existing commit".to_string(),
                 source: Box::new(err),
             })?;
         if duplicate_commit.is_some() {
-            return Err(CommitStoreError::DuplicateError {
+            return Err(StoreError::DuplicateError {
                 context: "Commit already exists".to_string(),
                 source: None,
             });
@@ -78,7 +79,7 @@ impl<'a> CommitStoreAddCommitOperation
             .values(commit)
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to add commit".to_string(),
                 source: Some(Box::new(err)),
             })?;

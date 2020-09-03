@@ -13,21 +13,20 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::grid_db::commits::store::diesel::{
-    models::CommitModel, schema::commit, CommitStoreError,
-};
+use crate::grid_db::commits::store::diesel::{models::CommitModel, schema::commit};
+use crate::grid_db::error::StoreError;
 
 use diesel::{prelude::*, result::Error::NotFound};
 
 pub(in crate::grid_db::commits) trait CommitStoreGetCurrentCommitIdOperation {
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError>;
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
         commit::table
             .select(commit::all_columns)
             .order_by(commit::commit_num.desc())
@@ -35,7 +34,7 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to fetch current commit ID".to_string(),
                 source: Some(Box::new(err)),
             })
@@ -46,7 +45,7 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
 impl<'a> CommitStoreGetCurrentCommitIdOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
         commit::table
             .select(commit::all_columns)
             .order_by(commit::commit_num.desc())
@@ -54,7 +53,7 @@ impl<'a> CommitStoreGetCurrentCommitIdOperation
             .first::<CommitModel>(self.conn)
             .map(|commit| Some(commit.commit_id))
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to fetch current commit ID".to_string(),
                 source: Some(Box::new(err)),
             })

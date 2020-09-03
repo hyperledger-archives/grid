@@ -15,8 +15,7 @@
 use super::CommitStoreOperations;
 use crate::grid_db::commits::store::diesel::{schema::chain_record, schema::commit};
 use crate::grid_db::commits::MAX_COMMIT_NUM;
-
-use crate::grid_db::commits::store::CommitStoreError;
+use crate::grid_db::error::StoreError;
 
 use diesel::{
     dsl::{delete, update},
@@ -24,17 +23,17 @@ use diesel::{
 };
 
 pub(in crate::grid_db::commits) trait CommitStoreResolveForkOperation {
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError>;
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreResolveForkOperation for CommitStoreOperations<'a, diesel::pg::PgConnection> {
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
         delete(chain_record::table)
             .filter(chain_record::start_commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -44,7 +43,7 @@ impl<'a> CommitStoreResolveForkOperation for CommitStoreOperations<'a, diesel::p
             .set(chain_record::end_commit_num.eq(MAX_COMMIT_NUM))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -53,7 +52,7 @@ impl<'a> CommitStoreResolveForkOperation for CommitStoreOperations<'a, diesel::p
             .filter(commit::commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -66,12 +65,12 @@ impl<'a> CommitStoreResolveForkOperation for CommitStoreOperations<'a, diesel::p
 impl<'a> CommitStoreResolveForkOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
         delete(chain_record::table)
             .filter(chain_record::start_commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -81,7 +80,7 @@ impl<'a> CommitStoreResolveForkOperation
             .set(chain_record::end_commit_num.eq(MAX_COMMIT_NUM))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -90,7 +89,7 @@ impl<'a> CommitStoreResolveForkOperation
             .filter(commit::commit_num.ge(commit_num))
             .execute(self.conn)
             .map(|_| ())
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to resolve fork".to_string(),
                 source: Some(Box::new(err)),
             })?;

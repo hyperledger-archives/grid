@@ -19,7 +19,8 @@ use ::diesel::pg::PgConnection;
 use ::diesel::result::QueryResult;
 use grid_sdk::{
     grid_db::commits::store::diesel::DieselCommitStore,
-    grid_db::commits::store::{CommitEvent as DbCommitEvent, CommitStore, CommitStoreError},
+    grid_db::commits::store::{CommitEvent as DbCommitEvent, CommitStore},
+    grid_db::error::StoreError,
     protocol::{
         pike::state::{AgentList, OrganizationList},
         product::state::ProductList,
@@ -96,7 +97,7 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
         trace!("The following operations will be performed: {:#?}", db_ops);
 
         conn.build_transaction()
-            .run::<_, CommitStoreError, _>(|| {
+            .run::<_, StoreError, _>(|| {
                 match self
                     .commit_store
                     .get_commit_by_commit_num(commit.commit_num)
@@ -127,7 +128,7 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                 db_ops
                     .iter()
                     .try_for_each(|op| op.execute(&conn))
-                    .map_err(|err| CommitStoreError::OperationError {
+                    .map_err(|err| StoreError::OperationError {
                         context: "failed DB operation".to_string(),
                         source: Some(Box::new(err)),
                     })

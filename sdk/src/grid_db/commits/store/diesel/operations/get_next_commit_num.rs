@@ -13,19 +13,20 @@
 // limitations under the License.
 
 use super::CommitStoreOperations;
-use crate::grid_db::commits::store::diesel::{schema::commit, CommitStoreError};
+use crate::grid_db::commits::store::diesel::schema::commit;
+use crate::grid_db::error::StoreError;
 
 use diesel::{dsl::max, prelude::*};
 
 pub(in crate::grid_db::commits) trait CommitStoreGetNextCommitNumOperation {
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError>;
+    fn get_next_commit_num(&self) -> Result<i64, StoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> CommitStoreGetNextCommitNumOperation
     for CommitStoreOperations<'a, diesel::pg::PgConnection>
 {
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
         let commit_num = commit::table
             .select(max(commit::commit_num))
             .first(self.conn)
@@ -33,7 +34,7 @@ impl<'a> CommitStoreGetNextCommitNumOperation
                 Some(num) => num + 1,
                 None => 0,
             })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to get next commit num".to_string(),
                 source: Some(Box::new(err)),
             })?;
@@ -45,7 +46,7 @@ impl<'a> CommitStoreGetNextCommitNumOperation
 impl<'a> CommitStoreGetNextCommitNumOperation
     for CommitStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
         let commit_num = commit::table
             .select(max(commit::commit_num))
             .first(self.conn)
@@ -53,7 +54,7 @@ impl<'a> CommitStoreGetNextCommitNumOperation
                 Some(num) => num + 1,
                 None => 0,
             })
-            .map_err(|err| CommitStoreError::OperationError {
+            .map_err(|err| StoreError::OperationError {
                 context: "Failed to get next commit num".to_string(),
                 source: Some(Box::new(err)),
             })?;

@@ -17,7 +17,9 @@ pub mod diesel;
 mod error;
 pub mod memory;
 
-pub use error::{CommitEventError, CommitStoreError};
+use crate::grid_db::error::StoreError;
+
+pub use error::CommitEventError;
 
 #[cfg(feature = "diesel")]
 use self::diesel::models::NewCommitModel;
@@ -81,34 +83,33 @@ pub trait CommitStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `commit` - The commit to be added
-    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError>;
+    fn add_commit(&self, commit: Commit) -> Result<(), StoreError>;
 
     /// Gets a commit from the underlying storage
     ///
     /// # Arguments
     ///
     ///  * `commit_num` - The commit to be fetched
-    fn get_commit_by_commit_num(&self, commit_num: i64)
-        -> Result<Option<Commit>, CommitStoreError>;
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError>;
 
     /// Gets the current commit ID from the underlying storage
     ///
     /// # Arguments
     ///
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError>;
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError>;
 
     /// Gets the next commit number from the underlying storage
     ///
     /// # Arguments
     ///
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError>;
+    fn get_next_commit_num(&self) -> Result<i64, StoreError>;
 
     /// Resolves a fork
     ///
     /// # Arguments
     ///
     ///  * `commit_num` - The commit to be fetched
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError>;
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError>;
 
     /// Creates a commit model from a commit event
     ///
@@ -148,26 +149,23 @@ impl<CS> CommitStore for Box<CS>
 where
     CS: CommitStore + ?Sized,
 {
-    fn add_commit(&self, commit: Commit) -> Result<(), CommitStoreError> {
+    fn add_commit(&self, commit: Commit) -> Result<(), StoreError> {
         (**self).add_commit(commit)
     }
 
-    fn get_commit_by_commit_num(
-        &self,
-        commit_num: i64,
-    ) -> Result<Option<Commit>, CommitStoreError> {
+    fn get_commit_by_commit_num(&self, commit_num: i64) -> Result<Option<Commit>, StoreError> {
         (**self).get_commit_by_commit_num(commit_num)
     }
 
-    fn get_current_commit_id(&self) -> Result<Option<String>, CommitStoreError> {
+    fn get_current_commit_id(&self) -> Result<Option<String>, StoreError> {
         (**self).get_current_commit_id()
     }
 
-    fn get_next_commit_num(&self) -> Result<i64, CommitStoreError> {
+    fn get_next_commit_num(&self) -> Result<i64, StoreError> {
         (**self).get_next_commit_num()
     }
 
-    fn resolve_fork(&self, commit_num: i64) -> Result<(), CommitStoreError> {
+    fn resolve_fork(&self, commit_num: i64) -> Result<(), StoreError> {
         (**self).resolve_fork(commit_num)
     }
 
