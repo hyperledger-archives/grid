@@ -133,3 +133,92 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
         Ok(attrs)
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
+    for LocationStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn fetch_location(
+        &self,
+        location_id: &str,
+        service_id: Option<String>,
+    ) -> Result<Option<Location>, LocationStoreError> {
+        self.conn
+            .immediate_transaction::<_, LocationStoreError, _>(|| {
+                let loc = location::table
+                    .filter(
+                        location::location_id
+                            .eq(&location_id)
+                            .and(location::service_id.eq(&service_id))
+                            .and(location::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .first::<LocationModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                    .map_err(|err| LocationStoreError::QueryError {
+                        context: "Failed to fetch location for location_id".to_string(),
+                        source: Box::new(err),
+                    })?
+                    .ok_or_else(|| {
+                        LocationStoreError::NotFoundError(format!(
+                            "Failed to find location: {}",
+                            location_id,
+                        ))
+                    })?;
+
+                let roots =
+                    Self::get_root_attributes(&*self.conn, &location_id, service_id.clone())?;
+
+                let attrs = Self::get_attributes(&*self.conn, roots)?;
+
+                Ok(Some(Location::from((loc, attrs))))
+            })
+    }
+
+    fn get_root_attributes(
+        conn: &SqliteConnection,
+        location_id: &str,
+        service_id: Option<String>,
+    ) -> QueryResult<Vec<LocationAttributeModel>> {
+        location_attribute::table
+            .select(location_attribute::all_columns)
+            .filter(
+                location_attribute::location_id
+                    .eq(location_id)
+                    .and(location_attribute::parent_property_name.is_null())
+                    .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM))
+                    .and(location_attribute::service_id.eq(&service_id)),
+            )
+            .load::<LocationAttributeModel>(conn)
+    }
+
+    fn get_attributes(
+        conn: &SqliteConnection,
+        attributes: Vec<LocationAttributeModel>,
+    ) -> Result<Vec<LocationAttribute>, LocationStoreError> {
+        let mut attrs = Vec::new();
+
+        for attr in attributes {
+            let children = location_attribute::table
+                .select(location_attribute::all_columns)
+                .filter(
+                    location_attribute::parent_property_name
+                        .eq(&attr.parent_property_name)
+                        .and(location_attribute::end_commit_num.eq(MAX_COMMIT_NUM))
+                        .and(location_attribute::service_id.eq(&attr.service_id)),
+                )
+                .load(conn)?;
+
+            if children.is_empty() {
+                attrs.push(LocationAttribute::from(attr));
+            } else {
+                attrs.push(LocationAttribute::from((
+                    attr,
+                    Self::get_attributes(&conn, children)?,
+                )));
+            }
+        }
+
+        Ok(attrs)
+    }
+}
