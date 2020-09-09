@@ -68,6 +68,43 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
+    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+        let (schema_model, definitions) = schema.into();
+
+        self.conn.transaction::<_, SchemaStoreError, _>(|| {
+            update_grid_schema_end_commit_num(
+                &*self.conn,
+                &schema_model.name,
+                schema_model.service_id.as_deref(),
+                schema_model.start_commit_num,
+            )?;
+
+            insert_into(grid_schema::table)
+                .values(schema_model)
+                .execute(&*self.conn)
+                .map(|_| ())?;
+
+            for definition in &definitions {
+                update_definition_end_commit_num(
+                    &*self.conn,
+                    &definition.name,
+                    definition.service_id.as_deref(),
+                    &definition.schema_name,
+                    definition.start_commit_num,
+                )?;
+            }
+
+            insert_into(grid_property_definition::table)
+                .values(definitions)
+                .execute(&*self.conn)?;
+
+            Ok(())
+        })
+    }
+}
+
 fn update_grid_schema_end_commit_num<C: diesel::Connection>(
     conn: &C,
     name: &str,

@@ -78,6 +78,43 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
+    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .add_schema(schema)
+    }
+
+    fn fetch_schema(
+        &self,
+        name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<Schema>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .fetch_schema(name, service_id)
+    }
+
+    fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_schemas(service_id)
+    }
+}
+
 impl Into<(NewGridSchema, Vec<NewGridPropertyDefinition>)> for &Schema {
     fn into(self) -> (NewGridSchema, Vec<NewGridPropertyDefinition>) {
         let schema = NewGridSchema {

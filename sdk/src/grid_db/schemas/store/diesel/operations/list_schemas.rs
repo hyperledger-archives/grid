@@ -62,7 +62,7 @@ impl<'a> ListSchemasOperation for SchemaStoreOperations<'a, diesel::sqlite::Sqli
 
             let properties = sqlite::get_property_definitions_for_schema(&*self.conn, roots)?;
 
-            schemas.push(Schema::from_model(schema, properties));
+            schemas.push(Schema::from((schema, properties)));
         }
 
         Ok(schemas)
@@ -108,6 +108,69 @@ mod pg {
 
     pub fn get_property_definitions_for_schema(
         conn: &PgConnection,
+        root_definitions: Vec<GridPropertyDefinition>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        let mut definitions = Vec::new();
+
+        for root_def in root_definitions {
+            let children = grid_property_definition::table
+                .select(grid_property_definition::all_columns)
+                .filter(grid_property_definition::parent_name.eq(&root_def.name))
+                .load(conn)?;
+
+            if children.is_empty() {
+                definitions.push(PropertyDefinition::from(root_def));
+            } else {
+                definitions.push(PropertyDefinition::from((
+                    root_def,
+                    get_property_definitions_for_schema(conn, children)?,
+                )));
+            }
+        }
+
+        Ok(definitions)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+mod sqlite {
+    use super::*;
+
+    pub fn fetch_grid_schemas(
+        conn: &SqliteConnection,
+        service_id: Option<&str>,
+    ) -> QueryResult<Vec<GridSchema>> {
+        let mut query = grid_schema::table
+            .into_boxed()
+            .select(grid_schema::all_columns)
+            .filter(grid_schema::end_commit_num.eq(MAX_COMMIT_NUM));
+
+        if let Some(service_id) = service_id {
+            query = query.filter(grid_schema::service_id.eq(service_id));
+        } else {
+            query = query.filter(grid_schema::service_id.is_null());
+        }
+
+        query.load(conn)
+    }
+
+    pub fn get_root_definitions(
+        conn: &SqliteConnection,
+        schema_name: &str,
+    ) -> QueryResult<Vec<GridPropertyDefinition>> {
+        grid_property_definition::table
+            .select(grid_property_definition::all_columns)
+            .filter(
+                grid_property_definition::schema_name
+                    .eq(schema_name)
+                    .and(grid_property_definition::parent_name.is_null())
+                    .and(grid_property_definition::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .load::<GridPropertyDefinition>(conn)
+    }
+
+    pub fn get_property_definitions_for_schema(
+        conn: &SqliteConnection,
         root_definitions: Vec<GridPropertyDefinition>,
     ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
         let mut definitions = Vec::new();
