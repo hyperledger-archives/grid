@@ -52,4 +52,8 @@ impl StoreFactory for SqliteStoreFactory {
     fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore> {
         Box::new(crate::grid_db::DieselProductStore::new(self.pool.clone()))
     }
+
+    fn get_grid_schema_store(&self) -> Box<dyn crate::grid_db::SchemaStore> {
+        Box::new(crate::grid_db::DieselSchemaStore::new(self.pool.clone()))
+    }
 }
