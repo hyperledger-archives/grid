@@ -87,6 +87,46 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnection> {
+    fn add_organizations(&self, orgs: Vec<Organization>) -> Result<(), OrganizationStoreError> {
+        OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .add_organizations(Vec::from_iter(orgs.iter().map(|org| org.clone().into())))
+    }
+
+    fn list_organizations(
+        &self,
+        service_id: Option<String>,
+    ) -> Result<Vec<Organization>, OrganizationStoreError> {
+        OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_organizations(service_id)
+    }
+
+    fn fetch_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<String>,
+    ) -> Result<Option<Organization>, OrganizationStoreError> {
+        OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .fetch_organization(org_id, service_id)
+    }
+}
+
 impl From<OrganizationModel> for Organization {
     fn from(org: OrganizationModel) -> Self {
         Self {

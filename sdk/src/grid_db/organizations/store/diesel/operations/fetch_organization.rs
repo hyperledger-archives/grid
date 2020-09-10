@@ -61,3 +61,37 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
         Ok(Some(Organization::from(org)))
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> OrganizationStoreFetchOrganizationOperation
+    for OrganizationStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn fetch_organization(
+        &self,
+        org_id: &str,
+        service_id: Option<String>,
+    ) -> Result<Option<Organization>, OrganizationStoreError> {
+        let org = organization::table
+            .filter(
+                organization::org_id
+                    .eq(&org_id)
+                    .and(organization::service_id.eq(&service_id))
+                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
+            )
+            .first::<OrganizationModel>(self.conn)
+            .map(Some)
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+            .map_err(|err| OrganizationStoreError::QueryError {
+                context: "Failed to fetch organization for org_id".to_string(),
+                source: Box::new(err),
+            })?
+            .ok_or_else(|| {
+                OrganizationStoreError::NotFoundError(format!(
+                    "Failed to find organization: {}",
+                    org_id,
+                ))
+            })?;
+
+        Ok(Some(Organization::from(org)))
+    }
+}
