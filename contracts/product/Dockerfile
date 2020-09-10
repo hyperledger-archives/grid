@@ -53,7 +53,7 @@ RUN tar -jcvf /tmp/grid-product_${REPO_VERSION}.scar .
 
 # -------------=== product submitter build ===-------------
 
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-product-builder \
      /build/target/wasm32-unknown-unknown/release/grid-product-tp.wasm /tmp

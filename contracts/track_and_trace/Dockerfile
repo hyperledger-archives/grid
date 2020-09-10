@@ -52,7 +52,7 @@ RUN tar -jcvf /tmp/grid-track-and-trace_${REPO_VERSION}.scar .
 
 # -------------=== track_and_trace submitter build ===-------------
 
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-track_and_trace-builder \
      /build/target/wasm32-unknown-unknown/release/grid-track-and-trace-tp.wasm /tmp
