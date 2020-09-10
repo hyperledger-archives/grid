@@ -280,8 +280,14 @@ mod test {
         }
     }
 
-    fn get_connection_pool() -> ConnectionPool {
-        database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
+    #[cfg(feature = "postgres")]
+    fn get_connection_pool() -> ConnectionPool<diesel::pg::PgConnection> {
+        database::ConnectionPool::new(&DATABASE_URL).expect("Unable to unwrap connection pool")
+    }
+
+    #[cfg(feature = "sqlite")]
+    fn get_connection_pool() -> ConnectionPool<diesel::sqlite::SqliteConnection> {
+        database::ConnectionPool::new(&DATABASE_URL).expect("Unable to unwrap connection pool")
     }
 
     fn create_test_server(backend: Backend, response_type: ResponseType) -> TestServer {
