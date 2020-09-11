@@ -27,6 +27,8 @@ use diesel::r2d2::{ConnectionManager, Pool};
 pub trait StoreFactory {
     /// Get a new `CommitStore`
     fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore>;
+    /// Get a new `OrganizationStore`
+    fn get_grid_organization_store(&self) -> Box<dyn crate::grid_db::OrganizationStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection
