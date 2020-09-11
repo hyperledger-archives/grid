@@ -94,6 +94,53 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
+    fn add_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
+        AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .add_agent(agent.clone().into(), make_role_models(&agent))
+    }
+
+    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+        AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_agents(service_id)
+    }
+
+    fn fetch_agent(
+        &self,
+        pub_key: &str,
+        service_id: Option<String>,
+    ) -> Result<Option<Agent>, AgentStoreError> {
+        AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .fetch_agent(pub_key, service_id)
+    }
+
+    fn update_agent(&self, agent: Agent) -> Result<(), AgentStoreError> {
+        AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .update_agent(agent.clone().into(), make_role_models(&agent))
+    }
+}
+
 impl From<RoleModel> for Role {
     fn from(role: RoleModel) -> Self {
         Self {

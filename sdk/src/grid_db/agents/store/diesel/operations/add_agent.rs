@@ -137,3 +137,105 @@ impl<'a> AgentStoreAddAgentOperation for AgentStoreOperations<'a, diesel::pg::Pg
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> AgentStoreAddAgentOperation
+    for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_agent(
+        &self,
+        agent: NewAgentModel,
+        roles: Vec<NewRoleModel>,
+    ) -> Result<(), AgentStoreError> {
+        self.conn
+            .immediate_transaction::<_, AgentStoreError, _>(|| {
+                let duplicate_agent = agent::table
+                    .filter(
+                        agent::public_key
+                            .eq(&agent.public_key)
+                            .and(agent::service_id.eq(&agent.service_id))
+                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    )
+                    .first::<AgentModel>(self.conn)
+                    .map(Some)
+                    .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                    .map_err(|err| AgentStoreError::QueryError {
+                        context: "Failed check for existing agent".to_string(),
+                        source: Box::new(err),
+                    })?;
+
+                if duplicate_agent.is_some() {
+                    update(agent::table)
+                        .filter(
+                            agent::public_key
+                                .eq(&agent.public_key)
+                                .and(agent::service_id.eq(&agent.service_id))
+                                .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .set(agent::end_commit_num.eq(agent.start_commit_num))
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| AgentStoreError::OperationError {
+                            context: "Failed to update agent".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                insert_into(agent::table)
+                    .values(&agent)
+                    .execute(self.conn)
+                    .map(|_| ())
+                    .map_err(|err| AgentStoreError::OperationError {
+                        context: "Failed to add agent".to_string(),
+                        source: Some(Box::new(err)),
+                    })?;
+
+                for role in roles {
+                    let duplicate_role = role::table
+                        .filter(
+                            role::public_key
+                                .eq(&role.public_key)
+                                .and(role::role_name.eq(&role.role_name))
+                                .and(role::service_id.eq(&role.service_id))
+                                .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .first::<RoleModel>(self.conn)
+                        .map(Some)
+                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                        .map_err(|err| AgentStoreError::QueryError {
+                            context: "Failed check for existing role".to_string(),
+                            source: Box::new(err),
+                        })?;
+
+                    if duplicate_role.is_some() {
+                        update(role::table)
+                            .filter(
+                                role::public_key
+                                    .eq(&role.public_key)
+                                    .and(role::role_name.eq(&role.role_name))
+                                    .and(role::service_id.eq(&role.service_id))
+                                    .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(role::end_commit_num.eq(role.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| AgentStoreError::OperationError {
+                                context: "Failed to update agent role".to_string(),
+                                source: Some(Box::new(err)),
+                            })?;
+                    }
+
+                    insert_into(role::table)
+                        .values(&role)
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| AgentStoreError::OperationError {
+                            context: "Failed to add agent role".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                Ok(())
+            })
+    }
+}
