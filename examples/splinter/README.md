@@ -269,51 +269,125 @@ steps 3 through 10.
    --role can_create_product \
    --role can_update_product \
    --role can_delete_product \
+   --role can_create_schema \
    --role admin
    ```
 
-6. Use `cat` to create a product definition file, `product.yaml`, using the
+6. Use `cat` to create a schema definition file, `product_schema.yaml`, using
+   the following contents.
+
+   ```
+    - name: gs1_product
+      description: GS1 product schema
+      properties:
+        - name: product_name
+          data_type: STRING
+          description:
+            Consumer friendly short description of the product suitable for compact
+            presentation.
+          required: true
+        - name: image_url
+          data_type: STRING
+          description: URL link to an image of the product.
+          required: false
+        - name: brand_name
+          data_type: STRING
+          description: The brand name of the product that appears on the consumer package.
+          required: true
+        - name: product_description
+          data_type: STRING
+          description:
+            "An understandable and useable description of a product using brand and
+            other descriptors. This attribute is filled with as little abbreviation
+            as possible, while keeping to a reasonable length. This should be a
+            meaningful description of the product with full spelling to facilitate
+            essage processing. Retailers can use this description as the base to
+            fully understand the brand, flavour, scent etc. of the specific product,
+            in order to accurately create a product description as needed for their
+            internal systems. Examples: XYZ Brand Base Invisible Solid Deodorant AP
+            Stick Spring Breeze."
+          required: true
+        - name: gpc
+          data_type: NUMBER
+          number_exponent: 1
+          description:
+            8-digit code (GPC Brick Value) specifying a product category according
+            to the GS1 Global Product Classification (GPC) standard.
+          required: true
+        - name: net_content
+          data_type: STRING
+          description:
+            The amount of the consumable product of the trade item contained in a
+            package, as declared on the label.
+          required: true
+        - name: target_market
+          data_type: NUMBER
+          number_exponent: 1
+          description:
+            ISO numeric country code representing the target market country for the
+            product.
+          required: true
+   ```
+
+7. Use `cat` to create a product definition file, `product.yaml`, using the
    following contents.
 
    ```
-   root@gridd-alpha:/# cat > product.yaml
    - product_namespace: "GS1"
-     product_id: "723382885088"
+     product_id: "013600000929"
      owner: "314156"
      properties:
-       - name: "species"
+       - name: "product_name"
          data_type: "STRING"
-         string_value: "tuna"
-       - name: "length"
+         string_value: "Truvia 80 ct."
+       - name: "image_url"
+         data_type: "STRING"
+         string_value:
+          "https://target.scene7.com/is/image/Target/GUEST_b7a6e983-b391-40a5-ad89-2f906bce5743?fmt=png&wid=1400&qlt=80"
+       - name: "brand_name"
+         data_type: "STRING"
+         string_value: "Truvia"
+       - name: "product_description"
+         data_type: "STRING"
+         string_value: "Truvia Sugar 80CT"
+       - name: "gpc"
          data_type: "NUMBER"
-         number_value: 22
-       - name: "maximum_temperature"
+         number_value: 30016951
+       - name: "net_content"
+         data_type: "STRING"
+         string_value: "80CT"
+       - name: "target_market"
          data_type: "NUMBER"
-         number_value: 5
-       - name: "minimum_temperature"
-         data_type: "NUMBER"
-         number_value: 0
+         number_value: 840
    ```
 
-7. Add a new product based on the definition in the example YAML file,
+8. Add the product schema based on the definition in the example YAML file,
+   `product_schema.yaml`.
+
+    ```
+    root@gridd-alpha:/# grid -k alpha-agent \
+        schema create product_schema.yaml
+    ```
+
+9. Add a new product based on the definition in the example YAML file,
    `product.yaml`.
 
    ```
-   root@gridd-alpha:/# grid \
+   root@gridd-alpha:/# grid -k alpha-agent \
      product create  product.yaml
    ```
 
-8. Open a new terminal and connect to the `gridd-beta` container.
+10. Open a new terminal and connect to the `gridd-beta` container.
 
    `$ docker exec -it gridd-beta bash`
 
-9. Set an environment variable with the service ID.
+11. Set an environment variable with the service ID.
 
     ```
     root@gridd-beta:/# export GRID_SERVICE_ID=01234-ABCDE::gsBB
     ```
 
-10. Display all products.
+12. Display all products.
 
    ```
    root@gridd-beta:/# grid product list
