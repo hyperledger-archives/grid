@@ -52,7 +52,7 @@ RUN tar -jcvf /tmp/grid-pike_${REPO_VERSION}.scar .
 
 # -------------=== pike submitter build ===-------------
 
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-pike-builder \
      /build/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm /tmp

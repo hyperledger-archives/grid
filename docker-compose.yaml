@@ -210,7 +210,7 @@ services:
         tail -f /dev/null
 
   sabre-tp:
-    image: hyperledger/sawtooth-sabre-tp:latest
+    image: hyperledger/sawtooth-sabre-tp:0.5
     container_name: sawtooth-sabre-tp
     depends_on:
       - validator

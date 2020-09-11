@@ -52,7 +52,7 @@ RUN tar -jcvf /tmp/grid-schema_${REPO_VERSION}.scar .
 
 # -------------=== schema submitter build ===-------------
 
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-schema-builder \
      /build/target/wasm32-unknown-unknown/release/grid-schema-tp.wasm /tmp

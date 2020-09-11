@@ -38,7 +38,7 @@ RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Car
 RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
 # -------------=== grid-cli docker build ===-------------
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS

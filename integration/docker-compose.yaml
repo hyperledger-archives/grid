@@ -237,7 +237,7 @@ services:
   sabre-tp:
     logging:
       driver: none
-    image: hyperledger/sawtooth-sabre-tp:latest
+    image: hyperledger/sawtooth-sabre-tp:0.5
     container_name: sawtooth-sabre-tp
     depends_on:
       - validator
