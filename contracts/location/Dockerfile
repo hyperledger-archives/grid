@@ -1,4 +1,4 @@
-# Copyright 2019 Cargill Incorporated
+# Copyright 2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v3 as grid-cli-builder
+FROM hyperledger/grid-dev:v2 as grid-location-builder
 
 # Copy over Cargo.toml files
 COPY cli/Cargo.toml /build/cli/Cargo.toml
@@ -26,27 +26,39 @@ COPY contracts/schema/Cargo.toml /build/contracts/schema/Cargo.toml
 COPY contracts/track_and_trace/Cargo.toml /build/contracts/track_and_trace/Cargo.toml
 
 # Copy over build files
-COPY cli /build/cli
-COPY daemon /build/daemon
-COPY sdk /build/sdk
+COPY contracts/location /build/contracts/location
+COPY sdk/ /build/sdk/
 
-# Build the grid-cli package
-WORKDIR /build/cli
-ARG CARGO_ARGS
+WORKDIR /build/contracts/location
+
+# Build the contract
 ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
-RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
+RUN cargo build --target wasm32-unknown-unknown --release
 
-# -------------=== grid-cli docker build ===-------------
-FROM hyperledger/sawtooth-sabre-cli:0.5
+# Build a scar file
+# Copy the packaging directory
+COPY contracts/location/packaging/scar/* \
+     /build/contracts/location/packaging/scar/
 
-ARG CARGO_ARGS
-RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
+# Copy the contract to the packaging directory
+RUN cp /build/contracts/location/target/wasm32-unknown-unknown/release/grid-location-tp.wasm \
+    packaging/scar
 
-COPY --from=grid-cli-builder /build/cli/target/debian/grid-cli_*.deb /tmp
+WORKDIR /build/contracts/location/packaging/scar
 
-RUN apt-get update \
- && dpkg --unpack /tmp/grid-cli*.deb \
- && apt-get -f -y install
+# Create .scar file
+RUN tar -jcvf /tmp/grid-location_${REPO_VERSION}.scar .
 
-CMD ["tail -f /dev/null"]
+# -------------=== location submitter build ===-------------
+
+FROM hyperledger/sawtooth-sabre-cli
+
+COPY --from=grid-location-builder \
+     /build/contracts/location/target/wasm32-unknown-unknown/release/grid-location-tp.wasm /tmp
+
+# Copy the contract definition
+COPY contracts/location/location.yaml /tmp
+
+COPY --from=grid-location-builder \
+    /tmp/grid-location*.scar /tmp
