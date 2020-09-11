@@ -19,6 +19,7 @@
 pub mod commits;
 pub mod locations;
 pub mod organizations;
+pub mod products;
 
 pub mod migrations;
 
