@@ -49,4 +49,8 @@ impl StoreFactory for MemoryStoreFactory {
     fn get_grid_location_store(&self) -> Box<dyn LocationStore> {
         unimplemented!()
     }
+
+    fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore> {
+        unimplemented!()
+    }
 }

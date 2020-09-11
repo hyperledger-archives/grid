@@ -44,4 +44,8 @@ impl StoreFactory for PgStoreFactory {
     fn get_grid_location_store(&self) -> Box<dyn crate::grid_db::LocationStore> {
         Box::new(crate::grid_db::DieselLocationStore::new(self.pool.clone()))
     }
+
+    fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore> {
+        Box::new(crate::grid_db::DieselProductStore::new(self.pool.clone()))
+    }
 }
