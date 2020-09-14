@@ -15,9 +15,6 @@
 use std::error::Error;
 use std::fmt;
 
-#[cfg(feature = "diesel")]
-use crate::database::error;
-
 /// Represents CommitStore errors
 #[derive(Debug)]
 pub enum CommitStoreError {
@@ -112,30 +109,6 @@ impl fmt::Display for CommitStoreError {
     }
 }
 
-#[cfg(feature = "diesel")]
-impl From<error::DatabaseError> for CommitStoreError {
-    fn from(err: error::DatabaseError) -> CommitStoreError {
-        CommitStoreError::ConnectionError(Box::new(err))
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<diesel::result::Error> for CommitStoreError {
-    fn from(err: diesel::result::Error) -> CommitStoreError {
-        CommitStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
-        }
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<diesel::r2d2::PoolError> for CommitStoreError {
-    fn from(err: diesel::r2d2::PoolError) -> CommitStoreError {
-        CommitStoreError::ConnectionError(Box::new(err))
-    }
-}
-
 /// Represents CommitEvent errors
 #[derive(Debug)]
 pub enum CommitEventError {
@@ -146,13 +119,6 @@ pub enum CommitEventError {
     },
     /// Represents an issue receiving events
     ConnectionError(String),
-}
-
-#[cfg(feature = "diesel")]
-impl From<error::DatabaseError> for CommitEventError {
-    fn from(err: error::DatabaseError) -> CommitEventError {
-        CommitEventError::ConnectionError(format!("{}", err))
-    }
 }
 
 impl Error for CommitEventError {

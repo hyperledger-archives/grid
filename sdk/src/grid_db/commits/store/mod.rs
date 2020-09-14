@@ -19,9 +19,6 @@ pub mod memory;
 
 pub use error::{CommitEventError, CommitStoreError};
 
-#[cfg(feature = "diesel")]
-use self::diesel::models::NewCommitModel;
-
 /// Represents a Grid commit
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Commit {
@@ -56,23 +53,6 @@ pub struct CommitEvent {
     pub height: Option<u64>,
     /// All state changes that are included in the commit
     pub state_changes: Vec<StateChange>,
-}
-
-#[cfg(feature = "diesel")]
-impl std::fmt::Display for CommitEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("(")?;
-        f.write_str(&self.id)?;
-        f.write_str(", ")?;
-        if self.service_id.is_some() {
-            write!(f, "{}, ", self.service_id.as_ref().unwrap())?;
-        }
-        if self.height.is_some() {
-            write!(f, "height: {}, ", self.height.as_ref().unwrap())?;
-        }
-
-        write!(f, "#changes: {})", self.state_changes.len())
-    }
 }
 
 pub trait CommitStore: Send + Sync {
@@ -119,29 +99,6 @@ pub trait CommitStore: Send + Sync {
         &self,
         event: &CommitEvent,
     ) -> Result<Option<Commit>, CommitEventError>;
-}
-
-#[cfg(feature = "diesel")]
-impl Into<NewCommitModel> for Commit {
-    fn into(self) -> NewCommitModel {
-        NewCommitModel {
-            commit_id: self.commit_id,
-            commit_num: self.commit_num,
-            service_id: self.service_id,
-        }
-    }
-}
-
-#[cfg(feature = "diesel")]
-pub trait CloneBoxCommitStore: CommitStore {
-    fn clone_box(&self) -> Box<dyn CloneBoxCommitStore>;
-}
-
-#[cfg(feature = "diesel")]
-impl Clone for Box<dyn CloneBoxCommitStore> {
-    fn clone(&self) -> Box<dyn CloneBoxCommitStore> {
-        self.clone_box()
-    }
 }
 
 impl<CS> CommitStore for Box<CS>
