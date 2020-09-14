@@ -658,7 +658,7 @@ mod tests {
         fn add_gs1_schema(&self) {
             let properties = vec![
                 PropertyDefinitionBuilder::new()
-                    .with_name("price".into())
+                    .with_name("counter".into())
                     .with_data_type(SchemaDataType::Number)
                     .with_number_exponent(1)
                     .with_required(true)
@@ -1131,8 +1131,8 @@ mod tests {
             .with_string_value("This is a product description".into())
             .build()
             .unwrap();
-        let property_value_price = PropertyValueBuilder::new()
-            .with_name("price".into())
+        let property_value_counter = PropertyValueBuilder::new()
+            .with_name("counter".into())
             .with_data_type(DataType::Number)
             .with_number_value(3)
             .build()
@@ -1140,7 +1140,7 @@ mod tests {
 
         vec![
             property_value_description.clone(),
-            property_value_price.clone(),
+            property_value_counter.clone(),
         ]
     }
 
@@ -1151,8 +1151,8 @@ mod tests {
             .with_string_value("This is a new product description".into())
             .build()
             .unwrap();
-        let property_value_price = PropertyValueBuilder::new()
-            .with_name("price".into())
+        let property_value_counter = PropertyValueBuilder::new()
+            .with_name("counter".into())
             .with_data_type(DataType::Number)
             .with_number_value(4)
             .build()
@@ -1160,7 +1160,7 @@ mod tests {
 
         vec![
             property_value_description.clone(),
-            property_value_price.clone(),
+            property_value_counter.clone(),
         ]
     }
 
