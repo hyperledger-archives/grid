@@ -29,6 +29,8 @@ pub trait StoreFactory {
     fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore>;
     /// Get a new `OrganizationStore`
     fn get_grid_organization_store(&self) -> Box<dyn crate::grid_db::OrganizationStore>;
+    /// Get a new `LocationStore`
+    fn get_grid_location_store(&self) -> Box<dyn crate::grid_db::LocationStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection

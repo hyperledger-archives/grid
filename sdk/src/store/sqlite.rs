@@ -40,4 +40,8 @@ impl StoreFactory for SqliteStoreFactory {
             self.pool.clone(),
         ))
     }
+
+    fn get_grid_location_store(&self) -> Box<dyn crate::grid_db::LocationStore> {
+        Box::new(crate::grid_db::DieselLocationStore::new(self.pool.clone()))
+    }
 }
