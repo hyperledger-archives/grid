@@ -37,6 +37,8 @@ pub trait StoreFactory {
     fn get_grid_product_store(&self) -> Box<dyn crate::grid_db::ProductStore>;
     /// Get a new `SchemaStore`
     fn get_grid_schema_store(&self) -> Box<dyn crate::grid_db::SchemaStore>;
+    /// Get a new `TrackAndTraceStore`
+    fn get_grid_track_and_trace_store(&self) -> Box<dyn crate::grid_db::TrackAndTraceStore>;
 }
 
 /// Creates a `StoreFactory` backed by the given connection
