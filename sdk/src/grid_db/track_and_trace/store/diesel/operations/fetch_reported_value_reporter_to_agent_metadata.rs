@@ -186,3 +186,144 @@ impl<'a>
         Ok(values)
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a>
+    TrackAndTraceStoreFetchReportedValueReporterToAgentMetadataOperation<
+        diesel::sqlite::SqliteConnection,
+    > for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn fetch_reported_value_reporter_to_agent_metadata(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        commit_height: Option<i64>,
+        service_id: Option<String>,
+    ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        let height = commit_height.unwrap_or(MAX_COMMIT_NUM);
+        let mut query = reported_value_reporter_to_agent_metadata::table
+            .into_boxed()
+            .filter(
+                reported_value_reporter_to_agent_metadata::property_name
+                    .eq(property_name)
+                    .and(reported_value_reporter_to_agent_metadata::record_id.eq(record_id))
+                    .and(
+                        reported_value_reporter_to_agent_metadata::reported_value_end_commit_num
+                            .eq(height),
+                    ),
+            );
+
+        if let Some(service_id) = service_id.clone() {
+            query =
+                query.filter(reported_value_reporter_to_agent_metadata::service_id.eq(service_id));
+        } else {
+            query = query.filter(reported_value_reporter_to_agent_metadata::service_id.is_null());
+        }
+
+        let val = query
+            .first::<ReportedValueReporterToAgentMetadataModel>(self.conn)
+            .map(Some)
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+            .map_err(|err| TrackAndTraceStoreError::QueryError {
+                context: "Failed to fetch existing record".to_string(),
+                source: Box::new(err),
+            })?;
+
+        let roots = Self::get_root_rvs(
+            &*self.conn,
+            &record_id,
+            &property_name,
+            commit_height,
+            service_id,
+        )?;
+
+        let rvs = Self::get_rvs_for_rv(&*self.conn, roots)?;
+
+        Ok(Some(ReportedValueReporterToAgentMetadata::from((
+            val.unwrap(),
+            rvs,
+        ))))
+    }
+
+    fn get_root_rvs(
+        conn: &SqliteConnection,
+        record_id: &str,
+        property_name: &str,
+        commit_height: Option<i64>,
+        service_id: Option<String>,
+    ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
+        let mut query = reported_value_reporter_to_agent_metadata::table
+            .into_boxed()
+            .select(reported_value_reporter_to_agent_metadata::all_columns)
+            .filter(
+                reported_value_reporter_to_agent_metadata::record_id
+                    .eq(record_id)
+                    .and(reported_value_reporter_to_agent_metadata::parent_name.is_null())
+                    .and(
+                        reported_value_reporter_to_agent_metadata::property_name.eq(property_name),
+                    ),
+            );
+
+        if let Some(service_id) = service_id {
+            query =
+                query.filter(reported_value_reporter_to_agent_metadata::service_id.eq(service_id));
+        } else {
+            query = query.filter(reported_value_reporter_to_agent_metadata::service_id.is_null());
+        }
+
+        if let Some(commit_height) = commit_height {
+            query = query.filter(
+                reported_value_reporter_to_agent_metadata::reported_value_end_commit_num
+                    .eq(commit_height),
+            );
+        } else {
+            query = query.filter(
+                reported_value_reporter_to_agent_metadata::reported_value_end_commit_num
+                    .eq(MAX_COMMIT_NUM),
+            );
+        }
+
+        query.load::<ReportedValueReporterToAgentMetadataModel>(conn)
+    }
+
+    fn get_rvs_for_rv(
+        conn: &SqliteConnection,
+        rvs: Vec<ReportedValueReporterToAgentMetadataModel>,
+    ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
+        let mut values = Vec::new();
+
+        for rv in rvs {
+            let mut query = reported_value_reporter_to_agent_metadata::table
+                .into_boxed()
+                .select(reported_value_reporter_to_agent_metadata::all_columns)
+                .filter(
+                    reported_value_reporter_to_agent_metadata::parent_name
+                        .eq(&rv.property_name)
+                        .and(
+                            reported_value_reporter_to_agent_metadata::record_id.eq(&rv.record_id),
+                        ),
+                );
+
+            if let Some(service_id) = &rv.service_id {
+                query = query
+                    .filter(reported_value_reporter_to_agent_metadata::service_id.eq(service_id));
+            } else {
+                query =
+                    query.filter(reported_value_reporter_to_agent_metadata::service_id.is_null());
+            }
+
+            let children = query.load::<ReportedValueReporterToAgentMetadataModel>(conn)?;
+
+            if children.is_empty() {
+                values.push(ReportedValueReporterToAgentMetadata::from(rv))
+            } else {
+                values.push(ReportedValueReporterToAgentMetadata::from((
+                    rv,
+                    Self::get_rvs_for_rv(conn, children)?,
+                )));
+            }
+        }
+
+        Ok(values)
+    }
+}

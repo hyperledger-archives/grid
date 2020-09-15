@@ -95,3 +95,65 @@ impl<'a> TrackAndTraceStoreAddProposalsOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreAddProposalsOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_proposals(
+        &self,
+        proposals: Vec<NewProposalModel>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        self.conn
+            .immediate_transaction::<_, TrackAndTraceStoreError, _>(|| {
+                for prop in proposals {
+                    let duplicate = proposal::table
+                        .filter(
+                            proposal::record_id
+                                .eq(&prop.record_id)
+                                .and(proposal::receiving_agent.eq(&prop.receiving_agent))
+                                .and(proposal::service_id.eq(&prop.service_id))
+                                .and(proposal::role.eq(&prop.role))
+                                .and(proposal::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .first::<ProposalModel>(self.conn)
+                        .map(Some)
+                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                        .map_err(|err| TrackAndTraceStoreError::QueryError {
+                            context: "Failed check for existing record".to_string(),
+                            source: Box::new(err),
+                        })?;
+
+                    if duplicate.is_some() {
+                        update(proposal::table)
+                            .filter(
+                                proposal::record_id
+                                    .eq(&prop.record_id)
+                                    .and(proposal::receiving_agent.eq(&prop.receiving_agent))
+                                    .and(proposal::service_id.eq(&prop.service_id))
+                                    .and(proposal::role.eq(&prop.role))
+                                    .and(proposal::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(proposal::end_commit_num.eq(&prop.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                                context: "Failed to update record".to_string(),
+                                source: Some(Box::new(err)),
+                            })?;
+                    }
+
+                    insert_into(proposal::table)
+                        .values(prop)
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| TrackAndTraceStoreError::OperationError {
+                            context: "Failed to add record".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                Ok(())
+            })
+    }
+}

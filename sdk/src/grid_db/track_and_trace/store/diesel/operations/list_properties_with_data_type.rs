@@ -93,3 +93,63 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
             .collect())
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn list_properties_with_data_type(
+        &self,
+        record_ids: &[String],
+        service_id: Option<String>,
+    ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
+        let mut query = property::table
+            .into_boxed()
+            .left_join(
+                record::table.on(property::record_id
+                    .eq(record::record_id)
+                    .and(property::end_commit_num.eq(record::end_commit_num))),
+            )
+            .left_join(
+                grid_property_definition::table.on(record::schema
+                    .eq(grid_property_definition::schema_name)
+                    .and(property::name.eq(grid_property_definition::name))
+                    .and(property::end_commit_num.eq(record::end_commit_num))),
+            )
+            .filter(
+                property::record_id
+                    .eq_any(record_ids)
+                    .and(property::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(property::service_id.eq(service_id));
+        } else {
+            query = query.filter(property::service_id.is_null());
+        }
+
+        let models: Vec<(PropertyModel, Option<String>)> = query
+            .select((
+                property::all_columns,
+                grid_property_definition::data_type.nullable(),
+            ))
+            .load::<(PropertyModel, Option<String>)>(self.conn)
+            .map(Some)
+            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                context: "Failed to fetch records".to_string(),
+                source: Some(Box::new(err)),
+            })?
+            .ok_or_else(|| {
+                TrackAndTraceStoreError::NotFoundError(
+                    "Could not get all records from storage".to_string(),
+                )
+            })?
+            .into_iter()
+            .collect();
+
+        Ok(models
+            .into_iter()
+            .map(make_property_with_data_type)
+            .collect())
+    }
+}

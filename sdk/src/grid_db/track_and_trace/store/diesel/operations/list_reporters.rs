@@ -75,3 +75,48 @@ impl<'a> TrackAndTraceStoreListReportersOperation
         Ok(model.into_iter().map(Reporter::from).collect())
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreListReportersOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn list_reporters(
+        &self,
+        record_id: &str,
+        property_name: &str,
+        service_id: Option<String>,
+    ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
+        let mut query = reporter::table
+            .into_boxed()
+            .select(reporter::all_columns)
+            .filter(
+                reporter::property_name
+                    .eq(property_name)
+                    .and(reporter::record_id.eq(record_id))
+                    .and(reporter::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(reporter::service_id.eq(service_id));
+        } else {
+            query = query.filter(reporter::service_id.is_null());
+        }
+
+        let model: Vec<ReporterModel> = query
+            .load::<ReporterModel>(self.conn)
+            .map(Some)
+            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                context: "Failed to fetch records".to_string(),
+                source: Some(Box::new(err)),
+            })?
+            .ok_or_else(|| {
+                TrackAndTraceStoreError::NotFoundError(
+                    "Could not get all records from storage".to_string(),
+                )
+            })?
+            .into_iter()
+            .collect();
+
+        Ok(model.into_iter().map(Reporter::from).collect())
+    }
+}

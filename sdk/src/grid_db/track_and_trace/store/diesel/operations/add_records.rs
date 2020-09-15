@@ -84,3 +84,58 @@ impl<'a> TrackAndTraceStoreAddRecordsOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreAddRecordsOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_records(&self, records: Vec<NewRecordModel>) -> Result<(), TrackAndTraceStoreError> {
+        self.conn
+            .immediate_transaction::<_, TrackAndTraceStoreError, _>(|| {
+                for rec in records {
+                    let duplicate = record::table
+                        .filter(
+                            record::record_id
+                                .eq(&rec.record_id)
+                                .and(record::service_id.eq(&rec.service_id))
+                                .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .first::<RecordModel>(self.conn)
+                        .map(Some)
+                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                        .map_err(|err| TrackAndTraceStoreError::QueryError {
+                            context: "Failed check for existing record".to_string(),
+                            source: Box::new(err),
+                        })?;
+
+                    if duplicate.is_some() {
+                        update(record::table)
+                            .filter(
+                                record::record_id
+                                    .eq(&rec.record_id)
+                                    .and(record::service_id.eq(&rec.service_id))
+                                    .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(record::end_commit_num.eq(&rec.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                                context: "Failed to update record".to_string(),
+                                source: Some(Box::new(err)),
+                            })?;
+                    }
+
+                    insert_into(record::table)
+                        .values(&rec)
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| TrackAndTraceStoreError::OperationError {
+                            context: "Failed to add record".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                Ok(())
+            })
+    }
+}

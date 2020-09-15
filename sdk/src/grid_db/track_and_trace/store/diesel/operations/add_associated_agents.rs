@@ -97,3 +97,63 @@ impl<'a> TrackAndTraceStoreAddAssociatedAgentsOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreAddAssociatedAgentsOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_associated_agents(
+        &self,
+        agents: Vec<NewAssociatedAgentModel>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        self.conn
+            .immediate_transaction::<_, TrackAndTraceStoreError, _>(|| {
+                for agent in agents {
+                    let duplicate = associated_agent::table
+                        .filter(
+                            associated_agent::agent_id
+                                .eq(&agent.agent_id)
+                                .and(associated_agent::record_id.eq(&agent.record_id))
+                                .and(associated_agent::end_commit_num.eq(MAX_COMMIT_NUM))
+                                .and(associated_agent::service_id.eq(&agent.service_id)),
+                        )
+                        .first::<AssociatedAgentModel>(self.conn)
+                        .map(Some)
+                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                        .map_err(|err| TrackAndTraceStoreError::QueryError {
+                            context: "Failed check for existing record".to_string(),
+                            source: Box::new(err),
+                        })?;
+
+                    if duplicate.is_some() {
+                        update(associated_agent::table)
+                            .filter(
+                                associated_agent::agent_id
+                                    .eq(&agent.agent_id)
+                                    .and(associated_agent::record_id.eq(&agent.record_id))
+                                    .and(associated_agent::end_commit_num.eq(MAX_COMMIT_NUM))
+                                    .and(associated_agent::service_id.eq(&agent.service_id)),
+                            )
+                            .set(associated_agent::end_commit_num.eq(&agent.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                                context: "Failed to update record".to_string(),
+                                source: Some(Box::new(err)),
+                            })?;
+                    }
+
+                    insert_into(associated_agent::table)
+                        .values(&agent)
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| TrackAndTraceStoreError::OperationError {
+                            context: "Failed to add record".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                Ok(())
+            })
+    }
+}

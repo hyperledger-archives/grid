@@ -66,3 +66,40 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
         Ok(Some(Record::from(rec.unwrap())))
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreFetchRecordOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn fetch_record(
+        &self,
+        record_id: &str,
+        service_id: Option<String>,
+    ) -> Result<Option<Record>, TrackAndTraceStoreError> {
+        let mut query = record::table
+            .into_boxed()
+            .select(record::all_columns)
+            .filter(
+                record::record_id
+                    .eq(record_id)
+                    .and(record::end_commit_num.eq(MAX_COMMIT_NUM)),
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(record::service_id.eq(service_id));
+        } else {
+            query = query.filter(record::service_id.is_null());
+        }
+
+        let rec = query
+            .first::<RecordModel>(self.conn)
+            .map(Some)
+            .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+            .map_err(|err| TrackAndTraceStoreError::QueryError {
+                context: "Failed to fetch existing record".to_string(),
+                source: Box::new(err),
+            })?;
+
+        Ok(Some(Record::from(rec.unwrap())))
+    }
+}

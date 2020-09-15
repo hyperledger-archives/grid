@@ -97,3 +97,63 @@ impl<'a> TrackAndTraceStoreAddReportedValuesOperation
             })
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreAddReportedValuesOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn add_reported_values(
+        &self,
+        values: Vec<NewReportedValueModel>,
+    ) -> Result<(), TrackAndTraceStoreError> {
+        self.conn
+            .immediate_transaction::<_, TrackAndTraceStoreError, _>(|| {
+                for val in values {
+                    let duplicate = reported_value::table
+                        .filter(
+                            reported_value::record_id
+                                .eq(&val.record_id)
+                                .and(reported_value::property_name.eq(&val.property_name))
+                                .and(reported_value::service_id.eq(&val.service_id))
+                                .and(reported_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+                        )
+                        .first::<ReportedValueModel>(self.conn)
+                        .map(Some)
+                        .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
+                        .map_err(|err| TrackAndTraceStoreError::QueryError {
+                            context: "Failed check for existing record".to_string(),
+                            source: Box::new(err),
+                        })?;
+
+                    if duplicate.is_some() {
+                        update(reported_value::table)
+                            .filter(
+                                reported_value::record_id
+                                    .eq(&val.record_id)
+                                    .and(reported_value::property_name.eq(&val.property_name))
+                                    .and(reported_value::service_id.eq(&val.service_id))
+                                    .and(reported_value::end_commit_num.eq(MAX_COMMIT_NUM)),
+                            )
+                            .set(reported_value::end_commit_num.eq(&val.start_commit_num))
+                            .execute(self.conn)
+                            .map(|_| ())
+                            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                                context: "Failed to update record".to_string(),
+                                source: Some(Box::new(err)),
+                            })?;
+                    }
+
+                    insert_into(reported_value::table)
+                        .values(&val)
+                        .execute(self.conn)
+                        .map(|_| ())
+                        .map_err(|err| TrackAndTraceStoreError::OperationError {
+                            context: "Failed to add record".to_string(),
+                            source: Some(Box::new(err)),
+                        })?;
+                }
+
+                Ok(())
+            })
+    }
+}

@@ -66,3 +66,41 @@ impl<'a> TrackAndTraceStoreListRecordsOperation
         Ok(models.into_iter().map(Record::from).collect())
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreListRecordsOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn list_records(
+        &self,
+        service_id: Option<String>,
+    ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
+        let mut query = record::table
+            .into_boxed()
+            .select(record::all_columns)
+            .filter(record::end_commit_num.eq(MAX_COMMIT_NUM));
+
+        if let Some(service_id) = service_id {
+            query = query.filter(record::service_id.eq(service_id));
+        } else {
+            query = query.filter(record::service_id.is_null());
+        }
+
+        let models: Vec<RecordModel> = query
+            .load::<RecordModel>(self.conn)
+            .map(Some)
+            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                context: "Failed to fetch records".to_string(),
+                source: Some(Box::new(err)),
+            })?
+            .ok_or_else(|| {
+                TrackAndTraceStoreError::NotFoundError(
+                    "Could not get all records from storage".to_string(),
+                )
+            })?
+            .into_iter()
+            .collect();
+
+        Ok(models.into_iter().map(Record::from).collect())
+    }
+}

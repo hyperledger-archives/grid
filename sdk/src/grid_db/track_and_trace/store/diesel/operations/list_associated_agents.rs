@@ -74,3 +74,46 @@ impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
         Ok(models.into_iter().map(AssociatedAgent::from).collect())
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
+    for TrackAndTraceStoreOperations<'a, diesel::sqlite::SqliteConnection>
+{
+    fn list_associated_agents(
+        &self,
+        record_ids: &[String],
+        service_id: Option<String>,
+    ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
+        let mut query = associated_agent::table
+            .into_boxed()
+            .select(associated_agent::all_columns)
+            .filter(
+                associated_agent::end_commit_num
+                    .eq(MAX_COMMIT_NUM)
+                    .and(associated_agent::record_id.eq_any(record_ids)),
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(associated_agent::service_id.eq(service_id));
+        } else {
+            query = query.filter(associated_agent::service_id.is_null());
+        }
+
+        let models: Vec<AssociatedAgentModel> = query
+            .load::<AssociatedAgentModel>(self.conn)
+            .map(Some)
+            .map_err(|err| TrackAndTraceStoreError::OperationError {
+                context: "Failed to fetch records".to_string(),
+                source: Some(Box::new(err)),
+            })?
+            .ok_or_else(|| {
+                TrackAndTraceStoreError::NotFoundError(
+                    "Could not get all records from storage".to_string(),
+                )
+            })?
+            .into_iter()
+            .collect();
+
+        Ok(models.into_iter().map(AssociatedAgent::from).collect())
+    }
+}
