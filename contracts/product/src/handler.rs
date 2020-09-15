@@ -31,7 +31,7 @@ use grid_sdk::permissions::PermissionChecker;
 use grid_sdk::protocol::product::payload::{
     Action, ProductCreateAction, ProductDeleteAction, ProductPayload, ProductUpdateAction,
 };
-use grid_sdk::protocol::product::state::{ProductBuilder, ProductType};
+use grid_sdk::protocol::product::state::{ProductBuilder, ProductNamespace};
 
 use grid_sdk::protos::FromBytes;
 
@@ -87,7 +87,7 @@ impl ProductTransactionHandler {
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
         let owner = payload.owner();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
         // Check that the agent submitting the transactions exists in state
@@ -104,14 +104,6 @@ impl ProductTransactionHandler {
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_create_product")?;
 
-        // Check that the agent has an organization associated with it
-        if agent.org_id().is_empty() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent does not have an associated organization: {}",
-                signer
-            )));
-        }
-
         // Check if product exists in state
         if state.get_product(product_id)?.is_some() {
             return Err(ApplyError::InvalidTransaction(format!(
@@ -120,10 +112,10 @@ impl ProductTransactionHandler {
             )));
         }
 
-        // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        // Check if the product namespace is a GS1 product
+        if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 
@@ -143,10 +135,19 @@ impl ProductTransactionHandler {
             }
         };
 
+        // Check that the agent belongs to organization
+        if agent.org_id() != org.org_id() {
+            return Err(ApplyError::InvalidTransaction(format!(
+                "The signing Agent {} is not associated with organization {}",
+                signer,
+                org.org_id()
+            )));
+        }
+
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
         (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
-        let gs1_company_prefix_vec = org.metadata().to_vec();
-        let gs1_company_prefix_kv = match gs1_company_prefix_vec
+        let metadata = org.metadata().to_vec();
+        let gs1_company_prefix_kv = match metadata
             .iter()
             .find(|kv| kv.key() == "gs1_company_prefixes")
         {
@@ -169,10 +170,50 @@ impl ProductTransactionHandler {
             }
         }
 
+        if payload.product_namespace() == &ProductNamespace::GS1 {
+            // Check if gs1 schema exists
+            let schema = if let Some(schema) = state.get_schema("gs1_product")? {
+                schema
+            } else {
+                return Err(ApplyError::InvalidTransaction(
+                    "gs1_product schema has not been defined".into(),
+                ));
+            };
+
+            // Check if properties in product are all a part of the gs1 schema
+            for property in payload.properties() {
+                if schema
+                    .properties()
+                    .iter()
+                    .all(|p| p.name() != property.name())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "{} is not a property that is defined by the gs1 schema",
+                        property.name()
+                    )));
+                }
+            }
+
+            // Check if property has all required fields
+            for property in schema.properties().iter().filter(|p| *p.required()) {
+                if !payload
+                    .properties()
+                    .iter()
+                    .any(|p| p.name() == property.name() && p.data_type() == property.data_type())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Missing required field '{}' of type '{:?}'",
+                        property.name(),
+                        property.data_type()
+                    )));
+                }
+            }
+        }
+
         let new_product = ProductBuilder::new()
             .with_product_id(product_id.to_string())
             .with_owner(owner.to_string())
-            .with_product_type(product_type.clone())
+            .with_product_namespace(product_namespace.clone())
             .with_properties(properties.to_vec())
             .build()
             .map_err(|err| {
@@ -192,7 +233,7 @@ impl ProductTransactionHandler {
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
         let properties = payload.properties();
 
         // Check that the agent submitting the transactions exists in state
@@ -209,18 +250,10 @@ impl ProductTransactionHandler {
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_update_product")?;
 
-        // Check that the agent has an organization associated with it
-        if agent.org_id().is_empty() {
-            return Err(ApplyError::InvalidTransaction(format!(
-                "The signing Agent does not have an associated organization: {}",
-                signer
-            )));
-        }
-
-        // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        // Check if the product namespace is a GS1 product
+        if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 
@@ -246,11 +279,51 @@ impl ProductTransactionHandler {
             return Err(ApplyError::InvalidTransaction(e.to_string()));
         }
 
+        if payload.product_namespace() == &ProductNamespace::GS1 {
+            // Check if gs1 schema exists
+            let schema = if let Some(schema) = state.get_schema("gs1_product")? {
+                schema
+            } else {
+                return Err(ApplyError::InvalidTransaction(
+                    "gs1_product schema has not been defined".into(),
+                ));
+            };
+
+            // Check if properties in product are all a part of the gs1 schema
+            for property in payload.properties() {
+                if schema
+                    .properties()
+                    .iter()
+                    .all(|p| p.name() != property.name())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "{} is not a property that is defined by the gs1 schema",
+                        property.name()
+                    )));
+                }
+            }
+
+            // Check if property has all required fields
+            for property in schema.properties().iter().filter(|p| *p.required()) {
+                if !payload
+                    .properties()
+                    .iter()
+                    .any(|p| p.name() == property.name() && p.data_type() == property.data_type())
+                {
+                    return Err(ApplyError::InvalidTransaction(format!(
+                        "Missing required field '{}' of type '{:?}'",
+                        property.name(),
+                        property.data_type()
+                    )));
+                }
+            }
+        }
+
         // Handle updating the product
         let updated_product = ProductBuilder::new()
             .with_product_id(product_id.to_string())
             .with_owner(product.owner().to_string())
-            .with_product_type(product_type.clone())
+            .with_product_namespace(product_namespace.clone())
             .with_properties(properties.to_vec())
             .build()
             .map_err(|err| {
@@ -270,7 +343,7 @@ impl ProductTransactionHandler {
         perm_checker: &PermissionChecker,
     ) -> Result<(), ApplyError> {
         let product_id = payload.product_id();
-        let product_type = payload.product_type();
+        let product_namespace = payload.product_namespace();
 
         // Check that the agent submitting the transactions exists in state
         let agent = match state.get_agent(signer)? {
@@ -286,10 +359,10 @@ impl ProductTransactionHandler {
         // Check signing agent's permission
         check_permission(perm_checker, signer, "can_delete_product")?;
 
-        // Check if the product type is a GS1 product
-        if product_type != &ProductType::GS1 {
+        // Check if the product namespace is a GS1 product
+        if product_namespace != &ProductNamespace::GS1 {
             return Err(ApplyError::InvalidTransaction(
-                "Invalid product type enum for product".to_string(),
+                "Invalid product namespace enum for product".to_string(),
             ));
         }
 
@@ -401,9 +474,14 @@ mod tests {
         ProductDeleteActionBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
     };
     use grid_sdk::protocol::product::state::{
-        Product, ProductBuilder, ProductListBuilder, ProductType,
+        Product, ProductBuilder, ProductListBuilder, ProductNamespace,
     };
-    use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
+    use grid_sdk::protocol::schema::state::{
+        DataType, PropertyDefinitionBuilder, SchemaBuilder, SchemaListBuilder,
+    };
+    use grid_sdk::protocol::schema::state::{
+        DataType as SchemaDataType, PropertyValue, PropertyValueBuilder,
+    };
     use grid_sdk::protos::IntoBytes;
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
@@ -556,7 +634,7 @@ mod tests {
                 .build()
                 .unwrap();
             let product_bytes = product_list.into_bytes().unwrap();
-            let product_address = make_product_address(prod_id);
+            let product_address = compute_gs1_product_address(prod_id);
             self.set_state_entry(product_address, product_bytes)
                 .unwrap();
         }
@@ -568,12 +646,49 @@ mod tests {
                 .unwrap();
             let product_list_bytes = product_list.into_bytes().unwrap();
             let product_list_bytes_copy = product_list_bytes.clone();
-            let product_1_address = make_product_address(PRODUCT_ID);
-            let product_2_address = make_product_address(PRODUCT_2_ID);
+            let product_1_address = compute_gs1_product_address(PRODUCT_ID);
+            let product_2_address = compute_gs1_product_address(PRODUCT_2_ID);
             self.set_state_entries(vec![
                 (product_1_address, product_list_bytes),
                 (product_2_address, product_list_bytes_copy),
             ])
+            .unwrap();
+        }
+
+        fn add_gs1_schema(&self) {
+            let properties = vec![
+                PropertyDefinitionBuilder::new()
+                    .with_name("counter".into())
+                    .with_data_type(SchemaDataType::Number)
+                    .with_number_exponent(1)
+                    .with_required(true)
+                    .build()
+                    .unwrap(),
+                PropertyDefinitionBuilder::new()
+                    .with_name("description".into())
+                    .with_data_type(SchemaDataType::String)
+                    .with_required(true)
+                    .build()
+                    .unwrap(),
+            ];
+
+            let schema = SchemaBuilder::new()
+                .with_name("gs1_product".into())
+                .with_description("GS1 product".into())
+                .with_owner(AGENT_ORG_ID.to_string())
+                .with_properties(properties)
+                .build()
+                .unwrap();
+
+            let schema_list = SchemaListBuilder::new()
+                .with_schemas(vec![schema])
+                .build()
+                .unwrap();
+
+            self.set_state_entries(vec![(
+                compute_schema_address("gs1_product"),
+                schema_list.into_bytes().unwrap(),
+            )])
             .unwrap();
         }
     }
@@ -584,6 +699,7 @@ mod tests {
         let transaction_context = MockTransactionContext::default();
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
+        transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -752,6 +868,7 @@ mod tests {
         transaction_context.add_agent(PUBLIC_KEY);
         transaction_context.add_org(AGENT_ORG_ID);
         transaction_context.add_product(PRODUCT_ID);
+        transaction_context.add_gs1_schema();
         let perm_checker = PermissionChecker::new(&transaction_context);
         let mut state = ProductState::new(&transaction_context);
 
@@ -972,7 +1089,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build new_product")
@@ -983,14 +1100,14 @@ mod tests {
             ProductBuilder::new()
                 .with_product_id(product_ids[0].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductNamespace::GS1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
             ProductBuilder::new()
                 .with_product_id(product_ids[1].to_string())
                 .with_owner(AGENT_ORG_ID.to_string())
-                .with_product_type(ProductType::GS1)
+                .with_product_namespace(ProductNamespace::GS1)
                 .with_properties(make_properties())
                 .build()
                 .expect("Failed to build new_product"),
@@ -1001,7 +1118,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build new_product")
@@ -1014,8 +1131,8 @@ mod tests {
             .with_string_value("This is a product description".into())
             .build()
             .unwrap();
-        let property_value_price = PropertyValueBuilder::new()
-            .with_name("price".into())
+        let property_value_counter = PropertyValueBuilder::new()
+            .with_name("counter".into())
             .with_data_type(DataType::Number)
             .with_number_value(3)
             .build()
@@ -1023,7 +1140,7 @@ mod tests {
 
         vec![
             property_value_description.clone(),
-            property_value_price.clone(),
+            property_value_counter.clone(),
         ]
     }
 
@@ -1034,8 +1151,8 @@ mod tests {
             .with_string_value("This is a new product description".into())
             .build()
             .unwrap();
-        let property_value_price = PropertyValueBuilder::new()
-            .with_name("price".into())
+        let property_value_counter = PropertyValueBuilder::new()
+            .with_name("counter".into())
             .with_data_type(DataType::Number)
             .with_number_value(4)
             .build()
@@ -1043,7 +1160,7 @@ mod tests {
 
         vec![
             property_value_description.clone(),
-            property_value_price.clone(),
+            property_value_counter.clone(),
         ]
     }
 
@@ -1051,7 +1168,7 @@ mod tests {
         ProductCreateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner(AGENT_ORG_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build ProductCreateAction")
@@ -1060,7 +1177,7 @@ mod tests {
     fn make_product_update_action() -> ProductUpdateAction {
         ProductUpdateActionBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_updated_properties())
             .build()
             .expect("Failed to build ProductUpdateAction")
@@ -1069,7 +1186,7 @@ mod tests {
     fn make_product_delete_action(product_id: &str) -> ProductDeleteAction {
         ProductDeleteActionBuilder::new()
             .with_product_id(product_id.to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .build()
             .expect("Failed to build ProductDeleteAction")
     }

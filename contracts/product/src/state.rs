@@ -25,6 +25,7 @@ cfg_if! {
 use grid_sdk::protocol::pike::state::{Agent, AgentList};
 use grid_sdk::protocol::pike::state::{Organization, OrganizationList};
 use grid_sdk::protocol::product::state::{Product, ProductList, ProductListBuilder};
+use grid_sdk::protocol::schema::state::{Schema, SchemaList};
 use grid_sdk::protos::{FromBytes, IntoBytes};
 
 use crate::addressing::*;
@@ -39,7 +40,7 @@ impl<'a> ProductState<'a> {
     }
 
     pub fn get_product(&self, product_id: &str) -> Result<Option<Product>, ApplyError> {
-        let address = make_product_address(product_id); //product id = gtin
+        let address = compute_gs1_product_address(product_id); //product id = gtin
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -64,7 +65,7 @@ impl<'a> ProductState<'a> {
     }
 
     pub fn set_product(&self, product_id: &str, product: Product) -> Result<(), ApplyError> {
-        let address = make_product_address(product_id);
+        let address = compute_gs1_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
         let mut products = match d {
             Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
@@ -116,7 +117,7 @@ impl<'a> ProductState<'a> {
 
     // Currently product_id = gtin
     pub fn remove_product(&self, product_id: &str) -> Result<(), ApplyError> {
-        let address = make_product_address(product_id);
+        let address = compute_gs1_product_address(product_id);
         let d = self.context.get_state_entry(&address)?;
         let products = match d {
             Some(packed) => match ProductList::from_bytes(packed.as_slice()) {
@@ -220,6 +221,33 @@ impl<'a> ProductState<'a> {
             None => Ok(None),
         }
     }
+
+    pub fn get_schema(&self, name: &str) -> Result<Option<Schema>, ApplyError> {
+        let address = compute_schema_address(name);
+        let d = self.context.get_state_entry(&address)?;
+        match d {
+            Some(packed) => {
+                let schemas = match SchemaList::from_bytes(packed.as_slice()) {
+                    Ok(schemas) => schemas,
+                    Err(err) => {
+                        return Err(ApplyError::InvalidTransaction(format!(
+                            "Cannot deserialize schema list: {:?}",
+                            err,
+                        )));
+                    }
+                };
+
+                // find the schema with the correct name
+                for schema in schemas.schemas() {
+                    if schema.name() == name {
+                        return Ok(Some(schema.clone()));
+                    }
+                }
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -230,7 +258,7 @@ mod tests {
     use std::collections::HashMap;
 
     use grid_sdk::protocol::pike::state::{AgentBuilder, AgentListBuilder};
-    use grid_sdk::protocol::product::state::{ProductBuilder, ProductType};
+    use grid_sdk::protocol::product::state::{ProductBuilder, ProductNamespace};
     use grid_sdk::protocol::schema::state::{DataType, PropertyValue, PropertyValueBuilder};
 
     use sawtooth_sdk::processor::handler::{ContextError, TransactionContext};
@@ -354,7 +382,7 @@ mod tests {
         ProductBuilder::new()
             .with_product_id(PRODUCT_ID.to_string())
             .with_owner("some_owner".to_string())
-            .with_product_type(ProductType::GS1)
+            .with_product_namespace(ProductNamespace::GS1)
             .with_properties(make_properties())
             .build()
             .expect("Failed to build new_product")

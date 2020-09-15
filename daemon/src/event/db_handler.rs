@@ -416,7 +416,7 @@ fn state_change_to_db_operation(
                         let new_product = NewProduct {
                             product_id: product.product_id().to_string(),
                             product_address: key.to_string(),
-                            product_namespace: format!("{:?}", product.product_type()),
+                            product_namespace: format!("{:?}", product.product_namespace()),
                             owner: product.owner().to_string(),
                             start_commit_num: commit_num,
                             end_commit_num: db::MAX_COMMIT_NUM,

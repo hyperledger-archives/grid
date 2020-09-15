@@ -13,7 +13,7 @@
 # limitations under the License.
 # -----------------------------------------------------------------------------
 #
-- product_type: "GS1"
+- product_namespace: "GS1"
   product_id: "762111177704"
   properties:
     - name: "length"
@@ -25,7 +25,7 @@
     - name: "depth"
       data_type: "NUMBER"
       number_value: 11
-- product_type: "GS1"
+- product_namespace: "GS1"
   product_id: "881334009880"
   properties:
     - name: "price"
