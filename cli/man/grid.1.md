@@ -108,6 +108,12 @@ Many `grid` subcommands accept the following environment variable:
 
 SEE ALSO
 ========
+| `grid-location-create(1)`
+| `grid-location-update(1)`
+| `grid-location-delete(1)`
+| `grid-location-show(1)`
+| `grid-location-list(1)`
+|
 | `grid-product-create(1)`
 | `grid-product-update(1)`
 | `grid-product-delete(1)`
