@@ -19,6 +19,7 @@
 pub mod commits;
 pub mod locations;
 pub mod organizations;
+pub mod products;
 
 pub mod migrations;
 
@@ -35,3 +36,7 @@ pub use organizations::store::OrganizationStore;
 #[cfg(feature = "diesel")]
 pub use locations::store::diesel::DieselLocationStore;
 pub use locations::store::LocationStore;
+
+#[cfg(feature = "diesel")]
+pub use products::store::diesel::DieselProductStore;
+pub use products::store::ProductStore;
