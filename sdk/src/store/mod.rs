@@ -25,6 +25,8 @@ use diesel::r2d2::{ConnectionManager, Pool};
 
 /// An abstract factory for creating Grid stores backed by the same storage
 pub trait StoreFactory {
+    /// Get a new `AgentStore`
+    fn get_grid_agent_store(&self) -> Box<dyn crate::grid_db::AgentStore>;
     /// Get a new `CommitStore`
     fn get_grid_commit_store(&self) -> Box<dyn crate::grid_db::CommitStore>;
     /// Get a new `OrganizationStore`

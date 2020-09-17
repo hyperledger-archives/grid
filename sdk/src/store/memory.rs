@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use crate::grid_db::{
-    CommitStore, LocationStore, MemoryCommitStore, MemoryOrganizationStore, OrganizationStore,
+    AgentStore, CommitStore, LocationStore, MemoryCommitStore, MemoryOrganizationStore,
+    OrganizationStore,
 };
 
 use super::StoreFactory;
@@ -38,6 +39,10 @@ impl MemoryStoreFactory {
 }
 
 impl StoreFactory for MemoryStoreFactory {
+    fn get_grid_agent_store(&self) -> Box<dyn AgentStore> {
+        unimplemented!()
+    }
+
     fn get_grid_commit_store(&self) -> Box<dyn CommitStore> {
         Box::new(self.grid_commit_store.clone())
     }
