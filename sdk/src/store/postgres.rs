@@ -56,4 +56,10 @@ impl StoreFactory for PgStoreFactory {
     fn get_grid_schema_store(&self) -> Box<dyn crate::grid_db::SchemaStore> {
         Box::new(crate::grid_db::DieselSchemaStore::new(self.pool.clone()))
     }
+
+    fn get_grid_track_and_trace_store(&self) -> Box<dyn crate::grid_db::TrackAndTraceStore> {
+        Box::new(crate::grid_db::DieselTrackAndTraceStore::new(
+            self.pool.clone(),
+        ))
+    }
 }

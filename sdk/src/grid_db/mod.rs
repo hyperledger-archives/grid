@@ -22,6 +22,7 @@ pub mod locations;
 pub mod organizations;
 pub mod products;
 pub mod schemas;
+pub mod track_and_trace;
 
 pub mod migrations;
 
@@ -51,3 +52,7 @@ pub use products::store::ProductStore;
 pub use schemas::store::diesel::DieselSchemaStore;
 pub use schemas::store::memory::MemorySchemaStore;
 pub use schemas::store::SchemaStore;
+
+#[cfg(feature = "diesel")]
+pub use track_and_trace::store::diesel::DieselTrackAndTraceStore;
+pub use track_and_trace::store::TrackAndTraceStore;

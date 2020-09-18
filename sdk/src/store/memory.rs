@@ -14,7 +14,7 @@
 
 use crate::grid_db::{
     AgentStore, CommitStore, LocationStore, MemoryCommitStore, MemoryOrganizationStore,
-    MemorySchemaStore, OrganizationStore, SchemaStore,
+    MemorySchemaStore, OrganizationStore, SchemaStore, TrackAndTraceStore,
 };
 
 use super::StoreFactory;
@@ -64,5 +64,9 @@ impl StoreFactory for MemoryStoreFactory {
 
     fn get_grid_schema_store(&self) -> Box<dyn SchemaStore> {
         Box::new(self.grid_schema_store.clone())
+    }
+
+    fn get_grid_track_and_trace_store(&self) -> Box<dyn TrackAndTraceStore> {
+        unimplemented!()
     }
 }
