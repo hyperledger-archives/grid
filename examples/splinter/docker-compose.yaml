@@ -211,6 +211,7 @@ services:
     hostname: scabbard-cli-alpha
     volumes:
       - gridd-alpha:/root/.splinter/keys
+    command: tail -f /dev/null
 
   splinterd-alpha:
     image: splintercommunity/splinterd:0.4
@@ -344,6 +345,7 @@ services:
     hostname: scabbard-cli-beta
     volumes:
       - gridd-beta:/root/.splinter/keys
+    command: tail -f /dev/null
 
   splinterd-beta:
     image: splintercommunity/splinterd:0.4
