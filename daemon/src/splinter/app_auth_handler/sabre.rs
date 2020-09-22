@@ -52,6 +52,11 @@ const SCHEMA_PREFIX: &str = "621dee01";
 const SCHEMA_CONTRACT_NAME: &str = "grid-schema";
 const SCHEMA_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
 
+// Location constants
+const LOCATION_PREFIX: &str = "621dee04";
+const LOCATION_CONTRACT_NAME: &str = "grid-location";
+const LOCATION_CONTRACT_VERSION_REQ: &str = "0.1.0-dev";
+
 pub fn setup_grid(
     scabbard_admin_key: &str,
     proposed_admin_pubkeys: Vec<String>,
@@ -102,6 +107,24 @@ pub fn setup_grid(
     let product_schema_namespace_permissions_txn =
         make_namespace_permissions_txn(&signer, &product_contract, SCHEMA_PREFIX)?;
 
+    // Make Location transactions
+    let location_contract = SmartContractArchive::from_scar_file(
+        LOCATION_CONTRACT_NAME,
+        LOCATION_CONTRACT_VERSION_REQ,
+        &default_scar_path(),
+    )?;
+    let location_contract_registry_txn =
+        make_contract_registry_txn(&signer, &location_contract.metadata.name)?;
+    let location_contract_txn =
+        make_upload_contract_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+    let location_namespace_registry_txn = make_namespace_registry_txn(&signer, LOCATION_PREFIX)?;
+    let location_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &location_contract, LOCATION_PREFIX)?;
+    let location_pike_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &location_contract, PIKE_PREFIX)?;
+    let location_schema_namespace_permissions_txn =
+        make_namespace_permissions_txn(&signer, &location_contract, SCHEMA_PREFIX)?;
+
     // Make schema transactions
     let schema_contract = SmartContractArchive::from_scar_file(
         SCHEMA_CONTRACT_NAME,
@@ -133,6 +156,12 @@ pub fn setup_grid(
         product_schema_namespace_permissions_txn,
         schema_pike_namespace_permissions_txn,
         schema_namespace_permissions_txn,
+        location_contract_registry_txn,
+        location_contract_txn,
+        location_namespace_registry_txn,
+        location_namespace_permissions_txn,
+        location_pike_namespace_permissions_txn,
+        location_schema_namespace_permissions_txn,
     ];
     let batch = BatchBuilder::new().with_transactions(txns).build(&signer)?;
 
