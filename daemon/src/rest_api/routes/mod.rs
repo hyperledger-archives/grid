@@ -74,6 +74,7 @@ mod test {
         process_batch_status_response, process_validator_response, query_validator,
     };
     use crate::submitter::*;
+    use grid_sdk::grid_db::migrations::run_postgres_migrations;
 
     use actix_web::{
         http,
@@ -3815,7 +3816,7 @@ mod test {
     fn run_migrations(database_url: &str) {
         let connection = PgConnection::establish(database_url)
             .expect("Failed to stablish connection with database");
-        diesel_migrations::run_pending_migrations(&connection).expect("Failed to run migrations");
+        run_postgres_migrations(&connection).expect("Migrations failed");
     }
 
     fn get_reported_value(service_id: Option<String>) -> Vec<NewReportedValue> {
