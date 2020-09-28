@@ -26,8 +26,9 @@ use std::time::SystemTime;
 
 use super::schema::{
     agent, associated_agent, grid_circuit, grid_circuit_member, grid_circuit_proposal,
-    grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, organization,
-    product, product_property_value, property, proposal, record, reported_value, reporter,
+    grid_circuit_proposal_vote_record, grid_property_definition, grid_schema, location,
+    location_property_value, organization, product, product_property_value, property, proposal,
+    record, reported_value, reporter,
 };
 
 #[derive(Insertable, Debug)]
@@ -58,6 +59,76 @@ pub struct Agent {
     pub active: bool,
     pub roles: Vec<String>,
     pub metadata: JsonValue,
+    pub service_id: Option<String>,
+}
+
+#[derive(Clone, Insertable, Debug)]
+#[table_name = "location"]
+pub struct NewLocation {
+    pub location_id: String,
+    pub location_address: String,
+    pub location_namespace: String,
+    pub owner: String,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
+    pub service_id: Option<String>,
+}
+
+#[derive(Queryable, Identifiable, Debug)]
+#[table_name = "location"]
+pub struct Location {
+    pub id: i64,
+    pub location_id: String,
+    pub location_address: String,
+    pub location_namespace: String,
+    pub owner: String,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+    pub service_id: Option<String>,
+}
+
+#[derive(Clone, Insertable, Debug)]
+#[table_name = "location_property_value"]
+pub struct NewLocationPropertyValue {
+    pub location_id: String,
+    pub location_address: String,
+    pub property_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
+
+    // The indicators of the start and stop for the slowly-changing dimensions.
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
+
+    pub service_id: Option<String>,
+}
+
+#[derive(Queryable, Identifiable, Debug)]
+#[table_name = "location_property_value"]
+pub struct LocationPropertyValue {
+    pub id: i64,
+    pub location_id: String,
+    pub location_address: String,
+    pub property_name: String,
+    pub data_type: String,
+    pub bytes_value: Option<Vec<u8>>,
+    pub boolean_value: Option<bool>,
+    pub number_value: Option<i64>,
+    pub string_value: Option<String>,
+    pub enum_value: Option<i32>,
+    pub struct_values: Option<Vec<String>>,
+    pub lat_long_value: Option<LatLongValue>,
+    pub start_commit_num: i64,
+    pub end_commit_num: i64,
     pub service_id: Option<String>,
 }
 

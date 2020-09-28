@@ -14,6 +14,7 @@
 
 mod agents;
 mod batches;
+mod locations;
 mod organizations;
 mod products;
 mod records;
@@ -21,6 +22,7 @@ mod schemas;
 
 pub use agents::*;
 pub use batches::*;
+pub use locations::*;
 pub use organizations::*;
 pub use products::*;
 pub use records::*;
@@ -53,12 +55,14 @@ mod test {
         helpers::MAX_COMMIT_NUM,
         models::{
             LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
-            NewOrganization, NewProduct, NewProductPropertyValue, NewProperty, NewProposal,
-            NewRecord, NewReportedValue, NewReporter,
+            NewLocation, NewLocationPropertyValue, NewOrganization, NewProduct,
+            NewProductPropertyValue, NewProperty, NewProposal, NewRecord, NewReportedValue,
+            NewReporter,
         },
         schema::{
-            associated_agent, grid_property_definition, grid_schema, product,
-            product_property_value, property, proposal, record, reported_value, reporter,
+            associated_agent, grid_property_definition, grid_schema, location,
+            location_property_value, product, product_property_value, property, proposal, record,
+            reported_value, reporter,
         },
     };
     use crate::rest_api::{
@@ -70,6 +74,7 @@ mod test {
         process_batch_status_response, process_validator_response, query_validator,
     };
     use crate::submitter::*;
+    use grid_sdk::grid_db::migrations::run_postgres_migrations;
 
     use actix_web::{
         http,
@@ -280,8 +285,8 @@ mod test {
         }
     }
 
-    fn get_connection_pool() -> ConnectionPool {
-        database::create_connection_pool(&DATABASE_URL).expect("Unable to unwrap connection pool")
+    fn get_connection_pool() -> ConnectionPool<diesel::pg::PgConnection> {
+        database::ConnectionPool::new(&DATABASE_URL).expect("Unable to unwrap connection pool")
     }
 
     fn create_test_server(backend: Backend, response_type: ResponseType) -> TestServer {
@@ -322,6 +327,11 @@ mod test {
                     web::scope("/product")
                         .service(web::resource("").route(web::get().to(list_products)))
                         .service(web::resource("/{id}").route(web::get().to(fetch_product))),
+                )
+                .service(
+                    web::scope("/location")
+                        .service(web::resource("").route(web::get().to(list_locations)))
+                        .service(web::resource("/{id}").route(web::get().to(fetch_location))),
                 )
                 .service(
                     web::scope("/schema")
@@ -1291,6 +1301,49 @@ mod test {
         assert_eq!(test_product.properties.len(), 2);
     }
 
+    /// Verifies a GET /location responds with an OK response with a
+    ///     list_locations request.
+    ///
+    ///     The TestServer will receive a request with no parameters,
+    ///         then will respond with an Ok status and a list of Locations.
+    #[actix_rt::test]
+    async fn test_list_locations() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        clear_location_table(&test_pool.get().unwrap());
+        let mut response = srv
+            .request(http::Method::GET, srv.url("location"))
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<LocationSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+        let mut response = srv
+            .request(http::Method::GET, srv.url("/location"))
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<LocationSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_location = body.first().unwrap();
+        assert_eq!(test_location.location_id, "0653114000000".to_string());
+        assert_eq!(test_location.location_address, "test_address".to_string());
+        assert_eq!(
+            test_location.location_namespace,
+            "Grid Location".to_string()
+        );
+        assert_eq!(test_location.owner, "phillips001".to_string());
+        assert_eq!(test_location.properties.len(), 2);
+    }
+
     /// Verifies a GET /product?service_id=test_service responds with an OK response with a
     ///     list_products request.
     ///
@@ -1343,6 +1396,61 @@ mod test {
         assert_eq!(test_product.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
+    /// Verifies a GET /location?service_id=test_service responds with an OK response with a
+    ///     list_locations request.
+    ///
+    ///     The TestServer will receive a request with a service_id,
+    ///         then will respond with an Ok status and a list of Products.
+    #[actix_rt::test]
+    async fn test_list_locations_with_service_id() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        // Clears the location table in the test database
+        clear_location_table(&test_pool.get().unwrap());
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/location?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let empty_body: Vec<LocationSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert!(empty_body.is_empty());
+
+        populate_location_table(
+            &test_pool.get().unwrap(),
+            &get_location(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/location?service_id={}", TEST_SERVICE_ID)),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Vec<LocationSlice> =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(body.len(), 1);
+
+        let test_location = body.first().unwrap();
+        assert_eq!(test_location.location_id, "0653114000000".to_string());
+        assert_eq!(test_location.location_address, "test_address".to_string());
+        assert_eq!(
+            test_location.location_namespace,
+            "Grid Location".to_string()
+        );
+        assert_eq!(test_location.owner, "phillips001".to_string());
+        assert_eq!(test_location.properties.len(), 2);
+        assert_eq!(test_location.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
     ///
     /// Verifies a GET /product/{id} responds with an OK response
     ///     and the Product with the specified id
@@ -1369,6 +1477,37 @@ mod test {
         assert_eq!(test_product.product_namespace, "Grid Product".to_string());
         assert_eq!(test_product.owner, "phillips001".to_string());
         assert_eq!(test_product.properties.len(), 2);
+    }
+
+    ///
+    /// Verifies a GET /location/{id} responds with an OK response
+    ///     and the Location with the specified id
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_location_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!("/location/{}", "0653114000000".to_string())),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_location: LocationSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(test_location.location_id, "0653114000000".to_string());
+        assert_eq!(test_location.location_address, "test_address".to_string());
+        assert_eq!(
+            test_location.location_namespace,
+            "Grid Location".to_string()
+        );
+        assert_eq!(test_location.owner, "phillips001".to_string());
+        assert_eq!(test_location.properties.len(), 2);
     }
 
     ///
@@ -1408,6 +1547,45 @@ mod test {
     }
 
     ///
+    /// Verifies a GET /location/{id}?service_id=test_service responds with an OK response
+    ///     and the Location with the specified id and service id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_location_with_service_id_ok() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        populate_location_table(
+            &test_pool.get().unwrap(),
+            &get_location(Some(TEST_SERVICE_ID.to_string())),
+            Some(TEST_SERVICE_ID.to_string()),
+        );
+        let mut response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/location/{}?service_id={}",
+                    "0653114000000", TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let test_location: LocationSlice =
+            serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
+        assert_eq!(test_location.location_id, "0653114000000".to_string());
+        assert_eq!(test_location.location_address, "test_address".to_string());
+        assert_eq!(
+            test_location.location_namespace,
+            "Grid Location".to_string()
+        );
+        assert_eq!(test_location.owner, "phillips001".to_string());
+        assert_eq!(test_location.properties.len(), 2);
+        assert_eq!(test_location.service_id, Some(TEST_SERVICE_ID.to_string()));
+    }
+
+    ///
     /// Verifies a GET /product/{id} responds with a Not Found error
     ///     when there is no Product with the specified id
     ///
@@ -1419,6 +1597,24 @@ mod test {
         clear_product_table(&test_pool.get().unwrap());
         let response = srv
             .request(http::Method::GET, srv.url("/product/not_in_database"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /location/{id} responds with a Not Found error
+    ///     when there is no Product with the specified id
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_location_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+        clear_location_table(&test_pool.get().unwrap());
+        let response = srv
+            .request(http::Method::GET, srv.url("/location/not_in_database"))
             .send()
             .await
             .unwrap();
@@ -1442,6 +1638,31 @@ mod test {
                 srv.url(&format!(
                     "/product/{}?service_id={}",
                     "041205707820", TEST_SERVICE_ID
+                )),
+            )
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+    }
+
+    ///
+    /// Verifies a GET /location/{id}?service_id=test_service responds with a Not Found error
+    ///     when there is no Product with the specified id and service id.
+    ///
+    #[actix_rt::test]
+    async fn test_fetch_location_with_service_id_not_found() {
+        run_migrations(&DATABASE_URL);
+        let test_pool = get_connection_pool();
+        let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        clear_location_table(&test_pool.get().unwrap());
+        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+        let response = srv
+            .request(
+                http::Method::GET,
+                srv.url(&format!(
+                    "/location/{}?service_id={}",
+                    "0653114000000", TEST_SERVICE_ID
                 )),
             )
             .send()
@@ -2870,6 +3091,18 @@ mod test {
         }]
     }
 
+    fn get_location(service_id: Option<String>) -> Vec<NewLocation> {
+        vec![NewLocation {
+            location_id: "0653114000000".to_string(),
+            location_address: "test_address".to_string(),
+            location_namespace: "Grid Location".to_string(),
+            owner: "phillips001".to_string(),
+            start_commit_num: 0,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id,
+        }]
+    }
+
     fn get_associated_agents(service_id: Option<String>) -> Vec<NewAssociatedAgent> {
         vec![
             NewAssociatedAgent {
@@ -3082,6 +3315,20 @@ mod test {
             .unwrap();
     }
 
+    fn populate_location_table(
+        conn: &PgConnection,
+        locations: &[NewLocation],
+        service_id: Option<String>,
+    ) {
+        clear_location_table(conn);
+        populate_location_property_value_table(conn, &get_location_property_value(service_id));
+        insert_into(location::table)
+            .values(locations)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
     fn get_property_for_record(service_id: Option<String>) -> Vec<NewProperty> {
         vec![
             NewProperty {
@@ -3286,6 +3533,11 @@ mod test {
         diesel::delete(product).execute(conn).unwrap();
     }
 
+    fn clear_location_table(conn: &PgConnection) {
+        use crate::database::schema::location::dsl::*;
+        diesel::delete(location).execute(conn).unwrap();
+    }
+
     fn clear_tnt_reported_value_table(conn: &PgConnection) {
         use crate::database::schema::reported_value::dsl::*;
         diesel::delete(reported_value).execute(conn).unwrap();
@@ -3460,6 +3712,62 @@ mod test {
             .unwrap();
     }
 
+    fn get_location_property_value(service_id: Option<String>) -> Vec<NewLocationPropertyValue> {
+        vec![
+            NewLocationPropertyValue {
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
+                location_id: "0653114000000".to_string(),
+                location_address: "test_address".to_string(),
+                property_name: "location_name".to_string(),
+                data_type: "STRING".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(0),
+                string_value: Some("My Warehouse".to_string()),
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+                service_id: service_id.clone(),
+            },
+            NewLocationPropertyValue {
+                start_commit_num: 0,
+                end_commit_num: MAX_COMMIT_NUM,
+                location_id: "0653114000000".to_string(),
+                location_address: "test_address".to_string(),
+                property_name: "industry_sector".to_string(),
+                data_type: "STRING".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(0),
+                string_value: Some("Light bulbs".to_string()),
+                enum_value: None,
+                struct_values: None,
+                lat_long_value: None,
+                service_id,
+            },
+        ]
+    }
+
+    fn populate_location_property_value_table(
+        conn: &PgConnection,
+        properties: &[NewLocationPropertyValue],
+    ) {
+        clear_location_property_value_table(conn);
+        insert_into(location_property_value::table)
+            .values(properties)
+            .execute(conn)
+            .map(|_| ())
+            .unwrap();
+    }
+
+    fn clear_location_property_value_table(conn: &PgConnection) {
+        use crate::database::schema::location_property_value::dsl::*;
+        diesel::delete(location_property_value)
+            .execute(conn)
+            .unwrap();
+    }
+
     fn populate_associated_agent_table(
         conn: &PgConnection,
         associated_agents: &[NewAssociatedAgent],
@@ -3508,7 +3816,7 @@ mod test {
     fn run_migrations(database_url: &str) {
         let connection = PgConnection::establish(database_url)
             .expect("Failed to stablish connection with database");
-        diesel_migrations::run_pending_migrations(&connection).expect("Failed to run migrations");
+        run_postgres_migrations(&connection).expect("Migrations failed");
     }
 
     fn get_reported_value(service_id: Option<String>) -> Vec<NewReportedValue> {

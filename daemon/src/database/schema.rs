@@ -100,12 +100,47 @@ table! {
 }
 
 table! {
+    location (id) {
+        id -> Int8,
+        location_id -> Varchar,
+        location_address -> Varchar,
+        location_namespace -> Text,
+        owner -> Varchar,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
     use diesel::sql_types::*;
     use super::LatLong;
     product_property_value (id) {
         id -> Int8,
         product_id -> Varchar,
         product_address -> Varchar,
+        property_name -> Text,
+        data_type -> Text,
+        bytes_value -> Nullable<Bytea>,
+        boolean_value -> Nullable<Bool>,
+        number_value -> Nullable<Int8>,
+        string_value -> Nullable<Text>,
+        enum_value -> Nullable<Int4>,
+        struct_values -> Nullable<Array<Text>>,
+        lat_long_value -> Nullable<LatLong>,
+        start_commit_num -> Int8,
+        end_commit_num -> Int8,
+        service_id -> Nullable<Text>,
+    }
+}
+
+table! {
+    use diesel::sql_types::*;
+    use super::LatLong;
+    location_property_value (id) {
+        id -> Int8,
+        location_id -> Varchar,
+        location_address -> Varchar,
         property_name -> Text,
         data_type -> Text,
         bytes_value -> Nullable<Bytea>,
