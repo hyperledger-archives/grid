@@ -35,9 +35,10 @@ tests/sawtooth_sc_test/protobuf/
 /docs/source/_autogen/
 /docs/source/cli/output/
 
-grid-ui/sapling-dev-server/product
-grid-ui/sapling-dev-server/register-login.js
-grid-ui/sapling-dev-server/profile
+**/sapling-dev-server/circuits
+**/sapling-dev-server/product
+**/sapling-dev-server/profile
+**/sapling-dev-server/register-login.js
 
 # misc
 .DS_Store

@@ -16,7 +16,7 @@
     "splinter-canopyjs": "github:cargill/splinter-canopyjs#master"
   },
   "scripts": {
-    "start:saplings": "http-server . -p 3030 --cors",
+    "start:saplings": "http-server .. -p 3030 --cors",
     "start:react": "REACT_APP_SAPLING_URL=http://0.0.0.0:3030/sapling-dev-server REACT_APP_SPLINTER_URL=http://0.0.0.0:8085 REACT_APP_GRID_URL=http://localhost:3000 react-scripts start",
     "start": "run-p start:saplings start:react",
     "build": "react-scripts build",
