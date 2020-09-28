@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------------
-version: '3.6'
+version: "3.6"
 
 volumes:
   contracts-shared:
@@ -22,8 +22,7 @@ volumes:
   gridd-gamma:
 
 services:
-
-# ---== shared services ==---
+  # ---== shared services ==---
 
   pike-contract-builder:
     image: pike-contract-builder
@@ -153,11 +152,11 @@ services:
     expose:
       - 80
     ports:
-        - "8099:80"
+      - "8099:80"
     volumes:
       - registry:/usr/local/apache2/htdocs
 
-# ---== alpha node ==---
+  # ---== alpha node ==---
 
   db-alpha:
     image: postgres
@@ -192,18 +191,18 @@ services:
       GRID_DAEMON_KEY: "alpha-agent"
       GRID_DAEMON_ENDPOINT: "http://gridd-alpha:8080"
     entrypoint: |
-        bash -c "
-          # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
-              >&2 echo \"Database is unavailable - sleeping\"
-              sleep 1
-          done
-          grid -vv admin keygen --skip && \
-          grid -vv database migrate \
-              --database-url postgres://grid:grid_example@db-alpha/grid &&
-          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
-              --database-url postgres://grid:grid_example@db-alpha/grid
-        "
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-alpha -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            --database-url postgres://grid:grid_example@db-alpha/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-alpha:8085 \
+            --database-url postgres://grid:grid_example@db-alpha/grid
+      "
 
   scabbard-cli-alpha:
     image: splintercommunity/scabbard-cli:0.4
@@ -270,18 +269,18 @@ services:
       context: ../../grid-ui
       args:
         REPO_VERSION: ${REPO_VERSION}
-        REACT_APP_SPLINTER_URL: '/splinterd'
-        REACT_APP_SAPLING_URL: '/sapling-dev-server'
-        REACT_APP_GRID_URL: '/gridd'
-        SPLINTER_URL: 'http://splinterd-alpha:8085'
-        SAPLING_URL: ' http://sapling-dev-server-alpha:80'
-        GRID_URL: 'http://gridd-alpha:8080'
+        REACT_APP_SPLINTER_URL: "/splinterd"
+        REACT_APP_SAPLING_URL: "/sapling-dev-server"
+        REACT_APP_GRID_URL: "/gridd"
+        SPLINTER_URL: "http://splinterd-alpha:8085"
+        SAPLING_URL: " http://sapling-dev-server-alpha:80"
+        GRID_URL: "http://gridd-alpha:8080"
     image: grid-ui-alpha
     container_name: grid-ui-alpha
     expose:
       - 80
     ports:
-      - '3030:80'
+      - "3030:80"
 
   sapling-dev-server-alpha:
     build:
@@ -291,7 +290,7 @@ services:
     expose:
       - 80
 
-# ---== beta node ==---
+  # ---== beta node ==---
 
   db-beta:
     image: postgres
@@ -326,18 +325,18 @@ services:
       GRID_DAEMON_KEY: "beta-agent"
       GRID_DAEMON_ENDPOINT: "http://gridd-beta:8080"
     entrypoint: |
-        bash -c "
-          # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
-              >&2 echo \"Database is unavailable - sleeping\"
-              sleep 1
-          done
-          grid -vv admin keygen --skip && \
-          grid -vv database migrate \
-              --database-url postgres://grid:grid_example@db-beta/grid &&
-          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
-              --database-url postgres://grid:grid_example@db-beta/grid
-        "
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-beta -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            --database-url postgres://grid:grid_example@db-beta/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-beta:8085 \
+            --database-url postgres://grid:grid_example@db-beta/grid
+      "
 
   scabbard-cli-beta:
     image: splintercommunity/scabbard-cli:0.4
@@ -403,18 +402,18 @@ services:
       context: ../../grid-ui
       args:
         REPO_VERSION: ${REPO_VERSION}
-        REACT_APP_SPLINTER_URL: '/splinterd'
-        REACT_APP_SAPLING_URL: '/sapling-dev-server'
-        REACT_APP_GRID_URL: '/gridd'
-        SPLINTER_URL: 'http://splinterd-beta:8085'
-        SAPLING_URL: ' http://sapling-dev-server-beta:80'
-        GRID_URL: 'http://gridd-beta:8080'
+        REACT_APP_SPLINTER_URL: "/splinterd"
+        REACT_APP_SAPLING_URL: "/sapling-dev-server"
+        REACT_APP_GRID_URL: "/gridd"
+        SPLINTER_URL: "http://splinterd-beta:8085"
+        SAPLING_URL: " http://sapling-dev-server-beta:80"
+        GRID_URL: "http://gridd-beta:8080"
     image: grid-ui-beta
     container_name: grid-ui-beta
     expose:
       - 80
     ports:
-      - '3031:80'
+      - "3031:80"
 
   sapling-dev-server-beta:
     build:
@@ -424,7 +423,7 @@ services:
     expose:
       - 80
 
-# ---== gamma node ==---
+  # ---== gamma node ==---
 
   db-gamma:
     image: postgres
@@ -459,18 +458,18 @@ services:
       GRID_DAEMON_KEY: "gamma-agent"
       GRID_DAEMON_ENDPOINT: "http://gridd-gamma:8080"
     entrypoint: |
-        bash -c "
-          # we need to wait for the db to have started.
-          until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q' > /dev/null 2>&1; do
-              >&2 echo \"Database is unavailable - sleeping\"
-              sleep 1
-          done
-          grid -vv admin keygen --skip && \
-          grid -vv database migrate \
-              --database-url postgres://grid:grid_example@db-gamma/grid &&
-          gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
-              --database-url postgres://grid:grid_example@db-gamma/grid
-        "
+      bash -c "
+        # we need to wait for the db to have started.
+        until PGPASSWORD=grid_example psql -h db-gamma -U grid -c '\q' > /dev/null 2>&1; do
+            >&2 echo \"Database is unavailable - sleeping\"
+            sleep 1
+        done
+        grid -vv admin keygen --skip && \
+        grid -vv database migrate \
+            --database-url postgres://grid:grid_example@db-gamma/grid &&
+        gridd -vv -b 0.0.0.0:8080 -C splinter:http://splinterd-gamma:8085 \
+            --database-url postgres://grid:grid_example@db-gamma/grid
+      "
 
   splinterd-gamma:
     image: splintercommunity/splinterd:0.4
@@ -528,18 +527,18 @@ services:
       context: ../../grid-ui
       args:
         REPO_VERSION: ${REPO_VERSION}
-        REACT_APP_SPLINTER_URL: '/splinterd'
-        REACT_APP_SAPLING_URL: '/sapling-dev-server'
-        REACT_APP_GRID_URL: '/gridd'
-        SPLINTER_URL: 'http://splinterd-gamma:8085'
-        SAPLING_URL: ' http://sapling-dev-server-gamma:80'
-        GRID_URL: 'http://gridd-gamma:8080'
+        REACT_APP_SPLINTER_URL: "/splinterd"
+        REACT_APP_SAPLING_URL: "/sapling-dev-server"
+        REACT_APP_GRID_URL: "/gridd"
+        SPLINTER_URL: "http://splinterd-gamma:8085"
+        SAPLING_URL: " http://sapling-dev-server-gamma:80"
+        GRID_URL: "http://gridd-gamma:8080"
     image: grid-ui-gamma
     container_name: grid-ui-gamma
     expose:
       - 80
     ports:
-      - '3032:80'
+      - "3032:80"
 
   sapling-dev-server-gamma:
     build:
