@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Target Brands, Inc.
+# Copyright 2018-2020 Cargill Incorporated
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,25 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # -----------------------------------------------------------------------------
-#
+
 - product_namespace: "GS1"
   product_id: "762111177704"
+  owner: cgl
   properties:
-    - name: "length"
-      data_type: "NUMBER"
-      number_value: 88
-    - name: "width"
-      data_type: "NUMBER"
-      number_value: 111
-    - name: "depth"
-      data_type: "NUMBER"
-      number_value: 11
-- product_namespace: "GS1"
-  product_id: "881334009880"
-  properties:
-    - name: "price"
-      data_type: "NUMBER"
-      number_value: 88
-    - name: "height"
-      data_type: "NUMBER"
-      number_value: 111
+    length: 8
+    width: 11
+    depth: 1
