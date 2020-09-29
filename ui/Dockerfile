@@ -58,6 +58,12 @@ RUN cp -r splinter-ui/saplings/profile /saplings && \
   npm install && \
   npm run deploy
 
+ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/circuits
+RUN cp -r splinter-ui/saplings/circuits /saplings && \
+  cd saplings/circuits && \
+  npm install && \
+  npm run deploy
+
 WORKDIR /sapling-dev-server
 ARG REPO_VERSION
 RUN tar c -z . -f ../grid_saplings_v${REPO_VERSION}.tar.gz
