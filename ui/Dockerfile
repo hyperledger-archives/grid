@@ -41,17 +41,20 @@ COPY sapling-dev-server sapling-dev-server
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
 
-RUN cd /saplings/register-login && \
-  npm install && \
-  npm run deploy
-
-ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/profile
-RUN cd /saplings/profile && \
-  npm install && \
-  npm run deploy
-
 ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/product
 RUN cd /saplings/product && \
+  npm install && \
+  npm run deploy
+
+RUN git clone https://github.com/Cargill/splinter-ui
+
+RUN cp -r splinter-ui/saplings/register-login /saplings && \
+  cd saplings/register-login && \
+  npm install && \
+  npm run deploy
+
+RUN cp -r splinter-ui/saplings/profile /saplings && \
+  cd saplings/profile && \
   npm install && \
   npm run deploy
 
