@@ -18,6 +18,8 @@ services:
 env:
   global:
     - ISOLATION_ID=$TRAVIS_BUILD_ID
+    - NAMESPACE="splintercommunity/"
+    - VERSION=AUTO_STRICT
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
@@ -46,11 +48,22 @@ jobs:
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-register-login-sapling
 
-    - stage: Publish saplings
+    - stage: Publish artifacts
       language: generic
-      before_deploy: curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
+      before_deploy:
+        - curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
+        - docker login -u splintercommunity -p $DOCKER_TOKEN
       deploy:
         - provider: script
           script: bash ci/publish_saplings
           on:
             branch: master
+        - provider: script
+          script: bash ci/publish-docker master
+          on:
+            branch: master
+        - provider: script
+          script: bash ci/publish-docker
+          on:
+            tags: true
+            all_branches: true

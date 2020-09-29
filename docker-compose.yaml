@@ -73,11 +73,11 @@ services:
 
   splinter-ui-alpha:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
-    image: splinter-ui
+    image: ${NAMESPACE}splinter-ui:${ISOLATION_ID}
     container_name: splinter-ui-alpha
     expose:
       - 80
@@ -137,11 +137,11 @@ services:
 
   splinter-ui-beta:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       args:
         REPO_VERSION: ${REPO_VERSION}
-    image: splinter-ui
+    image: ${NAMESPACE}splinter-ui:${ISOLATION_ID}
     container_name: splinter-ui-beta
     expose:
       - 80
