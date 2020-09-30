@@ -15,19 +15,19 @@
 # Dockerfile for running unit tests and lint on the Grid UI
 FROM node:lts-alpine
 
-WORKDIR /grid-ui/saplings/product
+WORKDIR /ui/saplings/product
 
-COPY ./grid-ui/saplings/product/package*.json /grid-ui/saplings/product
+COPY ./ui/saplings/product/package*.json /ui/saplings/product
 
 RUN apk add git
 
 # Gives npm permission to run the prepare script in splinter-canopyjs as root
 RUN npm config set unsafe-perm true && npm install
 
-COPY ./grid-ui/saplings/product /grid-ui/saplings/product
+COPY ./ui/saplings/product /ui/saplings/product
 
-COPY ./sdk/protos /grid-ui/saplings/product/protos
+COPY ./sdk/protos /ui/saplings/product/protos
 
-RUN cd /grid-ui/saplings/product && \
+RUN cd /ui/saplings/product && \
   npm install && \
   npm run generate-proto-files ./protos

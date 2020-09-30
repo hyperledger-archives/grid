@@ -79,8 +79,8 @@ pipeline {
 
         stage("Build Grid UI Test Dependencies") {
             steps {
-                sh 'docker build grid-ui -f grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
-                sh 'docker build . -f grid-ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
+                sh 'docker build ui/grid-ui -f ui/grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
+                sh 'docker build . -f ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
             }
         }
 
