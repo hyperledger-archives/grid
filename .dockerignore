@@ -25,6 +25,7 @@ contracts/track_and_trace/src/messages/
 # Webpack
 **/build
 **/dist
+**/setupProxy.js
 
 tests/sawtooth_sc_test/protobuf/
 
