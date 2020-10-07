@@ -1,0 +1,14 @@
+# Node
+**/node_modules
+**/package-lock.json
+
+# Webpack
+**/build
+**/dist
+grid-ui/src/setupProxy.js
+
+# Saplings
+sapling-dev-server/circuits
+sapling-dev-server/product
+sapling-dev-server/profile
+sapling-dev-server/register-login.js
