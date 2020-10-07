@@ -23,11 +23,11 @@ paths:
   /batches:
     post:
       tags:
-        - Sawtooth Validator
-      summary: Sends a BatchList to the Sawtooth Validator
+        - Transaction
+      summary: Submit a BatchList of Transactions
       description: |
         Accepts a protobuf formatted `BatchList` as an octet-stream binary
-        file and submits it to the validator to be committed.
+        file and submits it to be committed.
 
         The API will return immediately with a status of `202`. There will be
         no `data` object, only a `link` to a `/batch_statuses` endpoint to be
@@ -60,10 +60,9 @@ paths:
   /batch_statuses:
     get:
       tags:
-        - Sawtooth Validator
+        - Transaction
       summary:
-        Fetches the committed statuses for a set of batches from the Sawtooth
-        Validator
+        Fetch the committed statuses for a set of batches
       description: |
         Fetches an array of objects with a status and id for each batch
         requested. There are four possible statuses with string values
