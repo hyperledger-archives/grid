@@ -30,6 +30,11 @@
 mod diesel;
 
 #[cfg(feature = "postgres")]
-pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
-#[cfg(feature = "postgres")]
 pub use self::diesel::postgres::clear_database as clear_postgres_database;
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+
+#[cfg(feature = "sqlite")]
+pub use self::diesel::sqlite::clear_database as clear_sqlite_database;
+#[cfg(feature = "sqlite")]
+pub use self::diesel::sqlite::run_migrations as run_sqlite_migrations;
