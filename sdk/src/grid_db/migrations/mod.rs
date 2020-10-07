@@ -31,3 +31,5 @@ mod diesel;
 
 #[cfg(feature = "postgres")]
 pub use self::diesel::postgres::run_migrations as run_postgres_migrations;
+#[cfg(feature = "postgres")]
+pub use self::diesel::postgres::clear_database as clear_postgres_database;
