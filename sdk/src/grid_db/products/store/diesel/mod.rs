@@ -44,7 +44,7 @@ impl<C: diesel::Connection> DieselProductStore<C> {
 
 #[cfg(feature = "postgres")]
 impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -110,7 +110,7 @@ impl ProductStore for DieselProductStore<diesel::pg::PgConnection> {
 
 #[cfg(feature = "sqlite")]
 impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         ProductStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -174,7 +174,7 @@ impl ProductStore for DieselProductStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
-impl Into<(NewProduct, Vec<NewProductPropertyValue>)> for &Product {
+impl Into<(NewProduct, Vec<NewProductPropertyValue>)> for Product {
     fn into(self) -> (NewProduct, Vec<NewProductPropertyValue>) {
         let product = NewProduct {
             product_id: self.product_id.clone(),

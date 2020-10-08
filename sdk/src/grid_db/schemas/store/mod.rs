@@ -55,7 +55,7 @@ pub trait SchemaStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `schema` - The new schema to be added
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError>;
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError>;
 
     /// Retrieve a schema from the underlying storage
     ///

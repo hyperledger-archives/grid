@@ -55,7 +55,7 @@ pub struct LatLongValue {
 }
 
 pub trait ProductStore: Send + Sync {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError>;
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError>;
 
     fn fetch_product(
         &self,

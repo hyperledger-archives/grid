@@ -33,7 +33,7 @@ impl MemorySchemaStore {
 }
 
 impl SchemaStore for MemorySchemaStore {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         let mut inner = self
             .inner
             .lock()
@@ -48,7 +48,7 @@ impl SchemaStore for MemorySchemaStore {
             schema.name.clone()
         };
 
-        inner.insert(key, schema.clone());
+        inner.insert(key, schema);
 
         Ok(())
     }
