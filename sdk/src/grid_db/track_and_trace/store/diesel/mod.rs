@@ -28,7 +28,6 @@ use super::{
     ReportedValueReporterToAgentMetadata, Reporter, TrackAndTraceStore, TrackAndTraceStoreError,
 };
 use crate::database::DatabaseError;
-use crate::grid_db::commits::MAX_COMMIT_NUM;
 use operations::add_associated_agents::TrackAndTraceStoreAddAssociatedAgentsOperation as _;
 use operations::add_properties::TrackAndTraceStoreAddPropertiesOperation as _;
 use operations::add_proposals::TrackAndTraceStoreAddProposalsOperation as _;
@@ -587,7 +586,7 @@ fn make_reported_value_models(
             latitude_value: val.lat_long_value.clone().map(|lat_long| lat_long.0),
             longitude_value: val.lat_long_value.clone().map(|lat_long| lat_long.1),
             start_commit_num: val.start_commit_num,
-            end_commit_num: MAX_COMMIT_NUM,
+            end_commit_num: val.end_commit_num,
             service_id: val.service_id.clone(),
         });
 
