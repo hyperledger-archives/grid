@@ -63,7 +63,7 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(Record::from(rec.unwrap())))
+        Ok(rec.map(Record::from))
     }
 }
 
@@ -100,6 +100,6 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(Record::from(rec.unwrap())))
+        Ok(rec.map(Record::from))
     }
 }

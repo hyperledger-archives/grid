@@ -84,7 +84,7 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(make_property_with_data_type(prop.unwrap())))
+        Ok(prop.map(make_property_with_data_type))
     }
 }
 
@@ -137,6 +137,6 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(make_property_with_data_type(prop.unwrap())))
+        Ok(prop.map(make_property_with_data_type))
     }
 }

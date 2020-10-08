@@ -98,10 +98,7 @@ impl<'a>
 
         let rvs = Self::get_rvs_for_rv(&*self.conn, roots)?;
 
-        Ok(Some(ReportedValueReporterToAgentMetadata::from((
-            val.unwrap(),
-            rvs,
-        ))))
+        Ok(val.map(|v| ReportedValueReporterToAgentMetadata::from((v, rvs))))
     }
 
     fn get_root_rvs(
@@ -239,10 +236,7 @@ impl<'a>
 
         let rvs = Self::get_rvs_for_rv(&*self.conn, roots)?;
 
-        Ok(Some(ReportedValueReporterToAgentMetadata::from((
-            val.unwrap(),
-            rvs,
-        ))))
+        Ok(val.map(|v| ReportedValueReporterToAgentMetadata::from((v, rvs))))
     }
 
     fn get_root_rvs(
