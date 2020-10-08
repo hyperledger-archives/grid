@@ -154,9 +154,12 @@ impl<'a>
                 .select(reported_value_reporter_to_agent_metadata::all_columns)
                 .filter(
                     reported_value_reporter_to_agent_metadata::parent_name
-                        .eq(&rv.property_name)
+                        .eq(Some(rv.property_name.clone()))
                         .and(
                             reported_value_reporter_to_agent_metadata::record_id.eq(&rv.record_id),
+                        ).and(
+                            reported_value_reporter_to_agent_metadata::reported_value_end_commit_num.eq(
+                                &rv.reported_value_end_commit_num),
                         ),
                 );
 
@@ -292,9 +295,12 @@ impl<'a>
                 .select(reported_value_reporter_to_agent_metadata::all_columns)
                 .filter(
                     reported_value_reporter_to_agent_metadata::parent_name
-                        .eq(&rv.property_name)
+                        .eq(Some(rv.property_name.clone()))
                         .and(
                             reported_value_reporter_to_agent_metadata::record_id.eq(&rv.record_id),
+                        ).and(
+                            reported_value_reporter_to_agent_metadata::reported_value_end_commit_num.eq(
+                                &rv.reported_value_end_commit_num),
                         ),
                 );
 

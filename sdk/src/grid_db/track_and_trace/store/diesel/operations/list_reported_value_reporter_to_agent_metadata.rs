@@ -37,6 +37,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
         conn: &C,
         record_id: &str,
         property_name: &str,
+        end_commit_num: i64,
         service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>>;
     fn get_rvs_for_rv(
@@ -84,8 +85,13 @@ impl<'a>
 
         for model in query {
             let rv: ReportedValueReporterToAgentMetadataModel = model;
-            let roots =
-                Self::get_root_rvs(&*self.conn, &record_id, &property_name, service_id.clone())?;
+            let roots = Self::get_root_rvs(
+                &*self.conn,
+                &record_id,
+                &property_name,
+                rv.reported_value_end_commit_num,
+                service_id,
+            )?;
 
             let children = Self::get_rvs_for_rv(&*self.conn, roots)?;
 
@@ -99,6 +105,7 @@ impl<'a>
         conn: &PgConnection,
         record_id: &str,
         property_name: &str,
+        end_commit_num: i64,
         service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
@@ -110,7 +117,7 @@ impl<'a>
                     .and(reported_value_reporter_to_agent_metadata::parent_name.is_null())
                     .and(
                         reported_value_reporter_to_agent_metadata::reported_value_end_commit_num
-                            .le(MAX_COMMIT_NUM),
+                            .eq(end_commit_num),
                     )
                     .and(
                         reported_value_reporter_to_agent_metadata::property_name.eq(property_name),
@@ -142,7 +149,10 @@ impl<'a>
                         .eq(&rv.property_name)
                         .and(
                             reported_value_reporter_to_agent_metadata::record_id.eq(&rv.record_id),
-                        ),
+                        )
+                        .and(
+                            reported_value_reporter_to_agent_metadata::reported_value_end_commit_num.eq(
+                                &rv.reported_value_end_commit_num))
                 );
 
             if let Some(service_id) = &rv.service_id {
@@ -209,8 +219,13 @@ impl<'a>
 
         for model in query {
             let rv: ReportedValueReporterToAgentMetadataModel = model;
-            let roots =
-                Self::get_root_rvs(&*self.conn, &record_id, &property_name, service_id.clone())?;
+            let roots = Self::get_root_rvs(
+                &*self.conn,
+                &record_id,
+                &property_name,
+                rv.reported_value_end_commit_num,
+                service_id,
+            )?;
 
             let children = Self::get_rvs_for_rv(&*self.conn, roots)?;
 
@@ -224,6 +239,7 @@ impl<'a>
         conn: &SqliteConnection,
         record_id: &str,
         property_name: &str,
+        end_commit_num: i64,
         service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
@@ -235,7 +251,7 @@ impl<'a>
                     .and(reported_value_reporter_to_agent_metadata::parent_name.is_null())
                     .and(
                         reported_value_reporter_to_agent_metadata::reported_value_end_commit_num
-                            .le(MAX_COMMIT_NUM),
+                            .eq(end_commit_num),
                     )
                     .and(
                         reported_value_reporter_to_agent_metadata::property_name.eq(property_name),
@@ -267,7 +283,10 @@ impl<'a>
                         .eq(&rv.property_name)
                         .and(
                             reported_value_reporter_to_agent_metadata::record_id.eq(&rv.record_id),
-                        ),
+                        )
+                        .and(
+                            reported_value_reporter_to_agent_metadata::reported_value_end_commit_num.eq(
+                                &rv.reported_value_end_commit_num)),
                 );
 
             if let Some(service_id) = &rv.service_id {
