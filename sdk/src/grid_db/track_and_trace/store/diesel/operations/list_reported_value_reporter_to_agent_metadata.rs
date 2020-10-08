@@ -31,13 +31,13 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError>;
     fn get_root_rvs(
         conn: &C,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>>;
     fn get_rvs_for_rv(
         conn: &C,
@@ -54,7 +54,7 @@ impl<'a>
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         let query: Vec<ReportedValueReporterToAgentMetadataModel> = reported_value_reporter_to_agent_metadata::table
             .filter(
@@ -99,7 +99,7 @@ impl<'a>
         conn: &PgConnection,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
             .into_boxed()
@@ -179,7 +179,7 @@ impl<'a>
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         let query: Vec<ReportedValueReporterToAgentMetadataModel> = reported_value_reporter_to_agent_metadata::table
             .filter(
@@ -224,7 +224,7 @@ impl<'a>
         conn: &SqliteConnection,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
             .into_boxed()

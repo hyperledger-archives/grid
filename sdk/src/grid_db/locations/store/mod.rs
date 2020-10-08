@@ -80,7 +80,7 @@ pub trait LocationStore: Send + Sync {
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError>;
 
     /// Gets locations from the underlying storage
@@ -88,10 +88,8 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - optional - The service ID to get the locations for
-    fn list_locations(
-        &self,
-        service_id: Option<String>,
-    ) -> Result<Vec<Location>, LocationStoreError>;
+    fn list_locations(&self, service_id: Option<&str>)
+        -> Result<Vec<Location>, LocationStoreError>;
 
     /// Gets locations from the underlying storage
     ///
@@ -122,14 +120,14 @@ where
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         (**self).fetch_location(location_id, service_id)
     }
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         (**self).list_locations(service_id)
     }

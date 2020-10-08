@@ -26,7 +26,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError>;
 }
 
@@ -37,7 +37,7 @@ impl<'a> TrackAndTraceStoreListProposalsOperation
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         let mut query = proposal::table
             .into_boxed()
@@ -80,7 +80,7 @@ impl<'a> TrackAndTraceStoreListProposalsOperation
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         let mut query = proposal::table
             .into_boxed()

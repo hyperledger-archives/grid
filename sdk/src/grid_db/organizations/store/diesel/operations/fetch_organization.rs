@@ -24,7 +24,7 @@ pub(in crate::grid_db::organizations::store::diesel) trait OrganizationStoreFetc
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError>;
 }
 
@@ -35,7 +35,7 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         let org = organization::table
             .filter(
@@ -69,7 +69,7 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         let org = organization::table
             .filter(

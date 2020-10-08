@@ -73,7 +73,7 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -86,7 +86,7 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -141,7 +141,7 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -154,7 +154,7 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {

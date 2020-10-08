@@ -26,7 +26,7 @@ pub(in crate::grid_db::agents::store::diesel) trait AgentStoreFetchAgentOperatio
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError>;
 }
 
@@ -35,7 +35,7 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         self.conn
             .build_transaction()
@@ -93,7 +93,7 @@ impl<'a> AgentStoreFetchAgentOperation
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
@@ -122,7 +122,6 @@ impl<'a> AgentStoreFetchAgentOperation
                     .filter(
                         role::public_key
                             .eq(&pub_key)
-                            .and(role::service_id.eq(&service_id))
                             .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
                     )
                     .load::<RoleModel>(self.conn)

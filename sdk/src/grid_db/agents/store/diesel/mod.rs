@@ -59,7 +59,7 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -72,7 +72,7 @@ impl AgentStore for DieselAgentStore<diesel::pg::PgConnection> {
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -106,7 +106,7 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
         .add_agent(agent.clone().into(), make_role_models(&agent))
     }
 
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -119,7 +119,7 @@ impl AgentStore for DieselAgentStore<diesel::sqlite::SqliteConnection> {
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         AgentStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {

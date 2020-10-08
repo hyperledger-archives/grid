@@ -32,14 +32,14 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreF
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError>;
     fn get_root_rvs(
         conn: &C,
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>>;
     fn get_rvs_for_rv(
         conn: &C,
@@ -57,7 +57,7 @@ impl<'a>
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         let height = commit_height.unwrap_or(MAX_COMMIT_NUM);
         let mut query = reported_value_reporter_to_agent_metadata::table
@@ -72,7 +72,7 @@ impl<'a>
                     ),
             );
 
-        if let Some(service_id) = service_id.clone() {
+        if let Some(service_id) = service_id {
             query =
                 query.filter(reported_value_reporter_to_agent_metadata::service_id.eq(service_id));
         } else {
@@ -109,7 +109,7 @@ impl<'a>
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
             .into_boxed()
@@ -198,7 +198,7 @@ impl<'a>
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         let height = commit_height.unwrap_or(MAX_COMMIT_NUM);
         let mut query = reported_value_reporter_to_agent_metadata::table
@@ -213,7 +213,7 @@ impl<'a>
                     ),
             );
 
-        if let Some(service_id) = service_id.clone() {
+        if let Some(service_id) = service_id {
             query =
                 query.filter(reported_value_reporter_to_agent_metadata::service_id.eq(service_id));
         } else {
@@ -250,7 +250,7 @@ impl<'a>
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<ReportedValueReporterToAgentMetadataModel>> {
         let mut query = reported_value_reporter_to_agent_metadata::table
             .into_boxed()

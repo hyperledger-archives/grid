@@ -23,7 +23,7 @@ pub(in crate::grid_db::organizations::store::diesel) trait OrganizationStoreList
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError>;
 }
 
@@ -33,7 +33,7 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         let orgs = organization::table
             .select(organization::all_columns)
@@ -66,7 +66,7 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         let orgs = organization::table
             .select(organization::all_columns)

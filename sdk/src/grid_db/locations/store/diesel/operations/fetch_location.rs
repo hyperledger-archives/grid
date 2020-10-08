@@ -30,12 +30,12 @@ pub(in crate::grid_db::locations::store::diesel) trait LocationStoreFetchLocatio
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError>;
     fn get_root_attributes(
         conn: &C,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<LocationAttributeModel>>;
     fn get_attributes(
         conn: &C,
@@ -50,7 +50,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         self.conn
             .build_transaction()
@@ -77,8 +77,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
                         ))
                     })?;
 
-                let roots =
-                    Self::get_root_attributes(&*self.conn, &location_id, service_id.clone())?;
+                let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
                 let attrs = Self::get_attributes(&*self.conn, roots)?;
 
@@ -89,7 +88,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
     fn get_root_attributes(
         conn: &PgConnection,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<LocationAttributeModel>> {
         location_attribute::table
             .select(location_attribute::all_columns)
@@ -141,7 +140,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         self.conn
             .immediate_transaction::<_, LocationStoreError, _>(|| {
@@ -166,8 +165,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
                         ))
                     })?;
 
-                let roots =
-                    Self::get_root_attributes(&*self.conn, &location_id, service_id.clone())?;
+                let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
                 let attrs = Self::get_attributes(&*self.conn, roots)?;
 
@@ -178,7 +176,7 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
     fn get_root_attributes(
         conn: &SqliteConnection,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> QueryResult<Vec<LocationAttributeModel>> {
         location_attribute::table
             .select(location_attribute::all_columns)

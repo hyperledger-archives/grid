@@ -57,7 +57,7 @@ pub trait AgentStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - The service id to list agents for
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError>;
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError>;
 
     /// Fetches an agent from the underlying storage
     ///
@@ -68,7 +68,7 @@ pub trait AgentStore: Send + Sync {
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError>;
 
     ///  Updates an agent in the underlying storage
@@ -87,14 +87,14 @@ where
         (**self).add_agent(agent)
     }
 
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         (**self).list_agents(service_id)
     }
 
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         (**self).fetch_agent(pub_key, service_id)
     }

@@ -23,12 +23,12 @@ use crate::grid_db::commits::MAX_COMMIT_NUM;
 use diesel::prelude::*;
 
 pub(in crate::grid_db::agents::store::diesel) trait AgentStoreListAgentsOperation {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError>;
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         self.conn
             .build_transaction()
             .read_write()
@@ -91,7 +91,7 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
 impl<'a> AgentStoreListAgentsOperation
     for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
                 let agent_models: Vec<AgentModel> = agent::table

@@ -26,7 +26,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreF
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError>;
 }
 
@@ -37,7 +37,7 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         let mut query = record::table
             .into_boxed()
@@ -74,7 +74,7 @@ impl<'a> TrackAndTraceStoreFetchRecordOperation
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         let mut query = record::table
             .into_boxed()
