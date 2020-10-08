@@ -152,6 +152,8 @@ impl From<StateChange> for DbStateChange {
 
 pub trait EventHandler: Send {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError>;
+
+    fn cloned_box(&self) -> Box<dyn EventHandler>;
 }
 
 #[macro_export]

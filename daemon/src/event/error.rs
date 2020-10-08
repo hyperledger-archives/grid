@@ -18,6 +18,12 @@
 use std::error::Error;
 use std::fmt;
 
+use grid_sdk::grid_db::{
+    agents::store::AgentStoreError, commits::store::CommitStoreError,
+    organizations::store::OrganizationStoreError, products::store::ProductStoreError,
+    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
+};
+
 #[derive(Debug)]
 pub struct EventProcessorError(pub String);
 
@@ -37,6 +43,48 @@ impl Error for EventError {}
 impl fmt::Display for EventError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Event Error: {}", self.0)
+    }
+}
+
+impl From<CommitStoreError> for EventError {
+    fn from(err: CommitStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<AgentStoreError> for EventError {
+    fn from(err: AgentStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<OrganizationStoreError> for EventError {
+    fn from(err: OrganizationStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<ProductStoreError> for EventError {
+    fn from(err: ProductStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<SchemaStoreError> for EventError {
+    fn from(err: SchemaStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<TrackAndTraceStoreError> for EventError {
+    fn from(err: TrackAndTraceStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<diesel::result::Error> for EventError {
+    fn from(err: diesel::result::Error) -> Self {
+        EventError(format!("{}", err))
     }
 }
 
