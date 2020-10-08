@@ -64,12 +64,7 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `location` - The location to be added
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError>;
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError>;
 
     /// Fetches a location from the underlying storage
     ///
@@ -96,25 +91,15 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `location` - The updated location
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError>;
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError>;
 }
 
 impl<LS> LocationStore for Box<LS>
 where
     LS: LocationStore + ?Sized,
 {
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
-        (**self).add_location(location, attributes, current_commit_num)
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        (**self).add_location(location)
     }
 
     fn fetch_location(
@@ -132,12 +117,7 @@ where
         (**self).list_locations(service_id)
     }
 
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
-        (**self).update_location(location, attributes, current_commit_num)
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        (**self).update_location(location)
     }
 }
