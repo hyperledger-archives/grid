@@ -101,20 +101,6 @@ mod test {
     use super::*;
     use crate::config::Endpoint;
     use crate::database;
-    use crate::database::{
-        helpers::MAX_COMMIT_NUM,
-        models::{
-            LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
-            NewLocation, NewLocationPropertyValue, NewOrganization, NewProduct,
-            NewProductPropertyValue, NewProperty, NewProposal, NewRecord, NewReportedValue,
-            NewReporter,
-        },
-        schema::{
-            associated_agent, grid_property_definition, grid_schema, location,
-            location_property_value, product, product_property_value, property, proposal, record,
-            reported_value, reporter,
-        },
-    };
     use crate::rest_api::{
         error::RestApiResponseError,
         routes::{AgentSlice, OrganizationSlice},
@@ -124,14 +110,13 @@ mod test {
         process_batch_status_response, process_validator_response, query_validator,
     };
     use crate::submitter::*;
-    use grid_sdk::grid_db::migrations::run_postgres_migrations;
 
     use actix_web::{
         http,
         test::{start, TestServer},
         web, App,
     };
-    use diesel::{dsl::insert_into, Connection, PgConnection, RunQueryDsl};
+    use diesel::{Connection, PgConnection};
     use futures::prelude::*;
     use sawtooth_sdk::messages::batch::{Batch, BatchList};
     use sawtooth_sdk::messages::client_batch_submit::{
@@ -139,10 +124,22 @@ mod test {
         ClientBatchStatusResponse_Status, ClientBatchStatus_Status, ClientBatchSubmitRequest,
         ClientBatchSubmitResponse, ClientBatchSubmitResponse_Status,
     };
+
+    use grid_sdk::grid_db::{
+        agents::store::{diesel::DieselAgentStore, Agent},
+        locations::store::{diesel::DieselLocationStore, Location, LocationAttribute},
+        migrations::{clear_postgres_database, run_postgres_migrations},
+        organizations::store::{diesel::DieselOrganizationStore, Organization},
+        products::store::{diesel::DieselProductStore, Product, PropertyValue},
+        schemas::store::{diesel::DieselSchemaStore, PropertyDefinition, Schema},
+        track_and_trace::store::{
+            diesel::DieselTrackAndTraceStore, AssociatedAgent, LatLongValue, Property, Proposal,
+            Record, ReportedValue, Reporter,
+        },
+    };
     use sawtooth_sdk::messages::validator::{Message, Message_MessageType};
 
     use sawtooth_sdk::messaging::stream::{MessageFuture, MessageSender, SendError};
-    use serde_json::{Map, Value as JsonValue};
     use std::pin::Pin;
     use std::sync::mpsc::channel;
 
@@ -346,7 +343,8 @@ mod test {
                 let mock_batch_submitter = Box::new(MockBatchSubmitter {
                     sender: mock_sender,
                 });
-                AppState::new(mock_batch_submitter, get_connection_pool())
+                let db_executor = DbExecutor::from_pg_pool(get_connection_pool());
+                AppState::new(mock_batch_submitter, db_executor)
             };
             let endpoint_backend = match backend {
                 Backend::Splinter => "splinter:",
@@ -668,7 +666,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
-        clear_agents_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(http::Method::GET, srv.url("/agent"))
             .send()
@@ -680,7 +678,7 @@ mod test {
         assert!(body.is_empty());
 
         // Adds a single Agent to the test database
-        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
+        populate_agent_table(test_pool.clone(), get_agent(None));
 
         // Making another request to the database
         let mut response = srv
@@ -712,7 +710,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         // Clears the agents table in the test database
-        clear_agents_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -727,10 +725,7 @@ mod test {
         assert!(body.is_empty());
 
         // Adds a single Agent to the test database
-        populate_agent_table(
-            &test_pool.get().unwrap(),
-            &get_agent(Some(TEST_SERVICE_ID.to_string())),
-        );
+        populate_agent_table(test_pool, get_agent(Some(TEST_SERVICE_ID.to_string())));
 
         // Making another request to the database
         let mut response = srv
@@ -752,17 +747,17 @@ mod test {
         assert_eq!(agent.service_id, Some(TEST_SERVICE_ID.to_string()));
     }
 
-    ///
-    /// Verifies a GET /organization responds with an Ok response
-    ///     with an empty organization table
-    ///
+    /////
+    ///// Verifies a GET /organization responds with an Ok response
+    /////     with an empty organization table
+    /////
     #[actix_rt::test]
     async fn test_list_organizations_empty() {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
-        clear_organization_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(http::Method::GET, srv.url("/organization"))
             .send()
@@ -785,7 +780,8 @@ mod test {
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_organization_table(test_pool, get_organization(None));
 
         // Making another request to the database
         let mut response = srv
@@ -814,8 +810,9 @@ mod test {
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         populate_organization_table(
-            &test_pool.get().unwrap(),
+            test_pool,
             get_organization(Some(TEST_SERVICE_ID.to_string())),
         );
 
@@ -853,7 +850,8 @@ mod test {
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds two instances of organization with the same org_id to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_organization_table(test_pool, get_updated_organization());
 
         // Making another request to the database
         let mut response = srv
@@ -882,7 +880,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the organization table in the test database
-        clear_organization_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/organization/not_a_valid_id"))
             .send()
@@ -901,7 +899,8 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         //Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_organization_table(test_pool, get_organization(None));
         let response = srv
             .request(
                 http::Method::GET,
@@ -927,7 +926,8 @@ mod test {
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_organization(None));
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_organization_table(test_pool, get_organization(None));
 
         // Making another request to the database
         let mut response = srv
@@ -960,7 +960,8 @@ mod test {
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
-        populate_organization_table(&test_pool.get().unwrap(), get_updated_organization());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_organization_table(test_pool, get_updated_organization());
 
         // Making another request to the database
         let mut response = srv
@@ -991,8 +992,9 @@ mod test {
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
 
         // Adds an organization to the test database
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         populate_organization_table(
-            &test_pool.get().unwrap(),
+            test_pool,
             get_organization(Some(TEST_SERVICE_ID.to_string())),
         );
 
@@ -1028,7 +1030,8 @@ mod test {
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
         //Adds an agent to the test database
-        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_agent_table(test_pool, get_agent(None));
 
         let mut response = srv
             .request(http::Method::GET, srv.url(&format!("/agent/{}", KEY1)))
@@ -1053,10 +1056,8 @@ mod test {
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
 
         //Adds an agent to the test database
-        populate_agent_table(
-            &test_pool.get().unwrap(),
-            &get_agent(Some(TEST_SERVICE_ID.to_string())),
-        );
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_agent_table(test_pool, get_agent(Some(TEST_SERVICE_ID.to_string())));
 
         let mut response = srv
             .request(
@@ -1084,7 +1085,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clear the agents table in the test database
-        clear_agents_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/agent/unknown_public_key"))
             .send()
@@ -1103,7 +1104,8 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         //Adds an agent to the test database
-        populate_agent_table(&test_pool.get().unwrap(), &get_agent(None));
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_agent_table(test_pool, get_agent(None));
 
         let response = srv
             .request(
@@ -1130,7 +1132,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
-        clear_grid_schema_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(http::Method::GET, srv.url("/schema"))
             .send()
@@ -1141,7 +1143,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
+        populate_grid_schema_table(test_pool, get_grid_schema(None));
         let mut response = srv
             .request(http::Method::GET, srv.url("/schema"))
             .send()
@@ -1169,7 +1171,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         // Clears the grid schema table in the test database
-        clear_grid_schema_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1184,9 +1186,8 @@ mod test {
         assert!(empty_body.is_empty());
 
         populate_grid_schema_table(
-            &test_pool.get().unwrap(),
-            &get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
+            test_pool,
+            get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
         );
         let mut response = srv
             .request(
@@ -1217,7 +1218,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_grid_schema_table(test_pool, get_grid_schema(None));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1243,10 +1245,10 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         populate_grid_schema_table(
-            &test_pool.get().unwrap(),
-            &get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
+            test_pool,
+            get_grid_schema(Some(TEST_SERVICE_ID.to_string())),
         );
         let mut response = srv
             .request(
@@ -1277,7 +1279,7 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_grid_schema_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/schema/not_in_database"))
             .send()
@@ -1295,7 +1297,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        populate_grid_schema_table(&test_pool.get().unwrap(), &get_grid_schema(None), None);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_grid_schema_table(test_pool, get_grid_schema(None));
         let response = srv
             .request(
                 http::Method::GET,
@@ -1321,7 +1324,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
         // Clears the product table in the test database
-        clear_product_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(http::Method::GET, srv.url("/product"))
             .send()
@@ -1332,7 +1335,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
+        populate_product_table(test_pool, get_product(None));
         let mut response = srv
             .request(http::Method::GET, srv.url("/product"))
             .send()
@@ -1361,7 +1364,9 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_location_table(&test_pool.get().unwrap());
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
         let mut response = srv
             .request(http::Method::GET, srv.url("location"))
             .send()
@@ -1372,7 +1377,8 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+        populate_location_table(test_pool, get_location(None));
+
         let mut response = srv
             .request(http::Method::GET, srv.url("/location"))
             .send()
@@ -1384,8 +1390,6 @@ mod test {
         assert_eq!(body.len(), 1);
 
         let test_location = body.first().unwrap();
-        assert_eq!(test_location.location_id, "0653114000000".to_string());
-        assert_eq!(test_location.location_address, "test_address".to_string());
         assert_eq!(
             test_location.location_namespace,
             "Grid Location".to_string()
@@ -1405,7 +1409,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         // Clears the product table in the test database
-        clear_product_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1419,11 +1423,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_product_table(
-            &test_pool.get().unwrap(),
-            &get_product(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
-        );
+        populate_product_table(test_pool, get_product(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1457,7 +1457,7 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
         // Clears the location table in the test database
-        clear_location_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1471,11 +1471,7 @@ mod test {
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert!(empty_body.is_empty());
 
-        populate_location_table(
-            &test_pool.get().unwrap(),
-            &get_location(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
-        );
+        populate_location_table(test_pool, get_location(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1491,7 +1487,6 @@ mod test {
 
         let test_location = body.first().unwrap();
         assert_eq!(test_location.location_id, "0653114000000".to_string());
-        assert_eq!(test_location.location_address, "test_address".to_string());
         assert_eq!(
             test_location.location_namespace,
             "Grid Location".to_string()
@@ -1510,7 +1505,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_product_table(test_pool, get_product(None));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1538,7 +1534,11 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_location_table(test_pool, get_location(None));
+
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1551,7 +1551,6 @@ mod test {
         let test_location: LocationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(test_location.location_id, "0653114000000".to_string());
-        assert_eq!(test_location.location_address, "test_address".to_string());
         assert_eq!(
             test_location.location_namespace,
             "Grid Location".to_string()
@@ -1569,11 +1568,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        populate_product_table(
-            &test_pool.get().unwrap(),
-            &get_product(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
-        );
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_product_table(test_pool, get_product(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1605,11 +1601,10 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        populate_location_table(
-            &test_pool.get().unwrap(),
-            &get_location(Some(TEST_SERVICE_ID.to_string())),
-            Some(TEST_SERVICE_ID.to_string()),
-        );
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_location_table(test_pool, get_location(Some(TEST_SERVICE_ID.to_string())));
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -1625,7 +1620,6 @@ mod test {
         let test_location: LocationSlice =
             serde_json::from_slice(&*response.body().await.unwrap()).unwrap();
         assert_eq!(test_location.location_id, "0653114000000".to_string());
-        assert_eq!(test_location.location_address, "test_address".to_string());
         assert_eq!(
             test_location.location_namespace,
             "Grid Location".to_string()
@@ -1644,7 +1638,7 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_product_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/product/not_in_database"))
             .send()
@@ -1662,7 +1656,7 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_location_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/location/not_in_database"))
             .send()
@@ -1680,8 +1674,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        clear_product_table(&test_pool.get().unwrap());
-        populate_product_table(&test_pool.get().unwrap(), &get_product(None), None);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_product_table(test_pool, get_product(None));
         let response = srv
             .request(
                 http::Method::GET,
@@ -1705,8 +1699,8 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        clear_location_table(&test_pool.get().unwrap());
-        populate_location_table(&test_pool.get().unwrap(), &get_location(None), None);
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+        populate_location_table(test_pool, get_location(None));
         let response = srv
             .request(
                 http::Method::GET,
@@ -1730,19 +1724,19 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles(None));
-        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents(None));
-        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal(None));
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(None),
-        );
-        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord", None));
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_agent_table(test_pool.clone(), get_agents_with_roles(None));
+        populate_associated_agent_table(test_pool.clone(), get_associated_agents(None));
+        populate_proposal_table(test_pool.clone(), get_proposal(None));
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_record(None));
+        populate_record_table(test_pool.clone(), get_record("TestRecord", None));
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(None),
-            &get_reported_value_for_property_record(None),
-            &get_reporter_for_property_record(None),
+            test_pool,
+            get_property_for_record(None),
+            get_reported_value_for_property_record(None),
+            get_reporter_for_property_record(None),
         );
         let mut response = srv
             .request(http::Method::GET, srv.url(&format!("/record")))
@@ -1769,12 +1763,7 @@ mod test {
             Value::String("value_1".to_string())
         );
         assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[0].updates[0].reporter,
-            KEY1,
-            "Arya Stark",
-            None,
-        );
+        validate_reporter(&test_record.properties[0].updates[0].reporter, KEY1, None);
         assert_eq!(
             test_record.properties[0]
                 .value
@@ -1798,7 +1787,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY1,
-            "Arya Stark",
             None,
         );
 
@@ -1812,12 +1800,7 @@ mod test {
             Value::Bool(true)
         );
         assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[1].updates[0].reporter,
-            KEY2,
-            "Jon Snow",
-            None,
-        );
+        validate_reporter(&test_record.properties[1].updates[0].reporter, KEY2, None);
         assert_eq!(
             test_record.properties[1]
                 .value
@@ -1841,7 +1824,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY2,
-            "Jon Snow",
             None,
         );
 
@@ -1872,31 +1854,31 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
         populate_agent_table(
-            &test_pool.get().unwrap(),
-            &get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_associated_agent_table(
-            &test_pool.get().unwrap(),
-            &get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_proposal_table(
-            &test_pool.get().unwrap(),
-            &get_proposal(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_proposal(Some(TEST_SERVICE_ID.to_string())),
         );
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(Some(TEST_SERVICE_ID.to_string())),
-        );
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_record(None));
         populate_record_table(
-            &test_pool.get().unwrap(),
-            &get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
         );
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
-            &get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
-            &get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            test_pool,
+            get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
+            get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
         );
         let mut response = srv
             .request(
@@ -1934,7 +1916,6 @@ mod test {
         validate_reporter(
             &test_record.properties[0].updates[0].reporter,
             KEY1,
-            "Arya Stark",
             Some(TEST_SERVICE_ID.to_string()),
         );
         assert_eq!(
@@ -1968,7 +1949,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY1,
-            "Arya Stark",
             Some(TEST_SERVICE_ID.to_string()),
         );
 
@@ -1989,7 +1969,6 @@ mod test {
         validate_reporter(
             &test_record.properties[1].updates[0].reporter,
             KEY2,
-            "Jon Snow",
             Some(TEST_SERVICE_ID.to_string()),
         );
         assert_eq!(
@@ -2023,7 +2002,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY2,
-            "Jon Snow",
             Some(TEST_SERVICE_ID.to_string()),
         );
 
@@ -2062,8 +2040,9 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         // Adds two instances of record with the same org_id to the test database
-        populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
+        populate_record_table(test_pool, get_updated_record());
 
         // Making another request to the database
         let mut response = srv
@@ -2092,13 +2071,14 @@ mod test {
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
 
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         // Adds two instances of record with the same org_id to the test database
-        populate_record_table(&test_pool.get().unwrap(), &get_multuple_records());
+        populate_record_table(test_pool.clone(), get_multiple_records());
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(None),
-            &get_reported_value_for_property_record(None),
-            &get_reporter_for_property_record(None),
+            test_pool,
+            get_property_for_record(None),
+            get_reported_value_for_property_record(None),
+            get_reporter_for_property_record(None),
         );
 
         // Making another request to the database
@@ -2128,19 +2108,18 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_agent_table(&test_pool.get().unwrap(), &get_agents_with_roles(None));
-        populate_associated_agent_table(&test_pool.get().unwrap(), &get_associated_agents(None));
-        populate_proposal_table(&test_pool.get().unwrap(), &get_proposal(None));
-        populate_record_table(&test_pool.get().unwrap(), &get_record("TestRecord", None));
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(None),
-        );
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_agent_table(test_pool.clone(), get_agents_with_roles(None));
+        populate_associated_agent_table(test_pool.clone(), get_associated_agents(None));
+        populate_proposal_table(test_pool.clone(), get_proposal(None));
+        populate_record_table(test_pool.clone(), get_record("TestRecord", None));
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_record(None));
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(None),
-            &get_reported_value_for_property_record(None),
-            &get_reporter_for_property_record(None),
+            test_pool,
+            get_property_for_record(None),
+            get_reported_value_for_property_record(None),
+            get_reporter_for_property_record(None),
         );
         let mut response = srv
             .request(
@@ -2169,12 +2148,7 @@ mod test {
             Value::String("value_1".to_string())
         );
         assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[0].updates[0].reporter,
-            KEY1,
-            "Arya Stark",
-            None,
-        );
+        validate_reporter(&test_record.properties[0].updates[0].reporter, KEY1, None);
         assert_eq!(
             test_record.properties[0]
                 .value
@@ -2198,7 +2172,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY1,
-            "Arya Stark",
             None,
         );
 
@@ -2212,12 +2185,7 @@ mod test {
             Value::Bool(true)
         );
         assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[1].updates[0].reporter,
-            KEY2,
-            "Jon Snow",
-            None,
-        );
+        validate_reporter(&test_record.properties[1].updates[0].reporter, KEY2, None);
         assert_eq!(
             test_record.properties[1]
                 .value
@@ -2241,7 +2209,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY2,
-            "Jon Snow",
             None,
         );
 
@@ -2272,32 +2239,33 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
         populate_agent_table(
-            &test_pool.get().unwrap(),
-            &get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_agents_with_roles(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_associated_agent_table(
-            &test_pool.get().unwrap(),
-            &get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_associated_agents(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_proposal_table(
-            &test_pool.get().unwrap(),
-            &get_proposal(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_proposal(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_record_table(
-            &test_pool.get().unwrap(),
-            &get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_record("TestRecord", Some(TEST_SERVICE_ID.to_string())),
         );
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(Some(TEST_SERVICE_ID.to_string())),
-        );
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_record(None));
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
-            &get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
-            &get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_property_for_record(Some(TEST_SERVICE_ID.to_string())),
+            get_reported_value_for_property_record(Some(TEST_SERVICE_ID.to_string())),
+            get_reporter_for_property_record(Some(TEST_SERVICE_ID.to_string())),
         );
+
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -2336,7 +2304,6 @@ mod test {
         validate_reporter(
             &test_record.properties[0].updates[0].reporter,
             KEY1,
-            "Arya Stark",
             Some(TEST_SERVICE_ID.to_string()),
         );
         assert_eq!(
@@ -2362,7 +2329,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY1,
-            "Arya Stark",
             Some(TEST_SERVICE_ID.to_string()),
         );
 
@@ -2379,7 +2345,6 @@ mod test {
         validate_reporter(
             &test_record.properties[1].updates[0].reporter,
             KEY2,
-            "Jon Snow",
             Some(TEST_SERVICE_ID.to_string()),
         );
         assert_eq!(
@@ -2413,7 +2378,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY2,
-            "Jon Snow",
             Some(TEST_SERVICE_ID.to_string()),
         );
 
@@ -2449,22 +2413,19 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_for_record(None),
-        );
-        populate_record_table(&test_pool.get().unwrap(), &get_updated_record());
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_record(None));
+        populate_record_table(test_pool.clone(), get_updated_record());
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property_for_record(None),
-            &get_reported_value_for_property_record(None),
-            &get_reporter_for_property_record(None),
+            test_pool.clone(),
+            get_property_for_record(None),
+            get_reported_value_for_property_record(None),
+            get_reporter_for_property_record(None),
         );
-        populate_associated_agent_table(
-            &test_pool.get().unwrap(),
-            &get_associated_agents_updated(),
-        );
-        populate_proposal_table(&test_pool.get().unwrap(), &get_updated_proposal());
+        populate_associated_agent_table(test_pool.clone(), get_associated_agents_updated());
+        populate_proposal_table(test_pool.clone(), get_updated_proposal());
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -2493,12 +2454,7 @@ mod test {
             Value::String("value_1".to_string())
         );
         assert_eq!(test_record.properties[0].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[0].updates[0].reporter,
-            KEY1,
-            "Arya Stark",
-            None,
-        );
+        validate_reporter(&test_record.properties[0].updates[0].reporter, KEY1, None);
         assert_eq!(
             test_record.properties[0]
                 .value
@@ -2522,7 +2478,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY1,
-            "Arya Stark",
             None,
         );
 
@@ -2536,12 +2491,7 @@ mod test {
             Value::Bool(true)
         );
         assert_eq!(test_record.properties[1].updates[0].timestamp, 5);
-        validate_reporter(
-            &test_record.properties[1].updates[0].reporter,
-            KEY2,
-            "Jon Snow",
-            None,
-        );
+        validate_reporter(&test_record.properties[1].updates[0].reporter, KEY2, None);
         assert_eq!(
             test_record.properties[1]
                 .value
@@ -2565,7 +2515,6 @@ mod test {
                 .expect("Property value not returned")
                 .reporter,
             KEY2,
-            "Jon Snow",
             None,
         );
 
@@ -2595,7 +2544,7 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_record_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(http::Method::GET, srv.url("/record/not_in_database"))
             .send()
@@ -2613,7 +2562,9 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        clear_record_table(&test_pool.get().unwrap());
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
         let response = srv
             .request(
                 http::Method::GET,
@@ -2637,17 +2588,18 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_struct_for_record(None),
-        );
-        populate_record_table(&test_pool.get().unwrap(), &get_record("record_01", None));
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_grid_schema_table(test_pool.clone(), get_grid_schema_for_struct_record(None));
+        populate_record_table(test_pool.clone(), get_record("record_01", None));
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property(None),
-            &get_reported_value(None),
-            &get_reporter(None),
+            test_pool.clone(),
+            get_property(None),
+            get_reported_value(None),
+            get_reporter(None),
         );
+
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -2683,24 +2635,30 @@ mod test {
 
         let first_update = &property_info.updates[0];
 
-        validate_reporter(&first_update.reporter, KEY2, "Jon Snow", None);
+        validate_reporter(&first_update.reporter, KEY2, None);
 
         assert_eq!(first_update.timestamp, 3);
 
         match &first_update.value {
-            Value::Struct(struct_values) => {
-                assert_eq!(struct_values.len(), 5);
-                validate_struct_value(&struct_values[0], "value_1", false);
-                validate_location_value(
-                    &struct_values[1],
-                    LatLong {
-                        latitude: 1,
-                        longitude: 1,
-                    },
-                );
-                validate_number_value(&struct_values[2], 1);
-                validate_enum_value(&struct_values[3], 1);
-                validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+            Value::Struct(root) => {
+                assert_eq!(root.len(), 1);
+                match &root[0].value {
+                    Value::Struct(struct_values) => {
+                        assert_eq!(struct_values.len(), 5);
+                        validate_struct_value(&struct_values[0], "value_1", false);
+                        validate_location_value(
+                            &struct_values[1],
+                            LatLong {
+                                latitude: 1,
+                                longitude: 1,
+                            },
+                        );
+                        validate_number_value(&struct_values[2], 1);
+                        validate_enum_value(&struct_values[3], 1);
+                        validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+                    }
+                    _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
+                }
             }
             _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
         }
@@ -2718,20 +2676,24 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Splinter, ResponseType::ClientBatchStatusResponseOK);
-        populate_property_definition_table(
-            &test_pool.get().unwrap(),
-            &get_grid_property_definition_struct_for_record(Some(TEST_SERVICE_ID.to_string())),
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
+        populate_grid_schema_table(
+            test_pool.clone(),
+            get_grid_schema_for_struct_record(Some(TEST_SERVICE_ID.to_string())),
         );
         populate_record_table(
-            &test_pool.get().unwrap(),
-            &get_record("record_01", Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_record("record_01", Some(TEST_SERVICE_ID.to_string())),
         );
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property(Some(TEST_SERVICE_ID.to_string())),
-            &get_reported_value(Some(TEST_SERVICE_ID.to_string())),
-            &get_reporter(Some(TEST_SERVICE_ID.to_string())),
+            test_pool.clone(),
+            get_property(Some(TEST_SERVICE_ID.to_string())),
+            get_reported_value(Some(TEST_SERVICE_ID.to_string())),
+            get_reporter(Some(TEST_SERVICE_ID.to_string())),
         );
+
         let mut response = srv
             .request(
                 http::Method::GET,
@@ -2774,26 +2736,31 @@ mod test {
         validate_reporter(
             &first_update.reporter,
             KEY2,
-            "Jon Snow",
             Some(TEST_SERVICE_ID.to_string()),
         );
 
         assert_eq!(first_update.timestamp, 3);
 
         match &first_update.value {
-            Value::Struct(struct_values) => {
-                assert_eq!(struct_values.len(), 5);
-                validate_struct_value(&struct_values[0], "value_1", false);
-                validate_location_value(
-                    &struct_values[1],
-                    LatLong {
-                        latitude: 1,
-                        longitude: 1,
-                    },
-                );
-                validate_number_value(&struct_values[2], 1);
-                validate_enum_value(&struct_values[3], 1);
-                validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+            Value::Struct(root) => {
+                assert_eq!(root.len(), 1);
+                match &root[0].value {
+                    Value::Struct(struct_values) => {
+                        assert_eq!(struct_values.len(), 5);
+                        validate_struct_value(&struct_values[0], "value_1", false);
+                        validate_location_value(
+                            &struct_values[1],
+                            LatLong {
+                                latitude: 1,
+                                longitude: 1,
+                            },
+                        );
+                        validate_number_value(&struct_values[2], 1);
+                        validate_enum_value(&struct_values[3], 1);
+                        validate_bytes_value(&struct_values[4], &vec![0x01, 0x02, 0x03, 0x04]);
+                    }
+                    _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
+                }
             }
             _ => panic!("Expected enum type Struct found: {:?}", first_update.value),
         }
@@ -2803,46 +2770,38 @@ mod test {
     }
 
     fn validate_current_value(property_value: &PropertyValueSlice, service_id: Option<String>) {
-        validate_reporter(
-            &property_value.reporter,
-            KEY1,
-            "Arya Stark",
-            service_id.clone(),
-        );
+        validate_reporter(&property_value.reporter, KEY1, service_id.clone());
         assert_eq!(property_value.timestamp, 5);
         assert_eq!(property_value.service_id, service_id);
         match &property_value.value {
-            Value::Struct(struct_values) => {
-                assert_eq!(struct_values.len(), 5);
-                validate_struct_value(&struct_values[0], "value_updated", true);
-                validate_location_value(
-                    &struct_values[1],
-                    LatLong {
-                        latitude: 2,
-                        longitude: 2,
-                    },
-                );
-                validate_number_value(&struct_values[2], 2);
-                validate_enum_value(&struct_values[3], 2);
-                validate_bytes_value(&struct_values[4], &vec![0x05, 0x06, 0x07, 0x08]);
+            Value::Struct(root) => {
+                assert_eq!(root.len(), 1);
+                match &root[0].value {
+                    Value::Struct(struct_values) => {
+                        assert_eq!(struct_values.len(), 5);
+                        validate_struct_value(&struct_values[0], "value_updated", true);
+                        validate_location_value(
+                            &struct_values[1],
+                            LatLong {
+                                latitude: 2,
+                                longitude: 2,
+                            },
+                        );
+                        validate_number_value(&struct_values[2], 2);
+                        validate_enum_value(&struct_values[3], 2);
+                        validate_bytes_value(&struct_values[4], &vec![0x05, 0x06, 0x07, 0x08]);
+                    }
+                    _ => panic!(
+                        "Expected enum type Struct found: {:?}",
+                        property_value.value
+                    ),
+                }
             }
-            _ => panic!(
-                "Expected enum type Struct found: {:?}",
-                property_value.value
-            ),
+            _ => panic!("Expected struct with single element"),
         }
     }
 
-    fn validate_reporter(
-        reporter: &ReporterSlice,
-        public_key: &str,
-        name: &str,
-        service_id: Option<String>,
-    ) {
-        assert_eq!(
-            reporter.metadata.get("agent_name"),
-            Some(&JsonValue::String(name.to_string()))
-        );
+    fn validate_reporter(reporter: &ReporterSlice, public_key: &str, service_id: Option<String>) {
         assert_eq!(reporter.public_key, public_key.to_string());
         assert_eq!(reporter.service_id, service_id);
     }
@@ -2854,7 +2813,7 @@ mod test {
     ) {
         assert_eq!(struct_value.data_type, "Struct".to_string());
 
-        assert_eq!(struct_value.name, "StructProperty".to_string());
+        assert!(struct_value.name.contains("StructProperty"));
 
         match &struct_value.value {
             Value::Struct(inner_values) => {
@@ -2868,7 +2827,7 @@ mod test {
 
     fn validate_string_value(string_value: &StructPropertyValue, expected_value: &str) {
         assert_eq!(string_value.data_type, "String".to_string());
-        assert_eq!(string_value.name, "StringProperty".to_string());
+        assert!(string_value.name.contains("StringProperty"));
         assert_eq!(
             string_value.value,
             Value::String(expected_value.to_string())
@@ -2877,25 +2836,25 @@ mod test {
 
     fn validate_boolean_value(boolean_value: &StructPropertyValue, expected_value: bool) {
         assert_eq!(boolean_value.data_type, "Boolean".to_string());
-        assert_eq!(boolean_value.name, "BoolProperty".to_string());
+        assert!(boolean_value.name.contains("BoolProperty"));
         assert_eq!(boolean_value.value, Value::Bool(expected_value));
     }
 
     fn validate_location_value(location_value: &StructPropertyValue, expected_value: LatLong) {
         assert_eq!(location_value.data_type, "LatLong".to_string());
-        assert_eq!(location_value.name, "LatLongProperty".to_string());
+        assert!(location_value.name.contains("LatLongProperty"));
         assert_eq!(location_value.value, Value::LatLong(expected_value));
     }
 
     fn validate_number_value(number_value: &StructPropertyValue, expected_value: i64) {
         assert_eq!(number_value.data_type, "Number".to_string());
-        assert_eq!(number_value.name, "NumberProperty".to_string());
+        assert!(number_value.name.contains("NumberProperty"));
         assert_eq!(number_value.value, Value::Number(expected_value));
     }
 
     fn validate_enum_value(enum_value: &StructPropertyValue, expected_value: i32) {
         assert_eq!(enum_value.data_type, "Enum".to_string());
-        assert_eq!(enum_value.name, "EnumProperty".to_string());
+        assert!(enum_value.name.contains("EnumProperty"));
         match enum_value.value {
             Value::Enum(val) => assert_eq!(val, expected_value),
             Value::Number(val) => assert_eq!(val as i32, expected_value),
@@ -2905,7 +2864,7 @@ mod test {
 
     fn validate_bytes_value(bytes_value: &StructPropertyValue, expected_value: &[u8]) {
         assert_eq!(bytes_value.data_type, "Bytes".to_string());
-        assert_eq!(bytes_value.name, "BytesProperty".to_string());
+        assert!(bytes_value.name.contains("BytesProperty"));
         match &bytes_value.value {
             Value::String(val) => assert_eq!(val, &base64::encode(expected_value)),
             Value::Bytes(val) => assert_eq!(val, &base64::encode(expected_value)),
@@ -2922,7 +2881,7 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
-        clear_tnt_property_table(&test_pool.get().unwrap());
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
         let response = srv
             .request(
                 http::Method::GET,
@@ -2944,11 +2903,14 @@ mod test {
         run_migrations(&DATABASE_URL);
         let test_pool = get_connection_pool();
         let srv = create_test_server(Backend::Sawtooth, ResponseType::ClientBatchStatusResponseOK);
+
+        clear_postgres_database(&test_pool.get().unwrap()).unwrap();
+
         populate_tnt_property_table(
-            &test_pool.get().unwrap(),
-            &get_property(None),
-            &get_reported_value(None),
-            &get_reporter(None),
+            test_pool,
+            get_property(None),
+            get_reported_value(None),
+            get_reporter(None),
         );
         let response = srv
             .request(
@@ -3025,69 +2987,66 @@ mod test {
             .expect("Failed to write batch statuses to bytes")
     }
 
-    fn get_agent(service_id: Option<String>) -> Vec<NewAgent> {
-        vec![NewAgent {
+    fn get_agent(service_id: Option<String>) -> Vec<Agent> {
+        vec![Agent {
             public_key: KEY1.to_string(),
             org_id: KEY2.to_string(),
             active: true,
             roles: vec![],
-            metadata: JsonValue::Object(Map::new()),
+            metadata: vec![],
             start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
+            end_commit_num: i64::MAX,
             service_id,
         }]
     }
 
-    fn get_agents_with_roles(service_id: Option<String>) -> Vec<NewAgent> {
+    fn get_agents_with_roles(service_id: Option<String>) -> Vec<Agent> {
         vec![
-            NewAgent {
+            Agent {
                 public_key: KEY1.to_string(),
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["OWNER".to_string()],
-                metadata: JsonValue::Object(Map::new()),
+                metadata: vec![],
                 start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
+                end_commit_num: i64::MAX,
                 service_id: service_id.clone(),
             },
-            NewAgent {
+            Agent {
                 public_key: KEY2.to_string(),
                 org_id: KEY3.to_string(),
                 active: true,
                 roles: vec!["CUSTODIAN".to_string()],
-                metadata: JsonValue::Object(Map::new()),
+                metadata: vec![],
                 start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
+                end_commit_num: i64::MAX,
                 service_id,
             },
         ]
     }
 
-    fn populate_agent_table(conn: &PgConnection, agents: &[NewAgent]) {
-        clear_agents_table(conn);
-        database::helpers::insert_agents(conn, agents).unwrap();
+    fn populate_agent_table(pool: ConnectionPool<diesel::pg::PgConnection>, agents: Vec<Agent>) {
+        let store = DieselAgentStore::new(pool.pool);
+        agents
+            .into_iter()
+            .for_each(|agent| store.add_agent(agent).unwrap());
     }
 
-    fn clear_agents_table(conn: &PgConnection) {
-        use crate::database::schema::agent::dsl::*;
-        diesel::delete(agent).execute(conn).unwrap();
-    }
-
-    fn get_organization(service_id: Option<String>) -> Vec<NewOrganization> {
-        vec![NewOrganization {
+    fn get_organization(service_id: Option<String>) -> Vec<Organization> {
+        vec![Organization {
             org_id: KEY2.to_string(),
             name: ORG_NAME_1.to_string(),
             address: ADDRESS_1.to_string(),
             metadata: vec![],
             start_commit_num: 1,
-            end_commit_num: database::helpers::MAX_COMMIT_NUM,
+            end_commit_num: i64::MAX,
             service_id,
         }]
     }
 
-    fn get_updated_organization() -> Vec<NewOrganization> {
+    fn get_updated_organization() -> Vec<Organization> {
         vec![
-            NewOrganization {
+            Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
                 address: ADDRESS_2.to_string(),
@@ -3096,679 +3055,81 @@ mod test {
                 end_commit_num: 4,
                 service_id: None,
             },
-            NewOrganization {
+            Organization {
                 org_id: KEY3.to_string(),
                 name: ORG_NAME_2.to_string(),
                 address: UPDATED_ADDRESS_2.to_string(),
                 metadata: vec![],
                 start_commit_num: 4,
-                end_commit_num: database::helpers::MAX_COMMIT_NUM,
+                end_commit_num: i64::MAX,
                 service_id: None,
             },
         ]
     }
 
-    fn populate_organization_table(conn: &PgConnection, organizations: Vec<NewOrganization>) {
-        clear_organization_table(conn);
-        database::helpers::insert_organizations(conn, &organizations).unwrap();
+    fn populate_organization_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        organizations: Vec<Organization>,
+    ) {
+        let store = DieselOrganizationStore::new(pool.pool);
+        store.add_organizations(organizations).unwrap();
     }
 
-    fn clear_organization_table(conn: &PgConnection) {
-        use crate::database::schema::organization::dsl::*;
-        diesel::delete(organization).execute(conn).unwrap();
-    }
-
-    fn get_grid_schema(service_id: Option<String>) -> Vec<NewGridSchema> {
-        vec![NewGridSchema {
+    fn get_grid_schema(service_id: Option<String>) -> Vec<Schema> {
+        vec![Schema {
             start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
+            end_commit_num: i64::MAX,
             name: "TestGridSchema".to_string(),
+            properties: get_property_definition(service_id.clone()),
             description: "Example test grid schema".to_string(),
             owner: "phillips001".to_string(),
             service_id,
         }]
     }
 
-    fn get_product(service_id: Option<String>) -> Vec<NewProduct> {
-        vec![NewProduct {
+    fn get_product(service_id: Option<String>) -> Vec<Product> {
+        vec![Product {
             product_id: "041205707820".to_string(),
             product_address: "test_address".to_string(),
             product_namespace: "Grid Product".to_string(),
             owner: "phillips001".to_string(),
             start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
+            end_commit_num: i64::MAX,
+            properties: get_product_property_value(service_id.clone()),
             service_id,
         }]
-    }
-
-    fn get_location(service_id: Option<String>) -> Vec<NewLocation> {
-        vec![NewLocation {
-            location_id: "0653114000000".to_string(),
-            location_address: "test_address".to_string(),
-            location_namespace: "Grid Location".to_string(),
-            owner: "phillips001".to_string(),
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            service_id,
-        }]
-    }
-
-    fn get_associated_agents(service_id: Option<String>) -> Vec<NewAssociatedAgent> {
-        vec![
-            NewAssociatedAgent {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY1.to_string(),
-                timestamp: 1,
-                record_id: "TestRecord".to_string(),
-                role: "OWNER".to_string(),
-                service_id: service_id.clone(),
-            },
-            NewAssociatedAgent {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY2.to_string(),
-                timestamp: 1,
-                record_id: "TestRecord".to_string(),
-                role: "CUSTODIAN".to_string(),
-                service_id,
-            },
-        ]
-    }
-
-    fn get_associated_agents_updated() -> Vec<NewAssociatedAgent> {
-        vec![
-            NewAssociatedAgent {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY1.to_string(),
-                timestamp: 1,
-                record_id: "TestRecord".to_string(),
-                role: "OWNER".to_string(),
-                service_id: None,
-            },
-            NewAssociatedAgent {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY2.to_string(),
-                timestamp: 1,
-                record_id: "TestRecord".to_string(),
-                role: "CUSTODIAN".to_string(),
-                service_id: None,
-            },
-            NewAssociatedAgent {
-                start_commit_num: 1,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY2.to_string(),
-                timestamp: 2,
-                record_id: "TestRecord".to_string(),
-                role: "OWNER".to_string(),
-                service_id: None,
-            },
-            NewAssociatedAgent {
-                start_commit_num: 1,
-                end_commit_num: MAX_COMMIT_NUM,
-                agent_id: KEY1.to_string(),
-                timestamp: 2,
-                record_id: "TestRecord".to_string(),
-                role: "CUSTODIAN".to_string(),
-                service_id: None,
-            },
-        ]
-    }
-
-    fn get_proposal(service_id: Option<String>) -> Vec<NewProposal> {
-        vec![NewProposal {
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            record_id: "TestRecord".to_string(),
-            timestamp: 1,
-            issuing_agent: KEY1.to_string(),
-            receiving_agent: KEY2.to_string(),
-            properties: vec!["location".to_string()],
-            role: "OWNER".to_string(),
-            status: "OPEN".to_string(),
-            terms: "Proposal Terms".to_string(),
-            service_id,
-        }]
-    }
-
-    fn get_updated_proposal() -> Vec<NewProposal> {
-        vec![
-            NewProposal {
-                start_commit_num: 0,
-                end_commit_num: 1,
-                record_id: "TestRecord".to_string(),
-                timestamp: 1,
-                issuing_agent: KEY1.to_string(),
-                receiving_agent: KEY2.to_string(),
-                properties: vec!["location".to_string()],
-                role: "OWNER".to_string(),
-                status: "OPEN".to_string(),
-                terms: "Proposal Terms".to_string(),
-                service_id: None,
-            },
-            NewProposal {
-                start_commit_num: 1,
-                end_commit_num: MAX_COMMIT_NUM,
-                record_id: "TestRecord".to_string(),
-                timestamp: 1,
-                issuing_agent: KEY1.to_string(),
-                receiving_agent: KEY2.to_string(),
-                properties: vec!["location".to_string()],
-                role: "OWNER".to_string(),
-                status: "CANCELED".to_string(),
-                terms: "Proposal Terms".to_string(),
-                service_id: None,
-            },
-        ]
-    }
-
-    fn get_record(record_id: &str, service_id: Option<String>) -> Vec<NewRecord> {
-        vec![NewRecord {
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            record_id: record_id.to_string(),
-            schema: "TestGridSchema".to_string(),
-            final_: false,
-            owners: vec![KEY1.to_string()],
-            custodians: vec![KEY2.to_string()],
-            service_id,
-        }]
-    }
-
-    fn get_updated_record() -> Vec<NewRecord> {
-        vec![
-            NewRecord {
-                start_commit_num: 0,
-                end_commit_num: 1,
-                record_id: "TestRecord".to_string(),
-                schema: "TestGridSchema".to_string(),
-                final_: false,
-                owners: vec![KEY1.to_string()],
-                custodians: vec![KEY2.to_string()],
-                service_id: None,
-            },
-            NewRecord {
-                start_commit_num: 1,
-                end_commit_num: MAX_COMMIT_NUM,
-                record_id: "TestRecord".to_string(),
-                schema: "TestGridSchema".to_string(),
-                final_: true,
-                owners: vec![KEY2.to_string(), KEY1.to_string()],
-                custodians: vec![KEY1.to_string(), KEY2.to_string()],
-                service_id: None,
-            },
-        ]
-    }
-
-    fn get_multuple_records() -> Vec<NewRecord> {
-        vec![
-            NewRecord {
-                start_commit_num: 0,
-                end_commit_num: 1,
-                record_id: "TestRecord".to_string(),
-                schema: "TestGridSchema".to_string(),
-                final_: false,
-                owners: vec![KEY1.to_string()],
-                custodians: vec![KEY2.to_string()],
-                service_id: None,
-            },
-            NewRecord {
-                start_commit_num: 1,
-                end_commit_num: MAX_COMMIT_NUM,
-                record_id: "TestRecord".to_string(),
-                schema: "TestGridSchema".to_string(),
-                final_: true,
-                owners: vec![KEY2.to_string(), KEY1.to_string()],
-                custodians: vec![KEY1.to_string(), KEY2.to_string()],
-                service_id: None,
-            },
-            NewRecord {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                record_id: "TestRecord 2".to_string(),
-                schema: "TestGridSchema".to_string(),
-                final_: false,
-                owners: vec![KEY1.to_string()],
-                custodians: vec![KEY2.to_string()],
-                service_id: None,
-            },
-        ]
-    }
-
-    fn populate_grid_schema_table(
-        conn: &PgConnection,
-        schemas: &[NewGridSchema],
-        service_id: Option<String>,
-    ) {
-        clear_grid_schema_table(conn);
-        populate_property_definition_table(conn, &get_property_definition(service_id));
-        insert_into(grid_schema::table)
-            .values(schemas)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn populate_product_table(
-        conn: &PgConnection,
-        products: &[NewProduct],
-        service_id: Option<String>,
-    ) {
-        clear_product_table(conn);
-        populate_product_property_value_table(conn, &get_product_property_value(service_id));
-        insert_into(product::table)
-            .values(products)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
     }
 
     fn populate_location_table(
-        conn: &PgConnection,
-        locations: &[NewLocation],
-        service_id: Option<String>,
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        locations: Vec<Location>,
     ) {
-        clear_location_table(conn);
-        populate_location_property_value_table(conn, &get_location_property_value(service_id));
-        insert_into(location::table)
-            .values(locations)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
+        let store = DieselLocationStore::new(pool.pool);
+        locations
+            .into_iter()
+            .for_each(|location| store.add_location(location).unwrap());
     }
 
-    fn get_property_for_record(service_id: Option<String>) -> Vec<NewProperty> {
-        vec![
-            NewProperty {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "TestProperty1".to_string(),
-                record_id: "TestRecord".to_string(),
-                property_definition: "property_definition_1".to_string(),
-                current_page: 1,
-                wrapped: false,
-                service_id: service_id.clone(),
-            },
-            NewProperty {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "TestProperty2".to_string(),
-                record_id: "TestRecord".to_string(),
-                property_definition: "property_definition_2".to_string(),
-                current_page: 1,
-                wrapped: false,
-                service_id,
-            },
-        ]
-    }
-
-    fn get_reporter_for_property_record(service_id: Option<String>) -> Vec<NewReporter> {
-        vec![
-            NewReporter {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty1".to_string(),
-                record_id: "TestRecord".to_string(),
-                public_key: KEY1.to_string(),
-                authorized: true,
-                reporter_index: 0,
-                service_id: service_id.clone(),
-            },
-            NewReporter {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty2".to_string(),
-                record_id: "TestRecord".to_string(),
-                public_key: KEY2.to_string(),
-                authorized: true,
-                reporter_index: 0,
-                service_id,
-            },
-        ]
-    }
-
-    fn get_reported_value_for_property_record(service_id: Option<String>) -> Vec<NewReportedValue> {
-        vec![
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty1".to_string(),
-                record_id: "TestRecord".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "String".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: Some("value_1".to_string()),
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty2".to_string(),
-                record_id: "TestRecord".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Boolean".to_string(),
-                bytes_value: None,
-                boolean_value: Some(true),
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id,
-            },
-        ]
-    }
-    fn get_property(service_id: Option<String>) -> Vec<NewProperty> {
-        vec![NewProperty {
+    fn get_location(service_id: Option<String>) -> Vec<Location> {
+        vec![Location {
+            location_id: "0653114000000".to_string(),
+            location_namespace: "Grid Location".to_string(),
+            owner: "phillips001".to_string(),
+            attributes: get_location_attributes(service_id.clone()),
             start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            name: "TestProperty".to_string(),
-            record_id: "record_01".to_string(),
-            property_definition: "property_definition_1".to_string(),
-            current_page: 1,
-            wrapped: false,
+            end_commit_num: i64::MAX,
             service_id,
         }]
     }
 
-    fn get_reporter(service_id: Option<String>) -> Vec<NewReporter> {
+    fn get_location_attributes(service_id: Option<String>) -> Vec<LocationAttribute> {
         vec![
-            NewReporter {
+            LocationAttribute {
                 start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty".to_string(),
-                record_id: "record_01".to_string(),
-                public_key: KEY1.to_string(),
-                authorized: true,
-                reporter_index: 0,
-                service_id: service_id.clone(),
-            },
-            NewReporter {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty".to_string(),
-                record_id: "record_01".to_string(),
-                public_key: KEY2.to_string(),
-                authorized: true,
-                reporter_index: 1,
-                service_id,
-            },
-        ]
-    }
-
-    fn get_agent_with_metadata() -> Vec<NewAgent> {
-        let value = JsonValue::String("Arya Stark".to_string());
-        let mut metadata = Map::new();
-        metadata.insert("agent_name".to_string(), value);
-
-        let agent = NewAgent {
-            public_key: KEY1.to_string(),
-            org_id: "org1".to_string(),
-            active: true,
-            roles: vec![],
-            metadata: JsonValue::Object(metadata.clone()),
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            service_id: None,
-        };
-
-        let value2 = JsonValue::String("Jon Snow".to_string());
-        metadata.insert("agent_name".to_string(), value2);
-
-        let agent2 = NewAgent {
-            public_key: KEY2.to_string(),
-            org_id: "org1".to_string(),
-            active: true,
-            roles: vec![],
-            metadata: JsonValue::Object(metadata),
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            service_id: None,
-        };
-
-        vec![agent, agent2]
-    }
-
-    fn populate_tnt_property_table(
-        conn: &PgConnection,
-        properties: &[NewProperty],
-        reported_values: &[NewReportedValue],
-        reporter: &[NewReporter],
-    ) {
-        clear_tnt_property_table(conn);
-        populate_reported_values_table(conn, &reported_values);
-        populate_reporters_table(conn, &reporter);
-        insert_into(property::table)
-            .values(properties)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn populate_reported_values_table(conn: &PgConnection, reported_values: &[NewReportedValue]) {
-        clear_tnt_reported_value_table(conn);
-        insert_into(reported_value::table)
-            .values(reported_values)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn populate_reporters_table(conn: &PgConnection, reporter: &[NewReporter]) {
-        clear_tnt_reporter_table(conn);
-        populate_agent_table(conn, &get_agent_with_metadata());
-        insert_into(reporter::table)
-            .values(reporter)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_grid_schema_table(conn: &PgConnection) {
-        use crate::database::schema::grid_schema::dsl::*;
-        diesel::delete(grid_schema).execute(conn).unwrap();
-    }
-
-    fn clear_product_table(conn: &PgConnection) {
-        use crate::database::schema::product::dsl::*;
-        diesel::delete(product).execute(conn).unwrap();
-    }
-
-    fn clear_location_table(conn: &PgConnection) {
-        use crate::database::schema::location::dsl::*;
-        diesel::delete(location).execute(conn).unwrap();
-    }
-
-    fn clear_tnt_reported_value_table(conn: &PgConnection) {
-        use crate::database::schema::reported_value::dsl::*;
-        diesel::delete(reported_value).execute(conn).unwrap();
-    }
-
-    fn clear_tnt_reporter_table(conn: &PgConnection) {
-        use crate::database::schema::reporter::dsl::*;
-        diesel::delete(reporter).execute(conn).unwrap();
-    }
-
-    fn clear_tnt_property_table(conn: &PgConnection) {
-        use crate::database::schema::property::dsl::*;
-        clear_tnt_reporter_table(conn);
-        clear_tnt_reported_value_table(conn);
-        diesel::delete(property).execute(conn).unwrap();
-    }
-
-    fn get_property_definition(service_id: Option<String>) -> Vec<NewGridPropertyDefinition> {
-        vec![
-            NewGridPropertyDefinition {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "Definition Name".to_string(),
-                schema_name: "TestGridSchema".to_string(),
-                data_type: "Lightbulb".to_string(),
-                required: false,
-                description: "Definition Description".to_string(),
-                number_exponent: 0,
-                enum_options: vec![],
-                struct_properties: vec![],
-                service_id: service_id.clone(),
-            },
-            NewGridPropertyDefinition {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "Other Definition Name".to_string(),
-                schema_name: "TestGridSchema".to_string(),
-                data_type: "New Lightbulb".to_string(),
-                required: false,
-                description: "Definition Description".to_string(),
-                number_exponent: 0,
-                enum_options: vec![],
-                struct_properties: vec![],
-                service_id: service_id,
-            },
-        ]
-    }
-
-    fn get_grid_property_definition_struct_for_record(
-        service_id: Option<String>,
-    ) -> Vec<NewGridPropertyDefinition> {
-        vec![NewGridPropertyDefinition {
-            start_commit_num: 0,
-            end_commit_num: MAX_COMMIT_NUM,
-            name: "TestProperty".to_string(),
-            schema_name: "TestGridSchema".to_string(),
-            data_type: "Struct".to_string(),
-            required: false,
-            description: "Definition Description".to_string(),
-            number_exponent: 0,
-            enum_options: vec![],
-            struct_properties: vec![],
-            service_id,
-        }]
-    }
-
-    fn get_grid_property_definition_for_record(
-        service_id: Option<String>,
-    ) -> Vec<NewGridPropertyDefinition> {
-        vec![
-            NewGridPropertyDefinition {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "TestProperty1".to_string(),
-                schema_name: "TestGridSchema".to_string(),
-                data_type: "String".to_string(),
-                required: false,
-                description: "Definition Description".to_string(),
-                number_exponent: 0,
-                enum_options: vec![],
-                struct_properties: vec![],
-                service_id: service_id.clone(),
-            },
-            NewGridPropertyDefinition {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                name: "TestProperty2".to_string(),
-                schema_name: "TestGridSchema".to_string(),
-                data_type: "Boolean".to_string(),
-                required: false,
-                description: "Definition Description".to_string(),
-                number_exponent: 0,
-                enum_options: vec![],
-                struct_properties: vec![],
-                service_id,
-            },
-        ]
-    }
-
-    fn populate_property_definition_table(
-        conn: &PgConnection,
-        definitions: &[NewGridPropertyDefinition],
-    ) {
-        clear_property_definition_table(conn);
-        insert_into(grid_property_definition::table)
-            .values(definitions)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_property_definition_table(conn: &PgConnection) {
-        use crate::database::schema::grid_property_definition::dsl::*;
-        diesel::delete(grid_property_definition)
-            .execute(conn)
-            .unwrap();
-    }
-
-    fn get_product_property_value(service_id: Option<String>) -> Vec<NewProductPropertyValue> {
-        vec![
-            NewProductPropertyValue {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                product_id: "041205707820".to_string(),
-                product_address: "test_address".to_string(),
-                property_name: "Test Grid Product".to_string(),
-                data_type: "Lightbulb".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(0),
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewProductPropertyValue {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
-                product_id: "041205707820".to_string(),
-                product_address: "test_address".to_string(),
-                property_name: "Test Grid Product".to_string(),
-                data_type: "Lightbulb".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(0),
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id,
-            },
-        ]
-    }
-
-    fn populate_product_property_value_table(
-        conn: &PgConnection,
-        properties: &[NewProductPropertyValue],
-    ) {
-        clear_product_property_value_table(conn);
-        insert_into(product_property_value::table)
-            .values(properties)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_product_property_value_table(conn: &PgConnection) {
-        use crate::database::schema::product_property_value::dsl::*;
-        diesel::delete(product_property_value)
-            .execute(conn)
-            .unwrap();
-    }
-
-    fn get_location_property_value(service_id: Option<String>) -> Vec<NewLocationPropertyValue> {
-        vec![
-            NewLocationPropertyValue {
-                start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
+                end_commit_num: i64::MAX,
                 location_id: "0653114000000".to_string(),
                 location_address: "test_address".to_string(),
+                parent_property_name: None,
                 property_name: "location_name".to_string(),
                 data_type: "STRING".to_string(),
                 bytes_value: None,
@@ -3780,11 +3141,12 @@ mod test {
                 lat_long_value: None,
                 service_id: service_id.clone(),
             },
-            NewLocationPropertyValue {
+            LocationAttribute {
                 start_commit_num: 0,
-                end_commit_num: MAX_COMMIT_NUM,
+                end_commit_num: i64::MAX,
                 location_id: "0653114000000".to_string(),
                 location_address: "test_address".to_string(),
+                parent_property_name: None,
                 property_name: "industry_sector".to_string(),
                 data_type: "STRING".to_string(),
                 bytes_value: None,
@@ -3799,102 +3161,289 @@ mod test {
         ]
     }
 
-    fn populate_location_property_value_table(
-        conn: &PgConnection,
-        properties: &[NewLocationPropertyValue],
-    ) {
-        clear_location_property_value_table(conn);
-        insert_into(location_property_value::table)
-            .values(properties)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_location_property_value_table(conn: &PgConnection) {
-        use crate::database::schema::location_property_value::dsl::*;
-        diesel::delete(location_property_value)
-            .execute(conn)
-            .unwrap();
-    }
-
-    fn populate_associated_agent_table(
-        conn: &PgConnection,
-        associated_agents: &[NewAssociatedAgent],
-    ) {
-        clear_associated_agent_table(conn);
-        insert_into(associated_agent::table)
-            .values(associated_agents)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_associated_agent_table(conn: &PgConnection) {
-        use crate::database::schema::associated_agent::dsl::*;
-        diesel::delete(associated_agent).execute(conn).unwrap();
-    }
-
-    fn populate_proposal_table(conn: &PgConnection, proposals: &[NewProposal]) {
-        clear_proposal_table(conn);
-        insert_into(proposal::table)
-            .values(proposals)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_proposal_table(conn: &PgConnection) {
-        use crate::database::schema::proposal::dsl::*;
-        diesel::delete(proposal).execute(conn).unwrap();
-    }
-
-    fn populate_record_table(conn: &PgConnection, records: &[NewRecord]) {
-        clear_record_table(conn);
-        insert_into(record::table)
-            .values(records)
-            .execute(conn)
-            .map(|_| ())
-            .unwrap();
-    }
-
-    fn clear_record_table(conn: &PgConnection) {
-        use crate::database::schema::record::dsl::*;
-        diesel::delete(record).execute(conn).unwrap();
-    }
-
-    fn run_migrations(database_url: &str) {
-        let connection = PgConnection::establish(database_url)
-            .expect("Failed to stablish connection with database");
-        run_postgres_migrations(&connection).expect("Migrations failed");
-    }
-
-    fn get_reported_value(service_id: Option<String>) -> Vec<NewReportedValue> {
+    fn get_associated_agents(service_id: Option<String>) -> Vec<AssociatedAgent> {
         vec![
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_StructProperty_StringProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "String".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: Some("value_updated".to_string()),
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
+            AssociatedAgent {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                agent_id: KEY1.to_string(),
+                timestamp: 1,
+                record_id: "TestRecord".to_string(),
+                role: "OWNER".to_string(),
                 service_id: service_id.clone(),
             },
-            NewReportedValue {
+            AssociatedAgent {
+                id: None,
                 start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_StructProperty_StringProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
+                end_commit_num: i64::MAX,
+                agent_id: KEY2.to_string(),
+                timestamp: 1,
+                record_id: "TestRecord".to_string(),
+                role: "CUSTODIAN".to_string(),
+                service_id,
+            },
+        ]
+    }
+
+    fn get_associated_agents_updated() -> Vec<AssociatedAgent> {
+        vec![
+            AssociatedAgent {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                agent_id: KEY1.to_string(),
+                timestamp: 1,
+                record_id: "TestRecord".to_string(),
+                role: "OWNER".to_string(),
+                service_id: None,
+            },
+            AssociatedAgent {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                agent_id: KEY2.to_string(),
+                timestamp: 1,
+                record_id: "TestRecord".to_string(),
+                role: "CUSTODIAN".to_string(),
+                service_id: None,
+            },
+            AssociatedAgent {
+                id: None,
+                start_commit_num: 1,
+                end_commit_num: i64::MAX,
+                agent_id: KEY2.to_string(),
+                timestamp: 2,
+                record_id: "TestRecord".to_string(),
+                role: "OWNER".to_string(),
+                service_id: None,
+            },
+            AssociatedAgent {
+                id: None,
+                start_commit_num: 1,
+                end_commit_num: i64::MAX,
+                agent_id: KEY1.to_string(),
+                timestamp: 2,
+                record_id: "TestRecord".to_string(),
+                role: "CUSTODIAN".to_string(),
+                service_id: None,
+            },
+        ]
+    }
+
+    fn get_proposal(service_id: Option<String>) -> Vec<Proposal> {
+        vec![Proposal {
+            id: None,
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            record_id: "TestRecord".to_string(),
+            timestamp: 1,
+            issuing_agent: KEY1.to_string(),
+            receiving_agent: KEY2.to_string(),
+            properties: vec!["location".to_string()],
+            role: "OWNER".to_string(),
+            status: "OPEN".to_string(),
+            terms: "Proposal Terms".to_string(),
+            service_id,
+        }]
+    }
+
+    fn get_updated_proposal() -> Vec<Proposal> {
+        vec![
+            Proposal {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: 1,
+                record_id: "TestRecord".to_string(),
+                timestamp: 1,
+                issuing_agent: KEY1.to_string(),
+                receiving_agent: KEY2.to_string(),
+                properties: vec!["location".to_string()],
+                role: "OWNER".to_string(),
+                status: "OPEN".to_string(),
+                terms: "Proposal Terms".to_string(),
+                service_id: None,
+            },
+            Proposal {
+                id: None,
+                start_commit_num: 1,
+                end_commit_num: i64::MAX,
+                record_id: "TestRecord".to_string(),
+                timestamp: 1,
+                issuing_agent: KEY1.to_string(),
+                receiving_agent: KEY2.to_string(),
+                properties: vec!["location".to_string()],
+                role: "OWNER".to_string(),
+                status: "CANCELED".to_string(),
+                terms: "Proposal Terms".to_string(),
+                service_id: None,
+            },
+        ]
+    }
+
+    fn get_record(record_id: &str, service_id: Option<String>) -> Vec<Record> {
+        vec![Record {
+            id: None,
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            record_id: record_id.to_string(),
+            schema: "TestGridSchema".to_string(),
+            final_: false,
+            owners: vec![KEY1.to_string()],
+            custodians: vec![KEY2.to_string()],
+            service_id,
+        }]
+    }
+
+    fn get_updated_record() -> Vec<Record> {
+        vec![
+            Record {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: 1,
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
+                final_: false,
+                owners: vec![KEY1.to_string()],
+                custodians: vec![KEY2.to_string()],
+                service_id: None,
+            },
+            Record {
+                id: None,
+                start_commit_num: 1,
+                end_commit_num: i64::MAX,
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
+                final_: true,
+                owners: vec![KEY2.to_string(), KEY1.to_string()],
+                custodians: vec![KEY1.to_string(), KEY2.to_string()],
+                service_id: None,
+            },
+        ]
+    }
+
+    fn get_multiple_records() -> Vec<Record> {
+        vec![
+            Record {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: 1,
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
+                final_: false,
+                owners: vec![KEY1.to_string()],
+                custodians: vec![KEY2.to_string()],
+                service_id: None,
+            },
+            Record {
+                id: None,
+                start_commit_num: 1,
+                end_commit_num: i64::MAX,
+                record_id: "TestRecord".to_string(),
+                schema: "TestGridSchema".to_string(),
+                final_: true,
+                owners: vec![KEY2.to_string(), KEY1.to_string()],
+                custodians: vec![KEY1.to_string(), KEY2.to_string()],
+                service_id: None,
+            },
+            Record {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                record_id: "TestRecord 2".to_string(),
+                schema: "TestGridSchema".to_string(),
+                final_: false,
+                owners: vec![KEY1.to_string()],
+                custodians: vec![KEY2.to_string()],
+                service_id: None,
+            },
+        ]
+    }
+
+    fn populate_grid_schema_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        schemas: Vec<Schema>,
+    ) {
+        let store = DieselSchemaStore::new(pool.pool);
+        schemas
+            .into_iter()
+            .for_each(|schema| store.add_schema(schema).unwrap());
+    }
+
+    fn populate_product_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        products: Vec<Product>,
+    ) {
+        let store = DieselProductStore::new(pool.pool);
+        products
+            .into_iter()
+            .for_each(|product| store.add_product(product).unwrap());
+    }
+
+    fn get_property_for_record(service_id: Option<String>) -> Vec<Property> {
+        vec![
+            Property {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "TestProperty1".to_string(),
+                record_id: "TestRecord".to_string(),
+                property_definition: "property_definition_1".to_string(),
+                current_page: 1,
+                wrapped: false,
+                service_id: service_id.clone(),
+            },
+            Property {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "TestProperty2".to_string(),
+                record_id: "TestRecord".to_string(),
+                property_definition: "property_definition_2".to_string(),
+                current_page: 1,
+                wrapped: false,
+                service_id,
+            },
+        ]
+    }
+
+    fn get_reporter_for_property_record(service_id: Option<String>) -> Vec<Reporter> {
+        vec![
+            Reporter {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty1".to_string(),
+                record_id: "TestRecord".to_string(),
+                public_key: KEY1.to_string(),
+                authorized: true,
+                reporter_index: 0,
+                service_id: service_id.clone(),
+            },
+            Reporter {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty2".to_string(),
+                record_id: "TestRecord".to_string(),
+                public_key: KEY2.to_string(),
+                authorized: true,
+                reporter_index: 0,
+                service_id,
+            },
+        ]
+    }
+
+    fn get_reported_value_for_property_record(service_id: Option<String>) -> Vec<ReportedValue> {
+        vec![
+            ReportedValue {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty1".to_string(),
+                record_id: "TestRecord".to_string(),
+                reporter_index: 0,
+                timestamp: 5,
                 data_type: "String".to_string(),
                 bytes_value: None,
                 boolean_value: None,
@@ -3905,51 +3454,12 @@ mod test {
                 lat_long_value: None,
                 service_id: service_id.clone(),
             },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_StructProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Struct".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: Some(vec![
-                    "StringProperty".to_string(),
-                    "BoolProperty".to_string(),
-                ]),
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
+            ReportedValue {
+                id: None,
                 start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_StructProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
-                data_type: "Struct".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: Some(vec![
-                    "StringProperty".to_string(),
-                    "BoolProperty".to_string(),
-                ]),
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
-                record_id: "record_01".to_string(),
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty2".to_string(),
+                record_id: "TestRecord".to_string(),
                 reporter_index: 0,
                 timestamp: 5,
                 data_type: "Boolean".to_string(),
@@ -3960,49 +3470,237 @@ mod test {
                 enum_value: None,
                 struct_values: None,
                 lat_long_value: None,
+                service_id,
+            },
+        ]
+    }
+    fn get_property(service_id: Option<String>) -> Vec<Property> {
+        vec![Property {
+            id: None,
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            name: "TestProperty".to_string(),
+            record_id: "record_01".to_string(),
+            property_definition: "property_definition_1".to_string(),
+            current_page: 1,
+            wrapped: false,
+            service_id,
+        }]
+    }
+
+    fn get_reporter(service_id: Option<String>) -> Vec<Reporter> {
+        vec![
+            Reporter {
+                id: None,
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty".to_string(),
+                record_id: "record_01".to_string(),
+                public_key: KEY1.to_string(),
+                authorized: true,
+                reporter_index: 0,
                 service_id: service_id.clone(),
             },
-            NewReportedValue {
+            Reporter {
+                id: None,
                 start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_StructProperty_BoolProperty".to_string(),
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
+                public_key: KEY2.to_string(),
+                authorized: true,
                 reporter_index: 1,
-                timestamp: 3,
+                service_id,
+            },
+        ]
+    }
+
+    fn populate_tnt_property_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        properties: Vec<Property>,
+        reported_values: Vec<ReportedValue>,
+        reporter: Vec<Reporter>,
+    ) {
+        let store = DieselTrackAndTraceStore::new(pool.pool);
+        store.add_properties(properties).unwrap();
+        store.add_reported_values(reported_values).unwrap();
+        store.add_reporters(reporter).unwrap();
+    }
+
+    fn get_property_definition(service_id: Option<String>) -> Vec<PropertyDefinition> {
+        vec![
+            PropertyDefinition {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "Definition Name".to_string(),
+                schema_name: "TestGridSchema".to_string(),
+                data_type: "Lightbulb".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+                service_id: service_id.clone(),
+            },
+            PropertyDefinition {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "Other Definition Name".to_string(),
+                schema_name: "TestGridSchema".to_string(),
+                data_type: "New Lightbulb".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+                service_id: service_id,
+            },
+        ]
+    }
+
+    fn get_grid_schema_for_struct_record(service_id: Option<String>) -> Vec<Schema> {
+        vec![Schema {
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            name: "TestGridSchema".to_string(),
+            properties: get_grid_property_definition_struct_for_record(service_id.clone()),
+            description: "Example test grid schema".to_string(),
+            owner: "phillips001".to_string(),
+            service_id,
+        }]
+    }
+
+    fn get_grid_property_definition_struct_for_record(
+        service_id: Option<String>,
+    ) -> Vec<PropertyDefinition> {
+        vec![PropertyDefinition {
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            name: "TestProperty".to_string(),
+            schema_name: "TestGridSchema".to_string(),
+            data_type: "Struct".to_string(),
+            required: false,
+            description: "Definition Description".to_string(),
+            number_exponent: 0,
+            enum_options: vec![],
+            struct_properties: vec![],
+            service_id,
+        }]
+    }
+
+    fn get_grid_schema_for_record(service_id: Option<String>) -> Vec<Schema> {
+        vec![Schema {
+            start_commit_num: 0,
+            end_commit_num: i64::MAX,
+            name: "TestGridSchema".to_string(),
+            properties: get_grid_property_definition_for_record(service_id.clone()),
+            description: "Example test grid schema".to_string(),
+            owner: "phillips001".to_string(),
+            service_id,
+        }]
+    }
+
+    fn get_grid_property_definition_for_record(
+        service_id: Option<String>,
+    ) -> Vec<PropertyDefinition> {
+        vec![
+            PropertyDefinition {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "TestProperty1".to_string(),
+                schema_name: "TestGridSchema".to_string(),
+                data_type: "String".to_string(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+                service_id: service_id.clone(),
+            },
+            PropertyDefinition {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                name: "TestProperty2".to_string(),
+                schema_name: "TestGridSchema".to_string(),
                 data_type: "Boolean".to_string(),
-                bytes_value: None,
-                boolean_value: Some(false),
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
+                required: false,
+                description: "Definition Description".to_string(),
+                number_exponent: 0,
+                enum_options: vec![],
+                struct_properties: vec![],
+                service_id,
             },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Struct".to_string(),
+        ]
+    }
+
+    fn get_product_property_value(service_id: Option<String>) -> Vec<PropertyValue> {
+        vec![
+            PropertyValue {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                product_id: "041205707820".to_string(),
+                product_address: "test_address".to_string(),
+                property_name: "Test Grid Product".to_string(),
+                data_type: "Lightbulb".to_string(),
                 bytes_value: None,
                 boolean_value: None,
-                number_value: None,
+                number_value: Some(0),
                 string_value: None,
                 enum_value: None,
-                struct_values: Some(vec![
-                    "StructProperty".to_string(),
-                    "LatLongProperty".to_string(),
-                    "NumberProperty".to_string(),
-                    "EnumProperty".to_string(),
-                    "BytesProperty".to_string(),
-                ]),
+                struct_values: vec![],
                 lat_long_value: None,
                 service_id: service_id.clone(),
             },
-            NewReportedValue {
+            PropertyValue {
+                start_commit_num: 0,
+                end_commit_num: i64::MAX,
+                product_id: "041205707820".to_string(),
+                product_address: "test_address".to_string(),
+                property_name: "Test Grid Product".to_string(),
+                data_type: "Lightbulb".to_string(),
+                bytes_value: None,
+                boolean_value: None,
+                number_value: Some(0),
+                string_value: None,
+                enum_value: None,
+                struct_values: vec![],
+                lat_long_value: None,
+                service_id,
+            },
+        ]
+    }
+
+    fn populate_associated_agent_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        associated_agents: Vec<AssociatedAgent>,
+    ) {
+        let store = DieselTrackAndTraceStore::new(pool.pool);
+        store.add_associated_agents(associated_agents).unwrap();
+    }
+
+    fn populate_proposal_table(
+        pool: ConnectionPool<diesel::pg::PgConnection>,
+        proposals: Vec<Proposal>,
+    ) {
+        let store = DieselTrackAndTraceStore::new(pool.pool);
+        store.add_proposals(proposals).unwrap();
+    }
+
+    fn populate_record_table(pool: ConnectionPool<diesel::pg::PgConnection>, records: Vec<Record>) {
+        let store = DieselTrackAndTraceStore::new(pool.pool);
+        store.add_records(records).unwrap();
+    }
+
+    fn run_migrations(database_url: &str) {
+        let connection = PgConnection::establish(database_url)
+            .expect("Failed to stablish connection with database");
+        run_postgres_migrations(&connection).expect("Migrations failed");
+    }
+
+    fn get_reported_value(service_id: Option<String>) -> Vec<ReportedValue> {
+        vec![
+            ReportedValue {
+                id: None,
                 start_commit_num: 0,
                 end_commit_num: 2,
                 property_name: "TestProperty".to_string(),
@@ -4016,148 +3714,284 @@ mod test {
                 string_value: None,
                 enum_value: None,
                 struct_values: Some(vec![
-                    "StructProperty".to_string(),
-                    "LatLongProperty".to_string(),
-                    "NumberProperty".to_string(),
-                    "EnumProperty".to_string(),
-                    "BytesProperty".to_string(),
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 0,
+                        end_commit_num: 2,
+                        property_name: "TestProperty_StructProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 0,
+                        timestamp: 3,
+                        data_type: "Struct".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: Some(vec![
+                            ReportedValue {
+                                id: None,
+                                start_commit_num: 0,
+                                end_commit_num: 2,
+                                property_name: "TestProperty_StructProperty_StringProperty"
+                                    .to_string(),
+                                record_id: "record_01".to_string(),
+                                reporter_index: 0,
+                                timestamp: 3,
+                                data_type: "String".to_string(),
+                                bytes_value: None,
+                                boolean_value: None,
+                                number_value: None,
+                                string_value: Some("value_1".to_string()),
+                                enum_value: None,
+                                struct_values: None,
+                                lat_long_value: None,
+                                service_id: service_id.clone(),
+                            },
+                            ReportedValue {
+                                id: None,
+                                start_commit_num: 0,
+                                end_commit_num: 2,
+                                property_name: "TestProperty_StructProperty_BoolProperty"
+                                    .to_string(),
+                                record_id: "record_01".to_string(),
+                                reporter_index: 1,
+                                timestamp: 3,
+                                data_type: "Boolean".to_string(),
+                                bytes_value: None,
+                                boolean_value: Some(false),
+                                number_value: None,
+                                string_value: None,
+                                enum_value: None,
+                                struct_values: None,
+                                lat_long_value: None,
+                                service_id: service_id.clone(),
+                            },
+                        ]),
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 0,
+                        end_commit_num: 2,
+                        property_name: "TestProperty_LatLongProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 1,
+                        timestamp: 3,
+                        data_type: "LatLong".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: Some(LatLongValue(1, 1)),
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 0,
+                        end_commit_num: 2,
+                        property_name: "TestProperty_NumberProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 1,
+                        timestamp: 3,
+                        data_type: "Number".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: Some(1),
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 0,
+                        end_commit_num: 2,
+                        property_name: "TestProperty_EnumProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 0,
+                        timestamp: 3,
+                        data_type: "Enum".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: Some(1),
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 0,
+                        end_commit_num: 2,
+                        property_name: "TestProperty_BytesProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 0,
+                        timestamp: 3,
+                        data_type: "Bytes".to_string(),
+                        bytes_value: Some(vec![0x01, 0x02, 0x03, 0x04]),
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
                 ]),
                 lat_long_value: None,
                 service_id: service_id.clone(),
             },
-            NewReportedValue {
+            ReportedValue {
+                id: None,
                 start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_LatLongProperty".to_string(),
+                end_commit_num: i64::MAX,
+                property_name: "TestProperty".to_string(),
                 record_id: "record_01".to_string(),
                 reporter_index: 0,
                 timestamp: 5,
-                data_type: "LatLong".to_string(),
+                data_type: "Struct".to_string(),
                 bytes_value: None,
                 boolean_value: None,
                 number_value: None,
                 string_value: None,
                 enum_value: None,
-                struct_values: None,
-                lat_long_value: Some(LatLongValue(2, 2)),
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_LatLongProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
-                data_type: "LatLong".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: Some(LatLongValue(1, 1)),
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_NumberProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Number".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(2),
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_NumberProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
-                data_type: "Number".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: Some(1),
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_EnumProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Enum".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: Some(2),
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_EnumProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
-                data_type: "Enum".to_string(),
-                bytes_value: None,
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: Some(1),
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 2,
-                end_commit_num: MAX_COMMIT_NUM,
-                property_name: "TestProperty_BytesProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 0,
-                timestamp: 5,
-                data_type: "Bytes".to_string(),
-                bytes_value: Some(vec![0x05, 0x06, 0x07, 0x08]),
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
-                lat_long_value: None,
-                service_id: service_id.clone(),
-            },
-            NewReportedValue {
-                start_commit_num: 0,
-                end_commit_num: 2,
-                property_name: "TestProperty_BytesProperty".to_string(),
-                record_id: "record_01".to_string(),
-                reporter_index: 1,
-                timestamp: 3,
-                data_type: "Bytes".to_string(),
-                bytes_value: Some(vec![0x01, 0x02, 0x03, 0x04]),
-                boolean_value: None,
-                number_value: None,
-                string_value: None,
-                enum_value: None,
-                struct_values: None,
+                struct_values: Some(vec![
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 2,
+                        end_commit_num: i64::MAX,
+                        property_name: "TestProperty_StructProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 1,
+                        timestamp: 5,
+                        data_type: "Struct".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: Some(vec![
+                            ReportedValue {
+                                id: None,
+                                start_commit_num: 2,
+                                end_commit_num: i64::MAX,
+                                property_name: "TestProperty_StructProperty_StringProperty"
+                                    .to_string(),
+                                record_id: "record_01".to_string(),
+                                reporter_index: 1,
+                                timestamp: 5,
+                                data_type: "String".to_string(),
+                                bytes_value: None,
+                                boolean_value: None,
+                                number_value: None,
+                                string_value: Some("value_updated".to_string()),
+                                enum_value: None,
+                                struct_values: None,
+                                lat_long_value: None,
+                                service_id: service_id.clone(),
+                            },
+                            ReportedValue {
+                                id: None,
+                                start_commit_num: 2,
+                                end_commit_num: i64::MAX,
+                                property_name: "TestProperty_StructProperty_BoolProperty"
+                                    .to_string(),
+                                record_id: "record_01".to_string(),
+                                reporter_index: 0,
+                                timestamp: 5,
+                                data_type: "Boolean".to_string(),
+                                bytes_value: None,
+                                boolean_value: Some(true),
+                                number_value: None,
+                                string_value: None,
+                                enum_value: None,
+                                struct_values: None,
+                                lat_long_value: None,
+                                service_id: service_id.clone(),
+                            },
+                        ]),
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 2,
+                        end_commit_num: i64::MAX,
+                        property_name: "TestProperty_LatLongProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 0,
+                        timestamp: 5,
+                        data_type: "LatLong".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: Some(LatLongValue(2, 2)),
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 2,
+                        end_commit_num: i64::MAX,
+                        property_name: "TestProperty_NumberProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 0,
+                        timestamp: 5,
+                        data_type: "Number".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: Some(2),
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 2,
+                        end_commit_num: i64::MAX,
+                        property_name: "TestProperty_EnumProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 1,
+                        timestamp: 5,
+                        data_type: "Enum".to_string(),
+                        bytes_value: None,
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: Some(2),
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                    ReportedValue {
+                        id: None,
+                        start_commit_num: 2,
+                        end_commit_num: i64::MAX,
+                        property_name: "TestProperty_BytesProperty".to_string(),
+                        record_id: "record_01".to_string(),
+                        reporter_index: 1,
+                        timestamp: 5,
+                        data_type: "Bytes".to_string(),
+                        bytes_value: Some(vec![0x05, 0x06, 0x07, 0x08]),
+                        boolean_value: None,
+                        number_value: None,
+                        string_value: None,
+                        enum_value: None,
+                        struct_values: None,
+                        lat_long_value: None,
+                        service_id: service_id.clone(),
+                    },
+                ]),
                 lat_long_value: None,
                 service_id,
             },
