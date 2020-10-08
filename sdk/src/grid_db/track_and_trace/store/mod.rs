@@ -20,7 +20,7 @@ pub use error::TrackAndTraceStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssociatedAgent {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub role: String,
     pub agent_id: String,
@@ -32,7 +32,7 @@ pub struct AssociatedAgent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Property {
-    pub id: i64,
+    pub id: Option<i64>,
     pub name: String,
     pub record_id: String,
     pub property_definition: String,
@@ -45,7 +45,7 @@ pub struct Property {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proposal {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub timestamp: i64,
     pub issuing_agent: String,
@@ -61,7 +61,7 @@ pub struct Proposal {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Record {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub schema: String,
     pub final_: bool,
@@ -72,9 +72,9 @@ pub struct Record {
     pub service_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ReportedValue {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -94,7 +94,7 @@ pub struct ReportedValue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reporter {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub public_key: String,
@@ -107,7 +107,7 @@ pub struct Reporter {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReportedValueReporterToAgentMetadata {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -124,7 +124,7 @@ pub struct ReportedValueReporterToAgentMetadata {
     pub authorized: Option<bool>,
     pub metadata: Option<Vec<u8>>,
     pub reported_value_end_commit_num: i64,
-    pub reporter_end_commit_num: i64,
+    pub reporter_end_commit_num: Option<i64>,
     pub service_id: Option<String>,
 }
 

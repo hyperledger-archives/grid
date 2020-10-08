@@ -231,7 +231,7 @@ pub struct NewReportedValueReporterToAgentMetadataModel {
     pub authorized: Option<bool>,
     pub metadata: Option<Vec<u8>>,
     pub reported_value_end_commit_num: i64,
-    pub reporter_end_commit_num: i64,
+    pub reporter_end_commit_num: Option<i64>,
     pub service_id: Option<String>,
 }
 
@@ -256,7 +256,7 @@ pub struct ReportedValueReporterToAgentMetadataModel {
     pub authorized: Option<bool>,
     pub metadata: Option<Vec<u8>>,
     pub reported_value_end_commit_num: i64,
-    pub reporter_end_commit_num: i64,
+    pub reporter_end_commit_num: Option<i64>,
     pub service_id: Option<String>,
 }
 

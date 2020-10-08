@@ -131,7 +131,7 @@ table! {
         authorized ->  Nullable<Bool>,
         metadata ->  Nullable<Binary>,
         reported_value_end_commit_num -> Int8,
-        reporter_end_commit_num ->  Int8,
+        reporter_end_commit_num ->  Nullable<Int8>,
         service_id -> Nullable<Text>,
     }
 }
