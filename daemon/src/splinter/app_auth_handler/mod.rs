@@ -26,8 +26,7 @@ use splinter::{
     events::{Igniter, ParseBytes, ParseError, WebSocketClient, WebSocketError, WsResponse},
 };
 
-use crate::database::ConnectionPool;
-use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
+use crate::event::{EventHandler, EventProcessor};
 use crate::splinter::{
     app_auth_handler::{error::AppAuthHandlerError, node::get_node_id, sabre::setup_grid},
     event::ScabbardEventConnectionFactory,
@@ -56,11 +55,10 @@ impl ParseBytes<AdminEvent> for AdminEvent {
     }
 }
 
-#[cfg(feature = "postgres")]
 pub fn run(
     splinterd_url: String,
     event_connection_factory: ScabbardEventConnectionFactory,
-    connection_pool: ConnectionPool<diesel::pg::PgConnection>,
+    handler: Box<dyn EventHandler + Sync>,
     igniter: Igniter,
     scabbard_admin_key: String,
 ) -> Result<(), AppAuthHandlerError> {
@@ -72,7 +70,7 @@ pub fn run(
         if let Err(err) = process_admin_event(
             event,
             &event_connection_factory,
-            &connection_pool,
+            handler.cloned_box(),
             &node_id,
             &scabbard_admin_key,
             &splinterd_url,
@@ -106,11 +104,10 @@ pub fn run(
     igniter.start_ws(&ws).map_err(AppAuthHandlerError::from)
 }
 
-#[cfg(feature = "postgres")]
 fn process_admin_event(
     event: AdminEvent,
     event_connection_factory: &ScabbardEventConnectionFactory,
-    connection_pool: &ConnectionPool<diesel::pg::PgConnection>,
+    handler: Box<dyn EventHandler>,
     node_id: &str,
     scabbard_admin_key: &str,
     splinterd_url: &str,
@@ -157,12 +154,8 @@ fn process_admin_event(
             let event_connection = event_connection_factory
                 .create_connection(&msg_proposal.circuit_id, &service.service_id)?;
 
-            EventProcessor::start(
-                event_connection,
-                None,
-                vec![Box::new(DatabaseEventHandler::new(connection_pool.clone()))],
-            )
-            .map_err(|err| AppAuthHandlerError::EventProcessorError(err.0))?;
+            EventProcessor::start(event_connection, None, vec![handler])
+                .map_err(|err| AppAuthHandlerError::EventProcessorError(err.0))?;
 
             setup_grid(
                 scabbard_admin_key,
