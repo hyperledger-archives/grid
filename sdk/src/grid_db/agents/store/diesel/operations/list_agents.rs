@@ -33,16 +33,19 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
             .build_transaction()
             .read_write()
             .run::<_, AgentStoreError, _>(|| {
-                let agent_models: Vec<AgentModel> = agent::table
+                let mut query = agent::table
+                    .into_boxed()
                     .select(agent::all_columns)
-                    .filter(
-                        agent::service_id
-                            .eq(&service_id)
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<AgentModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
                     })?
@@ -57,17 +60,20 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                 let mut agents = Vec::new();
 
                 for a in agent_models {
-                    let roles: Vec<RoleModel> = role::table
-                        .select(role::all_columns)
-                        .filter(
-                            role::service_id
-                                .eq(&service_id)
-                                .and(role::public_key.eq(&a.public_key))
-                                .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .load::<RoleModel>(self.conn)
-                        .map(Some)
-                        .map_err(|err| AgentStoreError::OperationError {
+                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
+                        role::public_key
+                            .eq(&a.public_key)
+                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                    if let Some(service_id) = service_id {
+                        query = query.filter(role::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(role::service_id.is_null());
+                    }
+
+                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                        AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
                         })?
@@ -94,16 +100,19 @@ impl<'a> AgentStoreListAgentsOperation
     fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let agent_models: Vec<AgentModel> = agent::table
+                let mut query = agent::table
+                    .into_boxed()
                     .select(agent::all_columns)
-                    .filter(
-                        agent::service_id
-                            .eq(&service_id)
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<AgentModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
                     })?
@@ -118,17 +127,20 @@ impl<'a> AgentStoreListAgentsOperation
                 let mut agents = Vec::new();
 
                 for a in agent_models {
-                    let roles: Vec<RoleModel> = role::table
-                        .select(role::all_columns)
-                        .filter(
-                            role::service_id
-                                .eq(&service_id)
-                                .and(role::public_key.eq(&a.public_key))
-                                .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .load::<RoleModel>(self.conn)
-                        .map(Some)
-                        .map_err(|err| AgentStoreError::OperationError {
+                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
+                        role::public_key
+                            .eq(&a.public_key)
+                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                    if let Some(service_id) = service_id {
+                        query = query.filter(role::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(role::service_id.is_null());
+                    }
+
+                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                        AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
                         })?

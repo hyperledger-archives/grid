@@ -63,7 +63,10 @@ impl OrganizationStore for MemoryOrganizationStore {
                 })?;
         let filtered_orgs = inner_organization
             .iter()
-            .filter(|(_, o)| o.service_id.eq(&service_id) && o.end_commit_num.eq(&MAX_COMMIT_NUM))
+            .filter(|(_, o)| {
+                o.service_id.eq(&service_id.map(String::from))
+                    && o.end_commit_num.eq(&MAX_COMMIT_NUM)
+            })
             .map(|(_, o)| Organization {
                 org_id: o.org_id.clone(),
                 name: o.name.clone(),

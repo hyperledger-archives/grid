@@ -37,13 +37,22 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
-        let org = organization::table
+        let mut query = organization::table
+            .into_boxed()
+            .select(organization::all_columns)
             .filter(
                 organization::org_id
                     .eq(&org_id)
-                    .and(organization::service_id.eq(&service_id))
                     .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            )
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(organization::service_id.eq(service_id));
+        } else {
+            query = query.filter(organization::service_id.is_null());
+        }
+
+        query
             .first::<OrganizationModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
@@ -71,13 +80,22 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
         org_id: &str,
         service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
-        let org = organization::table
+        let mut query = organization::table
+            .into_boxed()
+            .select(organization::all_columns)
             .filter(
                 organization::org_id
                     .eq(&org_id)
-                    .and(organization::service_id.eq(&service_id))
                     .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            )
+            );
+
+        if let Some(service_id) = service_id {
+            query = query.filter(organization::service_id.eq(service_id));
+        } else {
+            query = query.filter(organization::service_id.is_null());
+        }
+
+        query
             .first::<OrganizationModel>(self.conn)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
