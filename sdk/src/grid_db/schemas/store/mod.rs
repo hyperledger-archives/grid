@@ -14,9 +14,10 @@
 
 #[cfg(feature = "diesel")]
 pub mod diesel;
+mod error;
 pub mod memory;
 
-use crate::grid_db::schemas::error::SchemaStoreError;
+pub use error::SchemaStoreError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Schema {

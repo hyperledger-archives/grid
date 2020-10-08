@@ -15,12 +15,12 @@
 use super::ProductStoreOperations;
 
 use crate::grid_db::products::{
-    error::ProductStoreError,
     store::{
         diesel::{
             models::{NewProduct, NewProductPropertyValue},
             schema::{product, product_property_value},
         },
+        error::ProductStoreError,
         Product,
     },
     MAX_COMMIT_NUM,

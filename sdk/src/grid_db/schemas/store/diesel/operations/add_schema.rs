@@ -15,9 +15,9 @@
 use super::SchemaStoreOperations;
 
 use crate::grid_db::schemas::{
-    error::SchemaStoreError,
     store::{
         diesel::schema::{grid_property_definition, grid_schema},
+        error::SchemaStoreError,
         Schema,
     },
     MAX_COMMIT_NUM,
