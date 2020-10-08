@@ -48,14 +48,8 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                     AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all agents from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut agents = Vec::new();
 
@@ -76,14 +70,8 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
                         AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
-                        })?
-                        .ok_or_else(|| {
-                            AgentStoreError::NotFoundError(
-                                "Could not get all roles from storage".to_string(),
-                            )
-                        })?
-                        .into_iter()
-                        .collect();
+                        }
+                    })?;
 
                     agents.push(Agent::from((a, roles)));
                 }
@@ -115,14 +103,8 @@ impl<'a> AgentStoreListAgentsOperation
                     AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all agents from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut agents = Vec::new();
 
@@ -143,14 +125,8 @@ impl<'a> AgentStoreListAgentsOperation
                         AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
-                        })?
-                        .ok_or_else(|| {
-                            AgentStoreError::NotFoundError(
-                                "Could not get all roles from storage".to_string(),
-                            )
-                        })?
-                        .into_iter()
-                        .collect();
+                        }
+                    })?;
 
                     agents.push(Agent::from((a, roles)));
                 }

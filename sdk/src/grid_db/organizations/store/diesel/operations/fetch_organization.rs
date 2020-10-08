@@ -54,20 +54,13 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
 
         query
             .first::<OrganizationModel>(self.conn)
+            .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
             .map_err(|err| OrganizationStoreError::QueryError {
                 context: "Failed to fetch organization for org_id".to_string(),
                 source: Box::new(err),
-            })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(format!(
-                    "Failed to find organization: {}",
-                    org_id,
-                ))
-            })?;
-
-        Ok(Some(Organization::from(org)))
+            })
     }
 }
 
@@ -97,19 +90,12 @@ impl<'a> OrganizationStoreFetchOrganizationOperation
 
         query
             .first::<OrganizationModel>(self.conn)
+            .map(Organization::from)
             .map(Some)
             .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
             .map_err(|err| OrganizationStoreError::QueryError {
                 context: "Failed to fetch organization for org_id".to_string(),
                 source: Box::new(err),
-            })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(format!(
-                    "Failed to find organization: {}",
-                    org_id,
-                ))
-            })?;
-
-        Ok(Some(Organization::from(org)))
+            })
     }
 }

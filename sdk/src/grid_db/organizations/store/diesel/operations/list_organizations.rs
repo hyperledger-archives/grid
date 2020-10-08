@@ -48,19 +48,14 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 
         let orgs = query
             .load::<OrganizationModel>(self.conn)
-            .map(Some)
             .map_err(|err| OrganizationStoreError::OperationError {
                 context: "Failed to fetch organizations".to_string(),
                 source: Some(Box::new(err)),
             })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(
-                    "Could not get all organizations from storage".to_string(),
-                )
-            })?
             .into_iter()
             .map(Organization::from)
             .collect();
+
         Ok(orgs)
     }
 }
@@ -86,19 +81,14 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 
         let orgs = query
             .load::<OrganizationModel>(self.conn)
-            .map(Some)
             .map_err(|err| OrganizationStoreError::OperationError {
                 context: "Failed to fetch organizations".to_string(),
                 source: Some(Box::new(err)),
             })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(
-                    "Could not get all organizations from storage".to_string(),
-                )
-            })?
             .into_iter()
             .map(Organization::from)
             .collect();
+
         Ok(orgs)
     }
 }

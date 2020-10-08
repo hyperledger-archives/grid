@@ -60,11 +60,6 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
                     .map_err(|err| AgentStoreError::QueryError {
                         context: "Failed to fetch agent for pub_key".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            format!("Failed to find agent: {}", pub_key,),
-                        )
                     })?;
 
                 let mut query = role::table
@@ -87,14 +82,10 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
                     AgentStoreError::OperationError {
                         context: "Failed to fetch roles".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all roles from storage".to_string(),
-                        )
-                    })?;
+                    }
+                })?;
 
-                Ok(Some(Agent::from((agent, roles))))
+                Ok(agent.map(|agent| Agent::from((agent, roles))))
             })
     }
 }
@@ -129,11 +120,6 @@ impl<'a> AgentStoreFetchAgentOperation
                     .map_err(|err| AgentStoreError::QueryError {
                         context: "Failed to fetch agent for pub_key".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            format!("Failed to find agent: {}", pub_key,),
-                        )
                     })?;
 
                 let mut query = role::table
@@ -156,14 +142,10 @@ impl<'a> AgentStoreFetchAgentOperation
                     AgentStoreError::OperationError {
                         context: "Failed to fetch roles".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all roles from storage".to_string(),
-                        )
-                    })?;
+                    }
+                })?;
 
-                Ok(Some(Agent::from((agent, roles))))
+                Ok(agent.map(|agent| Agent::from((agent, roles))))
             })
     }
 }

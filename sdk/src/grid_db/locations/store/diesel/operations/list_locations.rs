@@ -67,14 +67,8 @@ impl<'a> LocationStoreListLocationsOperation<diesel::pg::PgConnection>
                     LocationStoreError::OperationError {
                         context: "Failed to fetch locations".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        LocationStoreError::NotFoundError(
-                            "Could not get all locations from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut locations = Vec::new();
 
@@ -179,14 +173,8 @@ impl<'a> LocationStoreListLocationsOperation<diesel::sqlite::SqliteConnection>
                     LocationStoreError::OperationError {
                         context: "Failed to fetch locations".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        LocationStoreError::NotFoundError(
-                            "Could not get all locations from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut locations = Vec::new();
 

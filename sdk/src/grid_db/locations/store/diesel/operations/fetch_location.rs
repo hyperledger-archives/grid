@@ -78,19 +78,13 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::pg::PgConnection>
                     .map_err(|err| LocationStoreError::QueryError {
                         context: "Failed to fetch location for location_id".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        LocationStoreError::NotFoundError(format!(
-                            "Failed to find location: {}",
-                            location_id,
-                        ))
                     })?;
 
                 let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
                 let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                Ok(Some(Location::from((loc, attrs))))
+                Ok(loc.map(|loc| Location::from((loc, attrs))))
             })
     }
 
@@ -189,19 +183,13 @@ impl<'a> LocationStoreFetchLocationOperation<diesel::sqlite::SqliteConnection>
                     .map_err(|err| LocationStoreError::QueryError {
                         context: "Failed to fetch location for location_id".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        LocationStoreError::NotFoundError(format!(
-                            "Failed to find location: {}",
-                            location_id,
-                        ))
                     })?;
 
                 let roots = Self::get_root_attributes(&*self.conn, &location_id, service_id)?;
 
                 let attrs = Self::get_attributes(&*self.conn, roots)?;
 
-                Ok(Some(Location::from((loc, attrs))))
+                Ok(loc.map(|loc| Location::from((loc, attrs))))
             })
     }
 
