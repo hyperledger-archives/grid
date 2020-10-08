@@ -131,7 +131,7 @@ pub struct ReportedValueReporterToAgentMetadata {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct LatLong;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct LatLongValue(pub i64, pub i64);
 
 pub trait TrackAndTraceStore: Send + Sync {
