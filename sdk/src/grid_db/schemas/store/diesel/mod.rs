@@ -156,7 +156,7 @@ fn make_property_definitions(
         properties.push(NewGridPropertyDefinition {
             name: def.name.to_string(),
             schema_name: def.schema_name.to_string(),
-            data_type: format!("{:?}", def.data_type),
+            data_type: def.data_type.clone(),
             required: def.required,
             description: def.description.to_string(),
             number_exponent: def.number_exponent,
