@@ -15,19 +15,14 @@
  * -----------------------------------------------------------------------------
  */
 
-use crate::database::{
-    helpers as db,
-    models::{LatLongValue, Product, ProductPropertyValue},
-};
-
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
+use grid_sdk::grid_db::products::store::{LatLongValue, Product, PropertyValue};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProductSlice {
@@ -41,18 +36,19 @@ pub struct ProductSlice {
     pub service_id: Option<String>,
 }
 
-impl ProductSlice {
-    pub fn from_model(product: &Product, properties: Vec<ProductPropertyValue>) -> Self {
+impl From<Product> for ProductSlice {
+    fn from(product: Product) -> Self {
         Self {
             product_id: product.product_id.clone(),
             product_address: product.product_address.clone(),
             product_namespace: product.product_namespace.clone(),
             owner: product.owner.clone(),
-            properties: properties
-                .iter()
-                .map(|prop| ProductPropertyValueSlice::from_model(prop))
+            properties: product
+                .properties
+                .into_iter()
+                .map(ProductPropertyValueSlice::from)
                 .collect(),
-            service_id: product.service_id.clone(),
+            service_id: product.service_id,
         }
     }
 }
@@ -69,12 +65,12 @@ pub struct ProductPropertyValueSlice {
     pub number_value: Option<i64>,
     pub string_value: Option<String>,
     pub enum_value: Option<i32>,
-    pub struct_values: Option<Vec<String>>,
-    pub lat_long_value: LatLongSlice,
+    pub struct_values: Vec<ProductPropertyValueSlice>,
+    pub lat_long_value: Option<LatLongSlice>,
 }
 
-impl ProductPropertyValueSlice {
-    pub fn from_model(property_value: &ProductPropertyValue) -> Self {
+impl From<PropertyValue> for ProductPropertyValueSlice {
+    fn from(property_value: PropertyValue) -> Self {
         Self {
             name: property_value.property_name.clone(),
             data_type: property_value.data_type.clone(),
@@ -84,8 +80,12 @@ impl ProductPropertyValueSlice {
             number_value: property_value.number_value,
             string_value: property_value.string_value.clone(),
             enum_value: property_value.enum_value,
-            struct_values: property_value.struct_values.clone(),
-            lat_long_value: LatLongSlice::from_model(property_value.lat_long_value.clone()),
+            struct_values: property_value
+                .struct_values
+                .into_iter()
+                .map(ProductPropertyValueSlice::from)
+                .collect(),
+            lat_long_value: property_value.lat_long_value.map(LatLongSlice::from),
         }
     }
 }
@@ -96,18 +96,11 @@ pub struct LatLongSlice {
     pub longitude: i64,
 }
 
-impl LatLongSlice {
-    pub fn new(latitude: i64, longitude: i64) -> Self {
-        Self {
-            latitude,
-            longitude,
-        }
-    }
-
-    pub fn from_model(lat_long_value: Option<LatLongValue>) -> LatLongSlice {
-        match lat_long_value {
-            Some(value) => LatLongSlice::new(value.0 as i64, value.1 as i64),
-            None => LatLongSlice::new(0 as i64, 0 as i64),
+impl From<LatLongValue> for LatLongSlice {
+    fn from(value: LatLongValue) -> Self {
+        LatLongSlice {
+            latitude: value.latitude,
+            longitude: value.longitude,
         }
     }
 }
@@ -120,42 +113,21 @@ impl Message for ListProducts {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<ListProducts> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<ListProducts> for DbExecutor {
     type Result = Result<Vec<ProductSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListProducts, _: &mut SyncContext<Self>) -> Self::Result {
-        let mut product_properties = db::list_product_property_values(
-            &*self.connection_pool.get()?,
-            msg.service_id.as_deref(),
-        )?
-        .into_iter()
-        .fold(HashMap::new(), |mut acc, product_property| {
-            acc.entry(product_property.product_id.to_string())
-                .or_insert_with(Vec::new)
-                .push(product_property);
-            acc
-        });
-
-        let fetched_products =
-            db::list_products(&*self.connection_pool.get()?, msg.service_id.as_deref())?
-                .iter()
-                .map(|product| {
-                    ProductSlice::from_model(
-                        product,
-                        product_properties
-                            .remove(&product.product_id)
-                            .unwrap_or_else(Vec::new),
-                    )
-                })
-                .collect();
-        Ok(fetched_products)
+        Ok(self
+            .product_store
+            .list_products(msg.service_id.as_deref())?
+            .into_iter()
+            .map(ProductSlice::from)
+            .collect())
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn list_products(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -177,38 +149,25 @@ impl Message for FetchProduct {
     type Result = Result<ProductSlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchProduct> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchProduct> for DbExecutor {
     type Result = Result<ProductSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchProduct, _: &mut SyncContext<Self>) -> Self::Result {
-        let product = match db::fetch_product(
-            &*self.connection_pool.get()?,
-            &msg.product_id,
-            msg.service_id.as_deref(),
-        )? {
-            Some(product) => product,
-            None => {
-                return Err(RestApiResponseError::NotFoundError(format!(
-                    "Could not find product with id: {}",
-                    msg.product_id
-                )));
-            }
-        };
-
-        let product_properties = db::fetch_product_property_values(
-            &*self.connection_pool.get()?,
-            &msg.product_id,
-            msg.service_id.as_deref(),
-        )?;
-
-        Ok(ProductSlice::from_model(&product, product_properties))
+        match self
+            .product_store
+            .fetch_product(&msg.product_id, msg.service_id.as_deref())?
+        {
+            Some(product) => Ok(ProductSlice::from(product)),
+            None => Err(RestApiResponseError::NotFoundError(format!(
+                "Could not find product with id: {}",
+                msg.product_id
+            ))),
+        }
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_product(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     product_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

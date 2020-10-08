@@ -12,18 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::{
-    helpers as db,
-    models::{GridPropertyDefinition, GridSchema},
-};
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
+use grid_sdk::grid_db::schemas::store::{PropertyDefinition, Schema};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GridSchemaSlice {
@@ -36,17 +32,18 @@ pub struct GridSchemaSlice {
     pub service_id: Option<String>,
 }
 
-impl GridSchemaSlice {
-    pub fn from_schema(schema: &GridSchema, properties: Vec<GridPropertyDefinition>) -> Self {
+impl From<Schema> for GridSchemaSlice {
+    fn from(schema: Schema) -> Self {
         Self {
             name: schema.name.clone(),
             description: schema.description.clone(),
             owner: schema.owner.clone(),
-            properties: properties
-                .iter()
-                .map(|prop| GridPropertyDefinitionSlice::from_definition(prop))
+            properties: schema
+                .properties
+                .into_iter()
+                .map(GridPropertyDefinitionSlice::from)
                 .collect(),
-            service_id: schema.service_id.clone(),
+            service_id: schema.service_id,
         }
     }
 }
@@ -60,14 +57,14 @@ pub struct GridPropertyDefinitionSlice {
     pub description: String,
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
-    pub struct_properties: Vec<String>,
+    pub struct_properties: Vec<GridPropertyDefinitionSlice>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
 }
 
-impl GridPropertyDefinitionSlice {
-    pub fn from_definition(definition: &GridPropertyDefinition) -> Self {
+impl From<PropertyDefinition> for GridPropertyDefinitionSlice {
+    fn from(definition: PropertyDefinition) -> Self {
         Self {
             name: definition.name.clone(),
             schema_name: definition.schema_name.clone(),
@@ -76,8 +73,12 @@ impl GridPropertyDefinitionSlice {
             description: definition.description.clone(),
             number_exponent: definition.number_exponent,
             enum_options: definition.enum_options.clone(),
-            struct_properties: definition.struct_properties.clone(),
-            service_id: definition.service_id.clone(),
+            struct_properties: definition
+                .struct_properties
+                .into_iter()
+                .map(GridPropertyDefinitionSlice::from)
+                .collect(),
+            service_id: definition.service_id,
         }
     }
 }
@@ -90,40 +91,21 @@ impl Message for ListGridSchemas {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<ListGridSchemas> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<ListGridSchemas> for DbExecutor {
     type Result = Result<Vec<GridSchemaSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListGridSchemas, _: &mut SyncContext<Self>) -> Self::Result {
-        let mut properties = db::list_grid_property_definitions(
-            &*self.connection_pool.get()?,
-            msg.service_id.as_deref(),
-        )?
-        .into_iter()
-        .fold(HashMap::new(), |mut acc, definition| {
-            acc.entry(definition.schema_name.to_string())
-                .or_insert_with(Vec::new)
-                .push(definition);
-            acc
-        });
-
-        let fetched_schemas =
-            db::list_grid_schemas(&*self.connection_pool.get()?, msg.service_id.as_deref())?
-                .iter()
-                .map(|schema| {
-                    GridSchemaSlice::from_schema(
-                        schema,
-                        properties.remove(&schema.name).unwrap_or_else(Vec::new),
-                    )
-                })
-                .collect();
-        Ok(fetched_schemas)
+        Ok(self
+            .schema_store
+            .list_schemas(msg.service_id.as_deref())?
+            .into_iter()
+            .map(GridSchemaSlice::from)
+            .collect())
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn list_grid_schemas(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -145,37 +127,25 @@ impl Message for FetchGridSchema {
     type Result = Result<GridSchemaSlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchGridSchema> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchGridSchema> for DbExecutor {
     type Result = Result<GridSchemaSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchGridSchema, _: &mut SyncContext<Self>) -> Self::Result {
-        let properties = db::list_grid_property_definitions_with_schema_name(
-            &*self.connection_pool.get()?,
-            &msg.name,
-            msg.service_id.as_deref(),
-        )?;
-        let fetched_schema = match db::fetch_grid_schema(
-            &*self.connection_pool.get()?,
-            &msg.name,
-            msg.service_id.as_deref(),
-        )? {
-            Some(schema) => GridSchemaSlice::from_schema(&schema, properties),
-            None => {
-                return Err(RestApiResponseError::NotFoundError(format!(
-                    "Could not find schema with name: {}",
-                    msg.name
-                )));
-            }
-        };
-
-        Ok(fetched_schema)
+        match self
+            .schema_store
+            .fetch_schema(&msg.name, msg.service_id.as_deref())?
+        {
+            Some(schema) => Ok(GridSchemaSlice::from(schema)),
+            None => Err(RestApiResponseError::NotFoundError(format!(
+                "Could not find schema with name: {}",
+                msg.name
+            ))),
+        }
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_grid_schema(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     schema_name: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

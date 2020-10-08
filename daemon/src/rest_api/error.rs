@@ -21,6 +21,12 @@ use actix_web::{
     HttpResponse,
 };
 use futures::future::{Future, TryFutureExt};
+use grid_sdk::grid_db::{
+    agents::store::AgentStoreError, commits::store::CommitStoreError,
+    locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
+    products::store::ProductStoreError, schemas::store::SchemaStoreError,
+    track_and_trace::store::TrackAndTraceStoreError,
+};
 use std::error::Error;
 
 use std::fmt;
@@ -185,5 +191,47 @@ impl From<diesel::result::Error> for RestApiResponseError {
             "Database Result Error occured: {}",
             err.to_string()
         ))
+    }
+}
+
+impl From<CommitStoreError> for RestApiResponseError {
+    fn from(err: CommitStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<AgentStoreError> for RestApiResponseError {
+    fn from(err: AgentStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<LocationStoreError> for RestApiResponseError {
+    fn from(err: LocationStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<OrganizationStoreError> for RestApiResponseError {
+    fn from(err: OrganizationStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<ProductStoreError> for RestApiResponseError {
+    fn from(err: ProductStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<SchemaStoreError> for RestApiResponseError {
+    fn from(err: SchemaStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
+    }
+}
+
+impl From<TrackAndTraceStoreError> for RestApiResponseError {
+    fn from(err: TrackAndTraceStoreError) -> Self {
+        RestApiResponseError::DatabaseError(format!("{}", err))
     }
 }

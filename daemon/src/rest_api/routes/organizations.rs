@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::{helpers as db, models::Organization};
+use std::{convert::TryFrom, str::FromStr};
+
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
+use grid_sdk::grid_db::organizations::store::Organization;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -27,21 +29,33 @@ pub struct OrganizationSlice {
     pub org_id: String,
     pub name: String,
     pub address: String,
-    pub metadata: Vec<JsonValue>,
+    pub metadata: JsonValue,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
 }
 
-impl OrganizationSlice {
-    pub fn from_organization(organization: &Organization) -> Self {
-        Self {
+impl TryFrom<Organization> for OrganizationSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from(organization: Organization) -> Result<Self, Self::Error> {
+        let metadata = if !organization.metadata.is_empty() {
+            JsonValue::from_str(
+                &String::from_utf8(organization.metadata.clone())
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
+            )
+            .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?
+        } else {
+            json!([])
+        };
+
+        Ok(Self {
             org_id: organization.org_id.clone(),
             name: organization.name.clone(),
             address: organization.address.clone(),
-            metadata: organization.metadata.clone(),
-            service_id: organization.service_id.clone(),
-        }
+            metadata,
+            service_id: organization.service_id,
+        })
     }
 }
 
@@ -53,23 +67,20 @@ impl Message for ListOrganizations {
     type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<ListOrganizations> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<ListOrganizations> for DbExecutor {
     type Result = Result<Vec<OrganizationSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListOrganizations, _: &mut SyncContext<Self>) -> Self::Result {
-        let fetched_organizations =
-            db::list_organizations(&*self.connection_pool.get()?, msg.service_id.as_deref())?
-                .iter()
-                .map(|organization| OrganizationSlice::from_organization(organization))
-                .collect();
-        Ok(fetched_organizations)
+        self.organization_store
+            .list_organizations(msg.service_id.as_deref())?
+            .into_iter()
+            .map(OrganizationSlice::try_from)
+            .collect::<Result<Vec<OrganizationSlice>, RestApiResponseError>>()
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn list_organizations(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -91,32 +102,25 @@ impl Message for FetchOrganization {
     type Result = Result<OrganizationSlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchOrganization> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchOrganization> for DbExecutor {
     type Result = Result<OrganizationSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchOrganization, _: &mut SyncContext<Self>) -> Self::Result {
-        let organization = match db::fetch_organization(
-            &*self.connection_pool.get()?,
-            &msg.organization_id,
-            msg.service_id.as_deref(),
-        )? {
-            Some(organization) => OrganizationSlice::from_organization(&organization),
-            None => {
-                return Err(RestApiResponseError::NotFoundError(format!(
-                    "Could not find organization with id: {}",
-                    msg.organization_id
-                )));
-            }
-        };
-
-        Ok(organization)
+        match self
+            .organization_store
+            .fetch_organization(&msg.organization_id, msg.service_id.as_deref())?
+        {
+            Some(organization) => OrganizationSlice::try_from(organization),
+            None => Err(RestApiResponseError::NotFoundError(format!(
+                "Could not find organization with id: {}",
+                msg.organization_id
+            ))),
+        }
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_organization(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     organization_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

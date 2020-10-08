@@ -22,11 +22,10 @@ use crate::rest_api::error::RestApiResponseError;
 use crate::rest_api::{AcceptServiceIdParam, AppState, QueryServiceId};
 use crate::submitter::{BatchStatusResponse, BatchStatuses, SubmitBatches, DEFAULT_TIME_OUT};
 
-#[cfg(feature = "postgres")]
 pub async fn submit_batches(
     req: HttpRequest,
     body: web::Bytes,
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query_service_id: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -58,10 +57,9 @@ struct Params {
     id: Vec<String>,
 }
 
-#[cfg(feature = "postgres")]
 pub async fn get_batch_statuses(
     req: HttpRequest,
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
     query_service_id: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

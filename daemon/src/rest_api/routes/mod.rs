@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
+use grid_sdk::grid_db::{
+    AgentStore, DieselAgentStore, DieselLocationStore, DieselOrganizationStore, DieselProductStore,
+    DieselSchemaStore, DieselTrackAndTraceStore, LocationStore, OrganizationStore, ProductStore,
+    SchemaStore, TrackAndTraceStore,
+};
+
 mod agents;
 mod batches;
 mod locations;
@@ -32,17 +40,59 @@ use crate::database::ConnectionPool;
 
 use actix::{Actor, SyncContext};
 
-pub struct DbExecutor<C: diesel::Connection + 'static> {
-    connection_pool: ConnectionPool<C>,
+#[derive(Clone)]
+pub struct DbExecutor {
+    agent_store: Arc<dyn AgentStore>,
+    location_store: Arc<dyn LocationStore>,
+    organization_store: Arc<dyn OrganizationStore>,
+    product_store: Arc<dyn ProductStore>,
+    schema_store: Arc<dyn SchemaStore>,
+    tnt_store: Arc<dyn TrackAndTraceStore>,
 }
 
-impl<C: diesel::Connection> Actor for DbExecutor<C> {
+impl Actor for DbExecutor {
     type Context = SyncContext<Self>;
 }
 
-impl<C: diesel::Connection> DbExecutor<C> {
-    pub fn new(connection_pool: ConnectionPool<C>) -> DbExecutor<C> {
-        DbExecutor { connection_pool }
+impl DbExecutor {
+    pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> DbExecutor {
+        let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
+        let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
+        let organization_store =
+            Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
+        let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
+        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
+        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
+
+        Self {
+            agent_store,
+            location_store,
+            organization_store,
+            product_store,
+            schema_store,
+            tnt_store,
+        }
+    }
+
+    pub fn from_sqlite_pool(
+        connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
+    ) -> DbExecutor {
+        let agent_store = Arc::new(DieselAgentStore::new(connection_pool.pool.clone()));
+        let location_store = Arc::new(DieselLocationStore::new(connection_pool.pool.clone()));
+        let organization_store =
+            Arc::new(DieselOrganizationStore::new(connection_pool.pool.clone()));
+        let product_store = Arc::new(DieselProductStore::new(connection_pool.pool.clone()));
+        let schema_store = Arc::new(DieselSchemaStore::new(connection_pool.pool.clone()));
+        let tnt_store = Arc::new(DieselTrackAndTraceStore::new(connection_pool.pool));
+
+        Self {
+            agent_store,
+            location_store,
+            organization_store,
+            product_store,
+            schema_store,
+            tnt_store,
+        }
     }
 }
 
