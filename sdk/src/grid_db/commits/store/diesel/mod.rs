@@ -35,7 +35,6 @@ pub struct DieselCommitStore<C: diesel::Connection + 'static> {
     connection_pool: Pool<ConnectionManager<C>>,
 }
 
-#[cfg(feature = "diesel")]
 impl<C: diesel::Connection> DieselCommitStore<C> {
     /// Creates a new DieselCommitStore
     ///
@@ -204,5 +203,68 @@ impl From<NewCommitModel> for Commit {
             commit_num: commit.commit_num,
             service_id: commit.service_id,
         }
+    }
+}
+
+impl Into<NewCommitModel> for Commit {
+    fn into(self) -> NewCommitModel {
+        NewCommitModel {
+            commit_id: self.commit_id,
+            commit_num: self.commit_num,
+            service_id: self.service_id,
+        }
+    }
+}
+
+pub trait CloneBoxCommitStore: CommitStore {
+    fn clone_box(&self) -> Box<dyn CloneBoxCommitStore>;
+}
+
+impl Clone for Box<dyn CloneBoxCommitStore> {
+    fn clone(&self) -> Box<dyn CloneBoxCommitStore> {
+        self.clone_box()
+    }
+}
+
+impl std::fmt::Display for CommitEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("(")?;
+        f.write_str(&self.id)?;
+        f.write_str(", ")?;
+        if self.service_id.is_some() {
+            write!(f, "{}, ", self.service_id.as_ref().unwrap())?;
+        }
+        if self.height.is_some() {
+            write!(f, "height: {}, ", self.height.as_ref().unwrap())?;
+        }
+
+        write!(f, "#changes: {})", self.state_changes.len())
+    }
+}
+
+impl From<DatabaseError> for CommitStoreError {
+    fn from(err: DatabaseError) -> CommitStoreError {
+        CommitStoreError::ConnectionError(Box::new(err))
+    }
+}
+
+impl From<diesel::result::Error> for CommitStoreError {
+    fn from(err: diesel::result::Error) -> CommitStoreError {
+        CommitStoreError::QueryError {
+            context: "Diesel query failed".to_string(),
+            source: Box::new(err),
+        }
+    }
+}
+
+impl From<diesel::r2d2::PoolError> for CommitStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> CommitStoreError {
+        CommitStoreError::ConnectionError(Box::new(err))
+    }
+}
+
+impl From<DatabaseError> for CommitEventError {
+    fn from(err: DatabaseError) -> CommitEventError {
+        CommitEventError::ConnectionError(format!("{}", err))
     }
 }

@@ -15,9 +15,6 @@
 use std::error::Error;
 use std::fmt;
 
-#[cfg(feature = "diesel")]
-use crate::database::error;
-
 /// Represents OrganizationStore errors
 #[derive(Debug)]
 pub enum OrganizationStoreError {
@@ -111,29 +108,5 @@ impl fmt::Display for OrganizationStoreError {
                 write!(f, "Organization not found: {}", s)
             }
         }
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<error::DatabaseError> for OrganizationStoreError {
-    fn from(err: error::DatabaseError) -> OrganizationStoreError {
-        OrganizationStoreError::ConnectionError(Box::new(err))
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<diesel::result::Error> for OrganizationStoreError {
-    fn from(err: diesel::result::Error) -> OrganizationStoreError {
-        OrganizationStoreError::QueryError {
-            context: "Diesel query failed".to_string(),
-            source: Box::new(err),
-        }
-    }
-}
-
-#[cfg(feature = "diesel")]
-impl From<diesel::r2d2::PoolError> for OrganizationStoreError {
-    fn from(err: diesel::r2d2::PoolError) -> OrganizationStoreError {
-        OrganizationStoreError::ConnectionError(Box::new(err))
     }
 }

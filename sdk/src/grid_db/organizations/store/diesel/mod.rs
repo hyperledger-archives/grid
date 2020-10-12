@@ -33,7 +33,6 @@ pub struct DieselOrganizationStore<C: diesel::Connection + 'static> {
     connection_pool: Pool<ConnectionManager<C>>,
 }
 
-#[cfg(feature = "diesel")]
 impl<C: diesel::Connection> DieselOrganizationStore<C> {
     /// Creates a new DieselOrganizationStore
     ///
@@ -152,5 +151,40 @@ impl From<NewOrganizationModel> for Organization {
             end_commit_num: org.end_commit_num,
             service_id: org.service_id,
         }
+    }
+}
+
+impl Into<NewOrganizationModel> for Organization {
+    fn into(self) -> NewOrganizationModel {
+        NewOrganizationModel {
+            org_id: self.org_id,
+            name: self.name,
+            address: self.address,
+            metadata: self.metadata,
+            start_commit_num: self.start_commit_num,
+            end_commit_num: self.end_commit_num,
+            service_id: self.service_id,
+        }
+    }
+}
+
+impl From<DatabaseError> for OrganizationStoreError {
+    fn from(err: DatabaseError) -> OrganizationStoreError {
+        OrganizationStoreError::ConnectionError(Box::new(err))
+    }
+}
+
+impl From<diesel::result::Error> for OrganizationStoreError {
+    fn from(err: diesel::result::Error) -> OrganizationStoreError {
+        OrganizationStoreError::QueryError {
+            context: "Diesel query failed".to_string(),
+            source: Box::new(err),
+        }
+    }
+}
+
+impl From<diesel::r2d2::PoolError> for OrganizationStoreError {
+    fn from(err: diesel::r2d2::PoolError) -> OrganizationStoreError {
+        OrganizationStoreError::ConnectionError(Box::new(err))
     }
 }

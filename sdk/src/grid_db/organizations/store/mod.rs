@@ -21,9 +21,6 @@ pub use error::OrganizationStoreError;
 
 use crate::hex::as_hex;
 
-#[cfg(feature = "diesel")]
-use self::diesel::models::NewOrganizationModel;
-
 /// Represents a Grid commit
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Organization {
@@ -69,21 +66,6 @@ pub trait OrganizationStore: Send + Sync {
         org_id: &str,
         service_id: Option<String>,
     ) -> Result<Option<Organization>, OrganizationStoreError>;
-}
-
-#[cfg(feature = "diesel")]
-impl Into<NewOrganizationModel> for Organization {
-    fn into(self) -> NewOrganizationModel {
-        NewOrganizationModel {
-            org_id: self.org_id,
-            name: self.name,
-            address: self.address,
-            metadata: self.metadata,
-            start_commit_num: self.start_commit_num,
-            end_commit_num: self.end_commit_num,
-            service_id: self.service_id,
-        }
-    }
 }
 
 impl<OS> OrganizationStore for Box<OS>
