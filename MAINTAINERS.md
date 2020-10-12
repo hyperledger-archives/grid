@@ -8,6 +8,7 @@
 | Dan Middleton | dcmiddle | Dan |
 | Darian Plumb | dplumb94 | dplumb |
 | Dave Cecchi | davececchi | cecchi |
+| Davey Newhall | dnewh | newhall |
 | Eloá Franca Verona | eloaverona | eloafran |
 | James Mitchell | jsmitchell | jsmitchell |
 | Peter Schwarz | peterschwarz | pschwarz |
