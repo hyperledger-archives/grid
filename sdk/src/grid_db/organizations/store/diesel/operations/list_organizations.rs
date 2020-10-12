@@ -23,7 +23,7 @@ pub(in crate::grid_db::organizations::store::diesel) trait OrganizationStoreList
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError>;
 }
 
@@ -33,29 +33,29 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        let orgs = organization::table
+        let mut query = organization::table
+            .into_boxed()
             .select(organization::all_columns)
-            .filter(
-                organization::service_id
-                    .eq(service_id)
-                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            )
+            .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
+
+        if let Some(service_id) = service_id {
+            query = query.filter(organization::service_id.eq(service_id));
+        } else {
+            query = query.filter(organization::service_id.is_null());
+        }
+
+        let orgs = query
             .load::<OrganizationModel>(self.conn)
-            .map(Some)
             .map_err(|err| OrganizationStoreError::OperationError {
                 context: "Failed to fetch organizations".to_string(),
                 source: Some(Box::new(err)),
             })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(
-                    "Could not get all organizations from storage".to_string(),
-                )
-            })?
             .into_iter()
             .map(Organization::from)
             .collect();
+
         Ok(orgs)
     }
 }
@@ -66,29 +66,29 @@ impl<'a> OrganizationStoreListOrganizationsOperation
 {
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
-        let orgs = organization::table
+        let mut query = organization::table
+            .into_boxed()
             .select(organization::all_columns)
-            .filter(
-                organization::service_id
-                    .eq(service_id)
-                    .and(organization::end_commit_num.eq(MAX_COMMIT_NUM)),
-            )
+            .filter(organization::end_commit_num.eq(MAX_COMMIT_NUM));
+
+        if let Some(service_id) = service_id {
+            query = query.filter(organization::service_id.eq(service_id));
+        } else {
+            query = query.filter(organization::service_id.is_null());
+        }
+
+        let orgs = query
             .load::<OrganizationModel>(self.conn)
-            .map(Some)
             .map_err(|err| OrganizationStoreError::OperationError {
                 context: "Failed to fetch organizations".to_string(),
                 source: Some(Box::new(err)),
             })?
-            .ok_or_else(|| {
-                OrganizationStoreError::NotFoundError(
-                    "Could not get all organizations from storage".to_string(),
-                )
-            })?
             .into_iter()
             .map(Organization::from)
             .collect();
+
         Ok(orgs)
     }
 }

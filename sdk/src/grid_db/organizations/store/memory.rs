@@ -52,7 +52,7 @@ impl OrganizationStore for MemoryOrganizationStore {
 
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         let inner_organization =
             self.inner_organization
@@ -63,7 +63,10 @@ impl OrganizationStore for MemoryOrganizationStore {
                 })?;
         let filtered_orgs = inner_organization
             .iter()
-            .filter(|(_, o)| o.service_id.eq(&service_id) && o.end_commit_num.eq(&MAX_COMMIT_NUM))
+            .filter(|(_, o)| {
+                o.service_id.eq(&service_id.map(String::from))
+                    && o.end_commit_num.eq(&MAX_COMMIT_NUM)
+            })
             .map(|(_, o)| Organization {
                 org_id: o.org_id.clone(),
                 name: o.name.clone(),
@@ -79,7 +82,7 @@ impl OrganizationStore for MemoryOrganizationStore {
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         let inner_organization =
             self.inner_organization
@@ -90,7 +93,7 @@ impl OrganizationStore for MemoryOrganizationStore {
                 })?;
 
         for (_, o) in inner_organization.iter() {
-            if o.service_id == service_id
+            if o.service_id == service_id.map(String::from)
                 && o.org_id == org_id
                 && o.end_commit_num == MAX_COMMIT_NUM
             {

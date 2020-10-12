@@ -15,8 +15,10 @@
 use super::ProductStoreOperations;
 
 use crate::grid_db::products::{
-    error::ProductStoreError,
-    store::diesel::schema::{product, product_property_value},
+    store::{
+        diesel::schema::{product, product_property_value},
+        error::ProductStoreError,
+    },
     MAX_COMMIT_NUM,
 };
 use diesel::{dsl::update, prelude::*};

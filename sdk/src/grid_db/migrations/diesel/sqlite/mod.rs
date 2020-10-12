@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Defines methods and utilities to interact with user tables in the database.
-
 use crate::grid_db::{
     agents::store::diesel::schema::{agent::dsl::*, role::dsl::role},
     commits::store::diesel::schema::{chain_record::dsl::*, commit::dsl::*},
@@ -30,12 +28,12 @@ use crate::grid_db::{
 };
 
 use diesel::RunQueryDsl;
-#[cfg(feature = "postgres")]
-use diesel::{pg::PgConnection, Connection};
+#[cfg(feature = "sqlite")]
+use diesel::{sqlite::SqliteConnection, Connection};
 
 use crate::database::error::{ConnectionError, DatabaseError};
 
-embed_migrations!("./src/grid_db/migrations/diesel/postgres/migrations");
+embed_migrations!("./src/grid_db/migrations/diesel/sqlite/migrations");
 
 /// Run database migrations to create Grid tables
 ///
@@ -43,8 +41,8 @@ embed_migrations!("./src/grid_db/migrations/diesel/postgres/migrations");
 ///
 /// * `conn` - Connection to database
 ///
-#[cfg(all(feature = "postgres", feature = "diesel"))]
-pub fn run_migrations(conn: &PgConnection) -> Result<(), ConnectionError> {
+#[cfg(all(feature = "sqlite", feature = "diesel"))]
+pub fn run_migrations(conn: &SqliteConnection) -> Result<(), ConnectionError> {
     embedded_migrations::run(conn).map_err(|err| ConnectionError {
         context: "Failed to embed migrations".to_string(),
         source: Box::new(err),
@@ -55,8 +53,8 @@ pub fn run_migrations(conn: &PgConnection) -> Result<(), ConnectionError> {
     Ok(())
 }
 
-#[cfg(all(feature = "postgres", feature = "diesel"))]
-pub fn clear_database(conn: &PgConnection) -> Result<(), DatabaseError> {
+#[cfg(all(feature = "sqlite", feature = "diesel"))]
+pub fn clear_database(conn: &SqliteConnection) -> Result<(), DatabaseError> {
     conn.transaction::<_, DatabaseError, _>(|| {
         diesel::delete(agent).execute(conn)?;
         diesel::delete(role).execute(conn)?;

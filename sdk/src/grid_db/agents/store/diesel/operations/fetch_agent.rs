@@ -26,7 +26,7 @@ pub(in crate::grid_db::agents::store::diesel) trait AgentStoreFetchAgentOperatio
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError>;
 }
 
@@ -35,53 +35,57 @@ impl<'a> AgentStoreFetchAgentOperation for AgentStoreOperations<'a, diesel::pg::
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         self.conn
             .build_transaction()
             .read_write()
             .run::<_, AgentStoreError, _>(|| {
-                let agent = agent::table
-                    .filter(
-                        agent::public_key
-                            .eq(&pub_key)
-                            .and(agent::service_id.eq(&service_id))
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = agent::table.into_boxed().select(agent::all_columns).filter(
+                    agent::public_key
+                        .eq(&pub_key)
+                        .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent = query
                     .first::<AgentModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                     .map_err(|err| AgentStoreError::QueryError {
                         context: "Failed to fetch agent for pub_key".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            format!("Failed to find agent: {}", pub_key,),
-                        )
                     })?;
 
-                let roles = role::table
+                let mut query = role::table
+                    .select(role::all_columns)
+                    .into_boxed()
                     .select(role::all_columns)
                     .filter(
                         role::public_key
                             .eq(&pub_key)
-                            .and(role::service_id.eq(&service_id))
                             .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<RoleModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    );
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(role::service_id.eq(service_id));
+                } else {
+                    query = query.filter(role::service_id.is_null());
+                }
+
+                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch roles".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all roles from storage".to_string(),
-                        )
-                    })?;
+                    }
+                })?;
 
-                Ok(Some(Agent::from((agent, roles))))
+                Ok(agent.map(|agent| Agent::from((agent, roles))))
             })
     }
 }
@@ -93,51 +97,55 @@ impl<'a> AgentStoreFetchAgentOperation
     fn fetch_agent(
         &self,
         pub_key: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Agent>, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let agent = agent::table
-                    .filter(
-                        agent::public_key
-                            .eq(&pub_key)
-                            .and(agent::service_id.eq(&service_id))
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
+                let mut query = agent::table.into_boxed().select(agent::all_columns).filter(
+                    agent::public_key
+                        .eq(&pub_key)
+                        .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
+                );
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent = query
                     .first::<AgentModel>(self.conn)
                     .map(Some)
                     .or_else(|err| if err == NotFound { Ok(None) } else { Err(err) })
                     .map_err(|err| AgentStoreError::QueryError {
                         context: "Failed to fetch agent for pub_key".to_string(),
                         source: Box::new(err),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            format!("Failed to find agent: {}", pub_key,),
-                        )
                     })?;
 
-                let roles = role::table
+                let mut query = role::table
+                    .select(role::all_columns)
+                    .into_boxed()
                     .select(role::all_columns)
                     .filter(
                         role::public_key
                             .eq(&pub_key)
-                            .and(role::service_id.eq(&service_id))
                             .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<RoleModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    );
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(role::service_id.eq(service_id));
+                } else {
+                    query = query.filter(role::service_id.is_null());
+                }
+
+                let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch roles".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all roles from storage".to_string(),
-                        )
-                    })?;
+                    }
+                })?;
 
-                Ok(Some(Agent::from((agent, roles))))
+                Ok(agent.map(|agent| Agent::from((agent, roles))))
             })
     }
 }

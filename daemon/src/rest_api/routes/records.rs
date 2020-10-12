@@ -12,15 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::{
-    helpers as db,
-    models::{
-        AssociatedAgent, LatLongValue, Property, Proposal, Record,
-        ReportedValueReporterToAgentMetadata,
-    },
-};
-
-use crate::database::ConnectionPool;
+use std::sync::Arc;
 
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
@@ -28,8 +20,11 @@ use crate::rest_api::{
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
+use grid_sdk::grid_db::track_and_trace::store::{
+    AssociatedAgent, LatLongValue, Property, Proposal, Record,
+    ReportedValueReporterToAgentMetadata, TrackAndTraceStore,
+};
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value as JsonValue};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AssociatedAgentSlice {
@@ -40,12 +35,12 @@ pub struct AssociatedAgentSlice {
     pub service_id: Option<String>,
 }
 
-impl AssociatedAgentSlice {
-    pub fn from_model(associated_agent: &AssociatedAgent) -> Self {
+impl From<AssociatedAgent> for AssociatedAgentSlice {
+    fn from(associated_agent: AssociatedAgent) -> Self {
         Self {
             agent_id: associated_agent.agent_id.clone(),
             timestamp: associated_agent.timestamp as u64,
-            service_id: associated_agent.service_id.clone(),
+            service_id: associated_agent.service_id,
         }
     }
 }
@@ -64,8 +59,8 @@ pub struct ProposalSlice {
     pub service_id: Option<String>,
 }
 
-impl ProposalSlice {
-    pub fn from_model(proposal: &Proposal) -> Self {
+impl From<Proposal> for ProposalSlice {
+    fn from(proposal: Proposal) -> Self {
         Self {
             receiving_agent: proposal.receiving_agent.clone(),
             issuing_agent: proposal.issuing_agent.clone(),
@@ -74,7 +69,7 @@ impl ProposalSlice {
             status: proposal.status.clone(),
             terms: proposal.terms.clone(),
             timestamp: proposal.timestamp as u64,
-            service_id: proposal.service_id.clone(),
+            service_id: proposal.service_id,
         }
     }
 }
@@ -97,20 +92,21 @@ pub struct RecordSlice {
 
 impl RecordSlice {
     pub fn from_models(
-        record: &Record,
-        proposals: &[Proposal],
-        associated_agents: &[AssociatedAgent],
-        properties: &[PropertySlice],
+        record: Record,
+        proposals: Vec<Proposal>,
+        associated_agents: Vec<AssociatedAgent>,
+        properties: Vec<PropertySlice>,
     ) -> Self {
         let mut owner_updates: Vec<AssociatedAgentSlice> = associated_agents
-            .iter()
+            .clone()
+            .into_iter()
             .filter(|agent| agent.role.eq("OWNER"))
-            .map(AssociatedAgentSlice::from_model)
+            .map(AssociatedAgentSlice::from)
             .collect();
         let mut custodian_updates: Vec<AssociatedAgentSlice> = associated_agents
-            .iter()
+            .into_iter()
             .filter(|agent| agent.role.eq("CUSTODIAN"))
-            .map(AssociatedAgentSlice::from_model)
+            .map(AssociatedAgentSlice::from)
             .collect();
 
         owner_updates.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
@@ -129,10 +125,10 @@ impl RecordSlice {
             },
             properties: properties.to_vec(),
             r#final: record.final_,
-            proposals: proposals.iter().map(ProposalSlice::from_model).collect(),
+            proposals: proposals.into_iter().map(ProposalSlice::from).collect(),
             owner_updates,
             custodian_updates,
-            service_id: record.service_id.clone(),
+            service_id: record.service_id,
         }
     }
 }
@@ -145,42 +141,40 @@ impl Message for ListRecords {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<ListRecords> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<ListRecords> for DbExecutor {
     type Result = Result<Vec<RecordSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListRecords, _: &mut SyncContext<Self>) -> Self::Result {
-        let records = db::list_records(&*self.connection_pool.get()?, msg.service_id.as_deref())?;
+        let records = self.tnt_store.list_records(msg.service_id.as_deref())?;
 
         let record_ids: Vec<String> = records
             .iter()
             .map(|record| record.record_id.to_string())
             .collect();
 
-        let proposals = db::list_proposals(
-            &*self.connection_pool.get()?,
-            &record_ids,
-            msg.service_id.as_deref(),
-        )?;
-        let associated_agents = db::list_associated_agents(
-            &*self.connection_pool.get()?,
-            &record_ids,
-            msg.service_id.as_deref(),
-        )?;
+        let proposals = self
+            .tnt_store
+            .list_proposals(&record_ids, msg.service_id.as_deref())?;
+        let associated_agents = self
+            .tnt_store
+            .list_associated_agents(&record_ids, msg.service_id.as_deref())?;
 
-        let properties = db::list_properties_with_data_type(
-            &*self.connection_pool.get()?,
-            &record_ids,
-            msg.service_id.as_deref(),
-        )?
-        .iter()
-        .map(|(property, data_type)| {
-            parse_property_slice(&self.connection_pool, property, data_type)
-        })
-        .collect::<Result<Vec<PropertySlice>, _>>()?;
+        let properties = self
+            .tnt_store
+            .list_properties_with_data_type(&record_ids, msg.service_id.as_deref())?
+            .iter()
+            .map(|(property, data_type)| {
+                parse_property_slice(
+                    &self.tnt_store,
+                    property,
+                    data_type,
+                    msg.service_id.as_deref(),
+                )
+            })
+            .collect::<Result<Vec<PropertySlice>, _>>()?;
 
         Ok(records
-            .iter()
+            .into_iter()
             .map(|record| {
                 let props: Vec<Proposal> = proposals
                     .iter()
@@ -199,15 +193,14 @@ impl Handler<ListRecords> for DbExecutor<diesel::pg::PgConnection> {
                     .cloned()
                     .collect();
 
-                RecordSlice::from_models(record, &props, &agents, &record_properties)
+                RecordSlice::from_models(record, props, agents, record_properties)
             })
             .collect())
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn list_records(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -229,12 +222,14 @@ impl Message for FetchRecord {
     type Result = Result<RecordSlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchRecord> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchRecord> for DbExecutor {
     type Result = Result<RecordSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchRecord, _: &mut SyncContext<Self>) -> Self::Result {
-        let record = match db::fetch_record(&*self.connection_pool.get()?, &msg.record_id)? {
+        let record = match self
+            .tnt_store
+            .fetch_record(&msg.record_id, msg.service_id.as_deref())?
+        {
             Some(record) => record,
             None => {
                 return Err(RestApiResponseError::NotFoundError(format!(
@@ -244,41 +239,39 @@ impl Handler<FetchRecord> for DbExecutor<diesel::pg::PgConnection> {
             }
         };
 
-        let proposals = db::list_proposals(
-            &*self.connection_pool.get()?,
-            &[msg.record_id.clone()],
-            msg.service_id.as_deref(),
-        )?;
+        let proposals = self
+            .tnt_store
+            .list_proposals(&[msg.record_id.clone()], msg.service_id.as_deref())?;
 
-        let properties = db::list_properties_with_data_type(
-            &*self.connection_pool.get()?,
-            &[msg.record_id.clone()],
-            msg.service_id.as_deref(),
-        )?
-        .iter()
-        .map(|(property, data_type)| {
-            parse_property_slice(&self.connection_pool, property, data_type)
-        })
-        .collect::<Result<Vec<PropertySlice>, _>>()?;
+        let properties = self
+            .tnt_store
+            .list_properties_with_data_type(&[msg.record_id.clone()], msg.service_id.as_deref())?
+            .iter()
+            .map(|(property, data_type)| {
+                parse_property_slice(
+                    &self.tnt_store,
+                    property,
+                    data_type,
+                    msg.service_id.as_deref(),
+                )
+            })
+            .collect::<Result<Vec<PropertySlice>, _>>()?;
 
-        let associated_agents = db::list_associated_agents(
-            &*self.connection_pool.get()?,
-            &[msg.record_id],
-            msg.service_id.as_deref(),
-        )?;
+        let associated_agents = self
+            .tnt_store
+            .list_associated_agents(&[msg.record_id], msg.service_id.as_deref())?;
 
         Ok(RecordSlice::from_models(
-            &record,
-            &proposals,
-            &associated_agents,
-            &properties,
+            record,
+            proposals,
+            associated_agents,
+            properties,
         ))
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_record(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     record_id: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
@@ -365,7 +358,7 @@ impl LatLong {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReporterSlice {
     pub public_key: String,
-    pub metadata: JsonValue,
+    pub metadata: ReportedValueReporterToAgentMetadata,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_id: Option<String>,
@@ -405,10 +398,7 @@ impl PropertyValueSlice {
                     .public_key
                     .clone()
                     .unwrap_or_else(|| "".to_string()),
-                metadata: reported_value_with_reporter
-                    .metadata
-                    .clone()
-                    .unwrap_or_else(|| JsonValue::Object(Map::new())),
+                metadata: reported_value_with_reporter.clone(),
                 service_id: reported_value_with_reporter.service_id.clone(),
             },
             service_id: reported_value_with_reporter.service_id.clone(),
@@ -505,9 +495,8 @@ impl Message for FetchRecordProperty {
     type Result = Result<PropertySlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_record_property(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     params: web::Path<(String, String)>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
@@ -523,45 +512,50 @@ pub async fn fetch_record_property(
         .map(|record| HttpResponse::Ok().json(record))
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchRecordProperty> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchRecordProperty> for DbExecutor {
     type Result = Result<PropertySlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchRecordProperty, _: &mut SyncContext<Self>) -> Self::Result {
-        let (property, data_type) = db::fetch_property_with_data_type(
-            &*self.connection_pool.get()?,
-            &msg.record_id,
-            &msg.property_name,
-            msg.service_id.as_deref(),
-        )?
-        .ok_or_else(|| {
-            RestApiResponseError::NotFoundError(format!(
-                "Could not find property {} for record {}",
-                msg.property_name, msg.record_id
-            ))
-        })?;
+        let (property, data_type) = self
+            .tnt_store
+            .fetch_property_with_data_type(
+                &msg.record_id,
+                &msg.property_name,
+                msg.service_id.as_deref(),
+            )?
+            .ok_or_else(|| {
+                RestApiResponseError::NotFoundError(format!(
+                    "Could not find property {} for record {}",
+                    msg.property_name, msg.record_id
+                ))
+            })?;
 
-        parse_property_slice(&self.connection_pool, &property, &data_type)
+        parse_property_slice(
+            &self.tnt_store,
+            &property,
+            &data_type,
+            msg.service_id.as_deref(),
+        )
     }
 }
 
-#[cfg(feature = "postgres")]
 fn parse_property_slice(
-    conn: &ConnectionPool<diesel::pg::PgConnection>,
+    store: &Arc<dyn TrackAndTraceStore>,
     property: &Property,
     data_type: &Option<String>,
+    service_id: Option<&str>,
 ) -> Result<PropertySlice, RestApiResponseError> {
-    let reporters = db::list_reporters(&*conn.get()?, &property.record_id, &property.name)?;
+    let reporters = store.list_reporters(&property.record_id, &property.name, service_id)?;
 
-    let reported_value = db::fetch_reported_value_reporter_to_agent_metadata(
-        &*conn.get()?,
+    let reported_value = store.fetch_reported_value_reporter_to_agent_metadata(
         &property.record_id,
         &property.name,
         None,
+        service_id,
     )?;
 
     let property_value_slice = match reported_value {
-        Some(value) => Some(parse_reported_values(&conn, &value)?),
+        Some(value) => Some(parse_reported_values(&value, service_id)?),
         None => None,
     };
 
@@ -576,14 +570,15 @@ fn parse_property_slice(
         })
         .collect::<Vec<String>>();
 
-    let mut updates = db::list_reported_value_reporter_to_agent_metadata(
-        &*conn.get()?,
-        &property.record_id,
-        &property.name,
-    )?
-    .iter()
-    .map(|reported_value| parse_reported_values(&conn, reported_value))
-    .collect::<Result<Vec<PropertyValueSlice>, _>>()?;
+    let mut updates = store
+        .list_reported_value_reporter_to_agent_metadata(
+            &property.record_id,
+            &property.name,
+            service_id,
+        )?
+        .iter()
+        .map(|reported_value| parse_reported_values(reported_value, service_id))
+        .collect::<Result<Vec<PropertyValueSlice>, _>>()?;
 
     // Sort updates from oldest to newest.
     updates.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
@@ -599,23 +594,15 @@ fn parse_property_slice(
     Ok(property_info)
 }
 
-#[cfg(feature = "postgres")]
 fn parse_reported_values(
-    conn: &ConnectionPool<diesel::pg::PgConnection>,
     reported_value: &ReportedValueReporterToAgentMetadata,
+    service_id: Option<&str>,
 ) -> Result<PropertyValueSlice, RestApiResponseError> {
     let struct_values = if reported_value.data_type == "Struct" {
-        let vals = reported_value.struct_values.clone().ok_or_else(|| {
-            RestApiResponseError::DatabaseError(
-                "ReportedValue is of Struct data_type, but is missing struct values".to_string(),
-            )
-        })?;
         Some(parse_struct_values(
-            conn,
-            &reported_value.property_name,
             &reported_value.record_id,
-            reported_value.reported_value_end_commit_num,
-            &vals,
+            &reported_value.struct_values,
+            service_id,
         )?)
     } else {
         None
@@ -624,52 +611,25 @@ fn parse_reported_values(
     PropertyValueSlice::from_model(&reported_value, struct_values)
 }
 
-#[cfg(feature = "postgres")]
 fn parse_struct_values(
-    conn: &ConnectionPool<diesel::pg::PgConnection>,
-    property_name: &str,
     record_id: &str,
-    reported_value_end_commit_num: i64,
-    struct_values: &[String],
+    struct_values: &[ReportedValueReporterToAgentMetadata],
+    service_id: Option<&str>,
 ) -> Result<Vec<StructPropertyValue>, RestApiResponseError> {
     let mut inner_values = vec![];
 
-    for value_name in struct_values {
-        let struct_property_name = format!("{}_{}", property_name, value_name);
-        let struct_value = db::fetch_reported_value_reporter_to_agent_metadata(
-            &*conn.get()?,
-            &record_id,
-            &struct_property_name,
-            Some(reported_value_end_commit_num),
-        )?
-        .ok_or_else(|| {
-            RestApiResponseError::NotFoundError(format!(
-                "Could not find values for property {} for struct value {} in record {}",
-                value_name, property_name, record_id
-            ))
-        })?;
+    for struct_value in struct_values {
         if struct_value.data_type == "Struct" {
-            let struct_value_names = struct_value.struct_values.clone().ok_or_else(|| {
-                RestApiResponseError::DatabaseError(
-                    "ReportedValue is of Struct data_type, but is missing struct values"
-                        .to_string(),
-                )
-            })?;
-            let inner_struct_values = parse_struct_values(
-                conn,
-                &struct_property_name,
-                record_id,
-                struct_value.reported_value_end_commit_num,
-                &struct_value_names,
-            )?;
+            let inner_struct_values =
+                parse_struct_values(record_id, &struct_value.struct_values, service_id)?;
             inner_values.push(StructPropertyValue::from_model(
-                value_name,
+                &struct_value.property_name,
                 &struct_value,
                 Some(inner_struct_values),
             )?);
         } else {
             inner_values.push(StructPropertyValue::from_model(
-                value_name,
+                &struct_value.property_name,
                 &struct_value,
                 None,
             )?);

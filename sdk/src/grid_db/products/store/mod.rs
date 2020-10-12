@@ -14,8 +14,9 @@
 
 #[cfg(feature = "diesel")]
 pub mod diesel;
+pub mod error;
 
-use crate::grid_db::products::error::ProductStoreError;
+pub use error::ProductStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
@@ -54,7 +55,7 @@ pub struct LatLongValue {
 }
 
 pub trait ProductStore: Send + Sync {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError>;
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError>;
 
     fn fetch_product(
         &self,

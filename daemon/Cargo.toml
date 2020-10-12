@@ -59,7 +59,7 @@ optional = true
 features = [ "events" ]
 
 [features]
-default = ["postgres", "sawtooth-support"]
+default = ["sawtooth-support"]
 
 stable = [
     "sawtooth-support",
@@ -70,10 +70,8 @@ experimental = [
     "splinter-support",
 ]
 
-postgres = []
 sawtooth-support = []
 splinter-support = ["scabbard", "splinter", "reqwest", "sabre-sdk", "transact", "transact/contract-archive"]
-sqlite = []
 test-api = []
 
 [package.metadata.deb]

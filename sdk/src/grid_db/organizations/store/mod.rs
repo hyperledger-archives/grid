@@ -52,7 +52,7 @@ pub trait OrganizationStore: Send + Sync {
     ///  * `service_id` - The service id to list organizations for
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError>;
 
     /// Fetches an organization from the underlying storage
@@ -64,7 +64,7 @@ pub trait OrganizationStore: Send + Sync {
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError>;
 }
 
@@ -78,7 +78,7 @@ where
 
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         (**self).list_organizations(service_id)
     }
@@ -86,7 +86,7 @@ where
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         (**self).fetch_organization(org_id, service_id)
     }

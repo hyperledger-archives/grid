@@ -13,10 +13,25 @@
 -- limitations under the License.
 -- -----------------------------------------------------------------------------
 
-DROP TABLE IF EXISTS grid_schema;
-DROP INDEX IF EXISTS grid_schema_name_block_num_idx;
-
-DROP TABLE IF EXISTS grid_property_definition;
-DROP INDEX IF EXISTS grid_property_definition_name_block_num_idx;
-
-DROP TYPE IF EXISTS latlong;
+DROP TABLE commit;
+DROP TABLE chain_record;
+DROP TABLE grid_circuit;
+DROP TABLE grid_circuit_member;
+DROP TABLE grid_circuit_proposal_vote_record;
+DROP TABLE agent;
+DROP TABLE role;
+DROP TABLE organization;
+DROP TABLE associated_agent;
+DROP TABLE property;
+DROP TABLE proposal;
+DROP TABLE record;
+DROP TABLE reported_value;
+DROP TABLE reporter;
+DROP VIEW reporter_to_agent_metadata;
+DROP VIEW reported_value_reporter_to_agent_metadata;
+DROP TABLE grid_schema;
+DROP TABLE grid_property_definition;
+DROP TABLE product;
+DROP TABLE product_property_value;
+DROP TABLE location;
+DROP TABLE location_attribute;

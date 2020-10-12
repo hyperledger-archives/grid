@@ -15,12 +15,12 @@
 use super::ProductStoreOperations;
 
 use crate::grid_db::products::{
-    error::ProductStoreError,
     store::{
         diesel::{
             models::{NewProduct, NewProductPropertyValue},
             schema::{product, product_property_value},
         },
+        error::ProductStoreError,
         Product,
     },
     MAX_COMMIT_NUM,
@@ -32,12 +32,12 @@ use diesel::{
 };
 
 pub(in crate::grid_db::products) trait AddProductOperation {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError>;
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AddProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnection> {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         let (product_model, property_models) = product.into();
 
         self.conn.transaction::<_, ProductStoreError, _>(|| {
@@ -51,7 +51,7 @@ impl<'a> AddProductOperation for ProductStoreOperations<'a, diesel::pg::PgConnec
 
 #[cfg(feature = "sqlite")]
 impl<'a> AddProductOperation for ProductStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn add_product(&self, product: &Product) -> Result<(), ProductStoreError> {
+    fn add_product(&self, product: Product) -> Result<(), ProductStoreError> {
         let (product_model, property_models) = product.into();
 
         self.conn.transaction::<_, ProductStoreError, _>(|| {

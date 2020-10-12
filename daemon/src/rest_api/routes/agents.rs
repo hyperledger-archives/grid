@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::database::{helpers as db, models::Agent};
+use std::{convert::TryFrom, str::FromStr};
+
 use crate::rest_api::{
     error::RestApiResponseError, routes::DbExecutor, AcceptServiceIdParam, AppState, QueryServiceId,
 };
 
 use actix::{Handler, Message, SyncContext};
 use actix_web::{web, HttpResponse};
+use grid_sdk::grid_db::agents::store::Agent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -34,16 +36,28 @@ pub struct AgentSlice {
     pub service_id: Option<String>,
 }
 
-impl AgentSlice {
-    pub fn from_agent(agent: &Agent) -> Self {
-        Self {
+impl TryFrom<Agent> for AgentSlice {
+    type Error = RestApiResponseError;
+
+    fn try_from(agent: Agent) -> Result<Self, Self::Error> {
+        let metadata = if !agent.metadata.is_empty() {
+            JsonValue::from_str(
+                &String::from_utf8(agent.metadata.clone())
+                    .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?,
+            )
+            .map_err(|err| RestApiResponseError::DatabaseError(format!("{}", err)))?
+        } else {
+            json!([])
+        };
+
+        Ok(Self {
             public_key: agent.public_key.clone(),
             org_id: agent.org_id.clone(),
             active: agent.active,
             roles: agent.roles.clone(),
-            metadata: agent.metadata.clone(),
-            service_id: agent.service_id.clone(),
-        }
+            metadata,
+            service_id: agent.service_id,
+        })
     }
 }
 
@@ -55,24 +69,20 @@ impl Message for ListAgents {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<ListAgents> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<ListAgents> for DbExecutor {
     type Result = Result<Vec<AgentSlice>, RestApiResponseError>;
 
     fn handle(&mut self, msg: ListAgents, _: &mut SyncContext<Self>) -> Self::Result {
-        let fetched_agents =
-            db::get_agents(&*self.connection_pool.get()?, msg.service_id.as_deref())?
-                .iter()
-                .map(|agent| AgentSlice::from_agent(agent))
-                .collect::<Vec<AgentSlice>>();
-
-        Ok(fetched_agents)
+        self.agent_store
+            .list_agents(msg.service_id.as_deref())?
+            .into_iter()
+            .map(AgentSlice::try_from)
+            .collect::<Result<Vec<AgentSlice>, RestApiResponseError>>()
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn list_agents(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,
 ) -> Result<HttpResponse, RestApiResponseError> {
@@ -94,32 +104,25 @@ impl Message for FetchAgent {
     type Result = Result<AgentSlice, RestApiResponseError>;
 }
 
-#[cfg(feature = "postgres")]
-impl Handler<FetchAgent> for DbExecutor<diesel::pg::PgConnection> {
+impl Handler<FetchAgent> for DbExecutor {
     type Result = Result<AgentSlice, RestApiResponseError>;
 
     fn handle(&mut self, msg: FetchAgent, _: &mut SyncContext<Self>) -> Self::Result {
-        let fetched_agent = match db::get_agent(
-            &*self.connection_pool.get()?,
-            &msg.public_key,
-            msg.service_id.as_deref(),
-        )? {
-            Some(agent) => AgentSlice::from_agent(&agent),
-            None => {
-                return Err(RestApiResponseError::NotFoundError(format!(
-                    "Could not find agent with public key: {}",
-                    msg.public_key
-                )));
-            }
-        };
-
-        Ok(fetched_agent)
+        match self
+            .agent_store
+            .fetch_agent(&msg.public_key, msg.service_id.as_deref())?
+        {
+            Some(agent) => AgentSlice::try_from(agent),
+            None => Err(RestApiResponseError::NotFoundError(format!(
+                "Could not find agent with public key: {}",
+                msg.public_key
+            ))),
+        }
     }
 }
 
-#[cfg(feature = "postgres")]
 pub async fn fetch_agent(
-    state: web::Data<AppState<diesel::pg::PgConnection>>,
+    state: web::Data<AppState>,
     public_key: web::Path<String>,
     query: web::Query<QueryServiceId>,
     _: AcceptServiceIdParam,

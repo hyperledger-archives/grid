@@ -60,7 +60,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
 
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -74,7 +74,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::pg::PgConnection> {
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -100,7 +100,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
 
     fn list_organizations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -114,7 +114,7 @@ impl OrganizationStore for DieselOrganizationStore<diesel::sqlite::SqliteConnect
     fn fetch_organization(
         &self,
         org_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Organization>, OrganizationStoreError> {
         OrganizationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {

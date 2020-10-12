@@ -17,7 +17,6 @@
 
 #[macro_use]
 extern crate clap;
-#[macro_use]
 extern crate diesel;
 extern crate diesel_migrations;
 #[macro_use]
@@ -49,6 +48,8 @@ use flexi_logger::{LogSpecBuilder, Logger};
 use crate::config::{GridConfig, GridConfigBuilder};
 use crate::database::{ConnectionPool, DatabaseError};
 use crate::error::DaemonError;
+#[cfg(feature = "splinter-support")]
+use crate::event::EventHandler;
 use crate::event::{db_handler::DatabaseEventHandler, EventProcessor};
 #[cfg(feature = "sawtooth-support")]
 use crate::sawtooth::{batch_submitter::SawtoothBatchSubmitter, connection::SawtoothConnection};
@@ -95,9 +96,22 @@ fn run() -> Result<(), DaemonError> {
         .with_cli_args(&matches)
         .build()?;
 
-    #[cfg(feature = "postgres")]
-    let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
-        ConnectionPool::new(config.database_url())?;
+    if config.endpoint().is_sawtooth() {
+        run_sawtooth(config)?;
+    } else if config.endpoint().is_splinter() {
+        run_splinter(config)?;
+    } else {
+        return Err(DaemonError::UnsupportedEndpoint(format!(
+            "Unsupported endpoint type: {}",
+            config.endpoint().url()
+        )));
+    };
+
+    Ok(())
+}
+
+#[cfg(feature = "sawtooth-support")]
+fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     let connection_uri = config
         .database_url()
         .parse()
@@ -105,81 +119,63 @@ fn run() -> Result<(), DaemonError> {
 
     let store_factory = create_store_factory(&connection_uri)
         .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
-    let commit_store = store_factory.get_grid_commit_store();
 
-    match connection_uri {
-        ConnectionUri::Memory => {
-            if config.endpoint().is_sawtooth() {
-                run_sawtooth(config, connection_pool, &commit_store)?;
-            } else if config.endpoint().is_splinter() {
-                run_splinter(config, connection_pool, &commit_store)?;
-            } else {
-                return Err(DaemonError::UnsupportedEndpoint(format!(
-                    "Unsupported endpoint type: {}",
-                    config.endpoint().url()
-                )));
-            };
-        }
-        ConnectionUri::Postgres(_url) => {
-            if config.endpoint().is_sawtooth() {
-                run_sawtooth(config, connection_pool, &commit_store)?;
-            } else if config.endpoint().is_splinter() {
-                run_splinter(config, connection_pool, &commit_store)?;
-            } else {
-                return Err(DaemonError::UnsupportedEndpoint(format!(
-                    "Unsupported endpoint type: {}",
-                    config.endpoint().url()
-                )));
-            }
-        }
-        ConnectionUri::Sqlite(_conn_str) => {
-            if config.endpoint().is_sawtooth() {
-                run_sawtooth(config, connection_pool, &commit_store)?;
-            } else if config.endpoint().is_splinter() {
-                run_splinter(config, connection_pool, &commit_store)?;
-            } else {
-                return Err(DaemonError::UnsupportedEndpoint(format!(
-                    "Unsupported endpoint type: {}",
-                    config.endpoint().url()
-                )));
-            }
-        }
-    }
-    Ok(())
-}
-
-#[cfg(all(feature = "sawtooth-support", feature = "postgres"))]
-fn run_sawtooth(
-    config: GridConfig,
-    connection_pool: ConnectionPool<diesel::pg::PgConnection>,
-    commit_store: &dyn CommitStore,
-) -> Result<(), DaemonError> {
     let sawtooth_connection = SawtoothConnection::new(&config.endpoint().url());
-    let current_commit =
-        commit_store
-            .get_current_commit_id()
-            .map_err(|err| DatabaseError::ConnectionError {
-                context: "Could not get current commit ID".to_string(),
-                source: Box::new(err),
-            })?;
-
     let batch_submitter = Box::new(SawtoothBatchSubmitter::new(
         sawtooth_connection.get_sender(),
     ));
+    let (db_executor, evt_processor) = {
+        let commit_store = store_factory.get_grid_commit_store();
+        let current_commit =
+            commit_store
+                .get_current_commit_id()
+                .map_err(|err| DatabaseError::ConnectionError {
+                    context: "Could not get current commit ID".to_string(),
+                    source: Box::new(err),
+                })?;
+
+        match connection_uri {
+            ConnectionUri::Postgres(_) => {
+                let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
+                    ConnectionPool::new(config.database_url())?;
+                let evt_processor = EventProcessor::start(
+                    sawtooth_connection,
+                    current_commit.as_deref(),
+                    event_handlers![DatabaseEventHandler::from_pg_pool(connection_pool.clone())],
+                )
+                .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+
+                (
+                    rest_api::DbExecutor::from_pg_pool(connection_pool),
+                    evt_processor,
+                )
+            }
+            ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+                let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
+                    ConnectionPool::new(config.database_url())?;
+                let evt_processor = EventProcessor::start(
+                    sawtooth_connection,
+                    current_commit.as_deref(),
+                    event_handlers![DatabaseEventHandler::from_sqlite_pool(
+                        connection_pool.clone()
+                    )],
+                )
+                .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
+
+                (
+                    rest_api::DbExecutor::from_sqlite_pool(connection_pool),
+                    evt_processor,
+                )
+            }
+        }
+    };
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
-        connection_pool.clone(),
+        db_executor,
         batch_submitter,
         config.endpoint().clone(),
     )?;
-
-    let evt_processor = EventProcessor::start(
-        sawtooth_connection,
-        current_commit.as_deref(),
-        event_handlers![DatabaseEventHandler::new(connection_pool)],
-    )
-    .map_err(|err| DaemonError::EventProcessorError(Box::new(err)))?;
 
     let (event_processor_shutdown_handle, event_processor_join_handle) =
         evt_processor.take_shutdown_controls();
@@ -218,24 +214,16 @@ fn run_sawtooth(
     Ok(())
 }
 
-#[cfg(all(not(feature = "sawtooth-support"), feature = "postgres"))]
-fn run_sawtooth(
-    config: GridConfig,
-    connection_pool: ConnectionPool<diesel::pg::PgConnection>,
-    commit_store: &dyn CommitStore,
-) -> Result<(), DaemonError> {
+#[cfg(not(feature = "sawtooth-support"))]
+fn run_sawtooth(config: GridConfig) -> Result<(), DaemonError> {
     Err(DaemonError::UnsupportedEndpoint(format!(
         "A Sawtooth connection endpoint ({}) was provided but Sawtooth support is not enabled for this binary.",
         config.endpoint().url()
     )))
 }
 
-#[cfg(all(feature = "splinter-support", feature = "postgres"))]
-fn run_splinter(
-    config: GridConfig,
-    connection_pool: ConnectionPool<diesel::pg::PgConnection>,
-    _commit_store: &dyn CommitStore,
-) -> Result<(), DaemonError> {
+#[cfg(feature = "splinter-support")]
+fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     let reactor = Reactor::new();
 
     let scabbard_admin_key = load_scabbard_admin_key(&config.admin_key_dir())
@@ -244,10 +232,35 @@ fn run_splinter(
     let scabbard_event_connection_factory =
         ScabbardEventConnectionFactory::new(&config.endpoint().url(), reactor.igniter());
 
+    let (db_executor, db_handler): (rest_api::DbExecutor, Box<dyn EventHandler + Sync + 'static>) = {
+        let connection_uri = config
+            .database_url()
+            .parse()
+            .map_err(|err| DaemonError::StartUpError(Box::new(err)))?;
+        match connection_uri {
+            ConnectionUri::Postgres(_) => {
+                let connection_pool: ConnectionPool<diesel::pg::PgConnection> =
+                    ConnectionPool::new(config.database_url())?;
+                (
+                    rest_api::DbExecutor::from_pg_pool(connection_pool.clone()),
+                    Box::new(DatabaseEventHandler::from_pg_pool(connection_pool)),
+                )
+            }
+            ConnectionUri::Sqlite(_) | ConnectionUri::Memory => {
+                let connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection> =
+                    ConnectionPool::new(config.database_url())?;
+                (
+                    rest_api::DbExecutor::from_sqlite_pool(connection_pool.clone()),
+                    Box::new(DatabaseEventHandler::from_sqlite_pool(connection_pool)),
+                )
+            }
+        }
+    };
+
     app_auth_handler::run(
         config.endpoint().url(),
         scabbard_event_connection_factory,
-        connection_pool.clone(),
+        db_handler,
         reactor.igniter(),
         scabbard_admin_key,
     )?;
@@ -256,7 +269,7 @@ fn run_splinter(
 
     let (rest_api_shutdown_handle, rest_api_join_handle) = rest_api::run(
         config.rest_api_endpoint(),
-        connection_pool,
+        db_executor,
         batch_submitter,
         config.endpoint().clone(),
     )?;
@@ -297,12 +310,8 @@ fn run_splinter(
     Ok(())
 }
 
-#[cfg(all(not(feature = "splinter-support"), feature = "postgres"))]
-fn run_splinter(
-    config: GridConfig,
-    _connection_pool: ConnectionPool<diesel::pg::PgConnection>,
-    _commit_store: &dyn CommitStore,
-) -> Result<(), DaemonError> {
+#[cfg(not(feature = "splinter-support"))]
+fn run_splinter(config: GridConfig) -> Result<(), DaemonError> {
     Err(DaemonError::UnsupportedEndpoint(format!(
         "A Splinter connection endpoint ({}) was provided but Splinter support is not enabled for this binary.",
         config.endpoint().url()

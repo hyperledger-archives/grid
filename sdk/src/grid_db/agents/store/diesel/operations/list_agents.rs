@@ -23,61 +23,55 @@ use crate::grid_db::commits::MAX_COMMIT_NUM;
 use diesel::prelude::*;
 
 pub(in crate::grid_db::agents::store::diesel) trait AgentStoreListAgentsOperation {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError>;
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::PgConnection> {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         self.conn
             .build_transaction()
             .read_write()
             .run::<_, AgentStoreError, _>(|| {
-                let agent_models: Vec<AgentModel> = agent::table
+                let mut query = agent::table
+                    .into_boxed()
                     .select(agent::all_columns)
-                    .filter(
-                        agent::service_id
-                            .eq(&service_id)
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<AgentModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all agents from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut agents = Vec::new();
 
                 for a in agent_models {
-                    let roles: Vec<RoleModel> = role::table
-                        .select(role::all_columns)
-                        .filter(
-                            role::service_id
-                                .eq(&service_id)
-                                .and(role::public_key.eq(&a.public_key))
-                                .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .load::<RoleModel>(self.conn)
-                        .map(Some)
-                        .map_err(|err| AgentStoreError::OperationError {
+                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
+                        role::public_key
+                            .eq(&a.public_key)
+                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                    if let Some(service_id) = service_id {
+                        query = query.filter(role::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(role::service_id.is_null());
+                    }
+
+                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                        AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
-                        })?
-                        .ok_or_else(|| {
-                            AgentStoreError::NotFoundError(
-                                "Could not get all roles from storage".to_string(),
-                            )
-                        })?
-                        .into_iter()
-                        .collect();
+                        }
+                    })?;
 
                     agents.push(Agent::from((a, roles)));
                 }
@@ -91,54 +85,48 @@ impl<'a> AgentStoreListAgentsOperation for AgentStoreOperations<'a, diesel::pg::
 impl<'a> AgentStoreListAgentsOperation
     for AgentStoreOperations<'a, diesel::sqlite::SqliteConnection>
 {
-    fn list_agents(&self, service_id: Option<String>) -> Result<Vec<Agent>, AgentStoreError> {
+    fn list_agents(&self, service_id: Option<&str>) -> Result<Vec<Agent>, AgentStoreError> {
         self.conn
             .immediate_transaction::<_, AgentStoreError, _>(|| {
-                let agent_models: Vec<AgentModel> = agent::table
+                let mut query = agent::table
+                    .into_boxed()
                     .select(agent::all_columns)
-                    .filter(
-                        agent::service_id
-                            .eq(&service_id)
-                            .and(agent::end_commit_num.eq(MAX_COMMIT_NUM)),
-                    )
-                    .load::<AgentModel>(self.conn)
-                    .map(Some)
-                    .map_err(|err| AgentStoreError::OperationError {
+                    .filter(agent::end_commit_num.eq(MAX_COMMIT_NUM));
+
+                if let Some(service_id) = service_id {
+                    query = query.filter(agent::service_id.eq(service_id));
+                } else {
+                    query = query.filter(agent::service_id.is_null());
+                }
+
+                let agent_models = query.load::<AgentModel>(self.conn).map_err(|err| {
+                    AgentStoreError::OperationError {
                         context: "Failed to fetch agents".to_string(),
                         source: Some(Box::new(err)),
-                    })?
-                    .ok_or_else(|| {
-                        AgentStoreError::NotFoundError(
-                            "Could not get all agents from storage".to_string(),
-                        )
-                    })?
-                    .into_iter()
-                    .collect();
+                    }
+                })?;
 
                 let mut agents = Vec::new();
 
                 for a in agent_models {
-                    let roles: Vec<RoleModel> = role::table
-                        .select(role::all_columns)
-                        .filter(
-                            role::service_id
-                                .eq(&service_id)
-                                .and(role::public_key.eq(&a.public_key))
-                                .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
-                        )
-                        .load::<RoleModel>(self.conn)
-                        .map(Some)
-                        .map_err(|err| AgentStoreError::OperationError {
+                    let mut query = role::table.into_boxed().select(role::all_columns).filter(
+                        role::public_key
+                            .eq(&a.public_key)
+                            .and(role::end_commit_num.eq(MAX_COMMIT_NUM)),
+                    );
+
+                    if let Some(service_id) = service_id {
+                        query = query.filter(role::service_id.eq(service_id));
+                    } else {
+                        query = query.filter(role::service_id.is_null());
+                    }
+
+                    let roles = query.load::<RoleModel>(self.conn).map_err(|err| {
+                        AgentStoreError::OperationError {
                             context: "Failed to fetch roles".to_string(),
                             source: Some(Box::new(err)),
-                        })?
-                        .ok_or_else(|| {
-                            AgentStoreError::NotFoundError(
-                                "Could not get all roles from storage".to_string(),
-                            )
-                        })?
-                        .into_iter()
-                        .collect();
+                        }
+                    })?;
 
                     agents.push(Agent::from((a, roles)));
                 }

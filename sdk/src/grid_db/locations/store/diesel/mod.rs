@@ -51,29 +51,22 @@ impl<C: diesel::Connection> DieselLocationStore<C> {
 
 #[cfg(feature = "postgres")]
 impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
                 source: Box::new(err),
             }
         })?)
-        .add_location(
-            location.into(),
-            make_location_attribute_models(&attributes, None),
-            current_commit_num,
-        )
+        .add_location(location.into(), attributes, current_commit_num)
     }
 
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -86,7 +79,7 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -97,51 +90,37 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         .list_locations(service_id)
     }
 
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
                 source: Box::new(err),
             }
         })?)
-        .update_location(
-            location.into(),
-            make_location_attribute_models(&attributes, None),
-            current_commit_num,
-        )
+        .update_location(location.into(), attributes, current_commit_num)
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
                 source: Box::new(err),
             }
         })?)
-        .add_location(
-            location.into(),
-            make_location_attribute_models(&attributes, None),
-            current_commit_num,
-        )
+        .add_location(location.into(), attributes, current_commit_num)
     }
 
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -154,7 +133,7 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -165,23 +144,16 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
         .list_locations(service_id)
     }
 
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        let attributes = make_location_attribute_models(&location.attributes, None);
+        let current_commit_num = location.start_commit_num;
         LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
                 source: Box::new(err),
             }
         })?)
-        .update_location(
-            location.into(),
-            make_location_attribute_models(&attributes, None),
-            current_commit_num,
-        )
+        .update_location(location.into(), attributes, current_commit_num)
     }
 }
 

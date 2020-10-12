@@ -19,9 +19,7 @@ use std::sync::mpsc;
 use std::thread;
 
 use crate::config::Endpoint;
-use crate::database::ConnectionPool;
 pub use crate::rest_api::error::RestApiServerError;
-use crate::rest_api::routes::DbExecutor;
 use crate::rest_api::routes::{
     fetch_agent, fetch_grid_schema, fetch_location, fetch_organization, fetch_product,
     fetch_record, fetch_record_property, get_batch_statuses, list_agents, list_grid_schemas,
@@ -39,22 +37,22 @@ use futures::executor::block_on;
 use futures::future;
 use serde::{Deserialize, Serialize};
 
+pub use self::routes::DbExecutor;
+
 const SYNC_ARBITER_THREAD_COUNT: usize = 2;
 
-pub struct AppState<C: diesel::Connection + 'static> {
+pub struct AppState {
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
-    database_connection: Addr<DbExecutor<C>>,
+    database_connection: Addr<DbExecutor>,
 }
 
-#[cfg(feature = "postgres")]
-impl AppState<diesel::pg::PgConnection> {
+impl AppState {
     pub fn new(
         batch_submitter: Box<dyn BatchSubmitter + 'static>,
-        connection_pool: ConnectionPool<diesel::pg::PgConnection>,
+        db_executor: DbExecutor,
     ) -> Self {
-        let database_connection = SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || {
-            DbExecutor::new(connection_pool.clone())
-        });
+        let database_connection =
+            SyncArbiter::start(SYNC_ARBITER_THREAD_COUNT, move || db_executor.clone());
 
         AppState {
             batch_submitter,
@@ -63,8 +61,7 @@ impl AppState<diesel::pg::PgConnection> {
     }
 }
 
-#[cfg(feature = "postgres")]
-impl Clone for AppState<diesel::pg::PgConnection> {
+impl Clone for AppState {
     fn clone(&self) -> Self {
         Self {
             batch_submitter: self.batch_submitter.clone(),
@@ -125,7 +122,7 @@ impl RestApiShutdownHandle {
 
 pub fn run(
     bind_url: &str,
-    database_connection: ConnectionPool<diesel::pg::PgConnection>,
+    db_executor: DbExecutor,
     batch_submitter: Box<dyn BatchSubmitter + 'static>,
     endpoint: Endpoint,
 ) -> Result<
@@ -142,7 +139,7 @@ pub fn run(
         .name("GridRestApi".into())
         .spawn(move || {
             let sys = actix::System::new("Grid-Rest-API");
-            let state = AppState::new(batch_submitter, database_connection);
+            let state = AppState::new(batch_submitter, db_executor);
 
             let addr = HttpServer::new(move || {
                 App::new()

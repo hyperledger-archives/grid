@@ -16,9 +16,6 @@
  */
 
 pub mod error;
-pub mod helpers;
-pub mod models;
-pub mod schema;
 
 use std::ops::Deref;
 
@@ -27,7 +24,6 @@ use diesel::{
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 
-// pub use super::database::error::DatabaseError;
 pub use super::database::error::{ConnectionError, DatabaseError};
 
 pub struct Connection(PooledConnection<ConnectionManager<PgConnection>>);

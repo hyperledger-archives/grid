@@ -15,9 +15,9 @@
 use super::SchemaStoreOperations;
 
 use crate::grid_db::schemas::{
-    error::SchemaStoreError,
     store::{
         diesel::schema::{grid_property_definition, grid_schema},
+        error::SchemaStoreError,
         Schema,
     },
     MAX_COMMIT_NUM,
@@ -28,12 +28,12 @@ use diesel::{
 };
 
 pub(in crate::grid_db::schemas) trait AddSchemaOperation {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError>;
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError>;
 }
 
 #[cfg(feature = "postgres")]
 impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnection> {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         let (schema_model, definitions) = schema.into();
 
         self.conn.transaction::<_, SchemaStoreError, _>(|| {
@@ -70,7 +70,7 @@ impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::pg::PgConnecti
 
 #[cfg(feature = "sqlite")]
 impl<'a> AddSchemaOperation for SchemaStoreOperations<'a, diesel::sqlite::SqliteConnection> {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         let (schema_model, definitions) = schema.into();
 
         self.conn.transaction::<_, SchemaStoreError, _>(|| {

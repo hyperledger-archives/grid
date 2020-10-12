@@ -64,12 +64,7 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `location` - The location to be added
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError>;
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError>;
 
     /// Fetches a location from the underlying storage
     ///
@@ -80,7 +75,7 @@ pub trait LocationStore: Send + Sync {
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError>;
 
     /// Gets locations from the underlying storage
@@ -88,58 +83,41 @@ pub trait LocationStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `service_id` - optional - The service ID to get the locations for
-    fn list_locations(
-        &self,
-        service_id: Option<String>,
-    ) -> Result<Vec<Location>, LocationStoreError>;
+    fn list_locations(&self, service_id: Option<&str>)
+        -> Result<Vec<Location>, LocationStoreError>;
 
     /// Gets locations from the underlying storage
     ///
     /// # Arguments
     ///
     ///  * `location` - The updated location
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError>;
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError>;
 }
 
 impl<LS> LocationStore for Box<LS>
 where
     LS: LocationStore + ?Sized,
 {
-    fn add_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
-        (**self).add_location(location, attributes, current_commit_num)
+    fn add_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        (**self).add_location(location)
     }
 
     fn fetch_location(
         &self,
         location_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Location>, LocationStoreError> {
         (**self).fetch_location(location_id, service_id)
     }
 
     fn list_locations(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Location>, LocationStoreError> {
         (**self).list_locations(service_id)
     }
 
-    fn update_location(
-        &self,
-        location: Location,
-        attributes: Vec<LocationAttribute>,
-        current_commit_num: i64,
-    ) -> Result<(), LocationStoreError> {
-        (**self).update_location(location, attributes, current_commit_num)
+    fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
+        (**self).update_location(location)
     }
 }

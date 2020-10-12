@@ -15,11 +15,24 @@
  * -----------------------------------------------------------------------------
  */
 
-use ::diesel::pg::PgConnection;
-use ::diesel::result::QueryResult;
+use diesel::Connection;
 use grid_sdk::{
-    grid_db::commits::store::diesel::DieselCommitStore,
-    grid_db::commits::store::{CommitEvent as DbCommitEvent, CommitStore, CommitStoreError},
+    grid_db::{
+        agents::store::Agent,
+        commits::store::CommitEvent as DbCommitEvent,
+        organizations::store::Organization,
+        products::store::{
+            LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
+        },
+        schemas::store::{PropertyDefinition as StorePropertyDefinition, Schema},
+        track_and_trace::store::{
+            AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
+            ReportedValue as StoreReportedValue, Reporter,
+        },
+        AgentStore, CommitStore, DieselAgentStore, DieselCommitStore, DieselOrganizationStore,
+        DieselProductStore, DieselSchemaStore, DieselTrackAndTraceStore, OrganizationStore,
+        ProductStore, SchemaStore, TrackAndTraceStore,
+    },
     protocol::{
         pike::state::{AgentList, OrganizationList},
         product::state::ProductList,
@@ -30,19 +43,10 @@ use grid_sdk::{
     },
     protos::FromBytes,
 };
-use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::i64;
 
-use crate::database::{
-    helpers as db,
-    models::{
-        LatLongValue, NewAgent, NewAssociatedAgent, NewGridPropertyDefinition, NewGridSchema,
-        NewOrganization, NewProduct, NewProductPropertyValue, NewProperty, NewProposal, NewRecord,
-        NewReportedValue, NewReporter,
-    },
-    ConnectionPool,
-};
+use crate::database::ConnectionPool;
 
 use super::{
     CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA,
@@ -50,23 +54,39 @@ use super::{
     TRACK_AND_TRACE_RECORD,
 };
 
+pub const MAX_COMMIT_NUM: i64 = i64::MAX;
+
 pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
     connection_pool: ConnectionPool<C>,
-    commit_store: Box<dyn CommitStore>,
+    agent_store: DieselAgentStore<C>,
+    commit_store: DieselCommitStore<C>,
+    organization_store: DieselOrganizationStore<C>,
+    product_store: DieselProductStore<C>,
+    schema_store: DieselSchemaStore<C>,
+    tnt_store: DieselTrackAndTraceStore<C>,
 }
 
-#[cfg(feature = "postgres")]
 impl DatabaseEventHandler<diesel::pg::PgConnection> {
-    pub fn new(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
-        let commit_store = Box::new(DieselCommitStore::new(connection_pool.pool.clone()));
+    pub fn from_pg_pool(connection_pool: ConnectionPool<diesel::pg::PgConnection>) -> Self {
+        let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
+        let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+        let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let product_store = DieselProductStore::new(connection_pool.pool.clone());
+        let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
+        let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
+
         Self {
+            agent_store,
             connection_pool,
             commit_store,
+            organization_store,
+            product_store,
+            schema_store,
+            tnt_store,
         }
     }
 }
 
-#[cfg(feature = "postgres")]
 impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
     fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
         debug!("Received commit event: {}", event);
@@ -95,44 +115,232 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
 
         trace!("The following operations will be performed: {:#?}", db_ops);
 
-        conn.build_transaction()
-            .run::<_, CommitStoreError, _>(|| {
-                match self
-                    .commit_store
-                    .get_commit_by_commit_num(commit.commit_num)
-                {
-                    Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
-                        self.commit_store.resolve_fork(commit.commit_num)?;
-                        info!(
-                            "Fork detected. Replaced {} at height {}, with commit {}.",
-                            &b.commit_id, &b.commit_num, &commit.commit_id
-                        );
-                        self.commit_store.add_commit(commit)?;
-                    }
-                    Ok(Some(_)) => {
-                        info!(
-                            "Commit {} at height {} is duplicate no action taken",
-                            &commit.commit_id, commit.commit_num
-                        );
-                    }
-                    Ok(None) => {
-                        info!("Received new commit {}", commit.commit_id);
-                        self.commit_store.add_commit(commit)?;
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
+        conn.build_transaction().run::<_, EventError, _>(|| {
+            match self
+                .commit_store
+                .get_commit_by_commit_num(commit.commit_num)
+            {
+                Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
+                    self.commit_store.resolve_fork(commit.commit_num)?;
+                    info!(
+                        "Fork detected. Replaced {} at height {}, with commit {}.",
+                        &b.commit_id, &b.commit_num, &commit.commit_id
+                    );
+                    self.commit_store.add_commit(commit)?;
                 }
+                Ok(Some(_)) => {
+                    info!(
+                        "Commit {} at height {} is duplicate no action taken",
+                        &commit.commit_id, commit.commit_num
+                    );
+                }
+                Ok(None) => {
+                    info!("Received new commit {}", commit.commit_id);
+                    self.commit_store.add_commit(commit)?;
+                }
+                Err(err) => {
+                    return Err(EventError::from(err));
+                }
+            }
 
-                db_ops
-                    .iter()
-                    .try_for_each(|op| op.execute(&conn))
-                    .map_err(|err| CommitStoreError::OperationError {
-                        context: "failed DB operation".to_string(),
-                        source: Some(Box::new(err)),
-                    })
-            })
-            .map_err(|err| EventError(format!("Database transaction failed {}", err)))
+            for op in db_ops {
+                match op {
+                    DbInsertOperation::Agents(agents) => {
+                        debug!("Inserting {} agents", agents.len());
+                        agents
+                            .into_iter()
+                            .try_for_each(|agent| self.agent_store.add_agent(agent))?;
+                    }
+                    DbInsertOperation::Organizations(orgs) => {
+                        debug!("Inserting {} organizations", orgs.len());
+                        self.organization_store.add_organizations(orgs)?;
+                    }
+
+                    DbInsertOperation::GridSchemas(schemas) => {
+                        debug!("Inserting {} schemas", schemas.len());
+                        schemas
+                            .into_iter()
+                            .try_for_each(|schema| self.schema_store.add_schema(schema))?;
+                    }
+                    DbInsertOperation::Properties(properties, reporters) => {
+                        debug!("Inserting {} properties", properties.len());
+                        self.tnt_store.add_properties(properties)?;
+                        debug!("Inserting {} reporters", reporters.len());
+                        self.tnt_store.add_reporters(reporters)?;
+                    }
+                    DbInsertOperation::ReportedValues(reported_values) => {
+                        debug!("Inserting {} reported values", reported_values.len());
+                        self.tnt_store.add_reported_values(reported_values)?;
+                    }
+                    DbInsertOperation::Proposals(proposals) => {
+                        debug!("Inserting {} proposals", proposals.len());
+                        self.tnt_store.add_proposals(proposals)?;
+                    }
+                    DbInsertOperation::Records(records, associated_agents) => {
+                        debug!("Inserting {} records", records.len());
+                        self.tnt_store.add_records(records)?;
+                        debug!("Inserting {} associated agents", associated_agents.len());
+                        self.tnt_store.add_associated_agents(associated_agents)?;
+                    }
+                    DbInsertOperation::Products(products) => {
+                        debug!("Inserting {} products", products.len());
+                        products
+                            .into_iter()
+                            .try_for_each(|product| self.product_store.add_product(product))?;
+                    }
+                    DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
+                        self.product_store
+                            .delete_product(address, current_commit_num)?;
+                    }
+                };
+            }
+
+            Ok(())
+        })
+    }
+
+    fn cloned_box(&self) -> Box<dyn EventHandler> {
+        Box::new(Self::from_pg_pool(self.connection_pool.clone()))
+    }
+}
+
+impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
+    pub fn from_sqlite_pool(
+        connection_pool: ConnectionPool<diesel::sqlite::SqliteConnection>,
+    ) -> Self {
+        let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
+        let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
+        let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let product_store = DieselProductStore::new(connection_pool.pool.clone());
+        let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
+        let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
+
+        Self {
+            agent_store,
+            connection_pool,
+            commit_store,
+            organization_store,
+            product_store,
+            schema_store,
+            tnt_store,
+        }
+    }
+}
+
+impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
+    fn handle_event(&self, event: &CommitEvent) -> Result<(), EventError> {
+        debug!("Received commit event: {}", event);
+
+        let conn = self
+            .connection_pool
+            .get()
+            .map_err(|err| EventError(format!("Unable to connect to database: {}", err)))?;
+
+        let commit = if let Some(commit) = self
+            .commit_store
+            .create_db_commit_from_commit_event(&DbCommitEvent::from(event))
+            .map_err(|err| EventError(format!("{}", err)))?
+        {
+            commit
+        } else {
+            return Err(EventError(
+                "Commit could not be constructed from event data".to_string(),
+            ));
+        };
+        let db_ops = create_db_operations_from_state_changes(
+            &event.state_changes,
+            commit.commit_num,
+            commit.service_id.as_ref(),
+        )?;
+
+        trace!("The following operations will be performed: {:#?}", db_ops);
+
+        conn.transaction::<_, EventError, _>(|| {
+            match self
+                .commit_store
+                .get_commit_by_commit_num(commit.commit_num)
+            {
+                Ok(Some(ref b)) if b.commit_id != commit.commit_id => {
+                    self.commit_store.resolve_fork(commit.commit_num)?;
+                    info!(
+                        "Fork detected. Replaced {} at height {}, with commit {}.",
+                        &b.commit_id, &b.commit_num, &commit.commit_id
+                    );
+                    self.commit_store.add_commit(commit)?;
+                }
+                Ok(Some(_)) => {
+                    info!(
+                        "Commit {} at height {} is duplicate no action taken",
+                        &commit.commit_id, commit.commit_num
+                    );
+                }
+                Ok(None) => {
+                    info!("Received new commit {}", commit.commit_id);
+                    self.commit_store.add_commit(commit)?;
+                }
+                Err(err) => {
+                    return Err(EventError::from(err));
+                }
+            }
+
+            for op in db_ops {
+                match op {
+                    DbInsertOperation::Agents(agents) => {
+                        debug!("Inserting {} agents", agents.len());
+                        agents
+                            .into_iter()
+                            .try_for_each(|agent| self.agent_store.add_agent(agent))?;
+                    }
+                    DbInsertOperation::Organizations(orgs) => {
+                        debug!("Inserting {} organizations", orgs.len());
+                        self.organization_store.add_organizations(orgs)?;
+                    }
+
+                    DbInsertOperation::GridSchemas(schemas) => {
+                        debug!("Inserting {} schemas", schemas.len());
+                        schemas
+                            .into_iter()
+                            .try_for_each(|schema| self.schema_store.add_schema(schema))?;
+                    }
+                    DbInsertOperation::Properties(properties, reporters) => {
+                        debug!("Inserting {} properties", properties.len());
+                        self.tnt_store.add_properties(properties)?;
+                        debug!("Inserting {} reporters", reporters.len());
+                        self.tnt_store.add_reporters(reporters)?;
+                    }
+                    DbInsertOperation::ReportedValues(reported_values) => {
+                        debug!("Inserting {} reported values", reported_values.len());
+                        self.tnt_store.add_reported_values(reported_values)?;
+                    }
+                    DbInsertOperation::Proposals(proposals) => {
+                        debug!("Inserting {} proposals", proposals.len());
+                        self.tnt_store.add_proposals(proposals)?;
+                    }
+                    DbInsertOperation::Records(records, associated_agents) => {
+                        debug!("Inserting {} records", records.len());
+                        self.tnt_store.add_records(records)?;
+                        debug!("Inserting {} associated agents", associated_agents.len());
+                        self.tnt_store.add_associated_agents(associated_agents)?;
+                    }
+                    DbInsertOperation::Products(products) => {
+                        debug!("Inserting {} products", products.len());
+                        products
+                            .into_iter()
+                            .try_for_each(|product| self.product_store.add_product(product))?;
+                    }
+                    DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
+                        self.product_store
+                            .delete_product(address, current_commit_num)?;
+                    }
+                };
+            }
+
+            Ok(())
+        })
+    }
+
+    fn cloned_box(&self) -> Box<dyn EventHandler> {
+        Box::new(Self::from_sqlite_pool(self.connection_pool.clone()))
     }
 }
 
@@ -161,7 +369,7 @@ fn state_change_to_db_operation(
                     .map_err(|err| EventError(format!("Failed to parse agent list {}", err)))?
                     .agents()
                     .iter()
-                    .map(|agent| NewAgent {
+                    .map(|agent| Agent {
                         public_key: agent.public_key().to_string(),
                         org_id: agent.org_id().to_string(),
                         active: *agent.active(),
@@ -172,12 +380,14 @@ fn state_change_to_db_operation(
                                 acc.insert(md.key().to_string(), md.value().to_string());
                                 acc
                             }
-                        )),
+                        ))
+                        .to_string()
+                        .into_bytes(),
                         start_commit_num: commit_num,
-                        end_commit_num: db::MAX_COMMIT_NUM,
+                        end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
                     })
-                    .collect::<Vec<NewAgent>>();
+                    .collect::<Vec<Agent>>();
 
                 Ok(Some(DbInsertOperation::Agents(agents)))
             }
@@ -188,62 +398,49 @@ fn state_change_to_db_operation(
                     })?
                     .organizations()
                     .iter()
-                    .map(|org| NewOrganization {
+                    .map(|org| Organization {
                         org_id: org.org_id().to_string(),
                         name: org.name().to_string(),
                         address: org.address().to_string(),
-                        metadata: org
-                            .metadata()
-                            .iter()
-                            .map(|md| {
-                                json!({
-                                    md.key(): md.value()
-                                })
-                            })
-                            .collect::<Vec<JsonValue>>(),
+                        metadata: json!(org.metadata().iter().fold(
+                            HashMap::new(),
+                            |mut acc, md| {
+                                acc.insert(md.key().to_string(), md.value().to_string());
+                                acc
+                            }
+                        ))
+                        .to_string()
+                        .into_bytes(),
                         start_commit_num: commit_num,
-                        end_commit_num: db::MAX_COMMIT_NUM,
+                        end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
                     })
-                    .collect::<Vec<NewOrganization>>();
+                    .collect::<Vec<Organization>>();
 
                 Ok(Some(DbInsertOperation::Organizations(orgs)))
             }
             GRID_SCHEMA => {
-                let schema_defs = SchemaList::from_bytes(&value)
+                let schemas = SchemaList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse schema list {}", err)))?
                     .schemas()
                     .iter()
-                    .map(|state_schema| {
-                        let schema = NewGridSchema {
-                            name: state_schema.name().to_string(),
-                            description: state_schema.description().to_string(),
-                            owner: state_schema.owner().to_string(),
-                            start_commit_num: commit_num,
-                            end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: service_id.cloned(),
-                        };
-
-                        let definitions = make_property_definitions(
+                    .map(|state_schema| Schema {
+                        name: state_schema.name().to_string(),
+                        description: state_schema.description().to_string(),
+                        owner: state_schema.owner().to_string(),
+                        start_commit_num: commit_num,
+                        end_commit_num: MAX_COMMIT_NUM,
+                        service_id: service_id.cloned(),
+                        properties: make_property_definitions(
                             commit_num,
                             service_id,
                             state_schema.name(),
                             state_schema.properties(),
-                        );
-
-                        (schema, definitions)
+                        ),
                     })
-                    .collect::<Vec<(NewGridSchema, Vec<NewGridPropertyDefinition>)>>();
-
-                let definitions = schema_defs
-                    .clone()
-                    .into_iter()
-                    .flat_map(|(_, d)| d.into_iter())
                     .collect();
 
-                let schemas = schema_defs.into_iter().map(|(s, _)| s).collect();
-
-                Ok(Some(DbInsertOperation::GridSchemas(schemas, definitions)))
+                Ok(Some(DbInsertOperation::GridSchemas(schemas)))
             }
             TRACK_AND_TRACE_PROPERTY if &key[66..] == "0000" => {
                 let properties = PropertyList::from_bytes(&value)
@@ -251,35 +448,37 @@ fn state_change_to_db_operation(
                     .properties()
                     .iter()
                     .map(|prop| {
-                        let property = NewProperty {
+                        let property = Property {
+                            id: None,
                             name: prop.name().to_string(),
                             record_id: prop.record_id().to_string(),
                             property_definition: prop.property_definition().name().to_string(),
                             current_page: *prop.current_page() as i32,
                             wrapped: *prop.wrapped(),
                             start_commit_num: commit_num,
-                            end_commit_num: db::MAX_COMMIT_NUM,
+                            end_commit_num: MAX_COMMIT_NUM,
                             service_id: service_id.cloned(),
                         };
 
                         let reporters = prop
                             .reporters()
                             .iter()
-                            .map(|reporter| NewReporter {
+                            .map(|reporter| Reporter {
+                                id: None,
                                 property_name: prop.name().to_string(),
                                 record_id: prop.record_id().to_string(),
                                 public_key: reporter.public_key().to_string(),
                                 authorized: *reporter.authorized(),
                                 reporter_index: *reporter.index() as i32,
                                 start_commit_num: commit_num,
-                                end_commit_num: db::MAX_COMMIT_NUM,
+                                end_commit_num: MAX_COMMIT_NUM,
                                 service_id: service_id.cloned(),
                             })
-                            .collect::<Vec<NewReporter>>();
+                            .collect::<Vec<Reporter>>();
 
                         (property, reporters)
                     })
-                    .collect::<Vec<(NewProperty, Vec<NewReporter>)>>();
+                    .collect::<Vec<(Property, Vec<Reporter>)>>();
 
                 let reporters = properties
                     .clone()
@@ -299,7 +498,7 @@ fn state_change_to_db_operation(
                     .property_pages()
                     .to_vec();
 
-                let mut reported_values: Vec<NewReportedValue> = vec![];
+                let mut reported_values: Vec<StoreReportedValue> = vec![];
                 for page in property_pages {
                     page.reported_values().to_vec().iter().try_fold(
                         &mut reported_values,
@@ -325,7 +524,8 @@ fn state_change_to_db_operation(
                     .map_err(|err| EventError(format!("Failed to parse proposal list {}", err)))?
                     .proposals()
                     .iter()
-                    .map(|proposal| NewProposal {
+                    .map(|proposal| Proposal {
+                        id: None,
                         record_id: proposal.record_id().to_string(),
                         timestamp: *proposal.timestamp() as i64,
                         issuing_agent: proposal.issuing_agent().to_string(),
@@ -335,10 +535,10 @@ fn state_change_to_db_operation(
                         status: format!("{:?}", proposal.status()),
                         terms: proposal.terms().to_string(),
                         start_commit_num: commit_num,
-                        end_commit_num: db::MAX_COMMIT_NUM,
+                        end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
                     })
-                    .collect::<Vec<NewProposal>>();
+                    .collect::<Vec<Proposal>>();
 
                 Ok(Some(DbInsertOperation::Proposals(proposals)))
             }
@@ -350,7 +550,8 @@ fn state_change_to_db_operation(
 
                 let records = record_list
                     .iter()
-                    .map(|record| NewRecord {
+                    .map(|record| Record {
+                        id: None,
                         record_id: record.record_id().to_string(),
                         final_: *record.field_final(),
                         schema: record.schema().to_string(),
@@ -365,25 +566,26 @@ fn state_change_to_db_operation(
                             .map(|x| x.agent_id().to_string())
                             .collect(),
                         start_commit_num: commit_num,
-                        end_commit_num: db::MAX_COMMIT_NUM,
+                        end_commit_num: MAX_COMMIT_NUM,
                         service_id: service_id.cloned(),
                     })
-                    .collect::<Vec<NewRecord>>();
+                    .collect::<Vec<Record>>();
 
                 let mut associated_agents = record_list
                     .iter()
                     .flat_map(|record| {
-                        record.owners().iter().map(move |agent| NewAssociatedAgent {
+                        record.owners().iter().map(move |agent| AssociatedAgent {
+                            id: None,
                             agent_id: agent.agent_id().to_string(),
                             record_id: record.record_id().to_string(),
                             role: "OWNER".to_string(),
                             timestamp: *agent.timestamp() as i64,
                             start_commit_num: commit_num,
-                            end_commit_num: db::MAX_COMMIT_NUM,
+                            end_commit_num: MAX_COMMIT_NUM,
                             service_id: service_id.cloned(),
                         })
                     })
-                    .collect::<Vec<NewAssociatedAgent>>();
+                    .collect::<Vec<AssociatedAgent>>();
 
                 associated_agents.append(
                     &mut record_list
@@ -392,54 +594,46 @@ fn state_change_to_db_operation(
                             record
                                 .custodians()
                                 .iter()
-                                .map(move |agent| NewAssociatedAgent {
+                                .map(move |agent| AssociatedAgent {
+                                    id: None,
                                     agent_id: agent.agent_id().to_string(),
                                     role: "CUSTODIAN".to_string(),
                                     record_id: record.record_id().to_string(),
                                     timestamp: *agent.timestamp() as i64,
                                     start_commit_num: commit_num,
-                                    end_commit_num: db::MAX_COMMIT_NUM,
+                                    end_commit_num: MAX_COMMIT_NUM,
                                     service_id: service_id.cloned(),
                                 })
                         })
-                        .collect::<Vec<NewAssociatedAgent>>(),
+                        .collect::<Vec<AssociatedAgent>>(),
                 );
 
                 Ok(Some(DbInsertOperation::Records(records, associated_agents)))
             }
             GRID_PRODUCT => {
-                let product_tuple = ProductList::from_bytes(&value)
+                let products = ProductList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
                     .products()
                     .iter()
-                    .fold((Vec::new(), Vec::new()), |mut acc, product| {
-                        let new_product = NewProduct {
-                            product_id: product.product_id().to_string(),
-                            product_address: key.to_string(),
-                            product_namespace: format!("{:?}", product.product_namespace()),
-                            owner: product.owner().to_string(),
-                            start_commit_num: commit_num,
-                            end_commit_num: db::MAX_COMMIT_NUM,
-                            service_id: service_id.cloned(),
-                        };
-                        acc.0.push(new_product);
-
-                        let mut properties = make_product_property_values(
+                    .map(|product| Product {
+                        product_id: product.product_id().to_string(),
+                        product_address: key.to_string(),
+                        product_namespace: format!("{:?}", product.product_namespace()),
+                        owner: product.owner().to_string(),
+                        start_commit_num: commit_num,
+                        end_commit_num: MAX_COMMIT_NUM,
+                        service_id: service_id.cloned(),
+                        properties: make_product_property_values(
                             commit_num,
                             service_id,
                             product.product_id(),
                             &key,
                             product.properties(),
-                        );
-                        acc.1.append(&mut properties);
+                        ),
+                    })
+                    .collect();
 
-                        acc
-                    });
-
-                Ok(Some(DbInsertOperation::Products(
-                    product_tuple.0,
-                    product_tuple.1,
-                )))
+                Ok(Some(DbInsertOperation::Products(products)))
             }
             _ => {
                 let ignore_state_change = IGNORED_NAMESPACES
@@ -469,62 +663,15 @@ fn state_change_to_db_operation(
 
 #[derive(Debug)]
 enum DbInsertOperation {
-    Agents(Vec<NewAgent>),
-    Organizations(Vec<NewOrganization>),
-    GridSchemas(Vec<NewGridSchema>, Vec<NewGridPropertyDefinition>),
-    Properties(Vec<NewProperty>, Vec<NewReporter>),
-    ReportedValues(Vec<NewReportedValue>),
-    Proposals(Vec<NewProposal>),
-    Records(Vec<NewRecord>, Vec<NewAssociatedAgent>),
-    Products(Vec<NewProduct>, Vec<NewProductPropertyValue>),
+    Agents(Vec<Agent>),
+    Organizations(Vec<Organization>),
+    GridSchemas(Vec<Schema>),
+    Properties(Vec<Property>, Vec<Reporter>),
+    ReportedValues(Vec<StoreReportedValue>),
+    Proposals(Vec<Proposal>),
+    Records(Vec<Record>, Vec<AssociatedAgent>),
+    Products(Vec<Product>),
     RemoveProduct(String, i64),
-}
-
-impl DbInsertOperation {
-    fn execute(&self, conn: &PgConnection) -> QueryResult<()> {
-        match *self {
-            DbInsertOperation::Agents(ref agents) => {
-                debug!("Inserting {} agents", agents.len());
-                db::insert_agents(conn, agents)
-            }
-            DbInsertOperation::Organizations(ref orgs) => {
-                debug!("Inserting {} organizations", orgs.len());
-                db::insert_organizations(conn, orgs)
-            }
-            DbInsertOperation::GridSchemas(ref schemas, ref defs) => {
-                debug!("Inserting {} schemas", schemas.len());
-                db::insert_grid_schemas(conn, schemas)?;
-                db::insert_grid_property_definitions(conn, defs)
-            }
-            DbInsertOperation::Properties(ref properties, ref reporters) => {
-                debug!("Inserting {} properties", properties.len());
-                db::insert_properties(conn, properties)?;
-                db::insert_reporters(conn, reporters)
-            }
-            DbInsertOperation::ReportedValues(ref reported_values) => {
-                debug!("Inserting {} reported values", reported_values.len());
-                db::insert_reported_values(conn, reported_values)
-            }
-            DbInsertOperation::Proposals(ref proposals) => {
-                debug!("Inserting {} proposals", proposals.len());
-                db::insert_proposals(conn, proposals)
-            }
-            DbInsertOperation::Records(ref records, ref associated_agents) => {
-                debug!("Inserting {} records", records.len());
-                db::insert_records(conn, records)?;
-                db::insert_associated_agents(conn, associated_agents)
-            }
-            DbInsertOperation::Products(ref products, ref properties) => {
-                debug!("Inserting {} products", products.len());
-                db::insert_products(conn, products)?;
-                db::insert_product_property_values(conn, properties)
-            }
-            DbInsertOperation::RemoveProduct(ref address, current_commit_num) => {
-                db::delete_product(conn, address, current_commit_num)?;
-                db::delete_product_property_values(conn, address, current_commit_num)
-            }
-        }
-    }
 }
 
 fn make_reported_values(
@@ -532,18 +679,18 @@ fn make_reported_values(
     record_id: &str,
     property_name: &str,
     reported_value: &ReportedValue,
-) -> Result<Vec<NewReportedValue>, EventError> {
+) -> Result<Vec<StoreReportedValue>, EventError> {
     let mut new_values = Vec::new();
 
-    let mut new_value = NewReportedValue {
+    let mut new_value = StoreReportedValue {
         property_name: property_name.to_string(),
         record_id: record_id.to_string(),
         reporter_index: *reported_value.reporter_index() as i32,
         timestamp: *reported_value.timestamp() as i64,
         start_commit_num,
-        end_commit_num: db::MAX_COMMIT_NUM,
+        end_commit_num: MAX_COMMIT_NUM,
         data_type: format!("{:?}", reported_value.value().data_type()),
-        ..NewReportedValue::default()
+        ..StoreReportedValue::default()
     };
 
     match reported_value.value().data_type() {
@@ -559,17 +706,31 @@ fn make_reported_values(
         }
         DataType::Enum => new_value.enum_value = Some(*reported_value.value().enum_value() as i32),
         DataType::Struct => {
-            new_value.struct_values = Some(
-                reported_value
-                    .value()
-                    .struct_values()
-                    .iter()
-                    .map(|x| x.name().to_string())
-                    .collect(),
-            )
+            let mut child_values = Vec::new();
+
+            for value in reported_value.value().struct_values() {
+                let property_name = format!("{}_{}", reported_value.value().name(), value.name());
+                let value = reported_value
+                    .clone()
+                    .into_builder()
+                    .with_value(value.clone())
+                    .build()
+                    .map_err(|err| {
+                        EventError(format!("Failed to build ReportedValue: {:?}", err))
+                    })?;
+
+                child_values.append(&mut make_reported_values(
+                    start_commit_num,
+                    record_id,
+                    &property_name,
+                    &value,
+                )?);
+            }
+
+            new_value.struct_values = Some(child_values);
         }
         DataType::LatLong => {
-            let lat_long_value = LatLongValue(
+            let lat_long_value = TntLatLongValue(
                 *reported_value.value().lat_long_value().latitude(),
                 *reported_value.value().lat_long_value().longitude(),
             );
@@ -579,35 +740,6 @@ fn make_reported_values(
 
     new_values.push(new_value);
 
-    reported_value
-        .value()
-        .struct_values()
-        .iter()
-        .try_fold(&mut new_values, |acc, val| {
-            let property_name = format!("{}_{}", reported_value.value().name(), val.name());
-            match reported_value
-                .clone()
-                .into_builder()
-                .with_value(val.clone())
-                .build()
-                .map_err(|err| EventError(format!("Failed to build ReportedValue: {:?}", err)))
-            {
-                Ok(temp_val) => match make_reported_values(
-                    start_commit_num,
-                    record_id,
-                    &property_name,
-                    &temp_val,
-                ) {
-                    Ok(mut vals) => {
-                        acc.append(&mut vals);
-                        Ok(acc)
-                    }
-                    Err(err) => Err(err),
-                },
-                Err(err) => Err(err),
-            }
-        })?;
-
     Ok(new_values)
 }
 
@@ -616,11 +748,11 @@ fn make_property_definitions(
     service_id: Option<&String>,
     schema_name: &str,
     definitions: &[PropertyDefinition],
-) -> Vec<NewGridPropertyDefinition> {
+) -> Vec<StorePropertyDefinition> {
     let mut properties = Vec::new();
 
     for def in definitions {
-        properties.push(NewGridPropertyDefinition {
+        properties.push(StorePropertyDefinition {
             name: def.name().to_string(),
             schema_name: schema_name.to_string(),
             data_type: format!("{:?}", def.data_type()),
@@ -628,24 +760,16 @@ fn make_property_definitions(
             description: def.description().to_string(),
             number_exponent: i64::from(*def.number_exponent()),
             enum_options: def.enum_options().to_vec(),
-            struct_properties: def
-                .struct_properties()
-                .iter()
-                .map(|x| x.name().to_string())
-                .collect(),
-            start_commit_num,
-            end_commit_num: db::MAX_COMMIT_NUM,
-            service_id: service_id.cloned(),
-        });
-
-        if !def.struct_properties().is_empty() {
-            properties.append(&mut make_property_definitions(
+            struct_properties: make_property_definitions(
                 start_commit_num,
                 service_id,
                 schema_name,
                 def.struct_properties(),
-            ));
-        }
+            ),
+            start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: service_id.cloned(),
+        });
     }
 
     properties
@@ -657,11 +781,11 @@ fn make_product_property_values(
     product_id: &str,
     product_address: &str,
     values: &[PropertyValue],
-) -> Vec<NewProductPropertyValue> {
+) -> Vec<ProductPropertyValue> {
     let mut properties = Vec::new();
 
     for val in values {
-        properties.push(NewProductPropertyValue {
+        properties.push(ProductPropertyValue {
             property_name: val.name().to_string(),
             product_id: product_id.to_string(),
             product_address: product_address.to_string(),
@@ -671,30 +795,21 @@ fn make_product_property_values(
             number_value: Some(*val.number_value()),
             string_value: Some(val.string_value().to_string()),
             enum_value: Some(*val.enum_value() as i32),
-            struct_values: Some(
-                val.struct_values()
-                    .iter()
-                    .map(|x| x.name().to_string())
-                    .collect(),
-            ),
-            lat_long_value: Some(LatLongValue(
-                *val.lat_long_value().latitude(),
-                *val.lat_long_value().longitude(),
-            )),
-            start_commit_num,
-            end_commit_num: db::MAX_COMMIT_NUM,
-            service_id: service_id.cloned(),
-        });
-
-        if !val.struct_values().is_empty() {
-            properties.append(&mut make_product_property_values(
+            struct_values: make_product_property_values(
                 start_commit_num,
                 service_id,
                 product_id,
                 product_address,
                 val.struct_values(),
-            ));
-        }
+            ),
+            lat_long_value: Some(ProductLatLongValue {
+                latitude: *val.lat_long_value().latitude(),
+                longitude: *val.lat_long_value().longitude(),
+            }),
+            start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: service_id.cloned(),
+        });
     }
 
     properties

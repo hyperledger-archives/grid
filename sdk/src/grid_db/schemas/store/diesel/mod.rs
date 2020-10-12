@@ -43,7 +43,7 @@ impl<C: diesel::Connection> DieselSchemaStore<C> {
 
 #[cfg(feature = "postgres")]
 impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -80,7 +80,7 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
 
 #[cfg(feature = "sqlite")]
 impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError> {
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError> {
         SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
                 context: "Could not get connection pool".to_string(),
@@ -115,7 +115,7 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
     }
 }
 
-impl Into<(NewGridSchema, Vec<NewGridPropertyDefinition>)> for &Schema {
+impl Into<(NewGridSchema, Vec<NewGridPropertyDefinition>)> for Schema {
     fn into(self) -> (NewGridSchema, Vec<NewGridPropertyDefinition>) {
         let schema = NewGridSchema {
             name: self.name.clone(),
@@ -156,7 +156,7 @@ fn make_property_definitions(
         properties.push(NewGridPropertyDefinition {
             name: def.name.to_string(),
             schema_name: def.schema_name.to_string(),
-            data_type: format!("{:?}", def.data_type),
+            data_type: def.data_type.clone(),
             required: def.required,
             description: def.description.to_string(),
             number_exponent: def.number_exponent,

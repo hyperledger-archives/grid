@@ -31,7 +31,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreF
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError>;
 }
 
@@ -43,7 +43,7 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         let mut query = property::table
             .into_boxed()
@@ -84,7 +84,7 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(make_property_with_data_type(prop.unwrap())))
+        Ok(prop.map(make_property_with_data_type))
     }
 }
 
@@ -96,7 +96,7 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         let mut query = property::table
             .into_boxed()
@@ -137,6 +137,6 @@ impl<'a> TrackAndTraceStoreFetchPropertyWithDataTypeOperation
                 source: Box::new(err),
             })?;
 
-        Ok(Some(make_property_with_data_type(prop.unwrap())))
+        Ok(prop.map(make_property_with_data_type))
     }
 }

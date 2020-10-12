@@ -28,7 +28,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError>;
 }
 
@@ -39,7 +39,7 @@ impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         let mut query = associated_agent::table
             .into_boxed()
@@ -82,7 +82,7 @@ impl<'a> TrackAndTraceStoreListAssociatedAgentsOperation
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         let mut query = associated_agent::table
             .into_boxed()

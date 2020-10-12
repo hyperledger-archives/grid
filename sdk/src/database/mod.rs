@@ -17,6 +17,4 @@
 
 pub mod error;
 
-embed_migrations!("./src/grid_db/migrations/diesel/postgres/migrations");
-
 pub use super::database::error::{ConnectionError, DatabaseError};

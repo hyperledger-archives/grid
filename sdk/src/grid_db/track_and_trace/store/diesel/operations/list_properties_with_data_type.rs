@@ -30,7 +30,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError>;
 }
 
@@ -41,7 +41,7 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         let mut query = property::table
             .into_boxed()
@@ -101,7 +101,7 @@ impl<'a> TrackAndTraceStoreListPropertiesWithDataTypeOperation
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         let mut query = property::table
             .into_boxed()

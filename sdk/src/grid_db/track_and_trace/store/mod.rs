@@ -20,7 +20,7 @@ pub use error::TrackAndTraceStoreError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssociatedAgent {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub role: String,
     pub agent_id: String,
@@ -32,7 +32,7 @@ pub struct AssociatedAgent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Property {
-    pub id: i64,
+    pub id: Option<i64>,
     pub name: String,
     pub record_id: String,
     pub property_definition: String,
@@ -45,7 +45,7 @@ pub struct Property {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proposal {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub timestamp: i64,
     pub issuing_agent: String,
@@ -61,7 +61,7 @@ pub struct Proposal {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Record {
-    pub id: i64,
+    pub id: Option<i64>,
     pub record_id: String,
     pub schema: String,
     pub final_: bool,
@@ -72,9 +72,9 @@ pub struct Record {
     pub service_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ReportedValue {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -94,7 +94,7 @@ pub struct ReportedValue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reporter {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub public_key: String,
@@ -107,7 +107,7 @@ pub struct Reporter {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReportedValueReporterToAgentMetadata {
-    pub id: i64,
+    pub id: Option<i64>,
     pub property_name: String,
     pub record_id: String,
     pub reporter_index: i32,
@@ -124,14 +124,14 @@ pub struct ReportedValueReporterToAgentMetadata {
     pub authorized: Option<bool>,
     pub metadata: Option<Vec<u8>>,
     pub reported_value_end_commit_num: i64,
-    pub reporter_end_commit_num: i64,
+    pub reporter_end_commit_num: Option<i64>,
     pub service_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct LatLong;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct LatLongValue(pub i64, pub i64);
 
 pub trait TrackAndTraceStore: Send + Sync {
@@ -194,7 +194,7 @@ pub trait TrackAndTraceStore: Send + Sync {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError>;
 
     /// Fetches a record from the underlying storage
@@ -206,7 +206,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError>;
 
     /// Fetches a reported value reported to agent metadata object from the underlying storage
@@ -222,7 +222,7 @@ pub trait TrackAndTraceStore: Send + Sync {
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError>;
 
     /// Fetches a list of associated agents from the underlying storage
@@ -234,7 +234,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError>;
 
     /// Fetches a list of properties and their data types from the underlying storage
@@ -246,7 +246,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError>;
 
     /// Fetches a list of proposals from the underlying storage
@@ -258,7 +258,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError>;
 
     /// Fetches a list of records from the underlying storage
@@ -268,7 +268,7 @@ pub trait TrackAndTraceStore: Send + Sync {
     ///  * `service_id` - The service ID to fetch for
     fn list_records(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError>;
 
     /// Fetches a list of reported value reported to agent metadata objects from the underlying storage
@@ -282,7 +282,7 @@ pub trait TrackAndTraceStore: Send + Sync {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError>;
 
     /// Fetches a list of reporters from the underlying storage
@@ -296,7 +296,7 @@ pub trait TrackAndTraceStore: Send + Sync {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError>;
 }
 
@@ -338,7 +338,7 @@ where
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         (**self).fetch_property_with_data_type(record_id, property_name, service_id)
     }
@@ -346,7 +346,7 @@ where
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         (**self).fetch_record(record_id, service_id)
     }
@@ -356,7 +356,7 @@ where
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         (**self).fetch_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -369,7 +369,7 @@ where
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         (**self).list_associated_agents(record_ids, service_id)
     }
@@ -377,7 +377,7 @@ where
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         (**self).list_properties_with_data_type(record_ids, service_id)
     }
@@ -385,14 +385,14 @@ where
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         (**self).list_proposals(record_ids, service_id)
     }
 
     fn list_records(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
         (**self).list_records(service_id)
     }
@@ -401,7 +401,7 @@ where
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         (**self).list_reported_value_reporter_to_agent_metadata(
             record_id,
@@ -414,7 +414,7 @@ where
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         (**self).list_reporters(record_id, property_name, service_id)
     }

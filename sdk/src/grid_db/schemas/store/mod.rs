@@ -14,9 +14,10 @@
 
 #[cfg(feature = "diesel")]
 pub mod diesel;
+mod error;
 pub mod memory;
 
-use crate::grid_db::schemas::error::SchemaStoreError;
+pub use error::SchemaStoreError;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Schema {
@@ -54,7 +55,7 @@ pub trait SchemaStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `schema` - The new schema to be added
-    fn add_schema(&self, schema: &Schema) -> Result<(), SchemaStoreError>;
+    fn add_schema(&self, schema: Schema) -> Result<(), SchemaStoreError>;
 
     /// Retrieve a schema from the underlying storage
     ///

@@ -28,7 +28,6 @@ use super::{
     ReportedValueReporterToAgentMetadata, Reporter, TrackAndTraceStore, TrackAndTraceStoreError,
 };
 use crate::database::DatabaseError;
-use crate::grid_db::commits::MAX_COMMIT_NUM;
 use operations::add_associated_agents::TrackAndTraceStoreAddAssociatedAgentsOperation as _;
 use operations::add_properties::TrackAndTraceStoreAddPropertiesOperation as _;
 use operations::add_proposals::TrackAndTraceStoreAddProposalsOperation as _;
@@ -138,7 +137,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -152,7 +151,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -168,7 +167,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -187,7 +186,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -201,7 +200,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -215,7 +214,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -228,7 +227,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
 
     fn list_records(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -243,7 +242,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -262,7 +261,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::pg::PgConnection> {
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -346,7 +345,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -360,7 +359,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
     fn fetch_record(
         &self,
         record_id: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -376,7 +375,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         record_id: &str,
         property_name: &str,
         commit_height: Option<i64>,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Option<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -395,7 +394,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
     fn list_associated_agents(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<AssociatedAgent>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -409,7 +408,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
     fn list_properties_with_data_type(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<(Property, Option<String>)>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -423,7 +422,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
     fn list_proposals(
         &self,
         record_ids: &[String],
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Proposal>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -436,7 +435,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
 
     fn list_records(
         &self,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Record>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -451,7 +450,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<ReportedValueReporterToAgentMetadata>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -470,7 +469,7 @@ impl TrackAndTraceStore for DieselTrackAndTraceStore<diesel::sqlite::SqliteConne
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         TrackAndTraceStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
             DatabaseError::ConnectionError {
@@ -587,7 +586,7 @@ fn make_reported_value_models(
             latitude_value: val.lat_long_value.clone().map(|lat_long| lat_long.0),
             longitude_value: val.lat_long_value.clone().map(|lat_long| lat_long.1),
             start_commit_num: val.start_commit_num,
-            end_commit_num: MAX_COMMIT_NUM,
+            end_commit_num: val.end_commit_num,
             service_id: val.service_id.clone(),
         });
 
@@ -608,7 +607,7 @@ fn make_reported_value_models(
 impl From<AssociatedAgentModel> for AssociatedAgent {
     fn from(model: AssociatedAgentModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             record_id: model.record_id,
             role: model.role,
             agent_id: model.agent_id,
@@ -620,25 +619,10 @@ impl From<AssociatedAgentModel> for AssociatedAgent {
     }
 }
 
-impl From<AssociatedAgent> for AssociatedAgentModel {
-    fn from(agent: AssociatedAgent) -> Self {
-        Self {
-            id: agent.id,
-            record_id: agent.record_id,
-            role: agent.role,
-            agent_id: agent.agent_id,
-            timestamp: agent.timestamp,
-            start_commit_num: agent.start_commit_num,
-            end_commit_num: agent.end_commit_num,
-            service_id: agent.service_id,
-        }
-    }
-}
-
 impl From<PropertyModel> for Property {
     fn from(model: PropertyModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             name: model.name,
             record_id: model.record_id,
             property_definition: model.property_definition,
@@ -654,7 +638,7 @@ impl From<PropertyModel> for Property {
 impl From<ProposalModel> for Proposal {
     fn from(model: ProposalModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             record_id: model.record_id,
             timestamp: model.timestamp,
             issuing_agent: model.issuing_agent,
@@ -673,7 +657,7 @@ impl From<ProposalModel> for Proposal {
 impl From<RecordModel> for Record {
     fn from(model: RecordModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             record_id: model.record_id,
             schema: model.schema,
             final_: model.final_,
@@ -689,7 +673,7 @@ impl From<RecordModel> for Record {
 impl From<ReporterModel> for Reporter {
     fn from(model: ReporterModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             property_name: model.property_name,
             record_id: model.record_id,
             public_key: model.public_key,
@@ -705,7 +689,7 @@ impl From<ReporterModel> for Reporter {
 impl From<ReportedValueReporterToAgentMetadataModel> for ReportedValueReporterToAgentMetadata {
     fn from(model: ReportedValueReporterToAgentMetadataModel) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             property_name: model.property_name,
             record_id: model.record_id,
             reporter_index: model.reporter_index,
@@ -741,7 +725,7 @@ impl
         ),
     ) -> Self {
         Self {
-            id: model.id,
+            id: Some(model.id),
             property_name: model.property_name,
             record_id: model.record_id,
             reporter_index: model.reporter_index,

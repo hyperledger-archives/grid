@@ -27,7 +27,7 @@ pub(in crate::grid_db::track_and_trace::store::diesel) trait TrackAndTraceStoreL
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError>;
 }
 
@@ -39,7 +39,7 @@ impl<'a> TrackAndTraceStoreListReportersOperation
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         let mut query = reporter::table
             .into_boxed()
@@ -84,7 +84,7 @@ impl<'a> TrackAndTraceStoreListReportersOperation
         &self,
         record_id: &str,
         property_name: &str,
-        service_id: Option<String>,
+        service_id: Option<&str>,
     ) -> Result<Vec<Reporter>, TrackAndTraceStoreError> {
         let mut query = reporter::table
             .into_boxed()
