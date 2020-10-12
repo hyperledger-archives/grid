@@ -16,6 +16,7 @@ table! {
     location (id) {
         id -> Int8,
         location_id -> Varchar,
+        location_address -> Text,
         location_namespace -> Text,
         owner -> Varchar,
         start_commit_num -> Int8,

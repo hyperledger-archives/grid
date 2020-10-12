@@ -22,6 +22,7 @@ pub use error::LocationStoreError;
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Location {
     pub location_id: String,
+    pub location_address: String,
     pub location_namespace: String,
     pub owner: String,
     pub attributes: Vec<LocationAttribute>,
@@ -37,7 +38,6 @@ pub struct LocationAttribute {
     pub location_id: String,
     pub location_address: String,
     pub property_name: String,
-    pub parent_property_name: Option<String>,
     pub data_type: String,
     pub bytes_value: Option<Vec<u8>>,
     pub boolean_value: Option<bool>,

@@ -162,6 +162,7 @@ impl Into<NewLocationModel> for Location {
     fn into(self) -> NewLocationModel {
         NewLocationModel {
             location_id: self.location_id,
+            location_address: self.location_address,
             location_namespace: self.location_namespace,
             owner: self.owner,
             start_commit_num: self.start_commit_num,
@@ -222,7 +223,6 @@ impl From<LocationAttributeModel> for LocationAttribute {
             location_id: model.location_id,
             location_address: model.location_address,
             property_name: model.property_name,
-            parent_property_name: model.parent_property_name,
             data_type: model.data_type,
             bytes_value: model.bytes_value,
             boolean_value: model.boolean_value,
@@ -244,7 +244,6 @@ impl From<(LocationAttributeModel, Vec<LocationAttribute>)> for LocationAttribut
             location_id: model.location_id,
             location_address: model.location_address,
             property_name: model.property_name,
-            parent_property_name: model.parent_property_name,
             data_type: model.data_type,
             bytes_value: model.bytes_value,
             boolean_value: model.boolean_value,
@@ -264,6 +263,7 @@ impl From<(LocationModel, Vec<LocationAttribute>)> for Location {
     fn from((location, attributes): (LocationModel, Vec<LocationAttribute>)) -> Self {
         Self {
             location_id: location.location_id,
+            location_address: location.location_address,
             location_namespace: location.location_namespace,
             owner: location.owner,
             attributes,
@@ -278,6 +278,7 @@ impl From<LocationModel> for Location {
     fn from(location: LocationModel) -> Self {
         Self {
             location_id: location.location_id,
+            location_address: location.location_address,
             location_namespace: location.location_namespace,
             owner: location.owner,
             attributes: Vec::new(),
@@ -292,6 +293,7 @@ impl From<NewLocationModel> for Location {
     fn from(location: NewLocationModel) -> Self {
         Self {
             location_id: location.location_id,
+            location_address: location.location_address,
             location_namespace: location.location_namespace,
             owner: location.owner,
             attributes: Vec::new(),
