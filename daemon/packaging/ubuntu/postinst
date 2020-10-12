@@ -36,6 +36,12 @@ case "$1" in
         chown -R root:$group /etc/grid
         chmod 775 /etc/grid
         chmod 750 /etc/grid/keys
+
+        if [ ! -d /usr/share/splinter/circuit-templates ]; then
+          mkdir -p /usr/share/splinter/circuit-templates
+        fi
+        chmod 755 /usr/share/splinter/circuit-templates
+
     else
         true
     fi
