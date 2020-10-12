@@ -20,6 +20,7 @@ volumes:
   gridd-alpha:
   gridd-beta:
   gridd-gamma:
+  templates-shared:
 
 services:
 
@@ -184,6 +185,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-alpha:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
     expose:
       - 8080
     ports:
@@ -226,6 +228,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
     entrypoint: |
       bash -c "
         until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
@@ -318,6 +321,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-beta:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
     expose:
       - 8080
     ports:
@@ -359,6 +363,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
     entrypoint: |
       bash -c "
         until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
@@ -451,6 +456,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - gridd-gamma:/etc/grid/keys
+      - templates-shared:/usr/share/splinter/circuit-templates
     expose:
       - 8080
     ports:
@@ -484,6 +490,7 @@ services:
     volumes:
       - contracts-shared:/usr/share/scar
       - registry:/registry
+      - templates-shared:/usr/share/splinter/circuit-templates
     entrypoint: |
       bash -c "
         until PGPASSWORD=admin psql -h splinter-db-gamma -U admin -d splinter -c '\q'; do
