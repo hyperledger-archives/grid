@@ -23,11 +23,14 @@ The Hyperledger Grid project includes several repositories:
   contains RFCs (requests for comments) for proposed and approved changes to
   Hyperledger Grid.
 
+- The [grid-docs](https://github.com/hyperledger/grid-docs) repository
+  contains the source files for the Grid documentation and website
+  hosted at [grid.hyperledger.com](https://grid.hyperledger.org).
 
 ## Project Status
 
 Hyperledger Grid is currently in the
-[incubation](https://wiki.hyperledger.org/display/HYP/Project+Lifecycle#ProjectLifecycle-incubation)
+[incubation](https://tsc.hyperledger.org/project-lifecycle.html)
 stage of the Hyperledger product lifecycle.
 The [Hyperledger Grid
 proposal](https://docs.google.com/document/d/1b6ES0bKUK30E2iZizy3vjVEhPn7IvsW5buDo7nFXBE0/)
@@ -39,7 +42,7 @@ was accepted in December, 2018.
 We welcome contributors, both organizations and individuals, to help shape
 project direction, contribute ideas, provide use cases, and work on specific
 tools and examples. Please [join the
-discussion](https://grid.hyperledger.org/community/join_the_discussion/).
+discussion](https://grid.hyperledger.org/community/join_the_discussion.html).
 
 ## Building Grid
 
@@ -61,15 +64,15 @@ To build individual components using Docker, run
 build only the grid-cli, run `docker-compose build grid-cli`.
 
 To use Docker to build Grid with experimental features enabled, set an
-enviroment variable in your shell before running the build commands. For
+environment variable in your shell before running the build commands. For
 example: `export 'CARGO_ARGS=-- --features experimental'`. To go back to
-building with default features, unset the evironment variable:
+building with default features, unset the environment variable:
 `unset CARGO_ARGS`
 
 ## More Information
 
 - [Hyperledger Grid website](https://grid.hyperledger.org)
-- [Documentation](https://grid.hyperledger.org/docs/grid/nightly/master/)
+- [Documentation](https://grid.hyperledger.org/docs/)
 - [Hyperledger Grid mailing list](https://lists.hyperledger.org/g/grid)
 - [#grid discussion channel](https://chat.hyperledger.org/channel/grid)
 - [Hyperledger Grid project overview](https://www.hyperledger.org/projects/grid)
@@ -81,7 +84,8 @@ building with default features, unset the evironment variable:
 Hyperledger Grid software is licensed under the [Apache License Version
 2.0](LICENSE) software license.
 
-The Hyperledger Grid documentation in the [docs](docs) subdirectory is licensed
+The Hyperledger Grid documentation in the
+[grid-docs](https://github.com/hyperledger/grid-docs) repository is licensed
 under a Creative Commons Attribution 4.0 International License (CC BY 4.0).
 You may obtain a copy of the license at
 <http://creativecommons.org/licenses/by/4.0/>.
