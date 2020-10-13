@@ -62,7 +62,7 @@ pub trait SchemaStore: Send + Sync {
     /// # Arguments
     ///
     ///  * `name` - Name of schema being fetched
-    ///  * `service_id` - Sevice ID needed for when the source of the schema
+    ///  * `service_id` - Service ID needed for when the source of the schema
     ///  is a splinter circuit
     fn fetch_schema(
         &self,
@@ -74,7 +74,48 @@ pub trait SchemaStore: Send + Sync {
     ///
     /// # Arguments
     ///
-    ///  * `service_id` - Sevice ID needed for when the source of the schema
+    ///  * `service_id` - Service ID needed for when the source of the schema
     ///  is a splinter circuit
     fn list_schemas(&self, service_id: Option<&str>) -> Result<Vec<Schema>, SchemaStoreError>;
+
+    /// List all property definitions in underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `service_id` - Service ID needed for when the source of the schema
+    ///  is a splinter circuit
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError>;
+
+    /// List all schemas in underlying storage for a particular schema
+    ///
+    /// # Arguments
+    ///
+    ///  * `schema_name` - The name of the schema to list property definitions
+    ///  for
+    ///  * `service_id` - Service ID needed for when the source of the schema
+    ///  is a splinter circuit
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError>;
+
+    /// Get a particular property definition for a particular schema
+    ///
+    /// # Arguments
+    ///
+    ///  * `schema_name` - The name of the schema to list property definitions
+    ///  for
+    ///  * `definition_name` - The name of the property definition to fetch
+    ///  * `service_id` - Service ID needed for when the source of the schema
+    ///  is a splinter circuit
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError>;
 }

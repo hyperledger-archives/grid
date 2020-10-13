@@ -21,6 +21,9 @@ use crate::database::DatabaseError;
 use models::{GridPropertyDefinition, GridSchema, NewGridPropertyDefinition, NewGridSchema};
 use operations::{
     add_schema::AddSchemaOperation, fetch_schema::FetchSchemaOperation,
+    get_property_definition_by_name::GetPropertyDefinitionByNameOperation,
+    list_property_definitions::ListPropertyDefinitionsOperation,
+    list_property_definitions_with_schema_name::ListPropertyDefinitionsWithSchemaNameOperation,
     list_schemas::ListSchemasOperation, SchemaStoreOperations,
 };
 
@@ -76,6 +79,48 @@ impl SchemaStore for DieselSchemaStore<diesel::pg::PgConnection> {
         })?)
         .list_schemas(service_id)
     }
+
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_property_definitions(service_id)
+    }
+
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_property_definitions_with_schema_name(schema_name, service_id)
+    }
+
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .get_property_definition_by_name(schema_name, definition_name, service_id)
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -112,6 +157,48 @@ impl SchemaStore for DieselSchemaStore<diesel::sqlite::SqliteConnection> {
             }
         })?)
         .list_schemas(service_id)
+    }
+
+    fn list_property_definitions(
+        &self,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_property_definitions(service_id)
+    }
+
+    fn list_property_definitions_with_schema_name(
+        &self,
+        schema_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Vec<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .list_property_definitions_with_schema_name(schema_name, service_id)
+    }
+
+    fn get_property_definition_by_name(
+        &self,
+        schema_name: &str,
+        definition_name: &str,
+        service_id: Option<&str>,
+    ) -> Result<Option<PropertyDefinition>, SchemaStoreError> {
+        SchemaStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .get_property_definition_by_name(schema_name, definition_name, service_id)
     }
 }
 
