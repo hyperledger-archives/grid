@@ -524,10 +524,10 @@ though alpha and beta are using the same XO smart contract, their game moves
 (smart contract transactions) remain private to their two-party circuit.
 
 ## For More Information
-- Hyperledger Grid documentation: https://grid.hyperledger.org/docs/grid/nightly/master/introduction.html
+- Hyperledger Grid documentation: https://grid.hyperledger.org/docs/
 - Splinter: https://github.com/Cargill/splinter
 - Sawtooth Sabre: https://github.com/hyperledger/sawtooth-sabre
-- Pike transaction family (defines a Grid Pike smart contract): https://grid.hyperledger.org/docs/grid/nightly/master/transaction_family_specifications/grid_schema_family_specification.html
-- Schema transaction family (defines a Grid Schema smart contract): https://grid.hyperledger.org/docs/grid/nightly/master/transaction_family_specifications/grid_schema_family_specification.html
+- Pike smart contract: https://grid.hyperledger.org/docs/0.1/pike_smart_contract_specification.html
+- Schema smart contract: https://grid.hyperledger.org/docs/0.1/schema_smart_contract_specification.html
 - Product RFC: https://github.com/target/grid-rfcs/blob/d6305b86e2a43e510bb57b297b3ec09b0a66c5b0/0000-product.md
 - CLI for the XO smart contract (also called a "transaction processor"): https://sawtooth.hyperledger.org/docs/core/releases/latest/cli/xo.html
