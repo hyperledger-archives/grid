@@ -79,9 +79,8 @@ pipeline {
 
         stage("Build Grid UI Test Dependencies") {
             steps {
-                sh 'docker build grid-ui -f grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
-                sh 'docker build . -f grid-ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
-                sh 'docker build grid-ui/saplings/profile -f grid-ui/saplings/profile/test/Dockerfile -t profile-sapling:$ISOLATION_ID'
+                sh 'docker build ui/grid-ui -f ui/grid-ui/docker/test/Dockerfile -t grid-ui:$ISOLATION_ID'
+                sh 'docker build . -f ui/saplings/product/test/Dockerfile -t product-sapling:$ISOLATION_ID'
             }
         }
 
@@ -89,7 +88,6 @@ pipeline {
             steps {
                 sh 'docker run --rm --env CI=true grid-ui:$ISOLATION_ID yarn lint'
                 sh 'docker run --rm --env CI=true product-sapling:$ISOLATION_ID yarn lint'
-                sh 'docker run --rm --env CI=true profile-sapling:$ISOLATION_ID yarn lint'
             }
         }
 

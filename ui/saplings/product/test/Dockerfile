@@ -12,7 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-saplings/*
-build/*
-sapling-dev-server/*
-scripts/build.js
+# Dockerfile for running unit tests and lint on the Grid UI
+FROM node:lts-alpine
+
+WORKDIR /ui/saplings/product
+
+COPY ./ui/saplings/product/package*.json /ui/saplings/product
+
+RUN apk add git
+
+# Gives npm permission to run the prepare script in splinter-canopyjs as root
+RUN npm config set unsafe-perm true && npm install
+
+COPY ./ui/saplings/product /ui/saplings/product
+
+COPY ./sdk/protos /ui/saplings/product/protos
+
+RUN cd /ui/saplings/product && \
+  npm install && \
+  npm run generate-proto-files ./protos
