@@ -16,6 +16,6 @@ contributors who can:
 * Improve documentation
 
 For more information, please see
-[Contributing](https://grid.hyperledger.org/community/contributing/)
+[Contributing to Grid](https://grid.hyperledger.org/community/contributing.html)
 on the Hyperledger Grid website.
 
