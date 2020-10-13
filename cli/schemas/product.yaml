@@ -1,0 +1,351 @@
+# Copyright (c) 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# -----------------------------------------------------------------------------
+
+- name: gs1_product
+  description: GS1 product schema
+  properties:
+    - name: AdditionalTradeItemDescription
+      data_type: String
+      description: ""
+      required: false
+    - name: AllergenTypeCode
+      data_type: Enum
+      description: ""
+      enum_options: [AA, ABD, ABE, ABF, ABG, ABH, ABI, ABJ, ABK, ABL, ABN, AC,
+        ACP, AD, ADB, ADC, ADE, ADF, ADG, ADH, ADI, ADJ, ADK, ADL, ADM, ADP, ADQ,
+        ADR, ADS, ADT, ADU, ADV, ADW, AE, AF, AH, AI, AL, AM, AN, ANO, AP, AS, AU,
+        AW, AWF, AX, AY, BA, BAS, BB, BC, BE, BF, BI, BLF, BM, BN, BO, BP, BQ, BR,
+        BRM, BS, CA, CHB, CHR, CL, CLM, CM, CN, CO, COK, CON, CS, CSC, CT, DA, DP,
+        EEL, EG, EP, EV, FA, FH, FT, GB, GE, GK, GL, GO, GS, HB, HC, HD, HE, HH,
+        HN, HP, HX, HY, LMT, LSN, MAC, MAL, MH, MKF, ML, MM, MSS, NC, NE, NK, NL,
+        NM, NP, NR, NW, OCT, ON, ORR, OYS, PER, PLC, PM, PN, PO, POM, PP, PRG, PS,
+        QUA, ROF, SA, SAR, SB, SC, SCA, SD, SE, SF, SG, SH, SHK, SI, SJ, SK, SL,
+        SM, SMT, SN, SO, SP, SQ, SQU, SR, SS, ST, STG, SU, SW, SX, TA, TD, TR,
+        TUR, UM, UN, UW, WHK, WHT, X99]
+      required: false
+    - name: brandName
+      data_type: String
+      description: ""
+      required: false
+    - name: colourDescription
+      data_type: String
+      description: ""
+      required: false
+    - name: consumerStorageInstructions
+      data_type: String
+      description: ""
+      required: false
+    - name: contactAddress
+      data_type: String
+      description: ""
+      required: false
+    - name: contactName
+      data_type: String
+      description: ""
+      required: false
+    - name: countryOfOrigin
+      data_type: String
+      description: ""
+      required: false
+    - name: depth
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: depthUom
+      data_type: Enum
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: DietTypeCode
+      data_type: Enum
+      description: ""
+      enum_options: [COELIAC, DIABETIC, DIETETIC, FREE_FROM_GLUTEN, HALAL,
+        HIGH_CARB, INFANT_FORMULA, KETO, KOSHER, LACTASE_ENZYME, LOW_CARB,
+        LOW_FAT, MEAL_REPLACEMENT, MOTHERS_MILK_SUBSTITUTE, NUTRITION_SUPPLEMENT,
+        ORGANIC, PALEO, PESCATARIAN, PROBIOTICS, TOTAL_DIET_REPLACEMENT, VEGAN,
+        VEGETARIAN, WITHOUT_BEEF, WITHOUT_PORK]
+      required: false
+    - name: descriptionShort
+      data_type: String
+      description: ""
+      required: false
+    - name: diameter
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: depthUom
+      data_type: enum
+      description: The UoM for depth.
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: functionalName
+      data_type: String
+      description: ""
+      required: false
+    - name: grossWeight
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: grossWeightUom
+      data_type: Enum
+      description: ""
+      enum_options: [MC, MGM, LBR, KGM]
+      required: false
+    - name: height
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: heightUom
+      data_type: Enum 
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: ingredientStatement
+      data_type: String
+      description: ""
+      required: false
+    - name: LevelOfContainmentCode
+      data_type: Enum
+      description: ""
+      enum_options: [SubstanceNotIntentionallyIncludedInProduct, DerivedFrom,
+        NotDerivedFrom, Contains, FreeFrom, MayContain, Undeclared]
+      required: false
+    - name: isNutrientRelevantDataProvided
+      data_type: Boolean
+      description: ""
+      required: false
+    - name: itemNameLong
+      data_type: String
+      description: ""
+      required: false
+    - name: maximumTemperature
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: maximumTemperatureUom
+      data_type: Enum
+      description: The unit of measure for maximum temperature.
+      enum_options: [CEL, FAH, KEL]
+      required: false
+    - name: minimumTemperature
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: minimumTemperatureUom
+      data_type: Enum
+      description: ""
+      enum_options: [CEL, FAH, KEL]
+      required: false
+    - name: minimumTradeItemLifespanFromTimeOfArrival
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: netWeight
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: netWeightUom
+      data_type: Enum
+      description: ""
+      enum_options: [MC, MGM, LBR, KGM]
+      required: false
+    - name: numberOfServingsPerPackage
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: nutritionalClaim
+      data_type: String
+      description: ""
+      required: false
+    - name: packagingDepth
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: packagingDepthUom
+      data_type: Enum
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: packagingHeight
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: packagingHeightUom
+      data_type: Enum
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: packagingTypeCode
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: packagingWidth
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: packagingWidthUom
+      data_type: Enum
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: preparationInstructions
+      data_type: String
+      description: ""
+      required: false
+    - name: preparationStateCode
+      data_type: String
+      description: ""
+      required: false
+    - name: preparationTypeCode
+      data_type: String
+      description: ""
+      required: false
+    - name: quantityOfCompleteLayersContainedInATradeItem
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: quantityOfInnerPack
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: quantityOfNextLowerLevelTradeItem
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: quantityOfTradeItemsPerPallet
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: sequenceNumber
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: servingSizeDescription
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemDateOnPackagingFormatTypeCode
+      data_type: Enum
+      description: ""
+      enum_options: [CALENDAR_DATE, ORDINAL_DATE]
+      required: false
+    - name: tradeItemDescription
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemFeatureBenefit
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemGroupIdentificationCodeReference
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemKeyWords
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemMarketingMessage
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemUnitDescriptorCode
+      data_type: Enum
+      description: ""
+      enum_options: [BASE_UNIT_OR_EACH, CASE, DISPLAY_SHIPPER, MIXED_MODULE,
+        PACK_OR_INNER_PACK, PALLET, TRANSPORT_LOAD]
+      required: false
+    - name: uniformResourceIdentifier
+      data_type: String
+      description: ""
+      required: false
+    - name: volume
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: volumeUom
+      data_type: Enum
+      description: ""
+      enum_options: [4G, APZ, BLL, LTR, ONZ, OZA, OZI, PTI, PTL]
+      required: false
+    - name: width
+      data_type: Number
+      description: ""
+      number_exponent: -3
+      required: false
+    - name: widthUom
+      data_type: Enum
+      description: ""
+      enum_options: [FOT, INH, MTR]
+      required: false
+    - name: productActivityTypeCode
+      data_type: Enum
+      description: ""
+      enum_options: [ASSEMBLY, BIRTH, BOTTLING, CATCH_ZONE, FARMING,
+        IMPORTATION, LAST_PROCESSING, MILKING, REARING, SLAUGHTER]
+      required: false
+    - name: countryOfActivity
+      data_type: String
+      description: ""
+      required: false
+    - name: tradeItemPrice
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: priceBasisQuantity
+      data_type: Number
+      description: ""
+      number_exponent: 0
+      required: false
+    - name: freeFromAllergenList
+      data_type: String
+      description: ""
+      required: false
+    - name: containsAllergenList
+      data_type: String
+      description: ""
+      required: false
+    - name: mayContainAllergenList
+      data_type: String
+      description: ""
+      required: false
+    - name: keyWordsList
+      data_type: String
+      description: ""
+      required: false
+    - name: featuresAndBenefitsList
+      data_type: String
+      description: ""
+      required: false
