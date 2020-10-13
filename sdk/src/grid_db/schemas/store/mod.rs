@@ -15,7 +15,6 @@
 #[cfg(feature = "diesel")]
 pub mod diesel;
 mod error;
-pub mod memory;
 
 pub use error::SchemaStoreError;
 
