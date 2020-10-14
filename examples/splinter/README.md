@@ -219,8 +219,63 @@ steps 3 through 10.
    ``gridd-beta`` container. Use `--url <endpoint>` to override this variable
    on the command line.
 
+1. Create a `product_schema.yaml` file with the following contents:
+   ```
+   - name: gs1_product
+     description: GS1 product schema
+     properties:
+      - name: product_name
+        data_type: STRING
+        description: Consumer friendly short description of the product suitable for compact presentation.
+        required: true
+      - name: image_url
+        data_type: STRING
+        description: URL link to an image of the product.
+        required: false
+      - name: brand_name
+        data_type: STRING
+        description: The brand name of the product that appears on the consumer package.
+        required: true
+      - name: product_description
+        data_type: STRING
+        description: "An understandable and useable description of a product using brand and other descriptors. This attribute is filled with as little abbreviation as possible, while keeping to a reasonable length. This should be a meaningful description of the product with full spelling to facilitate message processing. Retailers can use this description as the base to fully understand the brand, flavour, scent etc. of the specific product, in order to accurately create a product description as needed for their internal systems. Examples: XYZ Brand Base Invisible Solid Deodorant AP Stick Spring Breeze."
+        required: true
+      - name: gpc
+        data_type: NUMBER
+        number_exponent: 1
+        description: 8-digit code (GPC Brick Value) specifying a product category according to the GS1 Global Product Classification (GPC) standard.
+        required: true
+      - name: net_content
+        data_type: STRING
+        description: The amount of the consumable product of the trade item contained in a package, as declared on the label.
+        required: true
+      - name: target_market
+        data_type: NUMBER
+        number_exponent: 1
+        description: ISO numeric country code representing the target market country for the product.
+        required: true
+   ```
 
-1. Start a bash session in the `gridd-alpha` Docker container.  You will use
+2. Create a `product.yaml` file with the following contents:
+   ```
+   - product_namespace: "GS1"
+     product_id: "013600000929"
+     owner: "314156"
+     properties:
+      product_name: "Truvia 80 ct."
+      image_url: "https://target.scene7.com/is/image/Target/GUEST_b7a6e983-b391-40a5-ad89-2f906bce5743?fmt=png&wid=1400&qlt=80"
+      brand_name: "Truvia"
+      product_description: "Truvia Sugar 80CT"
+      gpc: 30016951
+      net_content: "80CT"
+      target_market: 840
+   ```
+
+3. Copy the two YAML files you just created into the `root` directory of the
+   `gridd-alpha` Docker container
+   `$ docker cp product_schema.yaml gridd-alpha:/ && docker cp product.yaml gridd-alpha:/`
+
+4. Start a bash session in the `gridd-alpha` Docker container.  You will use
    this container to run Grid commands on `alpha-node-000`.
 
    ```
@@ -228,7 +283,7 @@ steps 3 through 10.
    root@gridd-alpha:/#
    ```
 
-2. Generate a secp256k1 key pair for the alpha node. This key will be used to
+5. Generate a secp256k1 key pair for the alpha node. This key will be used to
    sign Grid transactions.
 
    `root@gridd-alpha:/# grid keygen alpha-agent`
@@ -236,7 +291,7 @@ steps 3 through 10.
    This command generates two files, `alpha-agent.priv` and `alpha-agent.pub`,
    in the `~/.grid/keys/` directory.
 
-3. Set an environment variable with the service ID. Use the circuit ID of the
+6. Set an environment variable with the service ID. Use the circuit ID of the
    circuit that was created above. The commands below will check this variable
    to determine which circuit and service the command should be run against. An
    alternative to using the environment variable is to pass the service ID via
@@ -246,7 +301,7 @@ steps 3 through 10.
    root@gridd-alpha:/# export GRID_SERVICE_ID=01234-ABCDE::gsAA
    ```
 
-4. Create a new organization, `myorg`.
+7. Create a new organization, `myorg`.
 
    ```
    root@gridd-alpha:/# grid \
@@ -260,7 +315,7 @@ steps 3 through 10.
    is derived from the private key used to sign the transaction.) The service ID
    includes the circuit name and the scabbard service name for the alpha node.
 
-5. Update the agent's permissions (Pike roles) to allow creating, updating, and
+8. Update the agent's permissions (Pike roles) to allow creating, updating, and
    deleting Grid products.
 
    ```
@@ -273,95 +328,7 @@ steps 3 through 10.
    --role admin
    ```
 
-6. Use `cat` to create a schema definition file, `product_schema.yaml`, using
-   the following contents.
-
-   ```
-    - name: gs1_product
-      description: GS1 product schema
-      properties:
-        - name: product_name
-          data_type: STRING
-          description:
-            Consumer friendly short description of the product suitable for compact
-            presentation.
-          required: true
-        - name: image_url
-          data_type: STRING
-          description: URL link to an image of the product.
-          required: false
-        - name: brand_name
-          data_type: STRING
-          description: The brand name of the product that appears on the consumer package.
-          required: true
-        - name: product_description
-          data_type: STRING
-          description:
-            "An understandable and useable description of a product using brand and
-            other descriptors. This attribute is filled with as little abbreviation
-            as possible, while keeping to a reasonable length. This should be a
-            meaningful description of the product with full spelling to facilitate
-            essage processing. Retailers can use this description as the base to
-            fully understand the brand, flavour, scent etc. of the specific product,
-            in order to accurately create a product description as needed for their
-            internal systems. Examples: XYZ Brand Base Invisible Solid Deodorant AP
-            Stick Spring Breeze."
-          required: true
-        - name: gpc
-          data_type: NUMBER
-          number_exponent: 1
-          description:
-            8-digit code (GPC Brick Value) specifying a product category according
-            to the GS1 Global Product Classification (GPC) standard.
-          required: true
-        - name: net_content
-          data_type: STRING
-          description:
-            The amount of the consumable product of the trade item contained in a
-            package, as declared on the label.
-          required: true
-        - name: target_market
-          data_type: NUMBER
-          number_exponent: 1
-          description:
-            ISO numeric country code representing the target market country for the
-            product.
-          required: true
-   ```
-
-7. Use `cat` to create a product definition file, `product.yaml`, using the
-   following contents.
-
-   ```
-   - product_namespace: "GS1"
-     product_id: "013600000929"
-     owner: "314156"
-     properties:
-       - name: "product_name"
-         data_type: "STRING"
-         string_value: "Truvia 80 ct."
-       - name: "image_url"
-         data_type: "STRING"
-         string_value:
-          "https://target.scene7.com/is/image/Target/GUEST_b7a6e983-b391-40a5-ad89-2f906bce5743?fmt=png&wid=1400&qlt=80"
-       - name: "brand_name"
-         data_type: "STRING"
-         string_value: "Truvia"
-       - name: "product_description"
-         data_type: "STRING"
-         string_value: "Truvia Sugar 80CT"
-       - name: "gpc"
-         data_type: "NUMBER"
-         number_value: 30016951
-       - name: "net_content"
-         data_type: "STRING"
-         string_value: "80CT"
-       - name: "target_market"
-         data_type: "NUMBER"
-         number_value: 840
-   ```
-
-8. Add the product schema based on the definition in the example YAML file,
+9. Add the product schema based on the definition in the example YAML file,
    `product_schema.yaml`.
 
     ```
@@ -369,25 +336,25 @@ steps 3 through 10.
         schema create product_schema.yaml
     ```
 
-9. Add a new product based on the definition in the example YAML file,
+10. Add a new product based on the definition in the example YAML file,
    `product.yaml`.
 
    ```
    root@gridd-alpha:/# grid -k alpha-agent \
-     product create  product.yaml
+     product create -f product.yaml
    ```
 
-10. Open a new terminal and connect to the `gridd-beta` container.
+11. Open a new terminal and connect to the `gridd-beta` container.
 
    `$ docker exec -it gridd-beta bash`
 
-11. Set an environment variable with the service ID.
+12. Set an environment variable with the service ID.
 
     ```
     root@gridd-beta:/# export GRID_SERVICE_ID=01234-ABCDE::gsBB
     ```
 
-12. Display all products.
+13. Display all products.
 
    ```
    root@gridd-beta:/# grid product list

@@ -20,6 +20,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Once;
 use users::get_current_username;
 
 mod integration {
@@ -27,14 +28,18 @@ mod integration {
     static KEY_DIR: &str = "/root";
     static PUB_KEY_FILE: &str = "/root/.grid/keys/root.pub";
 
-    static ORG_ID: &str = "314156";
-    static ORG_NAME: &str = "target";
-    static ORG_ADDRESS: &str = "target hq";
+    static ORG_ID: &str = "cgl";
+    static ORG_NAME: &str = "Cargill";
+    static ORG_ADDRESS: &str = "hq";
 
-    static PRODUCT_CREATE_FILE: &str = "tests/yaml/test_product_create.yaml";
-    static PRODUCT_UPDATE_FILE: &str = "tests/yaml/test_product_update.yaml";
+    static SCHEMA_CREATE_FILE: &str = "tests/products/test_product_schema.yaml";
+
+    static PRODUCT_CREATE_FILE: &str = "tests/products/create_product.yaml";
+    static PRODUCT_UPDATE_FILE: &str = "tests/products/update_product.yaml";
 
     static PRODUCT_DELETE_ID: &str = "762111177704";
+
+    static INIT: Once = Once::new();
 
     /// Verifies a `grid product create` command successfully runs.
     ///
@@ -42,13 +47,13 @@ mod integration {
     ///
     #[test]
     fn test_product_create() {
-        setup();
+        get_setup();
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .arg("create")
-            .arg(&PRODUCT_CREATE_FILE);
+            .args(&["--file", &PRODUCT_CREATE_FILE]);
         cmd_product_create.assert().success();
     }
 
@@ -59,13 +64,13 @@ mod integration {
     ///
     #[test]
     fn test_product_update() {
-        setup();
+        get_setup();
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .arg("create")
-            .arg(&PRODUCT_CREATE_FILE);
+            .args(&["--file", &PRODUCT_CREATE_FILE]);
         cmd_product_create.assert().success();
 
         //run `grid product update`
@@ -73,7 +78,7 @@ mod integration {
         cmd_product_update
             .arg("product")
             .arg("update")
-            .arg(&PRODUCT_UPDATE_FILE);
+            .args(&["--file", &PRODUCT_UPDATE_FILE]);
         cmd_product_update.assert().success();
     }
 
@@ -84,13 +89,13 @@ mod integration {
     ///
     #[test]
     fn test_product_delete() {
-        setup();
+        get_setup();
         //run `grid product create`
         let mut cmd_product_create = make_grid_command();
         cmd_product_create
             .arg("product")
             .arg("create")
-            .arg(&PRODUCT_CREATE_FILE);
+            .args(&["--file", &PRODUCT_CREATE_FILE]);
         cmd_product_create.assert().success();
 
         //run `grid product delete`
@@ -99,7 +104,7 @@ mod integration {
             .arg("product")
             .arg("delete")
             .arg(&PRODUCT_DELETE_ID)
-            .arg("GS1"); //product type
+            .args(&["--namespace", "GS1"]); //product type
         cmd_product_delete.assert().success();
     }
 
@@ -107,9 +112,10 @@ mod integration {
     ///
     ///     Necessary to run product commands
     ///
-    fn setup() {
+    fn setup(org_suffix: &str) {
         //run `grid keygen`
         let key_name: String = get_current_username().unwrap().into_string().unwrap();
+        println!("key name: {}", &key_name);
         let mut key_dir: PathBuf = dirs::home_dir().unwrap();
         assert_eq!(PathBuf::from(KEY_DIR), key_dir);
         key_dir.push(".grid");
@@ -127,32 +133,41 @@ mod integration {
 
         //run `grid organization create`
         let mut cmd_org_create = make_grid_command();
+        let org_id = format!("{}{}", &ORG_ID, &org_suffix);
         cmd_org_create
             .arg("organization")
             .arg("create")
-            .arg(&ORG_ID)
+            .arg(&org_id)
             .arg(&ORG_NAME)
             .arg(&ORG_ADDRESS)
-            .args(&["--metadata", "gs1_company_prefixes=314"]);
+            .args(&["--metadata", &format!("gs1_company_prefixes={}", &org_id)]);
         cmd_org_create.assert().success();
 
         //run `grid agent create`
-        let pub_key = fs::read_to_string(PUB_KEY_FILE).unwrap();
-        let mut cmd_agent_create = make_grid_command();
-        cmd_agent_create
+        let mut pub_key = fs::read_to_string(PUB_KEY_FILE).unwrap();
+        // key is read in with a trailing newline. This removes the newline
+        pub_key.pop();
+        let mut cmd_agent_update = make_grid_command();
+        cmd_agent_update
             .arg("agent")
-            .arg("create")
-            .arg(&ORG_ID)
+            .arg("update")
+            .arg(&org_id)
             .arg(&pub_key)
-            .args(&[
-                "--active",
-                "--role",
-                "admin",
-                "can_create_product",
-                "can_update_product",
-                "can_delete_product",
-            ]);
-        cmd_agent_create.assert().success();
+            .arg("--active")
+            .args(&["--role", "admin"])
+            .args(&["--role", "can_create_product"])
+            .args(&["--role", "can_update_product"])
+            .args(&["--role", "can_delete_product"])
+            .args(&["--role", "can_create_schema"])
+            .args(&["--role", "can_update_schema"]);
+        cmd_agent_update.assert().success();
+
+        let mut cmd_schema_create = make_grid_command();
+        cmd_schema_create
+            .arg("schema")
+            .arg("create")
+            .arg(&SCHEMA_CREATE_FILE);
+        cmd_schema_create.assert().success();
     }
 
     /// Makes a grid system command
@@ -162,7 +177,19 @@ mod integration {
     fn make_grid_command() -> Command {
         let mut cmd = Command::cargo_bin("grid").unwrap();
         let url = env::var("INTEGRATION_TEST_URL").unwrap_or("http://gridd:8080".to_string());
-        cmd.args(&["--url", &url]).arg("-vv");
+        cmd.args(&["--url", &url])
+            .args(&["--wait", "10000"])
+            .arg("-vv");
         return cmd;
+    }
+
+    /// Gets a memoized setup
+    ///
+    ///     Ensures that the setup is only called once to avoid conflicts
+    ///     between tests.
+    fn get_setup() {
+        INIT.call_once(|| {
+            setup("test");
+        })
     }
 }

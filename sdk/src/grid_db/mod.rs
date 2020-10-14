@@ -50,7 +50,6 @@ pub use products::store::ProductStore;
 
 #[cfg(feature = "diesel")]
 pub use schemas::store::diesel::DieselSchemaStore;
-pub use schemas::store::memory::MemorySchemaStore;
 pub use schemas::store::SchemaStore;
 
 #[cfg(feature = "diesel")]

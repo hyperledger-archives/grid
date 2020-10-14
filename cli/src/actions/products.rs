@@ -12,30 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::actions::schemas::{self, get_schema, GridPropertyDefinitionSlice};
 use crate::http::submit_batches;
 use crate::transaction::{
     product_batch_builder, GRID_PRODUCT_NAMESPACE, GRID_SCHEMA_NAMESPACE, PIKE_NAMESPACE,
 };
 use grid_sdk::protocol::product::payload::{
-    Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteActionBuilder,
-    ProductPayload, ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
+    Action, ProductCreateAction, ProductCreateActionBuilder, ProductDeleteAction,
+    ProductPayloadBuilder, ProductUpdateAction, ProductUpdateActionBuilder,
 };
 use grid_sdk::protocol::product::state::ProductNamespace;
-use grid_sdk::protocol::schema::state::PropertyValue;
+use grid_sdk::protocol::schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder};
 use grid_sdk::protos::IntoProto;
 use reqwest::Client;
 
 use crate::error::CliError;
 use serde::Deserialize;
 
-use crate::yaml_parser::{
-    parse_value_as_product_namespace, parse_value_as_repeated_property_values,
-    parse_value_as_sequence, parse_value_as_string,
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::prelude::*,
+    time::{SystemTime, UNIX_EPOCH},
 };
-
-use sawtooth_sdk::messages::batch::BatchList;
-use serde_yaml::Mapping;
-use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
 
 #[derive(Debug, Deserialize)]
 pub struct GridProduct {
@@ -101,6 +100,78 @@ pub fn display_product_property_definitions(properties: &[GridPropertyValue]) {
 }
 
 /**
+ * Create a new product
+ *
+ * url - Url for the REST API
+ * key - Signing key of the agent
+ * wait - Time in seconds to wait for commit
+ * path - Path to the yaml file that contains the product descriptions
+ */
+pub fn do_create_products(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    actions: Vec<ProductCreateAction>,
+    service_id: Option<String>,
+) -> Result<(), CliError> {
+    submit_payloads(
+        url,
+        key,
+        wait,
+        actions.into_iter().map(Action::ProductCreate).collect(),
+        service_id.as_deref(),
+    )
+}
+
+/**
+ * Update an existing product
+ *
+ * url - Url for the REST API
+ * key - Signing key of the agent
+ * wait - Time in seconds to wait for commit
+ * path - Path to the yaml file that contains the product descriptions
+ */
+pub fn do_update_products(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    actions: Vec<ProductUpdateAction>,
+    service_id: Option<String>,
+) -> Result<(), CliError> {
+    submit_payloads(
+        url,
+        key,
+        wait,
+        actions.into_iter().map(Action::ProductUpdate).collect(),
+        service_id.as_deref(),
+    )
+}
+
+/**
+ * Delete an existing product
+ *
+ * url - Url for the REST API
+ * key - Signing key of the agent
+ * wait - Time in seconds to wait for commit
+ * path - Path to the yaml file that contains the product descriptions
+ */
+pub fn do_delete_products(
+    url: &str,
+    key: Option<String>,
+    wait: u64,
+    action: ProductDeleteAction,
+    service_id: Option<String>,
+) -> Result<(), CliError> {
+    submit_payloads(
+        url,
+        key,
+        wait,
+        vec![Action::ProductDelete(action)],
+        service_id.as_deref(),
+    )
+}
+
+/**
  * Print all products in state
  *
  * url - Url for the REST API
@@ -137,85 +208,236 @@ pub fn do_show_products(
     Ok(())
 }
 
-/**
- * Create a new product
- *
- * url - Url for the REST API
- * key - Signing key of the agent
- * wait - Time in seconds to wait for commit
- * path - Path to the yaml file that contains the product descriptions
- */
-pub fn do_create_products(
-    url: &str,
-    key: Option<String>,
-    wait: u64,
+pub fn create_product_payloads_from_file(
     path: &str,
-    service_id: Option<String>,
-) -> Result<(), CliError> {
-    let payloads = parse_product_yaml(path, Action::ProductCreate(ProductCreateAction::default()))?;
-    let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    url: &str,
+    service_id: Option<&str>,
+) -> Result<Vec<ProductCreateAction>, CliError> {
+    let file = std::fs::File::open(path)?;
+    let ymls: Vec<ProductCreateYaml> = serde_yaml::from_reader(&file)?;
+
+    let mut payloads = Vec::new();
+
+    for yml in ymls {
+        let namespace = match yml.product_namespace {
+            Namespace::GS1 => "gs1_product",
+        };
+        let schema = get_schema(url, namespace, service_id)?;
+        payloads.push(yml.into_payload(schema.properties)?);
+    }
+
+    Ok(payloads)
 }
 
-/**
- * Update an existing product
- *
- * url - Url for the REST API
- * key - Signing key of the agent
- * wait - Time in seconds to wait for commit
- * path - Path to the yaml file that contains the product descriptions
- */
-pub fn do_update_products(
-    url: &str,
-    key: Option<String>,
-    wait: u64,
+pub fn update_product_payloads_from_file(
     path: &str,
-    service_id: Option<String>,
-) -> Result<(), CliError> {
-    let payloads = parse_product_yaml(path, Action::ProductUpdate(ProductUpdateAction::default()))?;
-    let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
+    url: &str,
+    service_id: Option<&str>,
+) -> Result<Vec<ProductUpdateAction>, CliError> {
+    let file = std::fs::File::open(path)?;
+    let ymls: Vec<ProductUpdateYaml> = serde_yaml::from_reader(&file)?;
+
+    let mut payloads = Vec::new();
+
+    for yml in ymls {
+        let namespace = match yml.product_namespace {
+            Namespace::GS1 => "gs1_product",
+        };
+        let schema = get_schema(url, namespace, service_id)?;
+        payloads.push(yml.into_payload(schema.properties)?);
+    }
+
+    Ok(payloads)
 }
 
-/**
- * Delete an existing product
- *
- * url - Url for the REST API
- * key - Signing key of the agent
- * wait - Time in seconds to wait for commit
- * path - Path to the yaml file that contains the product descriptions
- */
-pub fn do_delete_products(
+#[derive(Deserialize, Debug)]
+pub struct ProductCreateYaml {
+    product_id: String,
+    owner: String,
+    product_namespace: Namespace,
+    properties: HashMap<String, serde_yaml::Value>,
+}
+
+impl ProductCreateYaml {
+    pub fn into_payload(
+        self,
+        definitions: Vec<GridPropertyDefinitionSlice>,
+    ) -> Result<ProductCreateAction, CliError> {
+        let property_values = yaml_to_property_values(&self.properties, definitions)?;
+        ProductCreateActionBuilder::new()
+            .with_product_id(self.product_id)
+            .with_owner(self.owner)
+            .with_product_namespace(self.product_namespace.into())
+            .with_properties(property_values)
+            .build()
+            .map_err(|err| CliError::PayloadError(format!("{}", err)))
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProductUpdateYaml {
+    product_id: String,
+    product_namespace: Namespace,
+    properties: HashMap<String, serde_yaml::Value>,
+}
+
+impl ProductUpdateYaml {
+    pub fn into_payload(
+        self,
+        definitions: Vec<GridPropertyDefinitionSlice>,
+    ) -> Result<ProductUpdateAction, CliError> {
+        let property_values = yaml_to_property_values(&self.properties, definitions)?;
+        ProductUpdateActionBuilder::new()
+            .with_product_id(self.product_id)
+            .with_product_namespace(self.product_namespace.into())
+            .with_properties(property_values)
+            .build()
+            .map_err(|err| CliError::PayloadError(format!("{}", err)))
+    }
+}
+
+fn yaml_to_property_values(
+    properties: &HashMap<String, serde_yaml::Value>,
+    definitions: Vec<GridPropertyDefinitionSlice>,
+) -> Result<Vec<PropertyValue>, CliError> {
+    let mut property_values = Vec::new();
+
+    for def in definitions {
+        let value = if let Some(value) = properties.get(&def.name) {
+            value
+        } else if !def.required {
+            continue;
+        } else {
+            return Err(CliError::PayloadError(format!(
+                "Field {} not found",
+                def.name
+            )));
+        };
+
+        match def.data_type {
+            schemas::DataType::Bytes => {
+                let mut f = File::open(&serde_yaml::from_value::<String>(value.clone())?)?;
+                let mut buffer = Vec::new();
+                f.read_to_end(&mut buffer)?;
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name)
+                    .with_data_type(def.data_type.into())
+                    .with_bytes_value(buffer)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::Boolean => {
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name.clone())
+                    .with_data_type(def.data_type.into())
+                    .with_boolean_value(serde_yaml::from_value(value.clone())?)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                property_values.push(property_value);
+            }
+            schemas::DataType::Number => {
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name.clone())
+                    .with_data_type(def.data_type.into())
+                    .with_number_value(serde_yaml::from_value(value.clone())?)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                property_values.push(property_value);
+            }
+            schemas::DataType::String => {
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name.clone())
+                    .with_data_type(def.data_type.into())
+                    .with_string_value(serde_yaml::from_value(value.clone())?)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                property_values.push(property_value);
+            }
+            schemas::DataType::Enum => {
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name.clone())
+                    .with_data_type(def.data_type.into())
+                    .with_enum_value(serde_yaml::from_value(value.clone())?)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                property_values.push(property_value);
+            }
+            schemas::DataType::Struct => {
+                let properties: HashMap<String, serde_yaml::Value> =
+                    serde_yaml::from_value(value.clone())?;
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name.clone())
+                    .with_data_type(def.data_type.into())
+                    .with_struct_values(yaml_to_property_values(
+                        &properties,
+                        def.struct_properties,
+                    )?)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+                property_values.push(property_value);
+            }
+            schemas::DataType::LatLong => {
+                let lat_long = serde_yaml::from_value::<String>(value.clone())?
+                    .split(',')
+                    .map(|x| {
+                        x.parse::<i64>()
+                            .map_err(|err| CliError::PayloadError(format!("{}", err)))
+                    })
+                    .collect::<Result<Vec<i64>, CliError>>()?;
+
+                if lat_long.len() != 2 {
+                    return Err(CliError::PayloadError(format!(
+                        "{:?} is not a valid latitude longitude",
+                        lat_long
+                    )));
+                }
+
+                let lat_long = LatLongBuilder::new()
+                    .with_lat_long(lat_long[0], lat_long[1])
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(def.name)
+                    .with_data_type(def.data_type.into())
+                    .with_lat_long_value(lat_long)
+                    .build()
+                    .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+        }
+    }
+
+    Ok(property_values)
+}
+
+fn submit_payloads(
     url: &str,
     key: Option<String>,
     wait: u64,
-    product_id: &str,
-    product_namespace: &str,
-    service_id: Option<String>,
+    actions: Vec<Action>,
+    service_id: Option<&str>,
 ) -> Result<(), CliError> {
-    let parsed_product_namespace = parse_value_as_product_namespace(product_namespace)?;
-    let payloads = vec![generate_delete_product_payload(
-        parsed_product_namespace,
-        product_id,
-    )?];
-    let batch_list = build_batches_from_payloads(payloads, key)?;
-    submit_batches(url, wait, &batch_list, service_id.as_deref())
-}
+    let mut builder = product_batch_builder(key);
 
-/**
- * Build a batch from our Product Payloads. The CLI is responsible for batch creation.
- *
- * payloads - Product payloads
- * key - Signing key of the agent
- */
-pub fn build_batches_from_payloads(
-    payloads: Vec<ProductPayload>,
-    key: Option<String>,
-) -> Result<BatchList, CliError> {
-    let mut batch_list_builder = product_batch_builder(key);
-    for payload in payloads {
-        batch_list_builder = batch_list_builder.add_transaction(
-            &payload.into_proto()?,
+    for action in actions {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+        let action = ProductPayloadBuilder::new()
+            .with_action(action)
+            .with_timestamp(timestamp)
+            .build()
+            .map_err(|err| CliError::PayloadError(format!("{}", err)))?;
+
+        builder.add_transaction(
+            &action.into_proto()?,
             &[
                 PIKE_NAMESPACE.to_string(),
                 GRID_SCHEMA_NAMESPACE.to_string(),
@@ -225,343 +447,28 @@ pub fn build_batches_from_payloads(
         )?;
     }
 
-    Ok(batch_list_builder.create_batch_list())
+    let batches = builder.create_batch_list();
+
+    submit_batches(url, wait, &batches, service_id)
 }
 
-/**
- * Iterate through a list of products in a yaml file to build our payloads.
- *
- * path: Path to the yaml file
- * action: Determines the type of product payload to generate
- */
-fn parse_product_yaml(path: &str, action: Action) -> Result<Vec<ProductPayload>, CliError> {
-    let file = std::fs::File::open(path)?;
-    let products_yaml: Vec<Mapping> = serde_yaml::from_reader(file)?;
-
-    match action {
-        Action::ProductCreate(_) => products_yaml
-            .iter()
-            .map(|product_yaml| {
-                let product_id =
-                    parse_value_as_string(product_yaml, "product_id")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Missing `product_id` field for Product.".to_string(),
-                        )
-                    })?;
-
-                let product_namespace = parse_value_as_product_namespace(
-                    &parse_value_as_string(product_yaml, "product_namespace")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Missing `product_namespace` field for property definition.".to_string(),
-                        )
-                    })?,
-                )?;
-
-                let owner = parse_value_as_string(product_yaml, "owner")?.ok_or_else(|| {
-                    CliError::InvalidYamlError("Missing `owner` field for Product.".to_string())
-                })?;
-
-                let properties =
-                    parse_value_as_sequence(product_yaml, "properties")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Product is missing `properties` field.".to_string(),
-                        )
-                    })?;
-
-                let property_values = parse_value_as_repeated_property_values(&properties)?;
-
-                generate_create_product_payload(product_namespace, &product_id, &owner, &property_values)
-            })
-            .collect::<Result<Vec<ProductPayload>, _>>(),
-        Action::ProductUpdate(_) => products_yaml
-            .iter()
-            .map(|product_yaml| {
-                let product_id =
-                    parse_value_as_string(product_yaml, "product_id")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Missing `product_id` field for Product.".to_string(),
-                        )
-                    })?;
-
-                let product_namespace = parse_value_as_product_namespace(
-                    &parse_value_as_string(product_yaml, "product_namespace")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Missing `product_namespace` field for property definition.".to_string(),
-                        )
-                    })?,
-                )?;
-
-                let properties =
-                    parse_value_as_sequence(product_yaml, "properties")?.ok_or_else(|| {
-                        CliError::InvalidYamlError(
-                            "Product is missing `properties` field.".to_string(),
-                        )
-                    })?;
-
-                let property_values = parse_value_as_repeated_property_values(&properties)?;
-
-                generate_update_product_payload(product_namespace, &product_id, &property_values)
-            })
-            .collect::<Result<Vec<ProductPayload>, _>>(),
-        Action::ProductDelete(_) => Err(CliError::UserError("To delete a product pass the arguments to the command line directly rather than using a Yaml file.".to_string()))
-    }
+#[derive(Deserialize, Debug)]
+pub enum Namespace {
+    GS1,
 }
 
-/**
- * Generate the payload needed to create a new product
- *
- * product_namespace - e.g. GS1
- * product_id - e.g. GTIN
- * owner - Identifier of the organization responsible for maintaining the product
- * properties - One or more property values
- */
-fn generate_create_product_payload(
-    product_namespace: ProductNamespace,
-    product_id: &str,
-    owner: &str,
-    properties: &[PropertyValue],
-) -> Result<ProductPayload, CliError> {
-    let product_payload = ProductPayloadBuilder::new();
-
-    let product_create_action_builder = ProductCreateActionBuilder::new()
-        .with_product_id(product_id.to_string())
-        .with_product_namespace(product_namespace)
-        .with_owner(owner.to_string())
-        .with_properties(properties.to_vec());
-
-    let product_create_action = product_create_action_builder.build().map_err(|err| {
-        CliError::PayloadError(format!("Failed to build product create payload: {}", err))
-    })?;
-
-    let timestamp = match get_unix_utc_timestamp() {
-        Ok(timestamp) => timestamp,
-        Err(err) => {
-            return Err(CliError::PayloadError(format!(
-                "Failed to build product create payload: {}",
-                err
-            )))
+impl Into<ProductNamespace> for Namespace {
+    fn into(self) -> ProductNamespace {
+        match self {
+            Namespace::GS1 => ProductNamespace::GS1,
         }
-    };
-
-    product_payload
-        .with_timestamp(timestamp)
-        .with_action(Action::ProductCreate(product_create_action))
-        .build()
-        .map_err(|err| CliError::PayloadError(format!("Failed to build product payload: {}", err)))
+    }
 }
 
-/**
- * Generate the payload needed to update an existing product
- *
- * product_namespace - e.g. GS1
- * product_id - e.g. GTIN
- * properties - One or more property values
- */
-fn generate_update_product_payload(
-    product_namespace: ProductNamespace,
-    product_id: &str,
-    properties: &[PropertyValue],
-) -> Result<ProductPayload, CliError> {
-    let product_payload = ProductPayloadBuilder::new();
-
-    let product_update_action_builder = ProductUpdateActionBuilder::new()
-        .with_product_id(product_id.to_string())
-        .with_product_namespace(product_namespace)
-        .with_properties(properties.to_vec());
-
-    let product_update_action = product_update_action_builder.build().map_err(|err| {
-        CliError::PayloadError(format!("Failed to build product update payload: {}", err))
-    })?;
-
-    let timestamp = match get_unix_utc_timestamp() {
-        Ok(timestamp) => timestamp,
-        Err(err) => {
-            return Err(CliError::PayloadError(format!(
-                "Failed to build product update payload: {}",
-                err
-            )))
+impl Into<String> for Namespace {
+    fn into(self) -> String {
+        match self {
+            Namespace::GS1 => "GS1".to_string(),
         }
-    };
-
-    product_payload
-        .with_timestamp(timestamp)
-        .with_action(Action::ProductUpdate(product_update_action))
-        .build()
-        .map_err(|err| {
-            CliError::PayloadError(format!("Failed to build product update payload: {}", err))
-        })
-}
-
-/**
- * Generate the payload needed to delete an existing product
- *
- * product_namespace- e.g. GS1
- * product_id - e.g. GTIN
- */
-fn generate_delete_product_payload(
-    product_namespace: ProductNamespace,
-    product_id: &str,
-) -> Result<ProductPayload, CliError> {
-    let product_payload = ProductPayloadBuilder::new();
-
-    let product_delete_action_builder = ProductDeleteActionBuilder::new()
-        .with_product_id(product_id.to_string())
-        .with_product_namespace(product_namespace);
-
-    let product_delete_action = product_delete_action_builder.build().map_err(|err| {
-        CliError::PayloadError(format!("Failed to build product delete payload: {}", err))
-    })?;
-
-    let timestamp = match get_unix_utc_timestamp() {
-        Ok(timestamp) => timestamp,
-        Err(err) => {
-            return Err(CliError::PayloadError(format!(
-                "Failed to build product delete payload: {}",
-                err
-            )))
-        }
-    };
-
-    product_payload
-        .with_action(Action::ProductDelete(product_delete_action))
-        .with_timestamp(timestamp)
-        .build()
-        .map_err(|err| {
-            CliError::PayloadError(format!("Failed to build product delete payload: {}", err))
-        })
-}
-
-fn get_unix_utc_timestamp() -> Result<u64, SystemTimeError> {
-    match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => Ok(duration.as_secs()),
-        Err(err) => Err(err),
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use grid_sdk::protocol::product::payload::{Action, ProductPayload};
-    use grid_sdk::protocol::product::state::ProductNamespace;
-    use grid_sdk::protocol::schema::state::{DataType, PropertyValueBuilder};
-    use std::fs::{remove_file, File};
-    use std::io::Write;
-    use std::{env, panic, thread};
-
-    static EXAMPLE_PRODUCT_YAML: &[u8; 293] = br##"- product_namespace: "GS1"
-  product_id: "723382885088"
-  owner: "314156"
-  properties:
-    - name: "length"
-      data_type: "NUMBER"
-      number_value: 8
-    - name: "width"
-      data_type: "NUMBER"
-      number_value: 11
-    - name: "depth"
-      data_type: "NUMBER"
-      number_value: 1"##;
-
-    /*
-     * Verifies parse_product_yaml returns valids ProductPayload with ProductCreateAction set from a yaml
-     * containing a multiple Product definitions
-     */
-    #[test]
-    fn test_valid_yaml_create_product() {
-        run_test(|test_yaml_file_path| {
-            write_yaml_file(test_yaml_file_path);
-
-            let payload = parse_product_yaml(
-                test_yaml_file_path,
-                Action::ProductCreate(ProductCreateAction::default()),
-            )
-            .expect("Error parsing yaml");
-
-            assert_eq!(make_create_product_payload(), payload[0]);
-        })
-    }
-
-    /*
-     * Verifies parse_product_yaml returns valids ProductPayload with ProductUpdateAction set from a yaml
-     * containing a multiple Product definitions
-     */
-    #[test]
-    fn test_valid_yaml_update_multiple_products() {
-        run_test(|test_yaml_file_path| {
-            write_yaml_file(test_yaml_file_path);
-
-            let payload = parse_product_yaml(
-                test_yaml_file_path,
-                Action::ProductUpdate(ProductUpdateAction::default()),
-            )
-            .expect("Error parsing yaml");
-
-            assert_eq!(make_update_product_payload(), payload[0]);
-        })
-    }
-
-    fn write_yaml_file(file_path: &str) {
-        let mut file = File::create(file_path).expect("Error creating test product yaml file.");
-
-        file.write_all(EXAMPLE_PRODUCT_YAML)
-            .expect("Error writting example product yaml.");
-    }
-
-    fn make_update_product_payload() -> ProductPayload {
-        generate_update_product_payload(
-            ProductNamespace::GS1,
-            "723382885088",
-            &create_property_values(),
-        )
-        .unwrap()
-    }
-
-    fn make_create_product_payload() -> ProductPayload {
-        generate_create_product_payload(
-            ProductNamespace::GS1,
-            "723382885088",
-            "314156",
-            &create_property_values(),
-        )
-        .unwrap()
-    }
-
-    fn create_property_values() -> Vec<PropertyValue> {
-        vec![
-            make_number_property_value("length", 8),
-            make_number_property_value("width", 11),
-            make_number_property_value("depth", 1),
-        ]
-    }
-
-    fn make_number_property_value(name: &str, number_value: i64) -> PropertyValue {
-        PropertyValueBuilder::new()
-            .with_name(name.to_string())
-            .with_data_type(DataType::Number)
-            .with_number_value(number_value)
-            .build()
-            .unwrap()
-    }
-
-    fn run_test<T>(test: T) -> ()
-    where
-        T: FnOnce(&str) -> () + panic::UnwindSafe,
-    {
-        let test_yaml_file = temp_yaml_file_path();
-
-        let test_path = test_yaml_file.clone();
-        let result = panic::catch_unwind(move || test(&test_path));
-
-        remove_file(test_yaml_file).unwrap();
-
-        assert!(result.is_ok())
-    }
-
-    fn temp_yaml_file_path() -> String {
-        let mut temp_dir = env::temp_dir();
-
-        let thread_id = thread::current().id();
-        temp_dir.push(format!("test_parse_product-{:?}.yaml", thread_id));
-        temp_dir.to_str().unwrap().to_string()
     }
 }

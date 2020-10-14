@@ -14,6 +14,9 @@
 
 pub(super) mod add_schema;
 pub(super) mod fetch_schema;
+pub(super) mod get_property_definition_by_name;
+pub(super) mod list_property_definitions;
+pub(super) mod list_property_definitions_with_schema_name;
 pub(super) mod list_schemas;
 
 pub(super) struct SchemaStoreOperations<'a, C> {

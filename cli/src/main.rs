@@ -30,16 +30,25 @@ mod splinter;
 mod transaction;
 mod yaml_parser;
 
-use std::env;
+use std::{collections::HashMap, env, fs::File, io::prelude::*};
 
 use clap::ArgMatches;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
-use grid_sdk::protocol::pike::{
-    payload::{
-        CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
-        UpdateOrganizationActionBuilder,
+use grid_sdk::protocol::{
+    pike::{
+        payload::{
+            CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
+            UpdateOrganizationActionBuilder,
+        },
+        state::{KeyValueEntry, KeyValueEntryBuilder},
     },
-    state::{KeyValueEntry, KeyValueEntryBuilder},
+    product::{
+        payload::{
+            ProductCreateActionBuilder, ProductDeleteActionBuilder, ProductUpdateActionBuilder,
+        },
+        state::ProductNamespace,
+    },
+    schema::state::{LatLongBuilder, PropertyValue, PropertyValueBuilder},
 };
 use log::Record;
 
@@ -167,23 +176,30 @@ fn run() -> Result<(), CliError> {
             (@setting SubcommandRequiredElseHelp)
             (@subcommand create =>
                 (about: "Create products from a yaml file")
-                (@arg path: +takes_value +required "Path to yaml file containing a list of products")
+                (@arg product_id: conflicts_with[file] "Unique ID for product")
+                (@arg product_namespace: --namespace +takes_value conflicts_with[file] "Product namespace (example: GS1)")
+                (@arg owner: --owner +takes_value conflicts_with[file] "Pike organization ID")
+                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
+                (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
             )
             (@subcommand update =>
                 (about: "Update products from a yaml file")
-                (@arg path: +takes_value +required "Path to yaml file containing a list of products")
+                (@arg product_id: conflicts_with[file] "Unique ID for product")
+                (@arg product_namespace: --namespace +takes_value conflicts_with[file] "Product namespace (example: GS1)")
+                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
+                (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
             )
             (@subcommand delete =>
                 (about: "Delete a product")
-                (@arg product_id: +required +takes_value "Unique ID for a product")
-                (@arg product_namespace: +required +takes_value "Namespace of product (e.g. GS1")
+                (@arg product_id: +required "Unique ID for a product")
+                (@arg product_namespace: --namespace +required +takes_value "Namespace of product (e.g. GS1")
             )
             (@subcommand list =>
                 (about: "List currently defined products")
             )
             (@subcommand show =>
                 (about: "Show product specified by ID argument")
-                (@arg product_id: +takes_value +required "ID of product")
+                (@arg product_id: +required "ID of product")
             )
         )
     );
@@ -391,28 +407,98 @@ fn run() -> Result<(), CliError> {
             m.value_of("key_dir"),
         )?,
         ("product", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => products::do_create_products(
-                &url,
-                key,
-                wait,
-                m.value_of("path").unwrap(),
-                service_id,
-            )?,
-            ("update", Some(m)) => products::do_update_products(
-                &url,
-                key,
-                wait,
-                m.value_of("path").unwrap(),
-                service_id,
-            )?,
-            ("delete", Some(m)) => products::do_delete_products(
-                &url,
-                key,
-                wait,
-                m.value_of("product_id").unwrap(),
-                m.value_of("product_namespace").unwrap(),
-                service_id,
-            )?,
+            ("create", Some(m)) if m.is_present("file") => {
+                let actions = products::create_product_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    &url,
+                    service_id.as_deref(),
+                )?;
+
+                products::do_create_products(&url, key, wait, actions, service_id)?
+            }
+            ("create", Some(m)) => {
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let properties = parse_properties(
+                    &url,
+                    m.value_of("product_namespace").unwrap_or("gs1_product"),
+                    service_id.as_deref(),
+                    &m,
+                )?;
+
+                let action = ProductCreateActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                products::do_create_products(&url, key, wait, vec![action], service_id)?
+            }
+            ("update", Some(m)) if m.is_present("file") => {
+                let actions = products::update_product_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    &url,
+                    service_id.as_deref(),
+                )?;
+
+                products::do_update_products(&url, key, wait, actions, service_id)?
+            }
+            ("update", Some(m)) => {
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let properties = parse_properties(
+                    &url,
+                    m.value_of("product_namespace").unwrap_or("gs1_product"),
+                    service_id.as_deref(),
+                    &m,
+                )?;
+
+                let action = ProductUpdateActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                products::do_update_products(&url, key, wait, vec![action], service_id)?
+            }
+            ("delete", Some(m)) => {
+                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                    "GS1" => ProductNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let action = ProductDeleteActionBuilder::new()
+                    .with_product_id(m.value_of("product_id").unwrap().into())
+                    .with_product_namespace(namespace)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                products::do_delete_products(&url, key, wait, action, service_id)?
+            }
             ("list", Some(_)) => products::do_list_products(&url, service_id)?,
             ("show", Some(m)) => {
                 products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
@@ -453,6 +539,160 @@ fn parse_metadata(matches: &ArgMatches) -> Result<Vec<KeyValueEntry>, CliError> 
     }
 
     Ok(key_value_entries)
+}
+
+fn parse_properties(
+    url: &str,
+    namespace: &str,
+    service_id: Option<&str>,
+    matches: &ArgMatches,
+) -> Result<Vec<PropertyValue>, CliError> {
+    let properties = matches
+        .values_of("property")
+        .unwrap_or_default()
+        .map(String::from)
+        .try_fold(HashMap::new(), |mut acc, data| {
+            let entries = data.split('=').map(String::from).collect::<Vec<String>>();
+
+            let (key, value) = if entries.len() != 2 {
+                return Err(CliError::UserError(format!("Metadata malformed: {}", data)));
+            } else {
+                (entries[0].clone(), entries[1].clone())
+            };
+
+            acc.insert(key, value);
+
+            Ok(acc)
+        })?;
+
+    let schemas = schemas::get_schema(url, namespace, service_id)?;
+
+    let mut property_values = Vec::new();
+
+    for property in schemas.properties {
+        let value = if let Some(value) = properties.get(&property.name) {
+            value
+        } else if !property.required {
+            continue;
+        } else {
+            return Err(CliError::UserError(format!(
+                "Field {} not found",
+                property.name
+            )));
+        };
+
+        match property.data_type {
+            schemas::DataType::Number => {
+                let number = if let Ok(i) = value.parse::<i64>() {
+                    i
+                } else {
+                    return Err(CliError::UserError(format!("{} in not a number", value)));
+                };
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_number_value(number)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::Enum => {
+                let enum_idx = if let Ok(i) = value.parse::<u32>() {
+                    i
+                } else {
+                    return Err(CliError::UserError(format!("{} in not an enum", value)));
+                };
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_enum_value(enum_idx)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::String => {
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_string_value(value.into())
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::LatLong => {
+                let lat_long = value
+                    .split(',')
+                    .map(|x| {
+                        x.parse::<i64>()
+                            .map_err(|err| CliError::UserError(format!("{}", err)))
+                    })
+                    .collect::<Result<Vec<i64>, CliError>>()?;
+
+                if lat_long.len() != 2 {
+                    return Err(CliError::UserError(format!(
+                        "{:?} is not a valid latitude longitude",
+                        lat_long
+                    )));
+                }
+
+                let lat_long = LatLongBuilder::new()
+                    .with_lat_long(lat_long[0], lat_long[1])
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_lat_long_value(lat_long)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::Boolean => {
+                let boolean = if let Ok(i) = value.parse::<bool>() {
+                    i
+                } else {
+                    return Err(CliError::UserError(format!("{} in not a boolean", value)));
+                };
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_boolean_value(boolean)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::Bytes => {
+                let mut f = File::open(&value)?;
+                let mut buffer = Vec::new();
+                f.read_to_end(&mut buffer)?;
+
+                let property_value = PropertyValueBuilder::new()
+                    .with_name(property.name)
+                    .with_data_type(property.data_type.into())
+                    .with_bytes_value(buffer)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                property_values.push(property_value);
+            }
+            schemas::DataType::Struct => {
+                return Err(CliError::UserError(
+                    "Structs cannot be added via command line, use --file option".into(),
+                ))
+            }
+        }
+    }
+
+    Ok(property_values)
 }
 
 fn main() {

@@ -22,7 +22,9 @@ use grid_sdk::protocol::schema::payload::{
     Action, SchemaCreateAction, SchemaCreateBuilder, SchemaPayload, SchemaPayloadBuilder,
     SchemaUpdateAction, SchemaUpdateBuilder,
 };
-use grid_sdk::protocol::schema::state::{DataType, PropertyDefinition, PropertyDefinitionBuilder};
+use grid_sdk::protocol::schema::state::{
+    DataType as StateDataType, PropertyDefinition, PropertyDefinitionBuilder,
+};
 use grid_sdk::protos::IntoProto;
 use reqwest::Client;
 
@@ -42,12 +44,37 @@ pub struct GridSchemaSlice {
 pub struct GridPropertyDefinitionSlice {
     pub name: String,
     pub schema_name: String,
-    pub data_type: String,
+    pub data_type: DataType,
     pub required: bool,
     pub description: String,
     pub number_exponent: i64,
     pub enum_options: Vec<String>,
-    pub struct_properties: Vec<String>,
+    pub struct_properties: Vec<GridPropertyDefinitionSlice>,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum DataType {
+    Bytes,
+    Boolean,
+    Number,
+    String,
+    Enum,
+    Struct,
+    LatLong,
+}
+
+impl Into<StateDataType> for DataType {
+    fn into(self) -> StateDataType {
+        match self {
+            DataType::Bytes => StateDataType::Bytes,
+            DataType::Boolean => StateDataType::Boolean,
+            DataType::Number => StateDataType::Number,
+            DataType::String => StateDataType::String,
+            DataType::Enum => StateDataType::Enum,
+            DataType::Struct => StateDataType::Struct,
+            DataType::LatLong => StateDataType::LatLong,
+        }
+    }
 }
 
 pub fn display_schema(schema: &GridSchemaSlice) {
@@ -69,7 +96,7 @@ pub fn display_schema_property_definitions(properties: &[GridPropertyDefinitionS
             def.description,
             def.number_exponent,
             def.enum_options,
-            def.struct_properties,
+            display_schema_property_definitions(&def.struct_properties),
         );
     });
 }
@@ -89,14 +116,27 @@ pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliE
 }
 
 pub fn do_show_schema(url: &str, name: &str, service_id: Option<String>) -> Result<(), CliError> {
+    let schema = get_schema(url, name, service_id.as_deref())?;
+    display_schema(&schema);
+    Ok(())
+}
+
+pub fn get_schema(
+    url: &str,
+    namespace: &str,
+    service_id: Option<&str>,
+) -> Result<GridSchemaSlice, CliError> {
     let client = Client::new();
-    let mut final_url = format!("{}/schema/{}", url, name);
+    let mut final_url = format!("{}/schema/{}", url, namespace);
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let schema = client.get(&final_url).send()?.json::<GridSchemaSlice>()?;
-    display_schema(&schema);
-    Ok(())
+
+    client
+        .get(&final_url)
+        .send()?
+        .json::<GridSchemaSlice>()
+        .map_err(CliError::from)
 }
 
 pub fn do_create_schemas(
@@ -283,7 +323,7 @@ fn parse_property_definition(property: &Mapping) -> Result<PropertyDefinition, C
     };
 
     property_definition = match data_type {
-        DataType::Number => property_definition.with_number_exponent(
+        StateDataType::Number => property_definition.with_number_exponent(
             parse_value_as_i32(property, "number_exponent")?.ok_or_else(|| {
                 CliError::InvalidYamlError(
                     "Missing `number_exponent` field for property definition with type NUMBER."
@@ -292,7 +332,7 @@ fn parse_property_definition(property: &Mapping) -> Result<PropertyDefinition, C
             })?,
         ),
 
-        DataType::Struct => {
+        StateDataType::Struct => {
             let properties = parse_properties(
                 property
                     .get(&Value::String("struct_properties".to_string()))
@@ -302,7 +342,7 @@ fn parse_property_definition(property: &Mapping) -> Result<PropertyDefinition, C
             )?;
             property_definition.with_struct_properties(properties)
         }
-        DataType::Enum => property_definition.with_enum_options(
+        StateDataType::Enum => property_definition.with_enum_options(
             parse_value_as_vec_string(property, "enum_options")?.ok_or_else(|| {
                 CliError::InvalidYamlError(
                     "Missing `enum_options` field for property definition with type ENUM."
