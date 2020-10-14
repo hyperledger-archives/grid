@@ -17,7 +17,7 @@ version: '3.7'
 
 services:
   grid-dev:
-    image: hyperledger/grid-dev:v3
+    image: hyperledger/grid-dev:v4
     build:
       context: ..
       dockerfile: ci/grid-dev
