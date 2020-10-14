@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v2 as grid-location-builder
+FROM hyperledger/grid-dev:v4 as grid-location-builder
 
 # Copy over Cargo.toml files
 COPY cli/Cargo.toml /build/cli/Cargo.toml

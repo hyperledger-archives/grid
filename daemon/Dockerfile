@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v3 as gridd-builder
+FROM hyperledger/grid-dev:v4 as gridd-builder
 
 # Copy over Cargo.toml files
 COPY cli/Cargo.toml /build/cli/Cargo.toml
