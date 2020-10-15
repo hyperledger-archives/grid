@@ -10,9 +10,9 @@
     "format": "prettier --write \"**/*.+(js|jsx|json|css|scss|md)\"",
     "lint": "eslint .",
     "add-to-canopy": "mkdir -p ../../sapling-dev-server/product && cp -r ./build/static/* ../../sapling-dev-server/product && cp product_logo.svg ../../sapling-dev-server/product",
-    "deploy": "npm run build && npm run add-to-canopy",
+    "deploy": "npm run generate-proto-files && npm run build && npm run add-to-canopy",
     "watch": "nodemon --ext js,scss,ts,css --watch src --exec npm run deploy",
-    "generate-proto-files": "node scripts/compile_protobuf.js > src/compiled_protos.json"
+    "generate-proto-files": "node scripts/compile_protobuf.js ../../protos > src/compiled_protos.json"
   },
   "eslintConfig": {
     "extends": "react-app"

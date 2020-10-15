@@ -37,6 +37,7 @@ RUN npm config set unsafe-perm true
 
 COPY saplings saplings
 COPY sapling-dev-server sapling-dev-server
+COPY protos protos
 
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
