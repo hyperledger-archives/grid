@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hyperledger/grid-dev:v3 as grid-pike-builder
+FROM hyperledger/grid-dev:v4 as grid-pike-builder
 
 # Copy over Cargo.toml files
+COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
@@ -42,7 +43,7 @@ COPY contracts/pike/packaging/scar/* \
      /build/contracts/pike/packaging/scar/
 
 # Copy the contract to the packaging directory
-RUN cp /build/contracts/pike/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm \
+RUN cp /build/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm \
     packaging/scar
 
 WORKDIR /build/contracts/pike/packaging/scar
@@ -55,7 +56,7 @@ RUN tar -jcvf /tmp/grid-pike_${REPO_VERSION}.scar .
 FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-pike-builder \
-     /build/contracts/pike/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm /tmp
+     /build/target/wasm32-unknown-unknown/release/grid-pike-tp.wasm /tmp
 
 # Copy the contract definition
 COPY contracts/pike/pike.yaml /tmp
