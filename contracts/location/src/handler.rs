@@ -192,7 +192,9 @@ fn create_location(
     // 7) check if organization has gln in gs1_company_prefix metadata
     let mut has_gs1_prefix = false;
     for metadata in organization.metadata() {
-        if metadata.key() == "gs1_company_prefixes" && metadata.value() == payload.location_id() {
+        if metadata.key() == "gs1_company_prefixes"
+            && payload.location_id().contains(metadata.value())
+        {
             has_gs1_prefix = true;
         }
     }
@@ -491,7 +493,7 @@ mod tests {
             // create organization with prefix
             let key_value = KeyValueEntryBuilder::new()
                 .with_key("gs1_company_prefixes".to_string())
-                .with_value("9012345000004".to_string())
+                .with_value("9012".to_string())
                 .build()
                 .unwrap();
             let prefix_org = OrganizationBuilder::new()
