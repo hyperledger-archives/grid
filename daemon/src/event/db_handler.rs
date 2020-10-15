@@ -20,6 +20,7 @@ use grid_sdk::{
     grid_db::{
         agents::store::Agent,
         commits::store::CommitEvent as DbCommitEvent,
+        locations::store::{LatLongValue as LocationLatLongValue, Location, LocationAttribute},
         organizations::store::Organization,
         products::store::{
             LatLongValue as ProductLatLongValue, Product, PropertyValue as ProductPropertyValue,
@@ -29,11 +30,12 @@ use grid_sdk::{
             AssociatedAgent, LatLongValue as TntLatLongValue, Property, Proposal, Record,
             ReportedValue as StoreReportedValue, Reporter,
         },
-        AgentStore, CommitStore, DieselAgentStore, DieselCommitStore, DieselOrganizationStore,
-        DieselProductStore, DieselSchemaStore, DieselTrackAndTraceStore, OrganizationStore,
-        ProductStore, SchemaStore, TrackAndTraceStore,
+        AgentStore, CommitStore, DieselAgentStore, DieselCommitStore, DieselLocationStore,
+        DieselOrganizationStore, DieselProductStore, DieselSchemaStore, DieselTrackAndTraceStore,
+        LocationStore, OrganizationStore, ProductStore, SchemaStore, TrackAndTraceStore,
     },
     protocol::{
+        location::state::LocationList,
         pike::state::{AgentList, OrganizationList},
         product::state::ProductList,
         schema::state::{DataType, PropertyDefinition, PropertyValue, SchemaList},
@@ -49,7 +51,7 @@ use std::i64;
 use crate::database::ConnectionPool;
 
 use super::{
-    CommitEvent, EventError, EventHandler, StateChange, GRID_PRODUCT, GRID_SCHEMA,
+    CommitEvent, EventError, EventHandler, StateChange, GRID_LOCATION, GRID_PRODUCT, GRID_SCHEMA,
     IGNORED_NAMESPACES, PIKE_AGENT, PIKE_ORG, TRACK_AND_TRACE_PROPERTY, TRACK_AND_TRACE_PROPOSAL,
     TRACK_AND_TRACE_RECORD,
 };
@@ -61,6 +63,7 @@ pub struct DatabaseEventHandler<C: diesel::Connection + 'static> {
     agent_store: DieselAgentStore<C>,
     commit_store: DieselCommitStore<C>,
     organization_store: DieselOrganizationStore<C>,
+    location_store: DieselLocationStore<C>,
     product_store: DieselProductStore<C>,
     schema_store: DieselSchemaStore<C>,
     tnt_store: DieselTrackAndTraceStore<C>,
@@ -71,6 +74,7 @@ impl DatabaseEventHandler<diesel::pg::PgConnection> {
         let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
         let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let location_store = DieselLocationStore::new(connection_pool.pool.clone());
         let product_store = DieselProductStore::new(connection_pool.pool.clone());
         let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
@@ -80,6 +84,7 @@ impl DatabaseEventHandler<diesel::pg::PgConnection> {
             connection_pool,
             commit_store,
             organization_store,
+            location_store,
             product_store,
             schema_store,
             tnt_store,
@@ -182,6 +187,16 @@ impl EventHandler for DatabaseEventHandler<diesel::pg::PgConnection> {
                         debug!("Inserting {} associated agents", associated_agents.len());
                         self.tnt_store.add_associated_agents(associated_agents)?;
                     }
+                    DbInsertOperation::Locations(locations) => {
+                        debug!("Inserting {} locations", locations.len());
+                        locations
+                            .into_iter()
+                            .try_for_each(|location| self.location_store.add_location(location))?;
+                    }
+                    DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
+                        self.location_store
+                            .delete_location(address, current_commit_num)?;
+                    }
                     DbInsertOperation::Products(products) => {
                         debug!("Inserting {} products", products.len());
                         products
@@ -211,6 +226,7 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
         let agent_store = DieselAgentStore::new(connection_pool.pool.clone());
         let commit_store = DieselCommitStore::new(connection_pool.pool.clone());
         let organization_store = DieselOrganizationStore::new(connection_pool.pool.clone());
+        let location_store = DieselLocationStore::new(connection_pool.pool.clone());
         let product_store = DieselProductStore::new(connection_pool.pool.clone());
         let schema_store = DieselSchemaStore::new(connection_pool.pool.clone());
         let tnt_store = DieselTrackAndTraceStore::new(connection_pool.pool.clone());
@@ -220,6 +236,7 @@ impl DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
             connection_pool,
             commit_store,
             organization_store,
+            location_store,
             product_store,
             schema_store,
             tnt_store,
@@ -321,6 +338,16 @@ impl EventHandler for DatabaseEventHandler<diesel::sqlite::SqliteConnection> {
                         self.tnt_store.add_records(records)?;
                         debug!("Inserting {} associated agents", associated_agents.len());
                         self.tnt_store.add_associated_agents(associated_agents)?;
+                    }
+                    DbInsertOperation::Locations(locations) => {
+                        debug!("Inserting {} locations", locations.len());
+                        locations
+                            .into_iter()
+                            .try_for_each(|location| self.location_store.add_location(location))?;
+                    }
+                    DbInsertOperation::RemoveLocation(ref address, current_commit_num) => {
+                        self.location_store
+                            .delete_location(address, current_commit_num)?;
                     }
                     DbInsertOperation::Products(products) => {
                         debug!("Inserting {} products", products.len());
@@ -610,6 +637,31 @@ fn state_change_to_db_operation(
 
                 Ok(Some(DbInsertOperation::Records(records, associated_agents)))
             }
+            GRID_LOCATION => {
+                let locations = LocationList::from_bytes(&value)
+                    .map_err(|err| EventError(format!("Failed to parse location list {}", err)))?
+                    .locations()
+                    .iter()
+                    .map(|location| Location {
+                        location_id: location.location_id().to_string(),
+                        location_address: key.to_string(),
+                        location_namespace: format!("{:?}", location.namespace()),
+                        owner: location.owner().to_string(),
+                        attributes: make_location_attributes(
+                            commit_num,
+                            service_id,
+                            location.location_id(),
+                            &key,
+                            location.properties(),
+                        ),
+                        start_commit_num: commit_num,
+                        end_commit_num: MAX_COMMIT_NUM,
+                        service_id: service_id.cloned(),
+                    })
+                    .collect();
+
+                Ok(Some(DbInsertOperation::Locations(locations)))
+            }
             GRID_PRODUCT => {
                 let products = ProductList::from_bytes(&value)
                     .map_err(|err| EventError(format!("Failed to parse product list {}", err)))?
@@ -651,6 +703,11 @@ fn state_change_to_db_operation(
                     key.to_string(),
                     commit_num,
                 )))
+            } else if &key[0..8] == GRID_LOCATION {
+                Ok(Some(DbInsertOperation::RemoveLocation(
+                    key.to_string(),
+                    commit_num,
+                )))
             } else {
                 Err(EventError(format!(
                     "could not handle state change; unexpected delete of key {}",
@@ -666,11 +723,13 @@ enum DbInsertOperation {
     Agents(Vec<Agent>),
     Organizations(Vec<Organization>),
     GridSchemas(Vec<Schema>),
+    Locations(Vec<Location>),
     Properties(Vec<Property>, Vec<Reporter>),
     ReportedValues(Vec<StoreReportedValue>),
     Proposals(Vec<Proposal>),
     Records(Vec<Record>, Vec<AssociatedAgent>),
     Products(Vec<Product>),
+    RemoveLocation(String, i64),
     RemoveProduct(String, i64),
 }
 
@@ -813,4 +872,44 @@ fn make_product_property_values(
     }
 
     properties
+}
+
+fn make_location_attributes(
+    start_commit_num: i64,
+    service_id: Option<&String>,
+    location_id: &str,
+    location_address: &str,
+    attributes: &[PropertyValue],
+) -> Vec<LocationAttribute> {
+    let mut attrs = Vec::new();
+
+    for attr in attributes {
+        attrs.push(LocationAttribute {
+            location_id: location_id.to_string(),
+            location_address: location_address.to_string(),
+            property_name: attr.name().to_string(),
+            data_type: format!("{:?}", attr.data_type()),
+            bytes_value: Some(attr.bytes_value().to_vec()),
+            boolean_value: Some(*attr.boolean_value()),
+            number_value: Some(*attr.number_value()),
+            string_value: Some(attr.string_value().to_string()),
+            enum_value: Some(*attr.enum_value() as i32),
+            struct_values: Some(make_location_attributes(
+                start_commit_num,
+                service_id,
+                location_id,
+                location_address,
+                attr.struct_values(),
+            )),
+            lat_long_value: Some(LocationLatLongValue(
+                *attr.lat_long_value().latitude(),
+                *attr.lat_long_value().longitude(),
+            )),
+            start_commit_num,
+            end_commit_num: MAX_COMMIT_NUM,
+            service_id: service_id.cloned(),
+        });
+    }
+
+    attrs
 }

@@ -18,6 +18,7 @@ use crate::grid_db::locations::store::diesel::schema::{location, location_attrib
 #[table_name = "location"]
 pub struct NewLocationModel {
     pub location_id: String,
+    pub location_address: String,
     pub location_namespace: String,
     pub owner: String,
 
@@ -33,6 +34,7 @@ pub struct NewLocationModel {
 pub struct LocationModel {
     pub id: i64,
     pub location_id: String,
+    pub location_address: String,
     pub location_namespace: String,
     pub owner: String,
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: grid_location
-version: '1.0'
+version: '1'
 inputs:
   - '621dee01'
   - '621dee04'

@@ -20,8 +20,9 @@ use std::fmt;
 
 use grid_sdk::grid_db::{
     agents::store::AgentStoreError, commits::store::CommitStoreError,
-    organizations::store::OrganizationStoreError, products::store::ProductStoreError,
-    schemas::store::SchemaStoreError, track_and_trace::store::TrackAndTraceStoreError,
+    locations::store::LocationStoreError, organizations::store::OrganizationStoreError,
+    products::store::ProductStoreError, schemas::store::SchemaStoreError,
+    track_and_trace::store::TrackAndTraceStoreError,
 };
 
 #[derive(Debug)]
@@ -54,6 +55,12 @@ impl From<CommitStoreError> for EventError {
 
 impl From<AgentStoreError> for EventError {
     fn from(err: AgentStoreError) -> Self {
+        EventError(format!("{}", err))
+    }
+}
+
+impl From<LocationStoreError> for EventError {
+    fn from(err: LocationStoreError) -> Self {
         EventError(format!("{}", err))
     }
 }

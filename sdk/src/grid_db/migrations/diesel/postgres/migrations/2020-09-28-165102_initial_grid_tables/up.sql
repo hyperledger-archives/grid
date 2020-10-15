@@ -312,6 +312,7 @@ CREATE TABLE product_property_value (
 CREATE TABLE location (
     id BIGSERIAL PRIMARY KEY,
     location_id VARCHAR(256) NOT NULL,
+    location_address VARCHAR(70) NOT NULL,
     location_namespace TEXT NOT NULL,
     owner VARCHAR(256) NOT NULL,
     service_id TEXT

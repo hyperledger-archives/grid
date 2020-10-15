@@ -22,6 +22,7 @@ pub use error::LocationStoreError;
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Location {
     pub location_id: String,
+    pub location_address: String,
     pub location_namespace: String,
     pub owner: String,
     pub attributes: Vec<LocationAttribute>,
@@ -37,7 +38,6 @@ pub struct LocationAttribute {
     pub location_id: String,
     pub location_address: String,
     pub property_name: String,
-    pub parent_property_name: Option<String>,
     pub data_type: String,
     pub bytes_value: Option<Vec<u8>>,
     pub boolean_value: Option<bool>,
@@ -92,6 +92,18 @@ pub trait LocationStore: Send + Sync {
     ///
     ///  * `location` - The updated location
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError>;
+
+    /// Gets locations from the underlying storage
+    ///
+    /// # Arguments
+    ///
+    ///  * `address` - The address of the record to be deleted
+    ///  * `current_commit_num` - The current commit height
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError>;
 }
 
 impl<LS> LocationStore for Box<LS>
@@ -119,5 +131,13 @@ where
 
     fn update_location(&self, location: Location) -> Result<(), LocationStoreError> {
         (**self).update_location(location)
+    }
+
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError> {
+        (**self).delete_location(address, current_commit_num)
     }
 }
