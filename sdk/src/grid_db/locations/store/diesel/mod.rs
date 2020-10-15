@@ -25,6 +25,7 @@ use super::{LatLongValue, Location, LocationAttribute, LocationStore, LocationSt
 use crate::database::DatabaseError;
 use crate::grid_db::commits::MAX_COMMIT_NUM;
 use operations::add_location::LocationStoreAddLocationOperation as _;
+use operations::delete_location::LocationStoreDeleteLocationOperation as _;
 use operations::fetch_location::LocationStoreFetchLocationOperation as _;
 use operations::list_locations::LocationStoreListLocationsOperation as _;
 use operations::update_location::LocationStoreUpdateLocationOperation as _;
@@ -101,6 +102,20 @@ impl LocationStore for DieselLocationStore<diesel::pg::PgConnection> {
         })?)
         .update_location(location.into(), attributes, current_commit_num)
     }
+
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError> {
+        LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .delete_location(address, current_commit_num)
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -154,6 +169,20 @@ impl LocationStore for DieselLocationStore<diesel::sqlite::SqliteConnection> {
             }
         })?)
         .update_location(location.into(), attributes, current_commit_num)
+    }
+
+    fn delete_location(
+        &self,
+        address: &str,
+        current_commit_num: i64,
+    ) -> Result<(), LocationStoreError> {
+        LocationStoreOperations::new(&*self.connection_pool.get().map_err(|err| {
+            DatabaseError::ConnectionError {
+                context: "Could not get connection pool".to_string(),
+                source: Box::new(err),
+            }
+        })?)
+        .delete_location(address, current_commit_num)
     }
 }
 
