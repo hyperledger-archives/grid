@@ -15,6 +15,7 @@
 FROM hyperledger/grid-dev:v4 as gridd-builder
 
 # Copy over Cargo.toml files
+COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
@@ -50,8 +51,8 @@ FROM ubuntu:bionic
 ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
-COPY --from=gridd-builder /build/cli/target/debian/grid-cli_*.deb /tmp
-COPY --from=gridd-builder /build/daemon/target/debian/grid-daemon_*.deb /tmp
+COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
+COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
 
 RUN apt-get update \
  && apt-get install -y -q \

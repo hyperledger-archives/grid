@@ -16,6 +16,7 @@
 FROM hyperledger/grid-dev:v4 as grid-product-builder
 
 # Copy over Cargo.toml files
+COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
@@ -43,7 +44,7 @@ COPY contracts/product/packaging/scar/* \
      /build/contracts/product/packaging/scar/
 
 # Copy the contract to the packaging directory
-RUN cp /build/contracts/product/target/wasm32-unknown-unknown/release/grid-product-tp.wasm \
+RUN cp /build/target/wasm32-unknown-unknown/release/grid-product-tp.wasm \
     packaging/scar
 
 WORKDIR /build/contracts/product/packaging/scar
@@ -56,7 +57,7 @@ RUN tar -jcvf /tmp/grid-product_${REPO_VERSION}.scar .
 FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-product-builder \
-     /build/contracts/product/target/wasm32-unknown-unknown/release/grid-product-tp.wasm /tmp
+     /build/target/wasm32-unknown-unknown/release/grid-product-tp.wasm /tmp
 
 # Copy the contract definition
 COPY contracts/product/product.yaml /tmp

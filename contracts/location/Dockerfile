@@ -15,6 +15,7 @@
 FROM hyperledger/grid-dev:v4 as grid-location-builder
 
 # Copy over Cargo.toml files
+COPY Cargo.toml /build/Cargo.toml
 COPY cli/Cargo.toml /build/cli/Cargo.toml
 COPY daemon/Cargo.toml /build/daemon/Cargo.toml
 COPY sdk/Cargo.toml /build/sdk/Cargo.toml
@@ -42,7 +43,7 @@ COPY contracts/location/packaging/scar/* \
      /build/contracts/location/packaging/scar/
 
 # Copy the contract to the packaging directory
-RUN cp /build/contracts/location/target/wasm32-unknown-unknown/release/grid-location-tp.wasm \
+RUN cp /build/target/wasm32-unknown-unknown/release/grid-location-tp.wasm \
     packaging/scar
 
 WORKDIR /build/contracts/location/packaging/scar
@@ -55,7 +56,7 @@ RUN tar -jcvf /tmp/grid-location_${REPO_VERSION}.scar .
 FROM hyperledger/sawtooth-sabre-cli
 
 COPY --from=grid-location-builder \
-     /build/contracts/location/target/wasm32-unknown-unknown/release/grid-location-tp.wasm /tmp
+     /build/target/wasm32-unknown-unknown/release/grid-location-tp.wasm /tmp
 
 # Copy the contract definition
 COPY contracts/location/location.yaml /tmp
