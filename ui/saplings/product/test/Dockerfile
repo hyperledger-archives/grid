@@ -25,9 +25,8 @@ RUN apk add git
 RUN npm config set unsafe-perm true && npm install
 
 COPY ./ui/saplings/product /ui/saplings/product
-
-COPY ./sdk/protos /ui/saplings/product/protos
+COPY ./ui/protos /ui/protos
 
 RUN cd /ui/saplings/product && \
   npm install && \
-  npm run generate-proto-files ./protos
+  npm run generate-proto-files ../../protos
