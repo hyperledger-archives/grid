@@ -146,21 +146,20 @@ impl ProductTransactionHandler {
 
         /* Check if the agents organization contain GS1 Company Prefix key in its metadata
         (gs1_company_prefixes), and the prefix must match the company prefix in the product_id */
-        let metadata = org.metadata().to_vec();
-        let gs1_company_prefix_kv = match metadata
-            .iter()
-            .find(|kv| kv.key() == "gs1_company_prefixes")
-        {
-            Some(gs1_company_prefix_kv) => gs1_company_prefix_kv,
-            None => {
-                return Err(ApplyError::InvalidTransaction(format!(
+        if payload.product_namespace() == &ProductNamespace::GS1 {
+            let metadata = org.metadata().to_vec();
+            let gs1_company_prefix_kv = match metadata
+                .iter()
+                .find(|kv| kv.key() == "gs1_company_prefixes")
+            {
+                Some(gs1_company_prefix_kv) => gs1_company_prefix_kv,
+                None => {
+                    return Err(ApplyError::InvalidTransaction(format!(
                     "The agents organization does not have the gs1_company_prefixes key in its metadata: {:?}",
                     org.metadata()
                 )));
-            }
-        };
-        // If the 'gs1_company_prefixes' key is found
-        if gs1_company_prefix_kv.key().is_empty() {
+                }
+            };
             // If the gtin identifer does not contain the organizations gs1 prefix
             if !product_id.contains(gs1_company_prefix_kv.value()) {
                 return Err(ApplyError::InvalidTransaction(format!(
@@ -586,7 +585,7 @@ mod tests {
             let builder = KeyValueEntryBuilder::new();
             let key_value = builder
                 .with_key("gs1_company_prefixes".to_string())
-                .with_value("test_value".to_string())
+                .with_value("6889".to_string())
                 .build()
                 .unwrap();
 
