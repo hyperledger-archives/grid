@@ -21,6 +21,7 @@ RUN apt-get update \
     curl \
     g++ \
     gcc \
+    git \
     libpq-dev \
     libsasl2-dev \
     libsqlite3-dev \
