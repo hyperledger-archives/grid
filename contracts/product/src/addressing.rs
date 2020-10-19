@@ -27,8 +27,10 @@ pub fn get_product_prefix() -> String {
 pub fn compute_gs1_product_address(gtin: &str) -> String {
     // 621ddee (grid namespace) + 02 (product namespace) + 01 (gs1 namespace)
     String::from(GRID_NAMESPACE)
-        + "02010000000000000000000000000000000000000000000000"
-        + gtin
+        + "02"
+        + "01"
+        + "00000000000000000000000000000000000000000000"
+        + &format!("{:0>14}", gtin)
         + "00"
 }
 
