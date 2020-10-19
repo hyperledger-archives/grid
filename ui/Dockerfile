@@ -28,6 +28,11 @@ WORKDIR /ui/build
 ARG REPO_VERSION
 RUN tar c -z . -f ../grid_ui_v${REPO_VERSION}.tar.gz
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # Sapling build stage
 FROM node:lts-alpine as sapling-build-stage
 
@@ -73,6 +78,7 @@ RUN tar c -z . -f ../grid_saplings_v${REPO_VERSION}.tar.gz
 FROM httpd:2.4 as prod-stage
 
 COPY --from=canopy-app-build-stage /ui/grid_ui_v*.tar.gz /tmp
+COPY --from=canopy-app-build-stage /commit-hash /commit-hash
 RUN tar -xzvf /tmp/grid_ui_*.tar.gz -C /usr/local/apache2/htdocs/
 
 COPY --from=sapling-build-stage /grid_saplings_v*.tar.gz /tmp
