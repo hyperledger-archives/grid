@@ -41,8 +41,6 @@ tests/sawtooth_sc_test/protobuf/
 **/sapling-dev-server/profile
 **/sapling-dev-server/register-login.js
 
-**/saplings/product/src/compiled_protos.json
-
 # misc
 .DS_Store
 .env.local
