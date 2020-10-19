@@ -23,7 +23,16 @@ import ProductProperty from './ProductProperty';
 import './ProductCard.scss';
 
 function ProductCard(props) {
-  const { gtin, name, service, owner, imageURL, editFn, deleteFn, properties } = props;
+  const {
+    gtin,
+    name,
+    service,
+    owner,
+    imageURL,
+    editFn,
+    deleteFn,
+    properties
+  } = props;
 
   return (
     <div className="product-card">
