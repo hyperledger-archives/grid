@@ -47,6 +47,8 @@ pub const GRID_PRODUCT_NAMESPACE: &str = "621dee02";
 const GRID_PRODUCT_FAMILY_NAME: &str = "grid_product";
 const GRID_PRODUCT_FAMILY_VERSION: &str = "1.0";
 
+pub const GRID_LOCATION_NAMESPACE: &str = "621dee04";
+
 const SABRE_FAMILY_NAME: &str = "sabre";
 const SABRE_FAMILY_VERSION: &str = "0.5";
 const SABRE_NAMESPACE_REGISTRY_PREFIX: &str = "00ec00";
@@ -63,6 +65,10 @@ pub fn pike_batch_builder(key: Option<String>) -> BatchBuilder {
 
 pub fn product_batch_builder(key: Option<String>) -> BatchBuilder {
     BatchBuilder::new(GRID_PRODUCT_FAMILY_NAME, GRID_PRODUCT_FAMILY_VERSION, key)
+}
+
+pub fn location_batch_builder(key: Option<String>) -> BatchBuilder {
+    BatchBuilder::new("grid_location", "1", key)
 }
 
 #[derive(Clone)]

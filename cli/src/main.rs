@@ -35,6 +35,10 @@ use std::{collections::HashMap, env, fs::File, io::prelude::*};
 use clap::ArgMatches;
 use flexi_logger::{DeferredNow, LogSpecBuilder, Logger};
 use grid_sdk::protocol::{
+    location::payload::{
+        LocationCreateActionBuilder, LocationDeleteActionBuilder, LocationNamespace,
+        LocationUpdateActionBuilder,
+    },
     pike::{
         payload::{
             CreateAgentActionBuilder, CreateOrganizationActionBuilder, UpdateAgentActionBuilder,
@@ -54,7 +58,7 @@ use log::Record;
 
 use crate::error::CliError;
 
-use actions::{agents, database, keygen, organizations as orgs, products, schemas};
+use actions::{agents, database, keygen, locations, organizations as orgs, products, schemas};
 
 #[cfg(feature = "admin-keygen")]
 use actions::admin;
@@ -202,6 +206,42 @@ fn run() -> Result<(), CliError> {
                 (@arg product_id: +required "ID of product")
             )
         )
+        (@subcommand location =>
+            (about: "Create, update, delete, show, or list locations")
+            (@setting SubcommandRequiredElseHelp)
+            (@subcommand create =>
+                (about: "Create a new location")
+                (@arg location_id: +takes_value conflicts_with[file] "Unique identifier for location")
+                (@arg location_namespace: --namespace +takes_value conflicts_with[file] "Location name space (example: GS1)")
+                (@arg owner: --owner +takes_value conflicts_with[file] "Pike organization ID")
+                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file]
+                    "Key value pair specifying a location property formatted as key=value")
+                (@arg file: --file -f +takes_value
+                    "Path to yaml file containing a list of locations")
+            )
+            (@subcommand update =>
+                (about: "Update an existing location")
+                (@arg location_id: +takes_value conflicts_with[file] "Unique identifier for location")
+                (@arg location_namespace: --namespace +takes_value conflicts_with[file] "Location name space (example: GS1)")
+                (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file]
+                    "Key value pair specifying a location property formatted as key=value")
+                (@arg file: --file -f +takes_value
+                    "Path to yaml file containing a list of locations")
+            )
+            (@subcommand delete =>
+                (about: "Delete a location")
+                (@arg location_id: +takes_value "Unique identifier for location")
+                (@arg location_namespace: --namespace +takes_value "Location name space (example: GS1)")
+            )
+            (@subcommand list =>
+                (about: "List currently defined locations")
+            )
+            (@subcommand show =>
+                (about: "Show location specified by ID argument")
+                (@arg location_id: +required +takes_value "Unique identifier for location")
+            )
+        )
+
     );
 
     #[cfg(feature = "admin-keygen")]
@@ -503,6 +543,107 @@ fn run() -> Result<(), CliError> {
             ("show", Some(m)) => {
                 products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
             }
+            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+        },
+        ("location", Some(m)) => match m.subcommand() {
+            ("create", Some(m)) if m.is_present("file") => {
+                let actions = locations::create_location_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    &url,
+                    service_id.as_deref(),
+                )?;
+
+                locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?
+            }
+            ("create", Some(m)) => {
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let properties = parse_properties(
+                    &url,
+                    m.value_of("location_namespace").unwrap_or("gs1_location"),
+                    service_id.as_deref(),
+                    &m,
+                )?;
+
+                let action = LocationCreateActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_owner(m.value_of("owner").unwrap().into())
+                    .with_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                locations::do_create_location(&url, key, wait, vec![action], service_id.as_deref())?
+            }
+            ("update", Some(m)) if m.is_present("file") => {
+                let actions = locations::update_location_payloads_from_file(
+                    m.value_of("file").unwrap(),
+                    &url,
+                    service_id.as_deref(),
+                )?;
+
+                locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?
+            }
+            ("update", Some(m)) => {
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let properties = parse_properties(
+                    &url,
+                    m.value_of("location_namespace").unwrap_or("gs1_location"),
+                    service_id.as_deref(),
+                    &m,
+                )?;
+
+                let action = LocationUpdateActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_namespace(namespace)
+                    .with_properties(properties)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                locations::do_update_location(&url, key, wait, vec![action], service_id.as_deref())?
+            }
+            ("delete", Some(m)) => {
+                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                    "GS1" => LocationNamespace::GS1,
+                    unknown => {
+                        return Err(CliError::UserError(format!(
+                            "Unrecognized namespace {}",
+                            unknown
+                        )))
+                    }
+                };
+
+                let action = LocationDeleteActionBuilder::new()
+                    .with_location_id(m.value_of("location_id").unwrap().into())
+                    .with_namespace(namespace)
+                    .build()
+                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?
+            }
+            ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
+            ("show", Some(_)) => locations::do_show_location(
+                &url,
+                m.value_of("location_id").unwrap(),
+                service_id.as_deref(),
+            )?,
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),

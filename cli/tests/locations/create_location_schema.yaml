@@ -1,0 +1,159 @@
+# Copyright 2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# -----------------------------------------------------------------------------
+
+- name: gs1_location
+  description: "Example Lightbulb schema"
+  properties:
+    - name: "locationName"
+      data_type: STRING
+      description: "The name of the facility being described."
+      required: true
+    - name: "locationDescription"
+      data_type: STRING
+      description: "Free text, 178 characters."
+      required: true
+    - name: "locationType"
+      data_type: ENUM
+      description: "EnergyStar energy rating"
+      enum_options: [
+        "OrgEntity",
+        "OrderFrom",
+        "RemitTo",
+        "ShipFrom",
+        "ShipTo",
+        "BillTo",
+        "DeliverTo",
+        "OrderBy",
+        "OrderFrom",
+        "PaidBy",
+        "Recall",
+      ]
+    - name: "addressLine1"
+      data_type: STRING
+      description: |
+        The primary street address for your location. The USPS address is validated if
+        Country = United States.
+      required: true
+    - name: city
+      data_type: STRING
+      description: |
+        Name of the city of your location. The USPS address is validated if Country =
+        United States.
+    - name: stateOrRegion
+      data_type: STRING
+      description: |
+        The state, province, or region using the standard two-letter abbreviation specified
+        in ISO 3166-2:1998 country subdivision code [16].
+      reqired: true
+    - name: postalCode
+      data_type: STRING
+      description: |
+        The ZIP or other postal code.
+      required: true
+    - name: country
+      data_type: STRING
+      description: |
+        Country of your location. Spell out, do not use abbreviations.
+      required: true
+    - name: latLong
+      data_type: LAT_LONG
+      description: "latitude, longitude"
+      required: true
+    - name: contactName
+      data_type: STRING
+      required: true
+    - name: contactEmail
+      data_type: STRING
+      required: true
+    - name: contactPhone
+      data_type: STRING
+      required: true
+    - name: contactDate
+      data_type: STRING
+      required: true
+    - name: locationName2
+      data_type: STRING
+      description: "A secondary facility name."
+      required: false
+    - name: addressLine2
+      data_type: STRING
+      description: |
+        Any secondary information such as Suite, Floor, etc. The USPS address is validated
+        if Country = United States.
+      required: false
+    - name: addressLine3
+      data_type: STRING
+      description: |
+        Additional descriptive information that is not verified through the USPS data base.
+        Best practice is to use AddressLine3 when there are multiple locations using the same
+        USPS address. Examples, Billing office, cardiology lab, backroom, etc.
+      required: false
+    - name: inactivationDate
+      data_type: STRING
+      description: |
+        Date this location is no longer used by the information provider.
+      required: false
+    - name: parentLocation
+      data_type: NUMBER
+      number_exponent: 1
+      description: |
+        Used to describe a location hierarchy. Needed for every GLN except the
+        top-level location, which does not have a parent location.
+      required: false
+    - name: industrySector
+      data_type: ENUM
+      description: "Select one option: General, CPG, Healthcare, Foodservice."
+      enum_options: [
+        "GENERAL", "CPG", "Healthcare", "FoodService"
+      ]
+      required: false
+    - name: role
+      data_type: ENUM
+      enum_options: [
+        "Manufacturer",
+        "Solutions Provider",
+        "Undefined",
+        "Distributor",
+        "Provider",
+        "Supplier",
+        "ThirdParty",
+        "Warehouse",
+        "IndependentOperator",
+        "Operator"
+      ]
+      required: false
+    - name: informationProviderGLN
+      data_type: NUMBER
+      number_exponent: 1
+      description: |
+        The entity providing this information. Usually points to the primary business
+        GLN listed in the spreadsheet or database.
+      required: false
+    - name: GDSNGLNType
+      data_type: ENUM
+      enum_options: [
+        "BrandOwnerGLN",
+        "ManufacturerGLN",
+        "RecipientProviderGLN",
+        "SourceProviderGLN",
+        "InformationProviderGLN"
+      ]
+      required: false
+    - name: replacedGLN
+      data_type: NUMBER
+      number_exponent: 1
+      description: |
+        The GLN assigned to this location previously, if any.
+      required: false
