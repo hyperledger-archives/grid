@@ -123,7 +123,9 @@ function App() {
           <Router>
             <Switch>
               <Route exact path="/product">
-                <ProductsTable actions={{ addProduct, editProduct, deleteProduct }} />
+                <ProductsTable
+                  actions={{ addProduct, editProduct, deleteProduct }}
+                />
               </Route>
               <Route path="/product/products/:id">
                 <ProductInfo />

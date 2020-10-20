@@ -55,7 +55,10 @@ function buildProductAddress(productId, productNamespace) {
     default:
       prefix = productTypeNamespaces.GS1;
   }
-  return `${prefix}00000000000000000000000000000000000000000000${productId}00`;
+  return `${prefix}"00000000000000000000000000000000000000000000"${productId.padStart(
+    14,
+    '0'
+  )}00`;
 }
 
 function buildOrganizationAddess(orgName) {
