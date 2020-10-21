@@ -53,9 +53,9 @@ function ProductCard(props) {
       <Link className="link" to={`/product/products/${gtin}`}>
         <div className="product-card-content">
           <div className="product-card-properties">
-            <ProductProperty label="GTIN" value={gtin} />
-            <ProductProperty label="Product Name" value={name} />
-            <ProductProperty label="Owner" value={owner} />
+            <ProductProperty className="nowrap" label="GTIN" value={gtin} />
+            <ProductProperty className="nowrap" label="Product" value={name} />
+            <ProductProperty className="nowrap" label="Owner" value={owner} />
           </div>
           {imageURL && (
             <img className="product-card-image" src={imageURL} alt={name} />

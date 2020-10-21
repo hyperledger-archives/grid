@@ -30,9 +30,14 @@
   .value {
     color: var(--color-dark-grey);
     font-size: 1.5rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  }
+
+  &.nowrap {
+    .value {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 
   &.large {
