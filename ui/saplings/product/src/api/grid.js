@@ -20,11 +20,32 @@ import { get } from './requests';
 
 const { gridURL } = getSharedConfig().appConfig;
 
+const getOrgName = async (orgID, serviceID) => {
+  const result = await get(
+    `${gridURL}/organization/${orgID}?service_id=${serviceID}`
+  );
+
+  if (result.ok) {
+    return result.json.name;
+  }
+  throw Error(result.data);
+};
+
+const getOrgNames = (products, serviceID) => {
+  return Promise.all(
+    products.map(async product => {
+      const orgName = await getOrgName(product.owner, serviceID);
+      return { ...product, orgName };
+    })
+  );
+};
+
 export const listProducts = async serviceID => {
   const result = await get(`${gridURL}/product?service_id=${serviceID}`);
 
   if (result.ok) {
-    return result.json;
+    const products = await getOrgNames(result.json, serviceID);
+    return products;
   }
   throw Error(result.data);
 };
@@ -35,7 +56,9 @@ export const fetchProduct = async (serviceID, productID) => {
   );
 
   if (result.ok) {
-    return result.json;
+    const product = result.json;
+    const orgName = await getOrgName(product.owner, serviceID);
+    return { ...product, orgName };
   }
   throw Error(result.data);
 };

@@ -83,7 +83,7 @@ function ProductInfo() {
           productName={
             getProperty('product_name', product.properties) || 'Unknown'
           }
-          owner={product.owner || 'Unknown'}
+          owner={product.orgName || 'Unknown'}
         />
         <ProductProperties
           propertiesList={product.properties}
