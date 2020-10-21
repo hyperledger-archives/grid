@@ -87,6 +87,8 @@ RUN echo "\
   LoadModule headers_module modules/mod_headers.so\n\
   ProxyPass /splinterd \${SPLINTER_URL}\n\
   ProxyPassReverse /splinterd \${SPLINTER_URL}\n\
+  ProxyPass /gridd \${GRID_URL}\n\
+  ProxyPassReverse /gridd \${GRID_URL}\n\
   <Directory "/usr/local/apache2/htdocs/sapling-dev-server">\n\
   Header set Access-Control-Allow-Origin "*"\n\
   </Directory>\n\
