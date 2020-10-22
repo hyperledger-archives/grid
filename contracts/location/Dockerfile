@@ -53,7 +53,7 @@ RUN tar -jcvf /tmp/grid-location_${REPO_VERSION}.scar .
 
 # -------------=== location submitter build ===-------------
 
-FROM hyperledger/sawtooth-sabre-cli
+FROM hyperledger/sawtooth-sabre-cli:0.5
 
 COPY --from=grid-location-builder \
      /build/target/wasm32-unknown-unknown/release/grid-location-tp.wasm /tmp
