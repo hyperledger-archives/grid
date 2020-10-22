@@ -16,5 +16,15 @@
    ],
    "styleFiles": [],
    "workerFiles": []
- }
+  },
+  {
+    "namespace": "oauth-login",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/oauth-login/static/js/oauth-login.js"
+    ],
+    "styleFiles": [
+      "localhost:3030/sapling-dev-server/oauth-login/static/css/oauth-login.css"
+    ],
+    "workerFiles": []
+  }
 ]
