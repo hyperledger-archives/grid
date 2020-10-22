@@ -15,16 +15,19 @@
  */
 
 import React from 'react';
-import './App.css';
+import './OAuthLoginButton.scss';
 
-import { OAuthLoginButton } from './components/OAuthLoginButton';
-
-function App() {
+export function OAuthLoginButton() {
   return (
-    <div className="oauth-login-app">
-      <OAuthLoginButton />
+    <div className="oauth-login-button-wrapper">
+      <div className="btn-header">
+        <div className="btn-title">Log In</div>
+      </div>
+      <div className="btn-wrapper">
+        <button type="button" className="button btn log-in">
+          Log in using OAuth2.0
+        </button>
+      </div>
     </div>
   );
 }
-
-export default App;
