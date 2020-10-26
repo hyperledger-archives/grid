@@ -47,6 +47,9 @@ jobs:
     - stage: Lint Register-Login Sapling
       script:
         - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-register-login-sapling
+    - stage: Lint OAuth-Login Sapling
+      script:
+        - docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit lint-oauth-login-sapling
 
     - stage: Publish artifacts
       language: generic

@@ -28,6 +28,11 @@ RUN cd /saplings/register-login && \
   npm install && \
   npm run deploy
 
+ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/oauth-login
+RUN cd /saplings/oauth-login && \
+  npm install && \
+  npm run deploy
+
 ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/profile
 RUN cd /saplings/profile && \
   npm install && \

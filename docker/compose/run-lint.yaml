@@ -43,3 +43,10 @@ services:
       dockerfile: ./test/Dockerfile
     image: register-login-sapling:${ISOLATION_ID}
     command: npm run lint
+
+  lint-oauth-login-sapling:
+    build:
+      context: ../../saplings/oauth-login
+      dockerfile: ./test/Dockerfile
+    image: oauth-login-sapling:${ISOLATION_ID}
+    command: npm run lint
