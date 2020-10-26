@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { ToastProvider } from 'react-toast-notifications';
 import './App.css';
 
 import { OAuthLoginButton } from './components/OAuthLoginButton';
@@ -22,7 +23,9 @@ import { OAuthLoginButton } from './components/OAuthLoginButton';
 function App() {
   return (
     <div className="oauth-login-app">
-      <OAuthLoginButton />
+      <ToastProvider>
+        <OAuthLoginButton />
+      </ToastProvider>
     </div>
   );
 }

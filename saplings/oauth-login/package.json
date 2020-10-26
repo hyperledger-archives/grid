@@ -33,6 +33,7 @@
   "dependencies": {
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-toast-notifications": "^2.4.0",
     "splinter-saplingjs": "github:cargill/splinter-saplingjs#master"
   },
   "devDependencies": {
