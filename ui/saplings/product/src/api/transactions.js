@@ -23,6 +23,7 @@ import {
 import crypto from 'crypto';
 import { submitBatchList, getSharedConfig } from 'splinter-saplingjs';
 import protos from '../protobuf';
+import { ProductProtocolVersion } from './grid';
 
 const { gridURL } = getSharedConfig().appConfig;
 
@@ -140,8 +141,13 @@ export async function editProduct(data, keys, callbackFn) {
 
   const batch = new BatchBuilder().withTransactions([txn]).build(signer);
 
+  const protocolVersionHeader = {
+    headerKey: 'GridProtocolVersion',
+    headerValue: ProductProtocolVersion
+  }
+
   data.services.forEach(async service => {
-    await submitBatchList(`${gridURL}/batches?service_id=${service}`, batch);
+    await submitBatchList(`${gridURL}/batches?service_id=${service}`, batch, protocolVersionHeader);
   });
   callbackFn();
 }
@@ -198,8 +204,13 @@ export async function addProduct(data, keys, callbackFn) {
 
   const batch = new BatchBuilder().withTransactions([txn]).build(signer);
 
+  const protocolVersionHeader = {
+    headerKey: 'GridProtocolVersion',
+    headerValue: ProductProtocolVersion
+  }
+
   data.services.forEach(async service => {
-    await submitBatchList(`${gridURL}/batches?service_id=${service}`, batch);
+    await submitBatchList(`${gridURL}/batches?service_id=${service}`, batch, protocolVersionHeader);
   });
   callbackFn();
 }

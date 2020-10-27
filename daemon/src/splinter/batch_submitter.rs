@@ -83,6 +83,7 @@ impl BatchSubmitter for SplinterBatchSubmitter {
         let client = reqwest::Client::new();
         client
             .post(&url)
+            .header("GridProtocolVersion", "1")
             .header("Content-Type", "octet-stream")
             .body(batch_list_bytes)
             .send()
