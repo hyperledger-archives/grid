@@ -86,16 +86,14 @@ fn run() -> Result<(), CliError> {
         (version: VERSION)
         (author: "Contributors to Hyperledger Grid")
         (about: "Command line for Hyperledger Grid")
-        (@arg url: --url +global +takes_value "URL for the REST API")
-        (@arg wait: --wait +global +takes_value "How long to wait for transaction to be committed")
-        (@arg key: -k +global +takes_value "base name for private key file")
         (@arg verbose: -v +multiple +global "Log verbosely")
         (@arg quiet: -q --quiet +global conflicts_with[verbose] "Do not display output")
-        (@arg service_id: --("service-id") +global +takes_value "The ID of the service the payload should be \
-            sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
         (@subcommand agent =>
             (about: "Update or create agent")
             (@setting SubcommandRequiredElseHelp)
+            (@arg url: --url +takes_value "URL for the REST API")
+            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
+                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
             (@subcommand create =>
                 (about: "Create an agent")
                 (@arg org_id: +takes_value +required "organization ID")
@@ -107,6 +105,8 @@ fn run() -> Result<(), CliError> {
                 (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
                 (@arg metadata: --metadata +takes_value +multiple +use_delimiter
                     "Key-value pairs (format: <key>=<value>) in a comma-separated list")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand update =>
                 (about: "Update an agent")
@@ -119,11 +119,16 @@ fn run() -> Result<(), CliError> {
                 (@arg role: --role +takes_value +use_delimiter +multiple "Roles assigned to agent")
                 (@arg metadata: --metadata +takes_value +multiple +use_delimiter
                     "Key-value pairs (format: <key>=<value>) in a comma-separated list")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
         )
         (@subcommand organization =>
             (about: "Update or create organization")
             (@setting SubcommandRequiredElseHelp)
+            (@arg url: --url +takes_value "URL for the REST API")
+            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
+                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
             (@subcommand create =>
                 (about: "Create an organization")
                 (@arg org_id: +required +takes_value "Unique ID for organization")
@@ -131,6 +136,8 @@ fn run() -> Result<(), CliError> {
                 (@arg address: +takes_value "Physical address for organization")
                 (@arg metadata: --metadata +takes_value +multiple +use_delimiter
                     "Key-value pairs (format: <key>=<value>) in a comma-separated list")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand update =>
                 (about: "Update an organization")
@@ -139,18 +146,27 @@ fn run() -> Result<(), CliError> {
                 (@arg address: +takes_value "Physical address for organization")
                 (@arg metadata: --metadata +takes_value +multiple +use_delimiter
                     "Key-value pairs (format: <key>=<value>) in a comma-separated list")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
         )
         (@subcommand schema =>
             (about: "Update or create schemas")
             (@setting SubcommandRequiredElseHelp)
+            (@arg url: --url +takes_value "URL for the REST API")
+            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
+                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
             (@subcommand create =>
                 (about: "Create schemas from a yaml file")
                 (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand update =>
                 (about: "Update schemas from a yaml file")
                 (@arg path: +takes_value +required "Path to yaml file containing a list of schema definitions")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand list =>
                 (about: "List currently defined schemas")
@@ -178,6 +194,9 @@ fn run() -> Result<(), CliError> {
         (@subcommand product =>
             (about: "Create, update, or delete products")
             (@setting SubcommandRequiredElseHelp)
+            (@arg url: --url +takes_value "URL for the REST API")
+            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
+                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
             (@subcommand create =>
                 (about: "Create products from a yaml file")
                 (@arg product_id: conflicts_with[file] "Unique ID for product")
@@ -185,6 +204,8 @@ fn run() -> Result<(), CliError> {
                 (@arg owner: --owner +takes_value conflicts_with[file] "Pike organization ID")
                 (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
                 (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand update =>
                 (about: "Update products from a yaml file")
@@ -192,11 +213,15 @@ fn run() -> Result<(), CliError> {
                 (@arg product_namespace: --namespace +takes_value conflicts_with[file] "Product namespace (example: GS1)")
                 (@arg property: --property +use_delimiter +takes_value +multiple conflicts_with[file] "Key value pair specifying a product property formatted as key=value")
                 (@arg file: --file -f +takes_value "Path to yaml file containing a list of products")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand delete =>
                 (about: "Delete a product")
                 (@arg product_id: +required "Unique ID for a product")
                 (@arg product_namespace: --namespace +required +takes_value "Namespace of product (e.g. GS1")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand list =>
                 (about: "List currently defined products")
@@ -209,6 +234,9 @@ fn run() -> Result<(), CliError> {
         (@subcommand location =>
             (about: "Create, update, delete, show, or list locations")
             (@setting SubcommandRequiredElseHelp)
+            (@arg url: --url +takes_value "URL for the REST API")
+            (@arg service_id: --("service-id") +takes_value "The ID of the service the payload should be \
+                sent to; required if running on Splinter. Format <circuit-id>::<service-id>")
             (@subcommand create =>
                 (about: "Create a new location")
                 (@arg location_id: +takes_value conflicts_with[file] "Unique identifier for location")
@@ -218,6 +246,8 @@ fn run() -> Result<(), CliError> {
                     "Key value pair specifying a location property formatted as key=value")
                 (@arg file: --file -f +takes_value
                     "Path to yaml file containing a list of locations")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand update =>
                 (about: "Update an existing location")
@@ -227,11 +257,15 @@ fn run() -> Result<(), CliError> {
                     "Key value pair specifying a location property formatted as key=value")
                 (@arg file: --file -f +takes_value
                     "Path to yaml file containing a list of locations")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand delete =>
                 (about: "Delete a location")
                 (@arg location_id: +takes_value "Unique identifier for location")
                 (@arg location_namespace: --namespace +takes_value "Location name space (example: GS1)")
+                (@arg key: -k +takes_value "base name for private signing key file")
+                (@arg wait: --wait +takes_value "How long to wait for transaction to be committed")
             )
             (@subcommand list =>
                 (about: "List currently defined locations")
@@ -299,24 +333,6 @@ fn run() -> Result<(), CliError> {
         .format(log_format)
         .start()?;
 
-    let url = matches
-        .value_of("url")
-        .map(String::from)
-        .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
-        .unwrap_or_else(|| String::from("http://localhost:8000"));
-
-    let key = matches
-        .value_of("key")
-        .map(String::from)
-        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
-
-    let wait = value_t!(matches, "wait", u64).unwrap_or(0);
-
-    let service_id = matches
-        .value_of("service_id")
-        .map(String::from)
-        .or_else(|| env::var(GRID_SERVICE_ID).ok());
-
     match matches.subcommand() {
         #[cfg(feature = "admin-keygen")]
         ("admin", Some(m)) => match m.subcommand() {
@@ -333,117 +349,200 @@ fn run() -> Result<(), CliError> {
             }
             _ => unreachable!(),
         },
-        ("agent", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                let active = if m.is_present("inactive") {
-                    false
-                } else if m.is_present("active") {
-                    true
-                } else {
-                    return Err(CliError::UserError(
-                        "--active or --inactive flag must be provided".to_string(),
-                    ));
-                };
-                let create_agent = CreateAgentActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_public_key(m.value_of("public_key").unwrap().into())
-                    .with_active(active)
-                    .with_roles(
-                        m.values_of("role")
-                            .unwrap_or_default()
-                            .map(String::from)
-                            .collect::<Vec<String>>(),
-                    )
-                    .with_metadata(parse_metadata(&m)?)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+        ("agent", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
 
-                info!("Submitting request to create agent...");
-                agents::do_create_agent(&url, key, wait, create_agent, service_id)?;
-            }
-            ("update", Some(m)) => {
-                let active = if m.is_present("inactive") {
-                    false
-                } else if m.is_present("active") {
-                    true
-                } else {
-                    return Err(CliError::UserError(
-                        "--active or --inactive flag must be provided".to_string(),
-                    ));
-                };
-                let update_agent = UpdateAgentActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_public_key(m.value_of("public_key").unwrap().into())
-                    .with_active(active)
-                    .with_roles(
-                        m.values_of("role")
-                            .unwrap_or_default()
-                            .map(String::from)
-                            .collect::<Vec<String>>(),
-                    )
-                    .with_metadata(parse_metadata(&m)?)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
 
-                info!("Submitting request to update agent...");
-                agents::do_update_agent(&url, key, wait, update_agent, service_id)?;
-            }
-            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-        },
-        ("organization", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                let create_org = CreateOrganizationActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
-                    .with_address(m.value_of("address").unwrap().into())
-                    .with_metadata(parse_metadata(&m)?)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+            match m.subcommand() {
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
 
-                info!("Submitting request to create organization...");
-                orgs::do_create_organization(&url, key, wait, create_org, service_id)?;
-            }
-            ("update", Some(m)) => {
-                let update_org = UpdateOrganizationActionBuilder::new()
-                    .with_org_id(m.value_of("org_id").unwrap().into())
-                    .with_name(m.value_of("name").unwrap().into())
-                    .with_address(m.value_of("address").unwrap().into())
-                    .with_metadata(parse_metadata(&m)?)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
+                    let active = if m.is_present("inactive") {
+                        false
+                    } else if m.is_present("active") {
+                        true
+                    } else {
+                        return Err(CliError::UserError(
+                            "--active or --inactive flag must be provided".to_string(),
+                        ));
+                    };
 
-                info!("Submitting request to update organization...");
-                orgs::do_update_organization(&url, key, wait, update_org, service_id)?;
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let create_agent = CreateAgentActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_public_key(m.value_of("public_key").unwrap().into())
+                        .with_active(active)
+                        .with_roles(
+                            m.values_of("role")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_metadata(parse_metadata(&m)?)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to create agent...");
+                    agents::do_create_agent(&url, key, wait, create_agent, service_id)?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let active = if m.is_present("inactive") {
+                        false
+                    } else if m.is_present("active") {
+                        true
+                    } else {
+                        return Err(CliError::UserError(
+                            "--active or --inactive flag must be provided".to_string(),
+                        ));
+                    };
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let update_agent = UpdateAgentActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_public_key(m.value_of("public_key").unwrap().into())
+                        .with_active(active)
+                        .with_roles(
+                            m.values_of("role")
+                                .unwrap_or_default()
+                                .map(String::from)
+                                .collect::<Vec<String>>(),
+                        )
+                        .with_metadata(parse_metadata(&m)?)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to update agent...");
+                    agents::do_update_agent(&url, key, wait, update_agent, service_id)?;
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
-            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-        },
-        ("schema", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => {
-                info!("Submitting request to create schema...");
-                schemas::do_create_schemas(
-                    &url,
-                    key,
-                    wait,
-                    m.value_of("path").unwrap(),
-                    service_id,
-                )?;
+        }
+        ("organization", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let create_org = CreateOrganizationActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_name(m.value_of("name").unwrap().into())
+                        .with_address(m.value_of("address").unwrap().into())
+                        .with_metadata(parse_metadata(&m)?)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to create organization...");
+                    orgs::do_create_organization(&url, key, wait, create_org, service_id)?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let update_org = UpdateOrganizationActionBuilder::new()
+                        .with_org_id(m.value_of("org_id").unwrap().into())
+                        .with_name(m.value_of("name").unwrap().into())
+                        .with_address(m.value_of("address").unwrap().into())
+                        .with_metadata(parse_metadata(&m)?)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to update organization...");
+                    orgs::do_update_organization(&url, key, wait, update_org, service_id)?;
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
-            ("update", Some(m)) => {
-                info!("Submitting request to update schema...");
-                schemas::do_update_schemas(
-                    &url,
-                    key,
-                    wait,
-                    m.value_of("path").unwrap(),
-                    service_id,
-                )?;
+        }
+        ("schema", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    info!("Submitting request to create schema...");
+                    schemas::do_create_schemas(
+                        &url,
+                        key,
+                        wait,
+                        m.value_of("path").unwrap(),
+                        service_id,
+                    )?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    info!("Submitting request to update schema...");
+                    schemas::do_update_schemas(
+                        &url,
+                        key,
+                        wait,
+                        m.value_of("path").unwrap(),
+                        service_id,
+                    )?;
+                }
+                ("list", Some(_)) => schemas::do_list_schemas(&url, service_id)?,
+                ("show", Some(m)) => {
+                    schemas::do_show_schema(&url, m.value_of("name").unwrap(), service_id)?
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
-            ("list", Some(_)) => schemas::do_list_schemas(&url, service_id)?,
-            ("show", Some(m)) => {
-                schemas::do_show_schema(&url, m.value_of("name").unwrap(), service_id)?
-            }
-            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-        },
+        }
         ("database", Some(m)) => match m.subcommand() {
             ("migrate", Some(m)) => database::run_migrations(
                 m.value_of("database_url")
@@ -456,228 +555,324 @@ fn run() -> Result<(), CliError> {
             m.is_present("force"),
             m.value_of("key_dir"),
         )?,
-        ("product", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) if m.is_present("file") => {
-                let actions = products::create_product_payloads_from_file(
-                    m.value_of("file").unwrap(),
+        ("product", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(m)) if m.is_present("file") => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let actions = products::create_product_payloads_from_file(
+                        m.value_of("file").unwrap(),
+                        &url,
+                        service_id.as_deref(),
+                    )?;
+
+                    info!("Submitting request to create product...");
+                    products::do_create_products(&url, key, wait, actions, service_id)?;
+                }
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                        "GS1" => ProductNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let properties = parse_properties(
+                        &url,
+                        m.value_of("product_namespace").unwrap_or("gs1_product"),
+                        service_id.as_deref(),
+                        &m,
+                    )?;
+
+                    let action = ProductCreateActionBuilder::new()
+                        .with_product_id(m.value_of("product_id").unwrap().into())
+                        .with_owner(m.value_of("owner").unwrap().into())
+                        .with_product_namespace(namespace)
+                        .with_properties(properties)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to create product...");
+                    products::do_create_products(&url, key, wait, vec![action], service_id)?;
+                }
+                ("update", Some(m)) if m.is_present("file") => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let actions = products::update_product_payloads_from_file(
+                        m.value_of("file").unwrap(),
+                        &url,
+                        service_id.as_deref(),
+                    )?;
+
+                    info!("Submitting request to update product...");
+                    products::do_update_products(&url, key, wait, actions, service_id)?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                        "GS1" => ProductNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let properties = parse_properties(
+                        &url,
+                        m.value_of("product_namespace").unwrap_or("gs1_product"),
+                        service_id.as_deref(),
+                        &m,
+                    )?;
+
+                    let action = ProductUpdateActionBuilder::new()
+                        .with_product_id(m.value_of("product_id").unwrap().into())
+                        .with_product_namespace(namespace)
+                        .with_properties(properties)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to update product...");
+                    products::do_update_products(&url, key, wait, vec![action], service_id)?;
+                }
+                ("delete", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
+                        "GS1" => ProductNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let action = ProductDeleteActionBuilder::new()
+                        .with_product_id(m.value_of("product_id").unwrap().into())
+                        .with_product_namespace(namespace)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to delete product...");
+                    products::do_delete_products(&url, key, wait, action, service_id)?;
+                }
+                ("list", Some(_)) => products::do_list_products(&url, service_id)?,
+                ("show", Some(m)) => {
+                    products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
+                }
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
+            }
+        }
+        ("location", Some(m)) => {
+            let url = m
+                .value_of("url")
+                .map(String::from)
+                .or_else(|| env::var(GRID_DAEMON_ENDPOINT).ok())
+                .unwrap_or_else(|| String::from("http://localhost:8000"));
+
+            let service_id = m
+                .value_of("service_id")
+                .map(String::from)
+                .or_else(|| env::var(GRID_SERVICE_ID).ok());
+
+            match m.subcommand() {
+                ("create", Some(m)) if m.is_present("file") => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let actions = locations::create_location_payloads_from_file(
+                        m.value_of("file").unwrap(),
+                        &url,
+                        service_id.as_deref(),
+                    )?;
+
+                    info!("Submitting request to create location...");
+                    locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?;
+                }
+                ("create", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                        "GS1" => LocationNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let properties = parse_properties(
+                        &url,
+                        m.value_of("location_namespace").unwrap_or("gs1_location"),
+                        service_id.as_deref(),
+                        &m,
+                    )?;
+
+                    let action = LocationCreateActionBuilder::new()
+                        .with_location_id(m.value_of("location_id").unwrap().into())
+                        .with_owner(m.value_of("owner").unwrap().into())
+                        .with_namespace(namespace)
+                        .with_properties(properties)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to create location...");
+                    locations::do_create_location(
+                        &url,
+                        key,
+                        wait,
+                        vec![action],
+                        service_id.as_deref(),
+                    )?;
+                }
+                ("update", Some(m)) if m.is_present("file") => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let actions = locations::update_location_payloads_from_file(
+                        m.value_of("file").unwrap(),
+                        &url,
+                        service_id.as_deref(),
+                    )?;
+
+                    info!("Submitting request to update location...");
+                    locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?;
+                }
+                ("update", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                        "GS1" => LocationNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let properties = parse_properties(
+                        &url,
+                        m.value_of("location_namespace").unwrap_or("gs1_location"),
+                        service_id.as_deref(),
+                        &m,
+                    )?;
+
+                    let action = LocationUpdateActionBuilder::new()
+                        .with_location_id(m.value_of("location_id").unwrap().into())
+                        .with_namespace(namespace)
+                        .with_properties(properties)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to update location...");
+                    locations::do_update_location(
+                        &url,
+                        key,
+                        wait,
+                        vec![action],
+                        service_id.as_deref(),
+                    )?;
+                }
+                ("delete", Some(m)) => {
+                    let key = m
+                        .value_of("key")
+                        .map(String::from)
+                        .or_else(|| env::var(GRID_DAEMON_KEY).ok());
+
+                    let wait = value_t!(m, "wait", u64).unwrap_or(0);
+
+                    let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
+                        "GS1" => LocationNamespace::GS1,
+                        unknown => {
+                            return Err(CliError::UserError(format!(
+                                "Unrecognized namespace {}",
+                                unknown
+                            )))
+                        }
+                    };
+
+                    let action = LocationDeleteActionBuilder::new()
+                        .with_location_id(m.value_of("location_id").unwrap().into())
+                        .with_namespace(namespace)
+                        .build()
+                        .map_err(|err| CliError::UserError(format!("{}", err)))?;
+
+                    info!("Submitting request to delete location...");
+                    locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?;
+                }
+                ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
+                ("show", Some(_)) => locations::do_show_location(
                     &url,
+                    m.value_of("location_id").unwrap(),
                     service_id.as_deref(),
-                )?;
-
-                info!("Submitting request to create product...");
-                products::do_create_products(&url, key, wait, actions, service_id)?;
+                )?,
+                _ => return Err(CliError::UserError("Subcommand not recognized".into())),
             }
-            ("create", Some(m)) => {
-                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                    "GS1" => ProductNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let properties = parse_properties(
-                    &url,
-                    m.value_of("product_namespace").unwrap_or("gs1_product"),
-                    service_id.as_deref(),
-                    &m,
-                )?;
-
-                let action = ProductCreateActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
-                    .with_owner(m.value_of("owner").unwrap().into())
-                    .with_product_namespace(namespace)
-                    .with_properties(properties)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to create product...");
-                products::do_create_products(&url, key, wait, vec![action], service_id)?;
-            }
-            ("update", Some(m)) if m.is_present("file") => {
-                let actions = products::update_product_payloads_from_file(
-                    m.value_of("file").unwrap(),
-                    &url,
-                    service_id.as_deref(),
-                )?;
-
-                info!("Submitting request to update product...");
-                products::do_update_products(&url, key, wait, actions, service_id)?;
-            }
-            ("update", Some(m)) => {
-                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                    "GS1" => ProductNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let properties = parse_properties(
-                    &url,
-                    m.value_of("product_namespace").unwrap_or("gs1_product"),
-                    service_id.as_deref(),
-                    &m,
-                )?;
-
-                let action = ProductUpdateActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
-                    .with_product_namespace(namespace)
-                    .with_properties(properties)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to update product...");
-                products::do_update_products(&url, key, wait, vec![action], service_id)?;
-            }
-            ("delete", Some(m)) => {
-                let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
-                    "GS1" => ProductNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let action = ProductDeleteActionBuilder::new()
-                    .with_product_id(m.value_of("product_id").unwrap().into())
-                    .with_product_namespace(namespace)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to delete product...");
-                products::do_delete_products(&url, key, wait, action, service_id)?;
-            }
-            ("list", Some(_)) => products::do_list_products(&url, service_id)?,
-            ("show", Some(m)) => {
-                products::do_show_products(&url, m.value_of("product_id").unwrap(), service_id)?
-            }
-            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-        },
-        ("location", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) if m.is_present("file") => {
-                let actions = locations::create_location_payloads_from_file(
-                    m.value_of("file").unwrap(),
-                    &url,
-                    service_id.as_deref(),
-                )?;
-
-                info!("Submitting request to create location...");
-                locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?;
-            }
-            ("create", Some(m)) => {
-                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                    "GS1" => LocationNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let properties = parse_properties(
-                    &url,
-                    m.value_of("location_namespace").unwrap_or("gs1_location"),
-                    service_id.as_deref(),
-                    &m,
-                )?;
-
-                let action = LocationCreateActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
-                    .with_owner(m.value_of("owner").unwrap().into())
-                    .with_namespace(namespace)
-                    .with_properties(properties)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to create location...");
-                locations::do_create_location(
-                    &url,
-                    key,
-                    wait,
-                    vec![action],
-                    service_id.as_deref(),
-                )?;
-            }
-            ("update", Some(m)) if m.is_present("file") => {
-                let actions = locations::update_location_payloads_from_file(
-                    m.value_of("file").unwrap(),
-                    &url,
-                    service_id.as_deref(),
-                )?;
-
-                info!("Submitting request to update location...");
-                locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?;
-            }
-            ("update", Some(m)) => {
-                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                    "GS1" => LocationNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let properties = parse_properties(
-                    &url,
-                    m.value_of("location_namespace").unwrap_or("gs1_location"),
-                    service_id.as_deref(),
-                    &m,
-                )?;
-
-                let action = LocationUpdateActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
-                    .with_namespace(namespace)
-                    .with_properties(properties)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to update location...");
-                locations::do_update_location(
-                    &url,
-                    key,
-                    wait,
-                    vec![action],
-                    service_id.as_deref(),
-                )?;
-            }
-            ("delete", Some(m)) => {
-                let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
-                    "GS1" => LocationNamespace::GS1,
-                    unknown => {
-                        return Err(CliError::UserError(format!(
-                            "Unrecognized namespace {}",
-                            unknown
-                        )))
-                    }
-                };
-
-                let action = LocationDeleteActionBuilder::new()
-                    .with_location_id(m.value_of("location_id").unwrap().into())
-                    .with_namespace(namespace)
-                    .build()
-                    .map_err(|err| CliError::UserError(format!("{}", err)))?;
-
-                info!("Submitting request to delete location...");
-                locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?;
-            }
-            ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
-            ("show", Some(m)) => locations::do_show_location(
-                &url,
-                m.value_of("location_id").unwrap(),
-                service_id.as_deref(),
-            )?,
-            _ => return Err(CliError::UserError("Subcommand not recognized".into())),
-        },
+        }
         _ => return Err(CliError::UserError("Subcommand not recognized".into())),
     }
 
