@@ -358,7 +358,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_create_agent(&url, key, wait, create_agent, service_id)?
+                info!("Submitting request to create agent...");
+                agents::do_create_agent(&url, key, wait, create_agent, service_id)?;
             }
             ("update", Some(m)) => {
                 let active = if m.is_present("inactive") {
@@ -384,7 +385,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                agents::do_update_agent(&url, key, wait, update_agent, service_id)?
+                info!("Submitting request to update agent...");
+                agents::do_update_agent(&url, key, wait, update_agent, service_id)?;
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
@@ -398,7 +400,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_create_organization(&url, key, wait, create_org, service_id)?
+                info!("Submitting request to create organization...");
+                orgs::do_create_organization(&url, key, wait, create_org, service_id)?;
             }
             ("update", Some(m)) => {
                 let update_org = UpdateOrganizationActionBuilder::new()
@@ -409,25 +412,32 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                orgs::do_update_organization(&url, key, wait, update_org, service_id)?
+                info!("Submitting request to update organization...");
+                orgs::do_update_organization(&url, key, wait, update_org, service_id)?;
             }
             _ => return Err(CliError::UserError("Subcommand not recognized".into())),
         },
         ("schema", Some(m)) => match m.subcommand() {
-            ("create", Some(m)) => schemas::do_create_schemas(
-                &url,
-                key,
-                wait,
-                m.value_of("path").unwrap(),
-                service_id,
-            )?,
-            ("update", Some(m)) => schemas::do_update_schemas(
-                &url,
-                key,
-                wait,
-                m.value_of("path").unwrap(),
-                service_id,
-            )?,
+            ("create", Some(m)) => {
+                info!("Submitting request to create schema...");
+                schemas::do_create_schemas(
+                    &url,
+                    key,
+                    wait,
+                    m.value_of("path").unwrap(),
+                    service_id,
+                )?;
+            }
+            ("update", Some(m)) => {
+                info!("Submitting request to update schema...");
+                schemas::do_update_schemas(
+                    &url,
+                    key,
+                    wait,
+                    m.value_of("path").unwrap(),
+                    service_id,
+                )?;
+            }
             ("list", Some(_)) => schemas::do_list_schemas(&url, service_id)?,
             ("show", Some(m)) => {
                 schemas::do_show_schema(&url, m.value_of("name").unwrap(), service_id)?
@@ -454,7 +464,8 @@ fn run() -> Result<(), CliError> {
                     service_id.as_deref(),
                 )?;
 
-                products::do_create_products(&url, key, wait, actions, service_id)?
+                info!("Submitting request to create product...");
+                products::do_create_products(&url, key, wait, actions, service_id)?;
             }
             ("create", Some(m)) => {
                 let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -482,7 +493,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                products::do_create_products(&url, key, wait, vec![action], service_id)?
+                info!("Submitting request to create product...");
+                products::do_create_products(&url, key, wait, vec![action], service_id)?;
             }
             ("update", Some(m)) if m.is_present("file") => {
                 let actions = products::update_product_payloads_from_file(
@@ -491,7 +503,8 @@ fn run() -> Result<(), CliError> {
                     service_id.as_deref(),
                 )?;
 
-                products::do_update_products(&url, key, wait, actions, service_id)?
+                info!("Submitting request to update product...");
+                products::do_update_products(&url, key, wait, actions, service_id)?;
             }
             ("update", Some(m)) => {
                 let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -518,7 +531,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                products::do_update_products(&url, key, wait, vec![action], service_id)?
+                info!("Submitting request to update product...");
+                products::do_update_products(&url, key, wait, vec![action], service_id)?;
             }
             ("delete", Some(m)) => {
                 let namespace = match m.value_of("product_namespace").unwrap_or("GS1") {
@@ -537,7 +551,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                products::do_delete_products(&url, key, wait, action, service_id)?
+                info!("Submitting request to delete product...");
+                products::do_delete_products(&url, key, wait, action, service_id)?;
             }
             ("list", Some(_)) => products::do_list_products(&url, service_id)?,
             ("show", Some(m)) => {
@@ -553,7 +568,8 @@ fn run() -> Result<(), CliError> {
                     service_id.as_deref(),
                 )?;
 
-                locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?
+                info!("Submitting request to create location...");
+                locations::do_create_location(&url, key, wait, actions, service_id.as_deref())?;
             }
             ("create", Some(m)) => {
                 let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -581,7 +597,14 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                locations::do_create_location(&url, key, wait, vec![action], service_id.as_deref())?
+                info!("Submitting request to create location...");
+                locations::do_create_location(
+                    &url,
+                    key,
+                    wait,
+                    vec![action],
+                    service_id.as_deref(),
+                )?;
             }
             ("update", Some(m)) if m.is_present("file") => {
                 let actions = locations::update_location_payloads_from_file(
@@ -590,7 +613,8 @@ fn run() -> Result<(), CliError> {
                     service_id.as_deref(),
                 )?;
 
-                locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?
+                info!("Submitting request to update location...");
+                locations::do_update_location(&url, key, wait, actions, service_id.as_deref())?;
             }
             ("update", Some(m)) => {
                 let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -617,7 +641,14 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                locations::do_update_location(&url, key, wait, vec![action], service_id.as_deref())?
+                info!("Submitting request to update location...");
+                locations::do_update_location(
+                    &url,
+                    key,
+                    wait,
+                    vec![action],
+                    service_id.as_deref(),
+                )?;
             }
             ("delete", Some(m)) => {
                 let namespace = match m.value_of("location_namespace").unwrap_or("GS1") {
@@ -636,7 +667,8 @@ fn run() -> Result<(), CliError> {
                     .build()
                     .map_err(|err| CliError::UserError(format!("{}", err)))?;
 
-                locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?
+                info!("Submitting request to delete location...");
+                locations::do_delete_location(&url, key, wait, action, service_id.as_deref())?;
             }
             ("list", Some(_)) => locations::do_list_locations(&url, service_id.as_deref())?,
             ("show", Some(_)) => locations::do_show_location(
