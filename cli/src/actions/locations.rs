@@ -101,7 +101,7 @@ pub fn do_list_locations(url: &str, service_id: Option<&str>) -> Result<(), CliE
     }
 
     let locations = response.json::<Vec<LocationSlice>>()?;
-    locations.iter().for_each(display_location);
+    display_locations_info(&locations);
     Ok(())
 }
 
@@ -324,6 +324,35 @@ fn yaml_to_property_values(
     }
 
     Ok(property_values)
+}
+
+fn display_locations_info(locations: &[LocationSlice]) {
+    // GLNs are always 13 characters
+    const ID_LENGTH: usize = 13;
+    // The column header "Namespace" will be longer than the values, in practice
+    const NAMESPACE_LENGTH: usize = "NAMESPACE".len();
+    // The min width of the owner column. This is required by the Rust linter
+    const OWNER_MIN: usize = "OWNER".len();
+    println!(
+        "{:<length_id$} {:<length_namespace$.length_namespace$} {:<length_owner$}",
+        "ID",
+        "NAMESPACE",
+        "OWNER",
+        length_id = ID_LENGTH,
+        length_namespace = NAMESPACE_LENGTH,
+        length_owner = OWNER_MIN
+    );
+    locations.iter().for_each(|location| {
+        println!(
+            "{:<length_id$} {:<length_namespace$.length_namespace$} {:<length_owner$}",
+            location.location_id,
+            location.location_namespace,
+            location.owner,
+            length_id = ID_LENGTH,
+            length_namespace = NAMESPACE_LENGTH,
+            length_owner = OWNER_MIN
+        )
+    });
 }
 
 fn display_location(location: &LocationSlice) {
