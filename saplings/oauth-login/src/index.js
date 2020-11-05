@@ -24,8 +24,8 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 
-registerConfigSapling('oauth-login', () => {
-  if (window.location.pathname === '/oauth-login') {
+registerConfigSapling('login', () => {
+  if (window.location.pathname === '/login') {
     hideCanopy();
     registerApp(domNode => {
       ReactDOM.render(<App />, domNode);

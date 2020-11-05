@@ -1,0 +1,22 @@
+[
+  {
+    "namespace": "profile",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/profile/js/profile.js"
+    ],
+    "styleFiles": [
+      "localhost:3030/sapling-dev-server/profile/css/profile.css"
+    ],
+    "workerFiles": []
+  },
+  {
+    "namespace": "login",
+    "runtimeFiles": [
+      "localhost:3030/sapling-dev-server/oauth-login/static/js/oauth-login.js"
+    ],
+    "styleFiles": [
+      "localhost:3030/sapling-dev-server/oauth-login/static/css/oauth-login.css"
+    ],
+    "workerFiles": []
+  }
+]
