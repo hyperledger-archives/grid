@@ -38,6 +38,11 @@ ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
 RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # -------------=== grid-cli docker build ===-------------
 FROM hyperledger/sawtooth-sabre-cli:0.5
 
@@ -45,6 +50,7 @@ ARG CARGO_ARGS
 RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=grid-cli-builder /build/target/debian/grid-cli_*.deb /tmp
+COPY --from=grid-cli-builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && dpkg --unpack /tmp/grid-cli*.deb \

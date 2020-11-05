@@ -1,0 +1,45 @@
+# Copyright 2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+version: '3.7'
+
+services:
+
+  gridd:
+    image: ${REGISTRY}${NAMESPACE}gridd:${ISOLATION_ID}
+    container_name: gridd
+    build:
+      context: .
+      dockerfile: daemon/Dockerfile
+      args:
+        - CARGO_ARGS=${CARGO_ARGS}
+        - REPO_VERSION=${REPO_VERSION}
+
+  grid-cli:
+    image: ${REGISTRY}${NAMESPACE}grid-cli:${ISOLATION_ID}
+    container_name: grid-cli
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+      args:
+        - CARGO_ARGS=${CARGO_ARGS}
+        - REPO_VERSION=${REPO_VERSION}
+
+  grid-ui:
+    image: ${REGISTRY}${NAMESPACE}grid-ui:${ISOLATION_ID}
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+      args:
+        REPO_VERSION: ${REPO_VERSION}

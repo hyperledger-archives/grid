@@ -17,9 +17,9 @@ FROM node:lts-alpine as canopy-app-build-stage
 
 RUN apk update && apk add python g++ git make && rm -rf /var/cache/apk/*
 WORKDIR /ui
-COPY grid-ui/package*.json ./
+COPY ui/grid-ui/package*.json ./
 RUN npm config set unsafe-perm true && npm install
-COPY grid-ui .
+COPY ui/grid-ui .
 ENV REACT_APP_SPLINTER_URL "/splinterd"
 ENV REACT_APP_SAPLING_URL "/sapling-dev-server"
 ENV REACT_APP_GRID_URL "/gridd"
@@ -28,6 +28,11 @@ WORKDIR /ui/build
 ARG REPO_VERSION
 RUN tar c -z . -f ../grid_ui_v${REPO_VERSION}.tar.gz
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # Sapling build stage
 FROM node:lts-alpine as sapling-build-stage
 
@@ -35,9 +40,9 @@ RUN apk update && apk add git
 
 RUN npm config set unsafe-perm true
 
-COPY saplings saplings
-COPY sapling-dev-server sapling-dev-server
-COPY protos protos
+COPY ui/saplings saplings
+COPY ui/sapling-dev-server sapling-dev-server
+COPY ui/protos protos
 
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
@@ -73,6 +78,7 @@ RUN tar c -z . -f ../grid_saplings_v${REPO_VERSION}.tar.gz
 FROM httpd:2.4 as prod-stage
 
 COPY --from=canopy-app-build-stage /ui/grid_ui_v*.tar.gz /tmp
+COPY --from=canopy-app-build-stage /commit-hash /commit-hash
 RUN tar -xzvf /tmp/grid_ui_*.tar.gz -C /usr/local/apache2/htdocs/
 
 COPY --from=sapling-build-stage /grid_saplings_v*.tar.gz /tmp
@@ -80,7 +86,7 @@ RUN mkdir /usr/local/apache2/htdocs/sapling-dev-server
 RUN tar -xzvf /tmp/grid_saplings_*.tar.gz \
   -C /usr/local/apache2/htdocs/sapling-dev-server/
 
-COPY /configs/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY ui/configs/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
 
 RUN echo "\
   \n\

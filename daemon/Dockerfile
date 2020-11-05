@@ -45,6 +45,11 @@ ARG REPO_VERSION
 RUN sed -i -e "0,/version.*$/ s/version.*$/version\ =\ \"${REPO_VERSION}\"/" Cargo.toml
 RUN cargo deb --deb-version $REPO_VERSION $CARGO_ARGS
 
+# Log the commit hash
+COPY .git/ /tmp/.git/
+WORKDIR /tmp
+RUN git rev-parse HEAD > /commit-hash
+
 # -------------=== gridd docker build ===-------------
 FROM ubuntu:bionic
 
@@ -53,6 +58,7 @@ RUN echo "CARGO_ARGS = '$CARGO_ARGS'" > CARGO_ARGS
 
 COPY --from=gridd-builder /build/target/debian/grid-cli_*.deb /tmp
 COPY --from=gridd-builder /build/target/debian/grid-daemon_*.deb /tmp
+COPY --from=gridd-builder /commit-hash /commit-hash
 
 RUN apt-get update \
  && apt-get install -y -q \
