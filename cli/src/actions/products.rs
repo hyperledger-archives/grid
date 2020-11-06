@@ -64,6 +64,40 @@ pub struct LatLong {
 }
 
 /**
+ * Prints basic info for products
+ *
+ * products - Products to be printed
+ */
+pub fn display_products_info(products: &[GridProduct]) {
+    // GTINs are always 14 characters long
+    const ID_LENGTH: usize = 14;
+    // Column header "namespace" is longer than the namespace strings in practice
+    const NAMESPACE_LENGTH: usize = "NAMESPACE".len();
+    // Minimum width of the "owner" column. This is required because of Rust linting
+    const OWNER_MIN: usize = "OWNER".len();
+    println!(
+        "{:<length_id$} {:<length_namespace$.length_namespace$} {:<length_owner$}",
+        "ID",
+        "NAMESPACE",
+        "OWNER",
+        length_id = ID_LENGTH,
+        length_namespace = NAMESPACE_LENGTH,
+        length_owner = OWNER_MIN
+    );
+    products.iter().for_each(|product| {
+        println!(
+            "{:<length_id$} {:<length_namespace$.length_namespace$} {:<length_owner$}",
+            product.product_id,
+            product.product_namespace,
+            product.owner,
+            length_id = ID_LENGTH,
+            length_namespace = NAMESPACE_LENGTH,
+            length_owner = OWNER_MIN
+        )
+    });
+}
+
+/**
  * Print the fields for a given product
  *
  * product - Product to be printed
@@ -183,7 +217,7 @@ pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), Cli
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
     let products = client.get(&final_url).send()?.json::<Vec<GridProduct>>()?;
-    products.iter().for_each(|product| display_product(product));
+    display_products_info(&products);
     Ok(())
 }
 
