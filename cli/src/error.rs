@@ -65,7 +65,7 @@ impl std::fmt::Display for CliError {
             CliError::LoggingInitializationError(ref err) => {
                 write!(f, "LoggingInitializationError: {}", err)
             }
-            CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
+            CliError::ReqwestError(ref err) => write!(f, "{}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
             CliError::SabreProtoError(ref err) => write!(f, "Sabre Proto Error: {}", err),
             CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
