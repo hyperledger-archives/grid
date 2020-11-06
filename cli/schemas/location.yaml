@@ -1,0 +1,101 @@
+# Copyright (c) 2018-2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# -----------------------------------------------------------------------------
+
+- name: gs1_location
+  description: GS1 location schema
+  properties:
+    - name: locationDescription
+      data_type: String
+      description: |
+        Free text, 178 characters.
+      required: true
+    - name: locationType
+      data_type: Enum
+      description: ""
+      enum_options: [
+        ShipTo, BillTo, ShipFrom, PaidBy, OrderFrom, Recall, OrgEntity, RemitTo
+      ]
+      required: true
+    - name: addressLine1
+      data_type: String
+      description: ""
+      required: true
+    - name: addressLine2
+      data_type: String
+      description: ""
+      required: false
+    - name: city
+      data_type: String
+      description: ""
+      required: true
+    - name: stateOrRegion
+      data_type: String
+      description: ""
+      required: true
+    - name: postalCode
+      data_type: String
+      description: ""
+      required: true
+    - name: country
+      data_type: String
+      description: ""
+      required: true
+    - name: latLongValue
+      data_type: lat_long
+      description: ""
+      required: true
+    - name: contactName
+      data_type: String
+      description: ""
+      required: true
+    - name: contactEmail
+      data_type: String
+      description: ""
+      required: true
+    - name: contactPhone
+      data_type: String
+      description: ""
+      required: true
+    - name: createDate
+      data_type: Number
+      number_exponent: 0
+      description: ""
+      required: true
+    - name: inactivationDate
+      data_type: Number
+      number_exponent: 0
+      description: ""
+      required: false
+    - name: parentLocation
+      data_type: String
+      description: ""
+      required: false
+    - name: industrySector
+      data_type: Enum
+      description: ""
+      enum_options: [General, CPG, Healthcare, Foodservice]
+      required: false
+    - name: role
+      data_type: Enum
+      description: ""
+      enum_options: [
+        Manufacturer, SolutionsProvider, Undefined, Distributor,
+        Provider, Supplier, 3rdParty, Warehouse, IndependentOperator, Operator]
+      required: false
+    - name: informationProviderGLN
+      data_type: Number
+      number_exponent: 0
+      description: ""
+      required: false
