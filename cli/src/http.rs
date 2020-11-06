@@ -38,21 +38,28 @@ pub fn submit_batches(
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
     debug!("url {}", final_url);
-    let batch_link = client
-        .post(&final_url)
-        .body(bytes)
-        .send()?
-        .json::<BatchStatusLink>()?;
+    let mut response = client.post(&final_url).body(bytes).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let batch_link = response.json::<BatchStatusLink>()?;
 
     debug!("Response: {:#?}", batch_link);
 
     while wait > 0 {
         let time = Instant::now();
 
-        let batch_status = client
+        let mut response = client
             .get(&format!("{}&wait={}", batch_link.link, wait))
-            .send()?
-            .json::<BatchStatusResponse>()?;
+            .send()?;
+
+        if !response.status().is_success() {
+            return Err(CliError::DaemonError(response.text()?));
+        }
+
+        let batch_status = response.json::<BatchStatusResponse>()?;
 
         debug!("Batch Status: {:#?}", batch_status);
 

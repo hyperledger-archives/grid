@@ -94,10 +94,13 @@ pub fn do_list_locations(url: &str, service_id: Option<&str>) -> Result<(), CliE
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let locations = client
-        .get(&final_url)
-        .send()?
-        .json::<Vec<LocationSlice>>()?;
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let locations = response.json::<Vec<LocationSlice>>()?;
     locations.iter().for_each(display_location);
     Ok(())
 }
@@ -112,7 +115,15 @@ pub fn do_show_location(
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let location = client.get(&final_url).send()?.json::<LocationSlice>()?;
+
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let location = response.json::<LocationSlice>()?;
+
     display_location(&location);
 
     Ok(())
