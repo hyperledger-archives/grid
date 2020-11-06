@@ -16,13 +16,17 @@
 
 import React from 'react';
 import { useToasts } from 'react-toast-notifications';
+import PropTypes from 'prop-types';
 import './OAuthLoginButton.scss';
 import { getSharedConfig } from 'splinter-saplingjs';
 
 const { splinterURL } = getSharedConfig().canopyConfig;
 
-export function OAuthLoginButton() {
+export function OAuthLoginButton({ errorMessage }) {
   const { addToast } = useToasts();
+  if (errorMessage) {
+    addToast(`${errorMessage}`, { appearance: 'error' });
+  }
 
   const AuthUrlResponse = async () => {
     try {
@@ -53,3 +57,11 @@ export function OAuthLoginButton() {
     </div>
   );
 }
+
+OAuthLoginButton.propTypes = {
+  errorMessage: PropTypes.string
+};
+
+OAuthLoginButton.defaultProps = {
+  errorMessage: null
+};

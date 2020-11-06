@@ -17,7 +17,8 @@
 import {
   registerConfigSapling,
   registerApp,
-  hideCanopy
+  hideCanopy,
+  setUser
 } from 'splinter-saplingjs';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -25,10 +26,46 @@ import './index.css';
 import App from './App';
 
 registerConfigSapling('login', () => {
-  if (window.location.pathname === '/login') {
+  if (
+    window.$CANOPY.redirectedFrom &&
+    window.$CANOPY.redirectedFrom.includes('access_token')
+  ) {
+    // Extract user token information
+    const accessTokenRegex = /\?access_token=([^&#]*)|&|$/;
+    const token = window.$CANOPY.redirectedFrom.match(accessTokenRegex)[1];
+    // Extract user information
+    const userIdRegex = /\?user_id=([^&#]*)|&|$/;
+    let userId = window.$CANOPY.redirectedFrom.match(userIdRegex)[1];
+    if (!userId) {
+      userId = 'OAuthUser';
+    }
+    const displayNameRegex = /\?display_name=([^&#]*)|&|$/;
+    let displayName = window.$CANOPY.redirectedFrom.match(displayNameRegex)[1];
+    if (!displayName) {
+      displayName = 'OAuthUser';
+    }
+    // Set Canopy user
+    setUser({
+      token,
+      userId,
+      displayName
+    });
+
+    window.$CANOPY.redirectedFrom = window.location.href;
+    window.location.replace('/');
+  } else if (window.location.pathname === '/login') {
+    let errorMessage = null;
+    if (
+      window.$CANOPY.redirectedFrom &&
+      window.$CANOPY.redirectedFrom.includes('error')
+    ) {
+      const errorMessageRegex = /\?error=([^&#]*)|&|$/;
+      const error = window.$CANOPY.redirectedFrom.match(errorMessageRegex)[1];
+      errorMessage = error;
+    }
     hideCanopy();
     registerApp(domNode => {
-      ReactDOM.render(<App />, domNode);
+      ReactDOM.render(<App errorMessage={errorMessage} />, domNode);
     });
   }
 });
