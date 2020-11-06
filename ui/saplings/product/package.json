@@ -2,10 +2,19 @@
   "name": "product",
   "version": "0.1.0",
   "private": true,
+  "jest": {
+    "setupFiles": [
+      "./src/setupTests.js"
+    ],
+    "moduleNameMapper": {
+      "^.+\\.(css|less|scss)$": "babel-jest"
+    }
+  },
   "scripts": {
     "build": "webpack",
     "build-dev": "webpack --mode=development",
     "lint": "eslint .",
+    "test": "jest",
     "add-to-canopy": "mkdir -p ../../sapling-dev-server/product && cp -r ./build/static/* ../../sapling-dev-server/product && cp product_logo.svg ../../sapling-dev-server/product",
     "deploy": "npm run generate-proto-files && npm run build && npm run add-to-canopy",
     "deploy-dev": "npm run generate-proto-files && npm run build-dev && npm run add-to-canopy",
@@ -50,6 +59,7 @@
     "@babel/core": "^7.10.5",
     "@babel/preset-env": "^7.10.4",
     "@babel/preset-react": "^7.10.4",
+    "babel-jest": "^26.6.3",
     "babel-loader": "^8.1.0",
     "css-loader": "^4.1.0",
     "eslint": "^6.6.0",
@@ -61,12 +71,14 @@
     "eslint-plugin-react": "^7.14.3",
     "eslint-plugin-react-hooks": "^1.7.0",
     "http-server": "^0.12.1",
+    "jest": "^26.6.3",
     "mini-css-extract-plugin": "^0.9.0",
     "mini-svg-data-uri": "^1.2.3",
     "node-sass": "^4.13.1",
     "nodemon": "^2.0.2",
     "npm-run-all": "^4.1.5",
     "prettier": "^1.18.2",
+    "regenerator-runtime": "^0.13.7",
     "resolve-url-loader": "^3.1.1",
     "sass": "^1.26.10",
     "sass-loader": "^9.0.2",

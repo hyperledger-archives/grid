@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import '@testing-library/jest-dom/extend-expect';
-
 window.$CANOPY = {};
 
 window.$CANOPY.getSharedConfig = () => {
