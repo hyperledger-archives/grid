@@ -107,10 +107,14 @@ pub fn do_list_schemas(url: &str, service_id: Option<String>) -> Result<(), CliE
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let schemas = client
-        .get(&final_url)
-        .send()?
-        .json::<Vec<GridSchemaSlice>>()?;
+
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let schemas = response.json::<Vec<GridSchemaSlice>>()?;
     schemas.iter().for_each(|schema| display_schema(schema));
     Ok(())
 }
@@ -132,11 +136,13 @@ pub fn get_schema(
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
 
-    client
-        .get(&final_url)
-        .send()?
-        .json::<GridSchemaSlice>()
-        .map_err(CliError::from)
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    response.json::<GridSchemaSlice>().map_err(CliError::from)
 }
 
 pub fn do_create_schemas(

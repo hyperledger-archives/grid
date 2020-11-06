@@ -216,7 +216,14 @@ pub fn do_list_products(url: &str, service_id: Option<String>) -> Result<(), Cli
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let products = client.get(&final_url).send()?.json::<Vec<GridProduct>>()?;
+
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let products = response.json::<Vec<GridProduct>>()?;
     display_products_info(&products);
     Ok(())
 }
@@ -237,7 +244,14 @@ pub fn do_show_products(
     if let Some(service_id) = service_id {
         final_url = format!("{}?service_id={}", final_url, service_id);
     }
-    let product = client.get(&final_url).send()?.json::<GridProduct>()?;
+
+    let mut response = client.get(&final_url).send()?;
+
+    if !response.status().is_success() {
+        return Err(CliError::DaemonError(response.text()?));
+    }
+
+    let product = response.json::<GridProduct>()?;
     display_product(&product);
     Ok(())
 }

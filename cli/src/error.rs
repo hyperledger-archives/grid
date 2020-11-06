@@ -30,6 +30,7 @@ pub enum CliError {
     ReqwestError(reqwest::Error),
     GridProtoError(protos::ProtoConversionError),
     SabreProtoError(sabre_sdk::protos::ProtoConversionError),
+    DaemonError(String),
 }
 
 impl StdError for CliError {
@@ -46,6 +47,7 @@ impl StdError for CliError {
             CliError::ReqwestError(err) => Some(err),
             CliError::GridProtoError(err) => Some(err),
             CliError::SabreProtoError(err) => Some(err),
+            CliError::DaemonError(_) => None,
         }
     }
 }
@@ -63,9 +65,10 @@ impl std::fmt::Display for CliError {
             CliError::LoggingInitializationError(ref err) => {
                 write!(f, "LoggingInitializationError: {}", err)
             }
-            CliError::ReqwestError(ref err) => write!(f, "Reqwest Error: {}", err),
+            CliError::ReqwestError(ref err) => write!(f, "{}", err),
             CliError::GridProtoError(ref err) => write!(f, "Grid Proto Error: {}", err),
             CliError::SabreProtoError(ref err) => write!(f, "Sabre Proto Error: {}", err),
+            CliError::DaemonError(ref err) => write!(f, "{}", err.replace("\"", "")),
         }
     }
 }
