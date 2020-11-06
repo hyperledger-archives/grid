@@ -24,9 +24,6 @@ const { splinterURL } = getSharedConfig().canopyConfig;
 
 export function OAuthLoginButton({ errorMessage }) {
   const { addToast } = useToasts();
-  if (errorMessage) {
-    addToast(`${errorMessage}`, { appearance: 'error' });
-  }
 
   const AuthUrlResponse = async () => {
     try {
@@ -42,6 +39,7 @@ export function OAuthLoginButton({ errorMessage }) {
     <div className="oauth-login-button-wrapper">
       <div className="btn-header">
         <div className="btn-title">Log In</div>
+        <div className="login-err">{errorMessage}</div>
       </div>
       <div className="btn-wrapper">
         <button

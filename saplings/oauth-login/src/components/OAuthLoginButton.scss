@@ -31,6 +31,12 @@
       display: flex;
       justify-content: center;
     }
+
+    .login-err {
+      color: var(--color-attention);
+      display: flex;
+      justify-content: center;
+    }
   }
 
   .btn-wrapper {
