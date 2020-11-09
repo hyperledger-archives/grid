@@ -36,16 +36,13 @@ RUN npm config set unsafe-perm true
 
 COPY saplings saplings
 COPY sapling-dev-server sapling-dev-server
+COPY sapling-dev-server/configSaplings-biome sapling-dev-server/configSaplings
 
 ARG PUBLIC_URL_PARTIAL
 ENV PUBLIC_URL $PUBLIC_URL_PARTIAL
 
+ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/login
 RUN cd /saplings/register-login && \
-  npm install && \
-  npm run deploy
-
-ENV PUBLIC_URL ${PUBLIC_URL_PARTIAL}/oauth-login
-RUN cd /saplings/oauth-login && \
   npm install && \
   npm run deploy
 

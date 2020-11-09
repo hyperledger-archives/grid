@@ -1,0 +1,199 @@
+# Copyright 2020 Cargill Incorporated
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------------------------
+
+version: '3.6'
+
+volumes:
+  contracts:
+  registry:
+
+services:
+
+  # ---== alpha node ==---
+
+  splinterd-alpha:
+    image: splintercommunity/splinterd:experimental
+    container_name: splinterd-alpha
+    hostname: splinterd-alpha
+    expose:
+      - 8044
+      - 8085
+    ports:
+      - "8044:8044"
+      - "8085:8085"
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db-alpha -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-alpha:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoints tcps://splinterd-alpha:8044 \
+        --node-id alpha-node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-alpha:5432/splinter \
+        --tls-insecure
+      "
+  splinter-db-alpha:
+    image: postgres
+    container_name: splinter-db-alpha
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  splinter-ui-alpha:
+    build:
+      context: .
+      dockerfile: Dockerfile-biome
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+    image: ${NAMESPACE}splinter-ui:${ISOLATION_ID}
+    container_name: splinter-ui-alpha
+    expose:
+      - 80
+    ports:
+      - '3030:80'
+    environment:
+      SPLINTER_URL: 'http://splinterd-alpha:8085'
+
+# ---== beta node ==---
+
+  splinterd-beta:
+    image: splintercommunity/splinterd:experimental
+    container_name: splinterd-beta
+    hostname: splinterd-beta
+    expose:
+      - 8044
+      - 8055
+    ports:
+      - "8045:8044"
+    entrypoint: |
+      bash -c "
+        until PGPASSWORD=admin psql -h splinter-db-beta -U admin -d splinter -c '\q'; do
+          >&2 echo \"Database is unavailable - sleeping\"
+          sleep 1
+        done
+        if [ ! -f /etc/splinter/certs/private/server.key ]
+        then
+          splinter-cli cert generate --force
+        fi && \
+        splinter database migrate -C postgres://admin:admin@splinter-db-beta:5432/splinter && \
+        splinterd -vv \
+        --registries http://registry-server:80/registry.yaml \
+        --rest-api-endpoint 0.0.0.0:8085 \
+        --network-endpoints tcps://0.0.0.0:8044 \
+        --advertised-endpoints tcps://splinterd-beta:8044 \
+        --node-id beta-node-000 \
+        --service-endpoint tcp://0.0.0.0:8043 \
+        --storage yaml \
+        --tls-client-cert /etc/splinter/certs/client.crt \
+        --tls-client-key /etc/splinter/certs/private/client.key \
+        --tls-server-cert /etc/splinter/certs/server.crt \
+        --tls-server-key /etc/splinter/certs/private/server.key \
+        --enable-biome \
+        --database postgres://admin:admin@splinter-db-beta:5432/splinter \
+        --tls-insecure
+      "
+  splinter-db-beta:
+    image: postgres
+    container_name: splinter-db-beta
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: splinter
+
+  splinter-ui-beta:
+    build:
+      context: .
+      dockerfile: Dockerfile-biome
+      args:
+        REPO_VERSION: ${REPO_VERSION}
+    image: ${NAMESPACE}splinter-ui:${ISOLATION_ID}
+    container_name: splinter-ui-beta
+    expose:
+      - 80
+    ports:
+      - '3031:80'
+    environment:
+      SPLINTER_URL: 'http://splinterd-beta:8085'
+
+# ---== shared services ==---
+
+  generate-registry:
+    image: splintercommunity/splinter-cli:master
+    volumes:
+      - registry:/registry
+    command: |
+      bash -c "
+        if [ ! -f /registry/registry.yaml ]
+        then
+          # generate keys
+          splinter admin keygen alice -d /registry
+          splinter admin keygen bob -d /registry
+          # check if splinterd-alpha is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-alpha:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # check if splinterd-beta is available
+          while [[ $$(curl --write-out %{http_code} --silent --output /dev/null http://splinterd-beta:8085/status) -ne 200 ]] ; do
+             >&2 echo \"splinterd is unavailable - sleeping\"
+             sleep 1
+          done
+          # build the registry
+          splinter registry build \
+            http://splinterd-alpha:8085 \
+            --file /registry/registry.yaml \
+            --key-file /registry/alice.pub \
+            --metadata organization='Alpha'
+          splinter registry build \
+            http://splinterd-beta:8085 \
+            --file /registry/registry.yaml \
+            --key-file /registry/bob.pub \
+            --metadata organization='Beta'
+        fi
+      "
+
+  registry-server:
+    image: httpd:2.4
+    container_name: registry-server
+    restart: always
+    expose:
+      - 80
+    ports:
+        - "8099:80"
+    volumes:
+      - registry:/usr/local/apache2/htdocs
