@@ -34,7 +34,7 @@ then
     ISOLATION_ID=${REPO_VERSION%.*} docker-compose -f docker-compose-installed.yaml push
     exit 0
 else
-    ISOLATION_ID=$1
+    export ISOLATION_ID=$1
     if [ $1 == "experimental" ];
     then
         export CARGO_ARGS="-- --features experimental"
