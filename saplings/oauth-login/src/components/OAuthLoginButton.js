@@ -15,19 +15,53 @@
  */
 
 import React from 'react';
+import { useToasts } from 'react-toast-notifications';
+import PropTypes from 'prop-types';
 import './OAuthLoginButton.scss';
+import { getSharedConfig } from 'splinter-saplingjs';
 
-export function OAuthLoginButton() {
+const { splinterURL } = getSharedConfig().canopyConfig;
+
+export function OAuthLoginButton({ errorMessage }) {
+  const { addToast } = useToasts();
+  if (errorMessage) {
+    addToast(`${errorMessage}`, { appearance: 'error' });
+  }
+
+  const AuthUrlResponse = async () => {
+    try {
+      window.location.replace(
+        `${splinterURL}/oauth/login?redirect_url=${window.location.href}`
+      );
+    } catch (e) {
+      addToast(`Unable to redirect to OAuth login`, { appearance: 'error' });
+    }
+  };
+
   return (
     <div className="oauth-login-button-wrapper">
       <div className="btn-header">
         <div className="btn-title">Log In</div>
       </div>
       <div className="btn-wrapper">
-        <button type="button" className="button btn log-in">
+        <button
+          type="button"
+          className="button btn log-in"
+          onClick={() => {
+            AuthUrlResponse();
+          }}
+        >
           Log in using OAuth2.0
         </button>
       </div>
     </div>
   );
 }
+
+OAuthLoginButton.propTypes = {
+  errorMessage: PropTypes.string
+};
+
+OAuthLoginButton.defaultProps = {
+  errorMessage: null
+};

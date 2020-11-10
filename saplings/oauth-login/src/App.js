@@ -15,16 +15,28 @@
  */
 
 import React from 'react';
+import PropTypes from 'prop-types';
+import { ToastProvider } from 'react-toast-notifications';
 import './App.css';
 
 import { OAuthLoginButton } from './components/OAuthLoginButton';
 
-function App() {
+function App({ errorMessage }) {
   return (
     <div className="oauth-login-app">
-      <OAuthLoginButton />
+      <ToastProvider>
+        <OAuthLoginButton errorMessage={errorMessage} />
+      </ToastProvider>
     </div>
   );
 }
+
+App.propTypes = {
+  errorMessage: PropTypes.string
+};
+
+App.defaultProps = {
+  errorMessage: null
+};
 
 export default App;
